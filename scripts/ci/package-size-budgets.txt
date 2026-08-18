@@ -335,3 +335,14 @@ frontend/src                                  14
 # their shell. Under the ceiling; registered because the climb-focused dossier
 # work added three files in one release and the next batch should be visible.
 frontend/src/components/matches/dossier       13
+
+# frontend/src/components/app — the App-shell chrome: the masthead and its
+# menu button, the overlay stack, the app-level modals (first-run, startup
+# error, unsupported, the shortcuts cheatsheet), the lazy-view fallbacks, and
+# the banner family — system alert, error, and now the receipt strip an export
+# writes to. Registered rather than split: this IS one responsibility (what the
+# shell paints around a view), and the alternative — a banners/ subfolder for
+# three files — buys a directory and no clarity. The masthead already has its
+# own masthead/ subfolder, which is the remedy this grouping reaches for when a
+# piece grows its own parts.
+frontend/src/components/app                   13

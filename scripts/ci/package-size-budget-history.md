@@ -43,3 +43,16 @@ gate was in the way" is not one of them.
 | 2026-08-17 | usability-campaign | `pkg/fixtures` | default 12 → 13 | fixtures_rank.go (682 lines) split four ways: the ladder board, the skill/win-rate model and its constants, the per-track season walk, and the driver. |
 | 2026-08-17 | usability-campaign | `frontend/src/composables/matches/list` | 13 → 15 | useMatchesRowActions (wraps the row-context state machine with its actions) and useMatchesBulkActions (the wiring between live selection, archive selection and the shared move picker), both carved out of MatchesView.vue. |
 | 2026-08-18 | coaching-moments | `frontend/tests/e2e/match` | 21 → 22 | The player's own cue strip in the match journal — its own route, table and write gate, so its own spec. |
+
+## 2026-08-18 — frontend/src/components/app 12 (default) → 13 (#700)
+
+The coaching receipt strip (`NoticeBanner.vue`) is the 13th file in the
+App-shell chrome, which had been answering to the default.
+
+A bump rather than a split. The folder is one responsibility — what the shell
+paints around whichever view is up — and the only split available is a
+`banners/` subfolder holding three files, which buys a directory and no
+clarity. Registered at exactly 13. The first attempt declared 14, leaving a file of
+slack "so the next banner would not need a rewrite" — and the gate refused it,
+which is the whole point: a budget sitting above its directory's count is how
+a folder silently regrows what it just shed.
