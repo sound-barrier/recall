@@ -63,6 +63,7 @@ function makeDeps(overrides: Partial<GlobalKeyboardDeps> = {}): GlobalKeyboardDe
     view: ref<ViewId>('matches'),
     coachSessionActive: ref(false),
     openCheatsheet: ref(false),
+    openPalette: ref(false),
     modalOpen: ref(false),
     selectionIsOpen: ref(false),
     selectedKey: ref<string | null>(null),
@@ -395,5 +396,36 @@ describe('useGlobalKeyboard — the / shortcut', () => {
 
     expect(opened).not.toHaveBeenCalled()
     view.unmount()
+  })
+})
+
+// The palette's opener rides the same registry as `?`, which is exempt from
+// modal suppression: a jump-anywhere affordance that is unreachable from half
+// the app is not one.
+function chord(key: string, mods: KeyboardEventInit) {
+  document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...mods }))
+}
+
+describe('useGlobalKeyboard — command palette', () => {
+  it('opens on the command chord', () => {
+    const deps = makeDeps()
+    mountKeyboard(deps)
+    chord('k', { metaKey: true })
+    expect(deps.openPalette.value).toBe(true)
+  })
+
+  it('opens on Ctrl+K too, since this ships to Windows', () => {
+    const deps = makeDeps()
+    mountKeyboard(deps)
+    chord('k', { ctrlKey: true })
+    expect(deps.openPalette.value).toBe(true)
+  })
+
+  // A bare k is a real binding elsewhere in the app; it must not open this.
+  it('does not open on a bare k', () => {
+    const deps = makeDeps()
+    mountKeyboard(deps)
+    press('k')
+    expect(deps.openPalette.value).toBe(false)
   })
 })

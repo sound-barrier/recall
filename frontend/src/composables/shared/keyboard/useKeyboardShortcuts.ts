@@ -57,6 +57,12 @@ export interface Shortcut {
   allowInInput?: boolean
   // Skip the automatic preventDefault. Off by default.
   preventDefault?: boolean
+  // Require the platform's command modifier (Ctrl on Windows/Linux, Cmd on
+  // macOS). Off by default, and the default is the important half: every other
+  // shortcut in this app is a bare key, so a modifier chord must be declared
+  // rather than inferred. A shortcut WITHOUT this never fires while a modifier
+  // is held, which is what keeps Ctrl+F, Ctrl+R and friends working.
+  mod?: true
 }
 
 // Same `prefix` value is used both for the prefix key itself
@@ -81,7 +87,10 @@ function keyMatches(shortcut: Shortcut, key: string): boolean {
 
 // The uniform per-shortcut gate: key match + `when` predicate +
 // input-gating (skip unless allowInInput while focus is editable).
-function shortcutApplies(s: Shortcut, key: string, editable: boolean): boolean {
+// `modHeld` partitions the registry: a chord selects only `mod` shortcuts, a
+// bare press only non-mod ones. Neither can fire the other's keys.
+function shortcutApplies(s: Shortcut, key: string, editable: boolean, modHeld = false): boolean {
+  if (!!s.mod !== modHeld) return false
   return keyMatches(s, key) && (s.when ? s.when() : true) && (editable ? !!s.allowInInput : true)
 }
 
@@ -133,6 +142,14 @@ export function useKeyboardShortcuts(
     return true
   }
 
+  // A chord never participates in a key SEQUENCE (g m and friends) and never
+  // primes one: those are bare-key vocabulary, so this neither reads nor
+  // clears the pending prefix.
+  function matchChord(e: KeyboardEvent, key: string, editable: boolean) {
+    const chord = shortcuts.find(s => !s.prefix && shortcutApplies(s, key, editable, true))
+    if (chord) fire(chord, e)
+  }
+
   function onKeydown(e: KeyboardEvent) {
     // Modal suppression — bail before any matching so a pending
     // sequence prefix from before the modal opened doesn't get
@@ -142,12 +159,24 @@ export function useKeyboardShortcuts(
       return
     }
 
-    // Modifier suppression. Shift is allowed because `?` is
-    // Shift+/ on US keyboards.
-    if (e.ctrlKey || e.metaKey || e.altKey) return
+    // Modifier partition. Shift is allowed throughout because `?` is Shift+/
+    // on US keyboards.
+    //
+    // A held Ctrl/Cmd selects the `mod` shortcuts and EXCLUDES every bare one;
+    // no modifier selects the bare ones and excludes the chords. Alt is never a
+    // trigger. Without the partition a browser accelerator (Ctrl+F) would fire
+    // the app's `f`, which is why the original bail existed — this narrows it
+    // rather than removing it.
+    const modHeld = e.ctrlKey || e.metaKey
+    if (e.altKey) return
 
     const key = e.key
     const editable = isEditableTarget()
+
+    if (modHeld) {
+      matchChord(e, key, editable)
+      return
+    }
 
     if (matchSequence(e, key, editable)) return
 

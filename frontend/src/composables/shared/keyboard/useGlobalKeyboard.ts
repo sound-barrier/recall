@@ -27,6 +27,7 @@ export interface GlobalKeyboardDeps {
   // Cheatsheet open state — the `?` shortcut writes it, and it feeds the
   // dispatcher's suppression (no shortcut fires while the modal is up).
   openCheatsheet: Ref<boolean>
+  openPalette: Ref<boolean>
   // True while any modal OTHER than the detail panel is up (narrow panel,
   // manual match, About, settings dialog, first-run, startup error, …) —
   // suppresses the whole map. The detail panel deliberately stays out:
@@ -84,6 +85,7 @@ export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
     view,
     coachSessionActive,
     openCheatsheet,
+    openPalette,
     modalOpen,
     selectionIsOpen,
     selectedKey,
@@ -236,5 +238,14 @@ export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
       allowInInput: true,
       handler: () => { openCheatsheet.value = true },
     },
-  ], { suppressed: openCheatsheet })
+    {
+      // The one command chord in the app. It rides this registry rather than
+      // the main one for the same reason `?` does: a jump-anywhere affordance
+      // that is unreachable from half the app is not one.
+      key: 'k',
+      mod: true,
+      allowInInput: true,
+      handler: () => { openPalette.value = true },
+    },
+  ], { suppressed: computed(() => openCheatsheet.value || openPalette.value) })
 }

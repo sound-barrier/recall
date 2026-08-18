@@ -43,6 +43,7 @@ const TiltNudgeToast = lazyOverlay(() => import('@/components/matches/toasts/Til
 const SessionSummaryToast = lazyOverlay(() => import('@/components/matches/toasts/SessionSummaryToast.vue'))
 const MatchScreenshotLightbox = lazyOverlay(() => import('@/components/matches/detail/MatchScreenshotLightbox.vue'))
 const KeyboardShortcutsModal = lazyOverlay(() => import('@/components/app/KeyboardShortcutsModal.vue'))
+const CommandPalette = lazyOverlay(() => import('@/components/shared/CommandPalette.vue'))
 const ManualMatchModal = lazyOverlay(() => import('@/components/matches/manual/ManualMatchModal.vue'))
 const OnboardingTour = lazyOverlay(() => import('@/components/onboarding/OnboardingTour.vue'))
 const CoachReturnSheet = lazyOverlay(() => import('@/components/coach/inbox/CoachReturnSheet.vue'))
@@ -65,7 +66,7 @@ const {
   closeCheatsheet, closeSettingsDialog,
   onFirstRunDismiss, onFirstRunPickSource, onFirstRunPickCustomSource,
 } = uiStore
-const { manualMatchOpen, manualMatchMode, anchorToast, undoHideToast, cheatsheetOpen, firstRunModalOpen, settingsDialogOpen } = storeToRefs(uiStore)
+const { manualMatchOpen, manualMatchMode, anchorToast, undoHideToast, cheatsheetOpen, paletteOpen, firstRunModalOpen, settingsDialogOpen } = storeToRefs(uiStore)
 
 // App store — About (version + update hub) + the non-dismissible startup gate.
 const {
@@ -189,6 +190,11 @@ const lightboxSrc = computed(() => {
     :panel-open="selection.isOpen.value"
     @close="closeCheatsheet"
   />
+
+  <!-- Command palette. Lazy like every other substantial modal surface: the
+       initial-JS budget has a few KB of headroom, and a jump-to affordance
+       nobody has opened yet has no business in the first chunk. -->
+  <CommandPalette :open="paletteOpen" @close="uiStore.closePalette()" />
 
   <ManualMatchModal
     :key="manualMatchMode"

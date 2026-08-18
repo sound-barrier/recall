@@ -140,7 +140,10 @@ frontend/tests/e2e                            11
 # (system-flows, validation-paths). Over the default because "the chrome around
 # the views" is one responsibility with many affordances, and splitting it would
 # manufacture three-file folders.
-frontend/tests/e2e/app                        13
+# 14: the command palette. It is an APP-SHELL affordance — a chord that
+# reaches any view from anywhere — so it belongs with the shell specs rather
+# than in any one feature folder.
+frontend/tests/e2e/app                        14
 
 # frontend/tests/e2e/data-table — the tabular display modes of the match set:
 # the data table proper (columns, density, resize, multi-sort, frozen leading
