@@ -447,6 +447,12 @@ export const useCoachStore = defineStore('coach', () => {
     }
     try {
       const saved = await ExportCoachNotes()
+      // Wails' native save dialog answers "" when the coach cancels it — no
+      // error, just no file. Nothing was written, so nothing here may change:
+      // clearing the flag would stop End asking about work that has not been
+      // saved anywhere the player can reach, on the strength of a dialog the
+      // coach dismissed.
+      if (!saved) return
       dirtySinceExport.value = false
       // The armed button reads "End anyway — notes not exported". They are
       // exported now, so the question it was asking no longer exists.
@@ -456,7 +462,7 @@ export const useCoachStore = defineStore('coach', () => {
       // go and look for it, on the one action in the room whose whole purpose
       // is producing a file for someone else. Backup already flashes its path;
       // this is the same receipt.
-      exportedTo.value = saved || 'your chosen folder'
+      exportedTo.value = saved
     } catch (e) {
       useAppStore().setErrorFromRaw(String(e))
     }
