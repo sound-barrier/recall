@@ -221,8 +221,8 @@ func TestExportCoachNotes_CarriesTheMoments(t *testing.T) {
 	if len(file.Notes) != 1 || len(file.Notes[0].Moments) != 1 {
 		t.Fatalf("the archive lost the moment: %+v", file.Notes)
 	}
-	if file.Schema != coach.NotesSchemaV2 {
-		t.Errorf("a file carrying moments must say v2, got %q", file.Schema)
+	if file.Schema != coach.NotesSchemaV1 {
+		t.Errorf("notes.json schema = %q, want %q", file.Schema, coach.NotesSchemaV1)
 	}
 	if !strings.Contains(file.Notes[0].Moments[0].Text, "Cassidy") {
 		t.Errorf("moment text lost: %+v", file.Notes[0].Moments[0])

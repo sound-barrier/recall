@@ -25,8 +25,8 @@ type Note struct {
 	UpdatedAt  string        `json:"updated_at"`
 	Match      *MatchContext `json:"match,omitempty"`
 	// Moments are the timestamped observations inside this note, in reading
-	// order. omitempty on purpose: a note without any is byte-identical to
-	// what an older build wrote, so files keep round-tripping both ways.
+	// order. omitempty so a note with none carries no key at all rather than
+	// a null — Go marshals a nil slice as null, and the schema says array.
 	Moments []Moment `json:"moments,omitempty"`
 }
 

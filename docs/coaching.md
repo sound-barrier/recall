@@ -173,10 +173,9 @@ later brings them back, so a second session builds on the first.
 notes, not the moments. They are filed under the player, and they leave
 the screen when the session ends.
 
-**A player's notes file needs a Recall at least as new as the coach's.**
-A review with no timestamped moments opens in any version; one with
-moments needs a build that understands them, and an older one says so
-by name rather than dropping half the review.
+**A notes file names the format it is in.** A build that does not know
+that format refuses the file by name rather than reading half of it and
+dropping the rest silently.
 
 **Two coaches can review the same match.** Their notes accumulate as
 separate blocks, each signed and dated. Nothing merges.

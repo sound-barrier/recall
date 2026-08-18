@@ -2,6 +2,7 @@ package coach_test
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -154,89 +155,101 @@ func TestSortMoments_OrdersByTimeNotByString(t *testing.T) {
 	}
 }
 
-// ── The notes file's schema, and what it promises an older build ──────────
+// ── The notes file's schema ───────────────────────────────────────────────
 
-// notesFileWithMoments is the suite's valid file, with the moments under test
-// hung on its first note and the schema chosen the way the exporter chooses
-// it.
+// notesFileWithMoments is the suite's valid file with the moments under test
+// hung on its first note.
 func notesFileWithMoments(moments []coach.Moment) coach.NotesFile {
 	f := validNotesFile()
 	f.Notes[0].Moments = moments
-	f.Schema = coach.NotesSchemaFor(f.Notes)
 	return f
 }
 
-// A review with no moments is still v1, so a coach on this build can hand a
-// file to a player on an older one and nothing breaks. That is the common
-// case, and the one worth protecting.
-func TestNotesFile_StaysV1WithoutMoments(t *testing.T) {
-	t.Parallel()
-
-	f := notesFileWithMoments(nil)
-
-	if f.Schema != coach.NotesSchemaV1 {
-		t.Errorf("a file with no moments should be %q, got %q", coach.NotesSchemaV1, f.Schema)
-	}
-	if err := coach.ValidateNotesFile(f); err != nil {
-		t.Fatalf("valid v1 file rejected: %v", err)
-	}
-}
-
-// With moments the file says v2 — so an older build refuses it by name rather
-// than decoding it and silently dropping the half of the review that pointed
-// at something.
-func TestNotesFile_SaysV2WhenItCarriesMoments(t *testing.T) {
+// One schema, and it includes moments.
+//
+// An earlier draft wrote a v2 when a note carried moments and kept a v1
+// reader beside it, so a coach on a new build could hand a file to a player
+// on an old one. There is no such player — coaching has never shipped in a
+// release, so no v1 file exists anywhere — and the machinery went with the
+// premise.
+func TestNotesFile_ReadsAFileCarryingMoments(t *testing.T) {
 	t.Parallel()
 
 	f := notesFileWithMoments([]coach.Moment{
 		{MomentID: "m1", MatchClock: "03:23", Text: "no off-angle"},
 	})
 
-	if f.Schema != coach.NotesSchemaV2 {
-		t.Errorf("a file with moments should be %q, got %q", coach.NotesSchemaV2, f.Schema)
-	}
+	// No assertion on f.Schema here: validNotesFile() sets it, so checking it
+	// would be the fixture checking itself. What matters is that the READER
+	// takes a file carrying moments.
 	if err := coach.ValidateNotesFile(f); err != nil {
-		t.Fatalf("valid v2 file rejected: %v", err)
+		t.Fatalf("a file carrying moments was rejected: %v", err)
 	}
 }
 
-// A v1 label over v2 content is the one shape that makes the schema's promise
-// false — an older build would read it, believe it had the whole file, and
-// drop every moment without saying so.
-func TestNotesFile_RefusesV1LabelOverMoments(t *testing.T) {
+// ── The hostile notes.json ────────────────────────────────────────────────
+
+// The moments inside an imported file answer to the same rules a live write
+// does, and until now nothing said so: deleting the whole validateFileMoments
+// call left every Go test in the repo green.
+//
+// This is the file the threat model is about. A hand-edited notes.json is
+// exactly how a clock that is not a clock, a tag outside the vocabulary, or
+// five hundred rows sharing one id would land verbatim in the player's
+// database and then out again through GET /matches — in violation of the
+// schema that endpoint publishes. The received table carries no CHECK of its
+// own precisely because it trusts this validator.
+func TestNotesFile_RefusesHostileMoments(t *testing.T) {
 	t.Parallel()
 
-	f := notesFileWithMoments([]coach.Moment{
-		{MomentID: "m1", MatchClock: "03:23", Text: "no off-angle"},
-	})
-	f.Schema = coach.NotesSchemaV1
-
-	// 409, not 400: the file is readable and its contents are fine — the
-	// label just promises less than it carries.
-	err := coach.ValidateNotesFile(f)
-	if !errors.Is(err, coach.ErrNotesSchemaMismatch) {
-		t.Fatalf("want ErrNotesSchemaMismatch, got %v", err)
+	tooMany := make([]coach.Moment, coach.MaxMomentsPerNote+1)
+	for i := range tooMany {
+		tooMany[i] = coach.Moment{MomentID: fmt.Sprintf("m%d", i), MatchClock: "03:23", Text: "x"}
 	}
-	if !strings.Contains(err.Error(), "moments") {
-		t.Errorf("the refusal should say what is wrong, got %q", err.Error())
+
+	for _, tc := range []struct {
+		name    string
+		moments []coach.Moment
+	}{
+		{"past the per-note cap", tooMany},
+		{"no moment_id", []coach.Moment{{MatchClock: "03:23", Text: "x"}}},
+		{"two moments sharing an id", []coach.Moment{
+			{MomentID: "dup", MatchClock: "03:23", Text: "x"},
+			{MomentID: "dup", MatchClock: "04:45", Text: "y"},
+		}},
+		{"a clock that is not a clock", []coach.Moment{
+			{MomentID: "m1", MatchClock: "half past three", Text: "x"}}},
+		{"a tag outside the vocabulary", []coach.Moment{
+			{MomentID: "m1", MatchClock: "03:23", Text: "x", FocusTag: "vibes"}}},
+		{"no text", []coach.Moment{{MomentID: "m1", MatchClock: "03:23", Text: "   "}}},
+		{"text past the cap", []coach.Moment{
+			{MomentID: "m1", MatchClock: "03:23", Text: strings.Repeat("x", coach.MaxMomentTextRunes+1)}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			f := notesFileWithMoments(tc.moments)
+			if err := coach.ValidateNotesFile(f); !errors.Is(err, coach.ErrNotesMalformed) {
+				t.Fatalf("want ErrNotesMalformed, got %v", err)
+			}
+		})
 	}
 }
 
-// Both readable schemas still import; an unknown one is still named.
-func TestNotesFile_ReadsBothSchemas(t *testing.T) {
+// An unknown schema is refused BY NAME rather than decoded. Go's decoder
+// ignores unknown fields, so a file from a future build would otherwise
+// import as notes whose specifics vanished with nothing saying so.
+func TestNotesFile_RefusesASchemaItDoesNotKnow(t *testing.T) {
 	t.Parallel()
 
-	for _, schema := range []string{coach.NotesSchemaV1, coach.NotesSchemaV2} {
-		f := notesFileWithMoments(nil)
-		f.Schema = schema
-		if err := coach.ValidateNotesFile(f); err != nil {
-			t.Errorf("%s should still read, got %v", schema, err)
-		}
-	}
 	f := notesFileWithMoments(nil)
 	f.Schema = "recall-coach-notes/v9"
-	if err := coach.ValidateNotesFile(f); !errors.Is(err, coach.ErrNotesUnsupportedSchema) {
+
+	err := coach.ValidateNotesFile(f)
+	if !errors.Is(err, coach.ErrNotesUnsupportedSchema) {
 		t.Fatalf("want ErrNotesUnsupportedSchema, got %v", err)
+	}
+	if !strings.Contains(err.Error(), coach.NotesSchemaV1) {
+		t.Errorf("the refusal should name what this build reads, got %q", err.Error())
 	}
 }
 
@@ -255,7 +268,6 @@ func TestDecide_AcceptKeepsAReviewedOnlyNotesMoments(t *testing.T) {
 		{MomentID: "m1", MatchClock: "03:23", Text: "no off-angle"},
 		{MomentID: "m2", MatchClock: "04:45", Text: "flanking Cassidy"},
 	}
-	f.Schema = coach.NotesSchemaFor(f.Notes)
 	sheet := stageReturn(t, st, writeNotes(t, f), "Sable")
 
 	decide(t, st, sheet.ID, coach.Decision{NoteID: noteIDTwo, Decision: coach.DecisionAccepted})
