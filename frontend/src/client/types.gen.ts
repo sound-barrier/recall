@@ -723,8 +723,9 @@ export type CoachSessionChangedEvent = {
  * the first share and persisted in this install's settings, so a
  * request body can never claim to be somebody else; an `id` sent
  * here is ignored. The handle is trimmed; blank falls back to the
- * handle remembered from the last share, and having neither is a
- * `400`.
+ * handle remembered from the last share (or set in Settings →
+ * Coaching), and having neither is a `409` — the body is fine, there
+ * is simply no name to share under.
  *
  */
 export type BundleShare = {
@@ -4131,6 +4132,14 @@ export type ExportBundleErrors = {
      * Malformed request body or query parameters.
      */
     400: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
     /**
      * Unhandled server-side error.
      */

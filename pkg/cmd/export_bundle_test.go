@@ -116,11 +116,17 @@ func TestExportBundle_ShareModeBundleIsRefusedByImport(t *testing.T) {
 	}
 }
 
-// A share with nothing to attribute it to is a body error, not a 500.
+// A share with nothing to attribute it to is a 409, not a 400 and not a 500.
+//
+// The body is fine: a blank handle is the documented way to say "use the one
+// from last time", and this install has none remembered. Calling that a 400
+// claims schema-compliant data was malformed — which is exactly what
+// schemathesis's positive_data_acceptance check reads it as, and what it
+// failed on.
 func TestExportBundle_ShareModeNeedsAHandle(t *testing.T) {
 	rec := postShareBundle(t, map[string]any{"message": "no handle here"})
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("status %d, want 400; body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusConflict {
+		t.Errorf("status %d, want 409; body=%s", rec.Code, rec.Body.String())
 	}
 }
 

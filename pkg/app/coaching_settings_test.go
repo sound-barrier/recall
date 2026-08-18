@@ -143,8 +143,12 @@ func TestExportShareBundle_NeedsAHandle(t *testing.T) {
 	store := dbtest.New()
 	mustNoErr(t, playerCorpus(store))
 	a := app.NewWithStore(store)
-	if _, err := a.ExportShareBundle(playerBundleOpts(), app.SharePlayer{}); !errors.Is(err, bundle.ErrPlayerIdentityInvalid) {
-		t.Errorf("share with no handle = %v, want bundle.ErrPlayerIdentityInvalid", err)
+	// ErrNoPlayerHandle, not ErrPlayerIdentityInvalid: the body is fine — a
+	// blank handle is the documented way to say "use the one from last time"
+	// — and this install simply has none remembered. A state refusal, so a
+	// 409 rather than a 400.
+	if _, err := a.ExportShareBundle(playerBundleOpts(), app.SharePlayer{}); !errors.Is(err, app.ErrNoPlayerHandle) {
+		t.Errorf("share with no handle = %v, want app.ErrNoPlayerHandle", err)
 	}
 }
 

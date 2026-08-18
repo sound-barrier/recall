@@ -138,7 +138,9 @@ func handleExportBundle(a *app.App) http.HandlerFunc {
 			return
 		}
 		data, err := exportBundlePayload(a, req)
-		if writeError(w, r, err, errStatus{bundle.ErrPlayerIdentityInvalid, probInvalidBody}) {
+		if writeError(w, r, err,
+			errStatus{bundle.ErrPlayerIdentityInvalid, probInvalidBody},
+			errStatus{app.ErrNoPlayerHandle, probConflict}) {
 			return
 		}
 		fname := "recall-bundle-" + time.Now().UTC().Format("20060102-150405") + ".zip"

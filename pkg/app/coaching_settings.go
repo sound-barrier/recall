@@ -19,6 +19,15 @@ import (
 // coach.ErrCoachNameRequired instead.
 var ErrCoachNameInvalid = errors.New("invalid coach name")
 
+// ErrNoPlayerHandle maps to 409 — a share arrived with a blank handle and
+// this install has none remembered to fall back on. 409 rather than 400
+// because the BODY is fine: a blank handle is a documented way to say "use
+// the one from last time", and the refusal is about state, not shape. The
+// same distinction ErrMomentEmpty and ErrEmptyAnnotation draw — and the one
+// schemathesis's positive_data_acceptance check reads, since 400 there is a
+// claim that schema-compliant data was malformed.
+var ErrNoPlayerHandle = errors.New("no player handle to share under")
+
 // CoachingSettings is the wire shape of the coaching settings row: the two
 // identities, one per direction of the loop.
 type CoachingSettings struct {
@@ -69,7 +78,7 @@ func (a *App) shareIdentity(player SharePlayer) (bundle.PlayerIdentity, error) {
 	}
 	switch {
 	case handle == "":
-		return bundle.PlayerIdentity{}, fmt.Errorf("%w: a handle is required to share with a coach", bundle.ErrPlayerIdentityInvalid)
+		return bundle.PlayerIdentity{}, fmt.Errorf("%w: set one in Settings \u2192 Coaching, or type one in the share dialog", ErrNoPlayerHandle)
 	case utf8.RuneCountInString(handle) > maxCoachHandleRunes:
 		return bundle.PlayerIdentity{}, fmt.Errorf("%w: handle exceeds %d characters", bundle.ErrPlayerIdentityInvalid, maxCoachHandleRunes)
 	}
