@@ -42,6 +42,43 @@ describe('matchesSearch', () => {
     expect(matchesSearch(r, [{ field: 'tag', value: 'tilt' } as SearchClause])).toBe(true)
     expect(matchesSearch(r, [{ field: 'note', value: 'tilt' } as SearchClause])).toBe(false)
   })
+  // Coaching writes prose onto a match from two directions, and neither was
+  // searchable: the player's own timestamped moments, and the blocks a coach
+  // sent back. So "find that thing the coach said about my off-angles"
+  // returned nothing, which is the worst possible answer — the text is right
+  // there on the match.
+  it('finds a moment the player marked', () => {
+    const r = rec({
+      moments: [{ moment_id: 'a', match_clock: '03:23', text: 'no off-angle, tank ate it' }],
+    } as Partial<MatchRecord>)
+    expect(matchesSearch(r, [{ field: null, value: 'off-angle' } as SearchClause])).toBe(true)
+  })
+
+  it('finds text a coach wrote, and the focus tag they filed it under', () => {
+    const r = rec({
+      coach_notes: [{
+        id: 1, note_id: 'n1', coach_name: 'Ordo', session_date: '2026-08-15',
+        text: 'walk the high ground before the fight opens',
+        focus_tags: ['positioning'],
+        moments: [{ moment_id: 'm1', match_clock: '04:45', text: 'flanking Cassidy behind you' }],
+      }],
+    } as Partial<MatchRecord>)
+    expect(matchesSearch(r, [{ field: null, value: 'high ground' } as SearchClause])).toBe(true)
+    expect(matchesSearch(r, [{ field: null, value: 'positioning' } as SearchClause])).toBe(true)
+    // A moment nested inside a returned note counts too — it is the half of a
+    // timestamped review that points at something.
+    expect(matchesSearch(r, [{ field: null, value: 'cassidy' } as SearchClause])).toBe(true)
+    // And the coach's name, so "everything Ordo reviewed" is one search.
+    expect(matchesSearch(r, [{ field: null, value: 'ordo' } as SearchClause])).toBe(true)
+  })
+
+  it('still says no when the coaching text does not contain it', () => {
+    const r = rec({
+      moments: [{ moment_id: 'a', match_clock: '03:23', text: 'no off-angle' }],
+    } as Partial<MatchRecord>)
+    expect(matchesSearch(r, [{ field: null, value: 'ult tracking' } as SearchClause])).toBe(false)
+  })
+
   it('all clauses AND', () => {
     const r = rec({ data: { map: 'rialto' } as MatchRecord['data'], annotation: { note: 'gg' } as MatchRecord['annotation'] })
     expect(matchesSearch(r, [{ field: null, value: 'rial' }, { field: 'note', value: 'gg' }] as SearchClause[])).toBe(true)

@@ -57,8 +57,26 @@ function scopedSurfaces(ann: MatchRecord['annotation']): Record<SearchField, str
   }
 }
 
+// Every word coaching put on a match, from both directions: the player's own
+// timestamped moments, and the blocks a coach sent back — their text, the
+// moments nested inside them, the focus tags they were filed under, and the
+// coach's name, so "everything Ordo reviewed" is one search.
+//
+// Left out of the bare blob for a long time, which made the one thing people
+// actually go looking for unfindable: prose is what you remember a fragment
+// of, and stats are what you filter by.
+function coachingWords(r: MatchRecord): string[] {
+  const words: string[] = []
+  for (const m of r.moments ?? []) words.push(m.text)
+  for (const n of r.coach_notes ?? []) {
+    words.push(n.text, n.coach_name, ...(n.focus_tags ?? []), ...(n.extra_tags ?? []))
+    for (const m of n.moments ?? []) words.push(m.text)
+  }
+  return words
+}
+
 // The broad lexical blob a BARE clause matches — every visible surface.
-function bareBlob(d: NonNullable<MatchRecord['data']>, ann: MatchRecord['annotation']): string {
+function bareBlob(r: MatchRecord, d: NonNullable<MatchRecord['data']>, ann: MatchRecord['annotation']): string {
   const heroesPlayedNames = (d.heroes_played ?? []).map((h) => h.hero ?? '').filter(Boolean)
   return [
     d.map, d.playlist, d.hero, d.role, d.game_mode,
@@ -67,6 +85,7 @@ function bareBlob(d: NonNullable<MatchRecord['data']>, ann: MatchRecord['annotat
     ...(ann?.tags ?? []),
     ...(ann?.members ?? []),
     ann?.replay_code,
+    ...coachingWords(r),
   ].filter(Boolean).join(' ').toLowerCase()
 }
 
@@ -81,7 +100,7 @@ export function matchesSearch(r: MatchRecord, clauses: SearchClause[]): boolean 
   const d = r.data
   if (!d) return false
   const scoped = scopedSurfaces(r.annotation)
-  const blob = bareBlob(d, r.annotation)
+  const blob = bareBlob(r, d, r.annotation)
   return clauses.every((c) => (c.field ? scoped[c.field] : blob).includes(c.value))
 }
 
