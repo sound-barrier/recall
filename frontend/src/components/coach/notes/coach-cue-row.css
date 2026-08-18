@@ -1,43 +1,5 @@
-/* The cue strip and its rows share this sheet: they are one surface split
-   across two components, and a rail that only lines up when both files agree
-   is a rail that will stop lining up. */
-
-.cue-strip {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  padding: 0.9rem 1rem;
-}
-
-.cue-strip-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.6rem;
-}
-
-.cue-length {
-  font-family: var(--font-mono);
-  font-size: var(--type-3xs);
-  font-variant-numeric: tabular-nums;
-  color: var(--text-dim);
-}
-
-.cue-empty {
-  margin: 0;
-  font-size: var(--type-sm);
-  line-height: 1.5;
-  color: var(--text-dim);
-}
-
-.cue-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
+/* One cue on the strip: the sprocket rail, the fields the coach types into,
+   and the footnotes under them. */
 
 .cue-row {
   display: grid;
@@ -46,8 +8,8 @@
   align-items: start;
 }
 
-/* The sprocket rail, echoing the reel's — same visual language, one level
-   deeper: there it separates matches, here it separates moments inside one. */
+/* The rail, echoing the reel's — same visual language, one level deeper:
+   there it separates matches, here it separates moments inside one. */
 .cue-rail {
   position: relative;
   align-self: stretch;
@@ -64,13 +26,6 @@
   background: var(--surface);
   border: 1px solid var(--text-dim);
   border-radius: var(--radius-pill);
-}
-
-/* Proportional placement, only when the match reported a length. The rail
-   scales against real seconds or it does not scale at all — an unscaled rail
-   is honest, a rail scaled against a guess is not. */
-.cue-list-scaled .cue-row {
-  margin-top: calc(var(--cue-at, 0%) * 0.06);
 }
 
 .cue-body {
@@ -165,9 +120,4 @@
   margin: 0;
   font-size: var(--type-3xs);
   color: var(--loss);
-}
-
-.cue-add {
-  align-self: flex-start;
-  border-style: dashed;
 }

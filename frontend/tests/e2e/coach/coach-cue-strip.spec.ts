@@ -41,7 +41,7 @@ async function markMoment(
   page: import('@playwright/test').Page, clock: string, text: string,
 ) {
   await strip(page).getByRole('button', { name: 'Mark a moment' }).click()
-  const draft = () => strip(page).getByRole('group', { name: 'New moment' })
+  const draft = () => strip(page).getByRole('group', { name: /^New moment/ })
   await draft().getByLabel('Clock').fill(clock)
   await draft().getByLabel('What happened').fill(text)
 }
@@ -63,7 +63,7 @@ test.describe('cue strip', () => {
     // The text lives in the row's editable field — the strip is written in, not
     // just read — so this reads its value rather than the region's text.
     await expect(
-      strip(page).getByRole('group', { name: 'Moment at 04:45' }).getByLabel('What happened'),
+      strip(page).getByRole('group', { name: /Moment 1 of 1, at 04:45/ }).getByLabel('What happened'),
     ).toHaveValue('Cassidy flanked behind you.')
     // The write is debounced, so the transport is polled rather than assumed —
     // and it IS asserted: an optimistic strip renders the moment whether or
@@ -100,7 +100,7 @@ test.describe('cue strip', () => {
     await openDeskOn(page, "king's row")
     await markMoment(page, '4:45', 'Cassidy flanked behind you.')
 
-    const row = strip(page).getByRole('group', { name: /Moment at 04:45/ })
+    const row = strip(page).getByRole('group', { name: /Moment 1 of 1, at 04:45/ })
     await expect(row).toContainText('RPL45X')
     await expect(row.getByRole('button', { name: /copy replay code/i })).toBeVisible()
   })
@@ -121,7 +121,7 @@ test.describe('cue strip', () => {
     await openDeskOn(page, "king's row")
 
     await strip(page).getByRole('button', { name: 'Mark a moment' }).click()
-    const draft = strip(page).getByRole('group', { name: 'New moment' })
+    const draft = strip(page).getByRole('group', { name: /^New moment/ })
     await draft.getByLabel('Clock').fill('4:75')
     await draft.getByLabel('What happened').fill('Seconds past 59.')
     await draft.getByLabel('What happened').blur()
@@ -131,14 +131,49 @@ test.describe('cue strip', () => {
   })
 
   test('drops a moment the coach takes back', async ({ page }) => {
-    await openDeskOn(page, "king's row")
+    const mock = await openDeskOn(page, "king's row")
     await markMoment(page, '4:45', 'Cassidy flanked behind you.')
-    await expect(strip(page).getByTestId('moment-clock')).toHaveCount(1)
+    await expect.poll(() => mock.momentPut.seen()).toBe(true)
 
-    await strip(page).getByRole('group', { name: /Moment at 04:45/ })
-      .getByRole('button', { name: /remove this moment/i }).click()
+    await strip(page).getByRole('group', { name: /Moment 1 of 1, at 04:45/ })
+      .getByRole('button', { name: /remove/i }).click()
 
     await expect(strip(page).getByTestId('moment-clock')).toHaveCount(0)
     await expect(strip(page)).toContainText(/no moments yet/i)
+    // The row vanishing locally proves nothing about the server. Without this
+    // the moment survives on it, comes back on the next open, and travels into
+    // an archive the coach believes it left.
+    await expect.poll(() => mock.momentDeletes.length).toBe(1)
+  })
+
+  // A draft the coach abandons was never stored, so there is nothing to
+  // delete — asking would 404 on a row that never existed.
+  test('sends no delete for a draft that was never saved', async ({ page }) => {
+    const mock = await openDeskOn(page, "king's row")
+    await strip(page).getByRole('button', { name: 'Mark a moment' }).click()
+    await strip(page).getByRole('group', { name: /^New moment/ }).getByLabel('Clock').fill('4:45')
+
+    await strip(page).getByRole('group', { name: /^New moment/ })
+      .getByRole('button', { name: /remove/i }).click()
+
+    await expect(strip(page).getByRole('group', { name: /^New moment/ })).toHaveCount(0)
+    expect(mock.momentDeletes).toEqual([])
+  })
+
+  // A moment that WAS saved and then had its text cleared is still on the
+  // server. Reading the row's current shape to decide whether to delete left
+  // it stranded there — the one place the optimistic strip and the database
+  // could quietly disagree forever.
+  test('still deletes a saved moment whose text was cleared', async ({ page }) => {
+    const mock = await openDeskOn(page, "king's row")
+    await markMoment(page, '4:45', 'Cassidy flanked behind you.')
+    await expect.poll(() => mock.momentPut.seen()).toBe(true)
+
+    const row = strip(page).getByRole('group', { name: /Moment 1 of 1, at 04:45/ })
+    await row.getByLabel('What happened').fill('')
+    await strip(page).getByRole('group', { name: /^New moment/ })
+      .getByRole('button', { name: /remove/i }).click()
+
+    await expect.poll(() => mock.momentDeletes.length).toBe(1)
   })
 })

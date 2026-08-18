@@ -312,7 +312,7 @@ func (s *SQLStore) UpsertCoachNoteMoment(playerRef int64, m CoachNoteMoment) (Co
 	err = tx.QueryRow(
 		`INSERT INTO coach_note_moments (moment_id, coach_note_id, match_clock, text, sort_order)
 		 VALUES (?, ?, ?, ?, ?)
-		 ON CONFLICT(moment_id) DO UPDATE SET
+		 ON CONFLICT(coach_note_id, moment_id) DO UPDATE SET
 		   match_clock = excluded.match_clock,
 		   text        = excluded.text,
 		   sort_order  = excluded.sort_order,
@@ -334,8 +334,9 @@ func (s *SQLStore) UpsertCoachNoteMoment(playerRef int64, m CoachNoteMoment) (Co
 	return m, tx.Commit()
 }
 
-// DeleteCoachNoteMoment removes one moment. Scoped to the player for the same
-// reason the upsert is: a moment id from another session must not resolve.
+// DeleteCoachNoteMoment removes one moment. Scoped to the player: a moment id
+// is unique within its note, not globally, so a bare id could otherwise name
+// rows in several notes at once.
 func (s *SQLStore) DeleteCoachNoteMoment(playerRef int64, momentID string) error {
 	_, err := s.db.Exec(
 		`DELETE FROM coach_note_moments

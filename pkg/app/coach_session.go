@@ -224,12 +224,32 @@ func (a *App) PutCoachMoment(matchKey, momentID string, in coach.MomentInput) (c
 	if err := checkMomentRoom(existing, momentID); err != nil {
 		return coach.Moment{}, err
 	}
-	row := coach.MomentRowFromInput(note.NoteID, momentID, len(existing), normalized)
+	// An EDIT keeps the place the coach wrote the moment at. Writing the list
+	// length on every save sent a moment to the bottom of its tied group the
+	// moment its typo was fixed — and since the wire carries only array order,
+	// the stored sort_order is the order the strip renders.
+	row := coach.MomentRowFromInput(note.NoteID, momentID, sortOrderFor(existing, momentID), normalized)
 	saved, err := a.store.UpsertCoachNoteMoment(playerRef, row)
 	if err != nil {
 		return coach.Moment{}, fmt.Errorf("coach: save moment: %w", err)
 	}
 	return coach.MomentFromRow(saved), nil
+}
+
+// sortOrderFor keeps an existing moment's place and puts a new one after every
+// order already taken — NOT at len(existing), which collides with a survivor
+// after any delete and leaves the tie to whatever order the rows come back in.
+func sortOrderFor(existing []db.CoachNoteMoment, momentID string) int {
+	next := 0
+	for _, m := range existing {
+		if m.MomentID == momentID {
+			return m.SortOrder
+		}
+		if m.SortOrder >= next {
+			next = m.SortOrder + 1
+		}
+	}
+	return next
 }
 
 // checkMomentRoom refuses a NEW moment past the per-note ceiling; an edit to

@@ -1,0 +1,59 @@
+/* The cue strip: the region, its head, the empty invitation, and the list's
+   own proportional spacing.
+ 
+   Split from a single sheet both SFCs imported with `scoped src` — Vue emits
+   every rule once per scope hash, so one shared sheet shipped twice. Each
+   component owns the selectors its own template uses. */
+
+.cue-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+}
+
+.cue-strip-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.cue-length {
+  font-family: var(--font-mono);
+  font-size: var(--type-3xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+.cue-empty {
+  margin: 0;
+  font-size: var(--type-sm);
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.cue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Proportional SPACING, only when the match reported a length: the gap before
+   a row is the time since the one above it, so three notes a few seconds apart
+   sit tight together and a ten-minute silence opens up.
+
+   A rem length, never a percentage — a percentage margin resolves against the
+   container's inline size, which made the time axis stretch with the panel's
+   width. */
+.cue-list-scaled > * {
+  margin-top: var(--cue-gap, 0);
+}
+
+.cue-add {
+  align-self: flex-start;
+  border-style: dashed;
+}

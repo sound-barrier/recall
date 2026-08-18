@@ -18,6 +18,8 @@ withDefaults(defineProps<{
   draft: CoachNoteDraft
   /** This match's moments — several per match, unlike the note. */
   moments?: CoachMoment[]
+  /** Where one moment's own autosave stands; moments queue per moment id. */
+  momentSaveState?: (momentId: string) => CoachSaveState
   saveState?: CoachSaveState
   /** Why the note editor is inert — relayed straight through. */
   blockedReason?: string
@@ -26,6 +28,7 @@ withDefaults(defineProps<{
   labels?: CoachLabels
 }>(), {
   moments: () => [],
+  momentSaveState: () => 'idle' as CoachSaveState,
   saveState: 'idle',
   blockedReason: '',
   hasPrev: false,
@@ -57,6 +60,7 @@ const emit = defineEmits<{
         :replay-code="record.annotation?.replay_code ?? ''"
         :blocked="blockedReason !== ''"
         :blocked-reason="blockedReason"
+        :save-state-for="momentSaveState"
         @update="(m: CoachMoment) => emit('update-moment', m)"
         @remove="(id: string) => emit('remove-moment', id)"
         @copy-replay="emit('copy-replay')"
