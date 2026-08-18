@@ -81,8 +81,13 @@ under. For each one you choose:
 - **Skip** — nothing lands.
 
 Nothing is written until you press **Finish**. **Decide later** saves
-exactly what you have decided so far and closes; the Matches tab keeps
-a banner until every note has an answer.
+exactly what you have decided so far and closes; a banner stays up on
+every tab until every note has an answer.
+
+If the file was the wrong one, or you have decided you do not want the
+review, **Discard…** throws it away. That is not the same as skipping
+every note — skipping records a decision and marks those matches
+reviewed by a coach. Discarding drops the file.
 
 Accepted notes appear on the match in the detail panel, under your own
 journal entry, in the coach's own block. You can remove one at any time
