@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { MatchRecord } from '@/api-client'
+import CoachCueStrip from '@/components/coach/notes/CoachCueStrip.vue'
 import CoachMatchCard from '@/components/coach/room/CoachMatchCard.vue'
 import CoachNoteEditor from '@/components/coach/notes/CoachNoteEditor.vue'
 import { DEFAULT_COACH_LABELS, type CoachLabels, type CoachSaveState } from '@/components/coach/room/coach-room-props'
+import type { CoachMoment } from '@/match/coach/coach-moments'
 import type { CoachNoteDraft } from '@/match/coach/coach-notes'
 
 // The middle column: the match the coach is looking at, and the note
@@ -14,6 +16,8 @@ withDefaults(defineProps<{
   record: MatchRecord | null
   handle: string
   draft: CoachNoteDraft
+  /** This match's moments — several per match, unlike the note. */
+  moments?: CoachMoment[]
   saveState?: CoachSaveState
   /** Why the note editor is inert — relayed straight through. */
   blockedReason?: string
@@ -21,6 +25,7 @@ withDefaults(defineProps<{
   hasNext?: boolean
   labels?: CoachLabels
 }>(), {
+  moments: () => [],
   saveState: 'idle',
   blockedReason: '',
   hasPrev: false,
@@ -30,6 +35,9 @@ withDefaults(defineProps<{
 
 const emit = defineEmits<{
   'update-note': [draft: CoachNoteDraft]
+  'update-moment': [moment: CoachMoment]
+  'remove-moment': [momentId: string]
+  'copy-replay': []
   prev: []
   next: []
 }>()
@@ -39,6 +47,20 @@ const emit = defineEmits<{
   <div class="coach-desk">
     <template v-if="record">
       <CoachMatchCard :record="record" :handle="handle" :labels="labels" />
+      <!--
+        The strip sits between the match and the note on purpose: the coach
+        watches, marks what they see, and only then writes the overall read.
+      -->
+      <CoachCueStrip
+        :moments="moments"
+        :game-length="record.data?.game_length ?? ''"
+        :replay-code="record.annotation?.replay_code ?? ''"
+        :blocked="blockedReason !== ''"
+        :blocked-reason="blockedReason"
+        @update="(m: CoachMoment) => emit('update-moment', m)"
+        @remove="(id: string) => emit('remove-moment', id)"
+        @copy-replay="emit('copy-replay')"
+      />
       <CoachNoteEditor
         :match-key="record.match_key"
         :draft="draft"
