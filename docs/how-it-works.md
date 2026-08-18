@@ -244,6 +244,38 @@ The same YAML rides the live-data channel that pushes new heroes/maps
 between Recall releases — see
 [Updates & game data](settings-reference.md#updates--game-data).
 
+### Jumping around with the keyboard
+
+`Ctrl+K` (`⌘K` on macOS) opens the **command palette** from anywhere.
+Type a few characters of a view or of a match — a hero, a map — and
+press Enter to go there. The characters do not have to be adjacent, so
+`elo` finds the Elo Calculator and `ril` finds Rialto.
+
+While the palette is open every other keyboard shortcut is off, so a
+query can contain any letter without also firing a command. `Esc`
+closes it and hands focus back to wherever you were.
+
+Press `?` at any time for the full cheatsheet.
+
+### When an older parser read your matches
+
+Every parsed record is stamped with the version of the parser that read
+it. When a Recall update teaches the parser something new — a season's
+renamed map, a caption it could not read before — your existing records
+keep whatever the older parser got, because nothing re-reads a
+screenshot on its own.
+
+The **Parse** tab tells you when that has happened:
+
+```text
+14 matches were read by an older parser. Re-parse all would re-read them.
+```
+
+**Re-parse all** (Settings → Advanced) then re-reads every screenshot
+you still have on disk and updates the records in place. Your notes,
+tags, squads and manual corrections are yours and survive it — only the
+parsed fields are replaced.
+
 ### Time-series charts
 
 The **Matches** tab has a collapsible **Trends** section that charts
@@ -312,4 +344,5 @@ account once without changing the persisted active profile.
 
 - **Configure Recall**: [Settings reference](settings-reference.md)
 - **Slice your match history**: [Filtering and grouping](filtering.md)
+- **Read what the numbers mean**: [Reading your climb](reading-your-climb.md)
 - **Triage parse failures**: [Unknown screenshots](unknown-screenshots.md)

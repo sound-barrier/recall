@@ -115,6 +115,31 @@ highlight is how a season pick reads there. Seasons ship in
 flow as the hero and map rosters — a corrected season date shows up
 there as "1 season updated".
 
+#### Describe it in words
+
+Under the date inputs is a **Describe it** field that takes a phrase
+instead of two dates:
+
+| Phrase | What you get |
+|---|---|
+| `today`, `yesterday` | That one day. |
+| `this week`, `last week` | Calendar weeks. `this week` runs up to today, not to the end of the week. |
+| `this month`, `last month` | Calendar months. |
+| `since <weekday>` | Back to the most recent past occurrence — `since friday`, said on a Monday, reaches back three days. |
+| `this season`, `last season` | Picks the season, the same as the dropdown does. |
+
+A week is a calendar claim and calendars disagree about where one
+starts, so `last week` follows your own **Week starts on** setting.
+
+The field **declines anything it is not sure of**, and says so:
+`recently`, `before june`, `last 3 weeks` and a bare weekday all get
+"Not sure what that means" and leave your current filter exactly as it
+was. That refusal is the point of the feature. A date filter that
+guesses wrong is worse than one that does nothing — you would see a
+filtered set, believe it means what you asked for, and read conclusions
+off it. Rolling windows are already one click away on the preset chips,
+so the phrases cover the calendar questions the chips cannot answer.
+
 ### Map + Game Mode, Hero + Role
 
 **Map** and **Hero** are typeahead comboboxes — 32 maps and 53
@@ -342,4 +367,5 @@ current set and recall it later; the snapshot persists across reloads.
 
 ## Next chapter
 
+- **Read what the numbers mean**: [Reading your climb](reading-your-climb.md)
 - **What to do when a screenshot won't parse**: [Unknown screenshots](unknown-screenshots.md)
