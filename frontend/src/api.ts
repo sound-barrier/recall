@@ -32,6 +32,7 @@ import type {
   CoachSessionView,
   SelfReview,
   SelfReviewNote,
+  ShareExport,
   DbHealth,
   GetReferenceDataResponses,
   GetScreenshotsFolderCandidateStatsResponses,
@@ -73,6 +74,7 @@ export type {
   MatchCoachNote,
   MatchSelfReviewNote,
   SelfReview,
+  ShareExport,
   SelfReviewNote,
   DataLocation,
   DataUpdateResult,
@@ -730,6 +732,11 @@ export function GetSelfReview(reviewID: string): Promise<SelfReview> {
 
 export function UpdateSelfReview(reviewID: string, title: string, summary: string): Promise<SelfReview> {
   return unwrap(sdk.updateSelfReview({ path: { review_id: reviewID }, body: { title, summary } }))
+}
+
+/** The sent ledger — every share-with-a-coach export, newest first. */
+export function ListShareExports(): Promise<ShareExport[]> {
+  return unwrap(sdk.listShareExports())
 }
 
 /** Replace the sitting's match set; a note on a match that leaves goes with it. */

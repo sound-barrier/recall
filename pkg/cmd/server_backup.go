@@ -28,6 +28,7 @@ func registerBackupRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/database/health", handleDatabaseHealth(a))
 	apiMux.HandleFunc("POST /api/v1/database/maintenance", handleDatabaseMaintenance(a))
 	apiMux.HandleFunc("POST /api/v1/exports/bundle", handleExportBundle(a))
+	apiMux.HandleFunc("GET /api/v1/shares", handleListShareExports(a))
 	apiMux.HandleFunc("POST /api/v1/exports/diagnostic", handleExportDiagnostic(a))
 	apiMux.HandleFunc("POST /api/v1/imports", handleImportMatches(a))
 }
@@ -243,5 +244,35 @@ func handleExportDiagnostic(a *app.App) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/zip")
 		w.Header().Set("Content-Disposition", `attachment; filename="`+fname+`"`)
 		_, _ = w.Write(data)
+	}
+}
+
+// shareExportWire is db.ShareExport on the wire — snake_case, keys in
+// selection order.
+type shareExportWire struct {
+	ID         int64    `json:"id"`
+	Handle     string   `json:"handle"`
+	Message    string   `json:"message"`
+	ExportedAt string   `json:"exported_at"`
+	SavedPath  string   `json:"saved_path,omitempty"`
+	MatchKeys  []string `json:"match_keys"`
+}
+
+// handleListShareExports reads the sent ledger, newest first — the receipt
+// strip on the Reviews tab.
+func handleListShareExports(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		sent, err := a.ListShareExports()
+		if writeError(w, r, err) {
+			return
+		}
+		wire := make([]shareExportWire, 0, len(sent))
+		for _, e := range sent {
+			wire = append(wire, shareExportWire{
+				ID: e.ID, Handle: e.Handle, Message: e.Message,
+				ExportedAt: e.ExportedAt, SavedPath: e.SavedPath, MatchKeys: e.MatchKeys,
+			})
+		}
+		writeJSON(w, r, wire, nil)
 	}
 }

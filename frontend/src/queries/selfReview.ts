@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/vue-query'
 import { toValue, type MaybeRefOrGetter } from 'vue'
 
-import { ListSelfReviews, type SelfReview } from '@/api-client'
+import { ListSelfReviews, ListShareExports, type SelfReview } from '@/api-client'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 
@@ -13,6 +13,16 @@ export function useSelfReviewsQuery(enabled: MaybeRefOrGetter<boolean>) {
   return useQuery({
     queryKey: qk.selfReviews,
     queryFn: ListSelfReviews,
+    enabled: () => toValue(enabled),
+  }, getQueryClient())
+}
+
+// The sent ledger — same gate as the shelf: read when the Reviews tab is on
+// screen, never at boot.
+export function useShareExportsQuery(enabled: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: qk.shares,
+    queryFn: ListShareExports,
     enabled: () => toValue(enabled),
   }, getQueryClient())
 }

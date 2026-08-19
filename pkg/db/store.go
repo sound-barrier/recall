@@ -279,6 +279,9 @@ type Store interface {
 	// history like the received coach layer. See store_self_review.go.
 	SelfReviewStore
 
+	// The "share with a coach" SENT ledger. See store_share_exports.go.
+	ShareExportStore
+
 	// Clear deletes every row in every table — children cascade — EXCEPT the
 	// coach-authored family (coach_players / coach_notes /
 	// coach_session_summaries), which is not match history.

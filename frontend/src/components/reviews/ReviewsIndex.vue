@@ -3,11 +3,13 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import SelfReviewCard from '@/components/reviews/SelfReviewCard.vue'
+import type { CoachReturnSheet, ShareExport } from '@/api-client'
 import { formatPlayerDay } from '@/match/coach/coach-time'
 import { latestSessionKeys } from '@/match/dossier/match-momentum-helpers'
 import { matchTime } from '@/match/match-time-helpers'
 import { groupReceivedReviews } from '@/match/reviews/reviews-helpers'
 import { shelfCard } from '@/match/reviews/shelf-helpers'
+import { useShareExportsQuery } from '@/queries/selfReview'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
 import { useCoachReturnsStore } from '@/stores/coachReturns'
@@ -87,6 +89,27 @@ const received = computed(() => groupReceivedReviews(records.value))
 // which no block carries) and the way to read the notes again.
 function sheetFor(r: { coachName: string; sessionDate: string }) {
   return inbox.value.find((s) => s.coach_name === r.coachName && s.session_date === r.sessionDate)
+}
+
+// The sent ledger: the receipt that a set left. A row pairs with the return
+// that ANSWERS it — a sheet whose matches overlap the sent set — because the
+// ledger records who signed the bundle (you), not who received it.
+const sharesQuery = useShareExportsQuery(() => appStore.view === 'reviews')
+const sentRows = computed(() => (sharesQuery.data.value ?? []).map((e) => ({
+  ...e,
+  answeredBy: answeringCoach(e),
+})))
+
+function answeringCoach(e: ShareExport): string {
+  const sent = new Set(e.match_keys)
+  const answer = inbox.value.find((sheet: CoachReturnSheet) =>
+    sheet.imported_at > e.exported_at && sheet.notes.some((n) => sent.has(n.match_key)))
+  return answer?.coach_name ?? ''
+}
+
+function sentLine(e: { match_keys: string[]; exported_at: string }): string {
+  const n = e.match_keys.length
+  return `Sent ${n} ${n === 1 ? 'match' : 'matches'} · ${formatPlayerDay(e.exported_at.slice(0, 10))}`
 }
 
 // Decided sheets none of whose notes landed — skipped, or removed since.
@@ -263,6 +286,21 @@ function openBundle(): void {
           </div>
         </div>
       </div>
+
+      <!-- The sent ledger: what left, when, and whether anything came back.
+           Quiet rows — a receipt, not a task. -->
+      <ul v-if="sentRows.length" class="reviews-waiting" aria-label="Matches you have sent out">
+        <li v-for="e in sentRows" :key="e.id" class="reviews-waiting-row reviews-skipped-row">
+          <span class="reviews-waiting-line">
+            {{ sentLine(e) }} —
+            <template v-if="e.answeredBy">answered by {{ e.answeredBy }}.</template>
+            <template v-else>nothing back yet.</template>
+          </span>
+          <button type="button" class="btn ghost" @click="matches.showOnlyMatches(e.match_keys, `matches you sent ${formatPlayerDay(e.exported_at.slice(0, 10))}`)">
+            Show these matches →
+          </button>
+        </li>
+      </ul>
 
       <!-- Received: on paper, because a review is written on paper. -->
       <ul v-if="received.length" class="reviews-shelf" aria-label="Reviews you have received">

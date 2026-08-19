@@ -606,3 +606,53 @@ func TestStoreContract_UserMatchNilScalarRevertsTheOverride(t *testing.T) {
 		})
 	}
 }
+
+// The sent ledger round-trips on both implementations: keys keep their
+// selection order, listing is newest first, and Clear wipes it (a share is
+// bookkeeping, not match history — but "clear everything" means everything).
+func TestStoreContract_ShareExportLedgerRoundTrip(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			first, err := s.RecordShareExport("Sable", "watch my ults", "", []string{"k-2", "k-1"})
+			mustNoErr(t, err)
+			assertRecordedShare(t, first)
+			_, err = s.RecordShareExport("Ordo", "", "/tmp/notes.zip", []string{"k-3"})
+			mustNoErr(t, err)
+
+			sent, err := s.ListShareExports()
+			mustNoErr(t, err)
+			assertSentNewestFirst(t, sent)
+
+			mustNoErr(t, s.Clear())
+			sent, err = s.ListShareExports()
+			mustNoErr(t, err)
+			if len(sent) != 0 {
+				t.Fatalf("ListShareExports after Clear = %d rows, want 0", len(sent))
+			}
+		})
+	}
+}
+
+func assertRecordedShare(t *testing.T, first db.ShareExport) {
+	t.Helper()
+	if first.ID == 0 || first.ExportedAt == "" {
+		t.Fatalf("recorded row = %+v, want an id and a stamp", first)
+	}
+	if len(first.MatchKeys) != 2 || first.MatchKeys[0] != "k-2" {
+		t.Fatalf("match keys = %v, want selection order [k-2 k-1]", first.MatchKeys)
+	}
+}
+
+func assertSentNewestFirst(t *testing.T, sent []db.ShareExport) {
+	t.Helper()
+	if len(sent) != 2 {
+		t.Fatalf("ListShareExports = %d rows, want 2", len(sent))
+	}
+	if sent[0].Handle != "Ordo" || sent[1].Handle != "Sable" {
+		t.Fatalf("order = [%s %s], want newest first [Ordo Sable]", sent[0].Handle, sent[1].Handle)
+	}
+	if sent[0].SavedPath != "/tmp/notes.zip" {
+		t.Errorf("saved path = %q, want the recorded one", sent[0].SavedPath)
+	}
+}

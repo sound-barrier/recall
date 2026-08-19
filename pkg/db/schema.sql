@@ -857,3 +857,26 @@ CREATE TABLE IF NOT EXISTS self_review_note_moments (
   UNIQUE (self_review_note_id, moment_id)
 ) STRICT;
 -- statement-end
+
+-- The SENT ledger: one row per "share with a coach" export — the receipt
+-- that something left. Not match history: a share is a fact about a file
+-- that was handed over, so HardDeleteMatch leaves it alone (the child row
+-- names a key that may no longer resolve; the count is the claim). Clear
+-- wipes it with everything else. saved_path is empty in server mode, where
+-- the browser owns the download.
+CREATE TABLE IF NOT EXISTS share_exports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  handle TEXT NOT NULL,
+  message TEXT NOT NULL DEFAULT '',
+  exported_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  saved_path TEXT NOT NULL DEFAULT ''
+) STRICT;
+-- statement-end
+
+CREATE TABLE IF NOT EXISTS share_export_matches (
+  export_id INTEGER NOT NULL REFERENCES share_exports (id) ON DELETE CASCADE,
+  match_key TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (export_id, match_key)
+) STRICT;
+-- statement-end
