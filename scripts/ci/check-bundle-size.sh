@@ -187,7 +187,14 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # went DOWN, 335320B -> 331896B: the film room's props/emits wiring, useOWData
 # and the roving-tab special case all left App.vue for the lazy view when the
 # room moved inside the tab. A tab that shrinks first paint is the right kind.
-: "${MAX_TOTAL_JS_BYTES:=1710000}"
+# 2026-08: 1710000 -> 1726000 -- self review: the sitting store, the shared
+# draft rules carved out of the coach store (useReviewDrafts — the coach
+# store got smaller by the same rules), the sheet pieces (record, tally,
+# summary) the coach sheet and the sitting's sheet now both compose, the
+# sitting's sheet and shelf card, and eleven SDK functions (measured
+# 1723547B). All but the SDK rides the lazy Reviews / room chunks; INITIAL JS
+# moved 331896B -> 335802B, the SDK surface and the bulk bar's new button.
+: "${MAX_TOTAL_JS_BYTES:=1726000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
@@ -209,7 +216,11 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # 2026-08: 402000 -> 404000 -- the Reviews tab's scoped sheet: the waiting
 # rows, the shelf grid, the paper review card (measured 402432B). Nothing in
 # styles/ moved; the tab wears the .settings shell and the paper family.
-: "${MAX_TOTAL_CSS_BYTES:=404000}"
+# 2026-08: 404000 -> 406000 -- the sitting's sheet and shelf card (the reel's
+# rail at label size, the title input) and the desk card's "already said"
+# quotes (measured 404323B). The sheet pieces' styles moved from the coach
+# sheet to the extracted components — moved, not doubled.
+: "${MAX_TOTAL_CSS_BYTES:=406000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never

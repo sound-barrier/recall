@@ -45,3 +45,12 @@ export const SAVE_LABEL: Record<CoachSaveState, string> = {
   saved: 'Saved',
   error: 'Not saved \u2014 check the session',
 }
+
+/**
+ * Whose matches the room is showing, as the copy speaks of them: someone
+ * else's ("Sable's clock", "Sable's own note") or the viewer's own ("your
+ * clock", "your own note"). A coach's session is 'their'; the player's own
+ * review sitting is 'your'. Only the possessives and the reel's title move —
+ * the desk, the editor and the strip are one component either way.
+ */
+export type RoomVoice = 'their' | 'your'

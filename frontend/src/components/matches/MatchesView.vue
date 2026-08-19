@@ -34,6 +34,7 @@ import { useMatchesRowActions } from '@/composables/matches/list/useMatchesRowAc
 import { useNarrowMode } from '@/composables/matches/narrow/useNarrowMode'
 import { useDatabaseStore } from '@/stores/database'
 import { useMatchesStore } from '@/stores/matches'
+import { useSelfReviewStore } from '@/stores/selfReview'
 import { useUiStore } from '@/stores/ui'
 import { IS_WAILS } from '@/platform'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
@@ -72,6 +73,7 @@ import { useMatchActions } from '@/composables/matches/useMatchActions'
 // manual-match open-flags from the UI store; per-match + bulk mutations from
 // useMatchActions.
 const matchesStore = useMatchesStore()
+const selfReviewStore = useSelfReviewStore()
 // The toolbar's Import… is the same whole-database merge Settings offers.
 const databaseStore = useDatabaseStore()
 const uiStore = useUiStore()
@@ -387,6 +389,7 @@ const {
           :available-tags="matchesStore.matchesNarrow.availableTags.value"
           @select-all="selectAllVisible"
           @hide="hideSelected"
+          @review-these="selfReviewStore.createFromKeys([...selectedKeys])"
           @export-bundle="matchesStore.onExportBundleRequest([...selectedKeys])"
           @export-csv="requestCsvExport([...selectedKeys])"
           @bulk-tag="onBulkTag"

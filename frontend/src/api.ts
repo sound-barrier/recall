@@ -30,6 +30,8 @@ import type {
   CoachNoteInput,
   CoachReturnSheet,
   CoachSessionView,
+  SelfReview,
+  SelfReviewNote,
   DbHealth,
   GetReferenceDataResponses,
   GetScreenshotsFolderCandidateStatsResponses,
@@ -69,6 +71,9 @@ export type {
   CoachSessionChangedEvent,
   CoachSessionView,
   MatchCoachNote,
+  MatchSelfReviewNote,
+  SelfReview,
+  SelfReviewNote,
   DataLocation,
   DataUpdateResult,
   FailedFile,
@@ -703,6 +708,68 @@ export function DecideCoachReturn(
 // (MatchCoachNote.id), not the archive-level note_id UUID.
 export function DeleteMatchCoachNote(matchKey: string, id: number): Promise<void> {
   return unwrapVoid(sdk.deleteMatchCoachNote({ path: { match_key: matchKey, id } }))
+}
+
+// ── Self review ────────────────────────────────────────────────────────
+// The player's own saved review sittings over their OWN matches. Not a
+// coaching session: no loan, no write gate on the player's data — and the
+// note and moment bodies are the coach's shapes on purpose, because the
+// room's editor is one component.
+
+export function ListSelfReviews(): Promise<SelfReview[]> {
+  return unwrap(sdk.listSelfReviews())
+}
+
+export function CreateSelfReview(title: string, matchKeys: string[]): Promise<SelfReview> {
+  return unwrap(sdk.createSelfReview({ body: { title, match_keys: matchKeys } }))
+}
+
+export function GetSelfReview(reviewID: string): Promise<SelfReview> {
+  return unwrap(sdk.getSelfReview({ path: { review_id: reviewID } }))
+}
+
+export function UpdateSelfReview(reviewID: string, title: string, summary: string): Promise<SelfReview> {
+  return unwrap(sdk.updateSelfReview({ path: { review_id: reviewID }, body: { title, summary } }))
+}
+
+export function DeleteSelfReview(reviewID: string): Promise<void> {
+  return unwrapVoid(sdk.deleteSelfReview({ path: { review_id: reviewID } }))
+}
+
+export function SetSelfReviewMatches(reviewID: string, matchKeys: string[]): Promise<SelfReview> {
+  return unwrap(sdk.setSelfReviewMatches({ path: { review_id: reviewID }, body: { match_keys: matchKeys } }))
+}
+
+// POST /completion — Finish: stamps the sitting done and every member match
+// reviewed by self where a coach has not already. Idempotent.
+export function FinishSelfReview(reviewID: string): Promise<SelfReview> {
+  return unwrap(sdk.finishSelfReview({ path: { review_id: reviewID } }))
+}
+
+export function PutSelfReviewNote(reviewID: string, matchKey: string, input: CoachNoteBody): Promise<SelfReviewNote> {
+  return unwrap(sdk.putSelfReviewNote({
+    path: { review_id: reviewID, match_key: matchKey },
+    body: input as CoachNoteInput,
+  }))
+}
+
+export function DeleteSelfReviewNote(reviewID: string, matchKey: string): Promise<void> {
+  return unwrapVoid(sdk.deleteSelfReviewNote({ path: { review_id: reviewID, match_key: matchKey } }))
+}
+
+export function PutSelfReviewMoment(
+  reviewID: string, matchKey: string, momentID: string, input: CoachMomentBody,
+): Promise<CoachMoment> {
+  return unwrap(sdk.putSelfReviewMoment({
+    path: { review_id: reviewID, match_key: matchKey, moment_id: momentID },
+    body: input as CoachMomentInput,
+  }))
+}
+
+export function DeleteSelfReviewMoment(reviewID: string, matchKey: string, momentID: string): Promise<void> {
+  return unwrapVoid(sdk.deleteSelfReviewMoment({
+    path: { review_id: reviewID, match_key: matchKey, moment_id: momentID },
+  }))
 }
 
 // The two coaching identities, one per direction of the loop: the name this

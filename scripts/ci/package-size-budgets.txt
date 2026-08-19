@@ -143,14 +143,17 @@ frontend/src/client                           exempt
 # measured count, not the 20 this entry estimated before the split ran — the
 # whole point of zero headroom is that the number is what the directory IS. A
 # ninth helper is a real decision (every spec in the tree may import it) and
-# should trip this line.
+# should trip this line. It did, for _reviews.ts — the in-memory server behind
+# /api/v1/self-reviews (a sitting's whole lifecycle, and the matches list with
+# the blocks a sitting leaves), which the self-review specs drive the way the
+# coach specs drive _coach.ts. Same shape, same reason to be a root helper.
 #
 # The two *-snapshots/ directories stay here too, and are not counted: the
 # snapshotPathTemplate resolves {testDir}/{testFileName}, i.e. the CONFIGURED
 # test dir plus the spec's BASENAME, so a nested spec still finds its baselines
 # at this root. Corollary worth knowing before adding a spec: two specs sharing
 # a basename in different feature folders would share one snapshot directory.
-frontend/tests/e2e                            11
+frontend/tests/e2e                            12
 
 # The e2e feature folders below are budgeted individually, on purpose. A spec
 # count is a FEATURE count here — the TDD rule mandates a failing spec per

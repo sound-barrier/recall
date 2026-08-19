@@ -3,7 +3,7 @@ import { computed } from 'vue'
 
 import type { MatchRecord } from '@/api-client'
 import CoachHeroSplit from '@/components/coach/room/CoachHeroSplit.vue'
-import { DEFAULT_COACH_LABELS, type CoachLabels } from '@/components/coach/room/coach-room-props'
+import { DEFAULT_COACH_LABELS, type CoachLabels, type RoomVoice } from '@/components/coach/room/coach-room-props'
 import MatchRankBlock from '@/components/matches/detail/MatchRankBlock.vue'
 import { formatPlayerDay, playerClockDayKey, playerClockTime } from '@/match/coach/coach-time'
 import { formatPlayModeLabel, formatQueueTypeLabel, formatUnknownMapLabel } from '@/match/match-label-helpers'
@@ -18,8 +18,10 @@ const props = withDefaults(defineProps<{
   record: MatchRecord
   /** The player's handle — the clock label names whose clock this is. */
   handle: string
+  /** Whose matches these are, for the possessives. */
+  voice?: RoomVoice
   labels?: CoachLabels
-}>(), { labels: () => DEFAULT_COACH_LABELS })
+}>(), { labels: () => DEFAULT_COACH_LABELS, voice: 'their' })
 
 const data = computed(() => props.record.data ?? {})
 const mapName = computed(() => props.labels.map(data.value.map) || formatUnknownMapLabel(props.record))
@@ -30,8 +32,9 @@ const resultTint = computed(() => RESULT_TINT[result.value] ?? 'none')
 
 // One definition of whose clock this is — playerClockNote falls back to
 // "the player" when a bundle named nobody, a state the identity prompt
-// makes reachable.
-const clockOwner = computed(() => playerClockOwner(props.handle))
+// makes reachable. In the viewer's own voice it is simply "your".
+const possessive = computed(() => (props.voice === 'your' ? 'your' : `${playerClockOwner(props.handle)}'s`))
+const ownNoteLabel = computed(() => (props.voice === 'your' ? 'Your own note' : `${props.handle}'s own note`))
 
 const whenLabel = computed(() => {
   const day = formatPlayerDay(playerClockDayKey(props.record))
@@ -52,6 +55,26 @@ const stats = computed(() => [
 // carries them for a match that arrived without a rank screen.
 const looseModifiers = computed(() => (data.value.rank ? [] : data.value.modifiers ?? []))
 const annotation = computed(() => props.record.annotation)
+
+// What has already been said about this match, quoted under the player's
+// own note so a reviewer reads it before writing: an earlier coach's block,
+// and — on someone else's desk — the player's own sitting notes (a coach
+// reads what the player already noticed). On your own desk your sittings
+// are the editor itself, not a quote.
+const earlierWords = computed(() => {
+  const coach = (props.record.coach_notes ?? [])
+    .filter((n) => n.text)
+    .map((n) => ({ key: `coach-${n.id}`, who: `${n.coach_name} · ${n.session_date}`, text: n.text }))
+  if (props.voice === 'your') return coach
+  const own = (props.record.self_review_notes ?? [])
+    .filter((n) => n.text)
+    .map((n) => ({
+      key: `self-${n.review_id}`,
+      who: `${playerClockOwner(props.handle)}'s own review${n.review_title ? ` · ${n.review_title}` : ''}`,
+      text: n.text,
+    }))
+  return [...coach, ...own]
+})
 </script>
 
 <template>
@@ -68,7 +91,7 @@ const annotation = computed(() => props.record.annotation)
 
     <div class="card-meta">
       <div class="meta-cell">
-        <span class="eyebrow">When · {{ clockOwner }}'s clock</span>
+        <span class="eyebrow">When · {{ possessive }} clock</span>
         <span class="meta-value">{{ whenLabel }}</span>
       </div>
       <div class="meta-cell">
@@ -102,9 +125,17 @@ const annotation = computed(() => props.record.annotation)
     </section>
 
     <section v-if="annotation?.note" class="card-section">
-      <span class="eyebrow">{{ handle }}'s own note</span>
+      <span class="eyebrow">{{ ownNoteLabel }}</span>
       <blockquote class="card-quote">
         {{ annotation.note }}
+      </blockquote>
+    </section>
+
+    <section v-if="earlierWords.length" class="card-section" aria-label="Earlier reviews">
+      <span class="eyebrow">Already said about this match</span>
+      <blockquote v-for="said in earlierWords" :key="said.key" class="card-quote">
+        <span class="eyebrow card-quote-who">{{ said.who }}</span>
+        {{ said.text }}
       </blockquote>
     </section>
 
@@ -217,6 +248,12 @@ const annotation = computed(() => props.record.annotation)
   font-size: var(--type-4xl);
   color: var(--text);
   font-feature-settings: "tnum";
+}
+
+/* The kicker is the shared .eyebrow; this class is layout only. */
+.card-quote-who {
+  display: block;
+  margin-bottom: 0.15rem;
 }
 
 .card-quote {

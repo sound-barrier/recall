@@ -60,3 +60,4 @@ a folder silently regrows what it just shed.
 | 2026-08-18 | reviews-tab | `pkg/db` | 30 → 31 | `store_self_review.go`: the player-authored self-review family (six STRICT tables) beside the coach-authored and coach-received ones — the same responsibility one concern wider. |
 | 2026-08-18 | reviews-tab | `pkg/app` | 47 → 48 | `self_review.go`: the `*App` shell over the new `pkg/review` leaf — gate, store call, broadcast — like every other leaf shell. |
 | 2026-08-18 | reviews-tab | `pkg/cmd` | 19 → 20 | `server_self_review.go`: the `/api/v1/self-reviews` endpoint group. |
+| 2026-08-19 | reviews-tab | `frontend/tests/e2e` | 11 → 12 | `_reviews.ts`: the in-memory self-review server (sittings, notes, moments, the matches list carrying self blocks) behind the self-review specs — the ninth root helper the entry said would be a real decision. |

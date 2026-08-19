@@ -26,6 +26,9 @@ export const qk = {
     matches: ['coach', 'session', 'matches'] as const,
     returns: ['coach', 'returns'] as const,
   },
+  // The player's own saved review sittings — its own branch: it is the
+  // player's data, not part of the coaching loop, and it outlives both.
+  selfReviews: ['self-reviews'] as const,
   system: {
     referenceData: ['system', 'reference-data'] as const,
     version:       ['system', 'version'] as const,

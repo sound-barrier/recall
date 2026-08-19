@@ -3,8 +3,10 @@ import { render, screen, fireEvent } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { createPinia, setActivePinia } from 'pinia'
 
-import type { MatchCoachNote } from '@/api-client'
+import type { MatchCoachNote, MatchSelfReviewNote } from '@/api-client'
 import CoachNoteBlock from '@/components/coach/notes/CoachNoteBlock.vue'
+import { coachBlockView, selfBlockView } from '@/match/coach/note-block-view'
+import { useSelfReviewStore } from '@/stores/selfReview'
 import { useCoachReturnsStore } from '@/stores/coachReturns'
 import { resetWriteGate, setWritesLocked, STUB_LOCK_REASON } from '@/test-utils/writeGateStub'
 
@@ -37,7 +39,7 @@ function renderBlock(note: MatchCoachNote = coachNote()) {
   setActivePinia(createPinia())
   const store = useCoachReturnsStore()
   const remove = vi.spyOn(store, 'removeCoachNote').mockResolvedValue(undefined)
-  return { remove, ...render(CoachNoteBlock, { props: { matchKey: MATCH_KEY, note } }) }
+  return { remove, ...render(CoachNoteBlock, { props: { matchKey: MATCH_KEY, block: coachBlockView(note) } }) }
 }
 
 const block = () => screen.getByRole('region', { name: "Coach's note from Ordo" })
@@ -101,5 +103,44 @@ describe('CoachNoteBlock — the write gate', () => {
   it('leaves Remove live when writes are open', () => {
     renderBlock()
     expect(screen.getByRole('button', { name: 'Remove this note' })).toBeEnabled()
+  })
+})
+
+// The player's own sitting leaves a block of the same paper: named for the
+// sitting, chipped with where the sitting stands, and removed through the
+// sitting — not through the coach inbox.
+describe('CoachNoteBlock — a block from your own review', () => {
+  beforeEach(() => { vi.clearAllMocks(); resetWriteGate() })
+
+  function renderSelfBlock(over: Partial<MatchSelfReviewNote> = {}) {
+    setActivePinia(createPinia())
+    const selfReview = useSelfReviewStore()
+    const remove = vi.spyOn(selfReview, 'removeNoteFromSitting').mockResolvedValue(undefined)
+    const note: MatchSelfReviewNote = {
+      review_id: 'sitting-1', review_title: "Tuesday's Ana games", review_created_at: '2026-08-18T19:00:00Z',
+      kind: 'note', text: 'Held the choke, then chased.', focus_tags: ['positioning'],
+      moments: [{ moment_id: 'm-1', match_clock: '04:45', text: 'peeled late' }],
+      updated_at: '2026-08-18T19:10:00Z', ...over,
+    }
+    return { remove, ...render(CoachNoteBlock, { props: { matchKey: MATCH_KEY, block: selfBlockView(note) } }) }
+  }
+
+  it('is named "Your review", signed with the sitting and its day, in progress until finished', () => {
+    renderSelfBlock()
+    expect(screen.getByRole('region', { name: 'Your review' })).toBeInTheDocument()
+    expect(screen.getByText('In progress')).toBeInTheDocument()
+    expect(screen.getByText(/Tuesday's Ana games ·/)).toBeInTheDocument()
+    expect(screen.getByText('04:45')).toBeInTheDocument()
+  })
+
+  it('reads Finished once the sitting is', () => {
+    renderSelfBlock({ review_finished_at: '2026-08-18T20:00:00Z' })
+    expect(screen.getByText('Finished')).toBeInTheDocument()
+  })
+
+  it('"Remove from this review" drops the note through the sitting', async () => {
+    const { remove } = renderSelfBlock()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Remove from this review' }))
+    expect(remove).toHaveBeenCalledWith('sitting-1', MATCH_KEY)
   })
 })

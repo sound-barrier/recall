@@ -233,3 +233,21 @@ room's props/emits wiring, `useOWData` and its labels, and the masthead's
 view when it stopped being one. The masthead also became a `v-for` over the
 tab descriptor, which cost nothing measurable and killed six hand-written
 buttons.
+
+## 2026-08-19 — self review (reviews-tab campaign, phase 3)
+
+| budget | from | to | measured |
+|---|---|---|---|
+| initial JS | 336000 | 336000 | 335802 (up from 331896) |
+| total JS | 1710000 | 1726000 | 1723547 |
+| total CSS | 404000 | 406000 | 404323 |
+
+The player's own review sitting, in the same room. Most of it rides the
+lazy Reviews and film-room chunks: the sitting store, the sheet pieces
+(record, tally, summary) that the coach sheet and the sitting's sheet now
+both compose, the sitting's sheet and shelf card, and `useReviewDrafts` —
+the note/moment write rules carved out of the coach store, which got
+smaller by exactly those rules. What reached the initial chunk is the
+eleven generated SDK functions and the bulk bar's "Review these" button;
+initial JS is 198 bytes under its budget, which is the number to watch on
+the next eager addition.

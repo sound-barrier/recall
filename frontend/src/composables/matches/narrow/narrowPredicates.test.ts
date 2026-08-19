@@ -72,6 +72,23 @@ describe('matchesSearch', () => {
     expect(matchesSearch(r, [{ field: null, value: 'ordo' } as SearchClause])).toBe(true)
   })
 
+  // The third family: what the player wrote about the match in their own
+  // review sitting — text, tags, the sitting's title, the moments inside.
+  it('finds what you wrote in your own review, and the review by its name', () => {
+    const r = rec({
+      self_review_notes: [{
+        review_id: 'r1', review_title: "Tuesday's Ana games", review_created_at: '2026-08-18T19:00:00Z',
+        kind: 'note', text: 'held the choke, then chased', focus_tags: ['cooldowns'],
+        moments: [{ moment_id: 'm', match_clock: '04:45', text: 'peeled late on B' }],
+        updated_at: '2026-08-18T19:10:00Z',
+      }],
+    } as Partial<MatchRecord>)
+    expect(matchesSearch(r, [{ field: null, value: 'chased' } as SearchClause])).toBe(true)
+    expect(matchesSearch(r, [{ field: null, value: 'cooldowns' } as SearchClause])).toBe(true)
+    expect(matchesSearch(r, [{ field: null, value: 'peeled late' } as SearchClause])).toBe(true)
+    expect(matchesSearch(r, [{ field: null, value: "tuesday's ana" } as SearchClause])).toBe(true)
+  })
+
   it('still says no when the coaching text does not contain it', () => {
     const r = rec({
       moments: [{ moment_id: 'a', match_clock: '03:23', text: 'no off-angle' }],
