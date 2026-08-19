@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"recall/pkg/app"
@@ -10,6 +11,7 @@ import (
 	"recall/pkg/match"
 	"recall/pkg/matchedit"
 	"recall/pkg/review"
+	"recall/pkg/sse"
 )
 
 // The self-review loop end to end at the orchestrator, over the player's
@@ -189,5 +191,49 @@ func TestSelfReview_MembershipChangesFollowThrough(t *testing.T) {
 	mustNoErr(t, err)
 	if len(got.MatchKeys) != 0 || len(got.Notes) != 0 {
 		t.Errorf("after hard-deleting the last member the sitting = %+v, want kept with no members", got)
+	}
+}
+
+// The shell's second job after the gate: a write that changes what a match
+// shows re-broadcasts that match, so an open detail panel repaints the block
+// without a reload. Read off the SSE hub the way the re-parse test does.
+func TestSelfReview_WritesBroadcastTheMatchesTheyTouch(t *testing.T) {
+	a, _ := selfReviewApp(t)
+	a.SSEHub = app.NewSSEHub()
+	events := a.SSEHub.Subscribe()
+	r, err := a.CreateSelfReview(review.CreateInput{MatchKeys: []string{playerMatchRialto, playerMatchIlios}})
+	mustNoErr(t, err)
+
+	_, err = a.PutSelfReviewNote(r.ReviewID, playerMatchRialto, coach.NoteInput{Kind: "note", Text: "held the choke"})
+	mustNoErr(t, err)
+	assertMatchUpdated(t, events, playerMatchRialto, "held the choke")
+
+	_, err = a.FinishSelfReview(r.ReviewID)
+	mustNoErr(t, err)
+	// Rialto flips to self; Ilios keeps its coach mark and is re-broadcast too.
+	assertMatchUpdated(t, events, playerMatchRialto, `"reviewed_by":"self"`)
+	assertMatchUpdated(t, events, playerMatchIlios, `"reviewed_by":"coach"`)
+
+	mustNoErr(t, a.DeleteSelfReview(r.ReviewID))
+	assertMatchUpdated(t, events, playerMatchRialto, "")
+}
+
+// assertMatchUpdated drains the hub until a match-updated event for key
+// arrives, and checks its payload carries want (when non-empty).
+func assertMatchUpdated(t *testing.T, events <-chan sse.Msg, key, want string) {
+	t.Helper()
+	for {
+		select {
+		case msg := <-events:
+			if msg.Event != "match-updated" || !strings.Contains(msg.Data, key) {
+				continue
+			}
+			if want != "" && !strings.Contains(msg.Data, want) {
+				t.Fatalf("match-updated for %s lacks %q: %s", key, want, msg.Data)
+			}
+			return
+		default:
+			t.Fatalf("no match-updated event observed for %s", key)
+		}
 	}
 }

@@ -5568,7 +5568,7 @@ export type DeleteSelfReviewMomentResponses = {
 export type DeleteSelfReviewMomentResponse = DeleteSelfReviewMomentResponses[keyof DeleteSelfReviewMomentResponses];
 
 export type PutSelfReviewMomentData = {
-    body: CoachMomentInput;
+    body: MatchMomentInput;
     path: {
         /**
          * A self-review sitting's id — a UUID minted on create. It is also the

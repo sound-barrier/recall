@@ -815,9 +815,6 @@ CREATE TABLE IF NOT EXISTS self_review_notes (
     REFERENCES self_review_matches (review_id, match_key) ON DELETE CASCADE
 ) STRICT;
 -- statement-end
-CREATE INDEX IF NOT EXISTS idx_self_review_notes_match_key
-  ON self_review_notes (match_key);
--- statement-end
 
 -- Same vocabulary as coach_note_focus_tags — the third copy of the CHECK
 -- list. Keep all three in step: the player and their coach file a match
@@ -859,7 +856,4 @@ CREATE TABLE IF NOT EXISTS self_review_note_moments (
   updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   UNIQUE (self_review_note_id, moment_id)
 ) STRICT;
--- statement-end
-CREATE INDEX IF NOT EXISTS idx_self_review_note_moments_note
-  ON self_review_note_moments (self_review_note_id, sort_order);
 -- statement-end

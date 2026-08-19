@@ -20,9 +20,6 @@ var (
 	// ErrSelfReviewMatchUnknown reports a match the named review does not
 	// hold — a note or moment written for a key outside the review's set.
 	ErrSelfReviewMatchUnknown = errors.New("match is not in this self review")
-	// ErrSelfReviewNoteUnknown reports a moment write on a (review, match)
-	// that has no note yet; the caller opens one first.
-	ErrSelfReviewNoteUnknown = errors.New("self review note not found")
 )
 
 const (
@@ -71,8 +68,11 @@ type SelfReviewStore interface {
 	DeleteSelfReviewNote(reviewID, matchKey string) error
 	// UpsertSelfReviewMoment saves one moment on the (review, match) note,
 	// keyed by its client-minted MomentID; a re-save replaces clock / text /
-	// tag / order and keeps created_at. ErrSelfReviewNoteUnknown when there is
-	// no note to hang it on.
+	// tag / order and keeps created_at. A match with no note yet gets a
+	// reviewed_only one opened IN THE SAME transaction — a moment is a review
+	// of the match — so a note write racing the first moment can never be
+	// downgraded by a check-then-open above the store. ErrSelfReviewMatchUnknown
+	// when the match is not in the review.
 	UpsertSelfReviewMoment(reviewID, matchKey string, m SelfReviewMoment) (SelfReviewMoment, error)
 	// DeleteSelfReviewMoment removes one moment; absent is a no-op.
 	DeleteSelfReviewMoment(reviewID, matchKey, momentID string) error
@@ -103,13 +103,29 @@ func (s *SQLStore) CreateSelfReview(r SelfReview) (SelfReview, error) {
 	if err := insertSelfReviewMatches(tx, r.ReviewID, r.MatchKeys); err != nil {
 		return SelfReview{}, err
 	}
-	r.MatchKeys = append([]string(nil), r.MatchKeys...)
+	r.MatchKeys = distinctKeys(r.MatchKeys)
 	r.Notes = map[string]SelfReviewNote{}
 	return r, tx.Commit()
 }
 
+// distinctKeys drops repeats, first position kept — the composite PK would
+// refuse a repeat, and a repeat is a caller's slip (a hand-edited bundle),
+// not a second membership.
+func distinctKeys(keys []string) []string {
+	out := make([]string, 0, len(keys))
+	seen := make(map[string]bool, len(keys))
+	for _, k := range keys {
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		out = append(out, k)
+	}
+	return out
+}
+
 func insertSelfReviewMatches(tx *sql.Tx, reviewID string, matchKeys []string) error {
-	for i, k := range matchKeys {
+	for i, k := range distinctKeys(matchKeys) {
 		if _, err := tx.Exec(
 			`INSERT INTO self_review_matches (review_id, match_key, sort_order) VALUES (?, ?, ?)`,
 			reviewID, k, i); err != nil {
@@ -157,6 +173,7 @@ func (s *SQLStore) SetSelfReviewMatches(reviewID string, matchKeys []string) err
 	if err := requireSelfReview(tx, reviewID); err != nil {
 		return err
 	}
+	matchKeys = distinctKeys(matchKeys)
 	if err := removeDepartingSelfReviewMatches(tx, reviewID, matchKeys); err != nil {
 		return err
 	}
@@ -470,19 +487,50 @@ func loadSelfReviewMomentsForNote(q querier, noteRow int64) ([]SelfReviewMoment,
 }
 
 func (s *SQLStore) DeleteSelfReviewNote(reviewID, matchKey string) error {
-	// Tags and moments CASCADE on the note's FK.
-	_, err := s.db.Exec(`DELETE FROM self_review_notes WHERE review_id = ? AND match_key = ?`, reviewID, matchKey)
-	return err
+	// Tags and moments CASCADE on the note's FK. A delete is always live work
+	// on the sitting (nothing replays one), so it touches the sitting when it
+	// removed something.
+	return s.deleteTouchingSelfReview(reviewID,
+		`DELETE FROM self_review_notes WHERE review_id = ? AND match_key = ?`, reviewID, matchKey)
 }
 
-// selfReviewNoteRowID resolves a (review, match) to its note row id.
-func selfReviewNoteRowID(tx *sql.Tx, reviewID, matchKey string) (int64, error) {
-	var id int64
-	err := tx.QueryRow(`SELECT id FROM self_review_notes WHERE review_id = ? AND match_key = ?`, reviewID, matchKey).Scan(&id)
-	if errors.Is(err, sql.ErrNoRows) {
-		return 0, ErrSelfReviewNoteUnknown
-	}
+// deleteTouchingSelfReview runs one DELETE and, when it removed a row, bumps
+// the sitting's updated_at — the shelf orders on "last worked on", and taking
+// a note out is work.
+func (s *SQLStore) deleteTouchingSelfReview(reviewID, stmt string, args ...any) error {
+	tx, err := s.db.Begin()
 	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.Exec(stmt, args...)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n > 0 {
+		if err := touchSelfReviewUnlessReplay(tx, reviewID, ""); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// ensureSelfReviewNoteRow resolves a (review, match) to its note row id,
+// opening a reviewed_only note when there is none. Inside the caller's
+// transaction, so the open and the moment land together or not at all; a
+// note write that commits first is left as it is (DO NOTHING), and one that
+// commits after simply upgrades the reviewed_only mark it finds.
+func ensureSelfReviewNoteRow(tx *sql.Tx, reviewID, matchKey string) (int64, error) {
+	if err := requireSelfReviewMatch(tx, reviewID, matchKey); err != nil {
+		return 0, err
+	}
+	if _, err := tx.Exec(
+		`INSERT INTO self_review_notes (review_id, match_key, kind) VALUES (?, ?, 'reviewed_only')
+		 ON CONFLICT(review_id, match_key) DO NOTHING`, reviewID, matchKey); err != nil {
+		return 0, fmt.Errorf("open self review note for moment: %w", err)
+	}
+	var id int64
+	if err := tx.QueryRow(`SELECT id FROM self_review_notes WHERE review_id = ? AND match_key = ?`, reviewID, matchKey).Scan(&id); err != nil {
 		return 0, fmt.Errorf("resolve self review note: %w", err)
 	}
 	return id, nil
@@ -497,7 +545,7 @@ func (s *SQLStore) UpsertSelfReviewMoment(reviewID, matchKey string, m SelfRevie
 		return SelfReviewMoment{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	noteRow, err := selfReviewNoteRowID(tx, reviewID, matchKey)
+	noteRow, err := ensureSelfReviewNoteRow(tx, reviewID, matchKey)
 	if err != nil {
 		return SelfReviewMoment{}, err
 	}
@@ -524,12 +572,11 @@ func (s *SQLStore) UpsertSelfReviewMoment(reviewID, matchKey string, m SelfRevie
 }
 
 func (s *SQLStore) DeleteSelfReviewMoment(reviewID, matchKey, momentID string) error {
-	_, err := s.db.Exec(
+	return s.deleteTouchingSelfReview(reviewID,
 		`DELETE FROM self_review_note_moments
 		 WHERE moment_id = ? AND self_review_note_id IN (
 		   SELECT id FROM self_review_notes WHERE review_id = ? AND match_key = ?
 		 )`, momentID, reviewID, matchKey)
-	return err
 }
 
 func (s *SQLStore) LoadSelfReviewNotes() (map[string][]SelfReviewNoteOnMatch, error) {

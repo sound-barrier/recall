@@ -61,7 +61,7 @@ func Move(src, dst db.Store, matchKeys []string) error {
 	if err := checkAmbiguityIsSelfContained(source.snap, keep, movedShots); err != nil {
 		return err
 	}
-	moving, err := selfContainedSelfReviews(source.selfReviews, keep)
+	moving, err := selfContainedSelfReviews(source.selfReviews, keep, source.matchKeys)
 	if err != nil {
 		return err
 	}
@@ -92,13 +92,21 @@ func Move(src, dst db.Store, matchKeys []string) error {
 var ErrMoveSplitsSelfReview = errors.New("move would split a self review across profiles")
 
 // selfContainedSelfReviews returns the sittings the move carries: every one
-// whose members are ALL in the moved set. A sitting with SOME members moving
-// is a refusal; one with none stays home untouched.
-func selfContainedSelfReviews(reviews []db.SelfReview, keep map[string]bool) ([]db.SelfReview, error) {
+// whose LIVE members are all in the moved set. A sitting with some live
+// members moving is a refusal; one with none stays home untouched. A member
+// the source no longer holds at all (a manual match whose data was reset
+// leaves its membership row behind) is neither — it cannot come and cannot
+// stay, so it does not count, rather than wedging the sitting out of every
+// move forever.
+func selfContainedSelfReviews(reviews []db.SelfReview, keep, live map[string]bool) ([]db.SelfReview, error) {
 	var moving []db.SelfReview
 	for _, r := range reviews {
-		in := 0
+		in, present := 0, 0
 		for _, k := range r.MatchKeys {
+			if !live[k] {
+				continue
+			}
+			present++
 			if keep[k] {
 				in++
 			}
@@ -106,9 +114,9 @@ func selfContainedSelfReviews(reviews []db.SelfReview, keep map[string]bool) ([]
 		switch {
 		case in == 0:
 			continue
-		case in < len(r.MatchKeys):
+		case in < present:
 			return nil, fmt.Errorf("%w: %q holds %d matches and %d of them are being moved",
-				ErrMoveSplitsSelfReview, r.ReviewID, len(r.MatchKeys), in)
+				ErrMoveSplitsSelfReview, r.ReviewID, present, in)
 		}
 		moving = append(moving, r)
 	}
@@ -117,14 +125,18 @@ func selfContainedSelfReviews(reviews []db.SelfReview, keep map[string]bool) ([]
 
 // movePhase1SelfReviews reproduces each carried sitting on the target under
 // its own UUID — header, members in order, notes with their moments — with
-// the instants it had. Idempotent for a retry: a sitting already on the
-// target (a failed phase 2 left the source intact) is left as it is.
+// the instants it had. A sitting the target already holds under that UUID
+// is REPLACED, not skipped: the source's copy is the one being carried
+// (a retry after a failed phase 2 finds the target's half-written copy; an
+// older twin from a bundle imported into both profiles is the stale one),
+// and skipping it while phase 2 deletes the source is how the newer notes
+// would silently vanish. WriteSelfReview is not atomic across its rows, so
+// the replace is delete-then-write; a failure mid-way leaves phase 2 unrun
+// and the source intact for the retry.
 func movePhase1SelfReviews(targetStore db.Store, moving []db.SelfReview) error {
 	for _, r := range moving {
-		if _, present, err := targetStore.LoadSelfReview(r.ReviewID); err != nil {
-			return fmt.Errorf("move: check self review %q on target: %w", r.ReviewID, err)
-		} else if present {
-			continue
+		if err := targetStore.DeleteSelfReview(r.ReviewID); err != nil {
+			return fmt.Errorf("move: clear self review %q on target: %w", r.ReviewID, err)
 		}
 		if err := bundle.WriteSelfReview(targetStore, r); err != nil {
 			return fmt.Errorf("move: copy self review %q: %w", r.ReviewID, err)
@@ -229,6 +241,9 @@ func loadMoveSource(src db.Store) (moveSource, error) {
 	if out.selfReviews, err = src.LoadSelfReviews(); err != nil {
 		return moveSource{}, fmt.Errorf("move: load self reviews: %w", err)
 	}
+	if out.matchKeys, err = src.LoadMatchKeys(); err != nil {
+		return moveSource{}, fmt.Errorf("move: load match keys: %w", err)
+	}
 	return out, nil
 }
 
@@ -245,6 +260,9 @@ type moveSource struct {
 	coachNotes  map[string][]db.MatchCoachNote
 	moments     map[string][]db.MatchMoment
 	selfReviews []db.SelfReview
+	// Every key the source holds — the registry the sitting membership is
+	// judged against.
+	matchKeys map[string]bool
 }
 
 // dirIDResolver re-maps a source screenshots_dir_id onto the target by

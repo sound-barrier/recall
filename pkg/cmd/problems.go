@@ -144,9 +144,15 @@ var defaultProblems = []errStatus{
 	{review.ErrNotFound, probNotFound},
 	{review.ErrMatchNotInReview, probNotFound},
 
-	// 409 first for the one wrapped pair: a kind/content mismatch wraps
-	// ErrNoteInvalid (400 below), and the semantic refusal is the rung that
-	// must win.
+	// Two rungs out of order on purpose, for the wrapped chains:
+	//   - a notes ARCHIVE whose note fails the kind rules wraps ErrNoteShape
+	//     inside ErrNotesMalformed, and the archive as a whole is what the
+	//     import refuses — a malformed upload, 400 — so ErrNotesMalformed sits
+	//     above ErrNoteShape;
+	//   - a live note write whose kind and content disagree wraps only
+	//     ErrNoteInvalid, and the semantic refusal (409) must beat the 400
+	//     that sentinel carries below.
+	{coach.ErrNotesMalformed, probInvalidBody},
 	{coach.ErrNoteShape, probConflict},
 
 	// 400 — the request body doesn't hold up.
@@ -157,9 +163,9 @@ var defaultProblems = []errStatus{
 	{app.ErrMatchKeyRequired, probInvalidBody},
 	{coach.ErrNoteInvalid, probInvalidBody},
 	{coach.ErrHandleInvalid, probInvalidBody},
-	{coach.ErrNotesMalformed, probInvalidBody},
 	{app.ErrCoachNameInvalid, probInvalidBody},
 	{review.ErrTitleInvalid, probInvalidBody},
+	{review.ErrTooManyMatches, probInvalidBody},
 
 	// 409 — the body parses, the state or its semantics refuse the action.
 	{coach.ErrSessionActive, probConflict},

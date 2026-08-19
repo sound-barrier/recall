@@ -39,6 +39,9 @@ var (
 	ErrNoMatches = errors.New("review: a self review needs at least one match")
 	// ErrTitleInvalid reports a title or summary past its bound. 400.
 	ErrTitleInvalid = errors.New("review: invalid title or summary")
+	// ErrTooManyMatches reports a set past the ceiling. 400 — the body is
+	// well-formed and the schema says so (maxItems), like a too-long title.
+	ErrTooManyMatches = errors.New("review: too many matches for one self review")
 )
 
 const (
@@ -178,8 +181,16 @@ func Finish(s Store, reviewID string) (Session, error) {
 	if err != nil {
 		return Session{}, fmt.Errorf("review: finish: load reviewed flags: %w", err)
 	}
+	// The unknown-key guard, applied here too: a member can stop existing
+	// while its membership row remains (a manual match whose data was reset
+	// removes its only parent row and no sidecar), and a reviewed flag on a
+	// key the registry does not hold is an orphan nothing reads back.
+	known, err := s.LoadMatchKeys()
+	if err != nil {
+		return Session{}, fmt.Errorf("review: finish: load match keys: %w", err)
+	}
 	for _, k := range r.MatchKeys {
-		if flags[k].ReviewedBy == matchedit.ReviewedByCoach {
+		if !known[k] || flags[k].ReviewedBy == matchedit.ReviewedByCoach {
 			continue
 		}
 		if err := s.SetReview(k, matchedit.ReviewedBySelf); err != nil {
@@ -214,7 +225,7 @@ func normalizeMatchKeys(s Store, in []string) ([]string, error) {
 		return nil, ErrNoMatches
 	}
 	if len(keys) > MaxMatchesPerReview {
-		return nil, fmt.Errorf("%w: a self review holds at most %d matches", ErrTitleInvalid, MaxMatchesPerReview)
+		return nil, fmt.Errorf("%w: a self review holds at most %d matches", ErrTooManyMatches, MaxMatchesPerReview)
 	}
 	known, err := s.LoadMatchKeys()
 	if err != nil {
@@ -236,7 +247,7 @@ func mapStoreErr(err error) error {
 	switch {
 	case errors.Is(err, db.ErrSelfReviewUnknown):
 		return fmt.Errorf("%w: %w", ErrNotFound, err)
-	case errors.Is(err, db.ErrSelfReviewMatchUnknown), errors.Is(err, db.ErrSelfReviewNoteUnknown):
+	case errors.Is(err, db.ErrSelfReviewMatchUnknown):
 		return fmt.Errorf("%w: %w", ErrMatchNotInReview, err)
 	}
 	return err

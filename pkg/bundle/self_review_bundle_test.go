@@ -187,3 +187,105 @@ func TestImport_DropsASittingWithNoFreshMember(t *testing.T) {
 		t.Errorf("a sitting with no fresh member was created: %+v", reviews)
 	}
 }
+
+// A sitting the target already holds under the bundle's UUID is left alone
+// even when the bundle would bring in a fresh member for it: the local copy
+// is the player's, and writing the bundle's over it would hit the same
+// review_id. The rest of the import (m2's rows) still lands.
+func TestImport_LeavesAnExistingSittingAloneWhenAMemberIsFresh(t *testing.T) {
+	payload := exportSitting(t, "m1", "m2")
+	dst, err := db.NewSQLStore(":memory:")
+	if err != nil {
+		t.Fatalf("NewSQLStore: %v", err)
+	}
+	t.Cleanup(func() { _ = dst.Close() })
+	holdMatches(t, dst, "m1")
+	if _, err := dst.CreateSelfReview(db.SelfReview{ReviewID: sittingID, Title: "already here", MatchKeys: []string{"m1"}}); err != nil {
+		t.Fatalf("seed local sitting: %v", err)
+	}
+
+	importInto(t, dst, payload)
+
+	got, ok, err := dst.LoadSelfReview(sittingID)
+	if err != nil || !ok {
+		t.Fatalf("LoadSelfReview after import: ok=%v err=%v", ok, err)
+	}
+	if got.Title != "already here" || len(got.Notes) != 0 {
+		t.Errorf("the local sitting was rewritten by the import: %+v", got)
+	}
+	assertMembers(t, got, "m1")
+	if keys, _ := dst.LoadMatchKeys(); !keys["m2"] {
+		t.Error("m2's rows did not land though the sitting was skipped")
+	}
+}
+
+// A sitting or a moment without its id cannot be keyed and would be refused
+// by the store mid-import; it is named up front, before anything is written.
+func TestImport_RejectsASittingOrMomentWithoutItsID(t *testing.T) {
+	cases := []struct {
+		name    string
+		sitting map[string]any
+		wantMsg string
+	}{
+		{"missing review_id", map[string]any{"ReviewID": "", "MatchKeys": []string{"m1"}},
+			"import: self_reviews[0] missing required review_id"},
+		{"missing moment_id", map[string]any{
+			"ReviewID": "r-1", "MatchKeys": []string{"m1"},
+			"Notes": map[string]any{"m1": map[string]any{
+				"MatchKey": "m1", "Kind": "note", "Text": "x",
+				"Moments": []map[string]any{{"MomentID": "", "MatchClock": "01:00", "Text": "y"}},
+			}},
+		}, `import: self_reviews[0] note "m1" moments[0] missing required moment_id`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			store := dbtest.New()
+			payload := payloadWithData(t, map[string]any{
+				"schema":       dataSchemaV2,
+				"summaries":    []map[string]any{{"Filename": "a.png", "MatchKey": "m1"}},
+				"self_reviews": []map[string]any{tc.sitting},
+			})
+			_, err := bundle.Import(store, payload)
+			if err == nil || err.Error() != tc.wantMsg {
+				t.Fatalf("err = %v, want %q", err, tc.wantMsg)
+			}
+			if store.UpsertCalls != 0 || len(store.SelfReviews) != 0 {
+				t.Error("rows were written before the bad sitting was found; a rejected bundle must not half-import")
+			}
+		})
+	}
+}
+
+// A member with no note travels as a member: the sitting comes back over
+// both keys with the one note it had.
+func TestRoundTrip_CarriesAMemberWithNoNote(t *testing.T) {
+	shots := t.TempDir()
+	src := seededStore(t, shots)
+	writeShots(t, shots, seededParentFiles()...)
+	const halfNoted = "half-noted"
+	if _, err := src.CreateSelfReview(db.SelfReview{ReviewID: halfNoted, MatchKeys: []string{"m1", "m2"}}); err != nil {
+		t.Fatalf("seed sitting: %v", err)
+	}
+	if _, err := src.UpsertSelfReviewNote(db.SelfReviewNote{ReviewID: halfNoted, MatchKey: "m1", Kind: "note", Text: "only on m1"}); err != nil {
+		t.Fatalf("seed note: %v", err)
+	}
+	payload, err := bundle.Export(src, bundle.ExportBundleOptions{MatchKeys: []string{"m1", "m2"}}, nil, shots, seededVersion)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	dst, err := db.NewSQLStore(":memory:")
+	if err != nil {
+		t.Fatalf("NewSQLStore: %v", err)
+	}
+	t.Cleanup(func() { _ = dst.Close() })
+	importInto(t, dst, payload)
+
+	got, ok, err := dst.LoadSelfReview(halfNoted)
+	if err != nil || !ok {
+		t.Fatalf("LoadSelfReview after import: ok=%v err=%v", ok, err)
+	}
+	assertMembers(t, got, "m1", "m2")
+	if len(got.Notes) != 1 || got.Notes["m1"].Text != "only on m1" {
+		t.Errorf("notes after import = %+v, want m1's note alone", got.Notes)
+	}
+}
