@@ -6,7 +6,9 @@ import { scoreMatch } from '@/match/palette-score'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useOWData } from '@/composables/shared/useOWData'
+import { latestSessionKeys } from '@/match/dossier/match-momentum-helpers'
 import { useCoachStore } from '@/stores/coach'
+import { useSelfReviewStore } from '@/stores/selfReview'
 import { useUiStore } from '@/stores/ui'
 
 // Enough to fill the list without scoring the reader's patience. The corpus is
@@ -108,6 +110,19 @@ export function useCommandPalette(): {
   const ACTION_RUNNERS: Record<PaletteActionTarget, () => Promise<void>> = {
     'open-bundle': () => coach.openBundle(),
     'share-with-coach': shareTheNarrowedSet,
+    'review-last-session': reviewLastSession,
+  }
+
+  // The same start the Reviews tab's 01 block offers, from a keystroke. On
+  // an empty history there is nothing to open a sitting over — landing on
+  // the tab that says so beats silently doing nothing.
+  async function reviewLastSession(): Promise<void> {
+    const keys = latestSessionKeys(matches.records)
+    if (keys.length === 0) {
+      await app.goToView('reviews')
+      return
+    }
+    await useSelfReviewStore().createFromKeys(keys)
   }
 
   function isActionTarget(target: string): target is PaletteActionTarget {

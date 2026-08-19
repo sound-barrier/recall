@@ -49,9 +49,16 @@ export interface PaletteItem {
  * below without a runner is a compile error, not an Enter press that opens
  * whichever branch happened to be last.
  */
-export type PaletteActionTarget = 'share-with-coach' | 'open-bundle'
+export type PaletteActionTarget = 'share-with-coach' | 'open-bundle' | 'review-last-session'
 
 export const ACTION_ITEMS: readonly (PaletteItem & { target: PaletteActionTarget })[] = [
+  {
+    id: 'action:review-last-session',
+    kind: 'action',
+    label: 'Review my last session',
+    hint: 'Your own film room',
+    target: 'review-last-session',
+  },
   {
     id: 'action:share-with-coach',
     kind: 'action',

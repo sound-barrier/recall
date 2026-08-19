@@ -3,7 +3,7 @@
 // the parent has selected rows; emits one action per button so
 // MatchesView's action handlers (hideSelected, beginMoveLive, etc.)
 // stay where they wire to App.vue's API.
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import type { PlayMode, QueueType } from '@/api-client'
 import TypeaheadDropdown from '@/components/shared/TypeaheadDropdown.vue'
@@ -64,7 +64,15 @@ function toggleMenu(name: 'play-mode' | 'queue' | 'tag') {
 
 // Hide, play-mode, queue, tag and move all write across the selection;
 // Export reads. Selection itself is local state and stays live.
-const { writesLocked, lockedTitle } = useWriteGate()
+const { writesLocked, lockedTitle, sessionActive } = useWriteGate()
+
+// While a coaching session is open the rows on screen are the PLAYER's
+// loaned matches — the generic "end the session to change your own matches"
+// is the wrong sentence for a review affordance pointed at them.
+const SESSION_REVIEW_REASON = 'These matches are on loan — notes go in the film room.'
+const reviewTitle = computed(() => (sessionActive.value
+  ? SESSION_REVIEW_REASON
+  : lockedTitle('Review the selected matches in the film room')))
 
 function pickPlayMode(v: PlayMode) {
   openMenu.value = ''
@@ -106,6 +114,20 @@ function pickTag(v: string) {
       >
         Select all ({{ sortedCount }})
       </button>
+      <!-- Review leads the bar: it is the one constructive verb here, so it
+           wears the accent fill and sits before the destructive/file
+           actions. The label says exactly what it will act on. -->
+      <button
+        type="button"
+        class="bulk-review"
+        data-testid="bulk-review-these"
+        :disabled="writesLocked"
+        :title="reviewTitle"
+        @click="emit('reviewThese')"
+      >
+        <span class="bab-btn-glyph" aria-hidden="true">🎞</span>
+        {{ selectedCount === 1 ? 'Review this match' : `Review these (${selectedCount})` }}
+      </button>
       <button
         type="button"
         class="bulk-hide"
@@ -115,17 +137,6 @@ function pickTag(v: string) {
       >
         <span class="bab-btn-glyph" aria-hidden="true">⌀</span>
         Hide
-      </button>
-      <button
-        type="button"
-        class="bulk-review"
-        data-testid="bulk-review-these"
-        :disabled="writesLocked"
-        :title="lockedTitle('Review these matches in the film room')"
-        @click="emit('reviewThese')"
-      >
-        <span class="bab-btn-glyph" aria-hidden="true">🎞</span>
-        Review these
       </button>
       <button
         type="button"
@@ -341,13 +352,25 @@ function pickTag(v: string) {
   line-height: 1;
 }
 
-.bulk-hide {
+.bulk-review {
   border: 1px solid var(--accent);
   background: var(--accent);
   color: var(--primary-text-on-accent);
 }
 
-.bulk-hide:hover { filter: brightness(1.08); }
+.bulk-review:hover { filter: brightness(1.08); }
+
+.bulk-hide {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+.bulk-hide:hover {
+  border-color: var(--accent);
+  color: var(--accent-text);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
 
 .bulk-select-all {
   border: 1px solid var(--accent);

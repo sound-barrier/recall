@@ -45,9 +45,21 @@ const props = defineProps<{
 // doesn't scroll away from the row it's anchored to.
 useScrollLock(computed(() => props.position !== null))
 
-// Three items write (Tag and Edit annotation open the journal to do it,
-// Hide flips visibility); the rest read or navigate and stay live.
-const { writesLocked, lockedTitle } = useWriteGate()
+// Four items write (Tag and Edit annotation open the journal to do it,
+// Review this match opens a sitting, Hide flips visibility); the rest read
+// or navigate and stay live.
+const { writesLocked, lockedTitle, sessionActive } = useWriteGate()
+
+// During a coaching session the row under the cursor is a LOANED match —
+// the right sentence is the loan, not "end the session".
+const reviewTitle = computed(() => (sessionActive.value
+  ? 'This match is on loan — notes go in the film room.'
+  : lockedTitle('Review this match in the film room')))
+
+function onReviewMatch() {
+  emit('review-match', props.matchKey)
+  emit('close')
+}
 
 const emit = defineEmits<{
   close:        []
@@ -58,6 +70,9 @@ const emit = defineEmits<{
   // detail panel's exposed methods.
   'open-detail-and-focus-tag':  [matchKey: string]
   'open-detail-and-focus-note': [matchKey: string]
+  // Start a self-review sitting over this one match — the film room in
+  // your own voice. A write to the player's data, gated like Hide.
+  'review-match': [matchKey: string]
   // Copy-to-clipboard pipes. Two flavors so the menu doesn't need
   // to know which canonical link / replay-code shape the parent
   // wants — App.vue does the rendering.
@@ -211,6 +226,18 @@ const menuStyle = computed(() => {
 
         <div class="match-row-ctx-sep" role="separator" aria-hidden="true" />
 
+        <button
+          type="button"
+          role="menuitem"
+          class="match-row-ctx-item"
+          data-row-ctx-review
+          :disabled="writesLocked"
+          :title="reviewTitle"
+          @click="onReviewMatch"
+        >
+          <span class="match-row-ctx-glyph" aria-hidden="true">🎞</span>
+          Review this match
+        </button>
         <button
           type="button"
           role="menuitem"

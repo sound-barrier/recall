@@ -180,6 +180,16 @@ const {
   applyTag: applyBulkTag,
 })
 
+// "Review these" spends the selection it acts on: the keys are taken, the
+// ticks cleared, THEN the sitting opens — so coming back to the list never
+// re-offers a selection whose work is already done (a second press used to
+// mint a twin sitting).
+async function reviewSelected(): Promise<void> {
+  const keys = [...selectedKeys.value]
+  clearSelection()
+  await selfReviewStore.createFromKeys(keys)
+}
+
 // ─── Dossier KPIs / breakdowns via useMatchesDossier ───────
 //
 // The dossier needs a hero→role resolver to drive the open-queue-
@@ -410,7 +420,7 @@ const {
           :available-tags="matchesStore.matchesNarrow.availableTags.value"
           @select-all="selectAllVisible"
           @hide="hideSelected"
-          @review-these="selfReviewStore.createFromKeys([...selectedKeys])"
+          @review-these="reviewSelected"
           @export-bundle="matchesStore.onExportBundleRequest([...selectedKeys])"
           @export-csv="requestCsvExport([...selectedKeys])"
           @bulk-tag="onBulkTag"
@@ -502,6 +512,7 @@ const {
         @copy-replay-code="rowAction.copyReplay"
         @copy-match-link="rowAction.copyLink"
         @open-source-folder="rowAction.openSourceFolder"
+        @review-match="(k: string) => selfReviewStore.createFromKeys([k])"
         @hide="rowAction.hide"
       />
     </div>
