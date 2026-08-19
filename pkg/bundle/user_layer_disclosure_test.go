@@ -35,6 +35,7 @@ func TestDataV2_UserLayerFieldsAreDisclosedInTheShareDialog(t *testing.T) {
 		"Pinned":        "each match's JSON data (manual entries and your edits)",
 		"CoachNotes":    "any review an earlier coach sent back",
 		"Moments":       "your notes and moments",
+		"SelfReviews":   "your own reviews of them",
 	}
 	// The OCR tables above the user layer. Named rather than skipped by
 	// position so reordering the struct cannot quietly widen the exemption.

@@ -63,6 +63,10 @@ func (s *SQLStore) HardDeleteMatch(matchKey string) error {
 		`DELETE FROM coach_return_decisions WHERE note_id IN
 		   (SELECT note_id FROM match_coach_notes WHERE match_key = ?)`,
 		`DELETE FROM match_coach_notes WHERE match_key = ?`, // tag children CASCADE
+		// The match leaves every self review it was a member of; the note the
+		// player wrote about it there cascades off the membership row. The
+		// review itself stays — it is a fact about the sitting, not the match.
+		`DELETE FROM self_review_matches WHERE match_key = ?`,
 	} {
 		if _, err := tx.Exec(q, matchKey); err != nil {
 			return err

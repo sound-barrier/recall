@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, ServerSentEventsResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { ApplyGameDataUpdateData, ApplyGameDataUpdateErrors, ApplyGameDataUpdateResponses, BackupDatabaseData, BackupDatabaseErrors, BackupDatabaseResponses, BulkSetMatchPlayModeData, BulkSetMatchPlayModeErrors, BulkSetMatchPlayModeResponses, BulkSetMatchQueueData, BulkSetMatchQueueErrors, BulkSetMatchQueueResponses, CancelParseData, CancelParseErrors, CancelParseResponses, CheckForUpdateData, CheckForUpdateResponses, ClearIgnoredScreenshotsData, ClearIgnoredScreenshotsErrors, ClearIgnoredScreenshotsResponses, ClearMatchesData, ClearMatchesErrors, ClearMatchesResponses, ClearMatchPlayModeData, ClearMatchPlayModeErrors, ClearMatchPlayModeResponses, ClearMatchQueueData, ClearMatchQueueErrors, ClearMatchQueueResponses, ClearMatchReviewData, ClearMatchReviewErrors, ClearMatchReviewResponses, CloseCoachSessionData, CloseCoachSessionErrors, CloseCoachSessionResponses, CreateManualMatchData, CreateManualMatchErrors, CreateManualMatchResponses, CreateProfileData, CreateProfileErrors, CreateProfileResponses, DecideCoachReturnData, DecideCoachReturnErrors, DecideCoachReturnResponses, DeleteCoachMomentData, DeleteCoachMomentErrors, DeleteCoachMomentResponses, DeleteCoachNoteData, DeleteCoachNoteErrors, DeleteCoachNoteResponses, DeleteCoachReturnData, DeleteCoachReturnErrors, DeleteCoachReturnResponses, DeleteMatchAnnotationData, DeleteMatchAnnotationErrors, DeleteMatchAnnotationResponses, DeleteMatchCoachNoteData, DeleteMatchCoachNoteErrors, DeleteMatchCoachNoteResponses, DeleteMatchMomentData, DeleteMatchMomentErrors, DeleteMatchMomentResponses, DeleteProfileData, DeleteProfileErrors, DeleteProfileResponses, EventsData, EventsResponse, EventsResponses, ExportBundleData, ExportBundleErrors, ExportBundleResponses, ExportCoachNotesData, ExportCoachNotesErrors, ExportCoachNotesResponses, ExportDiagnosticBundleData, ExportDiagnosticBundleErrors, ExportDiagnosticBundleResponses, GetActiveParseData, GetActiveParseErrors, GetActiveParseResponses, GetAutoBackupStatusData, GetAutoBackupStatusResponses, GetCoachingSettingsData, GetCoachingSettingsErrors, GetCoachingSettingsResponses, GetCoachReturnData, GetCoachReturnErrors, GetCoachReturnResponses, GetCoachSessionData, GetCoachSessionErrors, GetCoachSessionMatchesData, GetCoachSessionMatchesErrors, GetCoachSessionMatchesResponses, GetCoachSessionResponses, GetDatabaseHealthData, GetDatabaseHealthErrors, GetDatabaseHealthResponses, GetDataLocationData, GetDataLocationResponses, GetExitOnCloseData, GetExitOnCloseResponses, GetFailedFilesData, GetFailedFilesErrors, GetFailedFilesResponses, GetIgnoredScreenshotsData, GetIgnoredScreenshotsErrors, GetIgnoredScreenshotsResponses, GetMatchByKeyData, GetMatchByKeyErrors, GetMatchByKeyResponses, GetMatchResultsData, GetMatchResultsErrors, GetMatchResultsResponses, GetParseStalenessData, GetParseStalenessResponses, GetPendingScreenshotCountData, GetPendingScreenshotCountErrors, GetPendingScreenshotCountResponses, GetProfilesData, GetProfilesErrors, GetProfilesResponses, GetReferenceDataData, GetReferenceDataResponses, GetScreenshotData, GetScreenshotErrors, GetScreenshotResponses, GetScreenshotsFolderCandidatesData, GetScreenshotsFolderCandidatesResponses, GetScreenshotsFolderCandidateStatsData, GetScreenshotsFolderCandidateStatsResponses, GetScreenshotsFolderData, GetScreenshotsFolderResponses, GetStartupErrorData, GetStartupErrorResponses, GetTesseractSettingsData, GetTesseractSettingsResponses, GetVersionData, GetVersionResponses, GetWatchEnabledData, GetWatchEnabledResponses, HardDeleteMatchData, HardDeleteMatchErrors, HardDeleteMatchResponses, IgnoreScreenshotData, IgnoreScreenshotErrors, IgnoreScreenshotResponses, ImportMatchesData, ImportMatchesErrors, ImportMatchesResponses, ListCoachReturnsData, ListCoachReturnsErrors, ListCoachReturnsResponses, MoveMatchesData, MoveMatchesErrors, MoveMatchesResponses, OpenCoachSessionData, OpenCoachSessionErrors, OpenCoachSessionResponses, ParseScreenshotsData, ParseScreenshotsErrors, ParseScreenshotsResponses, ProbeTesseractBinaryData, ProbeTesseractBinaryResponses, PutCoachMomentData, PutCoachMomentErrors, PutCoachMomentResponses, PutCoachNoteData, PutCoachNoteErrors, PutCoachNoteResponses, PutCoachSummaryData, PutCoachSummaryErrors, PutCoachSummaryResponses, RenameProfileData, RenameProfileErrors, RenameProfileResponses, ResetMatchDataData, ResetMatchDataErrors, ResetMatchDataResponses, ResetScreenshotsFolderData, ResetScreenshotsFolderErrors, ResetScreenshotsFolderResponses, ResetTesseractPathData, ResetTesseractPathErrors, ResetTesseractPathResponses, ResolveAmbiguousMatchData, ResolveAmbiguousMatchErrors, ResolveAmbiguousMatchResponses, RestartToApplyData, RestartToApplyErrors, RestartToApplyResponses, RestoreDatabaseData, RestoreDatabaseErrors, RestoreDatabaseResponses, RevealScreenshotsFolderData, RevealScreenshotsFolderErrors, RevealScreenshotsFolderResponses, RunDatabaseMaintenanceData, RunDatabaseMaintenanceErrors, RunDatabaseMaintenanceResponses, SeedTestProfileData, SeedTestProfileErrors, SeedTestProfileResponses, SetAutoBackupIntervalData, SetAutoBackupIntervalErrors, SetAutoBackupIntervalResponses, SetCoachingSettingsData, SetCoachingSettingsErrors, SetCoachingSettingsResponses, SetCoachSessionPlayerData, SetCoachSessionPlayerErrors, SetCoachSessionPlayerResponses, SetExitOnCloseData, SetExitOnCloseErrors, SetExitOnCloseResponses, SetMatchAnnotationData, SetMatchAnnotationErrors, SetMatchAnnotationResponses, SetMatchMomentData, SetMatchMomentErrors, SetMatchMomentResponses, SetMatchPinData, SetMatchPinErrors, SetMatchPinResponses, SetMatchPlayModeData, SetMatchPlayModeErrors, SetMatchPlayModeResponses, SetMatchQueueData, SetMatchQueueErrors, SetMatchQueueResponses, SetMatchReviewData, SetMatchReviewErrors, SetMatchReviewResponses, SetMatchVisibilityData, SetMatchVisibilityErrors, SetMatchVisibilityResponses, SetScreenshotsFolderData, SetScreenshotsFolderErrors, SetScreenshotsFolderResponses, SetTesseractPathData, SetTesseractPathErrors, SetTesseractPathResponses, SetWatchEnabledData, SetWatchEnabledErrors, SetWatchEnabledResponses, StartSelfUpdateData, StartSelfUpdateErrors, StartSelfUpdateResponses, SwitchProfileData, SwitchProfileErrors, SwitchProfileResponses, UnignoreScreenshotData, UnignoreScreenshotErrors, UnignoreScreenshotResponses, UpdateMatchDataData, UpdateMatchDataErrors, UpdateMatchDataResponses } from './types.gen';
+import type { ApplyGameDataUpdateData, ApplyGameDataUpdateErrors, ApplyGameDataUpdateResponses, BackupDatabaseData, BackupDatabaseErrors, BackupDatabaseResponses, BulkSetMatchPlayModeData, BulkSetMatchPlayModeErrors, BulkSetMatchPlayModeResponses, BulkSetMatchQueueData, BulkSetMatchQueueErrors, BulkSetMatchQueueResponses, CancelParseData, CancelParseErrors, CancelParseResponses, CheckForUpdateData, CheckForUpdateResponses, ClearIgnoredScreenshotsData, ClearIgnoredScreenshotsErrors, ClearIgnoredScreenshotsResponses, ClearMatchesData, ClearMatchesErrors, ClearMatchesResponses, ClearMatchPlayModeData, ClearMatchPlayModeErrors, ClearMatchPlayModeResponses, ClearMatchQueueData, ClearMatchQueueErrors, ClearMatchQueueResponses, ClearMatchReviewData, ClearMatchReviewErrors, ClearMatchReviewResponses, CloseCoachSessionData, CloseCoachSessionErrors, CloseCoachSessionResponses, CreateManualMatchData, CreateManualMatchErrors, CreateManualMatchResponses, CreateProfileData, CreateProfileErrors, CreateProfileResponses, CreateSelfReviewData, CreateSelfReviewErrors, CreateSelfReviewResponses, DecideCoachReturnData, DecideCoachReturnErrors, DecideCoachReturnResponses, DeleteCoachMomentData, DeleteCoachMomentErrors, DeleteCoachMomentResponses, DeleteCoachNoteData, DeleteCoachNoteErrors, DeleteCoachNoteResponses, DeleteCoachReturnData, DeleteCoachReturnErrors, DeleteCoachReturnResponses, DeleteMatchAnnotationData, DeleteMatchAnnotationErrors, DeleteMatchAnnotationResponses, DeleteMatchCoachNoteData, DeleteMatchCoachNoteErrors, DeleteMatchCoachNoteResponses, DeleteMatchMomentData, DeleteMatchMomentErrors, DeleteMatchMomentResponses, DeleteProfileData, DeleteProfileErrors, DeleteProfileResponses, DeleteSelfReviewData, DeleteSelfReviewErrors, DeleteSelfReviewMomentData, DeleteSelfReviewMomentErrors, DeleteSelfReviewMomentResponses, DeleteSelfReviewNoteData, DeleteSelfReviewNoteErrors, DeleteSelfReviewNoteResponses, DeleteSelfReviewResponses, EventsData, EventsResponse, EventsResponses, ExportBundleData, ExportBundleErrors, ExportBundleResponses, ExportCoachNotesData, ExportCoachNotesErrors, ExportCoachNotesResponses, ExportDiagnosticBundleData, ExportDiagnosticBundleErrors, ExportDiagnosticBundleResponses, FinishSelfReviewData, FinishSelfReviewErrors, FinishSelfReviewResponses, GetActiveParseData, GetActiveParseErrors, GetActiveParseResponses, GetAutoBackupStatusData, GetAutoBackupStatusResponses, GetCoachingSettingsData, GetCoachingSettingsErrors, GetCoachingSettingsResponses, GetCoachReturnData, GetCoachReturnErrors, GetCoachReturnResponses, GetCoachSessionData, GetCoachSessionErrors, GetCoachSessionMatchesData, GetCoachSessionMatchesErrors, GetCoachSessionMatchesResponses, GetCoachSessionResponses, GetDatabaseHealthData, GetDatabaseHealthErrors, GetDatabaseHealthResponses, GetDataLocationData, GetDataLocationResponses, GetExitOnCloseData, GetExitOnCloseResponses, GetFailedFilesData, GetFailedFilesErrors, GetFailedFilesResponses, GetIgnoredScreenshotsData, GetIgnoredScreenshotsErrors, GetIgnoredScreenshotsResponses, GetMatchByKeyData, GetMatchByKeyErrors, GetMatchByKeyResponses, GetMatchResultsData, GetMatchResultsErrors, GetMatchResultsResponses, GetParseStalenessData, GetParseStalenessResponses, GetPendingScreenshotCountData, GetPendingScreenshotCountErrors, GetPendingScreenshotCountResponses, GetProfilesData, GetProfilesErrors, GetProfilesResponses, GetReferenceDataData, GetReferenceDataResponses, GetScreenshotData, GetScreenshotErrors, GetScreenshotResponses, GetScreenshotsFolderCandidatesData, GetScreenshotsFolderCandidatesResponses, GetScreenshotsFolderCandidateStatsData, GetScreenshotsFolderCandidateStatsResponses, GetScreenshotsFolderData, GetScreenshotsFolderResponses, GetSelfReviewData, GetSelfReviewErrors, GetSelfReviewResponses, GetStartupErrorData, GetStartupErrorResponses, GetTesseractSettingsData, GetTesseractSettingsResponses, GetVersionData, GetVersionResponses, GetWatchEnabledData, GetWatchEnabledResponses, HardDeleteMatchData, HardDeleteMatchErrors, HardDeleteMatchResponses, IgnoreScreenshotData, IgnoreScreenshotErrors, IgnoreScreenshotResponses, ImportMatchesData, ImportMatchesErrors, ImportMatchesResponses, ListCoachReturnsData, ListCoachReturnsErrors, ListCoachReturnsResponses, ListSelfReviewsData, ListSelfReviewsErrors, ListSelfReviewsResponses, MoveMatchesData, MoveMatchesErrors, MoveMatchesResponses, OpenCoachSessionData, OpenCoachSessionErrors, OpenCoachSessionResponses, ParseScreenshotsData, ParseScreenshotsErrors, ParseScreenshotsResponses, ProbeTesseractBinaryData, ProbeTesseractBinaryResponses, PutCoachMomentData, PutCoachMomentErrors, PutCoachMomentResponses, PutCoachNoteData, PutCoachNoteErrors, PutCoachNoteResponses, PutCoachSummaryData, PutCoachSummaryErrors, PutCoachSummaryResponses, PutSelfReviewMomentData, PutSelfReviewMomentErrors, PutSelfReviewMomentResponses, PutSelfReviewNoteData, PutSelfReviewNoteErrors, PutSelfReviewNoteResponses, RenameProfileData, RenameProfileErrors, RenameProfileResponses, ResetMatchDataData, ResetMatchDataErrors, ResetMatchDataResponses, ResetScreenshotsFolderData, ResetScreenshotsFolderErrors, ResetScreenshotsFolderResponses, ResetTesseractPathData, ResetTesseractPathErrors, ResetTesseractPathResponses, ResolveAmbiguousMatchData, ResolveAmbiguousMatchErrors, ResolveAmbiguousMatchResponses, RestartToApplyData, RestartToApplyErrors, RestartToApplyResponses, RestoreDatabaseData, RestoreDatabaseErrors, RestoreDatabaseResponses, RevealScreenshotsFolderData, RevealScreenshotsFolderErrors, RevealScreenshotsFolderResponses, RunDatabaseMaintenanceData, RunDatabaseMaintenanceErrors, RunDatabaseMaintenanceResponses, SeedTestProfileData, SeedTestProfileErrors, SeedTestProfileResponses, SetAutoBackupIntervalData, SetAutoBackupIntervalErrors, SetAutoBackupIntervalResponses, SetCoachingSettingsData, SetCoachingSettingsErrors, SetCoachingSettingsResponses, SetCoachSessionPlayerData, SetCoachSessionPlayerErrors, SetCoachSessionPlayerResponses, SetExitOnCloseData, SetExitOnCloseErrors, SetExitOnCloseResponses, SetMatchAnnotationData, SetMatchAnnotationErrors, SetMatchAnnotationResponses, SetMatchMomentData, SetMatchMomentErrors, SetMatchMomentResponses, SetMatchPinData, SetMatchPinErrors, SetMatchPinResponses, SetMatchPlayModeData, SetMatchPlayModeErrors, SetMatchPlayModeResponses, SetMatchQueueData, SetMatchQueueErrors, SetMatchQueueResponses, SetMatchReviewData, SetMatchReviewErrors, SetMatchReviewResponses, SetMatchVisibilityData, SetMatchVisibilityErrors, SetMatchVisibilityResponses, SetScreenshotsFolderData, SetScreenshotsFolderErrors, SetScreenshotsFolderResponses, SetSelfReviewMatchesData, SetSelfReviewMatchesErrors, SetSelfReviewMatchesResponses, SetTesseractPathData, SetTesseractPathErrors, SetTesseractPathResponses, SetWatchEnabledData, SetWatchEnabledErrors, SetWatchEnabledResponses, StartSelfUpdateData, StartSelfUpdateErrors, StartSelfUpdateResponses, SwitchProfileData, SwitchProfileErrors, SwitchProfileResponses, UnignoreScreenshotData, UnignoreScreenshotErrors, UnignoreScreenshotResponses, UpdateMatchDataData, UpdateMatchDataErrors, UpdateMatchDataResponses, UpdateSelfReviewData, UpdateSelfReviewErrors, UpdateSelfReviewResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -1446,7 +1446,10 @@ export const deleteCoachNote = <ThrowOnError extends boolean = false>(options: O
  * dedupe and record decisions against it.
  *
  * `404` when no session is open or the match is not in the loaned
- * corpus, `409` before the player's handle has been confirmed.
+ * corpus, `409` before the player's handle has been confirmed — and
+ * `409` when the kind and the content disagree (a `note` with neither
+ * text nor tag; a `reviewed_only` mark carrying words): the body
+ * parsed, the refusal is semantic (an empty draft is a DELETE).
  *
  */
 export const putCoachNote = <ThrowOnError extends boolean = false>(options: Options<PutCoachNoteData, ThrowOnError>): RequestResult<PutCoachNoteResponses, PutCoachNoteErrors, ThrowOnError> => (options.client ?? client).put<PutCoachNoteResponses, PutCoachNoteErrors, ThrowOnError>({
@@ -1614,6 +1617,163 @@ export const getCoachingSettings = <ThrowOnError extends boolean = false>(option
  */
 export const setCoachingSettings = <ThrowOnError extends boolean = false>(options: Options<SetCoachingSettingsData, ThrowOnError>): RequestResult<SetCoachingSettingsResponses, SetCoachingSettingsErrors, ThrowOnError> => (options.client ?? client).put<SetCoachingSettingsResponses, SetCoachingSettingsErrors, ThrowOnError>({
     url: '/api/v1/settings/coaching',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * List the player's own review sittings, newest first
+ *
+ * Every sitting, whole — the header, the member keys in the player's
+ * order, and the notes keyed by match — newest first. The Reviews
+ * tab's shelf.
+ *
+ */
+export const listSelfReviews = <ThrowOnError extends boolean = false>(options?: Options<ListSelfReviewsData, ThrowOnError>): RequestResult<ListSelfReviewsResponses, ListSelfReviewsErrors, ThrowOnError> => (options?.client ?? client).get<ListSelfReviewsResponses, ListSelfReviewsErrors, ThrowOnError>({ url: '/api/v1/self-reviews', ...options });
+
+/**
+ * Open a sitting over a set of your own matches
+ *
+ * Creates a sitting over the given match keys, in the given order
+ * (duplicates collapse to their first position; blanks are dropped).
+ * The title is optional and may be set later.
+ *
+ * `409` when no keys remain after normalization — a sitting over
+ * nothing is not a sitting. `404` when a key names a match this
+ * database has never seen (the sidecar tables carry no foreign key,
+ * so an unguarded create would seed a review over a phantom). `409`
+ * while a coaching session is open: the sitting is the player's own
+ * data, which a session freezes like every other write.
+ *
+ */
+export const createSelfReview = <ThrowOnError extends boolean = false>(options: Options<CreateSelfReviewData, ThrowOnError>): RequestResult<CreateSelfReviewResponses, CreateSelfReviewErrors, ThrowOnError> => (options.client ?? client).post<CreateSelfReviewResponses, CreateSelfReviewErrors, ThrowOnError>({
+    url: '/api/v1/self-reviews',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete the sitting and every note in it
+ *
+ * Removes the sitting; its blocks leave every match they were on. The
+ * reviewed-by-self flags a finish stamped STAY — finishing was a fact
+ * about the match, the delete is a fact about the notes. Idempotent.
+ *
+ */
+export const deleteSelfReview = <ThrowOnError extends boolean = false>(options: Options<DeleteSelfReviewData, ThrowOnError>): RequestResult<DeleteSelfReviewResponses, DeleteSelfReviewErrors, ThrowOnError> => (options.client ?? client).delete<DeleteSelfReviewResponses, DeleteSelfReviewErrors, ThrowOnError>({ url: '/api/v1/self-reviews/{review_id}', ...options });
+
+/**
+ * Read one sitting whole
+ *
+ * The header, the member keys in the player's order, and every note
+ * with its moments — what the film room hydrates from when the
+ * sitting is reopened.
+ *
+ */
+export const getSelfReview = <ThrowOnError extends boolean = false>(options: Options<GetSelfReviewData, ThrowOnError>): RequestResult<GetSelfReviewResponses, GetSelfReviewErrors, ThrowOnError> => (options.client ?? client).get<GetSelfReviewResponses, GetSelfReviewErrors, ThrowOnError>({ url: '/api/v1/self-reviews/{review_id}', ...options });
+
+/**
+ * Rename the sitting or rewrite its summary
+ *
+ * Replaces the title and the set-level summary ("what to work on").
+ * Both are trimmed; `400` past their bounds. Returns the sitting.
+ *
+ */
+export const updateSelfReview = <ThrowOnError extends boolean = false>(options: Options<UpdateSelfReviewData, ThrowOnError>): RequestResult<UpdateSelfReviewResponses, UpdateSelfReviewErrors, ThrowOnError> => (options.client ?? client).put<UpdateSelfReviewResponses, UpdateSelfReviewErrors, ThrowOnError>({
+    url: '/api/v1/self-reviews/{review_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Replace the sitting's set of matches
+ *
+ * PUT of the whole list, in the player's order. A note on a match that
+ * leaves the set goes with it; a note on one that stays is kept. Same
+ * refusals as create: `409` for an empty set, `404` for an unknown key.
+ *
+ */
+export const setSelfReviewMatches = <ThrowOnError extends boolean = false>(options: Options<SetSelfReviewMatchesData, ThrowOnError>): RequestResult<SetSelfReviewMatchesResponses, SetSelfReviewMatchesErrors, ThrowOnError> => (options.client ?? client).put<SetSelfReviewMatchesResponses, SetSelfReviewMatchesErrors, ThrowOnError>({
+    url: '/api/v1/self-reviews/{review_id}/matches',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Finish the sitting
+ *
+ * Stamps the sitting done and marks every member match reviewed by
+ * self — except where a coach has already reviewed it: the coach mark
+ * outranks in both directions (an accepted return overwrites self with
+ * coach; a finish never overwrites coach with self). Idempotent: a
+ * second finish keeps the first stamp. No verb in the path, like
+ * `/coach/session/export`.
+ *
+ */
+export const finishSelfReview = <ThrowOnError extends boolean = false>(options: Options<FinishSelfReviewData, ThrowOnError>): RequestResult<FinishSelfReviewResponses, FinishSelfReviewErrors, ThrowOnError> => (options.client ?? client).post<FinishSelfReviewResponses, FinishSelfReviewErrors, ThrowOnError>({ url: '/api/v1/self-reviews/{review_id}/completion', ...options });
+
+/**
+ * Remove the sitting's note about one match
+ *
+ * Removes the note and its moments. Idempotent.
+ */
+export const deleteSelfReviewNote = <ThrowOnError extends boolean = false>(options: Options<DeleteSelfReviewNoteData, ThrowOnError>): RequestResult<DeleteSelfReviewNoteResponses, DeleteSelfReviewNoteErrors, ThrowOnError> => (options.client ?? client).delete<DeleteSelfReviewNoteResponses, DeleteSelfReviewNoteErrors, ThrowOnError>({ url: '/api/v1/self-reviews/{review_id}/notes/{match_key}', ...options });
+
+/**
+ * Save the sitting's note about one match
+ *
+ * Upserts the one note per (sitting, match) — the same body a coach's
+ * note takes, under the same rules (see `CoachNoteInput`), because the
+ * room's editor is one component. A re-save replaces text, clock and
+ * both tag sets wholesale and leaves the moments alone; they have their
+ * own writes. `404` when the match is not in the sitting; `409` when
+ * the kind and the content disagree (see `CoachNoteInput`).
+ *
+ */
+export const putSelfReviewNote = <ThrowOnError extends boolean = false>(options: Options<PutSelfReviewNoteData, ThrowOnError>): RequestResult<PutSelfReviewNoteResponses, PutSelfReviewNoteErrors, ThrowOnError> => (options.client ?? client).put<PutSelfReviewNoteResponses, PutSelfReviewNoteErrors, ThrowOnError>({
+    url: '/api/v1/self-reviews/{review_id}/notes/{match_key}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Remove one moment
+ *
+ * Idempotent. The note is left behind.
+ */
+export const deleteSelfReviewMoment = <ThrowOnError extends boolean = false>(options: Options<DeleteSelfReviewMomentData, ThrowOnError>): RequestResult<DeleteSelfReviewMomentResponses, DeleteSelfReviewMomentErrors, ThrowOnError> => (options.client ?? client).delete<DeleteSelfReviewMomentResponses, DeleteSelfReviewMomentErrors, ThrowOnError>({ url: '/api/v1/self-reviews/{review_id}/notes/{match_key}/moments/{moment_id}', ...options });
+
+/**
+ * Save one timestamped moment on a match in the sitting
+ *
+ * Upserts one observation inside the sitting's note about the match.
+ * Opens the note as `reviewed_only` if this is the first mark on the
+ * match — a moment IS a review of it. The rules are the player's own
+ * moment rules (`MM:SS`, bounded text, the shared focus vocabulary, at
+ * most 50 per match).
+ *
+ * `404` when the match is not in the sitting. `400` for a malformed
+ * clock or a tag outside the vocabulary. `409` when the text is empty
+ * — the body parsed, the refusal is semantic.
+ *
+ */
+export const putSelfReviewMoment = <ThrowOnError extends boolean = false>(options: Options<PutSelfReviewMomentData, ThrowOnError>): RequestResult<PutSelfReviewMomentResponses, PutSelfReviewMomentErrors, ThrowOnError> => (options.client ?? client).put<PutSelfReviewMomentResponses, PutSelfReviewMomentErrors, ThrowOnError>({
+    url: '/api/v1/self-reviews/{review_id}/notes/{match_key}/moments/{moment_id}',
     ...options,
     headers: {
         'Content-Type': 'application/json',

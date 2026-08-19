@@ -6,14 +6,20 @@ import (
 	"recall/pkg/db"
 )
 
-// validReviewers enumerates the two scenarios users can tag a match
-// review with:
-//   - "self"  — the user reviewed the match VOD themselves
-//   - "coach" — a coach reviewed the match VOD with the user
-//
-// The empty string is the third logical state ("not reviewed") and
-// goes through ClearReview, not SetReview.
-var validReviewers = map[string]bool{"self": true, "coach": true}
+// The two scenarios a match review can be tagged with. The empty string
+// is the third logical state ("not reviewed") and goes through
+// ClearReview, not SetReview. Named here, once: pkg/coach's accept writes
+// ReviewedByCoach and pkg/review's finish writes ReviewedBySelf, and the
+// rule between them (the coach mark outranks in both directions) is only
+// legible if both spell the same word.
+const (
+	// ReviewedBySelf — the user reviewed the match themselves.
+	ReviewedBySelf = "self"
+	// ReviewedByCoach — a coach reviewed the match with the user.
+	ReviewedByCoach = "coach"
+)
+
+var validReviewers = map[string]bool{ReviewedBySelf: true, ReviewedByCoach: true}
 
 // ErrInvalidReviewedBy is returned by SetReview when the reviewed_by
 // value isn't 'self' or 'coach'. HTTP handlers map this to 400 —

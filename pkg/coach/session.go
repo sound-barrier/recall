@@ -1,6 +1,8 @@
 package coach
 
 import (
+	"cmp"
+	"slices"
 	"time"
 
 	"recall/pkg/aggregate"
@@ -155,6 +157,13 @@ func BuildRecords(d bundle.DataV2) []match.Record {
 	aggregate.AttachPinned(recs, keySet(d.Pinned))
 	aggregate.AttachReviews(recs, d.Reviews)
 	aggregate.AttachCoachNotes(recs, groupCoachNotes(d.CoachNotes))
+	// The player's own words about their games ride the bundle too — their
+	// timestamped moments and their self-review blocks — and the coach reads
+	// them under their own note. Both went missing here once: the bundle
+	// carried the moments and the room never attached them, and only the
+	// fidelity test's fixture growing a moment made that visible.
+	aggregate.AttachMatchMoments(recs, groupMatchMoments(d.Moments))
+	aggregate.AttachSelfReviewNotes(recs, groupSelfReviewNotes(d.SelfReviews))
 	aggregate.AttachQueues(recs, d.Queues)
 	aggregate.AttachPlayModes(recs, d.PlayModes)
 	aggregate.AttachAmbiguity(recs, nil)
@@ -187,6 +196,43 @@ func keySet(keys []string) map[string]bool {
 	out := make(map[string]bool, len(keys))
 	for _, k := range keys {
 		out[k] = true
+	}
+	return out
+}
+
+func groupMatchMoments(rows []db.MatchMoment) map[string][]db.MatchMoment {
+	out := make(map[string][]db.MatchMoment, len(rows))
+	for _, r := range rows {
+		out[r.MatchKey] = append(out[r.MatchKey], r)
+	}
+	// The store hands moments over in reading order (clock, then place);
+	// the bundle sorts them by id for stable bytes, so re-sort here.
+	for k := range out {
+		slices.SortStableFunc(out[k], func(a, b db.MatchMoment) int {
+			if c := cmp.Compare(a.MatchClock, b.MatchClock); c != 0 {
+				return c
+			}
+			return cmp.Compare(a.SortOrder, b.SortOrder)
+		})
+	}
+	return out
+}
+
+// groupSelfReviewNotes turns the bundle's sittings into the per-match view
+// the aggregator reads — each note carrying its sitting's identity, sorted
+// by sitting the way the store's own read is.
+func groupSelfReviewNotes(reviews []db.SelfReview) map[string][]db.SelfReviewNoteOnMatch {
+	out := map[string][]db.SelfReviewNoteOnMatch{}
+	for _, r := range reviews {
+		for k, n := range r.Notes {
+			n.ReviewID = r.ReviewID
+			out[k] = append(out[k], db.SelfReviewNoteOnMatch{
+				SelfReviewNote: n, ReviewTitle: r.Title, ReviewCreatedAt: r.CreatedAt, ReviewFinishedAt: r.FinishedAt,
+			})
+		}
+	}
+	for k := range out {
+		db.SortSelfReviewNotesBySitting(out[k])
 	}
 	return out
 }

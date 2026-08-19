@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"recall/pkg/bundle"
 	"recall/pkg/db"
 )
 
@@ -60,6 +61,10 @@ func Move(src, dst db.Store, matchKeys []string) error {
 	if err := checkAmbiguityIsSelfContained(source.snap, keep, movedShots); err != nil {
 		return err
 	}
+	moving, err := selfContainedSelfReviews(source.selfReviews, keep)
+	if err != nil {
+		return err
+	}
 
 	resolveDirID := dirIDResolver(dst, source.snap.ScreenshotsDirs)
 	if err := movePhase1Parents(dst, source.snap, keep, resolveDirID); err != nil {
@@ -74,7 +79,58 @@ func Move(src, dst db.Store, matchKeys []string) error {
 	if err := movePhase1Overrides(src, dst, matchKeys); err != nil {
 		return err
 	}
-	return movePhase2DeleteSource(src, matchKeys)
+	if err := movePhase1SelfReviews(dst, moving); err != nil {
+		return err
+	}
+	return movePhase2DeleteSource(src, matchKeys, moving)
+}
+
+// ErrMoveSplitsSelfReview reports a move that would leave a self-review
+// sitting straddling two profiles — some of its matches here, some there —
+// which no profile could open whole again. Like the ambiguity refusal, it
+// fires before anything is written; the caller moves the whole set or none.
+var ErrMoveSplitsSelfReview = errors.New("move would split a self review across profiles")
+
+// selfContainedSelfReviews returns the sittings the move carries: every one
+// whose members are ALL in the moved set. A sitting with SOME members moving
+// is a refusal; one with none stays home untouched.
+func selfContainedSelfReviews(reviews []db.SelfReview, keep map[string]bool) ([]db.SelfReview, error) {
+	var moving []db.SelfReview
+	for _, r := range reviews {
+		in := 0
+		for _, k := range r.MatchKeys {
+			if keep[k] {
+				in++
+			}
+		}
+		switch {
+		case in == 0:
+			continue
+		case in < len(r.MatchKeys):
+			return nil, fmt.Errorf("%w: %q holds %d matches and %d of them are being moved",
+				ErrMoveSplitsSelfReview, r.ReviewID, len(r.MatchKeys), in)
+		}
+		moving = append(moving, r)
+	}
+	return moving, nil
+}
+
+// movePhase1SelfReviews reproduces each carried sitting on the target under
+// its own UUID — header, members in order, notes with their moments — with
+// the instants it had. Idempotent for a retry: a sitting already on the
+// target (a failed phase 2 left the source intact) is left as it is.
+func movePhase1SelfReviews(targetStore db.Store, moving []db.SelfReview) error {
+	for _, r := range moving {
+		if _, present, err := targetStore.LoadSelfReview(r.ReviewID); err != nil {
+			return fmt.Errorf("move: check self review %q on target: %w", r.ReviewID, err)
+		} else if present {
+			continue
+		}
+		if err := bundle.WriteSelfReview(targetStore, r); err != nil {
+			return fmt.Errorf("move: copy self review %q: %w", r.ReviewID, err)
+		}
+	}
+	return nil
 }
 
 // movedFilenames collects every parent-row filename belonging to a moved
@@ -170,6 +226,9 @@ func loadMoveSource(src db.Store) (moveSource, error) {
 	if out.moments, err = src.LoadMatchMoments(); err != nil {
 		return moveSource{}, fmt.Errorf("move: load match moments: %w", err)
 	}
+	if out.selfReviews, err = src.LoadSelfReviews(); err != nil {
+		return moveSource{}, fmt.Errorf("move: load self reviews: %w", err)
+	}
 	return out, nil
 }
 
@@ -185,6 +244,7 @@ type moveSource struct {
 	reviews     map[string]db.ReviewState
 	coachNotes  map[string][]db.MatchCoachNote
 	moments     map[string][]db.MatchMoment
+	selfReviews []db.SelfReview
 }
 
 // dirIDResolver re-maps a source screenshots_dir_id onto the target by
@@ -425,13 +485,20 @@ func copyOverrideRows(targetStore db.Store, k string, d db.UserMatchData, q db.Q
 	return nil
 }
 
-// movePhase2DeleteSource hard-deletes the moved rows from the source.
-// HardDeleteMatch is idempotent on its own, so a partial completion +
-// retry is safe.
-func movePhase2DeleteSource(src db.Store, matchKeys []string) error {
+// movePhase2DeleteSource hard-deletes the moved rows from the source, and
+// the sittings that went with them — HardDeleteMatch takes a match out of
+// its sittings but leaves the sitting itself, which for a move would be an
+// empty shell on the source. HardDeleteMatch and DeleteSelfReview are both
+// idempotent, so a partial completion + retry is safe.
+func movePhase2DeleteSource(src db.Store, matchKeys []string, moved []db.SelfReview) error {
 	for _, k := range matchKeys {
 		if err := src.HardDeleteMatch(k); err != nil {
 			return fmt.Errorf("move: delete source row for %q: %w", k, err)
+		}
+	}
+	for _, r := range moved {
+		if err := src.DeleteSelfReview(r.ReviewID); err != nil {
+			return fmt.Errorf("move: delete source self review %q: %w", r.ReviewID, err)
 		}
 	}
 	return nil

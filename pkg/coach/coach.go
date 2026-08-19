@@ -8,6 +8,7 @@ package coach
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 
 	"recall/pkg/db"
@@ -51,6 +52,13 @@ var (
 	// same distinction ErrEmptyAnnotation already draws on the player side
 	// (and the one schemathesis's positive_data_acceptance check enforces).
 	ErrMomentEmpty = errors.New("coach: a moment needs text")
+	// ErrNoteShape — the kind and the content disagree: a `note` with
+	// neither text nor a tag, or a `reviewed_only` mark carrying text, tags
+	// or a clock. Spec-valid and semantically refused, the same case as
+	// ErrMomentEmpty, so the same 409. It wraps ErrNoteInvalid, so a caller
+	// asking "did the note fail validation" still hears yes; the HTTP ladder
+	// maps it FIRST.
+	ErrNoteShape = fmt.Errorf("%w: kind and content disagree", ErrNoteInvalid)
 	// ErrHandleInvalid — the player handle is blank or too long (400).
 	ErrHandleInvalid = errors.New("coach: invalid player handle")
 	// ErrHandleRequired — the session has no confirmed player handle yet

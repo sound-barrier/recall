@@ -57,3 +57,6 @@ slack "so the next banner would not need a rewrite" — and the gate refused it,
 which is the whole point: a budget sitting above its directory's count is how
 a folder silently regrows what it just shed.
 | 2026-08-18 | reviews-tab | `frontend/src/components/app` | 13 → 14 | `lazy-view.ts`: the loading-skeleton + failed-chunk-reload wrapper carved out of App.vue so the film room inside the Reviews tab shares the tabs' failure surface (a bare `defineAsyncComponent` there rendered an empty tabpanel on a failed chunk). It sits beside the two fallbacks it composes. |
+| 2026-08-18 | reviews-tab | `pkg/db` | 30 → 31 | `store_self_review.go`: the player-authored self-review family (six STRICT tables) beside the coach-authored and coach-received ones — the same responsibility one concern wider. |
+| 2026-08-18 | reviews-tab | `pkg/app` | 47 → 48 | `self_review.go`: the `*App` shell over the new `pkg/review` leaf — gate, store call, broadcast — like every other leaf shell. |
+| 2026-08-18 | reviews-tab | `pkg/cmd` | 19 → 20 | `server_self_review.go`: the `/api/v1/self-reviews` endpoint group. |

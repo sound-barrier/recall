@@ -82,6 +82,12 @@ func seedFullMatch(t *testing.T, s db.Store, key string) {
 		Text: "should have taken the off-angle", FocusTag: "positioning",
 	})
 	mustNoErr(t, err)
+	// A one-match self-review sitting: self-contained, so a move of this key
+	// carries it whole.
+	_, err = s.CreateSelfReview(db.SelfReview{ReviewID: "sitting-" + key, Title: "Sitting over " + key, MatchKeys: []string{key}})
+	mustNoErr(t, err)
+	_, err = s.UpsertSelfReviewNote(db.SelfReviewNote{ReviewID: "sitting-" + key, MatchKey: key, Kind: "note", Text: "my own read"})
+	mustNoErr(t, err)
 }
 
 // sidecarPresence reports, per sidecar table, whether the store still carries
@@ -107,6 +113,8 @@ func sidecarPresence(t *testing.T, s db.Store, key string) map[string]bool {
 	mustNoErr(t, err)
 	moments, err := s.LoadMatchMoments()
 	mustNoErr(t, err)
+	selfNotes, err := s.LoadSelfReviewNotes()
+	mustNoErr(t, err)
 	_, hasAnnotation := annotations[key]
 	_, hasReview := reviews[key]
 	_, hasUserData := userData[key]
@@ -114,15 +122,16 @@ func sidecarPresence(t *testing.T, s db.Store, key string) map[string]bool {
 	_, hasPlayMode := playModes[key]
 	_, hasCoachNote := coachNotes[key]
 	return map[string]bool{
-		"annotation": hasAnnotation,
-		"hidden":     hidden[key],
-		"pinned":     pinned[key],
-		"review":     hasReview,
-		"user_data":  hasUserData,
-		"queue":      hasQueue,
-		"play_mode":  hasPlayMode,
-		"coach_note": hasCoachNote,
-		"moment":     len(moments[key]) > 0,
+		"annotation":       hasAnnotation,
+		"hidden":           hidden[key],
+		"pinned":           pinned[key],
+		"review":           hasReview,
+		"user_data":        hasUserData,
+		"queue":            hasQueue,
+		"play_mode":        hasPlayMode,
+		"coach_note":       hasCoachNote,
+		"moment":           len(moments[key]) > 0,
+		"self_review_note": len(selfNotes[key]) > 0,
 	}
 }
 
@@ -519,5 +528,38 @@ func TestMove_RefusesToStrandAnAmbiguousCandidate(t *testing.T) {
 	}
 	if len(src.Summaries) != 2 {
 		t.Errorf("source has %d rows after a refused move, want 2", len(src.Summaries))
+	}
+}
+
+// A self-review sitting moves whole or not at all. Moving every member
+// carries the sitting under its own id and leaves no shell on the source;
+// moving some of them is refused before anything is written, because a
+// sitting split across profiles could never be opened whole again.
+func TestMove_CarriesAWholeSittingAndRefusesToSplitOne(t *testing.T) {
+	src, target := &dbtest.Fake{}, &dbtest.Fake{}
+	const a, b = "match-2026-03-01T12-00-00", "match-2026-03-02T12-00-00"
+	for _, k := range []string{a, b} {
+		mustNoErr(t, src.UpsertSummary(db.SummaryRow{Filename: k + ".png", MatchKey: k, Map: "rialto"}))
+	}
+	_, err := src.CreateSelfReview(db.SelfReview{ReviewID: "pair", MatchKeys: []string{a, b}, Title: "Both"})
+	mustNoErr(t, err)
+	_, err = src.UpsertSelfReviewNote(db.SelfReviewNote{ReviewID: "pair", MatchKey: a, Kind: "note", Text: "on a"})
+	mustNoErr(t, err)
+
+	if err := profiles.Move(src, target, []string{a}); !errors.Is(err, profiles.ErrMoveSplitsSelfReview) {
+		t.Fatalf("moving half the sitting = %v, want ErrMoveSplitsSelfReview", err)
+	}
+	if len(target.Summaries) != 0 || len(src.Summaries) != 2 {
+		t.Errorf("a refused move wrote or destroyed rows: target %d, source %d", len(target.Summaries), len(src.Summaries))
+	}
+
+	mustNoErr(t, profiles.Move(src, target, []string{a, b}))
+	moved, ok, err := target.LoadSelfReview("pair")
+	mustNoErr(t, err)
+	if !ok || moved.Title != "Both" || len(moved.MatchKeys) != 2 || moved.Notes[a].Text != "on a" {
+		t.Errorf("sitting on the target = %+v (ok=%v), want it whole under its own id", moved, ok)
+	}
+	if left, _ := src.LoadSelfReviews(); len(left) != 0 {
+		t.Errorf("the source kept a shell of the moved sitting: %+v", left)
 	}
 }

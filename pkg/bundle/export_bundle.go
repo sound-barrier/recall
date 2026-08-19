@@ -115,6 +115,12 @@ type DataV2 struct {
 	// user-layer section, which is what lets the layer grow without the
 	// schema string moving — see the note above.
 	Moments []db.MatchMoment `json:"moments,omitempty"`
+	// The player's own saved review sittings, each carried WHOLE — its
+	// UUID, title, summary, instants, the member keys that are in the
+	// bundle, and the notes on those keys. A sitting none of whose members
+	// is included is left out entirely; one whose members are partly
+	// included is carried over the included part. Sorted by review_id.
+	SelfReviews []db.SelfReview `json:"self_reviews,omitempty"`
 }
 
 // ExportBundleOptions controls which matches end up in the bundle.
@@ -305,6 +311,7 @@ func writeBundleData(zw *zip.Writer, t parentTables, user bundleUserLayer, expor
 		Pinned:        user.pinned,
 		CoachNotes:    user.coachNotes,
 		Moments:       user.moments,
+		SelfReviews:   user.selfReviews,
 	}
 	if err := bundleWriteJSON(zw, "data.json", dataDoc, now); err != nil {
 		return fmt.Errorf("export bundle: write data.json: %w", err)

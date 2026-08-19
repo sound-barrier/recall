@@ -467,3 +467,60 @@ type CoachDecision struct {
 	Decision  string // "accepted" | "skipped"
 	DecidedAt string
 }
+
+// SelfReview is one saved sitting in which the player reviewed a set of
+// their OWN matches the way a coach would — the player-AUTHORED family
+// (see schema.sql). ReviewID is a UUID: the wire id and the identity a
+// bundle or a profile move carries, so no integer ever leaves the database.
+// FinishedAt is "" while the review is in progress. Loaded whole: the
+// member keys in the player's order and every note, keyed by match.
+type SelfReview struct {
+	ReviewID   string
+	Title      string
+	Summary    string
+	CreatedAt  string
+	UpdatedAt  string
+	FinishedAt string
+	MatchKeys  []string
+	Notes      map[string]SelfReviewNote
+}
+
+// SelfReviewNote is the player's one note per (review, match): the same
+// per-match record the coach's authored note is, plus its moments in
+// reading order. Kind is 'note' when words were written and
+// 'reviewed_only' when the match was only looked at (or only holds moments).
+type SelfReviewNote struct {
+	ReviewID   string
+	MatchKey   string
+	Kind       string
+	Text       string
+	MatchClock string
+	FocusTags  []string
+	ExtraTags  []string
+	Moments    []SelfReviewMoment
+	CreatedAt  string
+	UpdatedAt  string
+}
+
+// SelfReviewMoment is one timestamped observation inside a self-review
+// note. MomentID is minted by the client and unique within its note.
+type SelfReviewMoment struct {
+	MomentID   string
+	MatchClock string
+	Text       string
+	FocusTag   string
+	SortOrder  int
+	CreatedAt  string
+	UpdatedAt  string
+}
+
+// SelfReviewNoteOnMatch is a self-review note as the match sees it: the
+// note plus the identity of the review it belongs to, which is what the
+// aggregator prints on the block ("Your review · 18 Aug", the title if
+// set) and what a delete addresses.
+type SelfReviewNoteOnMatch struct {
+	SelfReviewNote
+	ReviewTitle      string
+	ReviewCreatedAt  string
+	ReviewFinishedAt string
+}

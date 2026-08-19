@@ -92,6 +92,10 @@ type Fake struct {
 	CoachSummaries   map[int64]db.CoachSummary
 	MatchCoachNotes  []db.MatchCoachNote
 	CoachReturns     []db.CoachReturn
+	// The player's saved self-review sittings, keyed by review_id — match
+	// history like the received layer (wiped by Clear; HardDeleteMatch takes
+	// the match out of every review it was in).
+	SelfReviews map[string]db.SelfReview
 
 	// Inspectable counters / call lists. Tests assert on these to
 	// verify the App layer (or HTTP handlers) actually reached the
@@ -367,10 +371,14 @@ func (f *Fake) Clear() error {
 	f.Ignored = nil
 	f.IgnoredAt = nil
 	f.AllHeroes = nil
+	// The player's own moments are match history too — the SQL Clear wipes
+	// match_moments, and the Fake once did not, which no assertion noticed.
+	f.MatchMoments = nil
 	// The received coach layer is match history; the authored family
 	// (CoachPlayers / CoachNotes / CoachSummaries) deliberately survives.
 	f.MatchCoachNotes = nil
 	f.CoachReturns = nil
+	f.SelfReviews = nil
 	return nil
 }
 
@@ -455,7 +463,11 @@ func (f *Fake) HardDeleteMatch(matchKey string) error {
 	delete(f.UserMatchData, matchKey)
 	delete(f.Queues, matchKey)
 	delete(f.PlayModes, matchKey)
+	// The SQL store deletes match_moments by key; the Fake once left them
+	// behind and nothing swept that surface.
+	delete(f.MatchMoments, matchKey)
 	f.dropCoachLayerForKey(matchKey)
+	f.dropSelfReviewMembershipForKey(matchKey)
 	return nil
 }
 

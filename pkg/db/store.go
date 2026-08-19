@@ -275,6 +275,10 @@ type Store interface {
 	// registry. See store_coach.go.
 	CoachStore
 
+	// The player's saved self-review sittings over their own matches. Match
+	// history like the received coach layer. See store_self_review.go.
+	SelfReviewStore
+
 	// Clear deletes every row in every table — children cascade — EXCEPT the
 	// coach-authored family (coach_players / coach_notes /
 	// coach_session_summaries), which is not match history.

@@ -67,10 +67,49 @@ func playerCorpus(store db.Store) error {
 	if err := store.PinMatch(playerMatchIlios); err != nil {
 		return err
 	}
+	if err := seedReviewFamilies(store); err != nil {
+		return err
+	}
 	mapName, hero, result := "dorado", "lucio", "draw"
 	return store.UpsertUserMatchData(db.UserMatchData{
 		MatchKey: playerMatchManual, Map: &mapName, Hero: &hero, Result: &result,
 	})
+}
+
+// seedReviewFamilies adds the three review families a corpus can carry, so
+// the fidelity test (session records == store-backed import) is a
+// completeness gate over every user-layer surface, not just the ones that
+// existed first: the player's own moment, a coach's accepted block, and a
+// self-review sitting with a note and a moment.
+func seedReviewFamilies(store db.Store) error {
+	if _, err := store.UpsertMatchMoment(db.MatchMoment{
+		MomentID: "player-moment-1", MatchKey: playerMatchRialto, MatchClock: "04:45", Text: "peeled late", FocusTag: "positioning",
+	}); err != nil {
+		return err
+	}
+	if _, err := store.UpsertMatchCoachNote(db.MatchCoachNote{
+		NoteID: "earlier-coach-note", MatchKey: playerMatchIlios, CoachName: "Vex", SessionDate: "2026-05-12",
+		Text: "hold the high ground", FocusTags: []string{"positioning"}, AcceptedAt: "2026-05-13T09:00:00Z",
+	}); err != nil {
+		return err
+	}
+	sitting, err := store.CreateSelfReview(db.SelfReview{
+		ReviewID: "self-review-1", Title: "May sitting", CreatedAt: "2026-05-14T18:00:00Z", UpdatedAt: "2026-05-14T18:30:00Z",
+		MatchKeys: []string{playerMatchRialto, playerMatchIlios},
+	})
+	if err != nil {
+		return err
+	}
+	if _, err := store.UpsertSelfReviewNote(db.SelfReviewNote{
+		ReviewID: sitting.ReviewID, MatchKey: playerMatchRialto, Kind: "note", Text: "my own read",
+		FocusTags: []string{"cooldowns"}, CreatedAt: "2026-05-14T18:10:00Z", UpdatedAt: "2026-05-14T18:10:00Z",
+	}); err != nil {
+		return err
+	}
+	_, err = store.UpsertSelfReviewMoment(sitting.ReviewID, playerMatchRialto, db.SelfReviewMoment{
+		MomentID: "self-moment-1", MatchClock: "06:40", Text: "should have held", CreatedAt: "2026-05-14T18:12:00Z", UpdatedAt: "2026-05-14T18:12:00Z",
+	})
+	return err
 }
 
 // playerBundleOpts is the selection every fixture bundle exports.

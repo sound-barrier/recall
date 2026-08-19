@@ -19,6 +19,7 @@ type bundleUserLayer struct {
 	pinned      []string
 	coachNotes  []db.MatchCoachNote
 	moments     []db.MatchMoment
+	selfReviews []db.SelfReview
 }
 
 // loadBundleUserLayer gathers every user-layer surface for the included
@@ -38,7 +39,46 @@ func loadBundleUserLayer(store db.Store, include map[string]struct{}) (bundleUse
 		return bundleUserLayer{}, fmt.Errorf("export bundle: load match moments: %w", err)
 	}
 	layer.moments = sortedIncludedMoments(moments, include)
+	selfReviews, err := store.LoadSelfReviews()
+	if err != nil {
+		return bundleUserLayer{}, fmt.Errorf("export bundle: load self reviews: %w", err)
+	}
+	layer.selfReviews = includedSelfReviews(selfReviews, include)
 	return layer, nil
+}
+
+// includedSelfReviews narrows each sitting to the included keys — members
+// and notes alike — and drops a sitting with no included member. The
+// sitting travels under its own UUID, so a re-import updates in place.
+func includedSelfReviews(reviews []db.SelfReview, include map[string]struct{}) []db.SelfReview {
+	var out []db.SelfReview
+	for _, r := range reviews {
+		narrowed := narrowSelfReview(r, func(k string) bool { _, ok := include[k]; return ok })
+		if len(narrowed.MatchKeys) == 0 {
+			continue
+		}
+		out = append(out, narrowed)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ReviewID < out[j].ReviewID })
+	return out
+}
+
+// narrowSelfReview keeps the members (in order) and notes that pass keep.
+func narrowSelfReview(r db.SelfReview, keep func(string) bool) db.SelfReview {
+	out := r
+	out.MatchKeys = nil
+	out.Notes = map[string]db.SelfReviewNote{}
+	for _, k := range r.MatchKeys {
+		if keep(k) {
+			out.MatchKeys = append(out.MatchKeys, k)
+		}
+	}
+	for k, n := range r.Notes {
+		if keep(k) {
+			out.Notes[k] = n
+		}
+	}
+	return out
 }
 
 // sortedIncludedMoments collects the player's own timestamped moments for the

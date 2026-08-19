@@ -82,6 +82,7 @@ var sentinels = []sentinel{
 	{"ErrMatchKeyExists", app.ErrMatchKeyExists, "a match already exists for that time; pick a different minute"},
 	{"ErrMatchKeyRequired", app.ErrMatchKeyRequired, "match_key required"},
 	{"ErrMoveStrandsCandidate", app.ErrMoveStrandsCandidate, ""}, // re-export of a leaf sentinel; message owned there
+	{"ErrMoveSplitsSelfReview", app.ErrMoveSplitsSelfReview, ""}, // re-export of a leaf sentinel; message owned there
 	{"ErrMoveTargetIsActive", app.ErrMoveTargetIsActive, ""},     // re-export of a leaf sentinel; message owned there
 	{"ErrNoFailedFiles", app.ErrNoFailedFiles, "no failed files to bundle"},
 	{"ErrNoParseInFlight", app.ErrNoParseInFlight, "no parse in flight"},
@@ -267,6 +268,7 @@ func carvedSentinels() []carvedSentinel {
 		{"ErrInvalidProfileName", app.ErrInvalidProfileName, profiles.ErrInvalidProfileName},
 		{"ErrMoveTargetIsActive", app.ErrMoveTargetIsActive, profiles.ErrMoveTargetIsActive},
 		{"ErrMoveStrandsCandidate", app.ErrMoveStrandsCandidate, profiles.ErrMoveStrandsCandidate},
+		{"ErrMoveSplitsSelfReview", app.ErrMoveSplitsSelfReview, profiles.ErrMoveSplitsSelfReview},
 		{"ErrDataUpdateMalformed", app.ErrDataUpdateMalformed, gamedata.ErrDataUpdateMalformed},
 		{"ErrDataUpdateChecksum", app.ErrDataUpdateChecksum, gamedata.ErrDataUpdateChecksum},
 		{"ErrDataUpdateIO", app.ErrDataUpdateIO, gamedata.ErrDataUpdateIO},

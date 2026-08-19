@@ -52,6 +52,7 @@ type Sidecars struct {
 	Pinned      map[string]bool
 	CoachNotes  map[string][]db.MatchCoachNote
 	Moments     map[string][]db.MatchMoment
+	SelfReviews map[string][]db.SelfReviewNoteOnMatch
 }
 
 func MatchKey(key string, snap db.Screenshots, sc Sidecars) (match.Record, bool) {
@@ -113,6 +114,9 @@ func attachMatchSidecars(rec *match.Record, key string, snap db.Screenshots, sc 
 	}
 	if rows, ok := sc.Moments[key]; ok && len(rows) > 0 {
 		rec.Moments = MatchMomentsFromRows(rows)
+	}
+	if rows, ok := sc.SelfReviews[key]; ok {
+		rec.SelfReviewNotes = selfReviewNotesFromRows(rows)
 	}
 	attachMatchAmbiguity(rec, key, snap.AmbiguousCandidates)
 }

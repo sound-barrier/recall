@@ -806,8 +806,10 @@ export type CoachMatchContext = {
  * deduplicated case-insensitively.
  *
  * Kind rules: a `reviewed_only` mark must carry no text, tags, or
- * clock, and a `note` must carry text or at least one tag. Violations
- * are `400`.
+ * clock, and a `note` must carry text or at least one tag. A body
+ * whose kind and content disagree is `409` — spec-valid, semantically
+ * refused; everything else the rules refuse (a bad clock, a tag outside
+ * the vocabulary, over-long text) is `400`.
  *
  */
 export type CoachNoteInput = {
@@ -1159,6 +1161,108 @@ export type MatchCoachNote = {
 };
 
 /**
+ * One self-review sitting, whole: the header, the member keys in the
+ * player's order, and the notes keyed by match. `finished_at` is
+ * absent while the sitting is in progress.
+ *
+ */
+export type SelfReview = {
+    review_id: string;
+    title: string;
+    /**
+     * The set-level note — "what to work on".
+     */
+    summary: string;
+    /**
+     * RFC3339.
+     */
+    created_at: string;
+    /**
+     * RFC3339. Moves on every live write to the sitting.
+     */
+    updated_at: string;
+    /**
+     * RFC3339. Absent while in progress.
+     */
+    finished_at?: string;
+    /**
+     * The set, in the player's order.
+     */
+    match_keys: Array<string>;
+    /**
+     * The sitting's notes, keyed by `match_key`.
+     */
+    notes: {
+        [key: string]: SelfReviewNote;
+    };
+};
+
+/**
+ * The sitting's note about one match — the coach note's shape (the
+ * room's editor is one component), moments included, in reading
+ * order. `kind` is `reviewed_only` when the match was only looked at
+ * (or only holds moments).
+ *
+ */
+export type SelfReviewNote = {
+    match_key: string;
+    kind: CoachNoteKindEnum;
+    text: string;
+    focus_tags: Array<CoachFocusTagEnum>;
+    extra_tags: Array<string>;
+    match_clock: string;
+    /**
+     * Absent rather than empty when there are none.
+     */
+    moments?: Array<CoachMoment>;
+    created_at: string;
+    updated_at: string;
+};
+
+export type SelfReviewCreateInput = {
+    title?: string;
+    match_keys: Array<string>;
+};
+
+export type SelfReviewUpdateInput = {
+    title: string;
+    summary: string;
+};
+
+export type SelfReviewMatchesInput = {
+    match_keys: Array<string>;
+};
+
+/**
+ * One block a match carries from one of the player's own review
+ * sittings — what they wrote there, and which sitting it was. A
+ * sibling of `coach_notes[]`, never merged into it: the two families
+ * are separate on disk and in the bundle, and stay separate here.
+ * `review_finished_at` is absent while the sitting is in progress
+ * (the block reads "in progress").
+ *
+ */
+export type MatchSelfReviewNote = {
+    review_id: string;
+    review_title?: string;
+    review_created_at: string;
+    review_finished_at?: string;
+    kind: CoachNoteKindEnum;
+    text: string;
+    match_clock?: string;
+    /**
+     * Absent when the note carried none, like a coach block's.
+     */
+    focus_tags?: Array<CoachFocusTagEnum>;
+    extra_tags?: Array<string>;
+    /**
+     * In reading order; absent rather than empty.
+     */
+    moments?: Array<CoachMoment>;
+    updated_at: string;
+};
+
+/**
  * One match — assembled by JOINing the per-screenshot-type rows
  * that share the same `match_key`. Identity is `match_key`; no
  * separate `id` exists because no single row underlies a match
@@ -1334,6 +1438,13 @@ export type MatchRecord = {
      *
      */
     moments?: Array<CoachMoment>;
+    /**
+     * The notes the player wrote about this match in their own saved
+     * review sittings — one block per sitting, oldest sitting first.
+     * Omitted for matches no sitting has touched.
+     *
+     */
+    self_review_notes?: Array<MatchSelfReviewNote>;
 };
 
 /**
@@ -1683,6 +1794,14 @@ export type CloseBehaviorFlag = {
  *
  */
 export type MatchKey = string;
+
+/**
+ * A self-review sitting's id — a UUID minted on create. It is also the
+ * identity a share bundle and a profile move carry the sitting under,
+ * so a re-import updates the same sitting instead of duplicating it.
+ *
+ */
+export type ReviewId = string;
 
 /**
  * Identity of a staged return sheet, as `CoachReturnSheet.id`
@@ -4969,6 +5088,551 @@ export type SetCoachingSettingsResponses = {
 };
 
 export type SetCoachingSettingsResponse = SetCoachingSettingsResponses[keyof SetCoachingSettingsResponses];
+
+export type ListSelfReviewsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/self-reviews';
+};
+
+export type ListSelfReviewsErrors = {
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type ListSelfReviewsError = ListSelfReviewsErrors[keyof ListSelfReviewsErrors];
+
+export type ListSelfReviewsResponses = {
+    /**
+     * The sittings.
+     */
+    200: Array<SelfReview>;
+};
+
+export type ListSelfReviewsResponse = ListSelfReviewsResponses[keyof ListSelfReviewsResponses];
+
+export type CreateSelfReviewData = {
+    body: SelfReviewCreateInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/self-reviews';
+};
+
+export type CreateSelfReviewErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type CreateSelfReviewError = CreateSelfReviewErrors[keyof CreateSelfReviewErrors];
+
+export type CreateSelfReviewResponses = {
+    /**
+     * The sitting, as created.
+     */
+    201: SelfReview;
+};
+
+export type CreateSelfReviewResponse = CreateSelfReviewResponses[keyof CreateSelfReviewResponses];
+
+export type DeleteSelfReviewData = {
+    body?: never;
+    path: {
+        /**
+         * A self-review sitting's id — a UUID minted on create. It is also the
+         * identity a share bundle and a profile move carry the sitting under,
+         * so a re-import updates the same sitting instead of duplicating it.
+         *
+         */
+        review_id: string;
+    };
+    query?: never;
+    url: '/api/v1/self-reviews/{review_id}';
+};
+
+export type DeleteSelfReviewErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type DeleteSelfReviewError = DeleteSelfReviewErrors[keyof DeleteSelfReviewErrors];
+
+export type DeleteSelfReviewResponses = {
+    /**
+     * Sitting removed (or never existed).
+     */
+    204: void;
+};
+
+export type DeleteSelfReviewResponse = DeleteSelfReviewResponses[keyof DeleteSelfReviewResponses];
+
+export type GetSelfReviewData = {
+    body?: never;
+    path: {
+        /**
+         * A self-review sitting's id — a UUID minted on create. It is also the
+         * identity a share bundle and a profile move carry the sitting under,
+         * so a re-import updates the same sitting instead of duplicating it.
+         *
+         */
+        review_id: string;
+    };
+    query?: never;
+    url: '/api/v1/self-reviews/{review_id}';
+};
+
+export type GetSelfReviewErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type GetSelfReviewError = GetSelfReviewErrors[keyof GetSelfReviewErrors];
+
+export type GetSelfReviewResponses = {
+    /**
+     * The sitting.
+     */
+    200: SelfReview;
+};
+
+export type GetSelfReviewResponse = GetSelfReviewResponses[keyof GetSelfReviewResponses];
+
+export type UpdateSelfReviewData = {
+    body: SelfReviewUpdateInput;
+    path: {
+        /**
+         * A self-review sitting's id — a UUID minted on create. It is also the
+         * identity a share bundle and a profile move carry the sitting under,
+         * so a re-import updates the same sitting instead of duplicating it.
+         *
+         */
+        review_id: string;
+    };
+    query?: never;
+    url: '/api/v1/self-reviews/{review_id}';
+};
+
+export type UpdateSelfReviewErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type UpdateSelfReviewError = UpdateSelfReviewErrors[keyof UpdateSelfReviewErrors];
+
+export type UpdateSelfReviewResponses = {
+    /**
+     * The sitting, as updated.
+     */
+    200: SelfReview;
+};
+
+export type UpdateSelfReviewResponse = UpdateSelfReviewResponses[keyof UpdateSelfReviewResponses];
+
+export type SetSelfReviewMatchesData = {
+    body: SelfReviewMatchesInput;
+    path: {
+        /**
+         * A self-review sitting's id — a UUID minted on create. It is also the
+         * identity a share bundle and a profile move carry the sitting under,
+         * so a re-import updates the same sitting instead of duplicating it.
+         *
+         */
+        review_id: string;
+    };
+    query?: never;
+    url: '/api/v1/self-reviews/{review_id}/matches';
+};
+
+export type SetSelfReviewMatchesErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type SetSelfReviewMatchesError = SetSelfReviewMatchesErrors[keyof SetSelfReviewMatchesErrors];
+
+export type SetSelfReviewMatchesResponses = {
+    /**
+     * The sitting over its new set.
+     */
+    200: SelfReview;
+};
+
+export type SetSelfReviewMatchesResponse = SetSelfReviewMatchesResponses[keyof SetSelfReviewMatchesResponses];
+
+export type FinishSelfReviewData = {
+    body?: never;
+    path: {
+        /**
+         * A self-review sitting's id — a UUID minted on create. It is also the
+         * identity a share bundle and a profile move carry the sitting under,
+         * so a re-import updates the same sitting instead of duplicating it.
+         *
+         */
+        review_id: string;
+    };
+    query?: never;
+    url: '/api/v1/self-reviews/{review_id}/completion';
+};
+
+export type FinishSelfReviewErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type FinishSelfReviewError = FinishSelfReviewErrors[keyof FinishSelfReviewErrors];
+
+export type FinishSelfReviewResponses = {
+    /**
+     * The finished sitting.
+     */
+    200: SelfReview;
+};
+
+export type FinishSelfReviewResponse = FinishSelfReviewResponses[keyof FinishSelfReviewResponses];
+
+export type DeleteSelfReviewNoteData = {
+    body?: never;
+    path: {
+        /**
+         * A self-review sitting's id — a UUID minted on create. It is also the
+         * identity a share bundle and a profile move carry the sitting under,
+         * so a re-import updates the same sitting instead of duplicating it.
+         *
+         */
+        review_id: string;
+        /**
+         * Match identity — same `match_key` value exposed in
+         * `MatchRecord`. URL-safe: the canonical form replaces every
+         * legacy colon separator with a dash, so no percent-encoding
+         * is required for paste-in-URL use
+         * (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+         * and `ambiguous-<filename>` variants the embedded filename
+         * still needs the usual encoding for spaces / unicode.
+         *
+         */
+        match_key: string;
+    };
+    query?: never;
+    url: '/api/v1/self-reviews/{review_id}/notes/{match_key}';
+};
+
+export type DeleteSelfReviewNoteErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type DeleteSelfReviewNoteError = DeleteSelfReviewNoteErrors[keyof DeleteSelfReviewNoteErrors];
+
+export type DeleteSelfReviewNoteResponses = {
+    /**
+     * Note removed (or never existed).
+     */
+    204: void;
+};
+
+export type DeleteSelfReviewNoteResponse = DeleteSelfReviewNoteResponses[keyof DeleteSelfReviewNoteResponses];
+
+export type PutSelfReviewNoteData = {
+    body: CoachNoteInput;
+    path: {
+        /**
+         * A self-review sitting's id — a UUID minted on create. It is also the
+         * identity a share bundle and a profile move carry the sitting under,
+         * so a re-import updates the same sitting instead of duplicating it.
+         *
+         */
+        review_id: string;
+        /**
+         * Match identity — same `match_key` value exposed in
+         * `MatchRecord`. URL-safe: the canonical form replaces every
+         * legacy colon separator with a dash, so no percent-encoding
+         * is required for paste-in-URL use
+         * (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+         * and `ambiguous-<filename>` variants the embedded filename
+         * still needs the usual encoding for spaces / unicode.
+         *
+         */
+        match_key: string;
+    };
+    query?: never;
+    url: '/api/v1/self-reviews/{review_id}/notes/{match_key}';
+};
+
+export type PutSelfReviewNoteErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type PutSelfReviewNoteError = PutSelfReviewNoteErrors[keyof PutSelfReviewNoteErrors];
+
+export type PutSelfReviewNoteResponses = {
+    /**
+     * The saved note, moments included.
+     */
+    200: SelfReviewNote;
+};
+
+export type PutSelfReviewNoteResponse = PutSelfReviewNoteResponses[keyof PutSelfReviewNoteResponses];
+
+export type DeleteSelfReviewMomentData = {
+    body?: never;
+    path: {
+        /**
+         * A self-review sitting's id — a UUID minted on create. It is also the
+         * identity a share bundle and a profile move carry the sitting under,
+         * so a re-import updates the same sitting instead of duplicating it.
+         *
+         */
+        review_id: string;
+        /**
+         * Match identity — same `match_key` value exposed in
+         * `MatchRecord`. URL-safe: the canonical form replaces every
+         * legacy colon separator with a dash, so no percent-encoding
+         * is required for paste-in-URL use
+         * (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+         * and `ambiguous-<filename>` variants the embedded filename
+         * still needs the usual encoding for spaces / unicode.
+         *
+         */
+        match_key: string;
+        /**
+         * The moment's own id. The CLIENT mints it, for the same reason the
+         * coach's moment id is client-minted: the autosave keys on it from
+         * the first keystroke.
+         *
+         */
+        moment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/self-reviews/{review_id}/notes/{match_key}/moments/{moment_id}';
+};
+
+export type DeleteSelfReviewMomentErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type DeleteSelfReviewMomentError = DeleteSelfReviewMomentErrors[keyof DeleteSelfReviewMomentErrors];
+
+export type DeleteSelfReviewMomentResponses = {
+    /**
+     * Moment removed (or never existed).
+     */
+    204: void;
+};
+
+export type DeleteSelfReviewMomentResponse = DeleteSelfReviewMomentResponses[keyof DeleteSelfReviewMomentResponses];
+
+export type PutSelfReviewMomentData = {
+    body: CoachMomentInput;
+    path: {
+        /**
+         * A self-review sitting's id — a UUID minted on create. It is also the
+         * identity a share bundle and a profile move carry the sitting under,
+         * so a re-import updates the same sitting instead of duplicating it.
+         *
+         */
+        review_id: string;
+        /**
+         * Match identity — same `match_key` value exposed in
+         * `MatchRecord`. URL-safe: the canonical form replaces every
+         * legacy colon separator with a dash, so no percent-encoding
+         * is required for paste-in-URL use
+         * (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+         * and `ambiguous-<filename>` variants the embedded filename
+         * still needs the usual encoding for spaces / unicode.
+         *
+         */
+        match_key: string;
+        /**
+         * The moment's own id. The CLIENT mints it, for the same reason the
+         * coach's moment id is client-minted: the autosave keys on it from
+         * the first keystroke.
+         *
+         */
+        moment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/self-reviews/{review_id}/notes/{match_key}/moments/{moment_id}';
+};
+
+export type PutSelfReviewMomentErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type PutSelfReviewMomentError = PutSelfReviewMomentErrors[keyof PutSelfReviewMomentErrors];
+
+export type PutSelfReviewMomentResponses = {
+    /**
+     * The saved moment.
+     */
+    200: CoachMoment;
+};
+
+export type PutSelfReviewMomentResponse = PutSelfReviewMomentResponses[keyof PutSelfReviewMomentResponses];
 
 export type EventsData = {
     body?: never;

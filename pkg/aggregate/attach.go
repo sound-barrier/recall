@@ -260,6 +260,67 @@ func AttachCoachNotes(recs []match.Record, notes map[string][]db.MatchCoachNote)
 	}
 }
 
+// AttachSelfReviewNotes grafts the player's own review sittings' blocks —
+// every note they wrote about the match in a saved self review, oldest
+// sitting first — onto the records. Match-key lookup; missing → nil.
+func AttachSelfReviewNotes(recs []match.Record, notes map[string][]db.SelfReviewNoteOnMatch) {
+	if len(notes) == 0 {
+		return
+	}
+	for i := range recs {
+		if rows, ok := notes[recs[i].MatchKey]; ok {
+			recs[i].SelfReviewNotes = selfReviewNotesFromRows(rows)
+		}
+	}
+}
+
+// selfReviewNotesFromRows converts a match's self-review blocks wholesale,
+// keeping the store's order; nil for none so the field stays off the wire.
+func selfReviewNotesFromRows(rows []db.SelfReviewNoteOnMatch) []match.SelfReviewNote {
+	if len(rows) == 0 {
+		return nil
+	}
+	out := make([]match.SelfReviewNote, 0, len(rows))
+	for _, n := range rows {
+		out = append(out, selfReviewNoteFromRow(n))
+	}
+	return out
+}
+
+func selfReviewNoteFromRow(n db.SelfReviewNoteOnMatch) match.SelfReviewNote {
+	return match.SelfReviewNote{
+		ReviewID:         n.ReviewID,
+		ReviewTitle:      n.ReviewTitle,
+		ReviewCreatedAt:  n.ReviewCreatedAt,
+		ReviewFinishedAt: n.ReviewFinishedAt,
+		Kind:             n.Kind,
+		Text:             n.Text,
+		MatchClock:       n.MatchClock,
+		FocusTags:        n.FocusTags,
+		ExtraTags:        n.ExtraTags,
+		Moments:          selfReviewMomentsFromRows(n.Moments),
+		UpdatedAt:        n.UpdatedAt,
+	}
+}
+
+// selfReviewMomentsFromRows converts a self-review note's moments; nil for
+// none, like the coach block's.
+func selfReviewMomentsFromRows(rows []db.SelfReviewMoment) []match.CoachNoteMoment {
+	if len(rows) == 0 {
+		return nil
+	}
+	out := make([]match.CoachNoteMoment, 0, len(rows))
+	for _, m := range rows {
+		out = append(out, match.CoachNoteMoment{
+			MomentID:   m.MomentID,
+			MatchClock: m.MatchClock,
+			Text:       m.Text,
+			FocusTag:   m.FocusTag,
+		})
+	}
+	return out
+}
+
 // AttachMatchMoments grafts the PLAYER's own timestamped moments onto the
 // records. Distinct from the coach layer above: these are the player's words
 // about their own match, and the store already loads them in reading order.

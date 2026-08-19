@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"recall/pkg/db"
+	"recall/pkg/matchedit"
 )
 
 // ReturnStore is the player-side persistence a returned notes file needs:
@@ -42,8 +43,9 @@ const (
 )
 
 // reviewedByCoach is the match_reviews value an accept writes — the coach
-// overwrites a self review (rule 11).
-const reviewedByCoach = "coach"
+// overwrites a self review (rule 11). The word is matchedit's, so the
+// self-review finish that must NOT overwrite it compares the same constant.
+const reviewedByCoach = matchedit.ReviewedByCoach
 
 // ReturnSheet is one staged notes file as GET /coach/returns renders it:
 // the header, every note with its status, and the decisions so far.

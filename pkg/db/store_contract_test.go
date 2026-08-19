@@ -85,6 +85,12 @@ func seedFullMatch(t *testing.T, s db.Store, key, filename string) {
 		Text: "hold high ground", FocusTags: []string{"positioning"},
 	})
 	mustNoErr(t, err)
+	_, err = s.UpsertMatchMoment(db.MatchMoment{MomentID: "moment-" + filename, MatchKey: key, MatchClock: "04:45", Text: "peeled late"})
+	mustNoErr(t, err)
+	review, err := s.CreateSelfReview(db.SelfReview{ReviewID: "review-" + filename, Title: "Sunday set", MatchKeys: []string{key}})
+	mustNoErr(t, err)
+	_, err = s.UpsertSelfReviewNote(db.SelfReviewNote{ReviewID: review.ReviewID, MatchKey: key, Kind: "note", Text: "held the choke"})
+	mustNoErr(t, err)
 }
 
 // HardDeleteMatch's contract: NO trace remains on any surface. The Fake
@@ -138,6 +144,27 @@ func assertNoTraceRemains(t *testing.T, s db.Store) {
 	if notes, _ := s.LoadMatchCoachNotes(); len(notes) != 0 {
 		t.Errorf("received coach notes survived: %v", notes)
 	}
+	assertNoReviewFamilyTraceRemains(t, s)
+}
+
+// assertNoReviewFamilyTraceRemains sweeps two surfaces the original sweep
+// never checked, and the Fake drifted on the first: the player's own
+// moments, and their self-review notes. The review itself SURVIVES a hard
+// delete (it is a fact about the sitting) — only the membership and the
+// note go.
+func assertNoReviewFamilyTraceRemains(t *testing.T, s db.Store) {
+	t.Helper()
+	if moments, _ := s.LoadMatchMoments(); len(moments) != 0 {
+		t.Errorf("match moments survived: %v", moments)
+	}
+	if notes, _ := s.LoadSelfReviewNotes(); len(notes) != 0 {
+		t.Errorf("self review notes survived: %v", notes)
+	}
+	reviews, err := s.LoadSelfReviews()
+	mustNoErr(t, err)
+	if len(reviews) != 1 || len(reviews[0].MatchKeys) != 0 || len(reviews[0].Notes) != 0 {
+		t.Errorf("self review after hard delete = %+v, want the review kept with no members and no notes", reviews)
+	}
 }
 
 // Clear's contract: every surface empties, and the store remains usable
@@ -181,6 +208,12 @@ func assertClearedSurfaces(t *testing.T, s db.Store) {
 	}
 	if notes, _ := s.LoadMatchCoachNotes(); len(notes) != 0 {
 		t.Errorf("received coach notes survived Clear: %v", notes)
+	}
+	if moments, _ := s.LoadMatchMoments(); len(moments) != 0 {
+		t.Errorf("match moments survived Clear: %v", moments)
+	}
+	if reviews, _ := s.LoadSelfReviews(); len(reviews) != 0 {
+		t.Errorf("self reviews survived Clear: %v", reviews)
 	}
 }
 

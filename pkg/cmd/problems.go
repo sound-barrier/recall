@@ -11,6 +11,7 @@ import (
 	"recall/pkg/coach"
 	"recall/pkg/db"
 	"recall/pkg/match"
+	"recall/pkg/review"
 )
 
 // RFC 9457 problem+json errors — the one place an app-layer error becomes
@@ -140,6 +141,13 @@ var defaultProblems = []errStatus{
 	{coach.ErrMatchNotInSession, probNotFound},
 	{db.ErrCoachReturnUnknown, probNotFound},
 	{db.ErrMatchCoachNoteUnknown, probNotFound},
+	{review.ErrNotFound, probNotFound},
+	{review.ErrMatchNotInReview, probNotFound},
+
+	// 409 first for the one wrapped pair: a kind/content mismatch wraps
+	// ErrNoteInvalid (400 below), and the semantic refusal is the rung that
+	// must win.
+	{coach.ErrNoteShape, probConflict},
 
 	// 400 — the request body doesn't hold up.
 	// An empty match key is malformed input, not a server fault. The
@@ -151,6 +159,7 @@ var defaultProblems = []errStatus{
 	{coach.ErrHandleInvalid, probInvalidBody},
 	{coach.ErrNotesMalformed, probInvalidBody},
 	{app.ErrCoachNameInvalid, probInvalidBody},
+	{review.ErrTitleInvalid, probInvalidBody},
 
 	// 409 — the body parses, the state or its semantics refuse the action.
 	{coach.ErrSessionActive, probConflict},
@@ -162,6 +171,7 @@ var defaultProblems = []errStatus{
 	{coach.ErrHandleRequired, probConflict},
 	{coach.ErrCoachNameRequired, probConflict},
 	{coach.ErrNothingToExport, probConflict},
+	{review.ErrNoMatches, probConflict},
 }
 
 // writeError writes err to w as an RFC 9457 problem and reports whether it wrote

@@ -67,6 +67,9 @@ func Import(store db.Store, payload []byte) (ImportSummary, error) {
 	if err := requireCoachNoteIDs(data.CoachNotes); err != nil {
 		return ImportSummary{}, err
 	}
+	if err := requireSelfReviewIDs(data.SelfReviews); err != nil {
+		return ImportSummary{}, err
+	}
 
 	existing, err := existingMatchKeys(store)
 	if err != nil {
@@ -131,7 +134,60 @@ func importUserLayer(store db.Store, data DataV2, existing map[string]bool) erro
 	if err := importMatchMoments(store, data.Moments, existing); err != nil {
 		return err
 	}
-	return importCoachNotes(store, data.CoachNotes, existing)
+	if err := importCoachNotes(store, data.CoachNotes, existing); err != nil {
+		return err
+	}
+	return importSelfReviews(store, data.SelfReviews, existing)
+}
+
+// importSelfReviews brings the player's sittings in under their own UUIDs.
+// The same rule as every section: a match already in this history keeps
+// what it has, so a sitting is narrowed to the keys the import is bringing
+// in — members and notes alike — and dropped whole when none survives,
+// never left as an orphan block. A sitting whose UUID is already here is
+// left alone (a re-import doubles nothing).
+func importSelfReviews(store db.Store, reviews []db.SelfReview, existing map[string]bool) error {
+	for _, r := range reviews {
+		if _, present, err := store.LoadSelfReview(r.ReviewID); err != nil {
+			return fmt.Errorf("import: self review %q: %w", r.ReviewID, err)
+		} else if present {
+			continue
+		}
+		narrowed := narrowSelfReview(r, func(k string) bool { return !existing[k] })
+		if len(narrowed.MatchKeys) == 0 {
+			continue
+		}
+		if err := WriteSelfReview(store, narrowed); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// WriteSelfReview reproduces one sitting on the store: the parent with its
+// identity and instants, then every note with its moments. Exported for the
+// profile move, which carries a sitting between profiles the same way an
+// import carries it between machines.
+func WriteSelfReview(store db.Store, r db.SelfReview) error {
+	if _, err := store.CreateSelfReview(r); err != nil {
+		return fmt.Errorf("import: self review %q: %w", r.ReviewID, err)
+	}
+	for _, k := range r.MatchKeys {
+		n, ok := r.Notes[k]
+		if !ok {
+			continue
+		}
+		n.ReviewID = r.ReviewID
+		if _, err := store.UpsertSelfReviewNote(n); err != nil {
+			return fmt.Errorf("import: self review note %q/%q: %w", r.ReviewID, k, err)
+		}
+		for _, m := range n.Moments {
+			if _, err := store.UpsertSelfReviewMoment(r.ReviewID, k, m); err != nil {
+				return fmt.Errorf("import: self review moment %q/%q/%q: %w", r.ReviewID, k, m.MomentID, err)
+			}
+		}
+	}
+	return nil
 }
 
 // importMatchMoments writes the player's own timestamped moments for keys the
@@ -173,6 +229,25 @@ func requireCoachNoteIDs(notes []db.MatchCoachNote) error {
 	for i, n := range notes {
 		if n.NoteID == "" {
 			return fmt.Errorf("import: coach_notes[%d] missing required note_id", i)
+		}
+	}
+	return nil
+}
+
+// requireSelfReviewIDs is the same guard for the sittings: a review_id is
+// the identity the import dedupes on and the store keys on, and a note or
+// moment inside carries its own key and id the same way.
+func requireSelfReviewIDs(reviews []db.SelfReview) error {
+	for i, r := range reviews {
+		if r.ReviewID == "" {
+			return fmt.Errorf("import: self_reviews[%d] missing required review_id", i)
+		}
+		for k, n := range r.Notes {
+			for j, m := range n.Moments {
+				if m.MomentID == "" {
+					return fmt.Errorf("import: self_reviews[%d] note %q moments[%d] missing required moment_id", i, k, j)
+				}
+			}
 		}
 	}
 	return nil

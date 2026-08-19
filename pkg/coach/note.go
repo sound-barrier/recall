@@ -110,12 +110,12 @@ func validateKindShape(in NoteInput) error {
 	hasTags := len(in.FocusTags) > 0 || len(in.ExtraTags) > 0
 	if in.Kind == KindReviewedOnly {
 		if in.Text != "" || hasTags || in.MatchClock != "" {
-			return fmt.Errorf("%w: a reviewed_only mark carries no text, tags, or clock", ErrNoteInvalid)
+			return fmt.Errorf("%w: a reviewed_only mark carries no text, tags, or clock", ErrNoteShape)
 		}
 		return nil
 	}
 	if in.Text == "" && !hasTags {
-		return fmt.Errorf("%w: a note cannot be empty — add text or a tag", ErrNoteInvalid)
+		return fmt.Errorf("%w: a note cannot be empty — add text or a tag", ErrNoteShape)
 	}
 	return nil
 }

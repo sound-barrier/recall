@@ -68,7 +68,10 @@
 #
 # Do NOT reach a lower number by carving out eight two-file packages. That
 # trades one bad shape for a worse one, and the CLAUDE.md rule says so.
-pkg/app                                       47
+# 48 as of the Reviews tab: self_review.go, the shell over the pkg/review leaf
+# (the player's saved review sittings) — the same shape as the other leaf
+# shells: the write gate first, the store call, the match broadcast.
+pkg/app                                       48
 
 # pkg/db — the SQLite store: schema + additive-column registry, the migration
 # engine, per-screenshot-type CRUD, the Store interface and its *SQLStore
@@ -76,8 +79,11 @@ pkg/app                                       47
 # responsibility ("own the database") spelled file-per-concern behind one small
 # exported API, and it must not be split to chase a number. Embedded assets are
 # not counted, which keeps migrations/ — an append-only ledger that grows
-# forever by design — out of the arithmetic.
-pkg/db                                        30
+# forever by design — out of the arithmetic. 31 as of the Reviews tab:
+# store_self_review.go, the third coaching family (player-authored self review)
+# beside the authored and received ones — one more concern of the one
+# responsibility, spelled per-concern like the rest.
+pkg/db                                        31
 
 # pkg/parser — the OCR pipeline: Tesseract invocation, per-screenshot-type field
 # extraction, the embedded owdata YAML set, golden-file projection. One
@@ -115,8 +121,9 @@ pkg/fixtures                                  13
 # Four of the nineteen are !serveronly desktop chrome (selfupdate, systray,
 # wails, window_size); the other fifteen are the server_*.go endpoint groups
 # and their middleware, which is one responsibility spelled per-endpoint-group
-# and the actual reason for the count.
-pkg/cmd                                       19
+# and the actual reason for the count. 20 as of the Reviews tab:
+# server_self_review.go, the /api/v1/self-reviews endpoint group.
+pkg/cmd                                       20
 
 
 # ── Frontend ───────────────────────────────────────────────────────────

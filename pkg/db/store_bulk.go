@@ -191,6 +191,7 @@ func (s *SQLStore) Clear() error {
 		"user_match_data",   // user_match_* children cascade on the match_key FK
 		"match_coach_notes", // tag children cascade
 		"coach_returns",     // coach_return_decisions cascade
+		"self_reviews",      // membership, notes, tags and moments cascade
 	} {
 		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
 		if _, err := tx.Exec(`DELETE FROM ` + t); err != nil {
