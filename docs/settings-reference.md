@@ -221,7 +221,7 @@ it is what a coach who reviews you twice files both sessions under.
 Changing it does not orphan an earlier review: the bundle also carries a
 permanent id for you, and that is what the coach's notes are keyed on.
 
-See [Coaching](coaching.md) for both sides of the flow.
+See [Reviews](reviews.md) for reviewing yourself, getting coached, and coaching someone.
 
 ## Parse tab
 

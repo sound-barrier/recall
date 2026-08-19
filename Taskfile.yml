@@ -765,7 +765,7 @@ tasks:
       - cp docs/settings-reference.md dist/pages-stage/settings-reference.md
       - cp docs/filtering.md dist/pages-stage/filtering.md
       - cp docs/reading-your-climb.md dist/pages-stage/reading-your-climb.md
-      - cp docs/coaching.md dist/pages-stage/coaching.md
+      - cp docs/reviews.md dist/pages-stage/reviews.md
       - cp docs/unknown-screenshots.md dist/pages-stage/unknown-screenshots.md
       - cp docs/feedback.md dist/pages-stage/feedback.md
       - cp docs/faq.md dist/pages-stage/faq.md
