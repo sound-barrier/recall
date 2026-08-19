@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent } from 'vue'
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import { useOWData } from '@/composables/shared/useOWData'
+import { lazyView } from '@/components/app/lazy-view'
 import type { CoachLabels } from '@/components/coach/room/coach-room-props'
 import ReviewsIndex from '@/components/reviews/ReviewsIndex.vue'
 import { useCoachStore } from '@/stores/coach'
@@ -22,8 +23,10 @@ import { useCoachStore } from '@/stores/coach'
 // reels come off and go back on.
 //
 // The room stays its own chunk. The tab is visited by people who will never
-// open a bundle, and the room's bytes are the largest thing behind it.
-const CoachRoomView = defineAsyncComponent(() => import('@/components/coach/room/CoachRoomView.vue'))
+// open a bundle, and the room's bytes are the largest thing behind it. Same
+// wrapper as the tabs themselves, so a failed room chunk shows the reload
+// affordance instead of an empty tabpanel.
+const CoachRoomView = lazyView(() => import('@/components/coach/room/CoachRoomView.vue'))
 
 // The room is presentational by design — props in, events out — so this
 // view hands it the session store's state and routes every intent straight

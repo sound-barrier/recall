@@ -25,12 +25,16 @@ import type { ViewId } from '@/composables/shared/keyboard/useTabKeyboardNav'
 
 const props = defineProps<{
   open: boolean
-  // Current top-level view — the film room included, which is how its
-  // group surfaces only during a coaching session.
+  // Current top-level view.
   view: ViewId
   // True when the detail panel is open in front of the current
   // view — flips the Matches/Detail-panel pair of groups.
   panelOpen: boolean
+  // True while a film-room session is open. The reel bindings are
+  // advertised only on the Reviews tab WITH the room open — not on the shelf
+  // the same tab shows between sessions, and not on the player's tabs a
+  // coach steps into from the room, where the reel is not mounted.
+  roomOpen: boolean
 }>()
 const emit = defineEmits<{ close: [] }>()
 
@@ -139,6 +143,8 @@ const visibleGroups = computed(() =>
         return props.panelOpen
       case 'matches-no-panel':
         return props.view === 'matches' && !props.panelOpen
+      case 'film-room':
+        return props.view === 'reviews' && props.roomOpen
       default:
         return g.context === props.view
     }

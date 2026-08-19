@@ -112,12 +112,31 @@ export const useUiStore = defineStore('ui', () => {
   const trendsOpenRequested = ref(false)
   function requestTrendsOpen() { trendsOpenRequested.value = true }
   function clearTrendsOpenRequest() { trendsOpenRequested.value = false }
+  // Open the detail panel on a match the caller was not looking at — a
+  // received review's first match from the Reviews shelf, a match just
+  // created by hand. The panel paginates against narrowedRecords, and
+  // `selection.open` on a key outside that list opens NOTHING while still
+  // marking the page inert: a window that silently stops responding with no
+  // modal to close (the palette met the same hole and answered it by only
+  // offering matches inside the narrow). Here the narrow is widened instead —
+  // the caller named a match, so the match wins over the filter — and a key
+  // the widened set still lacks (hidden) is left closed rather than frozen.
+  // Returns whether the panel opened.
+  function revealMatch(matchKey: string): boolean {
+    const inNarrow = () => matchesStore.matchesNarrow.narrowedRecords.value
+      .some((r) => r.match_key === matchKey)
+    if (!inNarrow()) matchesStore.matchesNarrow.resetNarrow()
+    if (!inNarrow()) return false
+    selection.open(matchKey)
+    return true
+  }
+
   // A manual match was created → close the modal, reload so it lands in the
   // feed, and open it so the user can add the right-panel review / replay-code.
   async function onManualMatchCreated(rec: MatchRecord) {
     manualMatchOpen.value = false
     await matchesStore.load()
-    selection.open(rec.match_key)
+    revealMatch(rec.match_key)
   }
 
   // Every full-surface modal that should freeze the background — App's
@@ -160,6 +179,7 @@ export const useUiStore = defineStore('ui', () => {
     openManualMatch,
     closeManualMatch,
     onManualMatchCreated,
+    revealMatch,
     settingsDialogOpen,
     openSettingsDialog,
     closeSettingsDialog,

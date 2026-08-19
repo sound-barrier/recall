@@ -47,8 +47,7 @@ export interface GlobalKeyboardDeps {
   narrowedRecords: Ref<MatchRecord[]>
   // Tab-nav helper from App.vue, awaited by `/` so the keypress can
   // bring the Matches tab into focus before clicking the dossier
-  // trigger. Takes a ViewId, not a TabId — `g f` targets the film room,
-  // which is a view outside the tablist.
+  // trigger.
   goToView: (view: ViewId) => void | Promise<void>
   // Vertical move helper from App.vue — j/k delegate here so the
   // scroll-into-view + aria-current bookkeeping lives in one place.

@@ -60,6 +60,13 @@ describe('CoachInboxBanner', () => {
     expect(screen.getByRole('status')).toHaveTextContent('2 notes from Ordo waiting')
   })
 
+  // The tally is summed over every sheet; a name on all of it would credit
+  // one coach with notes another wrote, so two coaches are counted, not named.
+  it('counts the coaches when more than one is waiting', () => {
+    renderBanner([sheet(), sheet({ id: 2, coach_name: 'Vex' })])
+    expect(screen.getByRole('status')).toHaveTextContent('4 notes from 2 coaches waiting')
+  })
+
   it('says "note", singular, when one is left', () => {
     renderBanner([sheet({ decisions: { 'n-1': 'accepted' } })])
     expect(screen.getByRole('status')).toHaveTextContent('1 note from Ordo waiting')

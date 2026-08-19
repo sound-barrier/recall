@@ -51,9 +51,10 @@ export const TABS: readonly TabDescriptor[] = TAB_ORDER.map((id, i) => ({
 
 // Every surface App can show IS a tab. The film room used to be the one
 // view outside the tablist — reached from the loan slip, a back affordance,
-// or `g f`, with a hand-maintained "which tab is focusable while no tab is
-// selected" fallback in the masthead. It lives inside Reviews now, so that
-// special case and every consumer that carried it are gone.
+// or a session-gated `g f` chord, with a hand-maintained "which tab is
+// focusable while no tab is selected" fallback in the masthead. It lives
+// inside Reviews now, so that special case and every consumer that carried
+// it are gone.
 export type ViewId = TabId
 
 // h/l act as vim aliases for ArrowLeft/ArrowRight. The tab buttons

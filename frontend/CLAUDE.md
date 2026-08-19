@@ -318,18 +318,20 @@ State concerns — now owned by the Pinia domain stores (see Architecture) and
 read directly by App.vue + the views; the notes below describe the behavior,
 not the wiring:
 
-- **A view can live OUTSIDE the tablist.** `ViewId = TabId | 'coach'`: the
-  coaching Film Room is a full view that is deliberately not a tab (the tab set
-  belongs to the user's own data, and the room is someone else's). It is reached
-  from the masthead's loan slip, the "back to the film room" affordance, or
-  `g f`. `useTabKeyboardNav` therefore falls back to the focused button when the
-  current view is not in `TAB_ORDER` — don't reintroduce a hardcoded index.
+- **Every view is a tab — `ViewId = TabId`.** The coaching Film Room used to be
+  the one view outside the tablist (`ViewId = TabId | 'coach'`, a masthead
+  `rovingTab` hack, an off-list fallback in `useTabKeyboardNav`); it now renders
+  INSIDE the 07 Reviews tab (`ReviewsView` shows the room while a coach session
+  is active, the index otherwise). The masthead is a `v-for` over `TABS`
+  (derived from `TAB_ORDER` + `TAB_LABELS` in `useTabKeyboardNav.ts`) — a new
+  tab is one entry there plus its lazy view; the number is the index. Don't
+  reintroduce a view id that is not in `TAB_ORDER`.
 - **`useWriteGate()` is the one place writes are refused.** `writesLocked =
   isReadOnly || sessionActive`; every writer calls `guardWrite()` first and every
   affordance that could start a write disables with `lockReason` in its title.
   The frontend gate is defense in depth — the server refuses the same writes with
   a 409 — but a button that stays enabled is still a lie to the user.
-- **Nav** — 4 tabs: Settings (01), Parse (02) (internal id still `'ingest'`; `IngestView.vue` only the label changed), Matches (03) default landing, Unknown (04) triage. Settings owns all config (Folders/Engine/Appearance/Calendar/Backup & Restore + collapsible Advanced). Parse is just the operational loop (Watch + Manual Parse + progress panel) — don't add config rows there. Parse heading state-machine deep-links to Settings → Engine/Folders on missing-Tesseract / unset-folder.
+- **Nav** — seven tabs, in `TAB_ORDER`: Settings (01), Parse (02) (internal id still `'ingest'`; `IngestView.vue` only the label changed), Matches (03) default landing, Unknown (04) triage, Compare (05), Elo Calculator (06), Reviews (07 — the review cycle, and the film room while a coach session is open). Settings owns all config (Folders/Engine/Appearance/Calendar/Backup & Restore + collapsible Advanced). Parse is just the operational loop (Watch + Manual Parse + progress panel) — don't add config rows there. Parse heading state-machine deep-links to Settings → Engine/Folders on missing-Tesseract / unset-folder.
 - **Matches view layout** — `MatchesView.vue` is a *set workspace*: dossier (active-clause chips + W/L/D + customizable widget grid via `useMatchesDossier` + per-widget config) at top, Campaign Log (heatmap + brushable sparkline via `MatchTimelineHeader`) in the middle, compact `.leaf-row` list below with sort + Y/M/W/D grouping via `useMatchesGroup`. The left-side *"Narrow this set"* panel mirrors `MatchDetailPanel`'s modal contract (focus trap, Esc, backdrop, `inert` + `aria-hidden` on the background container while open) and consolidates every filter dimension into one place — search, date range (preset + custom), map/map-type/hero/role/result/tags, leaver handling, dual min-play thresholds, include-unknown toggle. State lives in `useMatchesNarrow`; the Map + Hero pickers reuse the `FilterCombobox` component (typeahead + selected-pill row + dropdown listbox with role="option" + aria-selected). Hero filter is **broad match** against the primary `data.hero` AND every `data.heroes_played[]` entry.
 
 - **Dossier as data source (dashboard panel-options pattern)** — `useMatchesDossier` exposes two tiers: **bedrock refs** (no per-widget config: `wld`, `winrate`, `totalTimePlayed`, `averageKDA`, `reviewedCount`, `daysSinceLastReview`, `wldSinceLastReview`, `currentStreak`, `longestWinStreak`, `topRoles`) and **parameterized query helpers** (config-driven: `topByCount`, `topHeroesByMinutes`, `mostPlayedHero`, `bestWinrateHero`, `timeOfDayBuckets`, `dayOfWeekBuckets`, `recentResults`). Each helper accepts `MaybeRefOrGetter<Opts>` so widgets can wire reactive config through. `MatchesView` calls `provideDossier(useMatchesDossier(...))` once; widgets `inject` via `useDossier()` and pull only the slice they render. No HTTP per widget — the dossier is one in-memory aggregation over the narrowed records. New aggregate metrics go HERE, not into a separate computed in MatchesView; consumers reach them through the inject seam.

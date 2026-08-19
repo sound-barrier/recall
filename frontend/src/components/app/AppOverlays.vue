@@ -11,6 +11,7 @@ import { computed, defineAsyncComponent, type Component } from 'vue'
 import ViewLoadError from '@/components/app/ViewLoadError.vue'
 import { storeToRefs } from 'pinia'
 import { useAppStore } from '@/stores/app'
+import { useCoachStore } from '@/stores/coach'
 import { useMatchesStore } from '@/stores/matches'
 import { useParseStore } from '@/stores/parse'
 import { useSettingsStore } from '@/stores/settings'
@@ -53,6 +54,9 @@ const matchesStore = useMatchesStore()
 const parseStore = useParseStore()
 const settingsStore = useSettingsStore()
 const uiStore = useUiStore()
+// The cheatsheet advertises the film room's reel bindings only while the
+// room is open — the same signal ReviewsView renders it on.
+const { sessionActive: roomOpen } = storeToRefs(useCoachStore())
 // Stateless DOM/nav bridge — its own instance is fine (no shared state).
 const tourBridge = useOnboardingTourBridge()
 
@@ -191,6 +195,7 @@ const lightboxSrc = computed(() => {
     :open="cheatsheetOpen"
     :view="view"
     :panel-open="selection.isOpen.value"
+    :room-open="roomOpen"
     @close="closeCheatsheet"
   />
 

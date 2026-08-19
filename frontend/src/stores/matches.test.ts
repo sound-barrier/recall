@@ -195,3 +195,29 @@ describe('matches store — load() boot coordinator', () => {
     expect(matches.records.map(r => r.match_key)).toEqual(['m-1', 'm-2'])
   })
 })
+
+// "Send matches out" on the Reviews tab and the palette's share action are
+// one store action. What it must do, in order: land on Matches (the narrow
+// is only visible there, and the dialog says "N matches"), then open the
+// export dialog over the NARROWED keys — the set on screen, not the whole
+// history — with the share intent set so the dialog opens in share mode.
+describe('matches store — shareNarrowedWithCoach', () => {
+  it('lands on Matches and opens the dialog over the narrowed set, meaning share', async () => {
+    api.GetMatchResults.mockResolvedValue([
+      rec('m-1'), { ...rec('m-2'), data: { map: 'ilios', date: '2026-05-11' } },
+    ])
+    const matches = useMatchesStore()
+    const app = useAppStore()
+    await matches.load()
+    await new Promise(r => setTimeout(r, 0))
+    await app.goToView('reviews')
+    matches.matchesNarrow.pickedMaps.value = new Set(['rialto'])
+
+    await matches.shareNarrowedWithCoach()
+
+    expect(app.view).toBe('matches')
+    expect(matches.exportBundleOpen).toBe(true)
+    expect(matches.exportBundleSelectedKeys).toEqual(['m-1'])
+    expect(matches.exportBundleShareIntent).toBe(true)
+  })
+})

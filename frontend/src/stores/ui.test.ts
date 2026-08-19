@@ -96,6 +96,45 @@ describe('ui store — onManualMatchCreated', () => {
   })
 })
 
+// The panel paginates against narrowedRecords; `selection.open` on a key the
+// narrow excludes opens NOTHING while still marking the page inert — a
+// window that stops responding with no modal to close. A caller that names a
+// match (the Reviews shelf, a manual match just created) goes through
+// revealMatch, which widens the narrow for it and refuses outright rather
+// than freeze when the widened set still lacks the key.
+describe('ui store — revealMatch', () => {
+  it('opens a match the narrow already shows, leaving the narrow alone', () => {
+    const matches = useMatchesStore()
+    matches.records = [rec('a'), { ...rec('b'), data: { map: 'ilios' } }]
+    matches.matchesNarrow.pickedMaps.value = new Set(['ilios'])
+    const ui = useUiStore()
+
+    expect(ui.revealMatch('b')).toBe(true)
+    expect(ui.selection.selectedKey.value).toBe('b')
+    expect(matches.matchesNarrow.anyNarrow.value).toBe(true)
+  })
+
+  it('widens the narrow for a match it excludes, then opens it', () => {
+    const matches = useMatchesStore()
+    matches.records = [rec('a'), { ...rec('b'), data: { map: 'ilios' } }]
+    matches.matchesNarrow.pickedMaps.value = new Set(['ilios'])
+    const ui = useUiStore()
+
+    expect(ui.revealMatch('a')).toBe(true)
+    expect(ui.selection.selectedKey.value).toBe('a')
+    expect(matches.matchesNarrow.anyNarrow.value).toBe(false)
+  })
+
+  it('refuses a match no narrow can show (hidden) instead of opening an empty panel', () => {
+    const matches = useMatchesStore()
+    matches.records = [rec('a'), { ...rec('gone'), hidden: true }]
+    const ui = useUiStore()
+
+    expect(ui.revealMatch('gone')).toBe(false)
+    expect(ui.selection.isOpen.value).toBe(false)
+  })
+})
+
 describe('ui store — markRaw bundles', () => {
   it('exposes selection as a raw bundle whose inner refs survive as refs (not deep-unwrapped)', () => {
     const ui = useUiStore()

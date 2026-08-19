@@ -14,9 +14,15 @@ const returns = useCoachReturnsStore()
 const { inbox } = storeToRefs(returns)
 
 const pending = computed(() => returns.pendingNoteCount)
-const coachName = computed(() => returns.firstPendingCoach)
+// One coach is named; two or more are counted — the tally is the SUM over
+// every sheet, and putting one name on all of it would credit that coach
+// with notes another wrote.
+const from = computed(() => {
+  const coaches = returns.pendingCoachCount
+  return coaches > 1 ? `${coaches} coaches` : returns.firstPendingCoach
+})
 const line = computed(() =>
-  `${pending.value} note${pending.value === 1 ? '' : 's'} from ${coachName.value} waiting`)
+  `${pending.value} note${pending.value === 1 ? '' : 's'} from ${from.value} waiting`)
 
 // The sheet the Review button opens: the first one still holding an
 // undecided note — the same one the copy names.

@@ -9,11 +9,13 @@ import type { ViewId } from '@/composables/shared/keyboard/useTabKeyboardNav'
  *   - 'matches-no-panel' → only on the Matches view AND no panel up
  *   - 'panel'            → only when the detail panel is open
  *   - <ViewId>           → only on that view
+ *   - 'film-room'        → only while the film room is open (inside the
+ *                          Reviews tab, over a loaned bundle)
  * The Matches/Detail-panel pair flips on `panelOpen` because
  * Matches-view bindings (j / k card focus) are suppressed while the
  * panel is up — the panel takes over those keys.
  */
-type ShortcutContext = 'always' | 'matches-no-panel' | 'panel' | ViewId
+type ShortcutContext = 'always' | 'matches-no-panel' | 'panel' | 'film-room' | ViewId
 
 /** One key→action row in the cheat-sheet. */
 interface ShortcutBinding {
@@ -58,11 +60,12 @@ export const SHORTCUT_GROUPS: readonly ShortcutBindingGroup[] = [
     ],
   },
   {
-    // The room lives inside the Reviews tab, so the group shows there. The
+    // The room lives inside the Reviews tab, but the tab is also a shelf with
+    // no reel on it — the group shows only while the room is open. The
     // bracket keys work from anywhere IN the room — the reviewer's hands are
     // on the note, not the reel.
     scope: 'Film room',
-    context: 'reviews',
+    context: 'film-room',
     bindings: [
       { keys: ['j', '↓'],       action: 'Next frame on the reel' },
       { keys: ['k', '↑'],       action: 'Previous frame on the reel' },

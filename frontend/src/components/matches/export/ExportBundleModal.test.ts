@@ -10,6 +10,7 @@ function renderModal(over: {
   selectedCount?: number
   hiddenCount?:   number
   unknownCount?:  number
+  shareIntent?:   boolean
 } = {}) {
   return render(ExportBundleModal, {
     props: {
@@ -17,6 +18,7 @@ function renderModal(over: {
       selectedCount:  over.selectedCount ?? 3,
       hiddenCount:    over.hiddenCount   ?? 2,
       unknownCount:   over.unknownCount  ?? 5,
+      shareIntent:    over.shareIntent   ?? false,
     },
   })
 }
@@ -264,6 +266,16 @@ describe('ExportBundleModal — sharing with a coach', () => {
     expect(shareToggle()).not.toBeChecked()
     expect(screen.queryByLabelText('Your handle')).not.toBeInTheDocument()
     expect(screen.getByRole('dialog', { name: 'Export bundle' })).toBeInTheDocument()
+  })
+
+  // "Send matches out" on the Reviews tab and the palette's share action
+  // mean share — the dialog opens in that mode rather than making the player
+  // find the toggle, and titles itself for it.
+  it('opens already in share mode when the caller meant to share', () => {
+    renderModal({ shareIntent: true })
+    expect(shareToggle()).toBeChecked()
+    expect(handleField()).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Share with a coach' })).toBeInTheDocument()
   })
 
   it('asks who the coach is reviewing once share mode is on', async () => {

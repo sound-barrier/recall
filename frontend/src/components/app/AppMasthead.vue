@@ -60,9 +60,12 @@ const sessionActive = computed(() => coach.sessionActive)
 // definition — TAB_ORDER — and a tab that exists there cannot be missing
 // here.
 const pendingReviewNotes = computed(() => useCoachReturnsStore().pendingNoteCount)
-const tabBadge = computed<Partial<Record<string, number>>>(() => ({
-  unknown: unknownRecords.value.length,
-  reviews: pendingReviewNotes.value,
+// A count on a tab means something different per tab — unresolved
+// screenshots on Unknown, coach notes waiting on a decision on Reviews — so
+// each carries the word for it, visually hidden, in the tab's name.
+const tabBadge = computed<Partial<Record<string, { count: number; unit: string }>>>(() => ({
+  unknown: { count: unknownRecords.value.length, unit: 'unresolved' },
+  reviews: { count: pendingReviewNotes.value, unit: 'notes waiting' },
 }))
 
 const activeFilterCount = matchesNarrow.activeClauseCount
@@ -132,7 +135,13 @@ const winRate = computed(() => winrateOrNull(wld.value.w, wld.value.w + wld.valu
               :title="`${activeFilterCount} filter${activeFilterCount === 1 ? '' : 's'} active`"
               aria-label="filters active"
             />
-            <span v-if="(tabBadge[tab.id] ?? 0) > 0" class="nav-tab-badge">{{ tabBadge[tab.id] }}</span>
+            <!-- The unit's leading space is an interpolation on purpose: a
+                 literal " " there is a whitespace-only first child, which the
+                 template compiler condenses away, and the name would read
+                 "Reviews 3notes waiting". -->
+            <span v-if="(tabBadge[tab.id]?.count ?? 0) > 0" class="nav-tab-badge">
+              {{ tabBadge[tab.id]?.count }}<span class="sr-only">{{ ' ' }}{{ tabBadge[tab.id]?.unit }}</span>
+            </span>
           </span>
         </button>
       </nav>

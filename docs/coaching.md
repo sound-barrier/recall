@@ -104,8 +104,9 @@ coach's does, and sits above their notes because they are your words.
 
 ### 1. Open their bundle
 
-Click the **profile chip** in the top-right, then **Open a player's
-bundle…**, and pick the file they sent.
+Open the **Reviews** tab (`g r`), then **Open a player's bundle…** under
+*For someone else*, and pick the file they sent. (The command palette,
+`Ctrl+K`, has the same action.)
 
 Their matches are **loaned**, not imported: they never enter your
 history, and they leave when the session ends. While a session is open
@@ -130,7 +131,7 @@ You land in the film room. Three columns:
 
 You can also step into their Matches, Trends, Compare and Elo tabs from
 the strip under the masthead, and come back with **← Back to the film
-room** (or `g f`).
+room** (or `g r`).
 
 ### 3. Mark moments while you watch
 

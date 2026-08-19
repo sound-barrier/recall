@@ -295,17 +295,15 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     target: '.profile-switcher',
     placement: 'bottom',
   },
-  // ── 17. Coaching — the one feature nothing else points at ──
-  // Same target as the step above, because the entry genuinely lives in that
-  // menu ("whose data am I looking at" is what the control already answers).
-  // Its own step because the profiles step never mentioned bundles, and this
-  // was the only feature in the app with no tour, no palette entry and no
-  // empty state — a coach who was sent a file had nothing to find.
+  // ── 17. Reviews — the home of the review cycle ────────────
+  // Coaching used to be the one feature nothing pointed at: its entry was a
+  // profile-menu item, so this step borrowed the profiles target. The 07
+  // Reviews tab is that home now, and the step points at it.
   {
     id: 'coaching',
-    heading: 'Coaching',
-    body: 'Send matches to a coach: tick some rows in Matches, then Export bundle → Share with a coach. Reviewing someone else? Open their bundle from this same menu — their matches are loaned, never added to your history, and your notes travel back as a file they decide on.',
-    target: '.profile-switcher',
+    heading: 'Reviews',
+    body: 'Send matches to a coach and read what comes back, or open a bundle a player sent you and coach them — the whole cycle lives under Reviews. Their matches are loaned, never added to your history, and notes travel back as a file the player decides on.',
+    target: '#tab-reviews',
     placement: 'bottom',
   },
   // ── 18. Explore with real data — seeds + switches to "test" ─

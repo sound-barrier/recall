@@ -95,6 +95,28 @@ describe('AppMasthead — the tab set', () => {
   // and nothing checked they agreed with TAB_ORDER: a tab in the array but
   // not the masthead compiled and silently had no button. The set is one
   // definition now, and this pins that the rendered tabs ARE it.
+  // A count on a tab is a different thing per tab, and the number alone in
+  // the tab's name ("Reviews 3") says nothing — each badge carries its unit,
+  // visually hidden, so the name reads as a sentence.
+  it('badges Reviews with the notes waiting on a decision, and says what the number is', async () => {
+    await renderApp()
+    seedQuery(qk.coach.returns, [{
+      id: 7, coach_name: 'Ordo', player_handle: 'Sable', session_date: '2026-08-14',
+      imported_at: '2026-08-15T09:12:00Z', summary: '', decisions: {}, pending: 0,
+      player_mismatch: false,
+      notes: [1, 2, 3].map((n) => ({
+        note_id: `n-${n}`, match_key: 'match-2026-08-13T22-30-00', kind: 'note' as const,
+        text: 'x', focus_tags: [], extra_tags: [], match_clock: '',
+        updated_at: '2026-08-14T19:02:00Z', status: 'pending' as const,
+      })),
+    }])
+    await flushPromises()
+    await flushPromises()
+
+    expect(screen.getByRole('tab', { name: 'Reviews 3 notes waiting' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Matches' })).toBeInTheDocument()
+  })
+
   it('renders exactly TAB_ORDER, numbered by position', async () => {
     const { TAB_ORDER, TAB_LABELS } = await import('@/composables/shared/keyboard/useTabKeyboardNav')
     await renderApp()

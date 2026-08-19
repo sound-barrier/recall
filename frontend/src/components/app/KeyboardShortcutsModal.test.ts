@@ -8,11 +8,12 @@ interface ModalProps {
   open?: boolean
   view?: ViewId
   panelOpen?: boolean
+  roomOpen?: boolean
 }
 
 function renderCheatsheet(props: ModalProps = {}) {
   return render(KeyboardShortcutsModal, {
-    props: { open: true, view: 'matches', panelOpen: false, ...props },
+    props: { open: true, view: 'matches', panelOpen: false, roomOpen: false, ...props },
   })
 }
 
@@ -53,14 +54,20 @@ describe('KeyboardShortcutsModal — context gating', () => {
     expect(groupHeading('Screenshots (in the fullscreen lightbox)')).not.toBeInTheDocument()
   })
 
-  // The film room lives inside the Reviews tab, so its reel bindings show
-  // on that view and nowhere else.
-  it('surfaces the film-room bindings on Reviews, and nowhere else', () => {
-    const view = renderCheatsheet({ view: 'reviews' })
+  // The film room lives inside the Reviews tab, but that tab is a shelf with
+  // no reel on it between sessions, and a coach in a session can step into
+  // the player's tabs where the reel is not mounted — the reel bindings are
+  // advertised only on Reviews with the room open.
+  it('surfaces the film-room bindings in the open room, and nowhere else', () => {
+    const { unmount: leaveRoom } = renderCheatsheet({ view: 'reviews', roomOpen: true })
     expect(groupHeading('Film room')).toBeInTheDocument()
-    view.unmount()
+    leaveRoom()
 
-    renderCheatsheet({ view: 'matches' })
+    const { unmount: leaveShelf } = renderCheatsheet({ view: 'reviews', roomOpen: false })
+    expect(groupHeading('Film room')).not.toBeInTheDocument()
+    leaveShelf()
+
+    renderCheatsheet({ view: 'matches', roomOpen: true })
     expect(groupHeading('Film room')).not.toBeInTheDocument()
   })
 

@@ -36,6 +36,26 @@ describe('groupReceivedReviews', () => {
     expect(ordo15.matchKeys).toEqual(['match-2026-08-01T20-00-00', 'match-2026-08-02T20-00-00'])
   })
 
+  // Since the coaching-moments work a coach leaves MANY blocks on one match;
+  // the count is blocks, the key list is matches — two notes on one match is
+  // one card reading "2 notes · 1 match", not two cards or "2 matches".
+  it('counts every note but lists each match once', () => {
+    const got = groupReceivedReviews([
+      rec('match-2026-08-01T20-00-00', [{ coach: 'Ordo', date: '2026-08-15' }, { coach: 'Ordo', date: '2026-08-15' }]),
+    ])
+    expect(got).toHaveLength(1)
+    expect(got[0]!.noteCount).toBe(2)
+    expect(got[0]!.matchKeys).toEqual(['match-2026-08-01T20-00-00'])
+  })
+
+  // Two coaches on one day are two sittings, in a stable order.
+  it('keeps two coaches on the same day apart, and orders them by name', () => {
+    const got = groupReceivedReviews([
+      rec('match-2026-08-01T20-00-00', [{ coach: 'Vex', date: '2026-08-15' }, { coach: 'Ordo', date: '2026-08-15' }]),
+    ])
+    expect(got.map((g) => g.coachName)).toEqual(['Ordo', 'Vex'])
+  })
+
   it('is empty when no match carries a coach block', () => {
     expect(groupReceivedReviews([rec('match-2026-08-01T20-00-00', [])])).toEqual([])
   })
