@@ -192,6 +192,7 @@ function openBundle(): void {
             :card="card"
             @open="openSitting(card.reviewId)"
             @remove="removeSitting(card.reviewId)"
+            @show-matches="matches.showOnlyMatches(card.matchKeys, `review “${card.title}”`)"
           />
         </li>
       </ul>

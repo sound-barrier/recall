@@ -272,6 +272,49 @@ test.describe('self review', () => {
     await expect(block).toContainText('04:45')
   })
 
+  // The block and the sitting point at each other: the signature reopens
+  // the sitting, and removing the note is ARMED — a note plus its moments
+  // must not die to one stray click (the shelf card's Delete already asks).
+  test('the journal block reopens its sitting, and removing a note asks first', async ({ page }) => {
+    const mock = await mockSelfReviews(page, { reviews: [finishedSitting()] })
+    await page.goto('/')
+    await matchesTab(page).click()
+    await page.locator('.leaf-row').first().click()
+    const block = page.getByRole('region', { name: 'Your review' })
+    await expect(block).toBeVisible()
+
+    await block.getByRole('button', { name: 'Remove from this review' }).click()
+    expect(mock.reviews()[0]!.notes).not.toEqual({})
+    await block.getByRole('button', { name: 'Keep it' }).click()
+    await expect(block.getByRole('button', { name: 'Remove from this review' })).toBeVisible()
+
+    await block.getByRole('button', { name: /Tuesday's Ana games/ }).click()
+    await expect(filmRoom(page)).toBeVisible()
+    await expect(sheet(page).getByRole('textbox', { name: 'Title' })).toHaveValue("Tuesday's Ana games")
+  })
+
+  // The shelf card names the sitting in its own face, says its state in
+  // words ('with notes', not 'noted'), shows the set it marked, and its
+  // armed Delete warns in the body — the footer must not reflow under the
+  // pointer between the first click and the second.
+  test('the shelf card shows these matches and arms Delete without moving the footer', async ({ page }) => {
+    await mockSelfReviews(page, { reviews: [finishedSitting()] })
+    await page.goto('/')
+    await reviewsTab(page).click()
+    const card = shelf(page).getByRole('article', { name: /Tuesday's Ana games/ })
+    await expect(card).toContainText('1 with notes')
+
+    await card.getByRole('button', { name: 'Delete' }).click()
+    await expect(card.getByText(/Notes and moments go with it/)).toBeVisible()
+    await expect(card.getByRole('button', { name: 'Open →' })).toBeVisible()
+    await card.getByRole('button', { name: 'Keep it' }).click()
+
+    await card.getByRole('button', { name: /^Show these matches/ }).click()
+    await expect(matchesTab(page)).toHaveAttribute('aria-selected', 'true')
+    await expect(page.locator('.leaf-row')).toHaveCount(2)
+    await expect(page.getByText(/review .Tuesday's Ana games./)).toBeVisible()
+  })
+
   test('is unavailable while a coaching session is open', async ({ page }) => {
     await mockSelfReviews(page)
     await mockCoachSession(page, { notes: RESURFACED_NOTES, active: true })

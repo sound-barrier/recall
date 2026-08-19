@@ -12,7 +12,8 @@ vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/wr
 function card(over: Partial<ShelfCard> = {}): ShelfCard {
   return {
     reviewId: 'r-1', title: "Tuesday's Ana games", dayKey: '2026-08-18', finished: false,
-    matchCount: 3, wld: { w: 2, l: 1, d: 0 }, rail: ['written', 'reviewed', 'bare'], writtenCount: 1,
+    matchCount: 3, missingCount: 0, matchKeys: ['k1', 'k2', 'k3'],
+    wld: { w: 2, l: 1, d: 0 }, rail: ['written', 'reviewed', 'bare'], writtenCount: 1,
     summaryExcerpt: 'Stop chasing flanks.', ...over,
   }
 }
@@ -28,7 +29,7 @@ describe('SelfReviewCard', () => {
   it('is named by the sitting and describes its state in words, not only in the rail', () => {
     renderCard()
     const article = screen.getByRole('article', { name: "Tuesday's Ana games" })
-    expect(article).toHaveAccessibleDescription(/3 matches · 1 noted · 2–1 · in progress/)
+    expect(article).toHaveAccessibleDescription(/3 matches · 1 with notes · 2–1 · in progress/)
     expect(screen.getByText('Stop chasing flanks.')).toBeInTheDocument()
   })
 

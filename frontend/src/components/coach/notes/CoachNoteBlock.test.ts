@@ -69,10 +69,22 @@ describe('CoachNoteBlock', () => {
     expect(screen.getByText('Reviewed — nothing to add.')).toBeInTheDocument()
   })
 
-  it('"Remove this note" drops the block by its local row id', async () => {
+  it('"Remove this note" is armed: the first click asks with the cost, the second drops the block', async () => {
     const { remove } = renderBlock(coachNote({ id: 42 }))
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Remove this note' }))
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Remove this note' }))
+    expect(remove).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Remove this note — moments go with it' }))
     expect(remove).toHaveBeenCalledWith(MATCH_KEY, 42)
+  })
+
+  it('"Keep it" disarms without removing', async () => {
+    const { remove } = renderBlock(coachNote({ id: 42 }))
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Remove this note' }))
+    await user.click(screen.getByRole('button', { name: 'Keep it' }))
+    expect(remove).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Remove this note' })).toBeInTheDocument()
   })
 })
 
@@ -138,9 +150,12 @@ describe('CoachNoteBlock — a block from your own review', () => {
     expect(screen.getByText('Finished')).toBeInTheDocument()
   })
 
-  it('"Remove from this review" drops the note through the sitting', async () => {
+  it('"Remove from this review" is armed, and the second press drops the note through the sitting', async () => {
     const { remove } = renderSelfBlock()
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Remove from this review' }))
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Remove from this review' }))
+    expect(remove).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Delete this note — moments go with it' }))
     expect(remove).toHaveBeenCalledWith('sitting-1', MATCH_KEY)
   })
 })
