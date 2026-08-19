@@ -50,6 +50,7 @@ function buildState(): MatchesNarrowState {
     anchorKey:         computed(() => ''),
     sinceAnchorActive: ref(false),
     poolFilter:        ref(null),
+    reviewSetFilter:   ref(null),
   }
 }
 
@@ -171,8 +172,10 @@ describe('preset shape completeness', () => {
     // anchorKey is owned by useMatchAnchor and persists on its own (presets
     // capture only the toggle leg); poolFilter is a transient band-driven filter
     // carrying a snapshot of derived pool keys — persisting it would restore
-    // stale keys, so it is deliberately excluded from presets.
-    const transient = new Set(['anchorKey', 'poolFilter'])
+    // stale keys, so it is deliberately excluded from presets. reviewSetFilter
+    // is the same shape of transient: a snapshotted key set from a review
+    // card, not a preference.
+    const transient = new Set(['anchorKey', 'poolFilter', 'reviewSetFilter'])
     const expected = Object.keys(state).filter((k) => !transient.has(k))
     for (const key of expected) {
       expect(stored, `preset shape is missing narrow state field "${key}"`).toHaveProperty(key)

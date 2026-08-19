@@ -456,6 +456,21 @@ function tallyMovement(session: readonly TimedMatch[]): { netPercent: number; re
   return { netPercent, readCount }
 }
 
+/**
+ * The match keys of the newest session — the trailing run of games spaced
+ * closer than the session gap — oldest-first. Unlike currentSessionSummary
+ * this has no staleness window: "review my last session" means last night's
+ * games as much as tonight's.
+ */
+export function latestSessionKeys(
+  records: readonly MomentumInput[],
+  gapHours: number = SESSION_GAP_HOURS,
+): string[] {
+  const timed = timedSorted(records)
+  if (timed.length === 0) return []
+  return trailingSession(timed, gapHours * HOUR_MS).map(({ r }) => r.match_key)
+}
+
 export function currentSessionSummary(
   records: readonly MomentumInput[],
   now: number = Date.now(),

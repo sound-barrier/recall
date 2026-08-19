@@ -40,6 +40,13 @@ export const useUiStore = defineStore('ui', () => {
 
   // The `?` keyboard cheatsheet flag (useAppKeyboard's shortcut registry
   // toggles it; KeyboardShortcutsModal reads it).
+  // The one-shot "how to pick matches to review" hint over the Matches list.
+  // Raised by the Reviews tab's "Pick matches…" start; cleared by the first
+  // tick, its own dismiss, or leaving the list.
+  const reviewPickHint = ref(false)
+  function showReviewPickHint() { reviewPickHint.value = true }
+  function clearReviewPickHint() { reviewPickHint.value = false }
+
   const cheatsheetOpen = ref(false)
   function openCheatsheet() { cheatsheetOpen.value = true }
   function closeCheatsheet() { cheatsheetOpen.value = false }
@@ -189,6 +196,9 @@ export const useUiStore = defineStore('ui', () => {
     trendsOpenRequested,
     requestTrendsOpen,
     clearTrendsOpenRequest,
+    reviewPickHint,
+    showReviewPickHint,
+    clearReviewPickHint,
     cheatsheetOpen,
     openCheatsheet,
     closeCheatsheet,

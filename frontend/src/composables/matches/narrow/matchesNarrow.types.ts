@@ -61,6 +61,15 @@ export interface PoolFilter {
   thresholdPct: number
 }
 
+// A snapshotted set of match keys shown as one clause — "these matches",
+// where "these" is a review: a received coach review's members, or a
+// sitting's. Transient like PoolFilter (never saved in presets); the label
+// is what the chip says. `null` ≡ no filter.
+export interface ReviewSetFilter {
+  keys: ReadonlySet<string>
+  label: string
+}
+
 // Parent-owned state bundle. App.vue creates it once via
 // `createMatchesNarrowState()` and passes the same object to both
 // `useMatchesNarrow` (which derives narrowedRecords) and to
@@ -113,6 +122,7 @@ export interface MatchesNarrowState {
   sinceAnchorActive: Ref<boolean>
   // Hero Pool band's In-pool / Out-of-pool narrow (null ≡ off). Transient.
   poolFilter:        Ref<PoolFilter | null>
+  reviewSetFilter:   Ref<ReviewSetFilter | null>
 }
 
 export interface CreateMatchesNarrowStateOptions {

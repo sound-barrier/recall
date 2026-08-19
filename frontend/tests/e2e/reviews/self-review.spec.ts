@@ -130,8 +130,39 @@ test.describe('self review', () => {
     await reviewsTab(page).click()
     await expect(panel(page).getByRole('heading', { name: 'Your own reviews' })).toBeVisible()
     await expect(panel(page).getByText(/Nothing reviewed yet/)).toBeVisible()
-    await panel(page).getByRole('button', { name: 'Go to Matches' }).click()
+    // "Pick matches…" walks you to the list AND says what to do there —
+    // the checkbox it points at only appears on hover, so without the hint
+    // the trail goes cold on arrival.
+    await panel(page).getByRole('button', { name: /^Pick matches/ }).click()
     await expect(matchesTab(page)).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByText(/Tick the matches you want to review/)).toBeVisible()
+  })
+
+  // The tab named for reviews can start one itself: the last session in one
+  // click, without a trip through Matches.
+  test('Review my last session opens a sitting over the newest session without leaving the tab', async ({ page }) => {
+    const mock = await mockSelfReviews(page)
+    await page.goto('/')
+    await reviewsTab(page).click()
+    const start = panel(page).getByRole('button', { name: /^Review my last session/ })
+    // The label carries the count — the fixture's newest three games sit
+    // within the session gap — so the click is informed.
+    await expect(start).toContainText('(3)')
+    await start.click()
+    await expect(filmRoom(page)).toBeVisible()
+    await expect(reviewsTab(page)).toHaveAttribute('aria-selected', 'true')
+    expect(mock.created.get().match_keys).toHaveLength(3)
+  })
+
+  test('Review my last N opens a sitting over the newest N matches', async ({ page }) => {
+    const mock = await mockSelfReviews(page)
+    await page.goto('/')
+    await reviewsTab(page).click()
+    // The fixture holds six matches; the trailing session is three, so the
+    // wider start offers all six.
+    await panel(page).getByRole('button', { name: /^Review my last 6/ }).click()
+    await expect(filmRoom(page)).toBeVisible()
+    expect(mock.created.get().match_keys).toHaveLength(6)
   })
 
   test('a match carrying a self block shows "Your review" in its journal', async ({ page }) => {

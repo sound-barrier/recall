@@ -224,6 +224,12 @@ const CASE_BY_ID: Record<ClauseId, ClauseCase> = {
     drops: rec(data({ heroes_played: [{ hero: 'mercy', percent_played: 100 }] })),
     label: 'on-pool games',
   },
+  reviewSet: {
+    arrange: (s) => { s.reviewSetFilter.value = { keys: new Set(['kept-key']), label: 'notes from Ordo' } },
+    keeps: { ...rec(data({})), match_key: 'kept-key' },
+    drops: { ...rec(data({})), match_key: 'dropped-key' },
+    label: 'notes from Ordo',
+  },
 }
 
 const ALL_IDS = Object.keys(CASE_BY_ID) as ClauseId[]
@@ -308,7 +314,7 @@ describe('chip counting', () => {
   // loses a per-pick count is visible in the diff.
   it('only the single-toggle clauses use the default chip count', () => {
     const single = NARROW_CLAUSES.filter((c) => !c.chips).map((c) => c.id)
-    expect(single.sort()).toEqual(['dateRange', 'leaver', 'poolSide', 'search', 'season', 'sinceAnchor'])
+    expect(single.sort()).toEqual(['dateRange', 'leaver', 'poolSide', 'reviewSet', 'search', 'season', 'sinceAnchor'])
   })
 
   it('a picked-set clause counts one chip PER pick, not one for the clause', () => {

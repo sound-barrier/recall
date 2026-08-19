@@ -257,6 +257,17 @@ export const useMatchesStore = defineStore('matches', () => {
     )
   }
 
+  // "Show these matches" from a review card: land on Matches showing exactly
+  // the review's members, worn as ONE visible clause — never a silent
+  // resetNarrow. The reset is explicit and labeled: whatever narrow was
+  // active is replaced by a chip that says whose matches these are, and
+  // clearing that chip is clearing the whole thing.
+  async function showOnlyMatches(keys: readonly string[], label: string): Promise<void> {
+    matchesNarrow.resetNarrow()
+    matchesNarrow.setReviewSetFilter({ keys: new Set(keys), label })
+    await useAppStore().goToView('matches')
+  }
+
   const exportBundle = useExportBundle({
     onError: (m) => useAppStore().setErrorFromRaw(m),
     onSaved: (m) => useAppStore().setNotice(m),
@@ -292,6 +303,7 @@ export const useMatchesStore = defineStore('matches', () => {
     exportBundleShareIntent: exportBundle.exportBundleShareIntent,
     onExportBundleRequest: exportBundle.onExportBundleRequest,
     shareNarrowedWithCoach,
+    showOnlyMatches,
     closeExportBundle: exportBundle.closeExportBundle,
     onExportMatchesCSV: exportBundle.onExportMatchesCSV,
     onExportBundleConfirm: exportBundle.onExportBundleConfirm,

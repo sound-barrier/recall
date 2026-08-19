@@ -21,6 +21,7 @@ import {
   loanSlip,
   mockCoachSession,
   mockInbox,
+  mockMatchesWithCoachNotes,
   pinSessionResume,
   seedCoachOwnMatches,
 } from '../_coach'
@@ -67,21 +68,34 @@ test.describe('07 Reviews — the tab', () => {
   test('shows the coaching sections with their actions before any data exists', async ({ page }) => {
     await page.goto('/')
     await tab(page).click()
+    // The page is named for what it holds — every review, in all three
+    // directions — not for one section's question.
+    await expect(panel(page).getByRole('heading', { name: 'Your reviews' })).toBeVisible()
     // Sections are numbered because they are an arc: you → a coach → someone
     // else. Each carries its action whether or not it is empty.
     await expect(panel(page).getByRole('heading', { name: 'From a coach' })).toBeVisible()
-    await expect(panel(page).getByRole('button', { name: /send matches out/i })).toBeVisible()
+    await expect(panel(page).getByRole('button', { name: /share with a coach/i })).toBeVisible()
+    // The other way notes arrive is permanent, not a hint that deletes
+    // itself after the first review.
+    await expect(panel(page).getByRole('button', { name: /open a notes file/i })).toBeVisible()
     await expect(panel(page).getByRole('heading', { name: 'For someone else' })).toBeVisible()
     await expect(panel(page).getByRole('button', { name: /open a player.s bundle/i })).toBeVisible()
+    // 03 says what its emptiness means, like its siblings.
+    await expect(panel(page).getByText(/No one has sent you a bundle yet/)).toBeVisible()
   })
 
-  // "Send matches out" means share. It lands on Matches (the narrow the
-  // dialog counts is only visible there) and the dialog opens ALREADY in
-  // share mode — the same one action the palette runs, so neither can drift.
-  test('Send matches out lands on Matches with the share dialog open in share mode', async ({ page }) => {
+  // Sharing is called what the dialog calls it, and the button carries the
+  // live count of what would be shared — the set is decided on Matches, and
+  // a player who has not looked deserves to know how big it is BEFORE the
+  // dialog. It lands on Matches (the narrow the dialog counts is only
+  // visible there) and the dialog opens ALREADY in share mode — the same
+  // one action the palette runs, so neither can drift.
+  test('Share with a coach carries the live count and lands on Matches with the share dialog open', async ({ page }) => {
     await page.goto('/')
     await tab(page).click()
-    await panel(page).getByRole('button', { name: /send matches out/i }).click()
+    const share = panel(page).getByRole('button', { name: /share with a coach/i })
+    await expect(share).toContainText('(2 showing on Matches)')
+    await share.click()
 
     await expect(page.getByRole('tab', { name: /^Matches/ })).toHaveAttribute('aria-selected', 'true')
     const dialog = page.getByRole('dialog', { name: 'Share with a coach' })
@@ -104,8 +118,49 @@ test.describe('07 Reviews — the tab', () => {
     const rows = panel(page).getByRole('list', { name: 'Notes waiting on a decision' }).getByRole('listitem')
     await expect(rows).toHaveCount(1)
     await expect(rows.first()).toContainText(`3 notes from ${COACH_NAME}`)
-    await rows.first().getByRole('button', { name: 'Review' }).click()
+    // "Read the notes", not "Review" — this button opens a decision sheet,
+    // and "Review…" on this tab is reserved for starting one of your own.
+    await rows.first().getByRole('button', { name: 'Read the notes' }).click()
     await expect(page.getByRole('dialog', { name: new RegExp(`Notes from ${COACH_NAME}`) })).toBeVisible()
+  })
+
+  // The waiting rows are the one time-sensitive thing on the tab, so they
+  // sit directly under the intro — above section 01, which may be
+  // permanently empty for a player who only ever receives.
+  test('waiting rows sit above section 01', async ({ page }) => {
+    await mockInbox(page, [{ ...RETURN_SHEET_FIXTURE, decisions: {} }])
+    await page.goto('/')
+    await tab(page).click()
+    const waiting = panel(page).getByRole('list', { name: 'Notes waiting on a decision' })
+    await expect(waiting).toBeVisible()
+    const order = await panel(page).evaluate((el) => {
+      const rows = el.querySelector('[aria-label="Notes waiting on a decision"]')
+      const own = el.querySelector('#sec-your-own-reviews')
+      if (!rows || !own) return 'missing'
+      return rows.compareDocumentPosition(own) & Node.DOCUMENT_POSITION_FOLLOWING ? 'waiting-first' : 'own-first'
+    })
+    expect(order).toBe('waiting-first')
+  })
+
+  // A received review is a card: the coach's name is its title, the tallies
+  // its label line, and its door shows the matches it touched — a narrowed
+  // Matches list, not a deep link to one match with the filters silently
+  // reset under it.
+  test('a received review card shows these matches as a narrowed set', async ({ page }) => {
+    await mockMatchesWithCoachNotes(page)
+    await page.goto('/')
+    await tab(page).click()
+    const card = panel(page).getByRole('list', { name: 'Reviews you have received' }).getByRole('listitem').first()
+    await expect(card.getByRole('heading', { name: COACH_NAME })).toBeVisible()
+    await expect(card).toContainText(/2 notes/)
+    await card.getByRole('button', { name: /^Show these matches/ }).click()
+    await expect(page.getByRole('tab', { name: /^Matches/ })).toHaveAttribute('aria-selected', 'true')
+    // Only the review's matches are showing, and a visible strip says why —
+    // with the way back out.
+    await expect(page.locator('.leaf-row')).toHaveCount(2)
+    await expect(page.getByText(new RegExp(`notes from ${COACH_NAME}`))).toBeVisible()
+    await page.getByRole('button', { name: 'Show everything' }).click()
+    await expect(page.locator('.leaf-row')).toHaveCount(6)
   })
 
   test('hosts the film room while a coaching session is open', async ({ page }) => {

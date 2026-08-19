@@ -61,7 +61,7 @@ function renderShelf(opts: { inbox?: CoachReturnSheet[]; records?: MatchRecord[]
 describe('ReviewsIndex — notes waiting on a decision', () => {
   beforeEach(() => { vi.clearAllMocks() })
 
-  it('lists one row per sheet still holding an undecided note, and Review opens that sheet', async () => {
+  it('lists one row per sheet still holding an undecided note, and Read the notes opens that sheet', async () => {
     renderShelf({
       inbox: [sheet(), sheet({ id: 8, coach_name: 'Vex', notes: [note('n-3')], pending: 1 }),
         sheet({ id: 9, coach_name: 'Kai', notes: [note('n-4', { status: 'accepted' })], pending: 0 })],
@@ -74,7 +74,7 @@ describe('ReviewsIndex — notes waiting on a decision', () => {
     expect(rows[0]).toHaveTextContent('2 notes from Ordo')
     expect(rows[1]).toHaveTextContent('1 note from Vex')
 
-    await userEvent.setup().click(within(rows[1]!).getByRole('button', { name: 'Review' }))
+    await userEvent.setup().click(within(rows[1]!).getByRole('button', { name: 'Read the notes' }))
     expect(openSheet).toHaveBeenCalledWith(8)
   })
 
@@ -93,50 +93,35 @@ describe('ReviewsIndex — reviews received', () => {
     }),
   ]
 
-  it('shows one paper card per sitting, named by its own heading', () => {
+  it('shows one paper card per sitting, titled by the coach, with the tallies as its label line', () => {
     renderShelf({ records: RECORDS })
     const shelf = screen.getByRole('list', { name: 'Reviews you have received' })
     const card = within(shelf).getByRole('article')
-    // The article is labeled BY the heading (aria-labelledby), so the two
-    // cannot disagree on plurals or counts.
-    expect(card).toHaveAccessibleName(/Ordo · .*3 notes · 2 matches/)
+    // The article is labeled BY the coach heading; the counts are the line
+    // under it, in visible text.
+    expect(card).toHaveAccessibleName('Ordo')
+    expect(card).toHaveTextContent(/3 notes · 2 matches/)
     expect(screen.queryByText(/No coach has looked yet/)).not.toBeInTheDocument()
   })
 
-  // The card takes you to the FIRST match the coach touched, in reading
-  // order — through revealMatch, which widens the narrow for it if the
-  // current narrow would hide it, rather than opening a panel over nothing.
-  it('"Open the first match" lands on Matches and reveals the earliest noted match', async () => {
+  // The card's door is the SET the review touched, worn as one visible,
+  // clearable narrow clause — never a silent filter reset under a deep link.
+  it('"Show these matches" narrows Matches to the review set as one labeled clause', async () => {
     const { matches } = renderShelf({ records: RECORDS })
     const app = useAppStore()
-    const ui = useUiStore()
     await app.goToView('reviews')
-    const reveal = vi.spyOn(ui, 'revealMatch')
+    // A stale narrow is replaced, not merged: the click means "show me
+    // exactly these".
+    matches.matchesNarrow.pickedMaps.value = new Set(['ilios'])
 
-    await userEvent.setup().click(screen.getByRole('button', { name: /Open the first match/ }))
+    await userEvent.setup().click(screen.getByRole('button', { name: /Show these matches/ }))
 
     expect(app.view).toBe('matches')
-    expect(reveal).toHaveBeenCalledWith('match-2026-08-01T20-00-00')
-    expect(ui.selection.selectedKey.value).toBe('match-2026-08-01T20-00-00')
-    expect(matches.matchesNarrow.anyNarrow.value).toBe(false)
-  })
-
-  it('prefers a member the current narrow already shows over the earliest', async () => {
-    const { matches } = renderShelf({
-      records: [
-        RECORDS[0]!,
-        rec('match-2026-08-02T20-00-00', {
-          data: { map: 'ilios', date: '2026-08-02' },
-          coach_notes: [coachBlock('b', 'Ordo', '2026-08-15')],
-        }),
-      ],
+    expect(matches.matchesNarrow.reviewSetFilter.value).toEqual({
+      keys: new Set(['match-2026-08-01T20-00-00', 'match-2026-08-02T20-00-00']),
+      label: 'notes from Ordo',
     })
-    matches.matchesNarrow.pickedMaps.value = new Set(['ilios'])
-    const ui = useUiStore()
-
-    await userEvent.setup().click(screen.getByRole('button', { name: /Open the first match/ }))
-
-    expect(ui.selection.selectedKey.value).toBe('match-2026-08-02T20-00-00')
+    expect(matches.matchesNarrow.pickedMaps.value.size).toBe(0)
     expect(matches.matchesNarrow.anyNarrow.value).toBe(true)
   })
 })
@@ -172,11 +157,34 @@ describe('ReviewsIndex — your own reviews', () => {
     expect(screen.queryByText(/Nothing reviewed yet/)).not.toBeInTheDocument()
   })
 
-  it('invites the first sitting when there is none, and Go to Matches goes there', async () => {
+  it('invites the first sitting when there is none, and Pick matches goes there with the hint raised', async () => {
     renderShelf()
     const app = useAppStore()
+    const ui = useUiStore()
     expect(screen.getByText(/Nothing reviewed yet/)).toBeInTheDocument()
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Go to Matches' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Pick matches/ }))
     expect(app.view).toBe('matches')
+    expect(ui.reviewPickHint).toBe(true)
+  })
+
+  it('starts a sitting over the last session or the last N, and says the counts', async () => {
+    // Three matches: two in one evening (one session), one a week before.
+    const records = [
+      rec('match-2026-08-18T21-00-00', { data: { map: 'rialto', date: '2026-08-18', finished_at: '21:00' } }),
+      rec('match-2026-08-18T21-40-00', { data: { map: 'ilios', date: '2026-08-18', finished_at: '21:40' } }),
+      rec('match-2026-08-11T20-00-00', { data: { map: 'busan', date: '2026-08-11', finished_at: '20:00' } }),
+    ]
+    renderShelf({ records })
+    const selfReview = useSelfReviewStore()
+    const create = vi.spyOn(selfReview, 'createFromKeys').mockResolvedValue(undefined)
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Review my last session (2)' }))
+    expect(create).toHaveBeenCalledWith(['match-2026-08-18T21-00-00', 'match-2026-08-18T21-40-00'])
+
+    await user.click(screen.getByRole('button', { name: 'Review my last 3' }))
+    expect(create).toHaveBeenLastCalledWith([
+      'match-2026-08-18T21-40-00', 'match-2026-08-18T21-00-00', 'match-2026-08-11T20-00-00',
+    ])
   })
 })
