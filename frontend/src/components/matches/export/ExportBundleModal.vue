@@ -151,6 +151,16 @@ const canSubmit = computed(() => {
   return previewCount.value > 0
 })
 
+// A disabled button that will not say why is a dead end — the reason rides
+// its title, and the empty-handle case is the one a player actually hits.
+const submitBlockedReason = computed(() => {
+  if (busy.value || canSubmit.value) return undefined
+  if (sharing.value && shareHandle.value.trim() === '') {
+    return 'Enter the handle your coach knows you by — the bundle is signed with it.'
+  }
+  return 'Nothing selected to export.'
+})
+
 // Everything that tells the two modes apart on screen, in one place.
 const title = computed(() => (sharing.value ? 'Share with a coach' : 'Export bundle'))
 const submitLabel = computed(() => (sharing.value ? 'Share' : 'Export'))
@@ -297,7 +307,7 @@ onBeforeUnmount(() => {
 
       <div v-if="sharing" class="export-bundle-share">
         <label class="export-bundle-field-label" for="export-bundle-handle">
-          Your handle
+          Your handle (required)
         </label>
         <input
           id="export-bundle-handle"
@@ -306,6 +316,7 @@ onBeforeUnmount(() => {
           class="export-bundle-input"
           autocomplete="off"
           spellcheck="false"
+          aria-required="true"
           placeholder="The name your coach knows you by"
         >
         <label class="export-bundle-field-label" for="export-bundle-message">
@@ -355,6 +366,7 @@ onBeforeUnmount(() => {
           type="submit"
           class="export-bundle-save"
           :disabled="!canSubmit"
+          :title="submitBlockedReason"
           data-testid="export-submit"
         >
           {{ busy ? busyLabel : submitLabel }}

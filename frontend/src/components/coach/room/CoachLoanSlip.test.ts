@@ -92,13 +92,13 @@ describe('CoachLoanSlip', () => {
 
   it('exports on demand', async () => {
     const { spies } = renderSlip()
-    await fireEvent.click(within(slip()).getByRole('button', { name: 'Export notes' }))
+    await fireEvent.click(within(slip()).getByRole('button', { name: '1 · Export notes' }))
     expect(spies.exportNotes).toHaveBeenCalled()
   })
 
   it('refuses to export without a coach name, and says why', () => {
     renderSlip({ coach_name: '' })
-    const button = within(slip()).getByRole('button', { name: 'Export notes' })
+    const button = within(slip()).getByRole('button', { name: '1 · Export notes' })
 
     expect(button).toBeDisabled()
     expect(button.title).toMatch(/coach name/i)
@@ -110,7 +110,7 @@ describe('CoachLoanSlip', () => {
   // store's own suite proves the request reaches the server.
   it('ends a clean session on the first click', async () => {
     renderSlip()
-    await fireEvent.click(within(slip()).getByRole('button', { name: 'End session' }))
+    await fireEvent.click(within(slip()).getByRole('button', { name: '2 · End session' }))
 
     expect(within(slip()).queryByRole('button', { name: /^End anyway/ })).not.toBeInTheDocument()
   })
@@ -123,7 +123,7 @@ describe('CoachLoanSlip', () => {
     const { coach } = renderSlip()
     coach.updateNote(NOTED, { kind: 'note', text: 'Peel earlier.', focusTags: [], extraTags: [], matchClock: '' })
 
-    await fireEvent.click(within(slip()).getByRole('button', { name: 'End session' }))
+    await fireEvent.click(within(slip()).getByRole('button', { name: '2 · End session' }))
 
     expect(await within(slip()).findByRole('button', { name: /^End anyway/ })).toBeInTheDocument()
   })
@@ -133,12 +133,12 @@ describe('CoachLoanSlip', () => {
   it('lets the coach back out of the question', async () => {
     const { coach } = renderSlip()
     coach.updateNote(NOTED, { kind: 'note', text: 'Peel earlier.', focusTags: [], extraTags: [], matchClock: '' })
-    await fireEvent.click(within(slip()).getByRole('button', { name: 'End session' }))
+    await fireEvent.click(within(slip()).getByRole('button', { name: '2 · End session' }))
 
     await fireEvent.click(within(slip()).getByRole('button', { name: 'Keep working' }))
 
     expect(within(slip()).queryByRole('button', { name: /^End anyway/ })).not.toBeInTheDocument()
-    expect(within(slip()).getByRole('button', { name: 'End session' })).toBeInTheDocument()
+    expect(within(slip()).getByRole('button', { name: '2 · End session' })).toBeInTheDocument()
   })
 })
 
@@ -155,7 +155,7 @@ describe('CoachLoanSlip — a bundle that named nobody', () => {
 
   it('refuses to export an archive with nobody to address it to', () => {
     renderSlip({ player: { id: '', handle: '', message: '' }, handle_from_bundle: false })
-    const button = within(unnamedSlip()).getByRole('button', { name: 'Export notes' })
+    const button = within(unnamedSlip()).getByRole('button', { name: '1 · Export notes' })
 
     expect(button).toBeDisabled()
     expect(button.title).toMatch(/who this bundle is about/i)

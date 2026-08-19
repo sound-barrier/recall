@@ -240,14 +240,14 @@ test.describe('film room — session sheet', () => {
     await expect.poll(() => session.notePut.seen()).toBe(true)
 
     const download = page.waitForEvent('download')
-    await loanSlip(page).getByRole('button', { name: 'Export notes' }).click()
+    await loanSlip(page).getByRole('button', { name: '1 · Export notes' }).click()
     expect((await download).suggestedFilename()).toMatch(/^recall-coach-notes-.*\.zip$/)
     await expect.poll(() => session.exportCount()).toBe(1)
   })
 
   test('Export is disabled, and says why, until the coach has a name', async ({ page }) => {
     await openRoom(page, { coachName: '' })
-    const exportBtn = loanSlip(page).getByRole('button', { name: 'Export notes' })
+    const exportBtn = loanSlip(page).getByRole('button', { name: '1 · Export notes' })
     await expect(exportBtn).toBeDisabled()
     await expect(exportBtn).toHaveAttribute('title', /coach name/i)
   })

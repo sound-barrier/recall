@@ -3,7 +3,8 @@ import { defineStore } from 'pinia'
 
 import {
   CreateSelfReview, DeleteSelfReview, DeleteSelfReviewMoment, DeleteSelfReviewNote,
-  FinishSelfReview, GetSelfReview, PutSelfReviewMoment, PutSelfReviewNote, UpdateSelfReview,
+  FinishSelfReview, GetSelfReview, PutSelfReviewMoment, PutSelfReviewNote,
+  SetSelfReviewMatches, UpdateSelfReview,
   type SelfReview,
 } from '@/api-client'
 import { useCoachAutosave } from '@/composables/coach/useCoachAutosave'
@@ -189,6 +190,26 @@ export const useSelfReviewStore = defineStore('selfReview', () => {
     })
   }
 
+  /**
+   * Take one match out of the OPEN sitting, from the desk. The note and
+   * moments on it go with it (the server's rule), so the local drafts are
+   * dropped too — a queued save for a removed note would write it back.
+   * The last match is refused upstream (the button says so); the guard here
+   * is belt and suspenders.
+   */
+  async function removeMatchFromOpenSitting(matchKey: string): Promise<void> {
+    const current = open.value
+    if (!current || current.match_keys.length <= 1) return
+    await reporting(async () => {
+      const remaining = current.match_keys.filter((k) => k !== matchKey)
+      const updated = await SetSelfReviewMatches(current.review_id, remaining)
+      upsertSelfReview(updated)
+      dropDraft(matchKey)
+      if (selectedKey.value === matchKey) selectedKey.value = ''
+      await getQueryClient().refetchQueries({ queryKey: qk.matches })
+    })
+  }
+
   // "Remove from this review" on a match's block — from the journal, outside
   // the room. The room's own drafts (if this sitting is open) follow: the
   // block is gone from the match, so the desk must not keep showing it — and
@@ -228,6 +249,6 @@ export const useSelfReviewStore = defineStore('selfReview', () => {
     saveStateFor, hasFailedSaves,
     openSitting: openFromShelf, createFromKeys, selectKey,
     updateNote, updateMoment, removeMoment, updateTitle, updateSummary,
-    close, finish, remove, removeNoteFromSitting,
+    close, finish, remove, removeNoteFromSitting, removeMatchFromOpenSitting,
   }
 })

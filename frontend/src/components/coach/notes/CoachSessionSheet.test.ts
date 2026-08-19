@@ -73,15 +73,15 @@ describe('CoachSessionSheet', () => {
 
   it('exports and ends the session through its own affordances', async () => {
     const view = renderSheet()
-    await fireEvent.click(screen.getByRole('button', { name: 'Export notes' }))
-    await fireEvent.click(screen.getByRole('button', { name: 'End session' }))
+    await fireEvent.click(screen.getByRole('button', { name: '1 · Export notes' }))
+    await fireEvent.click(screen.getByRole('button', { name: '2 · End session' }))
     expect(view.emitted('export')).toHaveLength(1)
     expect(view.emitted('end')).toHaveLength(1)
   })
 
   it('disables Export with the reason it cannot run yet', () => {
     renderSheet({ canExport: false, exportReason: 'Set a coach name in Settings first.' })
-    const button = screen.getByRole('button', { name: 'Export notes' })
+    const button = screen.getByRole('button', { name: '1 · Export notes' })
     expect(button).toBeDisabled()
     expect(button).toHaveAttribute('title', 'Set a coach name in Settings first.')
   })

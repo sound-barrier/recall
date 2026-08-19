@@ -58,6 +58,8 @@ const props = withDefaults(defineProps<{
    * one open on this desk. Its note is the editor, not "already said".
    */
   omitReviewId?: string
+  /** Whether the desk may take its match out of the set (a sitting's affordance). */
+  removableFrames?: boolean
 }>(), {
   moments: () => ({}),
   selectedKey: '',
@@ -71,6 +73,7 @@ const props = withDefaults(defineProps<{
   voice: 'their',
   lockedReason: '',
   omitReviewId: '',
+  removableFrames: false,
 })
 
 const emit = defineEmits<{
@@ -79,6 +82,7 @@ const emit = defineEmits<{
   'update-moment': [matchKey: string, moment: CoachMoment]
   'remove-moment': [matchKey: string, momentId: string]
   'copy-replay': [matchKey: string]
+  'remove-frame': [matchKey: string]
   'update-summary': [text: string]
   'confirm-player': [handle: string]
   export: []
@@ -182,10 +186,12 @@ function step(key: string | null): void {
           :labels="labels"
           :voice="voice"
           :omit-review-id="omitReviewId"
+          :removable="removableFrames ? (room.frames.value.length > 1 ? 'yes' : 'last') : 'none'"
           @update-note="(draft: CoachNoteDraft) => emit('update-note', room.activeKey.value, draft)"
           @update-moment="(m: CoachMoment) => emit('update-moment', room.activeKey.value, m)"
           @remove-moment="(id: string) => emit('remove-moment', room.activeKey.value, id)"
           @copy-replay="emit('copy-replay', room.activeKey.value)"
+          @remove-frame="emit('remove-frame', room.activeKey.value)"
           @prev="step(room.prevKey.value)"
           @next="step(room.nextKey.value)"
         />

@@ -259,6 +259,52 @@ test.describe('self review', () => {
     await expect.poll(() => mock.finished.length).toBe(1)
   })
 
+  // A sitting's set is editable from inside the room: the desk can take
+  // the match on it out — armed, since its note and moments go with it —
+  // and the last match refuses with the way out instead of leaving a
+  // review over nothing.
+  test('the desk can take a match out of the sitting, and the last one refuses', async ({ page }) => {
+    const mock = await mockSelfReviews(page)
+    await page.goto('/')
+    await tickFirstRows(page, 2)
+    await page.getByRole('button', { name: 'Review these (2)' }).click()
+    await expect(filmRoom(page)).toBeVisible()
+
+    const takeOut = filmRoom(page).getByRole('button', { name: 'Take this match out of the review' })
+    await takeOut.click()
+    await filmRoom(page).getByRole('button', { name: /Take it out — its note and moments go with it/ }).click()
+    await expect.poll(() => mock.reviews()[0]?.match_keys.length).toBe(1)
+
+    // One match left: the action stays visible and says why it refuses.
+    await expect(takeOut).toBeDisabled()
+    await expect(takeOut).toHaveAttribute('title', /delete the review instead/)
+  })
+
+  // A sitting no longer evaporates from the chrome when you step away: the
+  // way back rides under the masthead on every tab, and a member match's
+  // detail panel hands off to the desk — the same bridges a coach session
+  // has always had.
+  test('an open sitting keeps a way back from other tabs, and the panel hands off to the desk', async ({ page }) => {
+    await mockSelfReviews(page)
+    await page.goto('/')
+    await tickFirstRows(page, 2)
+    await page.getByRole('button', { name: 'Review these (2)' }).click()
+    await expect(filmRoom(page)).toBeVisible()
+
+    // Step away: the strip offers the way back, and takes it.
+    await matchesTab(page).click()
+    const back = page.getByRole('button', { name: '← Back to your review' })
+    await expect(back).toBeVisible()
+    await back.click()
+    await expect(filmRoom(page)).toBeVisible()
+
+    // A member's detail panel hands off to the desk with the frame selected.
+    await matchesTab(page).click()
+    await page.locator('.leaf-row').nth(1).click()
+    await page.getByRole('button', { name: 'Open in the film room →' }).click()
+    await expect(filmRoom(page)).toBeVisible()
+  })
+
   test('a match carrying a self block shows "Your review" in its journal', async ({ page }) => {
     await mockSelfReviews(page, { reviews: [finishedSitting()] })
     await page.goto('/')

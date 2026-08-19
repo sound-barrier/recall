@@ -259,12 +259,12 @@ describe('ExportBundleModal — open/close lifecycle', () => {
 // able to tell which one they just made.
 describe('ExportBundleModal — sharing with a coach', () => {
   const shareToggle = () => screen.getByRole('checkbox', { name: /Share with a coach/ })
-  const handleField = () => screen.getByLabelText('Your handle')
+  const handleField = () => screen.getByLabelText('Your handle (required)')
 
   it('offers a plain export by default, with no identity asked for', () => {
     renderModal()
     expect(shareToggle()).not.toBeChecked()
-    expect(screen.queryByLabelText('Your handle')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Your handle (required)')).not.toBeInTheDocument()
     expect(screen.getByRole('dialog', { name: 'Export bundle' })).toBeInTheDocument()
   })
 

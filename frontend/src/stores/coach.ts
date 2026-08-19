@@ -274,6 +274,9 @@ export const useCoachStore = defineStore('coach', () => {
     // flush could not place is about to be discarded, and that is not
     // something to find out later.
     if (hasFailedSaves.value) useAppStore().setError(UNSAVED_END_REASON)
+    // Read BEFORE the clear: the receipt names what just ended.
+    const endedHandle = playerHandle.value
+    const savedTo = exportedTo.value
     setCoachSessionResume(false)
     try {
       await CloseCoachSession()
@@ -284,12 +287,16 @@ export const useCoachStore = defineStore('coach', () => {
     // watch clears the room's own refs as the session goes null.
     clearCoachSessionData()
     restoreCoachNarrow()
-    // No navigation. The room lives inside the Reviews tab, which shows the
-    // index the moment the session is gone; a coach who ended from another
-    // tab stays on it, now over their own data again. But the End button they
-    // pressed unmounted with the room (or the loan slip), so focus is re-homed
-    // on the panel that took its place rather than dropped on <body>.
-    await useAppStore().refocusPanel()
+    // Ending is a landing, not a vanish act: the session lived in the
+    // Reviews tab, so that is where its end is announced — with the notes
+    // file's path when one was saved, because "where did it go?" is the
+    // next question — wherever End was pressed from. (It used to end in
+    // silence: the loan slip disappeared and whichever tab you were on
+    // simply showed your own data again.)
+    useAppStore().setNotice(savedTo !== ''
+      ? `Session with ${endedHandle} ended — notes saved to ${savedTo}.`
+      : `Session with ${endedHandle} ended. Your notes stay with you and return with their next bundle.`)
+    await useAppStore().goToView('reviews')
   }
 
   // A session opened or ended in ANOTHER window on this install. Both
@@ -414,6 +421,7 @@ export const useCoachStore = defineStore('coach', () => {
     setTourOpen,
     setNarrowSuspender,
     openBundle,
+    tourOpen,
     endSession,
     setPlayerHandle,
     exportNotes,

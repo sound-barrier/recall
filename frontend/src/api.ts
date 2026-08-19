@@ -732,6 +732,11 @@ export function UpdateSelfReview(reviewID: string, title: string, summary: strin
   return unwrap(sdk.updateSelfReview({ path: { review_id: reviewID }, body: { title, summary } }))
 }
 
+/** Replace the sitting's match set; a note on a match that leaves goes with it. */
+export function SetSelfReviewMatches(reviewID: string, matchKeys: string[]): Promise<SelfReview> {
+  return unwrap(sdk.setSelfReviewMatches({ path: { review_id: reviewID }, body: { match_keys: matchKeys } }))
+}
+
 export function DeleteSelfReview(reviewID: string): Promise<void> {
   return unwrapVoid(sdk.deleteSelfReview({ path: { review_id: reviewID } }))
 }

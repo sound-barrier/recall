@@ -89,8 +89,8 @@ describe('CoachRoomView — what it reports upward', () => {
 
   it('relays export and end', async () => {
     const view = renderRoom()
-    await fireEvent.click(screen.getByRole('button', { name: 'Export notes' }))
-    await fireEvent.click(screen.getByRole('button', { name: 'End session' }))
+    await fireEvent.click(screen.getByRole('button', { name: '1 · Export notes' }))
+    await fireEvent.click(screen.getByRole('button', { name: '2 · End session' }))
     expect(view.emitted('export')).toHaveLength(1)
     expect(view.emitted('end')).toHaveLength(1)
   })

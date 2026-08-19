@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import type { MatchRecord } from '@/api-client'
 import CoachCueStrip from '@/components/coach/notes/CoachCueStrip.vue'
@@ -34,6 +34,12 @@ const props = withDefaults(defineProps<{
   voice?: RoomVoice
   /** The open sitting, whose own block the card must not quote back. */
   omitReviewId?: string
+  /**
+   * The desk can take its match out of the set — a sitting's affordance
+   * ('none' on a coach's loan). 'last' keeps the button visible but
+   * refused: a review over nothing is not a state.
+   */
+  removable?: 'none' | 'yes' | 'last'
 }>(), {
   moments: () => [],
   momentSaveState: () => 'idle' as CoachSaveState,
@@ -44,6 +50,7 @@ const props = withDefaults(defineProps<{
   labels: () => DEFAULT_COACH_LABELS,
   voice: 'their',
   omitReviewId: '',
+  removable: 'none',
 })
 
 // What the desk says when there is nothing on it: an empty reel is a
@@ -61,9 +68,27 @@ const emit = defineEmits<{
   'update-moment': [moment: CoachMoment]
   'remove-moment': [momentId: string]
   'copy-replay': []
+  'remove-frame': []
   prev: []
   next: []
 }>()
+
+// Taking the match out kills its note and moments, so it is armed like
+// every destructive paper action. Re-arms per frame: an armed state left
+// over from another match would make the second click land on the wrong one.
+const removeArmed = ref(false)
+watch(() => props.record?.match_key, () => { removeArmed.value = false })
+
+const LAST_FRAME_REASON = 'A review needs at least one match — delete the review instead.'
+
+function onRemoveFrame(): void {
+  if (!removeArmed.value) {
+    removeArmed.value = true
+    return
+  }
+  removeArmed.value = false
+  emit('remove-frame')
+}
 </script>
 
 <template>
@@ -97,6 +122,20 @@ const emit = defineEmits<{
         @prev="emit('prev')"
         @next="emit('next')"
       />
+      <div v-if="removable !== 'none'" class="desk-remove">
+        <button
+          type="button"
+          class="paper-btn"
+          :disabled="removable === 'last'"
+          :title="removable === 'last' ? LAST_FRAME_REASON : undefined"
+          @click="onRemoveFrame"
+        >
+          {{ removeArmed ? 'Take it out — its note and moments go with it' : 'Take this match out of the review' }}
+        </button>
+        <button v-if="removeArmed" type="button" class="paper-btn" @click="removeArmed = false">
+          Keep it
+        </button>
+      </div>
     </template>
     <!--
       Two empties, and they are not the same. "Pick a frame from the reel" was
@@ -115,6 +154,12 @@ const emit = defineEmits<{
   flex-direction: column;
   gap: 0.9rem;
   min-width: 0;
+}
+
+.desk-remove {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 
 .desk-empty {

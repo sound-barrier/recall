@@ -79,6 +79,10 @@ test.describe('coaching session — open and end', () => {
 
     await endSession(page)
     await expect.poll(() => session.isActive()).toBe(false)
+    // Ending says so, and lands on Reviews — the tab the session lived in —
+    // wherever it was ended from (this End came from the Settings tab).
+    await expect(page.getByText(/Session with Sable ended/)).toBeVisible()
+    await expect(page.getByRole('tab', { name: /^Reviews/ })).toHaveAttribute('aria-selected', 'true')
     await expect(page.locator('.profile-chip')).toBeVisible()
     await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.leaf-row')).toHaveCount(COACH_OWN_MATCHES.length)

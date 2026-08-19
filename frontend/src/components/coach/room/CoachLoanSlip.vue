@@ -85,7 +85,7 @@ const requestEnd = () => coach.requestEndSession()
         :title="exportTitle"
         @click="coach.exportNotes()"
       >
-        Export notes
+        1 · Export notes
       </button>
       <!--
         The receipt: the export used to succeed in silence, on the one action
@@ -102,7 +102,7 @@ const requestEnd = () => coach.requestEndSession()
         title="Discard the loaned records and go back to your own history"
         @click="requestEnd"
       >
-        End session
+        2 · End session
       </button>
       <!--
         The armed state offers both answers. It used to replace the button in
