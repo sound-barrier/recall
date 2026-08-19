@@ -58,10 +58,20 @@ test.describe('self review', () => {
     await expect(loanSlip(page, 'Sable')).toHaveCount(0)
     await expect(filmRoom(page).getByRole('heading', { name: 'Your matches' })).toBeVisible()
     await expect(filmRoom(page).getByText(/'s clock/)).toHaveCount(0)
-    await expect(filmRoom(page).getByText(/your clock/)).toBeVisible()
+    // The room says what it is — the name three other surfaces send you to.
+    await expect(filmRoom(page).getByText('Film room · your review')).toBeVisible()
+    // The editor speaks in YOUR voice: the coach's placeholder and the
+    // coach's 'Reviewed' switch have no place over your own matches.
+    await expect(filmRoom(page).getByRole('textbox', { name: 'Note' }))
+      .toHaveAttribute('placeholder', 'What will you do differently next time?')
+    await expect(filmRoom(page).getByRole('switch', { name: 'Nothing to add' })).toBeVisible()
+    // The card's clock eyebrow drops the possessive — the reel already did.
+    await expect(filmRoom(page).getByText('When · your clock')).toHaveCount(0)
     // The sheet is the sitting's: a title to give it, and Finish.
     await expect(sheet(page).getByRole('textbox', { name: 'Title' })).toBeVisible()
     await expect(sheet(page).getByRole('button', { name: /^Finish review/ })).toBeVisible()
+    // ONE header save, ONE status line saying so.
+    await expect(sheet(page).getByText('Autosaves as you write')).toHaveCount(1)
     // And the shelf is not shown underneath the room.
     await expect(panel(page).getByRole('heading', { name: 'Your own reviews' })).toHaveCount(0)
   })
@@ -112,7 +122,13 @@ test.describe('self review', () => {
     // The room hydrated the sitting's note onto its match.
     await expect(filmRoom(page).getByRole('textbox', { name: 'Note' })).toHaveValue('Held the choke, then chased.')
 
-    await sheet(page).getByRole('button', { name: /All reviews/ }).click()
+    // A finished sitting greets you with its state, not a repeat of the
+    // primary verb: the chip sits above the actions, going back is the
+    // primary, and re-finishing is the quiet edge case it is.
+    await expect(sheet(page).getByText(/Finished · /)).toBeVisible()
+    const refinish = sheet(page).getByRole('button', { name: 'Re-finish' })
+    await expect(refinish).toHaveAttribute('title', /nothing else changes/)
+    await sheet(page).getByRole('button', { name: '← Back to reviews' }).click()
     await expect(shelf(page)).toBeVisible()
 
     // Delete is armed: the first click asks, the second does.
@@ -223,6 +239,24 @@ test.describe('self review', () => {
     await palette.getByRole('option', { name: /Review my last session/ }).click()
     await expect(filmRoom(page)).toBeVisible()
     expect(mock.created.get().match_keys).toHaveLength(3)
+  })
+
+  // Finish on a nameless sitting nudges once for a name — the shelf card
+  // otherwise falls back to 'Review of <date>', which nobody finds later —
+  // and the second press goes through as asked.
+  test('Finish nudges once for a title, then finishes', async ({ page }) => {
+    const mock = await mockSelfReviews(page)
+    await page.goto('/')
+    await tickFirstRows(page, 1)
+    await page.getByRole('button', { name: 'Review this match' }).click()
+    await expect(filmRoom(page)).toBeVisible()
+
+    await sheet(page).getByRole('button', { name: 'Finish review' }).click()
+    await expect(sheet(page).getByText(/Give it a name so you can find it later/)).toBeVisible()
+    expect(mock.finished).toEqual([])
+
+    await sheet(page).getByRole('button', { name: 'Finish review' }).click()
+    await expect.poll(() => mock.finished.length).toBe(1)
   })
 
   test('a match carrying a self block shows "Your review" in its journal', async ({ page }) => {

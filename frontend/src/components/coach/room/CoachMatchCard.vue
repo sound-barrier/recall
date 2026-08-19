@@ -93,7 +93,7 @@ const earlierWords = computed(() => {
 
     <div class="card-meta">
       <div class="meta-cell">
-        <span class="eyebrow">When · {{ possessive }} clock</span>
+        <span class="eyebrow">{{ voice === 'your' ? 'When' : `When · ${possessive} clock` }}</span>
         <span class="meta-value">{{ whenLabel }}</span>
       </div>
       <div class="meta-cell">

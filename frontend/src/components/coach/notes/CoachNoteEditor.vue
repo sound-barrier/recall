@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 
 import { SAVE_LABEL, type CoachSaveState } from '@/components/coach/room/coach-room-props'
+import type { RoomVoice } from '@/components/coach/room/coach-room-props'
 import {
   FOCUS_TAGS, focusTagLabel, noteMark, parseMatchClock, type CoachNoteDraft,
 } from '@/match/coach/coach-notes'
@@ -29,7 +30,9 @@ const props = withDefaults(defineProps<{
   blockedReason?: string
   hasPrev?: boolean
   hasNext?: boolean
-}>(), { saveState: 'idle', blockedReason: '', hasPrev: false, hasNext: false })
+  /** Whose matches these are — the placeholder and the switch follow it. */
+  voice?: RoomVoice
+}>(), { saveState: 'idle', blockedReason: '', hasPrev: false, hasNext: false, voice: 'their' })
 
 const emit = defineEmits<{
   update: [draft: CoachNoteDraft]
@@ -65,6 +68,14 @@ const written = computed(() => noteMark(props.draft) === 'written')
 const reviewedBlockedReason = 'A written note already counts as reviewed — clear it first.'
 
 const blocked = computed(() => props.blockedReason !== '')
+
+// The words follow the voice: a coach writes for someone else to read next
+// time; you write for yourself. And "Reviewed" is the coach's stamp — over
+// your own matches the switch means "looked at, nothing to add".
+const notePlaceholder = computed(() => (props.voice === 'your'
+  ? 'What will you do differently next time?'
+  : 'What should they watch for next time?'))
+const switchLabel = computed(() => (props.voice === 'your' ? 'Nothing to add' : 'Reviewed'))
 const statusLine = computed(() => (blocked.value ? props.blockedReason : SAVE_LABEL[props.saveState]))
 const reviewedDisabledReason = computed(() => {
   if (blocked.value) return props.blockedReason
@@ -184,7 +195,7 @@ function toggleReviewed(): void {
       :value="draft.text"
       :disabled="blocked"
       :title="blocked ? blockedReason : undefined"
-      placeholder="What should they watch for next time?"
+      :placeholder="notePlaceholder"
       @input="onNoteInput"
     />
 
@@ -217,7 +228,7 @@ function toggleReviewed(): void {
         :title="reviewedDisabledReason"
         @click="toggleReviewed"
       >
-        Reviewed
+        {{ switchLabel }}
       </button>
     </div>
 

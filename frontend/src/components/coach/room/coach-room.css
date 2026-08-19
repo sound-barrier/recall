@@ -7,6 +7,11 @@
    Only geometry lives here. The room's surfaces come from the app's
    tokens and, on the sheet and the note, from `.paper` (paper.css). */
 
+.coach-room-title {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
 .coach-room {
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr) 300px;

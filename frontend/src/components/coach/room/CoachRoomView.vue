@@ -139,6 +139,11 @@ function step(key: string | null): void {
   <!-- A region inside the Reviews tabpanel, not a panel of its own: the tab
        is the panel, and goToView focuses #panel-<view>. -->
   <section id="film-room" class="coach-room" role="region" aria-label="Film room" tabindex="-1">
+    <!-- The room finally says its own name — three other surfaces send you
+         to "the film room", and until now no surface wore the words. -->
+    <p class="eyebrow coach-room-title">
+      {{ voice === 'your' ? 'Film room · your review' : `Film room · reviewing ${player.handle}` }}
+    </p>
     <div ref="reelColumn" class="coach-room-reel" @keydown="onReelKeydown">
       <slot name="reel">
         <CoachReel
