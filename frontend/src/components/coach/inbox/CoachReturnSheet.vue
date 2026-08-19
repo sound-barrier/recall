@@ -93,7 +93,7 @@ useModalFocusTrap(open, {
           {{ summary }}
         </p>
         <p v-if="mismatchedHandle" class="return-mismatch">
-          This archive was written about {{ mismatchedHandle }}. Accept only what belongs here.
+          This notes file was written about {{ mismatchedHandle }}. Accept only what belongs here.
         </p>
         <p v-if="saveFailed" class="return-failed" role="alert">
           Your decisions could not be saved. Nothing was lost — they are still on this sheet.

@@ -75,7 +75,7 @@ describe('CoachLoanSlip', () => {
 
   it('promises the coach nothing here is kept', () => {
     renderSlip()
-    expect(within(slip()).getByText('Nothing here is saved to your profile.')).toBeInTheDocument()
+    expect(within(slip()).getByText('These matches are on loan — nothing here joins your history.')).toBeInTheDocument()
   })
 
   it('counts the notes written so far', async () => {

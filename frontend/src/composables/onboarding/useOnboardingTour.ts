@@ -302,7 +302,7 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
   {
     id: 'coaching',
     heading: 'Reviews',
-    body: 'Review your own matches the way a coach would — tick some in Matches, choose Review these, and the film room opens over them. Send matches to a coach and read what comes back, or open a bundle a player sent you and coach them. The whole cycle lives under Reviews; a coach\'s loaned matches never join your history.',
+    body: 'Review your own matches the way a coach would — Review my last session opens the film room right here, or pick the matches yourself. Share matches with a coach and read what comes back, or open a bundle a player sent you and coach them. The whole cycle lives under Reviews; a coach\'s loaned matches never join your history.',
     target: '#tab-reviews',
     placement: 'bottom',
   },
