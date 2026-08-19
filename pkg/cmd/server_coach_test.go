@@ -256,7 +256,6 @@ func TestCoachSessionNote_RejectsInvalidBodies(t *testing.T) {
 		body any
 	}{
 		{"unknown kind", map[string]any{"kind": "scribble", "text": "hi"}},
-		{"empty note", map[string]any{"kind": "note", "text": "   "}},
 		{"clock is not MM:SS", map[string]any{"kind": "note", "text": "hi", "match_clock": "6m40"}},
 		{"focus tag outside the vocabulary", map[string]any{"kind": "note", "text": "hi", "focus_tags": []string{"vibes"}}},
 	}
@@ -267,6 +266,27 @@ func TestCoachSessionNote_RejectsInvalidBodies(t *testing.T) {
 			rec := put(t, mux, notePath(sessionMatch1), tc.body)
 			if rec.Code != http.StatusBadRequest {
 				t.Fatalf("status = %d, want 400; body=%q", rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
+
+// A note whose kind and content disagree — a `note` that says nothing, a
+// `reviewed_only` mark carrying words — is a 409, not a 400: the request is
+// spec-valid and the refusal is semantic, the same code an empty moment and
+// an empty annotation answer with (and what keeps schemathesis's
+// positive-data check honest about a body the spec permits).
+func TestCoachSessionNote_KindContentMismatchIsAConflict(t *testing.T) {
+	for name, body := range map[string]map[string]any{
+		"empty note":                 {"kind": "note", "text": "   "},
+		"reviewed_only with a clock": {"kind": "reviewed_only", "match_clock": "06:40"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, mux := newCoachMux(t)
+			openSession(t, mux)
+			rec := put(t, mux, notePath(sessionMatch1), body)
+			if rec.Code != http.StatusConflict {
+				t.Fatalf("status = %d, want 409; body=%q", rec.Code, rec.Body.String())
 			}
 		})
 	}

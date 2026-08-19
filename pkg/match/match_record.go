@@ -99,6 +99,12 @@ type Record struct {
 	// order — a self-review that points at seconds. Distinct from the ones
 	// inside a CoachNote, which are someone else's words.
 	Moments []CoachNoteMoment `json:"moments,omitempty"`
+	// SelfReviewNotes are the notes the player wrote about this match in
+	// their own saved review sittings — one block per sitting, oldest
+	// sitting first. A sibling array of CoachNotes rather than a `source`
+	// discriminator on it: the two families are separate on disk and in the
+	// bundle, and stay separate on the wire.
+	SelfReviewNotes []SelfReviewNote `json:"self_review_notes,omitempty"`
 }
 
 // Match provenance values for Record.Source.
@@ -168,6 +174,28 @@ type CoachNote struct {
 	// payload.
 	Moments    []CoachNoteMoment `json:"moments,omitempty"`
 	AcceptedAt string            `json:"accepted_at"`
+}
+
+// SelfReviewNote is one block a match carries from one of the player's own
+// review sittings: what they wrote there, and which sitting it was — the
+// review's id (the delete address), title, when it was opened, and whether
+// it is finished (an unfinished sitting's block reads "in progress").
+type SelfReviewNote struct {
+	ReviewID         string `json:"review_id"`
+	ReviewTitle      string `json:"review_title,omitempty"`
+	ReviewCreatedAt  string `json:"review_created_at"`
+	ReviewFinishedAt string `json:"review_finished_at,omitempty"`
+	Kind             string `json:"kind"`
+	Text             string `json:"text"`
+	MatchClock       string `json:"match_clock,omitempty"`
+	// Tag slices are carried as the store hands them over — absent when the
+	// note carried none, like the coach block's.
+	FocusTags []string `json:"focus_tags,omitempty"`
+	ExtraTags []string `json:"extra_tags,omitempty"`
+	// Moments are the player's timestamped observations in this sitting, in
+	// reading order. omitempty like the coach block's.
+	Moments   []CoachNoteMoment `json:"moments,omitempty"`
+	UpdatedAt string            `json:"updated_at"`
 }
 
 // CoachNoteMoment is one timestamped observation on a received note.

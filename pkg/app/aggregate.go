@@ -43,9 +43,10 @@ func (a *App) loadSidecars() aggregate.Sidecars {
 	pinned, _ := a.store.LoadPinnedKeys()
 	coachNotes, _ := a.store.LoadMatchCoachNotes()
 	moments, _ := a.store.LoadMatchMoments()
+	selfReviews, _ := a.store.LoadSelfReviewNotes()
 	return aggregate.Sidecars{
 		Annotations: annos, Hidden: hidden, Reviews: reviews,
-		Pinned: pinned, CoachNotes: coachNotes, Moments: moments,
+		Pinned: pinned, CoachNotes: coachNotes, Moments: moments, SelfReviews: selfReviews,
 	}
 }
 
@@ -59,16 +60,17 @@ func (a *App) reAggregateUnknowns() (int, error) {
 // bottom. Distinct from loadSidecars above, which is the best-effort variant
 // a partial read tolerates.
 type aggregateInputs struct {
-	snap       db.Screenshots
-	annos      map[string]db.Annotation
-	hidden     map[string]bool
-	reviews    map[string]db.ReviewState
-	pinned     map[string]bool
-	queues     map[string]db.QueueState
-	playModes  map[string]db.PlayModeState
-	userData   map[string]db.UserMatchData
-	coachNotes map[string][]db.MatchCoachNote
-	moments    map[string][]db.MatchMoment
+	snap        db.Screenshots
+	annos       map[string]db.Annotation
+	hidden      map[string]bool
+	reviews     map[string]db.ReviewState
+	pinned      map[string]bool
+	queues      map[string]db.QueueState
+	playModes   map[string]db.PlayModeState
+	userData    map[string]db.UserMatchData
+	coachNotes  map[string][]db.MatchCoachNote
+	moments     map[string][]db.MatchMoment
+	selfReviews map[string][]db.SelfReviewNoteOnMatch
 }
 
 func (a *App) loadAggregateInputs() (aggregateInputs, error) {
@@ -85,6 +87,7 @@ func (a *App) loadAggregateInputs() (aggregateInputs, error) {
 		func() (err error) { s.userData, err = a.store.LoadAllUserMatchData(); return },
 		func() (err error) { s.coachNotes, err = a.store.LoadMatchCoachNotes(); return },
 		func() (err error) { s.moments, err = a.store.LoadMatchMoments(); return },
+		func() (err error) { s.selfReviews, err = a.store.LoadSelfReviewNotes(); return },
 	} {
 		if err = load(); err != nil {
 			return aggregateInputs{}, err
@@ -107,6 +110,7 @@ func (a *App) aggregateAll() ([]match.Record, error) {
 	aggregate.AttachReviews(recs, d.reviews)
 	aggregate.AttachCoachNotes(recs, d.coachNotes)
 	aggregate.AttachMatchMoments(recs, d.moments)
+	aggregate.AttachSelfReviewNotes(recs, d.selfReviews)
 	aggregate.AttachQueues(recs, d.queues)
 	aggregate.AttachPlayModes(recs, d.playModes)
 	aggregate.AttachAmbiguity(recs, d.snap.AmbiguousCandidates)

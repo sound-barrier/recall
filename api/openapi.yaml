@@ -71,6 +71,14 @@ tags:
     description: |
       The coaching loop — a coach reviews a player's bundle in a session,
       and the player decides on the notes that come back.
+  - name: Self review
+    description: |
+      The player's own saved review sittings — sit down with a set of your
+      own matches and review them the way a coach would: per-match notes
+      with focus tags, timestamped moments, a set-level summary. Named,
+      dated, listable, reopenable. Each note lands on its match as a block
+      the moment it is written; finishing marks every member match reviewed
+      by self (where a coach has not already).
   - name: Events
     description: Server-Sent Events stream.
   - name: Assets
@@ -2614,7 +2622,10 @@ paths:
         dedupe and record decisions against it.
 
         `404` when no session is open or the match is not in the loaned
-        corpus, `409` before the player's handle has been confirmed.
+        corpus, `409` before the player's handle has been confirmed — and
+        `409` when the kind and the content disagree (a `note` with neither
+        text nor tag; a `reviewed_only` mark carrying words): the body
+        parsed, the refusal is semantic (an empty draft is a DELETE).
       requestBody:
         required: true
         content:
@@ -2967,6 +2978,310 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/self-reviews:
+    get:
+      operationId: ListSelfReviews
+      tags: [Self review]
+      summary: List the player's own review sittings, newest first
+      description: |
+        Every sitting, whole — the header, the member keys in the player's
+        order, and the notes keyed by match — newest first. The Reviews
+        tab's shelf.
+      responses:
+        "200":
+          description: The sittings.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SelfReview"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      operationId: CreateSelfReview
+      tags: [Self review]
+      summary: Open a sitting over a set of your own matches
+      description: |
+        Creates a sitting over the given match keys, in the given order
+        (duplicates collapse to their first position; blanks are dropped).
+        The title is optional and may be set later.
+
+        `409` when no keys remain after normalization — a sitting over
+        nothing is not a sitting. `404` when a key names a match this
+        database has never seen (the sidecar tables carry no foreign key,
+        so an unguarded create would seed a review over a phantom). `409`
+        while a coaching session is open: the sitting is the player's own
+        data, which a session freezes like every other write.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelfReviewCreateInput"
+      responses:
+        "201":
+          description: The sitting, as created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelfReview"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/self-reviews/{review_id}:
+    parameters:
+      - $ref: "#/components/parameters/ReviewID"
+    get:
+      operationId: GetSelfReview
+      tags: [Self review]
+      summary: Read one sitting whole
+      description: |
+        The header, the member keys in the player's order, and every note
+        with its moments — what the film room hydrates from when the
+        sitting is reopened.
+      responses:
+        "200":
+          description: The sitting.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelfReview"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    put:
+      operationId: UpdateSelfReview
+      tags: [Self review]
+      summary: Rename the sitting or rewrite its summary
+      description: |
+        Replaces the title and the set-level summary ("what to work on").
+        Both are trimmed; `400` past their bounds. Returns the sitting.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelfReviewUpdateInput"
+      responses:
+        "200":
+          description: The sitting, as updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelfReview"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: DeleteSelfReview
+      tags: [Self review]
+      summary: Delete the sitting and every note in it
+      description: |
+        Removes the sitting; its blocks leave every match they were on. The
+        reviewed-by-self flags a finish stamped STAY — finishing was a fact
+        about the match, the delete is a fact about the notes. Idempotent.
+      responses:
+        "204":
+          description: Sitting removed (or never existed).
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/self-reviews/{review_id}/matches:
+    parameters:
+      - $ref: "#/components/parameters/ReviewID"
+    put:
+      operationId: SetSelfReviewMatches
+      tags: [Self review]
+      summary: Replace the sitting's set of matches
+      description: |
+        PUT of the whole list, in the player's order. A note on a match that
+        leaves the set goes with it; a note on one that stays is kept. Same
+        refusals as create: `409` for an empty set, `404` for an unknown key.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelfReviewMatchesInput"
+      responses:
+        "200":
+          description: The sitting over its new set.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelfReview"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/self-reviews/{review_id}/completion:
+    parameters:
+      - $ref: "#/components/parameters/ReviewID"
+    post:
+      operationId: FinishSelfReview
+      tags: [Self review]
+      summary: Finish the sitting
+      description: |
+        Stamps the sitting done and marks every member match reviewed by
+        self — except where a coach has already reviewed it: the coach mark
+        outranks in both directions (an accepted return overwrites self with
+        coach; a finish never overwrites coach with self). Idempotent: a
+        second finish keeps the first stamp. No verb in the path, like
+        `/coach/session/export`.
+      responses:
+        "200":
+          description: The finished sitting.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelfReview"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/self-reviews/{review_id}/notes/{match_key}:
+    parameters:
+      - $ref: "#/components/parameters/ReviewID"
+      - $ref: "#/components/parameters/MatchKey"
+    put:
+      operationId: PutSelfReviewNote
+      tags: [Self review]
+      summary: Save the sitting's note about one match
+      description: |
+        Upserts the one note per (sitting, match) — the same body a coach's
+        note takes, under the same rules (see `CoachNoteInput`), because the
+        room's editor is one component. A re-save replaces text, clock and
+        both tag sets wholesale and leaves the moments alone; they have their
+        own writes. `404` when the match is not in the sitting; `409` when
+        the kind and the content disagree (see `CoachNoteInput`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CoachNoteInput"
+      responses:
+        "200":
+          description: The saved note, moments included.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelfReviewNote"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: DeleteSelfReviewNote
+      tags: [Self review]
+      summary: Remove the sitting's note about one match
+      description: Removes the note and its moments. Idempotent.
+      responses:
+        "204":
+          description: Note removed (or never existed).
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/self-reviews/{review_id}/notes/{match_key}/moments/{moment_id}:
+    parameters:
+      - $ref: "#/components/parameters/ReviewID"
+      - $ref: "#/components/parameters/MatchKey"
+      - name: moment_id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: |
+          The moment's own id. The CLIENT mints it, for the same reason the
+          coach's moment id is client-minted: the autosave keys on it from
+          the first keystroke.
+    put:
+      operationId: PutSelfReviewMoment
+      tags: [Self review]
+      summary: Save one timestamped moment on a match in the sitting
+      description: |
+        Upserts one observation inside the sitting's note about the match.
+        Opens the note as `reviewed_only` if this is the first mark on the
+        match — a moment IS a review of it. The rules are the player's own
+        moment rules (`MM:SS`, bounded text, the shared focus vocabulary, at
+        most 50 per match).
+
+        `404` when the match is not in the sitting. `400` for a malformed
+        clock or a tag outside the vocabulary. `409` when the text is empty
+        — the body parsed, the refusal is semantic.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CoachMomentInput"
+      responses:
+        "200":
+          description: The saved moment.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachMoment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: DeleteSelfReviewMoment
+      tags: [Self review]
+      summary: Remove one moment
+      description: Idempotent. The note is left behind.
+      responses:
+        "204":
+          description: Moment removed (or never existed).
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/events:
     get:
       operationId: Events
@@ -3108,6 +3423,19 @@ components:
         and `ambiguous-<filename>` variants the embedded filename
         still needs the usual encoding for spaces / unicode.
       example: "match-2026-05-10T22-21-11"
+
+    ReviewID:
+      in: path
+      name: review_id
+      required: true
+      schema:
+        type: string
+        minLength: 1
+      description: |
+        A self-review sitting's id — a UUID minted on create. It is also the
+        identity a share bundle and a profile move carry the sitting under,
+        so a re-import updates the same sitting instead of duplicating it.
+      example: "d3b07384-d9a0-4c8e-9a1f-1234567890ab"
 
     CoachReturnID:
       in: path
@@ -4075,8 +4403,10 @@ components:
         deduplicated case-insensitively.
 
         Kind rules: a `reviewed_only` mark must carry no text, tags, or
-        clock, and a `note` must carry text or at least one tag. Violations
-        are `400`.
+        clock, and a `note` must carry text or at least one tag. A body
+        whose kind and content disagree is `409` — spec-valid, semantically
+        refused; everything else the rules refuse (a bad clock, a tag outside
+        the vocabulary, over-long text) is `400`.
       required: [kind]
       properties:
         kind:
@@ -4468,6 +4798,158 @@ components:
           type: string
           description: When the player accepted the note (RFC3339).
 
+    SelfReview:
+      type: object
+      description: |
+        One self-review sitting, whole: the header, the member keys in the
+        player's order, and the notes keyed by match. `finished_at` is
+        absent while the sitting is in progress.
+      required: [review_id, title, summary, created_at, updated_at, match_keys, notes]
+      properties:
+        review_id:
+          type: string
+        title:
+          type: string
+          maxLength: 120
+        summary:
+          type: string
+          maxLength: 20000
+          description: The set-level note — "what to work on".
+        created_at:
+          type: string
+          description: RFC3339.
+        updated_at:
+          type: string
+          description: RFC3339. Moves on every live write to the sitting.
+        finished_at:
+          type: string
+          description: RFC3339. Absent while in progress.
+        match_keys:
+          type: array
+          items:
+            type: string
+          description: The set, in the player's order.
+        notes:
+          type: object
+          description: The sitting's notes, keyed by `match_key`.
+          additionalProperties:
+            $ref: "#/components/schemas/SelfReviewNote"
+
+    SelfReviewNote:
+      type: object
+      description: |
+        The sitting's note about one match — the coach note's shape (the
+        room's editor is one component), moments included, in reading
+        order. `kind` is `reviewed_only` when the match was only looked at
+        (or only holds moments).
+      required: [match_key, kind, text, focus_tags, extra_tags, match_clock, created_at, updated_at]
+      properties:
+        match_key:
+          type: string
+        kind:
+          $ref: "#/components/schemas/CoachNoteKindEnum"
+        text:
+          type: string
+        focus_tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoachFocusTagEnum"
+        extra_tags:
+          type: array
+          items:
+            type: string
+        match_clock:
+          type: string
+        moments:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoachMoment"
+          description: Absent rather than empty when there are none.
+        created_at:
+          type: string
+        updated_at:
+          type: string
+
+    SelfReviewCreateInput:
+      type: object
+      required: [match_keys]
+      properties:
+        title:
+          type: string
+          maxLength: 120
+        match_keys:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            type: string
+            minLength: 1
+
+    SelfReviewUpdateInput:
+      type: object
+      required: [title, summary]
+      properties:
+        title:
+          type: string
+          maxLength: 120
+        summary:
+          type: string
+          maxLength: 20000
+
+    SelfReviewMatchesInput:
+      type: object
+      required: [match_keys]
+      properties:
+        match_keys:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            type: string
+            minLength: 1
+
+    MatchSelfReviewNote:
+      type: object
+      description: |
+        One block a match carries from one of the player's own review
+        sittings — what they wrote there, and which sitting it was. A
+        sibling of `coach_notes[]`, never merged into it: the two families
+        are separate on disk and in the bundle, and stay separate here.
+        `review_finished_at` is absent while the sitting is in progress
+        (the block reads "in progress").
+      required: [review_id, review_created_at, kind, text, updated_at]
+      properties:
+        review_id:
+          type: string
+        review_title:
+          type: string
+        review_created_at:
+          type: string
+        review_finished_at:
+          type: string
+        kind:
+          $ref: "#/components/schemas/CoachNoteKindEnum"
+        text:
+          type: string
+        match_clock:
+          type: string
+        focus_tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoachFocusTagEnum"
+          description: Absent when the note carried none, like a coach block's.
+        extra_tags:
+          type: array
+          items:
+            type: string
+        moments:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoachMoment"
+          description: In reading order; absent rather than empty.
+        updated_at:
+          type: string
+
     MatchRecord:
       type: object
       description: |
@@ -4663,6 +5145,14 @@ components:
             else's words. Omitted when the player has marked none.
           items:
             $ref: "#/components/schemas/CoachMoment"
+        self_review_notes:
+          type: array
+          description: |
+            The notes the player wrote about this match in their own saved
+            review sittings — one block per sitting, oldest sitting first.
+            Omitted for matches no sitting has touched.
+          items:
+            $ref: "#/components/schemas/MatchSelfReviewNote"
 
     AutoBackupStatus:
       type: object

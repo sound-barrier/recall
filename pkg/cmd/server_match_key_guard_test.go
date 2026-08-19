@@ -36,6 +36,11 @@ func TestPerMatchWrites_UnknownKeyIs404(t *testing.T) {
 		{"bulk play mode", http.MethodPut, "/api/v1/matches/play-mode", map[string]any{
 			"match_keys": []string{"match-ghost"}, "play_mode": "competitive",
 		}},
+		// A self-review sitting is a set of keys; one unknown refuses the whole
+		// create, and the same for a set-matches on an existing sitting.
+		{"self review create", http.MethodPost, "/api/v1/self-reviews", map[string]any{
+			"match_keys": []string{"match-ghost"},
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

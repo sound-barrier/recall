@@ -33,6 +33,7 @@ func TestCoachSession_FidelityWithStoreBackedImport(t *testing.T) {
 		t.Fatalf("record counts differ: session %d, store-backed %d", len(loaned), len(stored))
 	}
 	assertBundleParsedAtOnBothPaths(t, loaned, stored)
+	assertEveryReviewFamilyIsPresent(t, loaned)
 	blankDocumentedDepartures(loaned)
 	blankDocumentedDepartures(stored)
 
@@ -41,6 +42,26 @@ func TestCoachSession_FidelityWithStoreBackedImport(t *testing.T) {
 			t.Errorf("record %d (%s) differs\nsession:     %+v\nstore-backed: %+v",
 				i, loaned[i].MatchKey, loaned[i], stored[i])
 		}
+	}
+}
+
+// assertEveryReviewFamilyIsPresent proves the fixture exercises the three
+// review families the two paths must agree on — the player's own moment,
+// a coach's accepted block, a self-review sitting's block. Two paths that
+// both dropped a family would compare equal and the gate would say nothing;
+// this is what makes the DeepEqual above a completeness check.
+func assertEveryReviewFamilyIsPresent(t *testing.T, recs []match.Record) {
+	t.Helper()
+	byKey := map[string]match.Record{}
+	for _, r := range recs {
+		byKey[r.MatchKey] = r
+	}
+	if got := byKey[playerMatchRialto]; len(got.Moments) != 1 || len(got.SelfReviewNotes) != 1 || len(got.SelfReviewNotes[0].Moments) != 1 {
+		t.Errorf("Rialto on the session path: moments = %+v, self blocks = %+v; want the fixture's one of each (with its moment)",
+			got.Moments, got.SelfReviewNotes)
+	}
+	if got := byKey[playerMatchIlios]; len(got.CoachNotes) != 1 {
+		t.Errorf("Ilios on the session path: coach blocks = %+v; want the fixture's earlier coach's block", got.CoachNotes)
 	}
 }
 

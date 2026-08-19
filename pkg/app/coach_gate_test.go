@@ -12,6 +12,7 @@ import (
 	"recall/pkg/db/dbtest"
 	"recall/pkg/match"
 	"recall/pkg/matchedit"
+	"recall/pkg/review"
 )
 
 // The write gate (design rule 1): while a coaching session is open the
@@ -92,11 +93,47 @@ func gatedIngestWrites(a *app.App) map[string]func() error {
 	}
 }
 
+// gatedSelfReviewWrites are the player's own saved-sitting writers. A self
+// review is the player's data, so a coach session (someone else's data on
+// the same machine) freezes it like every other write.
+func gatedSelfReviewWrites(a *app.App) map[string]func() error {
+	return map[string]func() error{
+		"CreateSelfReview": func() error {
+			_, err := a.CreateSelfReview(review.CreateInput{MatchKeys: []string{"k"}})
+			return err
+		},
+		"UpdateSelfReview": func() error {
+			_, err := a.UpdateSelfReview("r", review.UpdateInput{Title: "t"})
+			return err
+		},
+		"SetSelfReviewMatches": func() error {
+			_, err := a.SetSelfReviewMatches("r", []string{"k"})
+			return err
+		},
+		"DeleteSelfReview": func() error { return a.DeleteSelfReview("r") },
+		"FinishSelfReview": func() error {
+			_, err := a.FinishSelfReview("r")
+			return err
+		},
+		"PutSelfReviewNote": func() error {
+			_, err := a.PutSelfReviewNote("r", "k", coach.NoteInput{Kind: "note", Text: "x"})
+			return err
+		},
+		"DeleteSelfReviewNote": func() error { return a.DeleteSelfReviewNote("r", "k") },
+		"PutSelfReviewMoment": func() error {
+			_, err := a.PutSelfReviewMoment("r", "k", "m", matchedit.MomentInput{MatchClock: "4:45", Text: "x"})
+			return err
+		},
+		"DeleteSelfReviewMoment": func() error { return a.DeleteSelfReviewMoment("r", "k", "m") },
+	}
+}
+
 // gatedWrites is the whole gate list — the union of the three groups.
 func gatedWrites(a *app.App) map[string]func() error {
 	all := gatedPerMatchWrites(a)
 	maps.Copy(all, gatedCorpusWrites(a))
 	maps.Copy(all, gatedIngestWrites(a))
+	maps.Copy(all, gatedSelfReviewWrites(a))
 	return all
 }
 
@@ -126,7 +163,7 @@ func TestCoachSession_GateLiftsOnClose(t *testing.T) {
 // corpus mutation. The completeness net below holds every exported method
 // starting with one of these to "gated, or exempt with a stated reason".
 var mutatingVerbs = []string{
-	"Add", "Apply", "Bulk", "Clear", "Create", "Delete", "Demote", "Hide",
+	"Add", "Apply", "Bulk", "Clear", "Create", "Delete", "Demote", "Finish", "Hide",
 	"Ignore", "Import", "Move", "Parse", "Pin", "Promote", "Put", "ReParse",
 	"Remove", "Rename", "Reset", "Resolve", "Restore", "Seed", "Set", "Start",
 	"Switch", "Unhide", "Unignore", "Unpin", "Update",

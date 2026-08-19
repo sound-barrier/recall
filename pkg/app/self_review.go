@@ -1,0 +1,161 @@
+package app
+
+import (
+	"recall/pkg/coach"
+	"recall/pkg/db"
+	"recall/pkg/matchedit"
+	"recall/pkg/review"
+)
+
+// The player's saved self-review sittings — the orchestration above
+// pkg/review. Every rule (validation, the reviewed_only-on-moment rule, the
+// coach-outranks rule on Finish) lives in the leaf; what stays here is the
+// write gate every mutating method states as its own first line so
+// coach_gate_test.go's reflection net can find it, and the match-updated
+// broadcast after a write that changes what a match shows.
+
+// pkg/review declares its persistence needs as a consumer-side seam;
+// db.Store satisfies it, asserted here where the two are wired.
+var _ review.Store = (db.Store)(nil)
+
+// ListSelfReviews returns every sitting, newest first.
+func (a *App) ListSelfReviews() ([]review.Session, error) {
+	return review.List(a.store)
+}
+
+// GetSelfReview returns one sitting whole.
+func (a *App) GetSelfReview(reviewID string) (review.Session, error) {
+	return review.Get(a.store, reviewID)
+}
+
+// CreateSelfReview opens a sitting over the given matches.
+func (a *App) CreateSelfReview(in review.CreateInput) (review.Session, error) {
+	if err := a.assertNoCoachSession(); err != nil {
+		return review.Session{}, err
+	}
+	return review.Create(a.store, in)
+}
+
+// UpdateSelfReview replaces the sitting's title and summary.
+func (a *App) UpdateSelfReview(reviewID string, in review.UpdateInput) (review.Session, error) {
+	if err := a.assertNoCoachSession(); err != nil {
+		return review.Session{}, err
+	}
+	r, err := review.Update(a.store, reviewID, in)
+	if err != nil {
+		return review.Session{}, err
+	}
+	// The title prints on every block the sitting left on a match.
+	a.emitMatchesByKey(r.MatchKeys)
+	return r, nil
+}
+
+// SetSelfReviewMatches replaces the sitting's set; a note on a match that
+// leaves goes with it, so that match is re-broadcast too.
+func (a *App) SetSelfReviewMatches(reviewID string, matchKeys []string) (review.Session, error) {
+	if err := a.assertNoCoachSession(); err != nil {
+		return review.Session{}, err
+	}
+	before, err := review.Get(a.store, reviewID)
+	if err != nil {
+		return review.Session{}, err
+	}
+	r, err := review.SetMatches(a.store, reviewID, matchKeys)
+	if err != nil {
+		return review.Session{}, err
+	}
+	a.emitMatchesByKey(before.MatchKeys)
+	return r, nil
+}
+
+// DeleteSelfReview removes the sitting and its blocks from every match it
+// touched; the reviewed-by flags a finish stamped stay.
+func (a *App) DeleteSelfReview(reviewID string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
+	// Read the set first so the matches that lose a block can be
+	// re-broadcast; absent is a no-op, like the store's own delete.
+	r, ok, err := a.store.LoadSelfReview(reviewID)
+	if err != nil || !ok {
+		return err
+	}
+	if err := review.Delete(a.store, reviewID); err != nil {
+		return err
+	}
+	a.emitMatchesByKey(r.MatchKeys)
+	return nil
+}
+
+// FinishSelfReview stamps the sitting done and every member match reviewed
+// by self where a coach has not already.
+func (a *App) FinishSelfReview(reviewID string) (review.Session, error) {
+	if err := a.assertNoCoachSession(); err != nil {
+		return review.Session{}, err
+	}
+	r, err := review.Finish(a.store, reviewID)
+	if err != nil {
+		return review.Session{}, err
+	}
+	a.emitMatchesByKey(r.MatchKeys)
+	return r, nil
+}
+
+// PutSelfReviewNote saves the sitting's note about one match.
+func (a *App) PutSelfReviewNote(reviewID, matchKey string, in coach.NoteInput) (review.Note, error) {
+	if err := a.assertNoCoachSession(); err != nil {
+		return review.Note{}, err
+	}
+	n, err := review.PutNote(a.store, reviewID, matchKey, in)
+	if err != nil {
+		return review.Note{}, err
+	}
+	a.emitMatchByKey(matchKey)
+	return n, nil
+}
+
+// DeleteSelfReviewNote removes the sitting's note about one match.
+func (a *App) DeleteSelfReviewNote(reviewID, matchKey string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
+	if err := review.DeleteNote(a.store, reviewID, matchKey); err != nil {
+		return err
+	}
+	a.emitMatchByKey(matchKey)
+	return nil
+}
+
+// PutSelfReviewMoment saves one timestamped moment on the sitting's note
+// about a match, opening the note as reviewed_only when there is none.
+func (a *App) PutSelfReviewMoment(reviewID, matchKey, momentID string, in matchedit.MomentInput) (review.Moment, error) {
+	if err := a.assertNoCoachSession(); err != nil {
+		return review.Moment{}, err
+	}
+	m, err := review.PutMoment(a.store, reviewID, matchKey, momentID, in)
+	if err != nil {
+		return review.Moment{}, err
+	}
+	a.emitMatchByKey(matchKey)
+	return m, nil
+}
+
+// DeleteSelfReviewMoment removes one moment from the sitting's note.
+func (a *App) DeleteSelfReviewMoment(reviewID, matchKey, momentID string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
+	if err := review.DeleteMoment(a.store, reviewID, matchKey, momentID); err != nil {
+		return err
+	}
+	a.emitMatchByKey(matchKey)
+	return nil
+}
+
+// emitMatchesByKey re-broadcasts each match in the set — a sitting-level
+// write (title, finish, delete, membership) changes what every member shows.
+func (a *App) emitMatchesByKey(keys []string) {
+	for _, k := range keys {
+		a.emitMatchByKey(k)
+	}
+}

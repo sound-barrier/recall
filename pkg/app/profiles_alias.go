@@ -26,6 +26,9 @@ var (
 	// set of matches that would leave a review card pointing at a match left
 	// behind. It maps to 409 like the other "your selection is wrong" cases.
 	ErrMoveStrandsCandidate = profiles.ErrMoveStrandsCandidate
+	// ErrMoveSplitsSelfReview is the same kind of refusal: the selection
+	// would leave a self-review sitting straddling two profiles.
+	ErrMoveSplitsSelfReview = profiles.ErrMoveSplitsSelfReview
 )
 
 // LoadProfiles opens (or initializes) the profile manager rooted at

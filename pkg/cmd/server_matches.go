@@ -221,6 +221,7 @@ func handleMoveMatches(a *app.App) http.HandlerFunc {
 			errStatus{app.ErrProfileNotFound, probNotFound},
 			errStatus{app.ErrMoveTargetIsActive, probConflict},
 			errStatus{app.ErrMoveStrandsCandidate, probConflict},
+			errStatus{app.ErrMoveSplitsSelfReview, probConflict},
 			errStatus{app.ErrProfileImmutable, probConflict}) {
 			return
 		}

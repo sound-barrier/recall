@@ -338,6 +338,11 @@ func newAPIMux(a *app.App) *http.ServeMux {
 	// coach-notes DELETE register in server_coach.go.
 	registerCoachRoutes(apiMux, a)
 
+	// ── Self review ─────────────────────────────────────────────────
+	// /api/v1/self-reviews… — the player's own saved review sittings.
+	// Registers in server_self_review.go.
+	registerSelfReviewRoutes(apiMux, a)
+
 	// ── Test-harness-only routes ────────────────────────────────────
 	// No-op unless RECALL_E2E=1 (the Playwright e2e harness). Never in
 	// production. See server_test_reset.go.

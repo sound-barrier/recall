@@ -547,10 +547,10 @@ CREATE TABLE IF NOT EXISTS user_match_rank_modifiers (
 ) STRICT;
 -- statement-end
 
--- ── Coaching ────────────────────────────────────────────────────────────
+-- ── Coaching and review ─────────────────────────────────────────────────
 --
--- Two families that one machine may carry at once (a user can be both a
--- coach and a player):
+-- Three families that one machine may carry at once (a user can be both a
+-- coach and a player, and a player reviews their own games):
 --
 --   * coach-AUTHORED (coach_players / coach_notes / coach_session_summaries)
 --     — what THIS user wrote about someone else's matches during a coaching
@@ -560,6 +560,17 @@ CREATE TABLE IF NOT EXISTS user_match_rank_modifiers (
 --     coach wrote about THIS user's matches, staged as a return and accepted
 --     per note. Keyed by local match_key like every other sidecar, so
 --     HardDeleteMatch / Clear / profiles.Move treat it as match history.
+--   * player-AUTHORED SELF REVIEW (self_reviews and its self_review_*
+--     children, at the end of this file) — a saved session in which THIS
+--     user sat down with a set of their OWN matches and reviewed them the
+--     way a coach would: per-match notes with focus tags, timestamped
+--     moments, a set-level summary. Match history like the received family
+--     (HardDeleteMatch removes a match from its reviews; Clear wipes them;
+--     profiles.Move carries a review whole or refuses), but its own tables,
+--     not rows in match_coach_notes with a nullable review id: the received
+--     block travels field-for-field into bundles and profile moves, and an
+--     integer review id in a target database either fails the import or
+--     attaches the note to whichever unrelated review holds that id.
 
 -- player_id is the UUID a "share with a coach" export mints on the player's
 -- side; NULL for anonymous/older bundles, where the case-insensitive handle
@@ -750,4 +761,105 @@ CREATE TABLE IF NOT EXISTS coach_return_decisions (
   decided_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   PRIMARY KEY (return_id, note_id)
 ) STRICT;
+-- statement-end
+
+-- ── Self review ─────────────────────────────────────────────────────────
+--
+-- One saved sitting over the player's own matches. review_id is a UUID and
+-- is the wire id AND the bundle/move identity, so no integer ever leaves
+-- the database (see the family note above). finished_at is NULL while the
+-- review is in progress; Finish stamps it and marks every member match
+-- reviewed_by 'self' where a coach has not already outranked it.
+CREATE TABLE IF NOT EXISTS self_reviews (
+  review_id TEXT PRIMARY KEY,
+  title TEXT NOT NULL DEFAULT '',
+  summary TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  finished_at TEXT
+) STRICT;
+-- statement-end
+
+-- The set a review is over, in the order the player laid it out. No foreign
+-- key to a match table (sidecar rule 2 — a match is five parent rows keyed
+-- by match_key, not one row to reference); HardDeleteMatch removes the
+-- membership row, and the note below cascades off it.
+CREATE TABLE IF NOT EXISTS self_review_matches (
+  review_id TEXT NOT NULL REFERENCES self_reviews (review_id) ON DELETE CASCADE,
+  match_key TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (review_id, match_key)
+) STRICT;
+-- statement-end
+CREATE INDEX IF NOT EXISTS idx_self_review_matches_match_key
+  ON self_review_matches (match_key);
+-- statement-end
+
+-- One note per (review, match), the same per-match record the coach's
+-- authored note is: kind says whether words were written or the match was
+-- only looked at (a moment on a match with no note opens a reviewed_only
+-- one). The composite FK to the membership row is what makes "remove this
+-- match from the review" and "hard-delete this match" one statement each —
+-- the note goes with the membership.
+CREATE TABLE IF NOT EXISTS self_review_notes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  review_id TEXT NOT NULL,
+  match_key TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('note', 'reviewed_only')),
+  text TEXT NOT NULL DEFAULT '',
+  match_clock TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  UNIQUE (review_id, match_key),
+  FOREIGN KEY (review_id, match_key)
+    REFERENCES self_review_matches (review_id, match_key) ON DELETE CASCADE
+) STRICT;
+-- statement-end
+CREATE INDEX IF NOT EXISTS idx_self_review_notes_match_key
+  ON self_review_notes (match_key);
+-- statement-end
+
+-- Same vocabulary as coach_note_focus_tags — the third copy of the CHECK
+-- list. Keep all three in step: the player and their coach file a match
+-- under the same words, which is most of what makes a review legible.
+CREATE TABLE IF NOT EXISTS self_review_note_focus_tags (
+  self_review_note_id INTEGER NOT NULL REFERENCES self_review_notes (id) ON DELETE CASCADE,
+  tag TEXT NOT NULL CHECK (tag IN (
+    'positioning', 'ult_economy', 'target_priority', 'cooldowns',
+    'hero_pick', 'comms', 'mechanics', 'mental'
+  )),
+  PRIMARY KEY (self_review_note_id, tag)
+) STRICT;
+-- statement-end
+
+CREATE TABLE IF NOT EXISTS self_review_note_extra_tags (
+  self_review_note_id INTEGER NOT NULL REFERENCES self_review_notes (id) ON DELETE CASCADE,
+  tag TEXT NOT NULL,
+  PRIMARY KEY (self_review_note_id, tag)
+) STRICT;
+-- statement-end
+
+-- A note's timestamped moments, riding inside the note the way a received
+-- block's do. moment_id is minted client-side and unique WITHIN the note,
+-- like its two siblings. focus_tag is a CHECK column rather than a child
+-- table, like match_moments: written straight from the API, so the CHECK is
+-- the last thing between a client and an unreadable tag.
+CREATE TABLE IF NOT EXISTS self_review_note_moments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  self_review_note_id INTEGER NOT NULL REFERENCES self_review_notes (id) ON DELETE CASCADE,
+  moment_id TEXT NOT NULL,
+  match_clock TEXT NOT NULL,
+  text TEXT NOT NULL,
+  focus_tag TEXT NOT NULL DEFAULT '' CHECK (focus_tag IN (
+    '', 'positioning', 'ult_economy', 'target_priority', 'cooldowns',
+    'hero_pick', 'comms', 'mechanics', 'mental'
+  )),
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  UNIQUE (self_review_note_id, moment_id)
+) STRICT;
+-- statement-end
+CREATE INDEX IF NOT EXISTS idx_self_review_note_moments_note
+  ON self_review_note_moments (self_review_note_id, sort_order);
 -- statement-end
