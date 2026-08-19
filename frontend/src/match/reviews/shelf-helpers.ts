@@ -8,7 +8,7 @@ import { tallyWLD, type WLDTally } from '@/match/match-stats-helpers'
 // only looked at, bare where nothing yet — so how much of the sitting is
 // written up reads at a glance, and the card's name says it in words.
 
-export type RailMark = 'written' | 'reviewed' | 'bare'
+type RailMark = 'written' | 'reviewed' | 'bare'
 
 export interface ShelfCard {
   reviewId: string

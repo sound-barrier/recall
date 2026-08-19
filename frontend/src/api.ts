@@ -736,10 +736,6 @@ export function DeleteSelfReview(reviewID: string): Promise<void> {
   return unwrapVoid(sdk.deleteSelfReview({ path: { review_id: reviewID } }))
 }
 
-export function SetSelfReviewMatches(reviewID: string, matchKeys: string[]): Promise<SelfReview> {
-  return unwrap(sdk.setSelfReviewMatches({ path: { review_id: reviewID }, body: { match_keys: matchKeys } }))
-}
-
 // POST /completion — Finish: stamps the sitting done and every member match
 // reviewed by self where a coach has not already. Idempotent.
 export function FinishSelfReview(reviewID: string): Promise<SelfReview> {

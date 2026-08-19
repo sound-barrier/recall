@@ -9,7 +9,7 @@ import { formatPlayerDay } from '@/match/coach/coach-time'
 // where each word comes from.
 
 /** What dropping the block does — the two families are removed through different stores. */
-export type NoteBlockRemoval
+type NoteBlockRemoval
   = { kind: 'coach'; id: number }
   | { kind: 'self'; reviewId: string }
 
