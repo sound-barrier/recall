@@ -59,18 +59,18 @@ export interface ReviewDraftsOptions {
 }
 
 /** The note a match keeps when its text is cleared but its moments stand. */
-export function reviewedOnlyDraft(): CoachNoteDraft {
+function reviewedOnlyDraft(): CoachNoteDraft {
   return { kind: 'reviewed_only', text: '', focusTags: [], extraTags: [], matchClock: '' }
 }
 
-export function draftsByMatch(wire: WireNoteLike[]): Record<string, CoachNoteDraft> {
+function draftsByMatch(wire: WireNoteLike[]): Record<string, CoachNoteDraft> {
   return Object.fromEntries(wire.map((note) => [note.match_key, fromWireNote(note)]))
 }
 
 // Moments arrive nested inside their note and are flattened by match key,
 // which is what the desk asks for — the note id is the transport's business,
 // not the strip's.
-export function momentsByMatch(wire: WireNoteLike[]): Record<string, CoachMoment[]> {
+function momentsByMatch(wire: WireNoteLike[]): Record<string, CoachMoment[]> {
   const out: Record<string, CoachMoment[]> = {}
   for (const note of wire) {
     if (note.moments?.length) out[note.match_key] = note.moments.map(fromWireMoment)
