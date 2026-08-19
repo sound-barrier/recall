@@ -17,9 +17,14 @@ export function useSelfReviewsQuery(enabled: MaybeRefOrGetter<boolean>) {
   }, getQueryClient())
 }
 
-/** Re-read the shelf after a write that changes what it lists. */
-export function refetchSelfReviews(): Promise<unknown> {
-  return getQueryClient().refetchQueries({ queryKey: qk.selfReviews })
+// Mark the shelf stale after a write that changes what it lists. Invalidate,
+// not refetch: the list is gated on the Reviews tab being on screen, and a
+// refetch of a DISABLED query is silently skipped — a note removed from the
+// journal on the Matches tab left the shelf (and the sitting reopened from
+// it) showing the note. An invalidation is honored the moment the query is
+// enabled again, and fetches at once when it already is.
+export function invalidateSelfReviews(): Promise<unknown> {
+  return getQueryClient().invalidateQueries({ queryKey: qk.selfReviews })
 }
 
 /** Put one sitting into the cached list — the room's writes keep the shelf honest without a round trip. */

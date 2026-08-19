@@ -43,7 +43,7 @@ export const SAVE_LABEL: Record<CoachSaveState, string> = {
   idle: 'Autosaves as you write',
   saving: 'Saving\u2026',
   saved: 'Saved',
-  error: 'Not saved \u2014 check the session',
+  error: 'Not saved \u2014 try again',
 }
 
 /**

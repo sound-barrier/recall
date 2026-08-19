@@ -12,6 +12,7 @@ import ViewLoadError from '@/components/app/ViewLoadError.vue'
 import { storeToRefs } from 'pinia'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
+import { useSelfReviewStore } from '@/stores/selfReview'
 import { useMatchesStore } from '@/stores/matches'
 import { useParseStore } from '@/stores/parse'
 import { useSettingsStore } from '@/stores/settings'
@@ -55,8 +56,11 @@ const parseStore = useParseStore()
 const settingsStore = useSettingsStore()
 const uiStore = useUiStore()
 // The cheatsheet advertises the film room's reel bindings only while the
-// room is open — the same signal ReviewsView renders it on.
-const { sessionActive: roomOpen } = storeToRefs(useCoachStore())
+// room is open — a coach's session or the player's own sitting, the same
+// two signals ReviewsView renders it on.
+const { sessionActive } = storeToRefs(useCoachStore())
+const { roomOpen: sittingOpen } = storeToRefs(useSelfReviewStore())
+const roomOpen = computed(() => sessionActive.value || sittingOpen.value)
 // Stateless DOM/nav bridge — its own instance is fine (no shared state).
 const tourBridge = useOnboardingTourBridge()
 

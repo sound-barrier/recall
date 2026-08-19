@@ -161,7 +161,7 @@ function onTagChange(tag: string) {
         moment the server refused otherwise looked exactly like a saved one.
       -->
       <p v-if="saveState === 'error'" class="cue-warn" role="status">
-        Not saved — check the session.
+        Not saved — try again.
       </p>
 
       <p v-if="pastTheEnd" class="cue-warn" role="status">

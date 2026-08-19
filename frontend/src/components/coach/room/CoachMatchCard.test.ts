@@ -35,9 +35,9 @@ beforeEach(() => {
   setActivePinia(createPinia())
 })
 
-function renderCard(record: MatchRecord = KINGS_ROW) {
+function renderCard(record: MatchRecord = KINGS_ROW, props: Record<string, unknown> = {}) {
   return render(CoachMatchCard, {
-    props: { record, handle: 'Sable' },
+    props: { record, handle: 'Sable', ...props },
     global: { plugins: [createPinia()] },
   })
 }
@@ -113,5 +113,56 @@ describe('CoachMatchCard', () => {
   it('reads an undated match without inventing a clock', () => {
     renderCard({ match_key: 'unmatched-shot.png', source_files: [], data: { map: 'oasis', result: 'draw' } })
     expect(screen.getByText('Not dated')).toBeInTheDocument()
+  })
+})
+
+// Whose matches these are changes only the possessives: on a coach's desk
+// the clock and the note are Sable's; on your own, yours.
+describe('CoachMatchCard — voice', () => {
+  it('speaks in the viewer\'s voice when the matches are their own', () => {
+    renderCard(KINGS_ROW, { voice: 'your' })
+    expect(screen.getByText('When · your clock')).toBeInTheDocument()
+    expect(screen.getByText('Your own note')).toBeInTheDocument()
+    expect(screen.queryByText(/Sable's/)).not.toBeInTheDocument()
+  })
+})
+
+// What has already been said about a match is quoted under the player's own
+// note: an earlier coach's block always; the player's sitting notes on a
+// coach's desk (the coach reads what the player noticed) and on the player's
+// own desk too — except the sitting open on it, whose note is the editor.
+describe('CoachMatchCard — already said about this match', () => {
+  const spoken: MatchRecord = {
+    ...KINGS_ROW,
+    coach_notes: [{
+      id: 1, note_id: 'n-1', coach_name: 'Ordo', session_date: '2026-08-15', text: 'Hold the high ground.',
+      focus_tags: ['positioning'], accepted_at: '2026-08-16T09:00:00Z',
+    }],
+    self_review_notes: [
+      { review_id: 'r-open', review_title: 'Tonight', review_created_at: '2026-08-18T19:00:00Z', kind: 'note', text: 'typing this now', updated_at: '' },
+      { review_id: 'r-old', review_title: 'Last week', review_created_at: '2026-08-11T19:00:00Z', kind: 'note', text: 'I chased too early.', updated_at: '' },
+    ],
+  }
+
+  it('quotes the coach and every one of the player\'s sittings on a coach\'s desk', () => {
+    renderCard(spoken)
+    const said = screen.getByRole('region', { name: 'Earlier reviews' })
+    expect(said).toHaveTextContent('Ordo · 2026-08-15')
+    expect(said).toHaveTextContent('Hold the high ground.')
+    expect(said).toHaveTextContent("Sable's own review · Tonight")
+    expect(said).toHaveTextContent("Sable's own review · Last week")
+  })
+
+  it('on your own desk, quotes the coach and your OTHER sittings — not the one you are writing', () => {
+    renderCard(spoken, { voice: 'your', omitReviewId: 'r-open' })
+    const said = screen.getByRole('region', { name: 'Earlier reviews' })
+    expect(said).toHaveTextContent('Hold the high ground.')
+    expect(said).toHaveTextContent('Your own review · Last week')
+    expect(said).not.toHaveTextContent('typing this now')
+  })
+
+  it('says nothing when nothing has been said', () => {
+    renderCard()
+    expect(screen.queryByRole('region', { name: 'Earlier reviews' })).not.toBeInTheDocument()
   })
 })

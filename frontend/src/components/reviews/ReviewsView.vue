@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 
 import { useMatchActions } from '@/composables/matches/useMatchActions'
 import { useOWData } from '@/composables/shared/useOWData'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { lazyView } from '@/components/app/lazy-view'
 import type { CoachLabels, CoachPlayerView } from '@/components/coach/room/coach-room-props'
 import ReviewsIndex from '@/components/reviews/ReviewsIndex.vue'
@@ -54,6 +55,10 @@ const roomOpen = computed(() => sessionActive.value && coachStore.player !== nul
 const selfReview = useSelfReviewStore()
 const { roomOpen: sittingOpen, open: sitting } = storeToRefs(selfReview)
 const SELF: CoachPlayerView = { handle: 'you', message: '' }
+// Your own data, so the player's write gate applies to the room too: on the
+// read-only sample profile the editor, the strip and the sheet refuse with
+// the reason, the same as every sibling affordance.
+const { lockReason } = useWriteGate()
 // Your own matches, so the replay code copies through the Matches action —
 // the same routine the detail panel uses over the same records.
 const { onCopyReplayCode: copyReplayCode } = useMatchActions()
@@ -96,6 +101,8 @@ const { onCopyReplayCode: copyReplayCode } = useMatchActions()
       v-else-if="sittingOpen && sitting"
       :player="SELF"
       voice="your"
+      :locked-reason="lockReason"
+      :omit-review-id="sitting.review_id"
       :records="selfReview.records"
       :notes="selfReview.notes"
       :moments="selfReview.moments"
@@ -119,6 +126,7 @@ const { onCopyReplayCode: copyReplayCode } = useMatchActions()
           :summary="selfReview.summary"
           :header-save-state="selfReview.saveStateFor(HEADER_SAVE_KEY)"
           :finished-at="sitting.finished_at ?? ''"
+          :blocked-reason="lockReason"
           @update-title="selfReview.updateTitle"
           @update-summary="selfReview.updateSummary"
           @finish="selfReview.finish()"

@@ -45,7 +45,7 @@ export const useAppStore = defineStore('app', () => {
   // <body> lands on the panel that replaced it instead.
   async function refocusPanel(): Promise<void> {
     await nextTick()
-    const panel = document.getElementById(`panel-`)
+    const panel = document.getElementById(`panel-${view.value}`)
     if (panel) panel.focus({ preventScroll: true })
   }
 

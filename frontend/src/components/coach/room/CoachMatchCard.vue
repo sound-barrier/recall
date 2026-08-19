@@ -20,8 +20,10 @@ const props = withDefaults(defineProps<{
   handle: string
   /** Whose matches these are, for the possessives. */
   voice?: RoomVoice
+  /** A sitting whose own block is the editor on this desk, not a quote. */
+  omitReviewId?: string
   labels?: CoachLabels
-}>(), { labels: () => DEFAULT_COACH_LABELS, voice: 'their' })
+}>(), { labels: () => DEFAULT_COACH_LABELS, voice: 'their', omitReviewId: '' })
 
 const data = computed(() => props.record.data ?? {})
 const mapName = computed(() => props.labels.map(data.value.map) || formatUnknownMapLabel(props.record))
@@ -58,19 +60,19 @@ const annotation = computed(() => props.record.annotation)
 
 // What has already been said about this match, quoted under the player's
 // own note so a reviewer reads it before writing: an earlier coach's block,
-// and — on someone else's desk — the player's own sitting notes (a coach
-// reads what the player already noticed). On your own desk your sittings
-// are the editor itself, not a quote.
+// and the player's own sitting notes — on a coach's desk, every one (a
+// coach reads what the player already noticed); on your own desk, every
+// one but the sitting open on it, whose note is the editor, not a quote.
 const earlierWords = computed(() => {
   const coach = (props.record.coach_notes ?? [])
     .filter((n) => n.text)
     .map((n) => ({ key: `coach-${n.id}`, who: `${n.coach_name} · ${n.session_date}`, text: n.text }))
-  if (props.voice === 'your') return coach
+  const whose = props.voice === 'your' ? 'Your own review' : `${playerClockOwner(props.handle)}'s own review`
   const own = (props.record.self_review_notes ?? [])
-    .filter((n) => n.text)
+    .filter((n) => n.text && n.review_id !== props.omitReviewId)
     .map((n) => ({
       key: `self-${n.review_id}`,
-      who: `${playerClockOwner(props.handle)}'s own review${n.review_title ? ` · ${n.review_title}` : ''}`,
+      who: `${whose}${n.review_title ? ` · ${n.review_title}` : ''}`,
       text: n.text,
     }))
   return [...coach, ...own]

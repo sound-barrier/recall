@@ -56,7 +56,13 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # on three of six tabs that anything was waiting for them. Measured 335003B --
 # 1793B of it the inbox banner + its returns store, 568B the receipt strip that
 # says where an exported file went. Both are first-paint by construction.
-: "${MAX_INITIAL_JS_BYTES:=336000}"
+# 2026-08: 336000 -> 340000 -- the self-review SITTING store joins the coach
+# session store in the eager shell, for the one reason an overlay needs it:
+# the keyboard cheatsheet (AppOverlays, eager) advertises the film room's reel
+# bindings only while the room is open, and the room opens for a sitting as
+# well as a session. Measured 338381B — the store, its query module and the
+# SDK surface the Phase 3 bump already noted as the first-paint cost.
+: "${MAX_INITIAL_JS_BYTES:=340000}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
