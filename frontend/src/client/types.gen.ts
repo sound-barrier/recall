@@ -1161,6 +1161,33 @@ export type MatchCoachNote = {
 };
 
 /**
+ * One recorded share-with-a-coach export.
+ */
+export type ShareExport = {
+    id: number;
+    /**
+     * The handle the bundle was signed with.
+     */
+    handle: string;
+    /**
+     * The message written for the coach, if any.
+     */
+    message: string;
+    /**
+     * RFC3339.
+     */
+    exported_at: string;
+    /**
+     * Where the .zip was saved; empty in server mode.
+     */
+    saved_path?: string;
+    /**
+     * The shared matches, in selection order.
+     */
+    match_keys: Array<string>;
+};
+
+/**
  * One self-review sitting, whole: the header, the member keys in the
  * player's order, and the notes keyed by match. `finished_at` is
  * absent while the sitting is in progress.
@@ -4215,6 +4242,31 @@ export type RunDatabaseMaintenanceResponses = {
 };
 
 export type RunDatabaseMaintenanceResponse = RunDatabaseMaintenanceResponses[keyof RunDatabaseMaintenanceResponses];
+
+export type ListShareExportsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/shares';
+};
+
+export type ListShareExportsErrors = {
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type ListShareExportsError = ListShareExportsErrors[keyof ListShareExportsErrors];
+
+export type ListShareExportsResponses = {
+    /**
+     * The sent ledger, newest first.
+     */
+    200: Array<ShareExport>;
+};
+
+export type ListShareExportsResponse = ListShareExportsResponses[keyof ListShareExportsResponses];
 
 export type ExportBundleData = {
     body: {

@@ -36,6 +36,10 @@ type Fake struct {
 	// Absence of an entry means "not reviewed."
 	Reviews map[string]db.ReviewState
 
+	// The "share with a coach" sent ledger, in insertion order.
+	shareExports   []db.ShareExport
+	shareExportSeq int64
+
 	// Queues maps match_key → QueueState (queue_type + timestamp).
 	// Absence of an entry means "queue not set."
 	Queues map[string]db.QueueState
@@ -379,6 +383,7 @@ func (f *Fake) Clear() error {
 	f.MatchCoachNotes = nil
 	f.CoachReturns = nil
 	f.SelfReviews = nil
+	f.shareExports = nil
 	return nil
 }
 

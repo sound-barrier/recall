@@ -2,8 +2,10 @@ package app
 
 import (
 	"fmt"
+	"log/slog"
 
 	"recall/pkg/bundle"
+	"recall/pkg/db"
 )
 
 // The export/import/validate bundle pipeline lives in pkg/bundle
@@ -82,7 +84,23 @@ func (a *App) ExportShareBundle(opts ExportBundleOptions, player SharePlayer) ([
 		return nil, err
 	}
 	opts.Player = &identity
-	return a.exportBundle(opts)
+	data, err := a.exportBundle(opts)
+	if err != nil {
+		return nil, err
+	}
+	// The receipt: sharing used to leave no trace anywhere in the app. A
+	// ledger write failing must not eat a bundle that already exists — the
+	// export is the user's ask, the receipt is bookkeeping.
+	if _, err := a.store.RecordShareExport(identity.Handle, player.Message, "", opts.MatchKeys); err != nil {
+		slog.Warn("share export not recorded", "error", err)
+	}
+	return data, nil
+}
+
+// ListShareExports reads the sent ledger, newest first — the Reviews tab's
+// "Sent" strip.
+func (a *App) ListShareExports() ([]db.ShareExport, error) {
+	return a.store.ListShareExports()
 }
 
 // exportBundle is the shared aggregate-then-pack tail of both export modes.

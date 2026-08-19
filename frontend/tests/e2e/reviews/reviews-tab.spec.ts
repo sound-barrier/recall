@@ -163,6 +163,34 @@ test.describe('07 Reviews — the tab', () => {
     await expect(page.locator('.leaf-row')).toHaveCount(6)
   })
 
+  // Sharing used to leave no trace: the moment the file was saved, 02 read
+  // exactly as before ("No coach has looked yet"). The sent ledger is the
+  // receipt — and it pairs with the answer when one arrives.
+  test('a sent share is listed, and pairs with the return that answers it', async ({ page }) => {
+    const keys = RETURN_SHEET_FIXTURE.notes.map((n) => n.match_key)
+    await page.route('**/api/v1/shares', async (route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify([
+          { id: 2, handle: 'Sable', message: '', exported_at: '2026-08-18T20:00:00Z', match_keys: ['some-other-key'] },
+          { id: 1, handle: 'Sable', message: 'watch my ults', exported_at: '2026-08-14T20:00:00Z', match_keys: keys },
+        ]),
+      })
+    })
+    await mockInbox(page, [{ ...RETURN_SHEET_FIXTURE, decisions: {} }])
+    await page.goto('/')
+    await tab(page).click()
+
+    const sentRows = panel(page).getByRole('list', { name: 'Matches you have sent out' }).getByRole('listitem')
+    await expect(sentRows).toHaveCount(2)
+    // Newest first: the unanswered one still says so.
+    await expect(sentRows.nth(0)).toContainText(/Sent 1 match ·/)
+    await expect(sentRows.nth(0)).toContainText(/nothing back yet/)
+    // The older one overlaps the return sheet's matches — answered.
+    await expect(sentRows.nth(1)).toContainText(/Sent 3 matches ·/)
+    await expect(sentRows.nth(1)).toContainText(new RegExp(`answered by ${COACH_NAME}`))
+  })
+
   // The coach's summary — the one thing they wrote about the whole set —
   // used to be readable exactly once: while a note was still undecided.
   // Now it lives on the received card, and the notes reopen from there.
