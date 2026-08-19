@@ -1,0 +1,134 @@
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+import { nextTick } from 'vue'
+
+import { setApiBacking, type SelfReview } from '@/api-client'
+import { qk } from '@/queries/keys'
+import { useAppStore } from '@/stores/app'
+import { useMatchesStore } from '@/stores/matches'
+import { HEADER_SAVE_KEY, useSelfReviewStore } from '@/stores/selfReview'
+import { seedQuery } from '@/test-utils/queryTestUtils'
+
+// The player's own review sitting, driven through the store's public
+// actions the way the bulk bar, the room and the shelf drive it. The draft
+// rules themselves (DELETE for an emptied note, reviewed_only kept over
+// moments, …) are the coach store's and are pinned there; what this pins is
+// the sitting's lifecycle: create → open → write → finish → shelf.
+
+const KEY_A = 'match-2026-08-01T20-00-00'
+const KEY_B = 'match-2026-08-02T20-00-00'
+
+function sitting(over: Partial<SelfReview> = {}): SelfReview {
+  return {
+    review_id: 'r-1', title: '', summary: '', created_at: '2026-08-18T19:00:00Z', updated_at: '2026-08-18T19:00:00Z',
+    match_keys: [KEY_B, KEY_A], notes: {}, ...over,
+  }
+}
+
+let api: Record<string, ReturnType<typeof vi.fn>>
+
+beforeEach(() => {
+  setActivePinia(createPinia())
+  vi.useFakeTimers()
+  api = {
+    GetProfiles: vi.fn(async () => ({ profiles: ['default'], active: 'default', immutable: [] })),
+    ListSelfReviews: vi.fn(async () => []),
+    CreateSelfReview: vi.fn(async (_title: string, keys: string[]) => sitting({ match_keys: keys })),
+    GetSelfReview: vi.fn(async () => sitting()),
+    UpdateSelfReview: vi.fn(async (_id: string, title: string, summary: string) => sitting({ title, summary })),
+    FinishSelfReview: vi.fn(async () => sitting({ finished_at: '2026-08-18T20:00:00Z' })),
+    DeleteSelfReview: vi.fn(async () => undefined),
+    PutSelfReviewNote: vi.fn(async () => undefined),
+    DeleteSelfReviewNote: vi.fn(async () => undefined),
+    PutSelfReviewMoment: vi.fn(async () => undefined),
+    DeleteSelfReviewMoment: vi.fn(async () => undefined),
+    GetMatchResults: vi.fn(async () => []),
+  }
+  setApiBacking(api)
+  seedQuery(qk.matches, [
+    { match_key: KEY_A, source_files: [], data: { map: 'rialto' } },
+    { match_key: KEY_B, source_files: [], data: { map: 'ilios' } },
+  ])
+})
+
+afterEach(() => { vi.useRealTimers() })
+
+async function settle(): Promise<void> {
+  await vi.advanceTimersByTimeAsync(0)
+  await nextTick()
+}
+
+describe('selfReview store — a sitting from the bulk bar', () => {
+  it('creates the sitting over the ticked keys, opens the room on Reviews, and orders the records the way the player did', async () => {
+    const store = useSelfReviewStore()
+    const app = useAppStore()
+    useMatchesStore()
+
+    await store.createFromKeys([KEY_B, KEY_A])
+    await settle()
+
+    expect(api.CreateSelfReview).toHaveBeenCalledWith('', [KEY_B, KEY_A])
+    expect(store.roomOpen).toBe(true)
+    expect(app.view).toBe('reviews')
+    expect(store.records.map((r) => r.match_key)).toEqual([KEY_B, KEY_A])
+  })
+
+  it('autosaves a note to the sitting, and the title + summary as one header PUT', async () => {
+    const store = useSelfReviewStore()
+    await store.createFromKeys([KEY_A])
+    await settle()
+
+    store.updateNote(KEY_A, { kind: 'note', text: 'held the choke', focusTags: ['positioning'], extraTags: [], matchClock: '' })
+    store.updateTitle("Tuesday's Ana games")
+    store.updateSummary('Stop chasing flanks.')
+    await vi.advanceTimersByTimeAsync(1000)
+
+    expect(api.PutSelfReviewNote).toHaveBeenCalledWith('r-1', KEY_A, {
+      kind: 'note', text: 'held the choke', focus_tags: ['positioning'], extra_tags: [], match_clock: '',
+    })
+    expect(api.UpdateSelfReview).toHaveBeenCalledTimes(1)
+    expect(api.UpdateSelfReview).toHaveBeenCalledWith('r-1', "Tuesday's Ana games", 'Stop chasing flanks.')
+    expect(store.saveStateFor(HEADER_SAVE_KEY)).toBe('saved')
+  })
+
+  it('Finish flushes what is queued, stamps the sitting, and closes the room', async () => {
+    const store = useSelfReviewStore()
+    await store.createFromKeys([KEY_A])
+    await settle()
+    store.updateNote(KEY_A, { kind: 'note', text: 'x', focusTags: [], extraTags: [], matchClock: '' })
+
+    await store.finish()
+    await settle()
+
+    // The queued note landed BEFORE the finish — nothing typed is lost.
+    expect(api.PutSelfReviewNote).toHaveBeenCalledTimes(1)
+    expect(api.FinishSelfReview).toHaveBeenCalledWith('r-1')
+    expect(store.roomOpen).toBe(false)
+    expect(api.ListSelfReviews).toHaveBeenCalled()
+  })
+
+  it('reopens a sitting from the shelf with its notes hydrated, and deletes one', async () => {
+    api.ListSelfReviews = vi.fn(async () => [sitting({
+      title: 'Old', notes: {
+        [KEY_A]: { match_key: KEY_A, kind: 'note', text: 'kept', focus_tags: [], extra_tags: [], match_clock: '', created_at: '', updated_at: '' },
+      },
+    })])
+    setApiBacking(api)
+    const store = useSelfReviewStore()
+    const app = useAppStore()
+    await app.goToView('reviews')
+    await settle()
+    await settle()
+    expect(store.reviews).toHaveLength(1)
+
+    await store.openSitting('r-1')
+    expect(store.roomOpen).toBe(true)
+    expect(store.title).toBe('Old')
+    expect(store.notes[KEY_A]?.text).toBe('kept')
+    expect(api.GetSelfReview).not.toHaveBeenCalled()
+
+    await store.remove('r-1')
+    expect(api.DeleteSelfReview).toHaveBeenCalledWith('r-1')
+    expect(store.roomOpen).toBe(false)
+  })
+})

@@ -66,13 +66,24 @@ function scopedSurfaces(ann: MatchRecord['annotation']): Record<SearchField, str
 // actually go looking for unfindable: prose is what you remember a fragment
 // of, and stats are what you filter by.
 function coachingWords(r: MatchRecord): string[] {
-  const words: string[] = []
-  for (const m of r.moments ?? []) words.push(m.text)
-  for (const n of r.coach_notes ?? []) {
-    words.push(n.text, n.coach_name, ...(n.focus_tags ?? []), ...(n.extra_tags ?? []))
-    for (const m of n.moments ?? []) words.push(m.text)
-  }
-  return words
+  return [
+    ...(r.moments ?? []).map((m) => m.text),
+    // A coach's block: the text, who, what it was filed under, the moments.
+    ...(r.coach_notes ?? []).flatMap((n) => [n.text, n.coach_name, ...noteWords(n)]),
+    // The player's own sitting blocks: the text, the sitting's name, the
+    // tags, the moments — a miss here is silent (unsearchable).
+    ...(r.self_review_notes ?? []).flatMap((n) => [n.text, n.review_title ?? '', ...noteWords(n)]),
+  ]
+}
+
+// The words every note block carries beyond its text: its tags and the
+// text of each moment inside it.
+function noteWords(n: {
+  focus_tags?: string[]
+  extra_tags?: string[]
+  moments?: { text: string }[]
+}): string[] {
+  return [...(n.focus_tags ?? []), ...(n.extra_tags ?? []), ...(n.moments ?? []).map((m) => m.text)]
 }
 
 // The broad lexical blob a BARE clause matches — every visible surface.

@@ -4,6 +4,7 @@ import type { MatchRecord } from '@/api-client'
 import { type SearchClause } from '@/match/search-query'
 import CoachCueStrip from '@/components/coach/notes/CoachCueStrip.vue'
 import CoachNoteBlock from '@/components/coach/notes/CoachNoteBlock.vue'
+import { coachBlockView, selfBlockView } from '@/match/coach/note-block-view'
 import { fromWireMoment, isSavable, type CoachMoment } from '@/match/coach/coach-moments'
 import { useCoachAutosave } from '@/composables/coach/useCoachAutosave'
 import { useMatchAnnotationEditor } from '@/composables/matches/detail/useMatchAnnotationEditor'
@@ -124,9 +125,14 @@ function onCopyReplay() {
 // coach's own notes are written in the Film Room, not here.
 const { writesLocked, lockReason, lockedTitle } = useWriteGate()
 
-// The coach-received layer: one block per coach and session, alongside
-// (never merged into) the player's own note.
-const coachNotes = computed(() => props.record.coach_notes ?? [])
+// The coach-received layer — one block per coach and session — and the
+// player's own sitting blocks, one per sitting, alongside (never merged
+// into) the player's own note. Oldest first within each family, coach
+// blocks first: the coach's words are the ones that came from outside.
+const noteBlocks = computed(() => [
+  ...(props.record.coach_notes ?? []).map((n) => ({ key: `coach-${n.id}`, view: coachBlockView(n) })),
+  ...(props.record.self_review_notes ?? []).map((n) => ({ key: `self-${n.review_id}`, view: selfBlockView(n) })),
+])
 
 function enterEditModeIfWritable(e: MouseEvent | KeyboardEvent) {
   if (writesLocked.value) return
@@ -455,13 +461,14 @@ onMounted(() => {
         @copy-replay="onCopyReplay"
       />
 
-      <!-- The coach layer: one block per coach and session, below the
-           player's own entry and never merged into it. -->
+      <!-- The coach layer and the player's own sittings: one block per coach
+           and session, one per sitting, below the player's own entry and
+           never merged into it. -->
       <CoachNoteBlock
-        v-for="coachNote in coachNotes"
-        :key="coachNote.id"
+        v-for="block in noteBlocks"
+        :key="block.key"
         :match-key="record.match_key"
-        :note="coachNote"
+        :block="block.view"
         :replay-code="record.annotation?.replay_code ?? ''"
         @copy-replay="onCopyReplay"
       />

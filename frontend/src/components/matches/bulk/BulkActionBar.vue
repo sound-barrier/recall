@@ -31,6 +31,9 @@ defineProps<{
 const emit = defineEmits<{
   selectAll:    []
   hide:         []
+  // Open a self-review sitting over the selection — the film room over your
+  // own matches. A write to the player's data, so gated like Hide.
+  reviewThese:  []
   exportBundle: []
   exportCsv:    []
   moveBegin:    []
@@ -112,6 +115,17 @@ function pickTag(v: string) {
       >
         <span class="bab-btn-glyph" aria-hidden="true">⌀</span>
         Hide
+      </button>
+      <button
+        type="button"
+        class="bulk-review"
+        data-testid="bulk-review-these"
+        :disabled="writesLocked"
+        :title="lockedTitle('Review these matches in the film room')"
+        @click="emit('reviewThese')"
+      >
+        <span class="bab-btn-glyph" aria-hidden="true">🎞</span>
+        Review these
       </button>
       <button
         type="button"

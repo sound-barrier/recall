@@ -7,7 +7,7 @@ import CoachIdentityPrompt from '@/components/coach/room/CoachIdentityPrompt.vue
 import CoachReel from '@/components/coach/reel/CoachReel.vue'
 import CoachSessionSheet from '@/components/coach/notes/CoachSessionSheet.vue'
 import {
-  DEFAULT_COACH_LABELS, type CoachLabels, type CoachPlayerView, type CoachSaveState,
+  DEFAULT_COACH_LABELS, type CoachLabels, type CoachPlayerView, type CoachSaveState, type RoomVoice,
 } from '@/components/coach/room/coach-room-props'
 import { useCoachReelKeyboard } from '@/composables/coach/useCoachReelKeyboard'
 import { useCoachRoom } from '@/composables/coach/useCoachRoom'
@@ -40,6 +40,13 @@ const props = withDefaults(defineProps<{
   canExport?: boolean
   exportReason?: string
   labels?: CoachLabels
+  /**
+   * Whose matches the room shows. 'their' (a coach's session over a loaned
+   * bundle) is the default; 'your' is the player's own review sitting: the
+   * reel is titled for you with no clock note, the card's possessives read
+   * "your", and there is nobody to ask "who is this bundle about".
+   */
+  voice?: RoomVoice
 }>(), {
   moments: () => ({}),
   selectedKey: '',
@@ -50,6 +57,7 @@ const props = withDefaults(defineProps<{
   canExport: true,
   exportReason: undefined,
   labels: () => DEFAULT_COACH_LABELS,
+  voice: 'their',
 })
 
 const emit = defineEmits<{
@@ -91,8 +99,9 @@ const momentSaveStateFor = (momentId: string): CoachSaveState =>
   props.saveStateFor(momentSaveKey(momentId))
 
 // Nobody confirmed: the room has to ask before it lets a word be typed,
-// because a note about a nameless player has no row to land in.
-const unconfirmed = computed(() => props.player.handle === '')
+// because a note about a nameless player has no row to land in. Your own
+// sitting names nobody and asks nothing.
+const unconfirmed = computed(() => props.voice !== 'your' && props.player.handle === '')
 const UNCONFIRMED_REASON
   = 'Say who this bundle is about before writing notes — nothing can be saved without it.'
 const blockedReason = computed(() => (unconfirmed.value ? UNCONFIRMED_REASON : ''))
@@ -125,6 +134,7 @@ function step(key: string | null): void {
           :selected-key="room.activeKey.value"
           :notes="notes"
           :labels="labels"
+          :voice="voice"
           @select="select"
         />
       </slot>
@@ -152,6 +162,7 @@ function step(key: string | null): void {
           :has-prev="room.prevKey.value !== null"
           :has-next="room.nextKey.value !== null"
           :labels="labels"
+          :voice="voice"
           @update-note="(draft: CoachNoteDraft) => emit('update-note', room.activeKey.value, draft)"
           @update-moment="(m: CoachMoment) => emit('update-moment', room.activeKey.value, m)"
           @remove-moment="(id: string) => emit('remove-moment', room.activeKey.value, id)"
@@ -163,7 +174,16 @@ function step(key: string | null): void {
     </div>
 
     <div class="coach-room-sheet">
-      <slot name="sheet">
+      <!-- The derived record travels with the slot, so a caller composing its
+           own sheet (the self-review sitting's) reads the same numbers the
+           default one does. -->
+      <slot
+        name="sheet"
+        :wld="room.wld.value"
+        :win-rate="room.winRate.value"
+        :focus-tally="room.focusTally.value"
+        :notes-line="notesLine"
+      >
         <CoachSessionSheet
           :player="player"
           :wld="room.wld.value"

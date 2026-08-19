@@ -2,12 +2,15 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 
+import SelfReviewCard from '@/components/reviews/SelfReviewCard.vue'
 import { formatPlayerDay } from '@/match/coach/coach-time'
 import { groupReceivedReviews } from '@/match/reviews/reviews-helpers'
+import { shelfCard } from '@/match/reviews/shelf-helpers'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
 import { useCoachReturnsStore } from '@/stores/coachReturns'
 import { useMatchesStore } from '@/stores/matches'
+import { useSelfReviewStore } from '@/stores/selfReview'
 import { useUiStore } from '@/stores/ui'
 
 // The shelf — every review, labeled, and the next one a click away.
@@ -15,9 +18,8 @@ import { useUiStore } from '@/stores/ui'
 // The room's metaphor is film editing: reel, desk, loan slip, frames,
 // sprockets, a ledger. This is the room's front of house, where the reels
 // come off and go back on. Three sections, numbered because they are an
-// arc: the review cycle runs from YOU (01, your own reviews — lands with
-// self-review) to A COACH (02) to SOMEONE ELSE (03), and a new player meets
-// them in that order.
+// arc: the review cycle runs from YOU (01, your own reviews) to A COACH (02)
+// to SOMEONE ELSE (03), and a new player meets them in that order.
 //
 // Every section carries its action whether or not it is empty, because the
 // empty state IS the invitation — and each empty is its own sentence.
@@ -29,6 +31,25 @@ const ui = useUiStore()
 
 const { inbox } = storeToRefs(returns)
 const { records } = storeToRefs(matches)
+const selfReview = useSelfReviewStore()
+const { reviews: sittings } = storeToRefs(selfReview)
+
+// ── 01 Your own reviews ────────────────────────────────────────────────
+// The shelf: every sitting as a card, newest first (the store's order),
+// drawn against the player's own records.
+const shelfCards = computed(() => sittings.value.map((s) => shelfCard(s, records.value)))
+
+function openSitting(reviewId: string): void {
+  void selfReview.openSitting(reviewId)
+}
+
+function removeSitting(reviewId: string): void {
+  void selfReview.remove(reviewId)
+}
+
+function goToMatches(): void {
+  void appStore.goToView('matches')
+}
 
 // ── 02 From a coach ────────────────────────────────────────────────────
 // Waiting: sheets still holding an undecided note. Received: one coach's one
@@ -81,6 +102,51 @@ function openBundle(): void {
         get lives here.
       </p>
     </header>
+
+    <!-- 01 / YOUR OWN REVIEWS -->
+    <div id="sec-your-own-reviews" class="settings-section">
+      <div class="section-header">
+        <span class="section-num">01</span>
+        <span class="section-slash" aria-hidden="true">/</span>
+        <h3 class="section-title">
+          Your own reviews
+        </h3>
+      </div>
+      <div class="setting-rows">
+        <div class="setting-row">
+          <div class="setting-info">
+            <h4 class="setting-label">
+              Review some matches
+            </h4>
+            <p class="setting-desc">
+              Tick matches in Matches and choose <strong>Review these</strong>: the film
+              room opens over them, in your own clock, with a note and a moments strip
+              for each. Every note lands on its match as you write it; Finish marks the
+              matches reviewed and puts the review here.
+            </p>
+          </div>
+          <div class="setting-control">
+            <button type="button" class="btn ghost" @click="goToMatches">
+              Go to Matches
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <ul v-if="shelfCards.length" class="reviews-shelf" aria-label="Your own reviews">
+        <li v-for="card in shelfCards" :key="card.reviewId">
+          <SelfReviewCard
+            :card="card"
+            @open="openSitting(card.reviewId)"
+            @remove="removeSitting(card.reviewId)"
+          />
+        </li>
+      </ul>
+      <p v-else class="reviews-empty">
+        Nothing reviewed yet. Tick some matches and choose Review these — the
+        room opens over them.
+      </p>
+    </div>
 
     <!-- 02 / FROM A COACH -->
     <div id="sec-from-a-coach" class="settings-section">

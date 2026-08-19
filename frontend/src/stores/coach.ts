@@ -5,13 +5,11 @@ import {
   CloseCoachSession, DeleteCoachMoment, DeleteCoachNote, ExportCoachNotes,
   OpenCoachBundle, PutCoachMoment, PutCoachNote, PutCoachSummary,
   SetCoachSessionPlayer,
-  type CoachNote, type CoachSessionView,
+  type CoachSessionView,
 } from '@/api-client'
 import { useCoachAutosave } from '@/composables/coach/useCoachAutosave'
-import { SUMMARY_SAVE_KEY, fromWireNote, isEmptyDraft, toNoteInput, type CoachNoteDraft } from '@/match/coach/coach-notes'
-import {
-  fromWireMoment, isSavable, momentSaveKey, toMomentInput, type CoachMoment,
-} from '@/match/coach/coach-moments'
+import { useReviewDrafts } from '@/composables/coach/useReviewDrafts'
+import { SUMMARY_SAVE_KEY } from '@/match/coach/coach-notes'
 import {
   clearCoachSessionData, setCoachSessionData, setCoachSessionResume,
   useCoachSessionMatchesQuery, useCoachSessionQuery,
@@ -72,21 +70,6 @@ export interface CoachNarrowSuspender {
   restore: () => void
 }
 
-function draftsByMatch(wire: CoachNote[]): Record<string, CoachNoteDraft> {
-  return Object.fromEntries(wire.map(note => [note.match_key, fromWireNote(note)]))
-}
-
-// Moments arrive nested inside their note and are flattened by match key,
-// which is what the desk asks for — the note id is the transport's business,
-// not the strip's.
-function momentsByMatch(wire: CoachNote[]): Record<string, CoachMoment[]> {
-  const out: Record<string, CoachMoment[]> = {}
-  for (const note of wire) {
-    if (note.moments?.length) out[note.match_key] = note.moments.map(fromWireMoment)
-  }
-  return out
-}
-
 export const useCoachStore = defineStore('coach', () => {
   // ── The open session ──────────────────────────────────────────────
   const sessionQuery = useCoachSessionQuery()
@@ -101,10 +84,6 @@ export const useCoachStore = defineStore('coach', () => {
   const loanedRecords = computed(() => (sessionActive.value ? corpusQuery.data.value ?? [] : []))
 
   // ── The room's editable state ─────────────────────────────────────
-  const notes = ref<Record<string, CoachNoteDraft>>({})
-  // Per match, because several moments share one — the whole reason they are
-  // not just another field on the note.
-  const moments = ref<Record<string, CoachMoment[]>>({})
   const summary = ref('')
   const selectedKey = ref('')
   const dirtySinceExport = ref(false)
@@ -130,13 +109,6 @@ export const useCoachStore = defineStore('coach', () => {
     exportedTo.value = ''
   }
 
-  // Every moment id this session has actually written to the server. The
-  // moment's CURRENT shape cannot answer "is there something to delete?" — a
-  // saved moment whose text was cleared is unsavable and still stored, and
-  // asking its shape stranded it on the server forever, to reappear on the
-  // next open and travel into an archive the coach thought it had left.
-  const savedMomentIds = new Set<string>()
-
   /**
    * Where the last export landed, for the slip's receipt. Cleared by
    * markDirty — the receipt lives exactly as long as it is true.
@@ -151,6 +123,18 @@ export const useCoachStore = defineStore('coach', () => {
   // missing the note.
   const { saveStateFor, hasFailedSaves, queueSave, flushSaves, discardSaves } = useCoachAutosave()
 
+  // The notes and moments themselves, and the rules for writing them back —
+  // shared with the player's own review sitting, which drives the same desk.
+  const drafts = useReviewDrafts({
+    writes: {
+      putNote: PutCoachNote, deleteNote: DeleteCoachNote,
+      putMoment: PutCoachMoment, deleteMoment: DeleteCoachMoment,
+    },
+    queueSave,
+    onDirty: markDirty,
+  })
+  const { notes, moments, updateNote, updateMoment, removeMoment } = drafts
+
   // The notes map is REPLACED from the session response, never merged. A
   // draft belongs to the player it was written about, and merging is
   // exactly how one player's words end up in the next player's editor.
@@ -164,24 +148,13 @@ export const useCoachStore = defineStore('coach', () => {
     return [view.player.id, view.player.handle, view.exported_at].join('|')
   }
 
-  // Everything hydrated from the server IS saved — that is where it came
-  // from — so a moment the coach removes right after opening still deletes.
-  function rememberSavedMoments(wire: CoachNote[]): void {
-    savedMomentIds.clear()
-    exportedTo.value = ''
-    for (const note of wire) {
-      for (const m of note.moments ?? []) savedMomentIds.add(m.moment_id)
-    }
-  }
-
   watch(session, (view) => {
     const identity = identityOf(view)
     if (identity === hydratedFor) return
     hydratedFor = identity
     discardSaves()
-    rememberSavedMoments(view?.notes ?? [])
-    notes.value = draftsByMatch(view?.notes ?? [])
-    moments.value = momentsByMatch(view?.notes ?? [])
+    exportedTo.value = ''
+    drafts.hydrate(view?.notes ?? [])
     summary.value = view?.summary ?? ''
     selectedKey.value = ''
     dirtySinceExport.value = false
@@ -189,76 +162,6 @@ export const useCoachStore = defineStore('coach', () => {
 
   function selectKey(key: string): void {
     selectedKey.value = key
-  }
-
-  // The note a match keeps when its text is cleared but its moments stand.
-  function reviewedOnlyDraft(): CoachNoteDraft {
-    return { kind: 'reviewed_only', text: '', focusTags: [], extraTags: [], matchClock: '' }
-  }
-
-  // Optimistic by contract: the editor is controlled, and the chips, the
-  // Reviewed switch, the reel marks and the sheet tally all render from
-  // this one value — so it has to move before the server answers.
-  function updateNote(matchKey: string, next: CoachNoteDraft): void {
-    notes.value = { ...notes.value, [matchKey]: next }
-    markDirty()
-    queueSave(matchKey, async () => {
-      // An emptied draft is a DELETE. PUTting an empty note would be a
-      // 400 on the kind rules, and would leave a row saying nothing.
-      //
-      // UNLESS the match carries moments. The moments hang off the note row
-      // and CASCADE with it, so deleting the note here threw away every
-      // timestamped observation on the match — silently, while the strip went
-      // on showing them. A match with moments keeps a reviewed_only note: the
-      // coach did review it, they said it with timestamps rather than a
-      // paragraph, and that is exactly what a reviewed_only mark means.
-      if (!isEmptyDraft(next)) {
-        await PutCoachNote(matchKey, toNoteInput(next))
-      } else if ((moments.value[matchKey] ?? []).some(isSavable)) {
-        await PutCoachNote(matchKey, toNoteInput(reviewedOnlyDraft()))
-      } else {
-        await DeleteCoachNote(matchKey)
-      }
-    })
-  }
-
-  // Optimistic like the note, and for the same reason: the strip, the rail and
-  // the reel's mark all render from this value, so it moves before the server
-  // answers. Keyed on the MOMENT id rather than the match — several share a
-  // match, and a queue keyed on the match would collapse three writes into
-  // whichever typed last.
-  function updateMoment(matchKey: string, next: CoachMoment): void {
-    const bucket = moments.value[matchKey] ?? []
-    const at = bucket.findIndex((m) => m.momentId === next.momentId)
-    const merged = at < 0 ? [...bucket, next] : bucket.map((m, i) => (i === at ? next : m))
-    moments.value = { ...moments.value, [matchKey]: merged }
-    markDirty()
-    // A draft that does not yet say enough stays local: PUTting it would be a
-    // 400 on the clock rules, and would leave a row pointing at nothing.
-    if (!isSavable(next)) return
-    queueSave(momentSaveKey(next.momentId), async () => {
-      await PutCoachMoment(matchKey, next.momentId, toMomentInput(next))
-      savedMomentIds.add(next.momentId)
-      // The server opens a note for the first moment on a match. Nothing else
-      // tells the client, so without this the reel shows no mark and the
-      // tally counts no note for a match that now has three moments — which
-      // is also what made clearing the (apparently absent) note editor a
-      // natural thing to do.
-      notes.value[matchKey] ??= reviewedOnlyDraft()
-    })
-  }
-
-  function removeMoment(matchKey: string, momentId: string): void {
-    const bucket = moments.value[matchKey] ?? []
-    moments.value = { ...moments.value, [matchKey]: bucket.filter((m) => m.momentId !== momentId) }
-    markDirty()
-    // Never written means nothing to delete: a draft the coach abandoned has
-    // no row on the server, and asking would 404.
-    if (!savedMomentIds.has(momentId)) return
-    savedMomentIds.delete(momentId)
-    queueSave(momentSaveKey(momentId), async () => {
-      await DeleteCoachMoment(matchKey, momentId)
-    })
   }
 
   // The replay code is what makes a timestamped moment actionable: Recall

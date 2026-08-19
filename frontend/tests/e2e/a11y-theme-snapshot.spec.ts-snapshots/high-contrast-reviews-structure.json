@@ -80,7 +80,7 @@
       "borderRadius": []
     },
     "button": {
-      "count": 11,
+      "count": 12,
       "fontSize": [
         "12.48px",
         "13.3333px",
@@ -163,7 +163,7 @@
       ]
     },
     "heading": {
-      "count": 6,
+      "count": 8,
       "fontSize": [
         "17.6px",
         "29.6px",

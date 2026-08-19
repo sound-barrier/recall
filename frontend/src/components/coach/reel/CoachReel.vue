@@ -3,7 +3,7 @@ import { computed } from 'vue'
 
 import type { MatchRecord } from '@/api-client'
 import CoachReelDay from '@/components/coach/reel/CoachReelDay.vue'
-import { DEFAULT_COACH_LABELS, type CoachLabels } from '@/components/coach/room/coach-room-props'
+import { DEFAULT_COACH_LABELS, type CoachLabels, type RoomVoice } from '@/components/coach/room/coach-room-props'
 import type { CoachNoteDraft } from '@/match/coach/coach-notes'
 import type { ReelDay } from '@/match/coach/coach-reel-helpers'
 import { playerClockNote, playerClockOwner } from '@/match/match-time-helpers'
@@ -19,23 +19,36 @@ const props = withDefaults(defineProps<{
   selectedKey: string
   notes: Record<string, CoachNoteDraft>
   labels?: CoachLabels
-}>(), { labels: () => DEFAULT_COACH_LABELS })
+  /**
+   * Whose matches these are. A coach's reel is someone else's — titled
+   * "The reel", with the clock note (rule 7: an unlabeled 21:14 is a lie to a
+   * coach in another timezone). The player's own sitting is "Your matches",
+   * and there is no note to give about your own clock.
+   */
+  voice?: RoomVoice
+}>(), { labels: () => DEFAULT_COACH_LABELS, voice: 'their' })
 
 const emit = defineEmits<{ select: [matchKey: string] }>()
 
+const yours = computed(() => props.voice === 'your')
+const reelTitle = computed(() => (yours.value ? 'Your matches' : 'The reel'))
 const reelLabel = computed(() => {
+  if (yours.value) return 'Your matches'
   const owner = playerClockOwner(props.handle)
   return `${owner}'s matches — times in ${owner}'s clock`
 })
+const emptyLine = computed(() => (yours.value
+  ? 'None of the matches in this review are in your history any more.'
+  : 'This bundle carries no matches to review.'))
 </script>
 
 <template>
   <div class="coach-reel">
     <header class="reel-head">
       <h2 class="eyebrow accent reel-title">
-        The reel
+        {{ reelTitle }}
       </h2>
-      <p class="reel-clock">
+      <p v-if="!yours" class="reel-clock">
         {{ playerClockNote(handle) }}
       </p>
     </header>
@@ -51,7 +64,7 @@ const reelLabel = computed(() => {
       />
     </ol>
     <p v-else class="reel-empty">
-      This bundle carries no matches to review.
+      {{ emptyLine }}
     </p>
   </div>
 </template>

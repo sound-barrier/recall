@@ -1,12 +1,18 @@
 <script setup lang="ts">
-import { SAVE_LABEL, type CoachPlayerView, type CoachSaveState } from '@/components/coach/room/coach-room-props'
-import { focusTagLabel, type FocusCount } from '@/match/coach/coach-notes'
+import SheetFocusTally from '@/components/coach/notes/SheetFocusTally.vue'
+import SheetRecord from '@/components/coach/notes/SheetRecord.vue'
+import SheetSummary from '@/components/coach/notes/SheetSummary.vue'
+import type { CoachPlayerView, CoachSaveState } from '@/components/coach/room/coach-room-props'
+import type { FocusCount } from '@/match/coach/coach-notes'
 import type { WLDTally } from '@/match/match-stats-helpers'
 
 // The session sheet: who is being reviewed, how the session went, and
 // what the coach wants them to work on. Written on paper — the plate
 // re-maps the app's text / verdict tokens inside itself, so .eyebrow,
-// .score-num and the rest render here with no parallel rules.
+// .score-num and the rest render here with no parallel rules. The record,
+// the focus tally and the summary box are the pieces every sheet shares
+// (the player's own review sitting composes its own from them); what is
+// left here is the coach's: who, the message, Export, End.
 
 withDefaults(defineProps<{
   player: CoachPlayerView
@@ -43,11 +49,6 @@ const emit = defineEmits<{
   export: []
   end: []
 }>()
-
-function onSummaryInput(e: Event): void {
-  if (!(e.target instanceof HTMLTextAreaElement)) return
-  emit('update-summary', e.target.value)
-}
 </script>
 
 <template>
@@ -69,62 +70,15 @@ function onSummaryInput(e: Event): void {
       {{ player.message }}
     </blockquote>
 
-    <div class="sheet-record" role="group" aria-label="Session record">
-      <div class="score-cell">
-        <span class="score-num win">{{ wld.w }}</span>
-        <span class="score-label">Won</span>
-      </div>
-      <div class="score-cell">
-        <span class="score-num loss">{{ wld.l }}</span>
-        <span class="score-label">Lost</span>
-      </div>
-      <div class="score-cell">
-        <span class="score-num draw">{{ wld.d }}</span>
-        <span class="score-label">Drew</span>
-      </div>
-      <p class="sheet-rate">
-        <span class="sheet-rate-num">{{ winRate === null ? '—' : `${winRate}%` }}</span>
-        <span class="score-label">Win rate</span>
-      </p>
-    </div>
-
-    <div class="sheet-block">
-      <span class="eyebrow ink">Focus so far</span>
-      <ul v-if="focusTally.length" class="sheet-tally" aria-label="Focus tally">
-        <li v-for="row in focusTally" :key="row.tag" class="tally-row">
-          <span class="tally-tag">{{ focusTagLabel(row.tag) }}</span>
-          <span class="tally-count">{{ row.count }}</span>
-        </li>
-      </ul>
-      <p v-else class="sheet-quiet">
-        No focus tags yet.
-      </p>
-      <p class="sheet-notes-line">
-        {{ notesLine }}
-      </p>
-    </div>
-
-    <div class="sheet-block">
-      <label class="eyebrow ink" for="coach-session-summary">What to work on</label>
-      <textarea
-        id="coach-session-summary"
-        class="sheet-summary"
-        rows="5"
-        :value="summary"
-        :disabled="blockedReason !== ''"
-        :title="blockedReason || undefined"
-        placeholder="The one thing to take into the next session…"
-        @input="onSummaryInput"
-      />
-      <!--
-        The summary autosaves exactly as a note does, and said nothing while
-        it did — so the box a coach writes their one takeaway in was the only
-        surface in the room with no sign the words had landed.
-      -->
-      <p class="sheet-summary-status" role="status" aria-label="Summary save state">
-        {{ blockedReason || SAVE_LABEL[summarySaveState] }}
-      </p>
-    </div>
+    <SheetRecord :wld="wld" :win-rate="winRate" />
+    <SheetFocusTally :focus-tally="focusTally" :notes-line="notesLine" />
+    <SheetSummary
+      id="coach-session-summary"
+      :summary="summary"
+      :save-state="summarySaveState"
+      :blocked-reason="blockedReason"
+      @update="(text: string) => emit('update-summary', text)"
+    />
 
     <p class="sheet-persist">
       Nothing here is saved to your profile. Their matches leave when the session ends; your notes stay with you and travel as a file.
@@ -196,90 +150,6 @@ function onSummaryInput(e: Event): void {
   line-height: 1.5;
   color: var(--ink-dim);
   border-left: 2px solid var(--paper-rule);
-}
-
-.sheet-record {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.9rem;
-  padding: 0.5rem 0;
-  border-top: 1px solid var(--paper-rule);
-  border-bottom: 1px solid var(--paper-rule);
-}
-
-/* .score-num / .score-cell / .score-label are the masthead scoreboard's
-   family (masthead.css); on paper they take the ink palette from the
-   plate, so only the rate needs a rule of its own here. */
-.sheet-rate {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  margin: 0 0 0 auto;
-}
-
-.sheet-rate-num {
-  font-family: var(--mono);
-  font-size: var(--type-4xl);
-  font-weight: 700;
-  color: var(--ink);
-  font-feature-settings: "tnum";
-}
-
-.sheet-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.sheet-tally {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.tally-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.12rem 0;
-  border-bottom: 1px dotted var(--paper-rule);
-}
-
-.tally-tag {
-  font-size: var(--type-lg);
-  color: var(--ink-dim);
-}
-
-.tally-count {
-  font-family: var(--mono);
-  font-size: var(--type-md);
-  color: var(--ink);
-  font-feature-settings: "tnum";
-}
-
-.sheet-quiet, .sheet-notes-line {
-  margin: 0;
-  font-size: var(--type-md);
-  color: var(--ink-faint);
-}
-
-.sheet-notes-line { margin-top: 0.3rem; }
-
-.sheet-summary {
-  padding: 0.5rem 0.6rem;
-  font-family: var(--body);
-  font-size: var(--type-lg);
-  line-height: 1.5;
-  color: var(--ink);
-  background: var(--paper-2);
-  border: 1px solid var(--ink-faint);
-  border-radius: var(--radius);
-  resize: vertical;
 }
 
 .sheet-persist {

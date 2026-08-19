@@ -3,7 +3,7 @@ import type { MatchRecord } from '@/api-client'
 import CoachCueStrip from '@/components/coach/notes/CoachCueStrip.vue'
 import CoachMatchCard from '@/components/coach/room/CoachMatchCard.vue'
 import CoachNoteEditor from '@/components/coach/notes/CoachNoteEditor.vue'
-import { DEFAULT_COACH_LABELS, type CoachLabels, type CoachSaveState } from '@/components/coach/room/coach-room-props'
+import { DEFAULT_COACH_LABELS, type CoachLabels, type CoachSaveState, type RoomVoice } from '@/components/coach/room/coach-room-props'
 import type { CoachMoment } from '@/match/coach/coach-moments'
 import type { CoachNoteDraft } from '@/match/coach/coach-notes'
 
@@ -28,6 +28,8 @@ withDefaults(defineProps<{
   hasPrev?: boolean
   hasNext?: boolean
   labels?: CoachLabels
+  /** Whose matches these are — the card's possessives follow it. */
+  voice?: RoomVoice
 }>(), {
   moments: () => [],
   momentSaveState: () => 'idle' as CoachSaveState,
@@ -36,6 +38,7 @@ withDefaults(defineProps<{
   hasPrev: false,
   hasNext: false,
   labels: () => DEFAULT_COACH_LABELS,
+  voice: 'their',
 })
 
 const emit = defineEmits<{
@@ -51,7 +54,7 @@ const emit = defineEmits<{
 <template>
   <div class="coach-desk">
     <template v-if="record">
-      <CoachMatchCard :record="record" :handle="handle" :labels="labels" />
+      <CoachMatchCard :record="record" :handle="handle" :labels="labels" :voice="voice" />
       <!--
         The strip sits between the match and the note on purpose: the coach
         watches, marks what they see, and only then writes the overall read.
