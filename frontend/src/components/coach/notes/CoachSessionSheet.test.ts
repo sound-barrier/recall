@@ -68,7 +68,7 @@ describe('CoachSessionSheet', () => {
 
   it('says the player\'s data is never kept', () => {
     renderSheet()
-    expect(screen.getByText(/Nothing here is saved to your profile/)).toBeInTheDocument()
+    expect(screen.getByText(/These matches are on loan — nothing here joins your history/)).toBeInTheDocument()
   })
 
   it('exports and ends the session through its own affordances', async () => {

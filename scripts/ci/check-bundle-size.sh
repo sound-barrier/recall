@@ -200,7 +200,14 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # sitting's sheet and shelf card, and eleven SDK functions (measured
 # 1723547B). All but the SDK rides the lazy Reviews / room chunks; INITIAL JS
 # moved 331896B -> 335802B, the SDK surface and the bulk bar's new button.
-: "${MAX_TOTAL_JS_BYTES:=1726000}"
+# 2026-08: 1726000 -> 1736000 -- the reviews-UX pass: the index's quick-pick
+# starts (latestSessionKeys + the last-N sort), the reviewSet narrow clause,
+# the palette's "Review my last session" action + runner, the pick-hint strip,
+# the armed states on the shelf card and the journal block, and the room's
+# voice threading (measured 1731092B). The index/room bytes ride the lazy
+# Reviews chunk; what reached the initial graph is the palette action, the
+# ui-store hint flag and the narrow clause.
+: "${MAX_TOTAL_JS_BYTES:=1736000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
@@ -226,7 +233,10 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # rail at label size, the title input) and the desk card's "already said"
 # quotes (measured 404323B). The sheet pieces' styles moved from the coach
 # sheet to the extracted components — moved, not doubled.
-: "${MAX_TOTAL_CSS_BYTES:=406000}"
+# 2026-08: 406000 -> 409000 -- the reviews-UX pass: the index's start block
+# and received-card title face, the card's ink rail marks + armed-warning
+# body, the pick-hint strip (measured 406134B).
+: "${MAX_TOTAL_CSS_BYTES:=409000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never

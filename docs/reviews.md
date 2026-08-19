@@ -18,24 +18,31 @@ folder.
 
 ## Reviewing yourself
 
-You do not need a coach to review a match — you need the room. Tick the
-matches you want to look at in **Matches**, then **Review these** on the
-bar that appears. The film room opens over them, inside the Reviews tab,
-in your own clock: the reel on the left, one match on the desk, the
+You do not need a coach to review a match — you need the room, and the
+Reviews tab starts it: **Review my last session** opens the film room
+over the trailing run of games you just played, **Review my last N**
+over the newest handful, and **Pick matches…** walks you to Matches to
+tick exactly the rows you want (then **Review these** on the bar that
+appears — the command palette's *Review my last session* is the same
+start from a keystroke, and a row's right-click menu has *Review this
+match* for just one). The film room opens over them, inside the Reviews
+tab, in your own clock: the reel on the left, one match on the desk, the
 review's sheet on the right.
 
 Per match, write a note and file it under a focus tag or two, and mark
 **moments** — a time and what happened — on the strip. Each note lands on
 its match the second you write it: open the match in Matches and the
 block is there, reading *Your review · in progress*. On the sheet, give
-the review a title and write the one thing to take into the next session.
+the review a title and write the one thing to take into your next games.
 
 **Finish review** marks every match in the set *reviewed by self* (a coach's
-mark, if one is already there, stays) and puts the review on the shelf —
+mark, if one is already there, stays) and keeps the review under
 section **01 · Your own reviews** on the Reviews tab. The card shows the
 date, the record, and a small rail with one mark per match: filled where
-you wrote a note, hollow where you only looked. Open it again any time;
-finishing again does nothing new. **Delete** removes the review and its
+you wrote a note, hollow where you only looked; **Show these matches →**
+narrows the Matches list to exactly the set it covers. Open it again any
+time — leaving without finishing also keeps everything, marked *in
+progress*. **Delete** asks first, then removes the review and its
 blocks from every match; the reviewed marks stay, because you did review
 them.
 
@@ -79,9 +86,10 @@ bundle is exactly the matches you tick, and nothing else.
 ### 1. Pick the matches
 
 Go to **Matches**, tick the rows you want reviewed. A bar appears at the
-bottom with **Export bundle…** — or, from the Reviews tab, **Send
-matches out…** takes you to Matches and opens the same dialog over the
-set you are looking at, already set to share.
+bottom with **Export bundle…** — or, from the Reviews tab, **Share with
+a coach…** (its label carries the live count of what would go) takes you
+to Matches and opens the same dialog over the set showing there, already
+set to share.
 
 Pick the matches you have a question about. A coach reading forty games
 gives you forty shallow notes; a coach reading six gives you six useful
@@ -104,10 +112,11 @@ share. Recall has no opinion about that.
 
 ### 3. Read what comes back
 
-Your coach sends a `.zip` back. Import it the same way you would import
-matches — **Settings → Backup & Restore → Import matches…**, or the
-**Import matches…** button in the Matches toolbar. Recall tells the two
-files apart on its own.
+Your coach sends a `.zip` back. Open it with **Open a notes file…** on
+the Reviews tab — or import it the way you would import matches
+(**Settings → Backup & Restore → Import matches or notes…**, or the
+**Import matches or notes…** button in the Matches toolbar); Recall
+tells the two files apart on its own.
 
 A **return sheet** opens: one card per note, each showing the match, the
 coach's note, any timestamped moments, and the tags they filed it
@@ -119,7 +128,9 @@ under. For each one you choose:
 
 Nothing is written until you press **Finish**. **Decide later** saves
 exactly what you have decided so far and closes; a banner stays up on
-every tab until every note has an answer.
+every tab — **Read the notes** reopens the sheet — until every note has
+an answer. Once a review lands, its card under *02 · From a coach* shows
+the coach, the counts, and **Show these matches →**.
 
 If the file was the wrong one, or you have decided you do not want the
 review, **Discard…** throws it away. That is not the same as skipping

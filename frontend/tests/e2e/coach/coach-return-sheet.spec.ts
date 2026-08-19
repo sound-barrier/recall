@@ -130,7 +130,9 @@ test.describe('return of notes — player side', () => {
     await expect(block.getByText('positioning')).toBeVisible()
     await expect(block.getByText('06:40')).toBeVisible()
 
+    // Armed: the first click asks with the cost, the second removes.
     await block.getByRole('button', { name: 'Remove this note' }).click()
+    await block.getByRole('button', { name: 'Remove this note — moments go with it' }).click()
     await expect.poll(() => layered.deleted.seen()).toBe(true)
     expect(layered.deleted.get()).toEqual({ matchKey: NOTED_MATCH.match_key, noteId: 1 })
     await expect(block).toHaveCount(0)

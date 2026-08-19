@@ -38,7 +38,7 @@ const notesLine = computed(() => `Notes · ${noteCount.value}`)
 // missing a note whose save never landed.
 const canExport = computed(() => coach.canExportNotes)
 const exportTitle = computed(() =>
-  canExport.value ? 'Save the notes archive for the player' : coach.exportBlockedReason)
+  canExport.value ? 'Save the notes file for the player' : coach.exportBlockedReason)
 
 // Ending discards the loan. The notes themselves are saved server-side, but
 // the ARCHIVE the player receives only exists once it has been exported —
@@ -62,7 +62,7 @@ const requestEnd = () => coach.requestEndSession()
       {{ loanLine }}
     </p>
     <p class="coach-slip-promise">
-      Nothing here is saved to your profile.
+      These matches are on loan — nothing here joins your history.
     </p>
     <!--
       Design rule 12: the coach's own narrow describes THEIR corpus, so a

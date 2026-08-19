@@ -253,3 +253,15 @@ after the phase's review — the sitting store itself, because the keyboard
 cheatsheet (an eager overlay) advertises the reel bindings while the room is
 open in EITHER voice and has to ask the sitting store too. Initial JS is 1.6KB
 under its budget; the next eager addition pays for itself.
+
+## 2026-08 — reviews UX pass (total JS 1726000 → 1736000, total CSS 406000 → 409000)
+
+The adversarial UX review of the 07 tab: quick-pick starts on the index
+(`latestSessionKeys` + a last-N sort), the `reviewSet` narrow clause behind
+"Show these matches →", the palette's "Review my last session" action, the
+one-shot pick-hint strip over the Matches list, armed destructive states on
+the shelf card and the journal block, and the room's voice threading.
+Measured 1731092B JS / 406134B CSS. The index and room bytes ride the lazy
+Reviews chunk; the initial graph gained only the palette action, the
+ui-store hint flag and the clause — initial JS stayed under its unchanged
+340000 budget (339107B).

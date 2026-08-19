@@ -81,7 +81,7 @@ const emit = defineEmits<{
     />
 
     <p class="sheet-persist">
-      Nothing here is saved to your profile. Their matches leave when the session ends; your notes stay with you and travel as a file.
+      These matches are on loan — nothing here joins your history. They leave when the session ends; your notes stay with you and travel as a file.
     </p>
 
     <footer class="sheet-actions">

@@ -40,7 +40,7 @@ const TOUR_CONFLICT_REASON
 
 /** Why Export is refused while a note is still unsaved. */
 const UNSAVED_EXPORT_REASON
-  = 'A note could not be saved, so the archive would be missing it. Try again in a moment.'
+  = 'A note could not be saved, so the notes file would be missing it. Try again in a moment.'
 
 /** Reported when the session ends holding a note the server never took. */
 const UNSAVED_END_REASON
