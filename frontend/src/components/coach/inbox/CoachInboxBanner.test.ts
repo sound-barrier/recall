@@ -87,10 +87,10 @@ describe('CoachInboxBanner', () => {
     expect(screen.queryByRole('status')).toBeNull()
   })
 
-  it('Review opens the sheet that is still waiting', async () => {
+  it('Read the notes opens the sheet that is still waiting', async () => {
     renderBanner([sheet({ id: 4, decisions: { 'n-1': 'accepted', 'n-2': 'skipped' } }), sheet({ id: 9 })])
     const open = vi.spyOn(useCoachReturnsStore(), 'openReturnSheet').mockResolvedValue(undefined)
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Review' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Read the notes' }))
     expect(open).toHaveBeenCalledWith(9)
   })
 })

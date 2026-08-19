@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 
 import { useCoachReturnsStore } from '@/stores/coachReturns'
 
-// "3 notes from Ordo waiting · Review" — the nag that sits above the
+// "3 notes from Ordo waiting · Read the notes" — the nag that sits above the
 // dossier until every returned note is decided.
 //
 // The count is the SERVER's derived pending tally, not local state, so it
@@ -24,7 +24,7 @@ const from = computed(() => {
 const line = computed(() =>
   `${pending.value} note${pending.value === 1 ? '' : 's'} from ${from.value} waiting`)
 
-// The sheet the Review button opens: the first one still holding an
+// The sheet the Read-the-notes button opens: the first one still holding an
 // undecided note — the same one the copy names.
 const firstPendingId = computed(() => inbox.value.find((sheet) => sheet.pending > 0)?.id ?? null)
 
@@ -44,7 +44,7 @@ function review() {
     <span class="eyebrow accent coach-inbox-eyebrow">Coaching</span>
     <span class="coach-inbox-line">{{ line }}</span>
     <button type="button" class="btn ghost coach-inbox-review" @click="review">
-      Review
+      Read the notes
     </button>
   </div>
 </template>

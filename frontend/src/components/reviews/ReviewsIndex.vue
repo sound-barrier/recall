@@ -4,28 +4,33 @@ import { storeToRefs } from 'pinia'
 
 import SelfReviewCard from '@/components/reviews/SelfReviewCard.vue'
 import { formatPlayerDay } from '@/match/coach/coach-time'
+import { latestSessionKeys } from '@/match/dossier/match-momentum-helpers'
+import { matchTime } from '@/match/match-time-helpers'
 import { groupReceivedReviews } from '@/match/reviews/reviews-helpers'
 import { shelfCard } from '@/match/reviews/shelf-helpers'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
 import { useCoachReturnsStore } from '@/stores/coachReturns'
+import { useDatabaseStore } from '@/stores/database'
 import { useMatchesStore } from '@/stores/matches'
 import { useSelfReviewStore } from '@/stores/selfReview'
 import { useUiStore } from '@/stores/ui'
 
-// The shelf — every review, labeled, and the next one a click away.
+// The tab's front of house, where the reels come off and go back on.
 //
 // The room's metaphor is film editing: reel, desk, loan slip, frames,
-// sprockets, a ledger. This is the room's front of house, where the reels
-// come off and go back on. Three sections, numbered because they are an
-// arc: the review cycle runs from YOU (01, your own reviews) to A COACH (02)
-// to SOMEONE ELSE (03), and a new player meets them in that order.
+// sprockets, a ledger. Three sections, numbered because they are an arc:
+// the review cycle runs from YOU (01, your own reviews) to A COACH (02)
+// to SOMEONE ELSE (03), and a new player meets them in that order. The one
+// exception to the arc is anything WAITING on you — those rows float above
+// it, because time-sensitive beats narrative.
 //
 // Every section carries its action whether or not it is empty, because the
 // empty state IS the invitation — and each empty is its own sentence.
 const appStore = useAppStore()
 const coach = useCoachStore()
 const returns = useCoachReturnsStore()
+const database = useDatabaseStore()
 const matches = useMatchesStore()
 const ui = useUiStore()
 
@@ -36,8 +41,23 @@ const { reviews: sittings } = storeToRefs(selfReview)
 
 // ── 01 Your own reviews ────────────────────────────────────────────────
 // The shelf: every sitting as a card, newest first (the store's order),
-// drawn against the player's own records.
+// drawn against the player's own records — and three ways to start one.
 const shelfCards = computed(() => sittings.value.map((s) => shelfCard(s, records.value)))
+
+// The quick starts. "Last session" is the trailing run of games closer than
+// the session gap — last night's games as much as tonight's, which is why it
+// is not called "today's". "Last N" is simply the newest N the history holds.
+const LAST_N_CAP = 10
+const sessionKeys = computed(() => latestSessionKeys(records.value))
+const lastNKeys = computed(() => [...records.value]
+  .sort((a, b) => matchTime(b).localeCompare(matchTime(a)))
+  .slice(0, LAST_N_CAP)
+  .map((r) => r.match_key))
+
+function startOver(keys: readonly string[]): void {
+  if (keys.length === 0) return
+  void selfReview.createFromKeys([...keys])
+}
 
 function openSitting(reviewId: string): void {
   void selfReview.openSitting(reviewId)
@@ -47,7 +67,11 @@ function removeSitting(reviewId: string): void {
   void selfReview.remove(reviewId)
 }
 
-function goToMatches(): void {
+// "Pick matches…" walks to the list AND says what to do there — the
+// checkbox it points at only appears on hover, so without the hint the
+// trail goes cold on arrival.
+function pickMatches(): void {
+  ui.showReviewPickHint()
   void appStore.goToView('matches')
 }
 
@@ -59,26 +83,32 @@ const waiting = computed(() => inbox.value.filter((s) => s.pending > 0))
 const received = computed(() => groupReceivedReviews(records.value))
 const noCoachYet = computed(() => waiting.value.length === 0 && received.value.length === 0)
 
+// The count the share button carries — the narrowed set, because that is
+// exactly what sharing bundles.
+const showingCount = computed(() => matches.matchesNarrow.narrowedRecords.value.length)
+
 function notesFromLine(count: number, coachName: string): string {
   return `${count} note${count === 1 ? '' : 's'} from ${coachName}`
 }
 
-function sendMatchesOut(): void {
+function shareWithCoach(): void {
   void matches.shareNarrowedWithCoach()
 }
 
-// A received review has no room of its own (a third room mode, not built);
-// the card takes you to the first match it touched, in the detail panel.
-// The first match the narrow can show, that is: a review is grouped from
-// EVERY record, and the panel only opens over the narrowed set, so a member
-// the current narrow excludes is skipped — and if none is in the narrow, the
-// narrow is widened for the first (see `revealMatch`) rather than opening a
-// panel with nothing behind it.
-async function openReceived(matchKeys: readonly string[]): Promise<void> {
-  await appStore.goToView('matches')
-  const inNarrow = new Set(matches.matchesNarrow.narrowedRecords.value.map((r) => r.match_key))
-  const target = matchKeys.find((k) => inNarrow.has(k)) ?? matchKeys[0]
-  if (target !== undefined) ui.revealMatch(target)
+function openNotesFile(): void {
+  void database.importMatches()
+}
+
+// The card's door: the matches the review touched, worn as one visible,
+// clearable clause — never a silent filter reset under a deep link.
+function showReviewMatches(r: { coachName: string; matchKeys: readonly string[] }): void {
+  void matches.showOnlyMatches(r.matchKeys, `notes from ${r.coachName}`)
+}
+
+function received02Label(r: { sessionDate: string; noteCount: number; matchKeys: readonly string[] }): string {
+  const notes = `${r.noteCount} ${r.noteCount === 1 ? 'note' : 'notes'}`
+  const matchCount = `${r.matchKeys.length} ${r.matchKeys.length === 1 ? 'match' : 'matches'}`
+  return `${formatPlayerDay(r.sessionDate)} · ${notes} · ${matchCount}`
 }
 
 // ── 03 For someone else ────────────────────────────────────────────────
@@ -90,18 +120,28 @@ function openBundle(): void {
 <template>
   <div class="reviews-index">
     <header class="settings-intro">
-      <p class="eyebrow settings-eyebrow">
-        Review cycle
-      </p>
       <h2 class="settings-heading">
-        Who has looked at your games
+        Your reviews
       </h2>
       <p class="reviews-desc">
-        Review your own matches the way a coach would, send some out, read
-        what comes back — or coach someone else. Every review you give or
-        get lives here.
+        The ones you write about your own matches, the ones a coach sends
+        back, and the ones you give someone else.
       </p>
     </header>
+
+    <!-- Waiting on a decision, one row per sheet — above everything,
+         because it is the one time-sensitive thing here. The app-chrome
+         inbox banner steps aside on this tab (App.vue) — these rows ARE
+         the banner here, in its shape, per coach instead of summed. -->
+    <ul v-if="waiting.length" class="reviews-waiting" aria-label="Notes waiting on a decision">
+      <li v-for="sheet in waiting" :key="sheet.id" class="reviews-waiting-row">
+        <span class="eyebrow accent">Waiting</span>
+        <span class="reviews-waiting-line">{{ notesFromLine(sheet.pending, sheet.coach_name) }}</span>
+        <button type="button" class="btn ghost" @click="returns.openReturnSheet(sheet.id)">
+          Read the notes
+        </button>
+      </li>
+    </ul>
 
     <!-- 01 / YOUR OWN REVIEWS -->
     <div id="sec-your-own-reviews" class="settings-section">
@@ -112,24 +152,37 @@ function openBundle(): void {
           Your own reviews
         </h3>
       </div>
-      <div class="setting-rows">
-        <div class="setting-row">
-          <div class="setting-info">
-            <h4 class="setting-label">
-              Review some matches
-            </h4>
-            <p class="setting-desc">
-              Tick matches in Matches and choose <strong>Review these</strong>: the film
-              room opens over them, in your own clock, with a note and a moments strip
-              for each. Every note lands on its match as you write it; Finish marks the
-              matches reviewed and puts the review here.
-            </p>
-          </div>
-          <div class="setting-control">
-            <button type="button" class="btn ghost" @click="goToMatches">
-              Go to Matches
-            </button>
-          </div>
+
+      <div class="reviews-start">
+        <h4 class="setting-label">
+          Review some matches
+        </h4>
+        <p class="setting-desc">
+          The film room opens over them, in your own clock, with a note and a
+          moments strip for each. Every note lands on its match as you write
+          it; Finish marks the matches reviewed and keeps the review here.
+        </p>
+        <div class="reviews-start-actions">
+          <button
+            type="button"
+            class="btn primary"
+            :disabled="sessionKeys.length === 0"
+            :title="sessionKeys.length === 0 ? 'No matches yet — parse or add some first' : undefined"
+            @click="startOver(sessionKeys)"
+          >
+            Review my last session ({{ sessionKeys.length }})
+          </button>
+          <button
+            v-if="lastNKeys.length > sessionKeys.length"
+            type="button"
+            class="btn"
+            @click="startOver(lastNKeys)"
+          >
+            Review my last {{ lastNKeys.length }}
+          </button>
+          <button type="button" class="btn ghost" @click="pickMatches">
+            Pick matches…
+          </button>
         </div>
       </div>
 
@@ -143,8 +196,8 @@ function openBundle(): void {
         </li>
       </ul>
       <p v-else class="reviews-empty">
-        Nothing reviewed yet. Tick some matches and choose Review these — the
-        room opens over them.
+        Nothing reviewed yet — start with your last session, or pick the
+        matches yourself.
       </p>
     </div>
 
@@ -161,63 +214,65 @@ function openBundle(): void {
         <div class="setting-row">
           <div class="setting-info">
             <h4 class="setting-label">
-              Send matches out
+              Share matches with a coach
             </h4>
             <p class="setting-desc">
-              Takes you to Matches and bundles the set showing there, stamped
-              with your name, for a coach to open in their own Recall. Their
-              notes come back as a file you decide on, match by match.
+              Sends the matches showing on Matches — narrow the list there to
+              choose the set — as a file stamped with your name, for a coach
+              to open in their own Recall. Their notes come back as a file
+              you decide on, match by match.
             </p>
           </div>
           <div class="setting-control">
-            <button type="button" class="btn ghost" @click="sendMatchesOut">
-              Send matches out…
+            <button type="button" class="btn ghost" @click="shareWithCoach">
+              Share with a coach… ({{ showingCount }} showing on Matches)
+            </button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <h4 class="setting-label">
+              Open a notes file
+            </h4>
+            <p class="setting-desc">
+              The other way notes arrive: a coach hands you the file their
+              session saved, and opening it lands each note on your matches.
+            </p>
+          </div>
+          <div class="setting-control">
+            <button type="button" class="btn ghost" @click="openNotesFile">
+              Open a notes file…
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Waiting on a decision, one row per sheet. The app-chrome inbox
-           banner steps aside on this tab (App.vue) — these rows ARE the
-           banner here, in its shape, per coach instead of summed. -->
-      <ul v-if="waiting.length" class="reviews-waiting" aria-label="Notes waiting on a decision">
-        <li v-for="sheet in waiting" :key="sheet.id" class="reviews-waiting-row">
-          <span class="eyebrow accent">Waiting</span>
-          <span class="reviews-waiting-line">{{ notesFromLine(sheet.pending, sheet.coach_name) }}</span>
-          <button type="button" class="btn ghost" @click="returns.openReturnSheet(sheet.id)">
-            Review
-          </button>
-        </li>
-      </ul>
-
       <!-- Received: on paper, because a review is written on paper. -->
       <ul v-if="received.length" class="reviews-shelf" aria-label="Reviews you have received">
         <li v-for="(r, i) in received" :key="`${r.coachName} ${r.sessionDate}`">
-          <!-- The card is named by its own heading — one string in the a11y
-               tree and on the paper, so they cannot disagree. -->
           <article class="paper review-card" :aria-labelledby="`review-card-head-${i}`">
-            <h4 :id="`review-card-head-${i}`" class="eyebrow ink review-card-head paper-rule-hatch">
-              {{ r.coachName }} · {{ formatPlayerDay(r.sessionDate) }} ·
-              {{ r.noteCount }} {{ r.noteCount === 1 ? 'note' : 'notes' }} ·
-              {{ r.matchKeys.length }} {{ r.matchKeys.length === 1 ? 'match' : 'matches' }}
+            <h4 :id="`review-card-head-${i}`" class="review-card-coach paper-rule-hatch">
+              {{ r.coachName }}
             </h4>
+            <p class="eyebrow ink review-card-line">
+              {{ received02Label(r) }}
+            </p>
             <button
               type="button"
               class="paper-btn review-card-open"
-              @click="openReceived(r.matchKeys)"
+              @click="showReviewMatches(r)"
             >
-              Open the first match →
+              Show these matches →
             </button>
           </article>
         </li>
       </ul>
 
-      <!-- The action is the row above; this only says what the emptiness
-           means and names the other way in. Two identical buttons in one
-           section would be one too many. -->
+      <!-- The actions are the rows above; this only says what the
+           emptiness means. -->
       <p v-if="noCoachYet" class="reviews-empty">
-        No coach has looked yet — send some matches out, or import a notes
-        file you were given from the Matches toolbar.
+        No coach has looked yet — share some matches, or open a notes file
+        you were given.
       </p>
     </div>
 
@@ -237,9 +292,11 @@ function openBundle(): void {
               Open a player's bundle
             </h4>
             <p class="setting-desc">
-              A bundle a player shared with you opens here as a coaching session.
-              Their matches are loaned, never added to your history; your notes
-              travel back as a file they decide on.
+              A bundle — the .zip of matches a player shares from their own
+              Reviews tab — opens here as a coaching session. Their matches
+              are loaned, never added to your history; your notes travel
+              back as a file they decide on. Notes are signed with your
+              coach name, set in Settings.
             </p>
           </div>
           <div class="setting-control">
@@ -249,6 +306,10 @@ function openBundle(): void {
           </div>
         </div>
       </div>
+      <p class="reviews-empty">
+        No one has sent you a bundle yet — when a player shares their
+        matches with you, this is where you open them.
+      </p>
     </div>
   </div>
 </template>
@@ -269,7 +330,7 @@ function openBundle(): void {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  margin: 1rem 0 0;
+  margin: 1.2rem 0 0;
   padding: 0;
   list-style: none;
 }
@@ -296,6 +357,27 @@ function openBundle(): void {
   color: var(--text);
 }
 
+/* The start block: 01's call to action, not a preference row — the page's
+   primary verb lives here, so it reads as a block with its buttons under
+   the sentence, not a label with a control across the page. */
+.reviews-start {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 62ch;
+}
+
+.reviews-start .setting-desc {
+  margin: 0;
+}
+
+.reviews-start-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
 /* The shelf: reviews as paper cards in a responsive row. */
 .reviews-shelf {
   display: grid;
@@ -314,12 +396,23 @@ function openBundle(): void {
   overflow: hidden;
 }
 
-/* The card's label is the ruled-paper hatch the reel's day labels and the
-   session rule already wear — one strip, one meaning: "this is a sitting". */
-.review-card-head {
+/* The card is named by the coach, in the display voice — the tallies are
+   the label line under it, not the title. The hatch strip stays: one
+   strip, one meaning, "this is a sitting". */
+.review-card-coach {
   margin: 0;
   padding: 0.5rem 0.75rem;
+  font-family: var(--display);
+  font-size: var(--type-3xl);
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1.1;
+  text-transform: uppercase;
   border-bottom: 1px solid var(--paper-edge);
+}
+
+.review-card-line {
+  margin: 0 0.75rem;
 }
 
 .review-card-open {

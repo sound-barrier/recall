@@ -17,7 +17,8 @@
    `.settings`, because the Unknown panel shares that class but is data-dense
    and SHOULD use the full width. */
 #panel-settings,
-#panel-ingest {
+#panel-ingest,
+#panel-reviews {
   max-width: var(--content-measure);
   margin-inline: 0;
 }

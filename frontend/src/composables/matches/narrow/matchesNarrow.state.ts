@@ -11,6 +11,7 @@ import type {
   LeaverPick,
   ThrowerPick,
   PoolFilter,
+  ReviewSetFilter,
 } from '@/composables/matches/narrow/matchesNarrow.types'
 
 // Factory for the parent-owned narrow-filter state bundle (one set of refs
@@ -50,6 +51,7 @@ export function createMatchesNarrowState(opts: CreateMatchesNarrowStateOptions =
     anchorKey:        opts.anchorKey ?? computed(() => ''),
     sinceAnchorActive: ref(false),
     poolFilter:       ref<PoolFilter | null>(null),
+    reviewSetFilter:  ref<ReviewSetFilter | null>(null),
   }
 }
 

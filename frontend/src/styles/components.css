@@ -741,6 +741,9 @@
     opacity var(--duration-instant) ease;
 }
 
+/* While the Reviews tab's pick-hint shows, every box brightens — the hint
+   points at an affordance that otherwise only appears on hover. */
+.leaves.review-picking .leaf-checkbox,
 .leaf-row:hover .leaf-checkbox,
 .leaf-row.has-selection .leaf-checkbox,
 .leaf-row.is-ticked .leaf-checkbox,

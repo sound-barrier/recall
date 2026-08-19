@@ -33,7 +33,7 @@ import {
 export type ClauseId = 'search' | 'dateRange' | 'maps' | 'gameModes' | 'roles'
   | 'results' | 'heroes' | 'tags' | 'members' | 'reviewedBy' | 'queues'
   | 'playModes' | 'sources' | 'leaver' | 'leaverSide' | 'throwerSide' | 'modifiers' | 'ranks'
-  | 'sinceAnchor' | 'minPlay' | 'includeUnknown' | 'season' | 'poolSide'
+  | 'sinceAnchor' | 'minPlay' | 'includeUnknown' | 'season' | 'poolSide' | 'reviewSet'
 
 // Per-pass inputs the predicates need beyond the raw state: the parsed
 // search clauses, the hero→role resolver, the pre-resolved anchor floor
@@ -297,6 +297,15 @@ export const NARROW_CLAUSES: readonly ClauseSpec[] = [
     label: (s) => pickedLabel(s.pickedRanks.value, (v) => `rank ${v}`, 'rank picks'),
     clear: (s) => { s.pickedRanks.value = new Set() },
     chips: (s) => s.pickedRanks.value.size,
+  },
+  {
+    // "Show these matches" from a review card — a snapshotted key set worn
+    // as one clause, so the set is visible and clearable like any filter.
+    id: 'reviewSet',
+    restricts: (s) => s.reviewSetFilter.value !== null,
+    passes: (r, s) => s.reviewSetFilter.value?.keys.has(r.match_key) ?? true,
+    label: (s) => s.reviewSetFilter.value?.label ?? 'review matches',
+    clear: (s) => { s.reviewSetFilter.value = null },
   },
   {
     // The Hero Pool band's In-pool / Out-of-pool selection. Not a picked-set:

@@ -358,7 +358,28 @@ const {
       <TrendsSection @open-match="selection.open($event)" />
 
       <!-- ─── MEMBERS ─────────────────────────────────────────── -->
-      <section ref="leavesSectionRef" class="leaves" aria-label="Set members">
+      <section ref="leavesSectionRef" class="leaves" :class="{ 'review-picking': uiStore.reviewPickHint }" aria-label="Set members">
+        <!-- "Show these matches" from a review card: the set is worn as a
+             visible, clearable strip — the answer to "why is my list
+             short?", which a silent filter reset never gave. -->
+        <div v-if="matchesStore.matchesNarrow.reviewSetFilter.value" class="review-pick-hint" role="status">
+          <span class="review-pick-hint-line">
+            Showing <strong>{{ matchesStore.matchesNarrow.reviewSetFilter.value.label }}</strong> — {{ narrowedRecords.length }} of your matches.
+          </span>
+          <button type="button" class="btn ghost" @click="matchesStore.matchesNarrow.setReviewSetFilter(null)">
+            Show everything
+          </button>
+        </div>
+        <!-- The one-shot trail from the Reviews tab's "Pick matches…" —
+             the checkbox it points at only appears on hover, so the hint
+             carries the player over that gap (and brightens the boxes
+             while it shows). Ticking a row is the dismissal. -->
+        <div v-if="uiStore.reviewPickHint" class="review-pick-hint" role="status">
+          <span class="review-pick-hint-line">Tick the matches you want to review, then choose <strong>Review these</strong>.</span>
+          <button type="button" class="btn ghost" @click="uiStore.clearReviewPickHint">
+            Got it
+          </button>
+        </div>
         <MatchesListToolbar
           :match-count="narrowedRecords.length"
           :sort-group-open="sortGroupOpen"
@@ -414,7 +435,7 @@ const {
           :any-narrow="anyNarrow"
           :clause-exclusion-counts="clauseExclusionCounts"
           @open-match="selection.open($event)"
-          @toggle-select="toggleSelected"
+          @toggle-select="(k: string) => { uiStore.clearReviewPickHint(); toggleSelected(k) }"
           @row-context="onRowContext"
           @hover-enter="onLeafMouseEnter"
           @hover-move="onLeafMouseMove"

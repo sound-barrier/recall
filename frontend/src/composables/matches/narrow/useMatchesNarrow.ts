@@ -11,6 +11,7 @@ import type {
   LeaverPick,
   ThrowerPick,
   PoolFilter,
+  ReviewSetFilter,
 } from '@/composables/matches/narrow/matchesNarrow.types'
 import { NARROW_CLAUSES, type ClauseCtx, type ClauseId, type ClauseSpec } from '@/composables/matches/narrow/matchesNarrow.clauses'
 import { useOWData } from '@/composables/shared/useOWData'
@@ -113,7 +114,7 @@ export function useMatchesNarrow(
     pickedLeavers, pickedThrowers, pickedModifiers, pickedRanks,
     pickedRange, customFrom, customTo, customFromTime, customToTime, pickedSeason,
     leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
-    anchorKey, sinceAnchorActive, poolFilter,
+    anchorKey, sinceAnchorActive, poolFilter, reviewSetFilter,
   } = state
 
   // Resolves heroes_played to roles for the broad role match (so a secondary
@@ -178,6 +179,11 @@ export function useMatchesNarrow(
     poolFilter.value = filter
   }
 
+  /** "Show these matches": snapshot a review's key set as the one clause. */
+  function setReviewSetFilter(filter: ReviewSetFilter | null) {
+    reviewSetFilter.value = filter
+  }
+
   function resetNarrow() {
     searchText.value          = ''
     pickedMaps.value          = new Set()
@@ -207,6 +213,7 @@ export function useMatchesNarrow(
     includeUnknown.value      = false
     sinceAnchorActive.value   = false
     poolFilter.value          = null
+    reviewSetFilter.value     = null
     // anchorKey is owned by useMatchAnchor (persisted across sessions)
     // — narrow-panel reset toggles the FILTER off but doesn't clear
     // the anchor itself.
@@ -395,11 +402,12 @@ export function useMatchesNarrow(
     pickedRange, customFrom, customTo, customFromTime, customToTime, pickedSeason,
     pickSeason,
     leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
-    anchorKey, sinceAnchorActive, poolFilter,
+    anchorKey, sinceAnchorActive, poolFilter, reviewSetFilter,
     // Actions
     pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickMember, pickReviewedBy, pickQueue, pickPlayMode, pickSource, pickRange,
     pickLeaver, pickThrower, pickModifier, pickRank, setPoolFilter,
     resetNarrow,
+    setReviewSetFilter,
     // Derived
     activeClauseCount, anyNarrow,
     searchClauses,
