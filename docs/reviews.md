@@ -1,14 +1,47 @@
-# Coaching
+# Reviews
 
-Recall can hand your matches to someone else for review, and hand their
-notes back. Two files, passed between two copies of Recall — no
-account, no server, nothing uploaded. You send a bundle; they send
-notes; you decide which of those notes to keep.
+Three ways to look hard at a set of matches, and one place for all of
+them — the **07 Reviews** tab (`g r`):
 
-This chapter covers both sides. Skip to [Getting
-coached](#getting-coached) if you are the player, or [Coaching
+- **Review yourself.** Sit down with a handful of your own games in the
+  film room, the way a coach would, and keep the sitting.
+- **Get coached.** Hand your matches to someone else and read what comes
+  back. Two files, passed between two copies of Recall — no account, no
+  server, nothing uploaded. You send a bundle; they send notes; you decide
+  which of those notes to keep.
+- **Coach someone.** Open a bundle a player sent you and write the notes.
+
+This chapter covers all three, in that order. Skip to [Getting
+coached](#getting-coached) if you are waiting on someone, or [Coaching
 someone](#coaching-someone) if a bundle just landed in your downloads
 folder.
+
+## Reviewing yourself
+
+You do not need a coach to review a match — you need the room. Tick the
+matches you want to look at in **Matches**, then **Review these** on the
+bar that appears. The film room opens over them, inside the Reviews tab,
+in your own clock: the reel on the left, one match on the desk, the
+review's sheet on the right.
+
+Per match, write a note and file it under a focus tag or two, and mark
+**moments** — a time and what happened — on the strip. Each note lands on
+its match the second you write it: open the match in Matches and the
+block is there, reading *Your review · in progress*. On the sheet, give
+the review a title and write the one thing to take into the next session.
+
+**Finish review** marks every match in the set *reviewed by self* (a coach's
+mark, if one is already there, stays) and puts the review on the shelf —
+section **01 · Your own reviews** on the Reviews tab. The card shows the
+date, the record, and a small rail with one mark per match: filled where
+you wrote a note, hollow where you only looked. Open it again any time;
+finishing again does nothing new. **Delete** removes the review and its
+blocks from every match; the reviewed marks stay, because you did review
+them.
+
+A review travels in a share bundle with its matches (the dialog says so),
+and a profile move carries it whole — or refuses, if the move would split
+it across two profiles.
 
 ## What travels, and what does not
 
@@ -23,6 +56,8 @@ A share bundle is a `.zip` containing, **for the matches you selected**:
 - your own journal layer: notes you wrote, the moments you marked, tags,
   squad members you named, anyone you marked as a leaver or thrower, and
   replay codes
+- your own reviews of those matches — the sittings above, notes and
+  moments included, so a coach reads what you already noticed
 - any review an earlier coach sent back and you accepted — a second coach
   sees the first one's notes
 - your handle, and a message to the coach if you write one
@@ -44,7 +79,9 @@ bundle is exactly the matches you tick, and nothing else.
 ### 1. Pick the matches
 
 Go to **Matches**, tick the rows you want reviewed. A bar appears at the
-bottom with **Export bundle…**.
+bottom with **Export bundle…** — or, from the Reviews tab, **Send
+matches out…** takes you to Matches and opens the same dialog over the
+set you are looking at, already set to share.
 
 Pick the matches you have a question about. A coach reading forty games
 gives you forty shallow notes; a coach reading six gives you six useful
@@ -99,6 +136,7 @@ You do not need a coach to point at a moment. The match journal has its
 own **Moments** strip: mark a time, say what happened, and optionally
 file it under a focus tag. It reads down the match, exactly as a
 coach's does, and sits above their notes because they are your words.
+(A review sitting — above — does the same over a whole set at once.)
 
 ## Coaching someone
 
@@ -179,7 +217,12 @@ that format refuses the file by name rather than reading half of it and
 dropping the rest silently.
 
 **Two coaches can review the same match.** Their notes accumulate as
-separate blocks, each signed and dated. Nothing merges.
+separate blocks, each signed and dated. Nothing merges — and your own
+review sittings sit beside them as their own blocks, the same way.
+
+**A coach sees your own notes.** The bundle carries your journal and your
+review sittings, and the coach's desk quotes them under your note, so they
+read what you already noticed before they write.
 
 ## Next chapter
 
