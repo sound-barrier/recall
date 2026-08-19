@@ -146,7 +146,7 @@ describe('ReviewsIndex — your own reviews', () => {
     const remove = vi.spyOn(selfReview, 'remove').mockResolvedValue(undefined)
     const shelf = screen.getByRole('list', { name: 'Your own reviews' })
     const card = within(shelf).getByRole('article', { name: "Tuesday's Ana games" })
-    expect(card).toHaveAccessibleDescription(/1 match · 1 noted · 1–0 · finished/)
+    expect(card).toHaveAccessibleDescription(/1 match · 1 with notes · 1–0 · finished/)
 
     const user = userEvent.setup()
     await user.click(within(card).getByRole('button', { name: 'Open →' }))

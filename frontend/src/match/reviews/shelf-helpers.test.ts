@@ -54,11 +54,11 @@ describe('shelfCard', () => {
     })
     const card = shelfCard(one, [rec('a', 'defeat')])
     expect(card.rail).toEqual(['reviewed'])
-    expect(shelfCardSpokenState(card)).toBe('1 match · 0 noted · 0–1 · finished')
+    expect(shelfCardSpokenState(card)).toBe('1 match · 0 with notes · 0–1 · finished')
   })
 
   it('speaks the state the rail only paints', () => {
     const card = shelfCard(sitting({ title: "Tuesday's Ana games" }), [rec('a', 'victory'), rec('b', 'defeat'), rec('c', 'draw')])
-    expect(shelfCardSpokenState(card)).toBe('3 matches · 1 noted · 1–1–1 · in progress')
+    expect(shelfCardSpokenState(card)).toBe('3 matches · 1 with notes · 1–1–1 · in progress')
   })
 })

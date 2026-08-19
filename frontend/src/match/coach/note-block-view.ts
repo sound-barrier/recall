@@ -25,7 +25,11 @@ export interface NoteBlockView {
   /** The signature line under the block. */
   sign: string
   removeLabel: string
+  /** What the armed remove says — the label that states the cost. */
+  armedRemoveLabel: string
   removal: NoteBlockRemoval
+  /** Set when the signature can reopen the sitting it names. */
+  reopenReviewId?: string
 }
 
 export function coachBlockView(note: MatchCoachNote): NoteBlockView {
@@ -38,6 +42,7 @@ export function coachBlockView(note: MatchCoachNote): NoteBlockView {
     tags: [...(note.focus_tags ?? []), ...(note.extra_tags ?? [])],
     sign: `— ${note.coach_name} · ${note.session_date}`,
     removeLabel: 'Remove this note',
+    armedRemoveLabel: 'Remove this note — moments go with it',
     removal: { kind: 'coach', id: note.id },
   }
 }
@@ -56,6 +61,8 @@ export function selfBlockView(note: MatchSelfReviewNote): NoteBlockView {
     tags: [...(note.focus_tags ?? []), ...(note.extra_tags ?? [])],
     sign: `— ${title || 'Your review'} · ${day}`,
     removeLabel: 'Remove from this review',
+    armedRemoveLabel: 'Delete this note — moments go with it',
     removal: { kind: 'self', reviewId: note.review_id },
+    reopenReviewId: note.review_id,
   }
 }

@@ -18,6 +18,10 @@ export interface ShelfCard {
   dayKey: string
   finished: boolean
   matchCount: number
+  /** Members the history no longer holds (hard-deleted since). */
+  missingCount: number
+  /** Every member, for "Show these matches". */
+  matchKeys: string[]
   wld: WLDTally
   /** One mark per member, in the sitting's order. */
   rail: RailMark[]
@@ -41,6 +45,8 @@ export function shelfCard(sitting: SelfReview, records: readonly MatchRecord[]):
     dayKey: sitting.created_at.slice(0, 10),
     finished: Boolean(sitting.finished_at),
     matchCount: sitting.match_keys.length,
+    missingCount: sitting.match_keys.length - members.length,
+    matchKeys: [...sitting.match_keys],
     wld: tallyWLD(members),
     rail,
     writtenCount: rail.filter((m) => m === 'written').length,
@@ -54,10 +60,17 @@ function excerpt(text: string): string {
   return [...flat].slice(0, EXCERPT_RUNES - 1).join('').trimEnd() + '…'
 }
 
-/** "4 matches · 2 noted · 3–1" — the card's spoken summary. */
+/**
+ * "4 matches · 2 with notes · 3–1 · finished" — the card's spoken summary.
+ * A card whose members have left the history says so, or its tally reads
+ * as a lie ("3 matches · 0–0").
+ */
 export function shelfCardSpokenState(card: ShelfCard): string {
   const matches = `${card.matchCount} ${card.matchCount === 1 ? 'match' : 'matches'}`
-  const noted = `${card.writtenCount} noted`
+  const noted = `${card.writtenCount} with notes`
   const record = `${card.wld.w}–${card.wld.l}${card.wld.d ? `–${card.wld.d}` : ''}`
-  return `${matches} · ${noted} · ${record} · ${card.finished ? 'finished' : 'in progress'}`
+  const gone = card.missingCount > 0
+    ? ` · ${card.missingCount} no longer in your history`
+    : ''
+  return `${matches} · ${noted} · ${record} · ${card.finished ? 'finished' : 'in progress'}${gone}`
 }

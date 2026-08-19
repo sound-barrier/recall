@@ -10,17 +10,19 @@ import { shelfCardSpokenState, type ShelfCard } from '@/match/reviews/shelf-help
 // the reel's own sprocket rail at label size — one perforation per match,
 // carrying the mark the full reel uses (filled: a note was written; hollow:
 // only looked at; bare: nothing yet). The rail is decoration; the card's
-// accessible name says the same thing in words.
+// state line says the same thing in words.
 
 const props = defineProps<{ card: ShelfCard }>()
 
 const emit = defineEmits<{
   open: []
   remove: []
+  'show-matches': []
 }>()
 
-// Delete is armed: the first click asks, the second does. Local to the
-// card — the arming belongs to the button the player is looking at.
+// Delete is armed: the first click asks, the second does — and the asking
+// happens in the BODY, so the footer never reflows under the pointer
+// between the first click and the second.
 const armed = ref(false)
 const { writesLocked, lockReason, guardWrite } = useWriteGate()
 
@@ -37,6 +39,11 @@ function onDelete(): void {
 const headId = computed(() => `self-review-card-${props.card.reviewId}`)
 const spoken = computed(() => shelfCardSpokenState(props.card))
 const MARK_GLYPH = { written: '✎', reviewed: '✓', bare: '' } as const
+const MARK_TITLE = {
+  written: 'Note written',
+  reviewed: 'Looked at, no note',
+  bare: 'Not opened yet',
+} as const
 </script>
 
 <template>
@@ -46,12 +53,13 @@ const MARK_GLYPH = { written: '✎', reviewed: '✓', bare: '' } as const
         v-for="(mark, i) in card.rail"
         :key="i"
         class="src-hole"
+        :title="MARK_TITLE[mark]"
       >
-        <span v-if="mark !== 'bare'" class="paper-mark" :class="{ hollow: mark === 'reviewed' }">{{ MARK_GLYPH[mark] }}</span>
+        <span v-if="mark !== 'bare'" class="paper-mark src-mark" :class="{ hollow: mark === 'reviewed' }">{{ MARK_GLYPH[mark] }}</span>
       </span>
     </span>
     <div class="src-body">
-      <h4 :id="headId" class="eyebrow ink src-head paper-rule-hatch">
+      <h4 :id="headId" class="src-head paper-rule-hatch">
         {{ card.title }}
       </h4>
       <p :id="`${headId}-state`" class="src-state">
@@ -60,21 +68,35 @@ const MARK_GLYPH = { written: '✎', reviewed: '✓', bare: '' } as const
       <p v-if="card.summaryExcerpt" class="src-summary">
         {{ card.summaryExcerpt }}
       </p>
+      <div v-if="armed" class="src-warn">
+        <p class="src-warn-line">
+          Delete this review? Notes and moments go with it — the matches stay.
+        </p>
+        <div class="src-warn-actions">
+          <button type="button" class="paper-btn" @click="onDelete">
+            Delete this review — notes go with it
+          </button>
+          <button type="button" class="paper-btn" @click="armed = false">
+            Keep it
+          </button>
+        </div>
+      </div>
       <footer class="src-foot">
-        <button type="button" class="paper-btn primary" @click="emit('open')">
+        <button type="button" class="paper-btn" @click="emit('open')">
           Open →
         </button>
+        <button type="button" class="paper-btn" @click="emit('show-matches')">
+          Show these matches →
+        </button>
         <button
+          v-if="!armed"
           type="button"
           class="paper-btn"
           :disabled="writesLocked"
           :title="lockReason || undefined"
           @click="onDelete"
         >
-          {{ armed ? 'Delete this review — notes go with it' : 'Delete' }}
-        </button>
-        <button v-if="armed" type="button" class="paper-btn" @click="armed = false">
-          Keep it
+          Delete
         </button>
       </footer>
     </div>
@@ -108,6 +130,16 @@ const MARK_GLYPH = { written: '✎', reviewed: '✓', bare: '' } as const
   min-height: 1rem;
 }
 
+/* The reel's marks are paper scraps on a DARK rail; on the card the rail
+   crosses paper, so the reviewed (hollow) variant's paper-colored dashes
+   vanished into the ground. On this surface the hollow mark is drawn in
+   ink instead. The written mark keeps its --paper-edge border, which
+   already reads here. */
+.src-mark.hollow {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
 .src-body {
   display: flex;
   flex-direction: column;
@@ -115,9 +147,18 @@ const MARK_GLYPH = { written: '✎', reviewed: '✓', bare: '' } as const
   min-width: 0;
 }
 
+/* The sitting is named in the card's own display voice — the title is the
+   biggest thing on the card, not a kicker smaller than its own excerpt. */
 .src-head {
   margin: 0;
   padding: 0.5rem 0.75rem;
+  font-family: var(--display);
+  font-size: var(--type-3xl);
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--ink);
+  text-transform: uppercase;
   border-bottom: 1px solid var(--paper-edge);
 }
 
@@ -132,6 +173,25 @@ const MARK_GLYPH = { written: '✎', reviewed: '✓', bare: '' } as const
   font-size: var(--type-lg);
   line-height: 1.45;
   color: var(--ink);
+}
+
+.src-warn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.src-warn-line {
+  margin: 0;
+  font-size: var(--type-md);
+  line-height: 1.4;
+  color: var(--paper-loss);
+}
+
+.src-warn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 
 .src-foot {

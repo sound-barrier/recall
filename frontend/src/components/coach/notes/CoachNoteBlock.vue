@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { focusTagLabel } from '@/match/coach/coach-notes'
 import type { NoteBlockView } from '@/match/coach/note-block-view'
+import { useAppStore } from '@/stores/app'
 import { useCoachReturnsStore } from '@/stores/coachReturns'
 import { useSelfReviewStore } from '@/stores/selfReview'
+import { useUiStore } from '@/stores/ui'
 
 // One note block on the match it is about: an accepted coach's note (the
 // coach-RECEIVED layer) or the player's own from one of their review
@@ -26,8 +28,10 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{ 'copy-replay': [] }>()
 
+const appStore = useAppStore()
 const returns = useCoachReturnsStore()
 const selfReview = useSelfReviewStore()
+const ui = useUiStore()
 
 // Dropping a block is a write on the player's own database, so it obeys the
 // same gate as the journal it sits in. The button disables with the reason,
@@ -37,14 +41,35 @@ const { writesLocked, lockReason, guardWrite } = useWriteGate()
 const tags = computed(() => props.block.tags)
 const moments = computed(() => props.block.moments)
 
+// Removing a note takes its moments with it — armed like every other
+// destructive paper action: the first click asks with the cost in the
+// label, the second does.
+const armed = ref(false)
+
 function remove() {
   if (!guardWrite()) return
+  if (!armed.value) {
+    armed.value = true
+    return
+  }
+  armed.value = false
   const removal = props.block.removal
   if (removal.kind === 'coach') {
     void returns.removeCoachNote(props.matchKey, removal.id)
   } else {
     void selfReview.removeNoteFromSitting(removal.reviewId, props.matchKey)
   }
+}
+
+// The signature names the sitting; when the block is yours it is also the
+// way back into it.
+function reopenSitting() {
+  const id = props.block.reopenReviewId
+  if (!id) return
+  // The block lives in the detail panel; a modal left open over the room
+  // would trap focus on a surface the player just left.
+  ui.selection.close()
+  void selfReview.openSitting(id).then(() => appStore.goToView('reviews'))
 }
 </script>
 
@@ -106,16 +131,34 @@ function remove() {
     </ul>
 
     <footer class="cnb-foot">
-      <span class="cnb-sign">{{ block.sign }}</span>
       <button
+        v-if="block.reopenReviewId"
         type="button"
-        class="paper-btn cnb-remove"
-        :disabled="writesLocked"
-        :title="lockReason || undefined"
-        @click="remove"
+        class="cnb-sign cnb-sign-link"
+        @click="reopenSitting"
       >
-        {{ block.removeLabel }}
+        {{ block.sign }}
       </button>
+      <span v-else class="cnb-sign">{{ block.sign }}</span>
+      <span class="cnb-foot-actions">
+        <button
+          type="button"
+          class="paper-btn cnb-remove"
+          :disabled="writesLocked"
+          :title="lockReason || undefined"
+          @click="remove"
+        >
+          {{ armed ? block.armedRemoveLabel : block.removeLabel }}
+        </button>
+        <button
+          v-if="armed"
+          type="button"
+          class="paper-btn cnb-remove"
+          @click="armed = false"
+        >
+          Keep it
+        </button>
+      </span>
     </footer>
   </section>
 </template>
@@ -243,8 +286,30 @@ function remove() {
   color: var(--ink-faint);
 }
 
+.cnb-foot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
 .cnb-remove {
   padding: 0.28rem 0.6rem;
   font-size: var(--type-2xs);
+}
+
+/* The signature as a button keeps the signature's voice — an underline on
+   hover is the whole affordance; it is a way back, not a call to action. */
+.cnb-sign-link {
+  padding: 0;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  appearance: none;
+}
+
+.cnb-sign-link:hover,
+.cnb-sign-link:focus-visible {
+  text-decoration: underline;
+  color: var(--ink);
 }
 </style>
