@@ -165,6 +165,66 @@ test.describe('self review', () => {
     expect(mock.created.get().match_keys).toHaveLength(6)
   })
 
+  // The bulk button says what it will do — one match or N — sits with the
+  // constructive actions (left of Hide), and spends the selection it acts
+  // on: a second press must not mint a twin.
+  test('Review these is count-aware, clears the selection, and reopens the identical unfinished sitting', async ({ page }) => {
+    const mock = await mockSelfReviews(page)
+    await page.goto('/')
+    await tickFirstRows(page, 1)
+    await expect(page.getByRole('button', { name: 'Review this match' })).toBeVisible()
+    await page.locator('.leaf-row').nth(1).locator('.leaf-checkbox').click()
+
+    const bar = page.getByRole('region', { name: 'Bulk action bar' })
+    const review = bar.getByRole('button', { name: 'Review these (2)' })
+    // Constructive placement: Review sits before Hide in the bar.
+    const order = await bar.evaluate((el) => {
+      const buttons = [...el.querySelectorAll('button')].map((b) => b.textContent ?? '')
+      return buttons.findIndex((t) => t.includes('Review th')) < buttons.findIndex((t) => t.includes('Hide'))
+    })
+    expect(order).toBe(true)
+    await review.click()
+    await expect(filmRoom(page)).toBeVisible()
+    const firstKeys = mock.created.get().match_keys
+
+    // Leave the room; the selection was spent — no bulk bar on return.
+    await sheet(page).getByRole('button', { name: /All reviews|Back to reviews/ }).click()
+    await matchesTab(page).click()
+    await expect(bar).toHaveCount(0)
+
+    // The same two rows again: the identical unfinished sitting reopens
+    // instead of a twin being minted.
+    await tickFirstRows(page, 2)
+    await page.getByRole('button', { name: 'Review these (2)' }).click()
+    await expect(filmRoom(page)).toBeVisible()
+    expect(mock.reviews()).toHaveLength(1)
+    expect(mock.created.get().match_keys).toEqual(firstKeys)
+  })
+
+  test('a row context menu can start a review of that one match', async ({ page }) => {
+    const mock = await mockSelfReviews(page)
+    await page.goto('/')
+    await matchesTab(page).click()
+    await expect(page.locator('.leaf-row').first()).toBeVisible()
+    await page.locator('.leaf-row').first().click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Review this match' }).click()
+    await expect(filmRoom(page)).toBeVisible()
+    expect(mock.created.get().match_keys).toHaveLength(1)
+  })
+
+  test('the palette can start a review of the last session', async ({ page }) => {
+    const mock = await mockSelfReviews(page)
+    await page.goto('/')
+    await matchesTab(page).click()
+    await expect(page.locator('.leaf-row').first()).toBeVisible()
+    await page.keyboard.press('ControlOrMeta+k')
+    const palette = page.getByRole('dialog', { name: /command palette/i })
+    await palette.getByRole('combobox').fill('review my last')
+    await palette.getByRole('option', { name: /Review my last session/ }).click()
+    await expect(filmRoom(page)).toBeVisible()
+    expect(mock.created.get().match_keys).toHaveLength(3)
+  })
+
   test('a match carrying a self block shows "Your review" in its journal', async ({ page }) => {
     await mockSelfReviews(page, { reviews: [finishedSitting()] })
     await page.goto('/')
@@ -184,7 +244,9 @@ test.describe('self review', () => {
     await pinSessionResume(page)
     await page.goto('/')
     await tickFirstRows(page, 1)
-    const review = page.getByRole('button', { name: /^Review these/ })
+    const review = page.getByRole('button', { name: /^Review th/ })
     await expect(review).toBeDisabled()
+    // And the reason is the loan, not the generic session lock.
+    await expect(review).toHaveAttribute('title', /on loan/)
   })
 })

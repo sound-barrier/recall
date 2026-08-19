@@ -117,14 +117,35 @@ export const useSelfReviewStore = defineStore('selfReview', () => {
     discardSaves()
   }
 
-  /** "Review these": open a sitting over the ticked keys and go to the room. */
+  /**
+   * "Review these": open a sitting over the keys and go to the room. An
+   * UNFINISHED sitting already covering the identical set reopens instead —
+   * pressing the same button twice must not mint a twin. The list is
+   * re-read first because it is lazily fetched (Reviews-tab-gated) and this
+   * runs from Matches, where the cache may never have been filled.
+   */
   async function createFromKeys(matchKeys: string[]): Promise<void> {
+    if (matchKeys.length === 0) return
     await reporting(async () => {
-      const created = await CreateSelfReview('', matchKeys)
-      upsertSelfReview(created)
-      await openSitting(created.review_id)
+      const existing = await findOpenTwin(matchKeys)
+      if (existing !== '') {
+        await openSitting(existing)
+      } else {
+        const created = await CreateSelfReview('', matchKeys)
+        upsertSelfReview(created)
+        await openSitting(created.review_id)
+      }
       await appStore.goToView('reviews')
     })
+  }
+
+  async function findOpenTwin(matchKeys: string[]): Promise<string> {
+    const fresh = (await listQuery.refetch()).data ?? reviews.value
+    const wanted = new Set(matchKeys)
+    const twin = fresh.find((r) => !r.finished_at
+      && r.match_keys.length === wanted.size
+      && r.match_keys.every((k) => wanted.has(k)))
+    return twin?.review_id ?? ''
   }
 
   /** Open a sitting from the shelf. */

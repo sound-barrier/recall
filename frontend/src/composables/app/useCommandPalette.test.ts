@@ -7,6 +7,7 @@ import { useCommandPalette } from '@/composables/app/useCommandPalette'
 import { flushPromises } from '@/test-utils'
 import { ACTION_ITEMS } from '@/match/palette-items'
 import { useCoachStore } from '@/stores/coach'
+import { useSelfReviewStore } from '@/stores/selfReview'
 import { useMatchesStore } from '@/stores/matches'
 import { useUiStore } from '@/stores/ui'
 import { qk } from '@/queries/keys'
@@ -107,6 +108,8 @@ describe('useCommandPalette', () => {
       matches.shareNarrowedWithCoach = (() => { opened.push('share') }) as never
       const coach = useCoachStore()
       coach.openBundle = (async () => { opened.push('open-bundle') }) as never
+      const selfReview = useSelfReviewStore()
+      selfReview.createFromKeys = (async () => { opened.push('review-last-session') }) as never
 
       for (const item of ACTION_ITEMS) {
         palette.run({ ...item, hits: [] })
@@ -118,6 +121,7 @@ describe('useCommandPalette', () => {
       expect(opened).toHaveLength(ACTION_ITEMS.length)
       expect(opened).toContain('open-bundle')
       expect(opened).toContain('share')
+      expect(opened).toContain('review-last-session')
     })
 
     it('does nothing at all for an action it has no runner for', async () => {
