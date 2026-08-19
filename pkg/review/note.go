@@ -41,11 +41,13 @@ func DeleteNote(s Store, reviewID, matchKey string) error {
 }
 
 // PutMoment saves one timestamped moment on the sitting's note about a
-// match, creating the note as reviewed_only when there is none yet — a
-// moment IS a review of the match, so the match becomes one the sitting
-// looked at (the same rule the coach's room applies). The rules are the
-// player's own moment rules; the id is the client's to mint. An edit keeps
-// its place in the reading order; a new one goes after every place taken.
+// match. A match with no note yet gets a reviewed_only one — a moment IS a
+// review of the match, the same rule the coach's room applies — opened by
+// the STORE in the moment's own transaction, so a note write racing the
+// first moment on a match can never be downgraded to an empty mark by a
+// check-then-open here. The rules are the player's own moment rules; the id
+// is the client's to mint. An edit keeps its place in the reading order; a
+// new one goes after every place taken.
 func PutMoment(s Store, reviewID, matchKey, momentID string, in matchedit.MomentInput) (Moment, error) {
 	if momentID == "" {
 		return Moment{}, fmt.Errorf("%w: a moment needs an id", matchedit.ErrInvalidMoment)
@@ -54,11 +56,11 @@ func PutMoment(s Store, reviewID, matchKey, momentID string, in matchedit.Moment
 	if err != nil {
 		return Moment{}, err
 	}
-	note, err := ensureNoteForMoment(s, reviewID, matchKey)
+	existing, err := momentsOnMatch(s, reviewID, matchKey)
 	if err != nil {
 		return Moment{}, err
 	}
-	if err := checkMomentRoom(note.Moments, momentID); err != nil {
+	if err := checkMomentRoom(existing, momentID); err != nil {
 		return Moment{}, err
 	}
 	saved, err := s.UpsertSelfReviewMoment(reviewID, matchKey, db.SelfReviewMoment{
@@ -66,7 +68,7 @@ func PutMoment(s Store, reviewID, matchKey, momentID string, in matchedit.Moment
 		MatchClock: normalized.MatchClock,
 		Text:       normalized.Text,
 		FocusTag:   normalized.FocusTag,
-		SortOrder:  sortOrderFor(note.Moments, momentID),
+		SortOrder:  sortOrderFor(existing, momentID),
 	})
 	if err != nil {
 		return Moment{}, mapStoreErr(err)
@@ -79,25 +81,19 @@ func DeleteMoment(s Store, reviewID, matchKey, momentID string) error {
 	return s.DeleteSelfReviewMoment(reviewID, matchKey, momentID)
 }
 
-// ensureNoteForMoment returns the sitting's note about the match, opening a
-// reviewed_only one when there is none. A match outside the sitting is
-// refused here, before anything is written.
-func ensureNoteForMoment(s Store, reviewID, matchKey string) (db.SelfReviewNote, error) {
+// momentsOnMatch reads the moments the sitting already holds on the match —
+// what the ceiling and the reading order are computed against. A match
+// outside the sitting is refused here, before anything is written; a match
+// with no note yet has none.
+func momentsOnMatch(s Store, reviewID, matchKey string) ([]db.SelfReviewMoment, error) {
 	r, err := getRow(s, reviewID)
 	if err != nil {
-		return db.SelfReviewNote{}, err
-	}
-	if n, ok := r.Notes[matchKey]; ok {
-		return n, nil
+		return nil, err
 	}
 	if !slices.Contains(r.MatchKeys, matchKey) {
-		return db.SelfReviewNote{}, fmt.Errorf("%w: %s", ErrMatchNotInReview, matchKey)
+		return nil, fmt.Errorf("%w: %s", ErrMatchNotInReview, matchKey)
 	}
-	opened, err := s.UpsertSelfReviewNote(db.SelfReviewNote{ReviewID: reviewID, MatchKey: matchKey, Kind: coach.KindReviewedOnly})
-	if err != nil {
-		return db.SelfReviewNote{}, mapStoreErr(err)
-	}
-	return opened, nil
+	return r.Notes[matchKey].Moments, nil
 }
 
 // checkMomentRoom refuses a NEW moment past the ceiling; an edit to one

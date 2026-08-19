@@ -3251,7 +3251,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CoachMomentInput"
+              $ref: "#/components/schemas/MatchMomentInput"
       responses:
         "200":
           description: The saved moment.

@@ -194,10 +194,10 @@ func assertRefusesWhatIsNotThere(t *testing.T, s db.Store, reviewID string) {
 			_, err := s.UpsertSelfReviewNote(db.SelfReviewNote{ReviewID: "ghost", MatchKey: reviewKeyA, Kind: "note"})
 			return err
 		}, db.ErrSelfReviewUnknown},
-		{"moment with no note", func() error {
-			_, err := s.UpsertSelfReviewMoment(reviewID, reviewKeyA, db.SelfReviewMoment{MomentID: "m", MatchClock: "01:00", Text: "x"})
+		{"moment on a non-member", func() error {
+			_, err := s.UpsertSelfReviewMoment(reviewID, reviewKeyB, db.SelfReviewMoment{MomentID: "m", MatchClock: "01:00", Text: "x"})
 			return err
-		}, db.ErrSelfReviewNoteUnknown},
+		}, db.ErrSelfReviewMatchUnknown},
 		{"update missing", func() error { return s.UpdateSelfReview("ghost", "t", "s") }, db.ErrSelfReviewUnknown},
 		{"finish missing", func() error { return s.FinishSelfReview("ghost") }, db.ErrSelfReviewUnknown},
 	}
@@ -227,16 +227,28 @@ func TestSelfReviewContract_ResaveKeepsFirstInstantAndMoments(t *testing.T) {
 			if len(second.Moments) != 1 {
 				t.Errorf("a re-save dropped the moments: %+v", second.Moments)
 			}
-			mustNoErr(t, s.FinishSelfReview(r.ReviewID))
-			once, _, err := s.LoadSelfReview(r.ReviewID)
-			mustNoErr(t, err)
-			mustNoErr(t, s.FinishSelfReview(r.ReviewID))
-			twice, _, err := s.LoadSelfReview(r.ReviewID)
-			mustNoErr(t, err)
-			if once.FinishedAt == "" || once.FinishedAt != twice.FinishedAt {
-				t.Errorf("finished_at = %q then %q, want the first stamp kept", once.FinishedAt, twice.FinishedAt)
-			}
+			assertFinishKeepsTheFirstStamp(t, s)
 		})
+	}
+}
+
+// assertFinishKeepsTheFirstStamp seeds a sitting already finished at a
+// supplied instant, so a second finish's "keep the first stamp" is checked
+// against a value the clock cannot coincide with — two finishes inside one
+// second would otherwise pass vacuously.
+func assertFinishKeepsTheFirstStamp(t *testing.T, s db.Store) {
+	t.Helper()
+	const firstStamp = "2026-01-01T10:00:00Z"
+	done, err := s.CreateSelfReview(db.SelfReview{FinishedAt: firstStamp, MatchKeys: []string{reviewKeyA}})
+	mustNoErr(t, err)
+	if done.FinishedAt != firstStamp {
+		t.Fatalf("created finished_at = %q, want the supplied %q", done.FinishedAt, firstStamp)
+	}
+	mustNoErr(t, s.FinishSelfReview(done.ReviewID))
+	again, _, err := s.LoadSelfReview(done.ReviewID)
+	mustNoErr(t, err)
+	if again.FinishedAt != firstStamp {
+		t.Errorf("finished_at after a second finish = %q, want the first stamp %q kept", again.FinishedAt, firstStamp)
 	}
 }
 

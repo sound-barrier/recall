@@ -235,10 +235,7 @@ func TestFinish_StampsSelfWhereACoachHasNot(t *testing.T) {
 	if _, has := flags[keyC]; has {
 		t.Errorf("%s was not in the sitting and got a flag", keyC)
 	}
-	again, err := review.Finish(s, r.ReviewID)
-	if err != nil || again.FinishedAt != done.FinishedAt {
-		t.Errorf("second finish = %+v, %v; want the first stamp kept", again, err)
-	}
+	assertFinishKeepsTheFirstStamp(t, s)
 	if _, err := review.Finish(s, "ghost"); !errors.Is(err, review.ErrNotFound) {
 		t.Errorf("finish ghost = %v", err)
 	}
@@ -246,5 +243,21 @@ func TestFinish_StampsSelfWhereACoachHasNot(t *testing.T) {
 	flags, _ = s.LoadReviews()
 	if flags[keyA].ReviewedBy != matchedit.ReviewedBySelf {
 		t.Errorf("deleting the sitting cleared %s's reviewed flag", keyA)
+	}
+}
+
+// assertFinishKeepsTheFirstStamp finishes a sitting already finished at a
+// supplied instant, so "the first stamp is kept" is checked against a value
+// the clock cannot coincide with — two finishes inside one second would
+// otherwise agree vacuously.
+func assertFinishKeepsTheFirstStamp(t *testing.T, s *dbtest.Fake) {
+	t.Helper()
+	const firstStamp = "2026-01-01T10:00:00Z"
+	seeded, err := s.CreateSelfReview(db.SelfReview{FinishedAt: firstStamp, MatchKeys: []string{keyA}})
+	mustNoErr(t, err)
+	again, err := review.Finish(s, seeded.ReviewID)
+	mustNoErr(t, err)
+	if again.FinishedAt != firstStamp {
+		t.Errorf("finish of an already-finished sitting = %q, want the first stamp %q kept", again.FinishedAt, firstStamp)
 	}
 }

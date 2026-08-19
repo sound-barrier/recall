@@ -33,7 +33,7 @@ func (f *Fake) CreateSelfReview(r db.SelfReview) (db.SelfReview, error) {
 	if r.UpdatedAt == "" {
 		r.UpdatedAt = now
 	}
-	r.MatchKeys = slices.Clone(r.MatchKeys)
+	r.MatchKeys = distinctKeys(r.MatchKeys)
 	r.Notes = map[string]db.SelfReviewNote{}
 	f.SelfReviews[r.ReviewID] = r
 	return cloneSelfReview(r), nil
@@ -82,7 +82,9 @@ func (f *Fake) SetSelfReviewMatches(reviewID string, matchKeys []string) error {
 		return db.ErrSelfReviewUnknown
 	}
 	// A note on a match that leaves the set goes with it (the composite FK);
-	// one on a match that stays is kept.
+	// one on a match that stays is kept. Repeats collapse to their first
+	// position, as the SQL store's PK + upsert make them.
+	matchKeys = distinctKeys(matchKeys)
 	for k := range r.Notes {
 		if !slices.Contains(matchKeys, k) {
 			delete(r.Notes, k)
@@ -163,8 +165,15 @@ func (f *Fake) UpsertSelfReviewNote(n db.SelfReviewNote) (db.SelfReviewNote, err
 func (f *Fake) DeleteSelfReviewNote(reviewID, matchKey string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if r, ok := f.SelfReviews[reviewID]; ok {
+	r, ok := f.SelfReviews[reviewID]
+	if !ok {
+		return nil
+	}
+	if _, had := r.Notes[matchKey]; had {
 		delete(r.Notes, matchKey)
+		// A delete is always live work on the sitting.
+		r.UpdatedAt = nowRFC3339()
+		f.SelfReviews[reviewID] = r
 	}
 	return nil
 }
@@ -177,38 +186,60 @@ func (f *Fake) UpsertSelfReviewMoment(reviewID, matchKey string, m db.SelfReview
 	}
 	r, ok := f.SelfReviews[reviewID]
 	if !ok {
-		return db.SelfReviewMoment{}, db.ErrSelfReviewNoteUnknown
+		return db.SelfReviewMoment{}, db.ErrSelfReviewUnknown
 	}
-	n, ok := r.Notes[matchKey]
-	if !ok {
-		return db.SelfReviewMoment{}, db.ErrSelfReviewNoteUnknown
+	if !slices.Contains(r.MatchKeys, matchKey) {
+		return db.SelfReviewMoment{}, db.ErrSelfReviewMatchUnknown
 	}
 	now := nowRFC3339()
 	live := m.UpdatedAt == ""
+	n := noteForMoment(r, reviewID, matchKey, now)
+	var placed db.SelfReviewMoment
+	n.Moments, placed = placeMoment(n.Moments, stampMoment(m, now))
+	r.Notes[matchKey] = n
+	if live {
+		r.UpdatedAt = now
+	}
+	f.SelfReviews[reviewID] = r
+	return placed, nil
+}
+
+// noteForMoment returns the note a moment hangs on, opening a reviewed_only
+// one when there is none — the moment IS a review of the match — in the same
+// step, as the SQL store does in one transaction.
+func noteForMoment(r db.SelfReview, reviewID, matchKey, now string) db.SelfReviewNote {
+	if r.Notes == nil {
+		r.Notes = map[string]db.SelfReviewNote{}
+	}
+	if n, ok := r.Notes[matchKey]; ok {
+		return n
+	}
+	return db.SelfReviewNote{ReviewID: reviewID, MatchKey: matchKey, Kind: "reviewed_only", CreatedAt: now, UpdatedAt: now}
+}
+
+// stampMoment fills the instants a live write leaves empty.
+func stampMoment(m db.SelfReviewMoment, now string) db.SelfReviewMoment {
 	if m.CreatedAt == "" {
 		m.CreatedAt = now
 	}
 	if m.UpdatedAt == "" {
 		m.UpdatedAt = now
 	}
-	replaced := false
-	for i, prev := range n.Moments {
+	return m
+}
+
+// placeMoment replaces the moment with the same id (keeping its first
+// instant) or appends a new one, and returns the list and the moment as
+// stored.
+func placeMoment(moments []db.SelfReviewMoment, m db.SelfReviewMoment) ([]db.SelfReviewMoment, db.SelfReviewMoment) {
+	for i, prev := range moments {
 		if prev.MomentID == m.MomentID {
 			m.CreatedAt = prev.CreatedAt
-			n.Moments[i] = m
-			replaced = true
-			break
+			moments[i] = m
+			return moments, m
 		}
 	}
-	if !replaced {
-		n.Moments = append(n.Moments, m)
-	}
-	r.Notes[matchKey] = n
-	if live {
-		r.UpdatedAt = now
-	}
-	f.SelfReviews[reviewID] = r
-	return m, nil
+	return append(moments, m), m
 }
 
 func (f *Fake) DeleteSelfReviewMoment(reviewID, matchKey, momentID string) error {
@@ -222,8 +253,13 @@ func (f *Fake) DeleteSelfReviewMoment(reviewID, matchKey, momentID string) error
 	if !ok {
 		return nil
 	}
+	before := len(n.Moments)
 	n.Moments = slices.DeleteFunc(n.Moments, func(x db.SelfReviewMoment) bool { return x.MomentID == momentID })
 	r.Notes[matchKey] = n
+	if len(n.Moments) != before {
+		r.UpdatedAt = nowRFC3339()
+		f.SelfReviews[reviewID] = r
+	}
 	return nil
 }
 
@@ -297,5 +333,20 @@ func distinctSortedTags(values []string) []string {
 		}
 	}
 	slices.Sort(out)
+	return out
+}
+
+// distinctKeys mirrors the SQL store's: repeats collapse to their first
+// position.
+func distinctKeys(keys []string) []string {
+	out := make([]string, 0, len(keys))
+	seen := make(map[string]bool, len(keys))
+	for _, k := range keys {
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		out = append(out, k)
+	}
 	return out
 }
