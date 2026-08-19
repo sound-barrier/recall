@@ -238,8 +238,8 @@ buttons.
 
 | budget | from | to | measured |
 |---|---|---|---|
-| initial JS | 336000 | 336000 | 335802 (up from 331896) |
-| total JS | 1710000 | 1726000 | 1723547 |
+| initial JS | 336000 | 340000 | 338381 (up from 331896) |
+| total JS | 1710000 | 1726000 | 1724273 |
 | total CSS | 404000 | 406000 | 404323 |
 
 The player's own review sitting, in the same room. Most of it rides the
@@ -248,6 +248,8 @@ lazy Reviews and film-room chunks: the sitting store, the sheet pieces
 both compose, the sitting's sheet and shelf card, and `useReviewDrafts` —
 the note/moment write rules carved out of the coach store, which got
 smaller by exactly those rules. What reached the initial chunk is the
-eleven generated SDK functions and the bulk bar's "Review these" button;
-initial JS is 198 bytes under its budget, which is the number to watch on
-the next eager addition.
+eleven generated SDK functions, the bulk bar's "Review these" button, and —
+after the phase's review — the sitting store itself, because the keyboard
+cheatsheet (an eager overlay) advertises the reel bindings while the room is
+open in EITHER voice and has to ask the sitting store too. Initial JS is 1.6KB
+under its budget; the next eager addition pays for itself.

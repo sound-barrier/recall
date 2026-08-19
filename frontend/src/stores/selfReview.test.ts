@@ -107,12 +107,17 @@ describe('selfReview store — a sitting from the bulk bar', () => {
     expect(api.ListSelfReviews).toHaveBeenCalled()
   })
 
-  it('reopens a sitting from the shelf with its notes hydrated, and deletes one', async () => {
-    api.ListSelfReviews = vi.fn(async () => [sitting({
+  // Reopening always reads the sitting as the server has it: a note removed
+  // from the journal while the shelf was off screen leaves the list's copy
+  // stale, and a stale copy rehydrated as a live draft would PUT the removed
+  // note straight back.
+  it('reopens a sitting from the shelf by reading it fresh, with its notes hydrated, and deletes one', async () => {
+    api.ListSelfReviews = vi.fn(async () => [sitting({ title: 'Old' })])
+    api.GetSelfReview = vi.fn(async () => sitting({
       title: 'Old', notes: {
         [KEY_A]: { match_key: KEY_A, kind: 'note', text: 'kept', focus_tags: [], extra_tags: [], match_clock: '', created_at: '', updated_at: '' },
       },
-    })])
+    }))
     setApiBacking(api)
     const store = useSelfReviewStore()
     const app = useAppStore()
@@ -122,13 +127,83 @@ describe('selfReview store — a sitting from the bulk bar', () => {
     expect(store.reviews).toHaveLength(1)
 
     await store.openSitting('r-1')
+    expect(api.GetSelfReview).toHaveBeenCalledWith('r-1')
     expect(store.roomOpen).toBe(true)
     expect(store.title).toBe('Old')
     expect(store.notes[KEY_A]?.text).toBe('kept')
-    expect(api.GetSelfReview).not.toHaveBeenCalled()
 
     await store.remove('r-1')
     expect(api.DeleteSelfReview).toHaveBeenCalledWith('r-1')
     expect(store.roomOpen).toBe(false)
+  })
+
+  // Finish must land what is queued BEFORE the completion POST — the server
+  // stamps the sitting from what it holds at that moment. Order, not counts.
+  it('Finish lands the queued note before the completion POST', async () => {
+    const store = useSelfReviewStore()
+    await store.createFromKeys([KEY_A])
+    await settle()
+    store.updateNote(KEY_A, { kind: 'note', text: 'x', focusTags: [], extraTags: [], matchClock: '' })
+
+    await store.finish()
+    await settle()
+
+    const putAt = api['PutSelfReviewNote']!.mock.invocationCallOrder[0]!
+    const finishAt = api['FinishSelfReview']!.mock.invocationCallOrder[0]!
+    expect(putAt).toBeLessThan(finishAt)
+  })
+
+  // A save that could not land does not outlive its sitting: close reports
+  // it and empties the queue, so opening the next sitting never replays it
+  // against the wrong id (or no id at all).
+  it('close reports a note that could not be saved and does not carry it into the next sitting', async () => {
+    api.PutSelfReviewNote = vi.fn(async () => { throw new Error('HTTP 500: boom') })
+    setApiBacking(api)
+    const store = useSelfReviewStore()
+    const app = useAppStore()
+    await store.createFromKeys([KEY_A])
+    await settle()
+    store.updateNote(KEY_A, { kind: 'note', text: 'lost', focusTags: [], extraTags: [], matchClock: '' })
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(store.saveStateFor(KEY_A)).toBe('error')
+
+    await store.close()
+    expect(app.error).toMatch(/could not be saved/)
+    expect(store.hasFailedSaves).toBe(false)
+
+    api.PutSelfReviewNote = vi.fn(async () => undefined)
+    setApiBacking(api)
+    await store.createFromKeys([KEY_B])
+    await settle()
+    expect(api.PutSelfReviewNote).not.toHaveBeenCalled()
+  })
+
+  // "Remove from this review" on the open sitting cancels the note's saves
+  // still settling — or the flush on close would write it straight back.
+  it('removing the open sitting\'s note from the journal cancels its queued save', async () => {
+    const store = useSelfReviewStore()
+    await store.createFromKeys([KEY_A])
+    await settle()
+    store.updateNote(KEY_A, { kind: 'note', text: 'typed then removed', focusTags: [], extraTags: [], matchClock: '' })
+
+    await store.removeNoteFromSitting('r-1', KEY_A)
+    await store.close()
+    await vi.advanceTimersByTimeAsync(1000)
+
+    expect(api.DeleteSelfReviewNote).toHaveBeenCalledWith('r-1', KEY_A)
+    expect(api.PutSelfReviewNote).not.toHaveBeenCalled()
+    expect(store.notes[KEY_A]).toBeUndefined()
+  })
+
+  // Lifecycle calls are fired from templates; a refusal reaches the banner,
+  // not the console.
+  it('reports a refused create through the app banner', async () => {
+    api.CreateSelfReview = vi.fn(async () => { throw new Error('HTTP 409: a coaching session is active') })
+    setApiBacking(api)
+    const store = useSelfReviewStore()
+    const app = useAppStore()
+    await store.createFromKeys([KEY_A])
+    expect(store.roomOpen).toBe(false)
+    expect(app.error).toMatch(/coaching session/)
   })
 })

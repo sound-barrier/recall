@@ -47,6 +47,17 @@ const props = withDefaults(defineProps<{
    * "your", and there is nobody to ask "who is this bundle about".
    */
   voice?: RoomVoice
+  /**
+   * Why writes are refused right now, from outside the room — the player's
+   * own write gate (a read-only profile) in self mode. The room's own reason
+   * (nobody confirmed yet, in a coach session) is OR'd with it.
+   */
+  lockedReason?: string
+  /**
+   * A sitting whose own blocks should not be quoted back at its author: the
+   * one open on this desk. Its note is the editor, not "already said".
+   */
+  omitReviewId?: string
 }>(), {
   moments: () => ({}),
   selectedKey: '',
@@ -58,6 +69,8 @@ const props = withDefaults(defineProps<{
   exportReason: undefined,
   labels: () => DEFAULT_COACH_LABELS,
   voice: 'their',
+  lockedReason: '',
+  omitReviewId: '',
 })
 
 const emit = defineEmits<{
@@ -104,7 +117,7 @@ const momentSaveStateFor = (momentId: string): CoachSaveState =>
 const unconfirmed = computed(() => props.voice !== 'your' && props.player.handle === '')
 const UNCONFIRMED_REASON
   = 'Say who this bundle is about before writing notes — nothing can be saved without it.'
-const blockedReason = computed(() => (unconfirmed.value ? UNCONFIRMED_REASON : ''))
+const blockedReason = computed(() => (unconfirmed.value ? UNCONFIRMED_REASON : props.lockedReason))
 
 // A suggested handle is a suggestion: the sheet re-opens the same prompt to
 // correct it, and a confirmed correction closes it again.
@@ -163,6 +176,7 @@ function step(key: string | null): void {
           :has-next="room.nextKey.value !== null"
           :labels="labels"
           :voice="voice"
+          :omit-review-id="omitReviewId"
           @update-note="(draft: CoachNoteDraft) => emit('update-note', room.activeKey.value, draft)"
           @update-moment="(m: CoachMoment) => emit('update-moment', room.activeKey.value, m)"
           @remove-moment="(id: string) => emit('remove-moment', room.activeKey.value, id)"

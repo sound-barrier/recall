@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/vue'
+import { fireEvent, render, screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { createPinia, setActivePinia } from 'pinia'
 
@@ -53,9 +53,16 @@ describe('SelfReviewCard', () => {
     expect(emitted()['remove']).toBeUndefined()
   })
 
-  it('Delete obeys the write gate', () => {
+  it('Delete obeys the write gate — the attribute and the guard behind it', async () => {
     setWritesLocked(true, { session: true })
-    renderCard()
-    expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled()
+    const { emitted } = renderCard()
+    const button = screen.getByRole('button', { name: 'Delete' })
+    expect(button).toBeDisabled()
+    // A dispatched click proves the guard, not the attribute: it neither arms
+    // nor removes.
+    await fireEvent.click(button)
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    expect(emitted()['remove']).toBeUndefined()
   })
 })

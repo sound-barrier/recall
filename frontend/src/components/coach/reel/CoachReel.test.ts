@@ -66,3 +66,19 @@ describe('CoachReel', () => {
     expect(screen.getByRole('button', { name: /Busan .* — reviewed$/ })).toBeInTheDocument()
   })
 })
+
+// Your own reel is titled for you and carries no clock note — rule 7 is
+// about someone ELSE's clock — and its empty line names your history.
+describe('CoachReel — your own matches', () => {
+  it('is "Your matches" with no clock note', () => {
+    renderReel({ voice: 'your' })
+    expect(screen.getByRole('heading', { name: 'Your matches' })).toBeInTheDocument()
+    expect(screen.queryByText(/clock/)).not.toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Your matches' })).toBeInTheDocument()
+  })
+
+  it('says when none of the review\'s matches are in your history any more', () => {
+    renderReel({ voice: 'your', days: [] })
+    expect(screen.getByText(/are in your history any more/)).toBeInTheDocument()
+  })
+})

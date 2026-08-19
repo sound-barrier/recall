@@ -3,12 +3,13 @@ import { createPinia, setActivePinia } from 'pinia'
 import { render, screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 
-import type { CoachReturnItem, CoachReturnSheet, MatchRecord } from '@/api-client'
+import type { CoachReturnItem, CoachReturnSheet, MatchRecord, SelfReview } from '@/api-client'
 import ReviewsIndex from '@/components/reviews/ReviewsIndex.vue'
 import { qk } from '@/queries/keys'
 import { useAppStore } from '@/stores/app'
 import { useCoachReturnsStore } from '@/stores/coachReturns'
 import { useMatchesStore } from '@/stores/matches'
+import { useSelfReviewStore } from '@/stores/selfReview'
 import { useUiStore } from '@/stores/ui'
 import { seedQuery } from '@/test-utils/queryTestUtils'
 
@@ -48,8 +49,9 @@ function coachBlock(id: string, coach: string, date: string) {
 }
 
 // Seed the inbox cache BEFORE any store exists so its observer starts fresh.
-function renderShelf(opts: { inbox?: CoachReturnSheet[]; records?: MatchRecord[] } = {}) {
+function renderShelf(opts: { inbox?: CoachReturnSheet[]; records?: MatchRecord[]; sittings?: SelfReview[] } = {}) {
   seedQuery(qk.coach.returns, opts.inbox ?? [])
+  seedQuery(qk.selfReviews, opts.sittings ?? [])
   setActivePinia(createPinia())
   const matches = useMatchesStore()
   matches.records = opts.records ?? []
@@ -136,5 +138,45 @@ describe('ReviewsIndex — reviews received', () => {
 
     expect(ui.selection.selectedKey.value).toBe('match-2026-08-02T20-00-00')
     expect(matches.matchesNarrow.anyNarrow.value).toBe(true)
+  })
+})
+
+// Section 01: the shelf of the player's own sittings, newest first, each a
+// card; Open and Delete go through the sitting store; empty is a sentence
+// and a way to Matches.
+describe('ReviewsIndex — your own reviews', () => {
+  const SITTING: SelfReview = {
+    review_id: 'r-1', title: "Tuesday's Ana games", summary: 'Stop chasing flanks.',
+    created_at: '2026-08-18T19:00:00Z', updated_at: '2026-08-18T19:00:00Z', finished_at: '2026-08-18T20:00:00Z',
+    match_keys: ['match-2026-08-01T20-00-00'],
+    notes: {
+      'match-2026-08-01T20-00-00': { match_key: 'match-2026-08-01T20-00-00', kind: 'note', text: 'held', focus_tags: [], extra_tags: [], match_clock: '', created_at: '', updated_at: '' },
+    },
+  }
+
+  it('lists each sitting as a card that opens and deletes through the store', async () => {
+    renderShelf({ sittings: [SITTING], records: [rec('match-2026-08-01T20-00-00', { data: { result: 'victory' } } as Partial<MatchRecord>)] })
+    const selfReview = useSelfReviewStore()
+    const open = vi.spyOn(selfReview, 'openSitting').mockResolvedValue(undefined)
+    const remove = vi.spyOn(selfReview, 'remove').mockResolvedValue(undefined)
+    const shelf = screen.getByRole('list', { name: 'Your own reviews' })
+    const card = within(shelf).getByRole('article', { name: "Tuesday's Ana games" })
+    expect(card).toHaveAccessibleDescription(/1 match · 1 noted · 1–0 · finished/)
+
+    const user = userEvent.setup()
+    await user.click(within(card).getByRole('button', { name: 'Open →' }))
+    expect(open).toHaveBeenCalledWith('r-1')
+    await user.click(within(card).getByRole('button', { name: 'Delete' }))
+    await user.click(within(card).getByRole('button', { name: /^Delete this review/ }))
+    expect(remove).toHaveBeenCalledWith('r-1')
+    expect(screen.queryByText(/Nothing reviewed yet/)).not.toBeInTheDocument()
+  })
+
+  it('invites the first sitting when there is none, and Go to Matches goes there', async () => {
+    renderShelf()
+    const app = useAppStore()
+    expect(screen.getByText(/Nothing reviewed yet/)).toBeInTheDocument()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Go to Matches' }))
+    expect(app.view).toBe('matches')
   })
 })

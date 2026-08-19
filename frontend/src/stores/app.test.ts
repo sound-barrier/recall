@@ -206,6 +206,29 @@ describe('app store — goToView', () => {
     expect(refresh).toHaveBeenCalledOnce()
   })
 
+  // The tab change and every "the subtree under focus just unmounted" path
+  // (ending a coaching session, leaving a self-review sitting) end in
+  // refocusPanel: keyboard focus lands on the view's tabpanel, never on
+  // <body>. A regex edit once turned the element id into the literal
+  // "panel-" and nothing noticed — the panel is looked up by id, so the
+  // test mounts one and reads document.activeElement.
+  it('puts keyboard focus on the view\'s tabpanel', async () => {
+    const panel = document.createElement('section')
+    panel.id = 'panel-compare'
+    panel.tabIndex = -1
+    document.body.append(panel)
+    try {
+      const app = useAppStore()
+      await app.goToView('compare')
+      expect(document.activeElement?.id).toBe('panel-compare')
+      panel.blur()
+      await app.refocusPanel()
+      expect(document.activeElement?.id).toBe('panel-compare')
+    } finally {
+      panel.remove()
+    }
+  })
+
   it('does NOT refresh the count for the other tabs', async () => {
     const app = useAppStore()
     const parse = useParseStore()

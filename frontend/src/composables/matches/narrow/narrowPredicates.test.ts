@@ -78,7 +78,7 @@ describe('matchesSearch', () => {
     const r = rec({
       self_review_notes: [{
         review_id: 'r1', review_title: "Tuesday's Ana games", review_created_at: '2026-08-18T19:00:00Z',
-        kind: 'note', text: 'held the choke, then chased', focus_tags: ['cooldowns'],
+        kind: 'note', text: 'held the choke, then chased', focus_tags: ['cooldowns'], extra_tags: ['tempo'],
         moments: [{ moment_id: 'm', match_clock: '04:45', text: 'peeled late on B' }],
         updated_at: '2026-08-18T19:10:00Z',
       }],
@@ -87,6 +87,7 @@ describe('matchesSearch', () => {
     expect(matchesSearch(r, [{ field: null, value: 'cooldowns' } as SearchClause])).toBe(true)
     expect(matchesSearch(r, [{ field: null, value: 'peeled late' } as SearchClause])).toBe(true)
     expect(matchesSearch(r, [{ field: null, value: "tuesday's ana" } as SearchClause])).toBe(true)
+    expect(matchesSearch(r, [{ field: null, value: 'tempo' } as SearchClause])).toBe(true)
   })
 
   it('still says no when the coaching text does not contain it', () => {

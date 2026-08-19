@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import type { MatchRecord } from '@/api-client'
 import CoachCueStrip from '@/components/coach/notes/CoachCueStrip.vue'
 import CoachMatchCard from '@/components/coach/room/CoachMatchCard.vue'
@@ -11,7 +13,7 @@ import type { CoachNoteDraft } from '@/match/coach/coach-notes'
 // they are writing about it. The desk owns no state — the room hands it
 // a record and a draft and takes the edits back.
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   /** The frame on the desk; null only when the bundle has no matches. */
   record: MatchRecord | null
   /** True when the reel has no frames at all — a different kind of empty. */
@@ -30,6 +32,8 @@ withDefaults(defineProps<{
   labels?: CoachLabels
   /** Whose matches these are — the card's possessives follow it. */
   voice?: RoomVoice
+  /** The open sitting, whose own block the card must not quote back. */
+  omitReviewId?: string
 }>(), {
   moments: () => [],
   momentSaveState: () => 'idle' as CoachSaveState,
@@ -39,6 +43,17 @@ withDefaults(defineProps<{
   hasNext: false,
   labels: () => DEFAULT_COACH_LABELS,
   voice: 'their',
+  omitReviewId: '',
+})
+
+// What the desk says when there is nothing on it: an empty reel is a
+// different kind of empty from an unpicked frame, and whose matches these
+// are changes who is told what to do about it.
+const emptyLine = computed(() => {
+  if (!props.reelEmpty) return 'Pick a frame from the reel to put a match on the desk.'
+  return props.voice === 'your'
+    ? 'None of the matches in this review are in your history any more.'
+    : 'This bundle holds no matches to review. The player can share more from their Matches tab.'
 })
 
 const emit = defineEmits<{
@@ -54,7 +69,7 @@ const emit = defineEmits<{
 <template>
   <div class="coach-desk">
     <template v-if="record">
-      <CoachMatchCard :record="record" :handle="handle" :labels="labels" :voice="voice" />
+      <CoachMatchCard :record="record" :handle="handle" :labels="labels" :voice="voice" :omit-review-id="omitReviewId" />
       <!--
         The strip sits between the match and the note on purpose: the coach
         watches, marks what they see, and only then writes the overall read.
@@ -88,9 +103,7 @@ const emit = defineEmits<{
       coach at an empty reel and asked them to choose from it.
     -->
     <p v-else class="desk-empty">
-      {{ reelEmpty
-        ? 'This bundle holds no matches to review. The player can share more from their Matches tab.'
-        : 'Pick a frame from the reel to put a match on the desk.' }}
+      {{ emptyLine }}
     </p>
   </div>
 </template>

@@ -45,6 +45,18 @@ describe('shelfCard', () => {
     expect(card.wld).toEqual({ w: 1, l: 0, d: 0 })
   })
 
+  // A 'note' whose text was cleared but whose moments stand is a hollow
+  // mark too — looked at, nothing written.
+  it('draws a blank note as hollow, and speaks a one-match finished sitting in the singular', () => {
+    const one = sitting({
+      match_keys: ['a'], finished_at: '2026-08-18T20:00:00Z',
+      notes: { a: { match_key: 'a', kind: 'note', text: '  ', focus_tags: [], extra_tags: [], match_clock: '', created_at: '', updated_at: '' } },
+    })
+    const card = shelfCard(one, [rec('a', 'defeat')])
+    expect(card.rail).toEqual(['reviewed'])
+    expect(shelfCardSpokenState(card)).toBe('1 match · 0 noted · 0–1 · finished')
+  })
+
   it('speaks the state the rail only paints', () => {
     const card = shelfCard(sitting({ title: "Tuesday's Ana games" }), [rec('a', 'victory'), rec('b', 'defeat'), rec('c', 'draw')])
     expect(shelfCardSpokenState(card)).toBe('3 matches · 1 noted · 1–1–1 · in progress')

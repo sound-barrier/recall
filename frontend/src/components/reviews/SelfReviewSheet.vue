@@ -25,7 +25,9 @@ withDefaults(defineProps<{
   headerSaveState?: CoachSaveState
   /** RFC3339 when the sitting has been finished; '' while in progress. */
   finishedAt?: string
-}>(), { headerSaveState: 'idle', finishedAt: '' })
+  /** Why writes are refused right now (a read-only profile); '' when open. */
+  blockedReason?: string
+}>(), { headerSaveState: 'idle', finishedAt: '', blockedReason: '' })
 
 const emit = defineEmits<{
   'update-title': [text: string]
@@ -51,10 +53,12 @@ function onTitleInput(e: Event): void {
         :value="title"
         maxlength="120"
         placeholder="Name this review…"
+        :disabled="blockedReason !== ''"
+        :title="blockedReason || undefined"
         @input="onTitleInput"
       >
       <p class="sheet-summary-status" role="status" aria-label="Title save state">
-        {{ SAVE_LABEL[headerSaveState] }}
+        {{ blockedReason || SAVE_LABEL[headerSaveState] }}
       </p>
     </div>
 
@@ -64,6 +68,7 @@ function onTitleInput(e: Event): void {
       id="self-review-summary"
       :summary="summary"
       :save-state="headerSaveState"
+      :blocked-reason="blockedReason"
       @update="(text: string) => emit('update-summary', text)"
     />
 
@@ -73,7 +78,13 @@ function onTitleInput(e: Event): void {
     </p>
 
     <footer class="sheet-actions">
-      <button type="button" class="paper-btn primary" @click="emit('finish')">
+      <button
+        type="button"
+        class="paper-btn primary"
+        :disabled="blockedReason !== ''"
+        :title="blockedReason || undefined"
+        @click="emit('finish')"
+      >
         {{ finishedAt ? 'Finish review again' : 'Finish review' }}
       </button>
       <button type="button" class="paper-btn" @click="emit('close')">
