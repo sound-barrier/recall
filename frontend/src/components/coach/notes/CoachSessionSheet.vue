@@ -92,11 +92,11 @@ const emit = defineEmits<{
         :title="canExport ? undefined : exportReason"
         @click="emit('export')"
       >
-        Export notes
+        1 · Export notes
       </button>
       <!-- Routes through the same armed question the loan slip asks. -->
       <button type="button" class="paper-btn" @click="emit('end')">
-        {{ endArmed ? 'End anyway — notes not exported' : 'End session' }}
+        {{ endArmed ? 'End anyway — notes not exported' : '2 · End session' }}
       </button>
       <button
         v-if="endArmed"

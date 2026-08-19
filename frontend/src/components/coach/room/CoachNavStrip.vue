@@ -4,6 +4,7 @@ import { computed } from 'vue'
 import type { ViewId } from '@/composables/shared/keyboard/useTabKeyboardNav'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
+import { useSelfReviewStore } from '@/stores/selfReview'
 import { useUiStore } from '@/stores/ui'
 
 // The bridge between the film room (the Reviews tab, while a session is
@@ -12,6 +13,11 @@ import { useUiStore } from '@/stores/ui'
 // sentence; from anywhere else it is the way back — visible on every tab,
 // because a coach who wandered into Settings should never have to hunt for
 // the room.
+//
+// The player's own sitting gets the same bridge, one-directional: away from
+// the Reviews tab the strip is "← Back to your review" (the room's own back
+// button already covers the other direction), and a coach session outranks
+// it — the sitting's writes are gated then anyway.
 
 /** Trends is a section of the Matches view, not a tab — hence the sentinel. */
 type StepTarget = ViewId | 'trends'
@@ -30,7 +36,11 @@ const STEPS: readonly StepInto[] = [
 
 const appStore = useAppStore()
 const coach = useCoachStore()
+const selfReview = useSelfReviewStore()
 const ui = useUiStore()
+
+const sittingAway = computed(() =>
+  !coach.sessionActive && selfReview.roomOpen && appStore.view !== 'reviews')
 
 // The room is the Reviews tab's content while a session is open, so "in the
 // room" and "on the Reviews tab" are the same fact.
@@ -48,7 +58,16 @@ function stepInto(target: StepTarget): void {
 </script>
 
 <template>
-  <nav class="coach-nav" aria-label="Coaching session">
+  <nav v-if="sittingAway" class="coach-nav" aria-label="Your open review">
+    <button
+      type="button"
+      class="btn ghost coach-nav-btn"
+      @click="appStore.goToView('reviews')"
+    >
+      ← Back to your review
+    </button>
+  </nav>
+  <nav v-else class="coach-nav" aria-label="Coaching session">
     <template v-if="inRoom">
       <span class="eyebrow accent coach-nav-lead">Step into {{ handle }}'s:</span>
       <button

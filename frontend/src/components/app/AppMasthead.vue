@@ -10,6 +10,7 @@ import { storeToRefs } from 'pinia'
 import { OpenURL } from '@/api-client'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
+import { useSelfReviewStore } from '@/stores/selfReview'
 import { useCoachReturnsStore } from '@/stores/coachReturns'
 import { useMatchesStore } from '@/stores/matches'
 import { useParseStore } from '@/stores/parse'
@@ -52,6 +53,11 @@ const { onTabKeydown } = useTabKeyboardNav(view, goToView)
 // they are about the coach's own app, which keeps running underneath.
 const coach = useCoachStore()
 const sessionActive = computed(() => coach.sessionActive)
+
+// The player's open sitting, when they have stepped off its tab — the strip
+// below carries the way back (its own component decides the wording).
+const selfReviewStore = useSelfReviewStore()
+const sittingAway = computed(() => selfReviewStore.roomOpen && view.value !== 'reviews')
 
 // Two tabs carry a suffix beside their label, and both are counts of work
 // waiting: Unknown's unresolved records, and Reviews' coach notes waiting on
@@ -201,4 +207,7 @@ const winRate = computed(() => winrateOrNull(wld.value.w, wld.value.w + wld.valu
     <CoachSessionRule />
     <CoachNavStrip />
   </template>
+  <!-- The sitting's lighter bridge: no loan rule (nothing is on loan), just
+       the way back, and only while the player is away from its tab. -->
+  <CoachNavStrip v-else-if="sittingAway" />
 </template>

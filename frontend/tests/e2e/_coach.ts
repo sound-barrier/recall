@@ -913,7 +913,7 @@ export async function enterFilmRoom(page: Page): Promise<void> {
  * button asks once more; a clean session ends on the first click.
  */
 export async function endSession(page: Page, handle = 'Sable'): Promise<void> {
-  await loanSlip(page, handle).getByRole('button', { name: 'End session' }).click()
+  await loanSlip(page, handle).getByRole('button', { name: '2 · End session' }).click()
   const confirm = page.getByRole('button', { name: /^End anyway/ })
   await expect(confirm.or(page.locator('.profile-chip'))).toBeVisible()
   if (await confirm.isVisible()) await confirm.click()

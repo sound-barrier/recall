@@ -101,7 +101,7 @@ test.describe('07 Reviews — the tab', () => {
     const dialog = page.getByRole('dialog', { name: 'Share with a coach' })
     await expect(dialog).toBeVisible()
     await expect(dialog.getByRole('checkbox', { name: /Share with a coach/ })).toBeChecked()
-    await expect(dialog.getByLabel('Your handle')).toBeVisible()
+    await expect(dialog.getByLabel('Your handle (required)')).toBeVisible()
   })
 
   // Notes waiting on a decision are the shelf's own rows here — one per
@@ -161,6 +161,37 @@ test.describe('07 Reviews — the tab', () => {
     await expect(page.getByText(new RegExp(`notes from ${COACH_NAME}`))).toBeVisible()
     await page.getByRole('button', { name: 'Show everything' }).click()
     await expect(page.locator('.leaf-row')).toHaveCount(6)
+  })
+
+  // The coach's summary — the one thing they wrote about the whole set —
+  // used to be readable exactly once: while a note was still undecided.
+  // Now it lives on the received card, and the notes reopen from there.
+  test('a received card carries the coach summary and reopens the notes', async ({ page }) => {
+    await mockMatchesWithCoachNotes(page)
+    const decided = Object.fromEntries(RETURN_SHEET_FIXTURE.notes.map((n) => [n.note_id, 'accepted' as const]))
+    await mockInbox(page, [{ ...RETURN_SHEET_FIXTURE, decisions: decided }])
+    await page.goto('/')
+    await tab(page).click()
+
+    const card = panel(page).getByRole('list', { name: 'Reviews you have received' }).getByRole('listitem').first()
+    await expect(card).toContainText(/Ult economy first, positioning second/)
+    await card.getByRole('button', { name: 'Read the notes again' }).click()
+    await expect(page.getByRole('dialog', { name: new RegExp(`Notes from ${COACH_NAME}`) })).toBeVisible()
+  })
+
+  // A review the player skipped landed nowhere — but it still happened, and
+  // 'No coach has looked yet' would be a lie. It stays listed, quietly.
+  test('a fully skipped review stays listed and can be read again', async ({ page }) => {
+    const decided = Object.fromEntries(RETURN_SHEET_FIXTURE.notes.map((n) => [n.note_id, 'skipped' as const]))
+    await mockInbox(page, [{ ...RETURN_SHEET_FIXTURE, decisions: decided }])
+    await page.goto('/')
+    await tab(page).click()
+
+    await expect(panel(page).getByText(/No coach has looked yet/)).toHaveCount(0)
+    const row = panel(page).getByText(/None of these notes are on your matches/)
+    await expect(row).toBeVisible()
+    await panel(page).getByRole('button', { name: 'Read again' }).click()
+    await expect(page.getByRole('dialog', { name: new RegExp(`Notes from ${COACH_NAME}`) })).toBeVisible()
   })
 
   test('hosts the film room while a coaching session is open', async ({ page }) => {

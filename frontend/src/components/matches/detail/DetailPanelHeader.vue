@@ -8,6 +8,8 @@ import { isTrackedMatchKey } from '@/match/match-key'
 import { playerClockNote } from '@/match/match-time-helpers'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
+import { useSelfReviewStore } from '@/stores/selfReview'
+import { useUiStore } from '@/stores/ui'
 
 // The detail panel's header chrome: the sticky toolbar (close + map·result title
 // + prev/next match navigation) and the provenance banner (edited / hand-entered
@@ -49,6 +51,21 @@ const sessionNote = computed(() => (canHandOff.value ? ON_LOAN_NOTE : NO_MATCH_R
 function openInFilmRoom() {
   if (!canHandOff.value) return
   coachStore.selectKey(props.record.match_key)
+  void appStore.goToView('reviews')
+}
+
+// The same hand-off for the player's OWN open sitting: a member match's
+// panel walks back to the desk with this frame selected. Members only —
+// the desk cannot show a match the sitting does not hold.
+const selfReview = useSelfReviewStore()
+const ui = useUiStore()
+const sittingHandOff = computed(() => !sessionActive.value
+  && selfReview.roomOpen
+  && (selfReview.open?.match_keys.includes(props.record.match_key ?? '') ?? false))
+
+function openInSittingRoom() {
+  ui.selection.close()
+  selfReview.selectKey(props.record.match_key)
   void appStore.goToView('reviews')
 }
 
@@ -160,6 +177,21 @@ const emit = defineEmits<{
       :disabled="!canHandOff"
       :title="canHandOff ? 'Write about this match on the desk in the film room' : NO_MATCH_REASON"
       @click="openInFilmRoom"
+    >
+      Open in the film room →
+    </button>
+  </div>
+  <!-- The sitting's twin: this match is in your OPEN review — the desk is
+       where its note lives right now. -->
+  <div v-else-if="sittingHandOff" class="detail-session-strip" data-session-strip>
+    <span class="eyebrow accent">Your review is open</span>
+    <span class="detail-session-note">This match is in it — the note lives on the desk.</span>
+    <button
+      type="button"
+      class="detail-film-room"
+      data-open-film-room
+      title="Put this match on the desk in the film room"
+      @click="openInSittingRoom"
     >
       Open in the film room →
     </button>

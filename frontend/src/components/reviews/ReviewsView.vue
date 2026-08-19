@@ -110,10 +110,12 @@ const { onCopyReplayCode: copyReplayCode } = useMatchActions()
       :summary="selfReview.summary"
       :save-state-for="selfReview.saveStateFor"
       :labels="coachLabels"
+      removable-frames
       @select="selfReview.selectKey"
       @update-note="selfReview.updateNote"
       @update-moment="selfReview.updateMoment"
       @remove-moment="selfReview.removeMoment"
+      @remove-frame="(k: string) => selfReview.removeMatchFromOpenSitting(k)"
       @copy-replay="copyReplayCode"
     >
       <template #sheet="{ wld, winRate, focusTally, notesLine }">

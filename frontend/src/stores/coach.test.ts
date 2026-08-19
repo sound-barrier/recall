@@ -502,23 +502,19 @@ describe('coach store — ending the session', () => {
     expect(api.CloseCoachSession).toHaveBeenCalledTimes(1)
   })
 
-  // No navigation on End: the room is the Reviews tab's content, and the tab
-  // shows the shelf the moment the session is gone. A coach who ended from
-  // another tab stays on it, now over their own data again — yanking them
-  // somewhere else was a habit from when the room had no tab to fall back to.
-  // What End DOES owe is focus: the button that was pressed unmounts with the
-  // room (or the loan slip), so focus is re-homed on the current panel rather
-  // than dropped on <body>. Ended from Matches, so "stays put" is a real
-  // claim — openBundle already lands on Reviews, and a test ending there
-  // could not tell staying from being yanked back.
-  it('gives the app back: server told, flag cleared, refs empty, stays put, focus re-homed', async () => {
+  // Ending is a landing, not a vanish act: wherever End was pressed from,
+  // the session's end is announced (with the notes file's path when one was
+  // saved) and the app lands on the Reviews tab the session lived in —
+  // goToView re-homes focus on that panel, so nothing is dropped on <body>.
+  // (It used to "stay put" in silence: the loan slip disappeared and
+  // whichever tab you were on simply showed your own data again.)
+  it('gives the app back: server told, flag cleared, refs empty, announced, landed on Reviews', async () => {
     const coach = useCoachStore()
     const app = useAppStore()
     await coach.openBundle()
     await settle()
     coach.updateNote(MATCH_A, draft())
     await app.goToView('matches')
-    const refocus = vi.spyOn(app, 'refocusPanel')
 
     await coach.endSession()
     await settle()
@@ -528,8 +524,8 @@ describe('coach store — ending the session', () => {
     expect(coach.loanedRecords).toEqual([])
     expect(coach.notes).toEqual({})
     expect(localStorage.getItem(COACH_SESSION_RESUME_KEY)).toBeNull()
-    expect(app.view).toBe('matches')
-    expect(refocus).toHaveBeenCalledOnce()
+    expect(app.view).toBe('reviews')
+    expect(app.notice).toMatch(/^Session with .+ ended/)
     expect(getQueryClient().getQueryData(qk.coach.session)).toBeNull()
     expect(getQueryClient().getQueryData(qk.coach.matches)).toBeUndefined()
   })

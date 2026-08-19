@@ -81,7 +81,23 @@ function pickMatches(): void {
 // record of a review it was given.
 const waiting = computed(() => inbox.value.filter((s) => s.pending > 0))
 const received = computed(() => groupReceivedReviews(records.value))
-const noCoachYet = computed(() => waiting.value.length === 0 && received.value.length === 0)
+
+// The return sheet a received review came from, when it is still around —
+// it carries the coach's summary (the one thing they wrote about the SET,
+// which no block carries) and the way to read the notes again.
+function sheetFor(r: { coachName: string; sessionDate: string }) {
+  return inbox.value.find((s) => s.coach_name === r.coachName && s.session_date === r.sessionDate)
+}
+
+// Decided sheets none of whose notes landed — skipped, or removed since.
+// They still happened; "No coach has looked yet" would be a lie.
+const readOnlySheets = computed(() => {
+  const carded = new Set(received.value.map((r) => `${r.coachName} ${r.sessionDate}`))
+  return inbox.value.filter((s) => s.pending === 0 && !carded.has(`${s.coach_name} ${s.session_date}`))
+})
+
+const noCoachYet = computed(() =>
+  waiting.value.length === 0 && received.value.length === 0 && readOnlySheets.value.length === 0)
 
 // The count the share button carries — the narrowed set, because that is
 // exactly what sharing bundles.
@@ -258,14 +274,42 @@ function openBundle(): void {
             <p class="eyebrow ink review-card-line">
               {{ received02Label(r) }}
             </p>
-            <button
-              type="button"
-              class="paper-btn review-card-open"
-              @click="showReviewMatches(r)"
-            >
-              Show these matches →
-            </button>
+            <p v-if="sheetFor(r)?.summary" class="review-card-summary">
+              {{ sheetFor(r)?.summary }}
+            </p>
+            <div class="review-card-actions">
+              <button
+                type="button"
+                class="paper-btn review-card-open"
+                @click="showReviewMatches(r)"
+              >
+                Show these matches →
+              </button>
+              <button
+                v-if="sheetFor(r)"
+                type="button"
+                class="paper-btn review-card-open"
+                @click="returns.openReturnSheet(sheetFor(r)!.id)"
+              >
+                Read the notes again
+              </button>
+            </div>
           </article>
+        </li>
+      </ul>
+
+      <!-- Reviews that landed nowhere — every note skipped, or removed
+           since. Quiet rows, not cards: there is nothing on any match to
+           show, but the review still happened. -->
+      <ul v-if="readOnlySheets.length" class="reviews-waiting" aria-label="Reviews with nothing kept">
+        <li v-for="sheet in readOnlySheets" :key="sheet.id" class="reviews-waiting-row reviews-skipped-row">
+          <span class="reviews-waiting-line">
+            {{ sheet.coach_name }} · {{ formatPlayerDay(sheet.session_date) }} — None of these
+            notes are on your matches; you skipped or removed them.
+          </span>
+          <button type="button" class="btn ghost" @click="returns.openReturnSheet(sheet.id)">
+            Read again
+          </button>
         </li>
       </ul>
 
@@ -301,7 +345,13 @@ function openBundle(): void {
             </p>
           </div>
           <div class="setting-control">
-            <button type="button" class="btn ghost" @click="openBundle">
+            <button
+              type="button"
+              class="btn ghost"
+              :disabled="coach.tourOpen"
+              :title="coach.tourOpen ? 'Finish the walkthrough before opening a player\'s bundle.' : undefined"
+              @click="openBundle"
+            >
               Open a player's bundle…
             </button>
           </div>
@@ -416,9 +466,27 @@ function openBundle(): void {
   margin: 0 0.75rem;
 }
 
+.review-card-summary {
+  margin: 0 0.75rem;
+  font-size: var(--type-lg);
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.review-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0.75rem 0.75rem;
+}
+
 .review-card-open {
   align-self: flex-start;
-  margin: 0 0.75rem 0.75rem;
+}
+
+/* A review with nothing kept is history, not a task — no accent stripe. */
+.reviews-skipped-row {
+  border-left-color: var(--border);
 }
 
 .reviews-empty {
