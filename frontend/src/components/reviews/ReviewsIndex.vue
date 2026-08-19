@@ -38,19 +38,26 @@ const waiting = computed(() => inbox.value.filter((s) => s.pending > 0))
 const received = computed(() => groupReceivedReviews(records.value))
 const noCoachYet = computed(() => waiting.value.length === 0 && received.value.length === 0)
 
-function notesWaitingLine(count: number, coachName: string): string {
-  return `${count} note${count === 1 ? '' : 's'} from ${coachName} waiting`
+function notesFromLine(count: number, coachName: string): string {
+  return `${count} note${count === 1 ? '' : 's'} from ${coachName}`
 }
 
 function sendMatchesOut(): void {
-  matches.shareNarrowedWithCoach()
+  void matches.shareNarrowedWithCoach()
 }
 
 // A received review has no room of its own (a third room mode, not built);
 // the card takes you to the first match it touched, in the detail panel.
-async function openReceived(firstKey: string): Promise<void> {
+// The first match the narrow can show, that is: a review is grouped from
+// EVERY record, and the panel only opens over the narrowed set, so a member
+// the current narrow excludes is skipped — and if none is in the narrow, the
+// narrow is widened for the first (see `revealMatch`) rather than opening a
+// panel with nothing behind it.
+async function openReceived(matchKeys: readonly string[]): Promise<void> {
   await appStore.goToView('matches')
-  ui.selection.open(firstKey)
+  const inNarrow = new Set(matches.matchesNarrow.narrowedRecords.value.map((r) => r.match_key))
+  const target = matchKeys.find((k) => inNarrow.has(k)) ?? matchKeys[0]
+  if (target !== undefined) ui.revealMatch(target)
 }
 
 // ── 03 For someone else ────────────────────────────────────────────────
@@ -91,9 +98,9 @@ function openBundle(): void {
               Send matches out
             </h4>
             <p class="setting-desc">
-              Bundle the matches you are looking at, stamped with your name, for a
-              coach to open in their own Recall. Their notes come back as a file
-              you decide on, match by match.
+              Takes you to Matches and bundles the set showing there, stamped
+              with your name, for a coach to open in their own Recall. Their
+              notes come back as a file you decide on, match by match.
             </p>
           </div>
           <div class="setting-control">
@@ -104,12 +111,13 @@ function openBundle(): void {
         </div>
       </div>
 
-      <!-- Waiting on a decision. The same sentence the app-chrome banner
-           uses, so a player recognizes it, one row per sheet. -->
+      <!-- Waiting on a decision, one row per sheet. The app-chrome inbox
+           banner steps aside on this tab (App.vue) — these rows ARE the
+           banner here, in its shape, per coach instead of summed. -->
       <ul v-if="waiting.length" class="reviews-waiting" aria-label="Notes waiting on a decision">
         <li v-for="sheet in waiting" :key="sheet.id" class="reviews-waiting-row">
           <span class="eyebrow accent">Waiting</span>
-          <span class="reviews-waiting-line">{{ notesWaitingLine(sheet.pending, sheet.coach_name) }}</span>
+          <span class="reviews-waiting-line">{{ notesFromLine(sheet.pending, sheet.coach_name) }}</span>
           <button type="button" class="btn ghost" @click="returns.openReturnSheet(sheet.id)">
             Review
           </button>
@@ -118,12 +126,11 @@ function openBundle(): void {
 
       <!-- Received: on paper, because a review is written on paper. -->
       <ul v-if="received.length" class="reviews-shelf" aria-label="Reviews you have received">
-        <li v-for="r in received" :key="`${r.coachName} ${r.sessionDate}`">
-          <article
-            class="paper review-card"
-            :aria-label="`Review from ${r.coachName}, ${formatPlayerDay(r.sessionDate)}, ${r.noteCount} notes`"
-          >
-            <h4 class="eyebrow ink review-card-head paper-rule-hatch">
+        <li v-for="(r, i) in received" :key="`${r.coachName} ${r.sessionDate}`">
+          <!-- The card is named by its own heading — one string in the a11y
+               tree and on the paper, so they cannot disagree. -->
+          <article class="paper review-card" :aria-labelledby="`review-card-head-${i}`">
+            <h4 :id="`review-card-head-${i}`" class="eyebrow ink review-card-head paper-rule-hatch">
               {{ r.coachName }} · {{ formatPlayerDay(r.sessionDate) }} ·
               {{ r.noteCount }} {{ r.noteCount === 1 ? 'note' : 'notes' }} ·
               {{ r.matchKeys.length }} {{ r.matchKeys.length === 1 ? 'match' : 'matches' }}
@@ -131,7 +138,7 @@ function openBundle(): void {
             <button
               type="button"
               class="paper-btn review-card-open"
-              @click="openReceived(r.matchKeys[0] ?? '')"
+              @click="openReceived(r.matchKeys)"
             >
               Open the first match →
             </button>
@@ -202,23 +209,24 @@ function openBundle(): void {
 }
 
 /* The house banner shape — surface fill, an accent stripe down the left —
-   the same one the app-chrome inbox banner wears, so a player recognizes
-   the sentence here as the one they saw up there. */
+   token for token the one the app-chrome inbox banner wears
+   (CoachInboxBanner.vue), so a player recognizes the row here as the
+   banner they saw on the other tabs. */
 .reviews-waiting-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.7rem;
-  padding: 0.6rem 0.9rem;
+  gap: 0.55rem;
+  padding: 0.5rem 0.75rem;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius);
 }
 
 .reviews-waiting-line {
   flex: 1 1 auto;
-  font-size: var(--type-md);
+  font-size: var(--type-lg);
   color: var(--text);
 }
 

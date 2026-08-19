@@ -14,10 +14,13 @@
  */
 import { test, expect } from '../_fixtures'
 import {
+  COACH_NAME,
   RESURFACED_NOTES,
+  RETURN_SHEET_FIXTURE,
   filmRoom,
   loanSlip,
   mockCoachSession,
+  mockInbox,
   pinSessionResume,
   seedCoachOwnMatches,
 } from '../_coach'
@@ -70,6 +73,39 @@ test.describe('07 Reviews — the tab', () => {
     await expect(panel(page).getByRole('button', { name: /send matches out/i })).toBeVisible()
     await expect(panel(page).getByRole('heading', { name: 'For someone else' })).toBeVisible()
     await expect(panel(page).getByRole('button', { name: /open a player.s bundle/i })).toBeVisible()
+  })
+
+  // "Send matches out" means share. It lands on Matches (the narrow the
+  // dialog counts is only visible there) and the dialog opens ALREADY in
+  // share mode — the same one action the palette runs, so neither can drift.
+  test('Send matches out lands on Matches with the share dialog open in share mode', async ({ page }) => {
+    await page.goto('/')
+    await tab(page).click()
+    await panel(page).getByRole('button', { name: /send matches out/i }).click()
+
+    await expect(page.getByRole('tab', { name: /^Matches/ })).toHaveAttribute('aria-selected', 'true')
+    const dialog = page.getByRole('dialog', { name: 'Share with a coach' })
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByRole('checkbox', { name: /Share with a coach/ })).toBeChecked()
+    await expect(dialog.getByLabel('Your handle')).toBeVisible()
+  })
+
+  // Notes waiting on a decision are the shelf's own rows here — one per
+  // sheet, the banner's shape and button — and the app-chrome banner steps
+  // aside on this tab so the same sentence is not announced twice.
+  test('lists notes waiting on a decision as rows, and the chrome banner steps aside', async ({ page }) => {
+    await mockInbox(page, [{ ...RETURN_SHEET_FIXTURE, decisions: {} }])
+    await page.goto('/')
+    const banner = page.getByRole('status').filter({ hasText: new RegExp(`from ${COACH_NAME} waiting`) })
+    await expect(banner).toBeVisible()
+
+    await tab(page).click()
+    await expect(banner).toHaveCount(0)
+    const rows = panel(page).getByRole('list', { name: 'Notes waiting on a decision' }).getByRole('listitem')
+    await expect(rows).toHaveCount(1)
+    await expect(rows.first()).toContainText(`3 notes from ${COACH_NAME}`)
+    await rows.first().getByRole('button', { name: 'Review' }).click()
+    await expect(page.getByRole('dialog', { name: new RegExp(`Notes from ${COACH_NAME}`) })).toBeVisible()
   })
 
   test('hosts the film room while a coaching session is open', async ({ page }) => {

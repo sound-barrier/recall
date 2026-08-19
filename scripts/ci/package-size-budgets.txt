@@ -344,5 +344,9 @@ frontend/src/components/matches/dossier       13
 # shell paints around a view), and the alternative — a banners/ subfolder for
 # three files — buys a directory and no clarity. The masthead already has its
 # own masthead/ subfolder, which is the remedy this grouping reaches for when a
-# piece grows its own parts.
-frontend/src/components/app                   13
+# piece grows its own parts. 14 as of the Reviews tab: the lazy-view wrapper
+# that composes the two fallbacks (skeleton + failed-chunk reload) moved out
+# of App.vue into lazy-view.ts beside them, because the film room inside the
+# Reviews tab loads through it too — one failure surface for every view-sized
+# chunk, wherever the chunk is mounted.
+frontend/src/components/app                   14

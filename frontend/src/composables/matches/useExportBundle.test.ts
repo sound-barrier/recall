@@ -54,6 +54,19 @@ describe('useExportBundle — a plain export', () => {
 })
 
 describe('useExportBundle — sharing with a coach', () => {
+  // The intent rides with the request so a caller that MEANS "share" (the
+  // Reviews tab, the palette) opens the dialog already in share mode; a plain
+  // export request leaves it off, and it does not stick between requests.
+  it('remembers whether the request meant to share, per request', () => {
+    const flow = useExportBundle({ onError: () => {}, onSaved: () => {} })
+    flow.onExportBundleRequest(['k1'], { share: true })
+    expect(flow.exportBundleShareIntent.value).toBe(true)
+    expect(flow.exportBundleSelectedKeys.value).toEqual(['k1'])
+
+    flow.onExportBundleRequest(['k2'])
+    expect(flow.exportBundleShareIntent.value).toBe(false)
+  })
+
   it('carries the handle and the message the player wrote', async () => {
     const flow = bundle()
 

@@ -241,12 +241,16 @@ export const useMatchesStore = defineStore('matches', () => {
   // Export flows for the Matches set — the bundle-export modal + the flat CSV
   // export. Delegated to useExportBundle; AppOverlays reads the modal state +
   // the dispatch handlers straight off this store.
-  // Opens the share dialog over the set the user is looking at, already in
-  // share mode. Not "everything": the narrow IS the selection they made, and
-  // a bundle of every match they own is rarely what someone means by "share
-  // with a coach". One action, called from the Reviews tab and the palette,
-  // so the two cannot drift.
-  function shareNarrowedWithCoach(): void {
+  // Lands on Matches, then opens the share dialog over the set showing there,
+  // already in share mode. Not "everything": the narrow IS the selection they
+  // made, and a bundle of every match they own is rarely what someone means by
+  // "share with a coach". The navigation is part of the action, not the
+  // caller's job: the dialog says "N matches" and the narrow is only visible
+  // on Matches, so a caller on another tab (the Reviews shelf, the palette)
+  // would otherwise share a set the user cannot see. One action, so the two
+  // cannot drift.
+  async function shareNarrowedWithCoach(): Promise<void> {
+    await useAppStore().goToView('matches')
     exportBundle.onExportBundleRequest(
       matchesNarrow.narrowedRecords.value.map((r) => r.match_key),
       { share: true },

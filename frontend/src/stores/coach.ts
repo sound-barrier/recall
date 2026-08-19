@@ -383,7 +383,10 @@ export const useCoachStore = defineStore('coach', () => {
     restoreCoachNarrow()
     // No navigation. The room lives inside the Reviews tab, which shows the
     // index the moment the session is gone; a coach who ended from another
-    // tab stays on it, now over their own data again.
+    // tab stays on it, now over their own data again. But the End button they
+    // pressed unmounted with the room (or the loan slip), so focus is re-homed
+    // on the panel that took its place rather than dropped on <body>.
+    await useAppStore().refocusPanel()
   }
 
   // A session opened or ended in ANOTHER window on this install. Both
@@ -398,6 +401,7 @@ export const useCoachStore = defineStore('coach', () => {
       discardSaves()
       clearCoachSessionData()
       restoreCoachNarrow()
+      await useAppStore().refocusPanel()
       return
     }
     suspendCoachNarrow()

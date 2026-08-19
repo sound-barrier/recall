@@ -1,10 +1,11 @@
 /**
  * Coaching session — open + end lifecycle.
  *
- * A coach opens a player's bundle from the masthead and the whole app
+ * A coach opens a player's bundle from the Reviews tab and the whole app
  * turns into that player's: the loan slip replaces the profile chip, the
- * six tabs run on the loaned records, every tab shows the way back to the
- * Film Room, and End restores the coach's own history untouched.
+ * other six tabs run on the loaned records, every tab shows the way back
+ * to the Film Room (which is what Reviews shows while the session is
+ * open), and End restores the coach's own history untouched.
  *
  * Two persistence hunts ride along:
  *   - a mid-session reload must RESUME (the server still holds the

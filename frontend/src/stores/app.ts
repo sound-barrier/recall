@@ -35,8 +35,17 @@ export const useAppStore = defineStore('app', () => {
     // Entering Parse: re-read the pending-screenshot count so "Run Parse · N"
     // reflects the folder now, not the initial-load batch. Fire-and-forget.
     if (next === 'ingest') void useParseStore().refreshNewCount()
+    await refocusPanel()
+  }
+
+  // Puts keyboard focus on the current view's tabpanel. Every tab change
+  // ends here; so does anything that unmounts the subtree holding focus
+  // without changing tabs (ending a coaching session takes the room, and the
+  // End button with it, out from under the coach) — focus that would land on
+  // <body> lands on the panel that replaced it instead.
+  async function refocusPanel(): Promise<void> {
     await nextTick()
-    const panel = document.getElementById(`panel-${next}`)
+    const panel = document.getElementById(`panel-`)
     if (panel) panel.focus({ preventScroll: true })
   }
 
@@ -189,6 +198,7 @@ export const useAppStore = defineStore('app', () => {
   return {
     view,
     goToView,
+    refocusPanel,
     error,
     errorRetry,
     setError,

@@ -9,7 +9,6 @@
 // per-SFC scoped <style> blocks.
 import '@/styles/app.css'
 
-import { defineAsyncComponent, type Component } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
@@ -32,32 +31,14 @@ import CoachInboxBanner from '@/components/coach/inbox/CoachInboxBanner.vue'
 // The floating overlay cluster (modals, detail panel, lightbox, toasts, tour)
 // lives in AppOverlays — it owns those lazy-loaded chunks now.
 
-// View components are lazy-loaded via defineAsyncComponent so each
-// becomes a separate JS chunk emitted by Vite. The initial bundle
+// View components are lazy-loaded (lazyView → defineAsyncComponent) so
+// each becomes a separate JS chunk emitted by Vite. The initial bundle
 // only ships the currently-visible view (Matches by default); the
-// other three load on first tab click. Keeps initial JS small and
-// makes the cost of adding a new view proportional to "is it
-// visited" rather than "is it imported".
-//
-// `loadingComponent` + `delay: 220` shows a brief "Loading view…"
-// fallback IF the chunk fetch + Vue mount takes longer than 220ms
-// (the common case on throttled networks). On LAN / local the
-// chunk lands before the delay elapses and the fallback never
-// renders, keeping the snappy-feel intact.
-import ViewLazyFallback from '@/components/app/ViewLazyFallback.vue'
-import ViewLoadError from '@/components/app/ViewLoadError.vue'
-const VIEW_LAZY_DELAY = 220
-function lazyView(loader: () => Promise<{ default: Component }>) {
-  return defineAsyncComponent({
-    loader,
-    loadingComponent: ViewLazyFallback,
-    // A failed chunk load (network drop, or a redeploy that
-    // invalidated the old hashed filenames) renders a reload
-    // affordance instead of a permanent skeleton.
-    errorComponent: ViewLoadError,
-    delay: VIEW_LAZY_DELAY,
-  })
-}
+// others load on first tab click. Keeps initial JS small and makes
+// the cost of adding a new view proportional to "is it visited"
+// rather than "is it imported". The loading skeleton + failed-chunk
+// reload affordance live in lazy-view.ts.
+import { lazyView } from '@/components/app/lazy-view'
 const IngestView = lazyView(() => import('@/components/ingest/IngestView.vue'))
 const MatchesView = lazyView(() => import('@/components/matches/MatchesView.vue'))
 const SettingsView = lazyView(() => import('@/components/settings/SettingsView.vue'))
@@ -147,8 +128,10 @@ useServerEvents()
            reload and a "Decide later" until every note has a verdict — and it
            lives in the chrome rather than on Matches, because a review that
            arrived is news on whatever tab the player happens to be reading.
-           Self-gating, like every banner beside it. -->
-      <CoachInboxBanner />
+           Self-gating, like every banner beside it — except on Reviews, whose
+           shelf lists the same notes per coach with the same Review button;
+           the banner above them would say it twice. -->
+      <CoachInboxBanner v-if="view !== 'reviews'" />
 
       <!-- <main> is the page's primary landmark. The skip-link at the
            top of .app jumps focus here so keyboard users can bypass the

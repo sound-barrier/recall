@@ -111,8 +111,7 @@ describe('useCommandPalette', () => {
       for (const item of ACTION_ITEMS) {
         palette.run({ ...item, hits: [] })
       }
-      // The share runner awaits a view change before it opens anything, so a
-      // single tick is not enough — and a test that stops there reads a
+      // Runners are async; a test that stops after one tick reads a
       // silently-wrong runner as a correct one.
       await flushPromises()
 

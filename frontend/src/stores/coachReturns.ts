@@ -52,6 +52,8 @@ export const useCoachReturnsStore = defineStore('coachReturns', () => {
   const inbox = computed(() => (returnsQuery.data.value ?? []).map(withPending))
   const pendingNoteCount = computed(() => inbox.value.reduce((total, s) => total + s.pending, 0))
   const firstPendingCoach = computed(() => inbox.value.find(s => s.pending > 0)?.coach_name ?? '')
+  const pendingCoachCount = computed(() =>
+    new Set(inbox.value.filter(s => s.pending > 0).map(s => s.coach_name)).size)
 
   const returnSheet = ref<CoachReturnSheet | null>(null)
 
@@ -137,6 +139,7 @@ export const useCoachReturnsStore = defineStore('coachReturns', () => {
     inbox,
     pendingNoteCount,
     firstPendingCoach,
+    pendingCoachCount,
     returnSheet,
     openReturnSheet,
     closeReturnSheet,

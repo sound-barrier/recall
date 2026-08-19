@@ -114,11 +114,10 @@ export function useCommandPalette(): {
     return Object.hasOwn(ACTION_RUNNERS, target)
   }
 
-  // Land on Matches so the set being shared is the set on screen, then open
-  // the dialog through the store's one share action.
-  async function shareTheNarrowedSet(): Promise<void> {
-    await app.goToView('matches')
-    matches.shareNarrowedWithCoach()
+  // The store's one share action lands on Matches itself, so the set being
+  // shared is the set on screen.
+  function shareTheNarrowedSet(): Promise<void> {
+    return matches.shareNarrowedWithCoach()
   }
 
   // Returns whether anything ran, so the caller can leave the palette open on

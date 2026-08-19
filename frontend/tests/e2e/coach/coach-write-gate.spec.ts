@@ -1,7 +1,7 @@
 /**
  * Coaching session — the write gate.
  *
- * While a session is open the six tabs run on the PLAYER's loaned records,
+ * While a session is open the other six tabs run on the PLAYER's loaned records,
  * and nothing the coach does there may write to the coach's own database:
  * every mutating affordance is disabled with a reason, and — the real
  * guarantee — a catch-all route fails the test the moment ANY mutating

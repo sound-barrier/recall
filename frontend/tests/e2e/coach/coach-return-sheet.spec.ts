@@ -221,10 +221,15 @@ test.describe('return of notes — moments', () => {
     await page.goto('/')
     await expect(inboxBanner(page)).toBeVisible()
 
-    for (const tab of ['Settings', 'Parse', /^Unknown/] as const) {
+    for (const tab of ['Settings', 'Parse', /^Unknown/, 'Compare', 'Elo Calculator'] as const) {
       await page.getByRole('tab', { name: tab }).click()
       await expect(inboxBanner(page)).toBeVisible()
     }
+    // Reviews is the one exception: its shelf lists the same notes per coach
+    // with the same Review button, so the banner steps aside there.
+    await page.getByRole('tab', { name: /^Reviews/ }).click()
+    await expect(inboxBanner(page)).toHaveCount(0)
+    await expect(page.getByRole('list', { name: 'Notes waiting on a decision' })).toBeVisible()
   })
 
   // Importing the wrong file, or a review the player has decided they do not
