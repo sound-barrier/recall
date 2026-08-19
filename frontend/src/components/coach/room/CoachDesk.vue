@@ -87,6 +87,7 @@ const emit = defineEmits<{
       />
       <CoachNoteEditor
         :match-key="record.match_key"
+        :voice="voice"
         :draft="draft"
         :save-state="saveState"
         :blocked-reason="blockedReason"

@@ -13,9 +13,16 @@ withDefaults(defineProps<{
   blockedReason?: string
   label?: string
   placeholder?: string
+  /**
+   * Whether to print the save-state line. The coach sheet's summary saves
+   * under its own key, so its line is honest; the self sheet's summary
+   * shares ONE header save with the title, whose line already speaks.
+   */
+  showStatus?: boolean
 }>(), {
   saveState: 'idle', blockedReason: '', label: 'What to work on',
   placeholder: 'The one thing to take into the next session…',
+  showStatus: true,
 })
 
 const emit = defineEmits<{ update: [text: string] }>()
@@ -39,7 +46,7 @@ function onInput(e: Event): void {
       :placeholder="placeholder"
       @input="onInput"
     />
-    <p class="sheet-summary-status" role="status" aria-label="Summary save state">
+    <p v-if="showStatus" class="sheet-summary-status" role="status" aria-label="Summary save state">
       {{ blockedReason || SAVE_LABEL[saveState] }}
     </p>
   </div>

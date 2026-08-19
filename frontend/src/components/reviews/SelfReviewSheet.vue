@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed, ref, useTemplateRef } from 'vue'
+
 import SheetFocusTally from '@/components/coach/notes/SheetFocusTally.vue'
 import SheetRecord from '@/components/coach/notes/SheetRecord.vue'
 import SheetSummary from '@/components/coach/notes/SheetSummary.vue'
@@ -12,8 +14,13 @@ import type { WLDTally } from '@/match/match-stats-helpers'
 // session sheet — the coach's four affordances (Reviewing X · Change player
 // · Export · End) have no meaning for your own matches, so this is its own
 // sheet composed from the shared parts rather than a mode on theirs.
+//
+// One header save (title + summary travel in one PUT), so ONE status line
+// says where it stands — two lines announcing the same save read as two
+// saves. A read-only profile is one banner at the top, not a reason
+// whispered per field.
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   title: string
   wld: WLDTally
   winRate: number | null
@@ -36,6 +43,25 @@ const emit = defineEmits<{
   close: []
 }>()
 
+const titleField = useTemplateRef<HTMLInputElement>('titleField')
+
+// Finish on a nameless sitting nudges once — the shelf card otherwise
+// falls back to "Review of <date>", which nobody finds later. The second
+// press goes through as asked; a nudge that blocks is a different feature.
+const nameNudged = ref(false)
+const showNameNudge = computed(() => nameNudged.value && props.title.trim() === '')
+
+function onFinish(): void {
+  if (props.title.trim() === '' && !nameNudged.value) {
+    nameNudged.value = true
+    titleField.value?.focus()
+    return
+  }
+  emit('finish')
+}
+
+const finished = computed(() => props.finishedAt !== '')
+
 function onTitleInput(e: Event): void {
   if (!(e.target instanceof HTMLInputElement)) return
   emit('update-title', e.target.value)
@@ -44,21 +70,29 @@ function onTitleInput(e: Event): void {
 
 <template>
   <aside class="paper coach-sheet self-sheet" aria-label="Review sheet">
+    <p v-if="blockedReason" class="self-sheet-blocked" role="status">
+      {{ blockedReason }}
+    </p>
+
     <div class="sheet-block">
       <label class="eyebrow ink" for="self-review-title">Title</label>
       <input
         id="self-review-title"
+        ref="titleField"
         class="self-sheet-title"
         type="text"
         :value="title"
         maxlength="120"
         placeholder="Name this review…"
         :disabled="blockedReason !== ''"
-        :title="blockedReason || undefined"
+        :aria-describedby="showNameNudge ? 'self-sheet-name-nudge' : undefined"
         @input="onTitleInput"
       >
-      <p class="sheet-summary-status" role="status" aria-label="Title save state">
-        {{ blockedReason || SAVE_LABEL[headerSaveState] }}
+      <p v-if="showNameNudge" id="self-sheet-name-nudge" class="self-sheet-nudge" role="status">
+        Give it a name so you can find it later — or press Finish again to keep the date.
+      </p>
+      <p v-if="!blockedReason" class="sheet-summary-status" role="status" aria-label="Title and summary save state">
+        {{ SAVE_LABEL[headerSaveState] }}
       </p>
     </div>
 
@@ -69,31 +103,54 @@ function onTitleInput(e: Event): void {
       :summary="summary"
       :save-state="headerSaveState"
       :blocked-reason="blockedReason"
+      :show-status="false"
+      placeholder="The one thing to take into your next games…"
       @update="(text: string) => emit('update-summary', text)"
     />
 
     <p class="sheet-persist">
-      Every note lands on its match as you write it. Finishing marks these matches
-      reviewed and puts the review on the shelf; you can reopen it any time.
+      Every note lands on its match as you write it. Finishing marks these
+      matches reviewed; leaving keeps everything — the review stays in Your
+      reviews marked in progress.
     </p>
 
-    <footer class="sheet-actions">
-      <button
-        type="button"
-        class="paper-btn primary"
-        :disabled="blockedReason !== ''"
-        :title="blockedReason || undefined"
-        @click="emit('finish')"
-      >
-        {{ finishedAt ? 'Finish review again' : 'Finish review' }}
-      </button>
-      <button type="button" class="paper-btn" @click="emit('close')">
-        ← All reviews
-      </button>
-    </footer>
-    <p v-if="finishedAt" class="eyebrow ink self-sheet-finished">
+    <!-- In progress: Finish is the primary, on its own row, and the way out
+         says where it goes. Finished: the state is a chip ABOVE the actions,
+         going back is the primary, and re-finishing is the quiet edge case
+         it is — not a primary that reads as "Save again". -->
+    <p v-if="finished" class="eyebrow ink self-sheet-finished">
       Finished · {{ formatPlayerDay(finishedAt.slice(0, 10)) }}
     </p>
+    <footer class="sheet-actions">
+      <template v-if="!finished">
+        <button
+          type="button"
+          class="paper-btn primary self-sheet-finish"
+          :disabled="blockedReason !== ''"
+          :title="blockedReason || undefined"
+          @click="onFinish"
+        >
+          Finish review
+        </button>
+        <button type="button" class="paper-btn" @click="emit('close')">
+          ← Back to reviews
+        </button>
+      </template>
+      <template v-else>
+        <button type="button" class="paper-btn primary self-sheet-finish" @click="emit('close')">
+          ← Back to reviews
+        </button>
+        <button
+          type="button"
+          class="paper-btn"
+          :disabled="blockedReason !== ''"
+          :title="blockedReason || 'Re-marks these matches reviewed; nothing else changes'"
+          @click="onFinish"
+        >
+          Re-finish
+        </button>
+      </template>
+    </footer>
   </aside>
 </template>
 
@@ -109,6 +166,15 @@ function onTitleInput(e: Event): void {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+}
+
+/* The one place the read-only lock speaks on this sheet. The loss color
+   because it is a refusal, not a status. */
+.self-sheet-blocked {
+  margin: 0;
+  font-size: var(--type-md);
+  line-height: 1.4;
+  color: var(--paper-loss);
 }
 
 /* The title is set in the sheet's own display voice — the same face the
@@ -134,6 +200,13 @@ function onTitleInput(e: Event): void {
   text-transform: none;
 }
 
+.self-sheet-nudge {
+  margin: 0;
+  font-size: var(--type-md);
+  line-height: 1.4;
+  color: var(--ink);
+}
+
 .sheet-persist {
   margin: 0;
   font-size: var(--type-2xs);
@@ -147,6 +220,11 @@ function onTitleInput(e: Event): void {
   gap: 0.5rem;
   padding-top: 0.5rem;
   border-top: 1px solid var(--paper-rule);
+}
+
+/* Finish (and its finished-state successor) owns the row. */
+.self-sheet-finish {
+  flex: 1 1 100%;
 }
 
 .self-sheet-finished {

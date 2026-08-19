@@ -26,15 +26,34 @@ describe('SelfReviewSheet', () => {
     expect(emitted()['update-title']?.at(-1)).toEqual(['T'])
     await user.type(screen.getByRole('textbox', { name: 'What to work on' }), 'S')
     expect(emitted()['update-summary']?.at(-1)).toEqual(['S'])
-    await user.click(screen.getByRole('button', { name: 'Finish review' }))
-    expect(emitted()['finish']).toHaveLength(1)
-    await user.click(screen.getByRole('button', { name: '← All reviews' }))
+    await user.click(screen.getByRole('button', { name: '← Back to reviews' }))
     expect(emitted()['close']).toHaveLength(1)
   })
 
-  it('says when the sitting was finished, and offers to finish again', () => {
-    renderSheet({ finishedAt: '2026-08-18T20:00:00Z' })
+  // Finish on a nameless sitting nudges once for a name — the shelf card
+  // otherwise falls back to a date nobody searches for — and the second
+  // press goes through as asked. A named sitting finishes on the first.
+  it('nudges once for a name, then finishes; a named sitting finishes at once', async () => {
+    const { emitted } = renderSheet()
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Finish review' }))
+    expect(emitted()['finish']).toBeUndefined()
+    expect(screen.getByText(/Give it a name so you can find it later/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Finish review' }))
+    expect(emitted()['finish']).toHaveLength(1)
+  })
+
+  it('finishes a named sitting on the first press', async () => {
+    const { emitted } = renderSheet({ title: 'Tuesday' })
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Finish review' }))
+    expect(emitted()['finish']).toHaveLength(1)
+  })
+
+  it('says when the sitting was finished; going back leads and re-finishing is quiet', () => {
+    renderSheet({ title: 'Tuesday', finishedAt: '2026-08-18T20:00:00Z' })
     expect(screen.getByText(/^Finished ·/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Finish review again' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '← Back to reviews' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Re-finish' }))
+      .toHaveAccessibleDescription(/nothing else changes/)
   })
 })

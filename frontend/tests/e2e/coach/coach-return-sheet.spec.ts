@@ -98,7 +98,7 @@ test.describe('return of notes — player side', () => {
     await expect(inboxBanner(page)).toContainText(`1 note from ${COACH_NAME} waiting`)
 
     // Review reopens with the earlier decisions intact.
-    await inboxBanner(page).getByRole('button', { name: 'Review' }).click()
+    await inboxBanner(page).getByRole('button', { name: 'Read the notes' }).click()
     await expect(sheetDialog(page)).toBeVisible()
     await expect(cards(page).nth(0).getByRole('radio', { name: 'Accept' })).toHaveAttribute('aria-checked', 'true')
     await expect(cards(page).nth(1).getByRole('radio', { name: 'Skip' })).toHaveAttribute('aria-checked', 'true')
@@ -240,7 +240,7 @@ test.describe('return of notes — moments', () => {
   test('a staged sheet can be discarded, and the nagging stops', async ({ page }) => {
     const inbox = await mockInbox(page, [{ ...RETURN_SHEET_FIXTURE, decisions: {} }])
     await page.goto('/')
-    await inboxBanner(page).getByRole('button', { name: 'Review' }).click()
+    await inboxBanner(page).getByRole('button', { name: 'Read the notes' }).click()
 
     await sheetDialog(page).getByRole('button', { name: /^Discard/ }).click()
     await page.getByRole('button', { name: /^Discard these notes/ }).click()

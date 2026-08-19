@@ -121,7 +121,8 @@ describe('CoachMatchCard', () => {
 describe('CoachMatchCard — voice', () => {
   it('speaks in the viewer\'s voice when the matches are their own', () => {
     renderCard(KINGS_ROW, { voice: 'your' })
-    expect(screen.getByText('When · your clock')).toBeInTheDocument()
+    expect(screen.getByText('When')).toBeInTheDocument()
+    expect(screen.queryByText(/your clock/)).not.toBeInTheDocument()
     expect(screen.getByText('Your own note')).toBeInTheDocument()
     expect(screen.queryByText(/Sable's/)).not.toBeInTheDocument()
   })
