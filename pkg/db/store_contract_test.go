@@ -1,6 +1,7 @@
 package db_test
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -709,4 +710,126 @@ func seedRosterNotes(t *testing.T, s db.Store, sableRef, vexRef int64) {
 		CreatedAt: "2026-06-01T10:00:00Z", UpdatedAt: "2026-06-01T10:00:00Z",
 	})
 	mustNoErr(t, err)
+}
+
+// The focus list round-trips on both implementations: the slice's ORDER is
+// the list's order, the coach's authored family carries no status, a
+// re-landed coach item keeps the status the player moved it to, and a status
+// change finds an item in either player-side family by its id alone.
+func TestStoreContract_FocusItemsRoundTrip(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			player, err := s.EnsureCoachPlayer("uuid-sable", "Sable")
+			mustNoErr(t, err)
+
+			// The coach's authored list: order is the slice's order.
+			mustNoErr(t, s.SetCoachFocusItems(player.ID, []db.FocusItem{
+				{ItemID: "c-1", Text: "hold high ground"},
+				{ItemID: "c-2", Text: "track their ult"},
+			}))
+			authored, err := s.LoadCoachFocusItems(player.ID)
+			mustNoErr(t, err)
+			assertFocusOrder(t, authored, "hold high ground", "track their ult")
+
+			// A replacement is wholesale, and re-orders.
+			mustNoErr(t, s.SetCoachFocusItems(player.ID, []db.FocusItem{
+				{ItemID: "c-2", Text: "track their ult"},
+			}))
+			authored, err = s.LoadCoachFocusItems(player.ID)
+			mustNoErr(t, err)
+			assertFocusOrder(t, authored, "track their ult")
+
+			assertSelfFocusItems(t, s)
+			assertReceivedFocusItems(t, s)
+		})
+	}
+}
+
+func assertFocusOrder(t *testing.T, items []db.FocusItem, want ...string) {
+	t.Helper()
+	if len(items) != len(want) {
+		t.Fatalf("focus items = %d, want %d", len(items), len(want))
+	}
+	for i, text := range want {
+		if items[i].Text != text {
+			t.Errorf("item[%d] = %q, want %q", i, items[i].Text, text)
+		}
+		if items[i].SortOrder != i {
+			t.Errorf("item[%d] sort_order = %d, want the slice index", i, items[i].SortOrder)
+		}
+	}
+}
+
+// A sitting's own items start `working` — you wrote them, you are on them —
+// and the sitting must exist.
+func assertSelfFocusItems(t *testing.T, s db.Store) {
+	t.Helper()
+	if err := s.SetSelfReviewFocusItems("no-such-review", []db.FocusItem{{ItemID: "x", Text: "x"}}); !errors.Is(err, db.ErrSelfReviewUnknown) {
+		t.Fatalf("SetSelfReviewFocusItems(unknown) = %v, want ErrSelfReviewUnknown", err)
+	}
+	sitting, err := s.CreateSelfReview(db.SelfReview{ReviewID: "r-1", MatchKeys: []string{"m-1"}})
+	mustNoErr(t, err)
+	mustNoErr(t, s.SetSelfReviewFocusItems(sitting.ReviewID, []db.FocusItem{
+		{ItemID: "s-1", Text: "pre-position earlier"},
+	}))
+	mine, err := s.LoadSelfReviewFocusItems(sitting.ReviewID)
+	mustNoErr(t, err)
+	if len(mine) != 1 || mine[0].Status != db.FocusWorking {
+		t.Fatalf("own item = %+v, want one at status %q", mine, db.FocusWorking)
+	}
+
+	all, err := s.LoadAllSelfReviewFocusItems()
+	mustNoErr(t, err)
+	if len(all[sitting.ReviewID]) != 1 {
+		t.Fatalf("LoadAll = %v, want the sitting's one item", all)
+	}
+
+	// "Got this" retires it without deleting it.
+	mustNoErr(t, s.SetFocusItemStatus("s-1", db.FocusDone))
+	mine, err = s.LoadSelfReviewFocusItems(sitting.ReviewID)
+	mustNoErr(t, err)
+	if len(mine) != 1 || mine[0].Status != db.FocusDone {
+		t.Fatalf("after Got this = %+v, want one at %q", mine, db.FocusDone)
+	}
+}
+
+// A coach's item lands `new` — active immediately, acknowledged by Accept —
+// and a re-import never resets a status the player already moved.
+func assertReceivedFocusItems(t *testing.T, s db.Store) {
+	t.Helper()
+	landed := db.ReceivedFocusItem{
+		ItemID: "r-item-1", Text: "ult economy first",
+		CoachName:   "Ordo",
+		SessionDate: "2026-08-14",
+	}
+	mustNoErr(t, s.UpsertReceivedFocusItem(landed))
+	got, err := s.LoadReceivedFocusItems()
+	mustNoErr(t, err)
+	if len(got) != 1 || got[0].Status != db.FocusNew || got[0].CoachName != "Ordo" {
+		t.Fatalf("received = %+v, want one from Ordo at %q", got, db.FocusNew)
+	}
+
+	mustNoErr(t, s.SetFocusItemStatus("r-item-1", db.FocusWorking))
+	// Same notes file, opened twice: the words may update, the status may not.
+	landed.Text = "ult economy first, positioning second"
+	mustNoErr(t, s.UpsertReceivedFocusItem(landed))
+	got, err = s.LoadReceivedFocusItems()
+	mustNoErr(t, err)
+	if len(got) != 1 {
+		t.Fatalf("re-import produced %d rows, want 1", len(got))
+	}
+	if got[0].Status != db.FocusWorking {
+		t.Errorf("re-import reset the status to %q, want it to keep %q", got[0].Status, db.FocusWorking)
+	}
+	if got[0].Text != "ult economy first, positioning second" {
+		t.Errorf("re-import kept stale text %q", got[0].Text)
+	}
+
+	if err := s.SetFocusItemStatus("nope", db.FocusDone); !errors.Is(err, db.ErrFocusItemUnknown) {
+		t.Errorf("SetFocusItemStatus(unknown) = %v, want ErrFocusItemUnknown", err)
+	}
+	if err := s.SetFocusItemStatus("r-item-1", "denied"); err == nil {
+		t.Error("SetFocusItemStatus(denied) succeeded — there is no deny")
+	}
 }

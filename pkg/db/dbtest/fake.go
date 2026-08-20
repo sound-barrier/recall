@@ -40,6 +40,11 @@ type Fake struct {
 	shareExports   []db.ShareExport
 	shareExportSeq int64
 
+	// The focus list — "what to work on" as rows, in its three families.
+	CoachFocusItems      map[int64][]db.FocusItem
+	SelfReviewFocusItems map[string][]db.FocusItem
+	ReceivedFocusItems   []db.ReceivedFocusItem
+
 	// Queues maps match_key → QueueState (queue_type + timestamp).
 	// Absence of an entry means "queue not set."
 	Queues map[string]db.QueueState
@@ -384,6 +389,10 @@ func (f *Fake) Clear() error {
 	f.CoachReturns = nil
 	f.SelfReviews = nil
 	f.shareExports = nil
+	// The player-side focus families go with the rest of match history; the
+	// coach's AUTHORED list survives, like the summary it replaces.
+	f.SelfReviewFocusItems = nil
+	f.ReceivedFocusItems = nil
 	return nil
 }
 

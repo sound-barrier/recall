@@ -664,11 +664,27 @@ CREATE TABLE IF NOT EXISTS coach_note_moment_focus_tags (
 ) STRICT;
 -- statement-end
 
-CREATE TABLE IF NOT EXISTS coach_session_summaries (
-  player_ref INTEGER PRIMARY KEY REFERENCES coach_players (id) ON DELETE CASCADE,
+-- What this user tells a player to work on: the coach-AUTHORED half of the
+-- focus list. One row per item, ordered, re-surfaced on every session with
+-- that player — the same lifetime the single free-text summary this replaces
+-- had, now with an identity per item so each one can travel, be accepted,
+-- and be retired on its own.
+--
+-- item_id is a UUID minted client-side and stable across export/import, the
+-- same identity rule note_id follows: an integer id in a player's database
+-- would either collide or attach to an unrelated item.
+CREATE TABLE IF NOT EXISTS coach_focus_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  item_id TEXT NOT NULL UNIQUE,
+  player_ref INTEGER NOT NULL REFERENCES coach_players (id) ON DELETE CASCADE,
   text TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
 ) STRICT;
+-- statement-end
+CREATE INDEX IF NOT EXISTS idx_coach_focus_items_player
+  ON coach_focus_items (player_ref, sort_order);
 -- statement-end
 
 -- Accepted coach notes on this user's own matches. Blocks accumulate per
@@ -879,4 +895,53 @@ CREATE TABLE IF NOT EXISTS share_export_matches (
   sort_order INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (export_id, match_key)
 ) STRICT;
+-- statement-end
+
+-- ── The player's focus list ─────────────────────────────────────────────
+--
+-- "What to work on", as rows. Two tables because the two sources have the
+-- two lifetimes the families above already draw the line between: what YOU
+-- wrote in your own sitting dies with that sitting, what a COACH sent you is
+-- match history that outlives every sitting you ever open.
+--
+-- status is the player's own progress, and there is no 'denied': a coach's
+-- item is active the moment it lands (accepting it acknowledges it rather
+-- than admitting it), and 'done' retires an item from the live-session
+-- readout without deleting what was said.
+--   new     — a coach sent it and you have not acknowledged it yet
+--   working — you are on it (where your own items start)
+--   done    — you have got this; retired, still on the record
+
+CREATE TABLE IF NOT EXISTS self_review_focus_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  item_id TEXT NOT NULL UNIQUE,
+  review_id TEXT NOT NULL REFERENCES self_reviews (review_id) ON DELETE CASCADE,
+  text TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'working' CHECK (status IN ('new', 'working', 'done')),
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
+-- statement-end
+CREATE INDEX IF NOT EXISTS idx_self_review_focus_items_review
+  ON self_review_focus_items (review_id, sort_order);
+-- statement-end
+
+-- A coach's items as they landed here. No foreign key: they arrive from a
+-- notes file, keyed by the coach and the session that wrote them, and they
+-- must survive every sitting the player opens afterwards.
+CREATE TABLE IF NOT EXISTS received_focus_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  item_id TEXT NOT NULL UNIQUE,
+  coach_name TEXT NOT NULL,
+  session_date TEXT NOT NULL,
+  text TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'working', 'done')),
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  received_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
+-- statement-end
+CREATE INDEX IF NOT EXISTS idx_received_focus_items_status
+  ON received_focus_items (status, sort_order);
 -- statement-end

@@ -193,6 +193,12 @@ func (s *SQLStore) Clear() error {
 		"coach_returns",     // coach_return_decisions cascade
 		"self_reviews",      // membership, notes, tags and moments cascade
 		"share_exports",     // the sent ledger; share_export_matches cascade
+		// The player-side focus families are match history (self_review_focus_items
+		// cascades with its sitting, but naming it is cheaper than relying on
+		// the order the parent wipe happens to run in); coach_focus_items is the
+		// AUTHORED family and survives, like the summaries it replaces.
+		"received_focus_items",
+		"self_review_focus_items",
 	} {
 		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
 		if _, err := tx.Exec(`DELETE FROM ` + t); err != nil {
