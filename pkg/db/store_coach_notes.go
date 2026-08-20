@@ -227,46 +227,6 @@ func (s *SQLStore) loadCoachNoteRows(playerRef int64) (map[int64]*CoachNote, err
 	return out, nil
 }
 
-func (s *SQLStore) SetCoachSummary(playerRef int64, text string) error {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	if err := requireCoachPlayer(tx, playerRef); err != nil {
-		return err
-	}
-	if text == "" {
-		_, err = tx.Exec(`DELETE FROM coach_session_summaries WHERE player_ref = ?`, playerRef)
-	} else {
-		_, err = tx.Exec(
-			`INSERT INTO coach_session_summaries (player_ref, text) VALUES (?, ?)
-			 ON CONFLICT(player_ref) DO UPDATE SET
-			   text       = excluded.text,
-			   updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`,
-			playerRef, text,
-		)
-	}
-	if err != nil {
-		return fmt.Errorf("set coach summary: %w", err)
-	}
-	return tx.Commit()
-}
-
-func (s *SQLStore) LoadCoachSummary(playerRef int64) (CoachSummary, bool, error) {
-	out := CoachSummary{PlayerRef: playerRef}
-	err := s.db.QueryRow(
-		`SELECT text, updated_at FROM coach_session_summaries WHERE player_ref = ?`, playerRef,
-	).Scan(&out.Text, &out.UpdatedAt)
-	if errors.Is(err, sql.ErrNoRows) {
-		return CoachSummary{}, false, nil
-	}
-	if err != nil {
-		return CoachSummary{}, false, fmt.Errorf("load coach summary: %w", err)
-	}
-	return out, true, nil
-}
-
 // ── A note's timestamped moments ──────────────────────────────────────────
 //
 // Moments hang off a note rather than replacing it: the note stays the
@@ -415,11 +375,9 @@ func (s *SQLStore) LoadCoachPlayers() ([]CoachPlayerSummary, error) {
 			p.id,
 			p.handle,
 			COUNT(n.id),
-			COALESCE(MAX(n.updated_at), ''),
-			COALESCE(cs.text, '')
+			COALESCE(MAX(n.updated_at), '')
 		FROM coach_players AS p
 		LEFT JOIN coach_notes AS n ON n.player_ref = p.id
-		LEFT JOIN coach_session_summaries AS cs ON cs.player_ref = p.id
 		GROUP BY p.id
 		ORDER BY MAX(n.updated_at) DESC NULLS LAST, p.id DESC`)
 	if err != nil {
@@ -429,10 +387,24 @@ func (s *SQLStore) LoadCoachPlayers() ([]CoachPlayerSummary, error) {
 	out := []CoachPlayerSummary{}
 	for rows.Next() {
 		var r CoachPlayerSummary
-		if err := rows.Scan(&r.ID, &r.Handle, &r.NoteCount, &r.LastNoteAt, &r.Summary); err != nil {
+		if err := rows.Scan(&r.ID, &r.Handle, &r.NoteCount, &r.LastNoteAt); err != nil {
 			return nil, fmt.Errorf("scan coach player summary: %w", err)
 		}
 		out = append(out, r)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// The focus list per player, read after the scan: a join would multiply
+	// the note COUNT by the number of items.
+	for i := range out {
+		items, err := s.LoadCoachFocusItems(out[i].ID)
+		if err != nil {
+			return nil, err
+		}
+		for _, it := range items {
+			out[i].FocusItems = append(out[i].FocusItems, it.Text)
+		}
+	}
+	return out, nil
 }

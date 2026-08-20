@@ -308,10 +308,12 @@ func TestSession_View_WireShape(t *testing.T) {
 	s := openSeededSession(t, sharePlayer())
 	notes := []coach.Note{{NoteID: "n1", MatchKey: keyIlios, Kind: "note", Text: "hi", FocusTags: []string{"comms"}, ExtraTags: []string{}, MatchClock: "06:40", UpdatedAt: "2026-08-15T09:00:00Z"}}
 
-	got := fieldsOf(t, s.View(notes, "work on ults", "Ordo", fixedNow))
+	focus := []coach.FocusItem{{ItemID: focusIDOne, Text: "work on ults"}}
+
+	got := fieldsOf(t, s.View(notes, focus, "Ordo", fixedNow))
 
 	names := slices.Sorted(maps.Keys(got))
-	wantNames := []string{"coach_name", "exported_at", "handle_from_bundle", "match_count", "notes", "player", "session_date", "summary"}
+	wantNames := []string{"coach_name", "exported_at", "focus_items", "handle_from_bundle", "match_count", "notes", "player", "session_date"}
 	if !reflect.DeepEqual(names, wantNames) {
 		t.Errorf("view fields = %v, want %v", names, wantNames)
 	}
@@ -321,7 +323,7 @@ func TestSession_View_WireShape(t *testing.T) {
 		"session_date":       `"2026-08-15"`,
 		"match_count":        "4",
 		"coach_name":         `"Ordo"`,
-		"summary":            `"work on ults"`,
+		"focus_items":        `[{"item_id":"` + focusIDOne + `","text":"work on ults"}]`,
 		"handle_from_bundle": "true",
 	}
 	for name, want := range wantValues {
@@ -351,7 +353,7 @@ func assertViewBlocks(t *testing.T, got map[string]string) {
 
 func TestSession_View_NilNotesMarshalAsEmptyArray(t *testing.T) {
 	s := openSeededSession(t, nil)
-	b, err := json.Marshal(s.View(nil, "", "", fixedNow))
+	b, err := json.Marshal(s.View(nil, nil, "", fixedNow))
 	if err != nil {
 		t.Fatal(err)
 	}

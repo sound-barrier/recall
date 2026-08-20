@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 
@@ -82,8 +83,11 @@ type sessionView struct {
 	SessionDate string `json:"session_date"`
 	MatchCount  int    `json:"match_count"`
 	CoachName   string `json:"coach_name"`
-	Summary     string `json:"summary"`
-	Notes       []struct {
+	FocusItems  []struct {
+		ItemID string `json:"item_id"`
+		Text   string `json:"text"`
+	} `json:"focus_items"`
+	Notes []struct {
 		NoteID    string   `json:"note_id"`
 		MatchKey  string   `json:"match_key"`
 		Kind      string   `json:"kind"`
@@ -301,8 +305,9 @@ func TestCoachSession_MalformedBodiesAre400(t *testing.T) {
 		{"note truncated", http.MethodPut, notePath(sessionMatch1), `{"kind":`},
 		{"note is not an object", http.MethodPut, notePath(sessionMatch1), `"nope"`},
 		{"note is null", http.MethodPut, notePath(sessionMatch1), `null`},
-		{"summary missing text", http.MethodPut, sessionPath + "/summary", `{}`},
-		{"summary text is null", http.MethodPut, sessionPath + "/summary", `{"text":null}`},
+		{"focus items missing", http.MethodPut, sessionPath + "/focus-items", `{}`},
+		{"focus items is null", http.MethodPut, sessionPath + "/focus-items", `{"items":null}`},
+		{"focus item has no id", http.MethodPut, sessionPath + "/focus-items", `{"items":[{"text":"x"}]}`},
 		{"player handle is null", http.MethodPut, sessionPath + "/player", `{"handle":null}`},
 	}
 	for _, tc := range cases {
@@ -317,15 +322,19 @@ func TestCoachSession_MalformedBodiesAre400(t *testing.T) {
 	}
 }
 
-func TestCoachSessionSummary_PutPersistsIntoTheView(t *testing.T) {
+func TestCoachSessionFocusItems_PutPersistsIntoTheView(t *testing.T) {
 	_, mux := newCoachMux(t)
 	openSession(t, mux)
 
-	if rec := put(t, mux, sessionPath+"/summary", map[string]any{"text": "Ult economy first."}); rec.Code != http.StatusNoContent {
+	body := map[string]any{"items": []map[string]string{
+		{"item_id": "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d", "text": "Ult economy first."},
+	}}
+	if rec := put(t, mux, sessionPath+"/focus-items", body); rec.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want 204; body=%q", rec.Code, rec.Body.String())
 	}
-	if got := decodeSessionView(t, get(t, mux, sessionPath).Body.Bytes()).Summary; got != "Ult economy first." {
-		t.Errorf("summary = %q, want the text just written", got)
+	got := decodeSessionView(t, get(t, mux, sessionPath).Body.Bytes()).FocusItems
+	if len(got) != 1 || got[0].Text != "Ult economy first." {
+		t.Errorf("focus items = %+v, want the list just written", got)
 	}
 }
 
@@ -384,8 +393,8 @@ func TestListCoachPlayers_RosterRoundTrip(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("UpsertCoachNote: %v", err)
 	}
-	if err := store.SetCoachSummary(sable.ID, "ult economy first"); err != nil {
-		t.Fatalf("SetCoachSummary: %v", err)
+	if err := store.SetCoachFocusItems(sable.ID, []db.FocusItem{{ItemID: "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d", Text: "ult economy first"}}); err != nil {
+		t.Fatalf("SetCoachFocusItems: %v", err)
 	}
 
 	assertRosterHasSable(t, fire(t, mux, http.MethodGet, "/api/v1/coach/players", nil))
@@ -398,10 +407,10 @@ func assertRosterHasSable(t *testing.T, rec *httptest.ResponseRecorder) {
 		t.Fatalf("GET /coach/players = %d, want 200", rec.Code)
 	}
 	var roster []struct {
-		Handle     string `json:"handle"`
-		NoteCount  int    `json:"note_count"`
-		LastNoteAt string `json:"last_note_at"`
-		Summary    string `json:"summary"`
+		Handle     string   `json:"handle"`
+		NoteCount  int      `json:"note_count"`
+		LastNoteAt string   `json:"last_note_at"`
+		FocusItems []string `json:"focus_items"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &roster); err != nil {
 		t.Fatalf("decode roster: %v", err)
@@ -410,8 +419,8 @@ func assertRosterHasSable(t *testing.T, rec *httptest.ResponseRecorder) {
 		t.Fatalf("roster = %d rows, want 1", len(roster))
 	}
 	got := roster[0]
-	if got.Handle != "Sable" || got.NoteCount != 1 || got.Summary != "ult economy first" || got.LastNoteAt == "" {
-		t.Fatalf("roster row = %+v, want Sable with 1 note, the summary and a stamp", got)
+	if got.Handle != "Sable" || got.NoteCount != 1 || !slices.Equal(got.FocusItems, []string{"ult economy first"}) || got.LastNoteAt == "" {
+		t.Fatalf("roster row = %+v, want Sable with 1 note, the focus list and a stamp", got)
 	}
 }
 

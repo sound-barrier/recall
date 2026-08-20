@@ -96,9 +96,9 @@ func TestExportNotes_AssemblesTheFileAndValidates(t *testing.T) {
 	t.Parallel()
 	s := openSeededSession(t, sharePlayer())
 	notes := coach.Notes(s, map[string]db.CoachNote{keyIlios: storedNote(keyIlios, "hold the high ground", []string{"positioning"})}, nil)
-	summary := db.CoachSummary{PlayerRef: 1, Text: "Work on positioning."}
+	focus := []coach.FocusItem{{ItemID: coach.NewID(), Text: "Work on positioning."}}
 
-	f, err := coach.ExportNotes(s, notes, summary, "Ordo", "0.31.0", exportClock)
+	f, err := coach.ExportNotes(s, notes, focus, "Ordo", "0.31.0", exportClock)
 	if err != nil {
 		t.Fatalf("ExportNotes: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestExportNotes_AssemblesTheFileAndValidates(t *testing.T) {
 		CoachName:     "Ordo",
 		Player:        coach.Player{ID: sharePlayer().ID, Handle: "Sable"},
 		SessionDate:   "2026-08-12",
-		Summary:       "Work on positioning.",
+		FocusItems:    focus,
 		Notes:         notes,
 	}
 	if !reflect.DeepEqual(f, want) {
@@ -125,16 +125,17 @@ func TestExportNotes_AssemblesTheFileAndValidates(t *testing.T) {
 	}
 }
 
-func TestExportNotes_SummaryOnlyIsEnough(t *testing.T) {
+func TestExportNotes_FocusItemsOnlyAreEnough(t *testing.T) {
 	t.Parallel()
 	s := openSeededSession(t, sharePlayer())
+	focus := []coach.FocusItem{{ItemID: coach.NewID(), Text: "Ladder anxiety, not aim."}}
 
-	f, err := coach.ExportNotes(s, nil, db.CoachSummary{Text: "Ladder anxiety, not aim."}, "Ordo", "0.31.0", exportClock)
+	f, err := coach.ExportNotes(s, nil, focus, "Ordo", "0.31.0", exportClock)
 	if err != nil {
 		t.Fatalf("ExportNotes: %v", err)
 	}
-	if f.Summary == "" || len(f.Notes) != 0 {
-		t.Errorf("got %d notes and summary %q", len(f.Notes), f.Summary)
+	if len(f.FocusItems) != 1 || len(f.Notes) != 0 {
+		t.Errorf("got %d notes and %d items", len(f.Notes), len(f.FocusItems))
 	}
 }
 
@@ -147,12 +148,12 @@ func TestExportNotes_Refusals(t *testing.T) {
 		handle    string
 		coachName string
 		notes     []coach.Note
-		summary   string
+		focus     []coach.FocusItem
 		want      error
 	}{
-		{"no coach name", "Sable", "", oneNote, "", coach.ErrCoachNameRequired},
-		{"no handle confirmed", "", "Ordo", oneNote, "", coach.ErrHandleRequired},
-		{"nothing written", "Sable", "Ordo", nil, "", coach.ErrNothingToExport},
+		{"no coach name", "Sable", "", oneNote, nil, coach.ErrCoachNameRequired},
+		{"no handle confirmed", "", "Ordo", oneNote, nil, coach.ErrHandleRequired},
+		{"nothing written", "Sable", "Ordo", nil, nil, coach.ErrNothingToExport},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -160,7 +161,7 @@ func TestExportNotes_Refusals(t *testing.T) {
 			s := openSeededSession(t, sharePlayer())
 			s.Player.Handle = tc.handle
 
-			_, err := coach.ExportNotes(s, tc.notes, db.CoachSummary{Text: tc.summary}, tc.coachName, "0.31.0", exportClock)
+			_, err := coach.ExportNotes(s, tc.notes, tc.focus, tc.coachName, "0.31.0", exportClock)
 
 			if !errors.Is(err, tc.want) {
 				t.Errorf("got %v, want %v", err, tc.want)

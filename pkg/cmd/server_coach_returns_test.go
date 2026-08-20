@@ -49,7 +49,7 @@ func notesArchive(t *testing.T, writtenKey, reviewedKey string) []byte {
 		CoachName:     "Ordo",
 		Player:        coach.Player{Handle: "Sable"},
 		SessionDate:   now.Format(time.DateOnly),
-		Summary:       "Ult economy first, positioning second.",
+		FocusItems:    []coach.FocusItem{{ItemID: "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d", Text: "Ult economy first, positioning second."}},
 		Notes: []coach.Note{
 			{
 				NoteID: coach.NewID(), MatchKey: writtenKey, Kind: coach.KindNote,

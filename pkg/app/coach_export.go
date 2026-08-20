@@ -55,9 +55,9 @@ func (a *App) coachNotesFileLocked(coachName string, now time.Time) (coach.Notes
 	if err != nil {
 		return coach.NotesFile{}, fmt.Errorf("coach: load note moments: %w", err)
 	}
-	summary, _, err := a.store.LoadCoachSummary(playerRef)
+	items, err := a.store.LoadCoachFocusItems(playerRef)
 	if err != nil {
-		return coach.NotesFile{}, fmt.Errorf("coach: load summary: %w", err)
+		return coach.NotesFile{}, fmt.Errorf("coach: load focus items: %w", err)
 	}
-	return coach.ExportNotes(s, coach.Notes(s, stored, moments), summary, coachName, Version, now)
+	return coach.ExportNotes(s, coach.Notes(s, stored, moments), toWireFocusItems(items), coachName, Version, now)
 }

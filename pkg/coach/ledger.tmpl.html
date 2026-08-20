@@ -44,6 +44,14 @@
   .chip.focus { border: 1px solid var(--ink-dim); color: var(--ink); text-transform: uppercase; }
   .chip.extra { background: var(--paper-2); color: var(--ink-dim); }
   .clock { color: var(--ink-dim); margin-right: 0.5rem; }
+  /* The clock reads as the first thing said, so it sits ON the note's first
+     line rather than stranded above it — which is what an inline span before
+     a block-level rendered paragraph would do. */
+  .said { display: flex; align-items: baseline; gap: 0.1rem; }
+  .said .clock { flex: none; }
+  .said .text { flex: 1; min-width: 0; }
+  .focus { margin: 0; padding-left: 1.2rem; }
+  .focus li { margin: 0.25rem 0; }
   /* Note bodies are rendered markdown (see RenderMarkdown): the blocks
      carry their own spacing, so this no longer preserves raw newlines. */
   .text { margin: 0; }
@@ -79,10 +87,12 @@
     <li>Recall {{.RecallVersion}}</li>
   </ul>
 </header>
-{{if .Summary}}
+{{if .FocusItems}}
 <section class="summary">
   <h2>What to work on</h2>
-  <p class="text">{{.Summary}}</p>
+  <ol class="focus">
+    {{range .FocusItems}}<li>{{.Text}}</li>{{end}}
+  </ol>
 </section>
 {{end}}
 <main>
@@ -103,7 +113,12 @@
     {{range .ExtraTags}}<li class="chip extra">{{.}}</li>{{end}}
   </ul>
   {{end}}
-  {{if or .Text .MatchClock}}<div class="text">{{if .MatchClock}}<span class="clock mono">[{{.MatchClock}}]</span>{{end}}{{.TextHTML}}</div>{{end}}
+  {{if or .Text .MatchClock}}
+  <div class="said">
+    {{if .MatchClock}}<span class="clock mono">[{{.MatchClock}}]</span>{{end}}
+    <div class="text">{{.TextHTML}}</div>
+  </div>
+  {{end}}
   {{if .Moments}}
   <ol class="moments">
     {{range .Moments}}

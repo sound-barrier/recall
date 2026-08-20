@@ -162,6 +162,7 @@ var defaultProblems = []errStatus{
 	// methods with no such guard — and unmapped, this fell through to 500.
 	{app.ErrMatchKeyRequired, probInvalidBody},
 	{coach.ErrNoteInvalid, probInvalidBody},
+	{coach.ErrFocusItemInvalid, probInvalidBody},
 	{coach.ErrHandleInvalid, probInvalidBody},
 	{app.ErrCoachNameInvalid, probInvalidBody},
 	{review.ErrTitleInvalid, probInvalidBody},

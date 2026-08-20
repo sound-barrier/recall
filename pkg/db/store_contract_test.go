@@ -2,6 +2,7 @@ package db_test
 
 import (
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -682,8 +683,8 @@ func TestStoreContract_LoadCoachPlayersRoster(t *testing.T) {
 			if roster[1].NoteCount != 2 || roster[0].NoteCount != 1 {
 				t.Errorf("note counts = [%d %d], want [1 2]", roster[0].NoteCount, roster[1].NoteCount)
 			}
-			if roster[1].Summary != "hold angles" {
-				t.Errorf("summary = %q, want the stored one", roster[1].Summary)
+			if !slices.Equal(roster[1].FocusItems, []string{"hold angles"}) {
+				t.Errorf("focus items = %v, want the stored one", roster[1].FocusItems)
 			}
 			if roster[0].LastNoteAt == "" {
 				t.Error("LastNoteAt is empty, want the newest note stamp")
@@ -704,7 +705,7 @@ func seedRosterNotes(t *testing.T, s db.Store, sableRef, vexRef int64) {
 		CreatedAt: "2026-05-02T10:00:00Z", UpdatedAt: "2026-05-02T10:00:00Z",
 	})
 	mustNoErr(t, err)
-	mustNoErr(t, s.SetCoachSummary(sableRef, "hold angles"))
+	mustNoErr(t, s.SetCoachFocusItems(sableRef, []db.FocusItem{{ItemID: "f-1", Text: "hold angles"}}))
 	_, err = s.UpsertCoachNote(db.CoachNote{
 		NoteID: "n-3", PlayerRef: vexRef, MatchKey: "m-9", Kind: "note", Text: "newest",
 		CreatedAt: "2026-06-01T10:00:00Z", UpdatedAt: "2026-06-01T10:00:00Z",

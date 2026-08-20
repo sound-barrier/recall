@@ -46,6 +46,9 @@ var (
 	// ErrNoteInvalid — a note (or a decision naming one) failed validation;
 	// the wrapped message names the field (400).
 	ErrNoteInvalid = errors.New("coach: invalid note")
+	// ErrFocusItemInvalid reports a focus list that breaks its own rules —
+	// a non-UUID or repeated item_id, blank or over-long text, too many rows.
+	ErrFocusItemInvalid = errors.New("coach: invalid focus item")
 	// ErrMomentEmpty — a moment write whose body is spec-valid but says
 	// nothing. Separate from ErrNoteInvalid because it maps to 409 rather
 	// than 400: the request parsed fine and the refusal is semantic, the

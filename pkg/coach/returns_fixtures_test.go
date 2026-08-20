@@ -40,20 +40,20 @@ func summaryOnlyNotes(t *testing.T) []byte {
 }
 
 // unmatchedNotes is a file whose every note is about a match the player does
-// not have, with no summary to fall back on.
+// not have, with no focus items to fall back on.
 func unmatchedNotes(t *testing.T) []byte {
 	t.Helper()
 	f := validNotesFile()
-	f.Summary = ""
+	f.FocusItems = nil
 	return writeNotes(t, f)
 }
 
-// emptyNotes carries neither notes nor a summary — nothing the player could
-// be shown, which is the one file staging still refuses outright.
+// emptyNotes carries neither notes nor focus items — nothing the player
+// could be shown, which is the one file staging still refuses outright.
 func emptyNotes(t *testing.T) []byte {
 	t.Helper()
 	f := validNotesFile()
-	f.Notes, f.Summary = nil, ""
+	f.Notes, f.FocusItems = nil, nil
 	return writeNotes(t, f)
 }
 
@@ -164,7 +164,8 @@ func asJSON(t *testing.T, v any) string {
 func wantStagedSheet(id int64, importedAt string) coach.ReturnSheet {
 	return coach.ReturnSheet{
 		ID: id, CoachName: "Ordo", PlayerHandle: "Sable", SessionDate: "2026-08-15",
-		ImportedAt: importedAt, Summary: "Work on ult timing.",
+		ImportedAt: importedAt,
+		FocusItems: []coach.FocusItem{{ItemID: focusIDOne, Text: "Work on ult timing."}},
 		Notes: []coach.ReturnItem{
 			{
 				NoteID: noteIDOne, MatchKey: keyIlios, Kind: "note", Text: "hold high ground",

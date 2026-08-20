@@ -21,8 +21,8 @@ type NoteStore interface {
 	UpsertCoachNoteMoment(playerRef int64, m db.CoachNoteMoment) (db.CoachNoteMoment, error)
 	DeleteCoachNoteMoment(playerRef int64, momentID string) error
 	LoadCoachNoteMoments(playerRef int64) (map[string][]db.CoachNoteMoment, error)
-	SetCoachSummary(playerRef int64, text string) error
-	LoadCoachSummary(playerRef int64) (db.CoachSummary, bool, error)
+	SetCoachFocusItems(playerRef int64, items []db.FocusItem) error
+	LoadCoachFocusItems(playerRef int64) ([]db.FocusItem, error)
 }
 
 // Notes renders the coach's stored notes for the session in the order the
@@ -74,14 +74,14 @@ func withMoments(n Note, moments map[string][]db.CoachNoteMoment) Note {
 // ExportNotes assembles the notes file for a session. It refuses rather
 // than shipping something the player's side would reject or could not
 // attribute: no coach name, no confirmed handle, or nothing written yet.
-func ExportNotes(s *Session, notes []Note, summary db.CoachSummary, coachName, recallVersion string, now time.Time) (NotesFile, error) {
+func ExportNotes(s *Session, notes []Note, focus []FocusItem, coachName, recallVersion string, now time.Time) (NotesFile, error) {
 	if coachName == "" {
 		return NotesFile{}, ErrCoachNameRequired
 	}
 	if s.Player.Handle == "" {
 		return NotesFile{}, ErrHandleRequired
 	}
-	if len(notes) == 0 && summary.Text == "" {
+	if len(notes) == 0 && len(focus) == 0 {
 		return NotesFile{}, ErrNothingToExport
 	}
 	if notes == nil {
@@ -96,7 +96,7 @@ func ExportNotes(s *Session, notes []Note, summary db.CoachSummary, coachName, r
 		// in the file traveling back.
 		Player:      Player{ID: s.Player.ID, Handle: s.Player.Handle},
 		SessionDate: SessionDate(now),
-		Summary:     summary.Text,
+		FocusItems:  focus,
 		Notes:       notes,
 	}
 	if err := ValidateNotesFile(f); err != nil {

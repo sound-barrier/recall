@@ -9,6 +9,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/coach"
+	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
 	"recall/pkg/match"
 	"recall/pkg/matchedit"
@@ -111,6 +112,12 @@ func gatedSelfReviewWrites(a *app.App) map[string]func() error {
 			return err
 		},
 		"DeleteSelfReview": func() error { return a.DeleteSelfReview("r") },
+		"SetSelfReviewFocusItems": func() error {
+			return a.SetSelfReviewFocusItems("r", []db.FocusItem{{ItemID: "i", Text: "t"}})
+		},
+		// The player's own list — a coach's items land in it, but moving one
+		// is the player acting on their data, so the gate covers it.
+		"SetFocusItemStatus": func() error { return a.SetFocusItemStatus("i", db.FocusWorking) },
 		"FinishSelfReview": func() error {
 			_, err := a.FinishSelfReview("r")
 			return err
@@ -188,7 +195,7 @@ var ungatedByDesign = map[string]string{
 	"SetCoachingSettings":   "settings, not the corpus",
 	"SetCoachSessionPlayer": "the session's own surface",
 	"PutCoachNote":          "the session's own surface — coach-authored, by design",
-	"PutCoachSummary":       "the session's own surface — coach-authored, by design",
+	"PutCoachFocusItems":    "the session's own surface — coach-authored, by design",
 	"DeleteCoachNote":       "the session's own surface — coach-authored, by design",
 	"PutCoachMoment":        "the session's own surface — coach-authored, by design",
 	"DeleteCoachMoment":     "the session's own surface — coach-authored, by design",

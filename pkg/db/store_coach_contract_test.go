@@ -227,30 +227,30 @@ func TestStoreContract_DeleteCoachNoteRemovesTheRowAndIsIdempotent(t *testing.T)
 	}
 }
 
-// The session summary is one row per player; an empty text deletes it so an
-// autosave of a cleared textarea leaves nothing behind.
-func TestStoreContract_SetCoachSummaryEmptyDeletes(t *testing.T) {
+// The coach's focus list is replaced wholesale, so an empty slice clears it
+// — an autosave of a list the coach emptied leaves nothing behind.
+func TestStoreContract_SetCoachFocusItemsEmptyClears(t *testing.T) {
 	for _, impl := range storeImpls {
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
 			p := ensurePlayer(t, s, "", "Sable")
-			if _, ok, err := s.LoadCoachSummary(p.ID); err != nil || ok {
-				t.Fatalf("fresh player summary = (%v, %v), want (false, nil)", ok, err)
+			if got, err := s.LoadCoachFocusItems(p.ID); err != nil || len(got) != 0 {
+				t.Fatalf("fresh player list = (%v, %v), want empty", got, err)
 			}
-			mustNoErr(t, s.SetCoachSummary(p.ID, "work on ult tracking"))
-			mustNoErr(t, s.SetCoachSummary(p.ID, "work on ult tracking and comms"))
-			got, ok, err := s.LoadCoachSummary(p.ID)
+			mustNoErr(t, s.SetCoachFocusItems(p.ID, []db.FocusItem{{ItemID: "f-1", Text: "ult tracking"}}))
+			mustNoErr(t, s.SetCoachFocusItems(p.ID, []db.FocusItem{
+				{ItemID: "f-1", Text: "ult tracking"},
+				{ItemID: "f-2", Text: "comms"},
+			}))
+			got, err := s.LoadCoachFocusItems(p.ID)
 			mustNoErr(t, err)
-			if !ok || got.Text != "work on ult tracking and comms" || got.PlayerRef != p.ID {
-				t.Errorf("summary = (%+v, %v), want the upserted text", got, ok)
+			if len(got) != 2 || got[0].Text != "ult tracking" || got[1].Text != "comms" {
+				t.Errorf("items = %+v, want the replacement list in order", got)
 			}
-			assertRFC3339(t, "UpdatedAt", got.UpdatedAt)
-			mustNoErr(t, s.SetCoachSummary(p.ID, ""))
-			if _, ok, _ := s.LoadCoachSummary(p.ID); ok {
-				t.Error("empty text did not delete the summary")
-			}
-			if err := s.SetCoachSummary(p.ID+99, "x"); !errors.Is(err, db.ErrCoachPlayerUnknown) {
-				t.Errorf("summary for an unknown player = %v, want ErrCoachPlayerUnknown", err)
+			assertRFC3339(t, "UpdatedAt", got[0].UpdatedAt)
+			mustNoErr(t, s.SetCoachFocusItems(p.ID, nil))
+			if got, _ := s.LoadCoachFocusItems(p.ID); len(got) != 0 {
+				t.Errorf("an empty slice did not clear the list: %+v", got)
 			}
 		})
 	}
@@ -381,7 +381,7 @@ func TestStoreContract_ClearWipesReceivedButKeepsCoachAuthored(t *testing.T) {
 			p := ensurePlayer(t, s, "p1", "Sable")
 			_, err := s.UpsertCoachNote(db.CoachNote{PlayerRef: p.ID, MatchKey: coachKey, Kind: "note", Text: "keep me", FocusTags: []string{"comms"}})
 			mustNoErr(t, err)
-			mustNoErr(t, s.SetCoachSummary(p.ID, "keep me too"))
+			mustNoErr(t, s.SetCoachFocusItems(p.ID, []db.FocusItem{{ItemID: "f-keep", Text: "keep me too"}}))
 			_, err = s.UpsertMatchCoachNote(receivedNote("n1", "a", "comms"))
 			mustNoErr(t, err)
 			_, err = s.InsertCoachReturn(db.CoachReturn{ContentHash: "h1", CoachName: "Ordo", PlayerHandle: "Sable", SessionDate: "2026-08-08", NotesJSON: []byte(`{}`)})
@@ -415,8 +415,8 @@ func assertAuthoredLayerKept(t *testing.T, s db.Store, p db.CoachPlayer) {
 	if notes[coachKey].Text != "keep me" || !sameTags(notes[coachKey].FocusTags, []string{"comms"}) {
 		t.Errorf("Clear dropped coach-authored notes: %v", notes)
 	}
-	if sum, ok, _ := s.LoadCoachSummary(p.ID); !ok || sum.Text != "keep me too" {
-		t.Errorf("Clear dropped the coach summary: (%+v, %v)", sum, ok)
+	if items, _ := s.LoadCoachFocusItems(p.ID); len(items) != 1 || items[0].Text != "keep me too" {
+		t.Errorf("Clear dropped the coach focus list: %+v", items)
 	}
 }
 

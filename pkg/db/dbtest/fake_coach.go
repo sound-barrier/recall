@@ -144,30 +144,6 @@ func (f *Fake) LoadCoachNotes(playerRef int64) (map[string]db.CoachNote, error) 
 	return out, nil
 }
 
-func (f *Fake) SetCoachSummary(playerRef int64, text string) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if !f.hasCoachPlayer(playerRef) {
-		return db.ErrCoachPlayerUnknown
-	}
-	if text == "" {
-		delete(f.CoachSummaries, playerRef)
-		return nil
-	}
-	if f.CoachSummaries == nil {
-		f.CoachSummaries = map[int64]db.CoachSummary{}
-	}
-	f.CoachSummaries[playerRef] = db.CoachSummary{PlayerRef: playerRef, Text: text, UpdatedAt: nowRFC3339()}
-	return nil
-}
-
-func (f *Fake) LoadCoachSummary(playerRef int64) (db.CoachSummary, bool, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	s, ok := f.CoachSummaries[playerRef]
-	return s, ok, nil
-}
-
 func (f *Fake) UpsertMatchCoachNote(n db.MatchCoachNote) (int64, error) {
 	if n.NoteID == "" {
 		return 0, errors.New("dbtest: upsert match coach note: note_id is required")
@@ -456,8 +432,8 @@ func (f *Fake) LoadCoachPlayers() ([]db.CoachPlayerSummary, error) {
 				row.LastNoteAt = n.UpdatedAt
 			}
 		}
-		if cs, ok := f.CoachSummaries[p.ID]; ok {
-			row.Summary = cs.Text
+		for _, it := range f.CoachFocusItems[p.ID] {
+			row.FocusItems = append(row.FocusItems, it.Text)
 		}
 		out = append(out, row)
 	}
