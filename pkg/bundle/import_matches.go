@@ -54,12 +54,8 @@ func Import(store db.Store, payload []byte) (ImportSummary, error) {
 		summaries: data.Summaries,
 		teams:     data.Teams,
 		personals: data.Personals,
-		// A pre-v3 payload cannot tell an unread rank movement from a real zero,
-		// so importing its numbers verbatim would promote fabricated zeros to
-		// measurements — the carry-forward the store refuses an old database to
-		// prevent. Drop them; a re-parse recovers the real values.
-		ranks:    dropPreV3RankReadings(data.Schema, data.Ranks),
-		unknowns: data.Unknowns,
+		ranks:     data.Ranks,
+		unknowns:  data.Unknowns,
 	}
 	if err := validateParentFilenames(incoming); err != nil {
 		return ImportSummary{}, err

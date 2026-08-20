@@ -102,11 +102,8 @@ func readDataEntry(zr *zip.Reader) (DataV2, error) {
 		return DataV2{}, fmt.Errorf("%w: data.json decode: %w", ErrImportMalformed, err)
 	}
 	if !supportedExportSchema(data.Schema) {
-		return DataV2{}, fmt.Errorf("import: unsupported data schema %q (this build accepts %s)",
-			data.Schema, strings.Join(exportSchemaOrder, ", "))
-	}
-	if err := adoptPreV4SummaryEAD(dataBytes, &data); err != nil {
-		return DataV2{}, err
+		return DataV2{}, fmt.Errorf("import: unsupported data schema %q (this build accepts %q)",
+			data.Schema, exportSchema)
 	}
 	return data, nil
 }

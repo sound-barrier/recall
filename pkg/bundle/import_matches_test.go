@@ -16,7 +16,7 @@ import (
 // makes.
 func allTablesData() map[string]any {
 	return map[string]any{
-		"schema":          dataSchemaV2,
+		"schema":          dataSchema,
 		"summaries":       []map[string]any{{"Filename": "s.png", "MatchKey": "m1"}},
 		"teams":           []map[string]any{{"Filename": "t.png", "MatchKey": "m1"}},
 		"personals":       []map[string]any{{"Filename": "p.png", "MatchKey": "m1"}},
@@ -207,7 +207,7 @@ func TestImport_ReimportIsIdempotentAndCountsEveryKey(t *testing.T) {
 func TestImport_ExistingKeyKeepsLocalEditsIntact(t *testing.T) {
 	dst := seedLocalEdits(t)
 	payload := payloadWithData(t, map[string]any{
-		"schema":          dataSchemaV2,
+		"schema":          dataSchema,
 		"summaries":       []map[string]any{{"Filename": "a.png", "MatchKey": "m1", "Map": "junkertown"}},
 		"user_match_data": []map[string]any{{"MatchKey": "m1", "Map": "numbani"}},
 		"annotations":     []map[string]any{{"MatchKey": "m1", "Note": "incoming note"}},
@@ -280,7 +280,7 @@ func TestImport_RejectsRowWithoutFilename(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			data := map[string]any{"schema": dataSchemaV2}
+			data := map[string]any{"schema": dataSchema}
 			maps.Copy(data, tc.rows)
 			store := dbtest.New()
 			_, err := bundle.Import(store, payloadWithData(t, data))
@@ -301,7 +301,7 @@ func TestImport_RejectsRowWithoutFilename(t *testing.T) {
 // source types and double-counting it in the Re-parse-All tally.
 func TestImport_RejectsOneFilenameClaimedByTwoTables(t *testing.T) {
 	data := map[string]any{
-		"schema":    dataSchemaV2,
+		"schema":    dataSchema,
 		"summaries": []map[string]any{{"Filename": "shot.png", "MatchKey": "m1"}},
 		"teams":     []map[string]any{{"Filename": "shot.png", "MatchKey": "m1"}},
 	}
@@ -368,7 +368,7 @@ func TestImport_SurfacesEveryStoreFailure(t *testing.T) {
 func TestImport_SkipsEmptyKeyedSectionValues(t *testing.T) {
 	store := dbtest.New()
 	payload := payloadWithData(t, map[string]any{
-		"schema":     dataSchemaV2,
+		"schema":     dataSchema,
 		"summaries":  []map[string]any{{"Filename": "a.png", "MatchKey": "m1"}},
 		"reviews":    map[string]any{"m1": map[string]any{"ReviewedBy": ""}},
 		"queues":     map[string]any{"m1": map[string]any{"QueueType": ""}},
@@ -383,12 +383,10 @@ func TestImport_SkipsEmptyKeyedSectionValues(t *testing.T) {
 	}
 }
 
-// v1 bundles (builds <= 0.22.x) predate the user layer entirely; they must keep
-// importing through the same code path with their sections simply empty.
 func TestImport_AcceptsSchemaV1BundleWithNoUserLayer(t *testing.T) {
 	store := dbtest.New()
 	payload := payloadWithData(t, map[string]any{
-		"schema":    dataSchemaV1,
+		"schema":    dataSchema,
 		"summaries": []map[string]any{{"Filename": "a.png", "MatchKey": "m1"}},
 	})
 	summary, err := bundle.Import(store, payload)

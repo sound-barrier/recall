@@ -105,7 +105,7 @@ func TestOpenSession_FlagsAMissingIdentity(t *testing.T) {
 func TestOpenSession_RejectsATamperedIdentity(t *testing.T) {
 	payload := zipWithEntries(t, map[string][]byte{
 		"manifest.json": []byte(`{"schema":"recall-bundle/v1","player":{"id":"sable-1","handle":"Sable"}}`),
-		"data.json":     []byte(`{"schema":"recall-export/v2"}`),
+		"data.json":     []byte(`{"schema":"recall-export/v1"}`),
 	})
 	if _, err := coach.OpenSession(payload, fixedNow); !errors.Is(err, bundle.ErrPlayerIdentityInvalid) {
 		t.Fatalf("err = %v, want bundle.ErrPlayerIdentityInvalid", err)

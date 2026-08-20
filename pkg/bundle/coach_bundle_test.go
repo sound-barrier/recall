@@ -380,7 +380,7 @@ func assertCoachNoteRoundTripped(t *testing.T, notes []db.MatchCoachNote) {
 func TestImport_RejectsCoachNoteWithoutNoteID(t *testing.T) {
 	store := dbtest.New()
 	payload := payloadWithData(t, map[string]any{
-		"schema":      dataSchemaV2,
+		"schema":      dataSchema,
 		"summaries":   []map[string]any{{"Filename": "a.png", "MatchKey": "m1"}},
 		"coach_notes": []map[string]any{{"NoteID": "ok", "MatchKey": "m1"}, {"NoteID": "", "MatchKey": "m1"}},
 	})

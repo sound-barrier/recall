@@ -12,12 +12,12 @@ import (
 // Wire-schema strings spelled literally rather than read back out of the
 // package under test: a rename that breaks every bundle already on disk must
 // fail these tests, not travel through them.
+//
+// ONE data schema, by policy — pre-1.0 there is no released contract to be
+// compatible with, so a shape change is a shape change. See export_bundle.go.
 const (
 	bundleSchemaV1 = "recall-bundle/v1"
-	dataSchemaV1   = "recall-export/v1"
-	dataSchemaV2   = "recall-export/v2"
-	dataSchemaV3   = "recall-export/v3"
-	dataSchemaV4   = "recall-export/v4"
+	dataSchema     = "recall-export/v1"
 )
 
 // zipEntry is one member of a synthetic bundle ZIP. `raw` writes the body
