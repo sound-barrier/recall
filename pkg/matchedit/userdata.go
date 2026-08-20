@@ -13,6 +13,10 @@ var (
 	// the bounds api/openapi.yaml documents for the MatchResult response, which
 	// the override layer echoes back verbatim.
 	ErrStatOutOfRange = errors.New("invalid stat: a numeric value is out of range")
+	// ErrDuplicateHeroPosition — two heroes claim one slot in the roster.
+	// position 0 is the primary hero, so a tie there hands the choice to the
+	// reader's sort tiebreak rather than to the player.
+	ErrDuplicateHeroPosition = errors.New("invalid heroes: two heroes share one position")
 )
 
 // SetUserData replaces the user override set for a match (inline edits send
@@ -57,7 +61,33 @@ func validateUserMatchData(in match.UserMatchDataInput) error {
 	if err := validateNumericRanges(in); err != nil {
 		return err
 	}
-	return validateRosterFields(in)
+	if err := validateRosterFields(in); err != nil {
+		return err
+	}
+	// Last: a roster naming a hero that does not exist is the more fundamental
+	// complaint, and answering with the ordering instead would bury it.
+	return validateHeroPositions(in)
+}
+
+// validateHeroPositions rejects a roster that puts two heroes in one slot.
+// position is an ORDER — 0 is the primary hero, which drives the card header
+// and the derived role — and the reader sorts on it alone, so a tie is settled
+// by SQLite's tiebreak instead of by the player. The UI cannot send one (it
+// assigns position from the list index); a non-UI client or a hand-edited
+// bundle can. The store's UNIQUE (match_key, position) is the backstop; this
+// is the answer the caller can read.
+func validateHeroPositions(in match.UserMatchDataInput) error {
+	seen := make(map[int]bool, len(in.Heroes))
+	for _, h := range in.Heroes {
+		if h.Hero == "" {
+			continue // dropped by the writer, so it claims no slot
+		}
+		if seen[h.Position] {
+			return ErrDuplicateHeroPosition
+		}
+		seen[h.Position] = true
+	}
+	return nil
 }
 
 func validateNumericRanges(in match.UserMatchDataInput) error {

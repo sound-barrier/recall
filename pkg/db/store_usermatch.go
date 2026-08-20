@@ -125,9 +125,14 @@ func insertUserMatchHeroes(tx *sql.Tx, matchKey string, heroes []UserMatchHero) 
 		if h.Hero == "" {
 			continue
 		}
+		// Targeted at the hero key, not OR IGNORE: the roster now carries a
+		// second UNIQUE on (match_key, position), and swallowing THAT would
+		// drop a hero on the floor instead of refusing a roster that puts two
+		// of them in one slot.
 		if _, err := tx.Exec(
-			`INSERT OR IGNORE INTO user_match_heroes (match_key, hero, percent_played, play_time, position)
-			 VALUES (?,?,?,?,?)`,
+			`INSERT INTO user_match_heroes (match_key, hero, percent_played, play_time, position)
+			 VALUES (?,?,?,?,?)
+			 ON CONFLICT(match_key, hero) DO NOTHING`,
 			matchKey, h.Hero, h.PercentPlayed, h.PlayTime, h.Position,
 		); err != nil {
 			return err
