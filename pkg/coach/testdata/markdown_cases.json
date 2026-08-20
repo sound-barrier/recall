@@ -8,7 +8,12 @@
     "",
     "The grammar is deliberately small: what the note toolbar can write, and",
     "nothing else. No links, no images, no tables, no raw HTML — a note is",
-    "prose a player or a coach typed, not a document."
+    "prose a player or a coach typed, not a document.",
+    "",
+    "Non-ASCII whitespace is escaped in this file on purpose: the shorthand space",
+    "class is Unicode-aware in JavaScript and ASCII-only in Go, so a pasted",
+    "non-breaking space is exactly where two hand-written renderers drift. Those",
+    "cases pin that they do not."
   ],
   "cases": [
     {
@@ -62,9 +67,9 @@
       "out": "<h3>Ult timing</h3>"
     },
     {
-      "name": "subheading",
+      "name": "a lone subheading is still the note top level (h3, no skip)",
       "in": "## Second half",
-      "out": "<h4>Second half</h4>"
+      "out": "<h3>Second half</h3>"
     },
     {
       "name": "heading with emphasis",
@@ -140,6 +145,46 @@
       "name": "a dash without a space is not a bullet",
       "in": "-5 percent",
       "out": "<p>-5 percent</p>"
+    },
+    {
+      "name": "a title above a subheading keeps both levels",
+      "in": "# First half\n## Second half",
+      "out": "<h3>First half</h3><h4>Second half</h4>"
+    },
+    {
+      "name": "bolding an italic run nests rather than crossing",
+      "in": "***hold the angle***",
+      "out": "<p><strong><em>hold the angle</em></strong></p>"
+    },
+    {
+      "name": "interleaved markers stay well nested",
+      "in": "**a *b** c*",
+      "out": "<p><strong>a *b</strong> c*</p>"
+    },
+    {
+      "name": "a non-breaking space does not open a heading",
+      "in": "#\u00a0Ult timing",
+      "out": "<p>#\u00a0Ult timing</p>"
+    },
+    {
+      "name": "a non-breaking space inside a marker is ordinary content",
+      "in": "**\u00a0hold\u00a0**",
+      "out": "<p><strong>\u00a0hold\u00a0</strong></p>"
+    },
+    {
+      "name": "a byte-order mark is not trimmed away",
+      "in": "\ufeff# Title",
+      "out": "<p>\ufeff# Title</p>"
+    },
+    {
+      "name": "a next-line character is not trimmed away",
+      "in": "\u0085# Title",
+      "out": "<p>\u0085# Title</p>"
+    },
+    {
+      "name": "a tab after the marker opens a list",
+      "in": "-\tangle",
+      "out": "<ul><li>angle</li></ul>"
     }
   ]
 }
