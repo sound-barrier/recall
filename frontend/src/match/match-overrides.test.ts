@@ -86,3 +86,60 @@ describe('match-overrides', () => {
     expect(isFieldEdited(r, 'data.healing')).toBe(false)
   })
 })
+
+// A manual match lives ONLY in the override layer — there is no OCR row
+// underneath. `edited_fields` is deliberately empty for one (every field is
+// the user's, so there is nothing to mark with a revert ✎), which meant the
+// reconstruction below came back EMPTY. The store's upsert is a whole-row
+// replace by design — a nil scalar IS the per-field revert — so sending
+// that empty set plus one edited stat nulled the map, hero, result, date
+// and rank of a match with nothing to fall back on.
+describe('overrideSetFromRecord — a manual match', () => {
+  const manual = {
+    match_key: 'manual-1',
+    source: 'manual',
+    source_files: [],
+    edited_fields: [],
+    data: {
+      map: 'rialto', hero: 'ana', result: 'victory',
+      date: '2026-08-18', finished_at: '20:10',
+      eliminations: 20, deaths: 4,
+      heroes_played: [{ hero: 'ana', percent_played: 100 }],
+    },
+  } as unknown as MatchRecord
+
+  it('reconstructs every field it holds, not the empty edited list', () => {
+    const set = overrideSetFromRecord(manual)
+    expect(set.map).toBe('rialto')
+    expect(set.hero).toBe('ana')
+    expect(set.result).toBe('victory')
+    expect(set.date).toBe('2026-08-18')
+    expect(set.finished_at).toBe('20:10')
+    expect(set.eliminations).toBe(20)
+    expect(set.deaths).toBe(4)
+    expect(set.heroes).toEqual([
+      { hero: 'ana', percent_played: 100, play_time: undefined, position: 0 },
+    ])
+  })
+
+  it('leaves out what the match does not carry, so nothing is invented', () => {
+    const set = overrideSetFromRecord(manual)
+    expect(set).not.toHaveProperty('damage')
+    expect(set).not.toHaveProperty('rank')
+  })
+
+  // An OCR match is unchanged: only what was actually edited is an override,
+  // because everything else has an OCR value to revert to.
+  it('still reads edited_fields for an OCR match', () => {
+    const ocr = {
+      match_key: 'm-1',
+      source: 'ocr_edited',
+      source_files: ['m-1.png'],
+      edited_fields: ['data.damage'],
+      data: { map: 'ilios', damage: 9000 },
+    } as unknown as MatchRecord
+    const set = overrideSetFromRecord(ocr)
+    expect(set.damage).toBe(9000)
+    expect(set).not.toHaveProperty('map')
+  })
+})
