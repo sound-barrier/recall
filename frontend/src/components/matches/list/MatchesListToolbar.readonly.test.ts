@@ -4,9 +4,9 @@ import { render, screen } from '@testing-library/vue'
 import MatchesListToolbar from '@/components/matches/list/MatchesListToolbar.vue'
 import { resetWriteGate, setWritesLocked, STUB_LOCK_REASON } from '@/test-utils/writeGateStub'
 
-// Add match + Import matches are writes: locked on the read-only sample
-// profile and while a coaching session is open. Which lock is which is the
-// gate's own test; here the toolbar just has to obey it and say why.
+// Add match + Import matches are writes: locked while a coaching session is
+// open. The lock's own semantics are the gate's test; here the toolbar just
+// has to obey it and say why.
 vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/writeGateStub'))
 
 const props = {

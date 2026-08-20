@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useProfileSwitcher } from '@/composables/profile/useProfileSwitcher'
-import { useActiveProfile } from '@/composables/profile/useActiveProfile'
 
 // Masthead chip + dropdown for the multi-profile feature. Behavior (the
 // profile list + open/create/rename state + switch/create/rename actions)
@@ -31,8 +30,6 @@ const {
   confirmRename,
 } = useProfileSwitcher()
 
-// A read-only sample profile (the tour's "test") shows a lock badge on the chip.
-const { isReadOnly } = useActiveProfile()
 
 </script>
 
@@ -44,12 +41,11 @@ const { isReadOnly } = useActiveProfile()
       class="profile-chip"
       :aria-expanded="open ? 'true' : 'false'"
       aria-haspopup="menu"
-      :title="isReadOnly ? `Active profile: ${active} (read-only sample)` : `Active profile: ${active}`"
+      :title="`Active profile: ${active}`"
       @click="toggleOpen"
     >
       <span class="profile-glyph" aria-hidden="true">◉</span>
       <span class="profile-name">{{ active || '—' }}</span>
-      <span v-if="isReadOnly" class="profile-readonly" data-profile-readonly title="Read-only sample profile">🔒</span>
       <span class="profile-chev" aria-hidden="true">▾</span>
     </button>
 

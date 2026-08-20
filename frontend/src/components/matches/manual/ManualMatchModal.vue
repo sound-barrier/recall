@@ -26,7 +26,7 @@ useModalFocusTrap(toRef(props, 'open'), {
 })
 
 // A hand-entered match is a write like any other — refused on the
-// read-only sample profile and while a coaching session holds the view.
+// while a coaching session holds the view.
 const { writesLocked, lockedTitle, guardWrite } = useWriteGate()
 
 const submitting = ref(false)

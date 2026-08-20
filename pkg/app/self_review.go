@@ -28,15 +28,12 @@ func (a *App) GetSelfReview(reviewID string) (review.Session, error) {
 	return review.Get(a.store, reviewID)
 }
 
-// assertSelfReviewWritable is the pair of locks every sitting write asks:
-// no open coach session (the visible records are someone else's loan) and a
-// mutable profile (the read-only sample refuses corpus writes everywhere —
-// the frontend gate is defense in depth, and this is the depth).
+// assertSelfReviewWritable is the lock every sitting write asks: no open
+// coach session — the visible records are someone else's loan then. (It
+// used to also require a mutable profile; the tour's sample is a writable
+// sandbox now, so the coach session is the one remaining lock.)
 func (a *App) assertSelfReviewWritable() error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
-	}
-	return a.assertActiveMutable()
+	return a.assertNoCoachSession()
 }
 
 // CreateSelfReview opens a sitting over the given matches.

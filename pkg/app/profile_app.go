@@ -17,19 +17,6 @@ import (
 type ProfilesResponse struct {
 	Active   string   `json:"active"`
 	Profiles []string `json:"profiles"`
-	// Immutable lists the read-only profiles (the tour's "test" sample). The
-	// frontend disables the new-match IMPORT affordances (parse / import /
-	// restore / manual-add / move-in) on these; small edits stay enabled.
-	Immutable []string `json:"immutable"`
-}
-
-// assertActiveMutable returns ErrProfileImmutable when the active profile is
-// read-only — the guard every corpus-mutating entry point calls first.
-func (a *App) assertActiveMutable() error {
-	if a.profiles != nil && a.profiles.IsImmutable(a.profiles.Active()) {
-		return fmt.Errorf("%w: %q", ErrProfileImmutable, a.profiles.Active())
-	}
-	return nil
 }
 
 // SetProfileOverride stashes a profile name to activate during the
@@ -50,22 +37,13 @@ func (a *App) GetProfiles() ProfilesResponse {
 		// Pre-Startup safety: return a single-default placeholder so
 		// the frontend's first paint doesn't render an empty switcher.
 		return ProfilesResponse{
-			Active:    DefaultProfileName,
-			Profiles:  []string{DefaultProfileName},
-			Immutable: []string{},
-		}
-	}
-	list := a.profiles.List()
-	immutable := make([]string, 0, len(list))
-	for _, name := range list {
-		if a.profiles.IsImmutable(name) {
-			immutable = append(immutable, name)
+			Active:   DefaultProfileName,
+			Profiles: []string{DefaultProfileName},
 		}
 	}
 	return ProfilesResponse{
-		Active:    a.profiles.Active(),
-		Profiles:  list,
-		Immutable: immutable,
+		Active:   a.profiles.Active(),
+		Profiles: a.profiles.List(),
 	}
 }
 
@@ -148,14 +126,13 @@ func (a *App) SeedTestProfile() (SeedTestProfileResponse, error) {
 	if err != nil {
 		return SeedTestProfileResponse{}, err
 	}
-	// The sample profile's corpus is protected: it's a curated demo, so the user
-	// can't IMPORT new matches into it (parse / bundle import / manual add /
-	// move-in / restore-a-foreign-db). Small edits to the existing seeded
-	// matches — tags, reviews, per-match overrides, even deleting one — stay
-	// allowed so the demo is explorable. Marked idempotently on every seed call.
-	if err := a.profiles.SetImmutable(TestProfileName); err != nil {
-		return SeedTestProfileResponse{}, err
-	}
+	// The sample is a SANDBOX, not a museum: every write an ordinary profile
+	// takes works here too, because a player who stays after the tour to look
+	// around should meet the real app, not six greyed buttons. Seeding is
+	// idempotent and never wipes what they changed; DELETING the profile is
+	// the reset — it removes everything the sandbox ever held, and the next
+	// tour replay seeds it fresh. (It used to be marked read-only, which read
+	// as breakage: the only explanation was a hover tooltip.)
 	return SeedTestProfileResponse{
 		Profile:       res.Profile,
 		Matches:       res.Matches,

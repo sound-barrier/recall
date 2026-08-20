@@ -1,15 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 
-// The gate ORs two independent locks, so both halves are stubbed: the
-// read-only sample profile (a query-backed flag) and the coaching session
-// (a Pinia store). Refs so a case can flip either one.
-const readOnly = ref(false)
+// The gate holds ONE lock — the coaching session (a Pinia store) — stubbed
+// as a ref so a case can flip it. (The read-only sample-profile lock is
+// gone: the tour's sample is a writable sandbox.)
 const sessionActive = ref(false)
 
-vi.mock('@/composables/profile/useActiveProfile', () => ({
-  useActiveProfile: () => ({ isReadOnly: readOnly }),
-}))
 vi.mock('@/stores/coach', () => ({
   useCoachStore: () => ({
     get sessionActive() { return sessionActive.value },
@@ -17,45 +13,29 @@ vi.mock('@/stores/coach', () => ({
 }))
 
 import {
-  READ_ONLY_LOCK_REASON,
   SESSION_LOCK_REASON,
   useWriteGate,
 } from '@/composables/shared/useWriteGate'
 
-function gate(opts: { readOnly?: boolean; session?: boolean } = {}) {
-  readOnly.value = opts.readOnly ?? false
+function gate(opts: { session?: boolean } = {}) {
   sessionActive.value = opts.session ?? false
   return useWriteGate()
 }
 
 describe('useWriteGate', () => {
-  it('leaves writes open on a writable profile with no session', () => {
-    const { writesLocked, lockReason, sessionActive: active, guardWrite } = gate()
+  it('leaves writes open with no session', () => {
+    const { writesLocked, lockReason, guardWrite } = gate()
     expect(writesLocked.value).toBe(false)
-    expect(active.value).toBe(false)
     expect(lockReason.value).toBe('')
     expect(guardWrite()).toBe(true)
   })
 
-  it('locks writes on the read-only sample profile', () => {
-    const { writesLocked, lockReason, guardWrite } = gate({ readOnly: true })
-    expect(writesLocked.value).toBe(true)
-    expect(lockReason.value).toBe(READ_ONLY_LOCK_REASON)
-    expect(guardWrite()).toBe(false)
-  })
-
   it('locks writes while a coaching session is open', () => {
-    const { writesLocked, lockReason, sessionActive: active, guardWrite } = gate({ session: true })
+    const { writesLocked, lockReason, guardWrite, sessionActive: active } = gate({ session: true })
     expect(writesLocked.value).toBe(true)
     expect(active.value).toBe(true)
     expect(lockReason.value).toBe(SESSION_LOCK_REASON)
-    expect(lockReason.value).toMatch(/end the session/i)
     expect(guardWrite()).toBe(false)
-  })
-
-  it('names the session first when both locks apply — it is the one the user can lift', () => {
-    const { lockReason } = gate({ readOnly: true, session: true })
-    expect(lockReason.value).toBe(SESSION_LOCK_REASON)
   })
 
   it('tracks a lock that flips after the gate was created', () => {

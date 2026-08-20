@@ -23,9 +23,6 @@ func (a *App) RestoreDatabase(payload []byte) error {
 	if err := a.assertNoCoachSession(); err != nil {
 		return err
 	}
-	if err := a.assertActiveMutable(); err != nil {
-		return err
-	}
 	dst := dbPath(a.dataDir())
 
 	staged, err := snapshot.StageRestore(payload, filepath.Dir(dst))

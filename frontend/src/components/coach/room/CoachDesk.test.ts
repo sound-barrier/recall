@@ -95,11 +95,11 @@ describe('CoachDesk — taking the match out of the review', () => {
     expect(btn).toHaveAccessibleDescription(/delete the review instead/)
   })
 
-  it('a locked profile outranks the last-frame reason', () => {
-    renderDesk({ removable: 'yes', blockedReason: 'This is a read-only sample profile.' })
+  it('a blocked reason outranks the last-frame reason', () => {
+    renderDesk({ removable: 'yes', blockedReason: 'Writes are locked.' })
     const btn = screen.getByRole('button', { name: 'Take this match out of the review' })
     expect(btn).toBeDisabled()
-    expect(btn).toHaveAccessibleDescription('This is a read-only sample profile.')
+    expect(btn).toHaveAccessibleDescription('Writes are locked.')
   })
 
   it("says the sitting's own empty line when every member left the history", () => {

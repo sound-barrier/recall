@@ -53,8 +53,7 @@ func TestSeedTestProfile_IsIdempotentAndLeavesTheActiveProfileAlone(t *testing.T
 	}
 
 	var listing struct {
-		Active    string   `json:"active"`
-		Immutable []string `json:"immutable"`
+		Active string `json:"active"`
 	}
 	if err := json.Unmarshal(get(t, mux, "/api/v1/profiles").Body.Bytes(), &listing); err != nil {
 		t.Fatalf("decode profiles: %v", err)
@@ -62,9 +61,8 @@ func TestSeedTestProfile_IsIdempotentAndLeavesTheActiveProfileAlone(t *testing.T
 	if listing.Active != "main" {
 		t.Errorf("active = %q after seeding; seeding must not switch profiles", listing.Active)
 	}
-	if len(listing.Immutable) != 1 || listing.Immutable[0] != first.Profile {
-		t.Errorf("immutable = %v, want [%s] — the sample profile is read-only", listing.Immutable, first.Profile)
-	}
+	// No immutability claim: the sample is a writable sandbox — deleting the
+	// profile is the reset (pinned in pkg/app's sandbox tests).
 }
 
 type seedResponse struct {

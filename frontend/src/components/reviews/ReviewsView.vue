@@ -55,9 +55,9 @@ const roomOpen = computed(() => sessionActive.value && coachStore.player !== nul
 const selfReview = useSelfReviewStore()
 const { roomOpen: sittingOpen, open: sitting } = storeToRefs(selfReview)
 const SELF: CoachPlayerView = { handle: 'you', message: '' }
-// Your own data, so the player's write gate applies to the room too: on the
-// read-only sample profile the editor, the strip and the sheet refuse with
-// the reason, the same as every sibling affordance.
+// Your own data, so the player's write gate applies to the room too — the
+// editor, the strip and the sheet refuse with the reason whenever writes
+// are locked, the same as every sibling affordance.
 const { lockReason } = useWriteGate()
 // Your own matches, so the replay code copies through the Matches action —
 // the same routine the detail panel uses over the same records.

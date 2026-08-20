@@ -2,7 +2,7 @@ import { computed, ref } from 'vue'
 
 // A drop-in for `@/composables/shared/useWriteGate` in unit tests.
 //
-// The real gate reads the profiles query and the coaching-session store, so
+// The real gate reads the coaching-session store, so
 // a leaf component that merely DISABLES on it would otherwise need Pinia +
 // a query client stood up. Tests that only need "writes are open" mock the
 // module with this stub; tests that pin the locked branch flip it with

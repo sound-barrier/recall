@@ -36,7 +36,7 @@ const emit = defineEmits<{
 // convention) — the rest of this panel predates it and stays prop-driven.
 const settingsStore = useSettingsStore()
 const { autoBackup } = storeToRefs(settingsStore)
-// Import and Restore write matches — rejected (409) on the read-only sample
+// Import and Restore write matches — rejected (409) while a coaching session
 // profile and while a coaching session is open, so disable them there.
 // Backup (read-only) stays enabled.
 const { writesLocked, lockedTitle } = useWriteGate()

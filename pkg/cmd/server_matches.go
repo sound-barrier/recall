@@ -174,8 +174,7 @@ func handleCreateManualMatch(a *app.App) http.HandlerFunc {
 			errStatus{app.ErrUnknownMap, probConflict},
 			errStatus{app.ErrUnknownHero, probConflict},
 			errStatus{app.ErrUnknownRank, probConflict},
-			errStatus{app.ErrMatchKeyExists, probConflict},
-			errStatus{app.ErrProfileImmutable, probConflict}) {
+			errStatus{app.ErrMatchKeyExists, probConflict}) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -221,8 +220,7 @@ func handleMoveMatches(a *app.App) http.HandlerFunc {
 			errStatus{app.ErrProfileNotFound, probNotFound},
 			errStatus{app.ErrMoveTargetIsActive, probConflict},
 			errStatus{app.ErrMoveStrandsCandidate, probConflict},
-			errStatus{app.ErrMoveSplitsSelfReview, probConflict},
-			errStatus{app.ErrProfileImmutable, probConflict}) {
+			errStatus{app.ErrMoveSplitsSelfReview, probConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

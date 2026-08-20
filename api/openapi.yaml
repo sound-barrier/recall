@@ -5559,7 +5559,7 @@ components:
 
     ProfilesResponse:
       type: object
-      required: [active, profiles, immutable]
+      required: [active, profiles]
       properties:
         active:
           type: string
@@ -5574,15 +5574,6 @@ components:
             order matches `slices.Sort` on the slice the
             `*Profiles.List` method returns).
           example: ["alt", "main"]
-        immutable:
-          type: array
-          items:
-            type: string
-          description: |
-            The read-only profiles (the tour's sample "test" profile).
-            The client disables parse / import / restore / manual-add /
-            delete affordances for these — writes are rejected with 409.
-          example: ["test"]
 
     SeedTestProfileResponse:
       type: object

@@ -48,9 +48,6 @@ func (a *App) ImportMatches(payload []byte) (ImportOutcome, error) {
 	if coach.SniffArchive(payload) == coach.ArchiveCoachNotes {
 		return a.stageCoachNotes(payload)
 	}
-	if err := a.assertActiveMutable(); err != nil {
-		return ImportOutcome{}, err
-	}
 	summary, err := bundle.Import(a.store, payload)
 	if err != nil {
 		return ImportOutcome{}, err

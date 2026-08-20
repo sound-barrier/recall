@@ -223,7 +223,7 @@ export async function seedMatches(page: Page): Promise<void> {
  * The suite shares ONE server and one HOME across every spec, and
  * profiles live on disk — so whatever a profile-creating spec leaves
  * behind is still there when the audit runs. The onboarding tour's
- * read-only `test` sample (POST /profiles/test/seed) is the one that
+ * seeded `test` sample (POST /profiles/test/seed) is the one that
  * bit: `SettingsProfiles` renders a row per profile and gives every
  * NON-active row a Delete button, so the moment `test` exists the
  * Settings view gains a 42nd button. The structural snapshot's
@@ -251,7 +251,7 @@ export async function seedProfiles(page: Page): Promise<void> {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ active: 'main', profiles: ['main'], immutable: [] }),
+      body: JSON.stringify({ active: 'main', profiles: ['main'] }),
     })
   })
 }
