@@ -249,26 +249,44 @@ export async function mockSelfReviews(page: Page, opts: SelfReviewsMockOptions =
 }
 
 /** One sitting's routes, dispatched by shape: /{id} · /{id}/matches · /{id}/completion · /{id}/notes/… */
-async function handleSittingRoute(route: Route, seg: string[], review: SelfReviewWire, ctx: MockContext): Promise<void> {
-  const method = route.request().method()
-  if (seg.length === 1) return handleSittingHeader(route, method, review, ctx)
-  if (seg.length === 2 && seg[1] === 'matches' && method === 'PUT') return handleSetMatches(route, review)
-  if (seg.length === 2 && seg[1] === 'focus-items' && method === 'PUT') {
-    const body = parseBody<{ items: FocusItemWire[] }>(route)
-    ctx.mock.focusPut.set(body)
-    // Items written in a sitting are born working: the player wrote them,
-    // so they are already on them. The server does this; the mock has to,
-    // or a spec reading the status back proves nothing.
-    review.focus_items = body.items.map((i) => ({ ...i, status: i.status ?? 'working' }))
-    review.updated_at = nowIso()
-    return fulfillJSON(route, review)
-  }
-  if (seg.length === 2 && seg[1] === 'completion' && method === 'POST') {
+/**
+ * The sub-resources a sitting has, keyed `<segment>:<method>`. A registry
+ * rather than a chain of ifs: this is the file a new self-review route has
+ * to touch, and it should be one entry here, not one more branch every
+ * reader has to hold in their head.
+ */
+const SITTING_SUB_ROUTES: Record<
+  string,
+  (route: Route, review: SelfReviewWire, ctx: MockContext) => Promise<void>
+> = {
+  'matches:PUT': (route, review) => handleSetMatches(route, review),
+  'focus-items:PUT': handleSetFocusItems,
+  'completion:POST': (route, review, ctx) => {
     review.finished_at ??= nowIso()
     ctx.mock.finished.push(review.review_id)
     return fulfillJSON(route, review)
-  }
+  },
+}
+
+async function handleSittingRoute(route: Route, seg: string[], review: SelfReviewWire, ctx: MockContext): Promise<void> {
+  const method = route.request().method()
+  if (seg.length === 1) return handleSittingHeader(route, method, review, ctx)
+  const sub = seg.length === 2 ? SITTING_SUB_ROUTES[`${seg[1]}:${method}`] : undefined
+  if (sub) return sub(route, review, ctx)
   return handleNoteRoutes(route, seg, review, ctx.mock)
+}
+
+/**
+ * Items written in a sitting are born `working`: the player wrote them, so
+ * they are already on them. The server does that; the mock has to as well,
+ * or a spec reading the status back proves nothing.
+ */
+function handleSetFocusItems(route: Route, review: SelfReviewWire, ctx: MockContext): Promise<void> {
+  const body = parseBody<{ items: FocusItemWire[] }>(route)
+  ctx.mock.focusPut.set(body)
+  review.focus_items = body.items.map((i) => ({ ...i, status: i.status ?? 'working' }))
+  review.updated_at = nowIso()
+  return fulfillJSON(route, review)
 }
 
 interface MockContext { reviews: Map<string, SelfReviewWire>; mock: SelfReviewsMock }

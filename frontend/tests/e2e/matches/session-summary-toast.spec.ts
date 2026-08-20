@@ -9,61 +9,10 @@
  * of old backlogs) never toasts at all. Driven over the SSE mock:
  * parse-complete → refetch → toast.
  */
-import type { Page, Route } from '@playwright/test'
+import type { Route } from '@playwright/test'
 
 import { test, expect } from '../_fixtures'
-
-type MockListener = (e: MessageEvent) => void
-
-async function installSSEMock(page: Page) {
-  await page.addInitScript(() => {
-    const handlers: Record<string, MockListener[]> = {}
-    class MockEventSource {
-      static readonly CONNECTING = 0
-      static readonly OPEN = 1
-      static readonly CLOSED = 2
-      url: string
-      readyState = 1
-      onerror: ((e: Event) => void) | null = null
-      onmessage: ((e: MessageEvent) => void) | null = null
-      onopen: ((e: Event) => void) | null = null
-      constructor(url: string) { this.url = url }
-      addEventListener(name: string, fn: MockListener) {
-        if (!handlers[name]) handlers[name] = []
-        handlers[name].push(fn)
-      }
-      removeEventListener(name: string, fn: MockListener) {
-        const arr = handlers[name]
-        if (!arr) return
-        const i = arr.indexOf(fn)
-        if (i >= 0) arr.splice(i, 1)
-      }
-      close() { this.readyState = 2 }
-      dispatchEvent(_e: Event): boolean { return true }
-    }
-    ;(window as unknown as { EventSource: typeof EventSource }).EventSource =
-      MockEventSource as unknown as typeof EventSource
-    ;(window as unknown as { __recallSSE: { emit: (n: string, d?: unknown) => void } }).__recallSSE = {
-      emit(name: string, data?: unknown) {
-        const arr = handlers[name]
-        if (!arr) return
-        const payload = data === undefined ? '' : JSON.stringify(data)
-        for (const fn of arr) fn(new MessageEvent(name, { data: payload }))
-      },
-    }
-  })
-}
-
-// Local-date fixtures (never toISOString — the UTC date can differ).
-function localStamp(minutesAgo: number) {
-  const d = new Date(Date.now() - minutesAgo * 60_000)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return {
-    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
-    key: `match-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}-${pad(d.getMinutes())}-00`,
-  }
-}
+import { installSSEMock, localStamp } from '../_session-sse'
 
 function rec(minutesAgo: number, result: string, change?: number) {
   const s = localStamp(minutesAgo)

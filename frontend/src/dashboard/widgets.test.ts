@@ -75,3 +75,15 @@ describe('dashboard widget registry', () => {
     ])
   })
 })
+
+// The focus list is server state about the PLAYER, not an aggregation over
+// the narrowed set — so its widget fetches. Shipping it visible would put
+// `GET /focus` on every boot for everyone, which is exactly what the
+// no-network-on-mount rule exists to prevent.
+describe('the focus widget is opt-in', () => {
+  it('is registered but not in any default row', () => {
+    expect(WIDGET_REGISTRY.some((w) => w.id === 'focus-now')).toBe(true)
+    const laidOut = Object.values(DEFAULT_ROW_LAYOUT).flat()
+    expect(laidOut).not.toContain('focus-now')
+  })
+})
