@@ -301,6 +301,7 @@ watch(trapOpen, async (open) => {
   align-items: center;
   justify-content: center;
   padding: var(--space-5);
+  overflow-y: auto;
 }
 
 .first-run-modal-backdrop {
@@ -310,10 +311,18 @@ watch(trapOpen, async (open) => {
   backdrop-filter: blur(2px);
 }
 
+/* Capped and scrollable. Short, fixed content, so the whole box scrolls
+   rather than splitting a pinned head off it (KeyboardShortcutsModal's
+   shape, not SettingsModal's) — but it must still be capped: an
+   `align-items: center` overlay pushes an over-tall box off BOTH edges and
+   the top half is then unreachable, and useScrollLock cancels every wheel
+   that does not land in an `overflow-y: auto` element. */
 .first-run-modal-box {
   position: relative;
   z-index: 1;
   width: min(28rem, 100%);
+  max-height: calc(100dvh - 3rem);
+  overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--accent);
   border-radius: var(--radius-md);
