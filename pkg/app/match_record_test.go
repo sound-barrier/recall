@@ -48,7 +48,14 @@ func TestApp_GetNewScreenshotCount(t *testing.T) {
 		}
 	}
 	fake := dbtest.New()
-	fake.Summaries = []db.SummaryRow{{Filename: "a.png", MatchKey: "k"}}
+	// The parsed row has to name the folder it came from: the skip set is
+	// folder-scoped now, because a same-named capture in a DIFFERENT folder
+	// is a different screenshot and must not read as already parsed.
+	dirID, dirErr := fake.EnsureScreenshotsDir(dir)
+	if dirErr != nil {
+		t.Fatal(dirErr)
+	}
+	fake.Summaries = []db.SummaryRow{{Filename: "a.png", MatchKey: "k", ScreenshotsDirID: dirID}}
 	a := app.NewWithStore(fake)
 	app.SettingsOf(a).ScreenshotsDir = dir
 
@@ -84,7 +91,11 @@ func TestApp_GetNewScreenshotCount_AgreesWithParseSkipSet(t *testing.T) {
 		writeFile(t, dir, f, []byte(f))
 	}
 	writeFile(t, dir, "notes.txt", []byte("not an image"))
-	fake.Summaries = []db.SummaryRow{{Filename: "a.png", MatchKey: "k"}}
+	dirID, err := fake.EnsureScreenshotsDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fake.Summaries = []db.SummaryRow{{Filename: "a.png", MatchKey: "k", ScreenshotsDirID: dirID}}
 	fake.AllHeroes = map[string]bool{"b.png": true}
 	fake.Ignored = map[string]bool{"c.png": true}
 	fake.IngestedFiles = map[string]db.IngestedFile{

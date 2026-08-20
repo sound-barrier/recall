@@ -82,22 +82,20 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	// This run consumes whatever the watcher queued — clear the
 	// masthead's "N new" tally up front (the parse chip takes over).
 	a.resetWatchActivity()
-	parsed, err := a.parsedSkipSet(force)
+	// Record the source folder once per batch so every screenshot in this
+	// Parse run is FK'd to the same screenshots_dirs row — and so the skip
+	// set below can be scoped to it.
+	dirID, err := a.store.EnsureScreenshotsDir(screenshotsDir)
+	if err != nil {
+		return err
+	}
+	parsed, err := a.parsedSkipSet(dirID, force)
 	if err != nil {
 		return err
 	}
 	// Byte-identical copies of already-ingested files skip OCR entirely
 	// (dedup.go) — they join the skip set before the loop starts.
 	a.dedupNewFiles(screenshotsDir, parsed)
-
-	// Record the source folder once per batch so every screenshot in
-	// this Parse run is FK'd to the same screenshots_dirs row. Resolved
-	// up-front because the parser callback below fires per-file during
-	// OCR and we don't want to repeat this lookup on every shot.
-	dirID, err := a.store.EnsureScreenshotsDir(screenshotsDir)
-	if err != nil {
-		return err
-	}
 
 	// Per-file work runs INSIDE the parser callback (parseRunState.handleFile)
 	// so insert + match-updated emit fire as each screenshot finishes OCR.
@@ -164,11 +162,17 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 // count, so the "Run Parse · N" button and the progress panel's "X / N files"
 // can't disagree. Anything new that suppresses a file belongs HERE, not in a
 // second skip set at the call site.
-func (a *App) parsedSkipSet(force bool) (map[string]bool, error) {
+// dirID scopes the "already parsed" half: filename is a BASENAME, and
+// screenshots_dirs accumulates a row every time the user re-points the
+// folder. Keyed on the basename alone, a same-named capture in a second
+// folder counted as already parsed and was silently never ingested — no
+// row, no failed entry, nothing on the Unknown tab, and missing from the
+// pending count too, so nothing ever said so.
+func (a *App) parsedSkipSet(dirID int64, force bool) (map[string]bool, error) {
 	parsed := map[string]bool{}
 	if !force {
 		var err error
-		parsed, err = a.store.LoadAllFilenames()
+		parsed, err = a.store.LoadFilenamesForDir(dirID)
 		if err != nil {
 			return nil, err
 		}

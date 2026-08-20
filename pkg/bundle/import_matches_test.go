@@ -3,6 +3,7 @@ package bundle_test
 import (
 	"errors"
 	"maps"
+	"strings"
 	"testing"
 
 	"recall/pkg/bundle"
@@ -290,6 +291,28 @@ func TestImport_RejectsRowWithoutFilename(t *testing.T) {
 				t.Errorf("%d rows were written before the bad row was found; a rejected bundle must not half-import", store.UpsertCalls)
 			}
 		})
+	}
+}
+
+// One file is one screenshot of one TYPE. A parse maintains that by calling
+// DeleteScreenshotSiblings; the import path never did, so a payload naming
+// the same file under two parent tables imported cleanly — and the
+// aggregator then folded one image twice into one match, claiming both
+// source types and double-counting it in the Re-parse-All tally.
+func TestImport_RejectsOneFilenameClaimedByTwoTables(t *testing.T) {
+	data := map[string]any{
+		"schema":    dataSchemaV2,
+		"summaries": []map[string]any{{"Filename": "shot.png", "MatchKey": "m1"}},
+		"teams":     []map[string]any{{"Filename": "shot.png", "MatchKey": "m1"}},
+	}
+	store := dbtest.New()
+	_, err := bundle.Import(store, payloadWithData(t, data))
+	if err == nil || !strings.Contains(err.Error(), "which summaries already claims") {
+		t.Fatalf("err = %v, want the two tables named", err)
+	}
+	if store.UpsertCalls != 0 {
+		t.Errorf("%d rows written before the clash was found; a rejected bundle must not half-import",
+			store.UpsertCalls)
 	}
 }
 

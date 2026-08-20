@@ -61,7 +61,7 @@ INSERT OR IGNORE INTO screenshots_dirs (id, path) VALUES (1, '');
 
 CREATE TABLE IF NOT EXISTS summary_screenshots (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  filename TEXT NOT NULL UNIQUE,
+  filename TEXT NOT NULL,
   match_key TEXT NOT NULL,
   parsed_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
@@ -95,7 +95,14 @@ CREATE TABLE IF NOT EXISTS summary_screenshots (
   -- written before the column existed, which is stale by definition. Drives the
   -- "these matches would gain data from a Re-parse All" count; see
   -- parser.Generation for when to bump it.
-  parser_generation INTEGER
+  parser_generation INTEGER,
+  -- One file is one screenshot, PER FOLDER. filename is a basename
+  -- (dedup.go uses e.Name()) and screenshots_dirs genuinely accumulates
+  -- rows as the user re-points the folder, so filename alone asserted a
+  -- dependency the domain does not hold: a same-named capture in a second
+  -- folder was either silently never ingested, or — on Re-parse All —
+  -- overwrote the first folder's row wholesale.
+  UNIQUE (screenshots_dir_id, filename)
 ) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_summary_match_key_parsed_at ON summary_screenshots (match_key, parsed_at);
@@ -112,7 +119,7 @@ CREATE TABLE IF NOT EXISTS summary_heroes_played (
 
 CREATE TABLE IF NOT EXISTS teams_screenshots (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  filename TEXT NOT NULL UNIQUE,
+  filename TEXT NOT NULL,
   match_key TEXT NOT NULL,
   parsed_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
@@ -134,7 +141,14 @@ CREATE TABLE IF NOT EXISTS teams_screenshots (
   -- written before the column existed, which is stale by definition. Drives the
   -- "these matches would gain data from a Re-parse All" count; see
   -- parser.Generation for when to bump it.
-  parser_generation INTEGER
+  parser_generation INTEGER,
+  -- One file is one screenshot, PER FOLDER. filename is a basename
+  -- (dedup.go uses e.Name()) and screenshots_dirs genuinely accumulates
+  -- rows as the user re-points the folder, so filename alone asserted a
+  -- dependency the domain does not hold: a same-named capture in a second
+  -- folder was either silently never ingested, or — on Re-parse All —
+  -- overwrote the first folder's row wholesale.
+  UNIQUE (screenshots_dir_id, filename)
 ) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_teams_match_key_parsed_at ON teams_screenshots (match_key, parsed_at);
@@ -151,7 +165,7 @@ CREATE TABLE IF NOT EXISTS teams_hero_stats (
 
 CREATE TABLE IF NOT EXISTS personal_screenshots (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  filename TEXT NOT NULL UNIQUE,
+  filename TEXT NOT NULL,
   match_key TEXT NOT NULL,
   parsed_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
@@ -162,7 +176,14 @@ CREATE TABLE IF NOT EXISTS personal_screenshots (
   -- written before the column existed, which is stale by definition. Drives the
   -- "these matches would gain data from a Re-parse All" count; see
   -- parser.Generation for when to bump it.
-  parser_generation INTEGER
+  parser_generation INTEGER,
+  -- One file is one screenshot, PER FOLDER. filename is a basename
+  -- (dedup.go uses e.Name()) and screenshots_dirs genuinely accumulates
+  -- rows as the user re-points the folder, so filename alone asserted a
+  -- dependency the domain does not hold: a same-named capture in a second
+  -- folder was either silently never ingested, or — on Re-parse All —
+  -- overwrote the first folder's row wholesale.
+  UNIQUE (screenshots_dir_id, filename)
 ) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_personal_match_key_parsed_at ON personal_screenshots (match_key, parsed_at);
@@ -179,7 +200,7 @@ CREATE TABLE IF NOT EXISTS personal_hero_stats (
 
 CREATE TABLE IF NOT EXISTS rank_screenshots (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  filename TEXT NOT NULL UNIQUE,
+  filename TEXT NOT NULL,
   match_key TEXT NOT NULL,
   parsed_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
@@ -228,7 +249,14 @@ CREATE TABLE IF NOT EXISTS rank_screenshots (
   -- written before the column existed, which is stale by definition. Drives the
   -- "these matches would gain data from a Re-parse All" count; see
   -- parser.Generation for when to bump it.
-  parser_generation INTEGER
+  parser_generation INTEGER,
+  -- One file is one screenshot, PER FOLDER. filename is a basename
+  -- (dedup.go uses e.Name()) and screenshots_dirs genuinely accumulates
+  -- rows as the user re-points the folder, so filename alone asserted a
+  -- dependency the domain does not hold: a same-named capture in a second
+  -- folder was either silently never ingested, or — on Re-parse All —
+  -- overwrote the first folder's row wholesale.
+  UNIQUE (screenshots_dir_id, filename)
 ) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_rank_match_key_parsed_at ON rank_screenshots (match_key, parsed_at);
@@ -360,7 +388,7 @@ CREATE TABLE IF NOT EXISTS hidden_matches (
 
 CREATE TABLE IF NOT EXISTS unknown_screenshots (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  filename TEXT NOT NULL UNIQUE,
+  filename TEXT NOT NULL,
   match_key TEXT NOT NULL,
   parsed_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
@@ -369,7 +397,14 @@ CREATE TABLE IF NOT EXISTS unknown_screenshots (
   -- written before the column existed, which is stale by definition. Drives the
   -- "these matches would gain data from a Re-parse All" count; see
   -- parser.Generation for when to bump it.
-  parser_generation INTEGER
+  parser_generation INTEGER,
+  -- One file is one screenshot, PER FOLDER. filename is a basename
+  -- (dedup.go uses e.Name()) and screenshots_dirs genuinely accumulates
+  -- rows as the user re-points the folder, so filename alone asserted a
+  -- dependency the domain does not hold: a same-named capture in a second
+  -- folder was either silently never ingested, or — on Re-parse All —
+  -- overwrote the first folder's row wholesale.
+  UNIQUE (screenshots_dir_id, filename)
 ) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_unknown_match_key_parsed_at ON unknown_screenshots (match_key, parsed_at);

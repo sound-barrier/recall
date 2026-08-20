@@ -372,30 +372,44 @@ func partitionByMatchKey(t parentTables, existing map[string]bool) parentTables 
 // validateParentFilenames fails if any incoming parent row has an empty
 // filename — the UNIQUE upsert key every parent table relies on.
 func validateParentFilenames(t parentTables) error {
-	if err := requireFilenames(t.summaries, "summaries", func(r db.SummaryRow) string { return r.Filename }); err != nil {
+	// ONE set across all five, not five sets. A file is exactly one
+	// screenshot of exactly one type — DeleteScreenshotSiblings maintains
+	// that on every parse — but the import path never called it, so a
+	// payload listing the same filename under summaries AND teams imported
+	// cleanly and the aggregator then folded one image twice into one match:
+	// SourceTypes claimed both, two rows derived from one file were merged,
+	// and the Re-parse-All tally double-counted it.
+	seen := map[string]string{}
+	if err := requireFilenames(t.summaries, "summaries", seen, func(r db.SummaryRow) string { return r.Filename }); err != nil {
 		return err
 	}
-	if err := requireFilenames(t.teams, "teams", func(r db.TeamsRow) string { return r.Filename }); err != nil {
+	if err := requireFilenames(t.teams, "teams", seen, func(r db.TeamsRow) string { return r.Filename }); err != nil {
 		return err
 	}
-	if err := requireFilenames(t.personals, "personals", func(r db.PersonalRow) string { return r.Filename }); err != nil {
+	if err := requireFilenames(t.personals, "personals", seen, func(r db.PersonalRow) string { return r.Filename }); err != nil {
 		return err
 	}
-	if err := requireFilenames(t.ranks, "ranks", func(r db.RankRow) string { return r.Filename }); err != nil {
+	if err := requireFilenames(t.ranks, "ranks", seen, func(r db.RankRow) string { return r.Filename }); err != nil {
 		return err
 	}
-	return requireFilenames(t.unknowns, "unknowns", func(r db.UnknownRow) string { return r.Filename })
+	return requireFilenames(t.unknowns, "unknowns", seen, func(r db.UnknownRow) string { return r.Filename })
 }
 
-// requireFilenames fails if any row has an empty filename — the UNIQUE upsert
-// key on every parent table. Catches a hand-edited payload with a deleted
-// filename and a JSON `null` array entry (Go decodes `[null]` into a
-// zero-value struct). `table` is the plural array name for the error message.
-func requireFilenames[T any](rows []T, table string, filename func(T) string) error {
+// requireFilenames fails if any row has an empty filename, or if a filename
+// has already been claimed by another parent table. `seen` is shared across
+// all five calls and carries the table that claimed each name, so the error
+// can say which two disagree. `table` is the plural array name.
+func requireFilenames[T any](rows []T, table string, seen map[string]string, filename func(T) string) error {
 	for i, r := range rows {
-		if filename(r) == "" {
+		name := filename(r)
+		if name == "" {
 			return fmt.Errorf("import: %s[%d] missing required filename", table, i)
 		}
+		if was, dup := seen[name]; dup {
+			return fmt.Errorf("import: %s[%d] lists %q, which %s already claims — "+
+				"one file is one screenshot of one type", table, i, name, was)
+		}
+		seen[name] = table
 	}
 	return nil
 }

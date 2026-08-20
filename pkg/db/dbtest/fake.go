@@ -139,6 +139,29 @@ func suppliedInstantOrNow(supplied string) string {
 
 var _ db.Store = (*Fake)(nil)
 
+// LoadFilenamesForDir mirrors the SQL store: the parse skip set is scoped to
+// ONE folder, because filename is a basename and a same-named capture in a
+// second folder is a different screenshot.
+func (f *Fake) LoadFilenamesForDir(dirID int64) (map[string]bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := map[string]bool{}
+	collectForDir(out, dirID, f.Summaries, func(r db.SummaryRow) (string, int64) { return r.Filename, r.ScreenshotsDirID })
+	collectForDir(out, dirID, f.Teams, func(r db.TeamsRow) (string, int64) { return r.Filename, r.ScreenshotsDirID })
+	collectForDir(out, dirID, f.Personals, func(r db.PersonalRow) (string, int64) { return r.Filename, r.ScreenshotsDirID })
+	collectForDir(out, dirID, f.Ranks, func(r db.RankRow) (string, int64) { return r.Filename, r.ScreenshotsDirID })
+	collectForDir(out, dirID, f.Unknowns, func(r db.UnknownRow) (string, int64) { return r.Filename, r.ScreenshotsDirID })
+	return out, nil
+}
+
+func collectForDir[T any](out map[string]bool, dirID int64, rows []T, at func(T) (string, int64)) {
+	for _, r := range rows {
+		if name, dir := at(r); dir == dirID {
+			out[name] = true
+		}
+	}
+}
+
 func (f *Fake) LoadAllFilenames() (map[string]bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -243,7 +266,7 @@ func (f *Fake) UpsertSummary(r db.SummaryRow) error {
 		return f.UpsertErr
 	}
 	for i, ex := range f.Summaries {
-		if ex.Filename == r.Filename {
+		if ex.Filename == r.Filename && ex.ScreenshotsDirID == r.ScreenshotsDirID {
 			r.ID = ex.ID
 			r.ParsedAt = ex.ParsedAt
 			f.Summaries[i] = r
@@ -264,7 +287,7 @@ func (f *Fake) UpsertTeams(r db.TeamsRow) error {
 		return f.UpsertErr
 	}
 	for i, ex := range f.Teams {
-		if ex.Filename == r.Filename {
+		if ex.Filename == r.Filename && ex.ScreenshotsDirID == r.ScreenshotsDirID {
 			r.ID = ex.ID
 			r.ParsedAt = ex.ParsedAt
 			f.Teams[i] = r
@@ -285,7 +308,7 @@ func (f *Fake) UpsertPersonal(r db.PersonalRow) error {
 		return f.UpsertErr
 	}
 	for i, ex := range f.Personals {
-		if ex.Filename == r.Filename {
+		if ex.Filename == r.Filename && ex.ScreenshotsDirID == r.ScreenshotsDirID {
 			r.ID = ex.ID
 			r.ParsedAt = ex.ParsedAt
 			f.Personals[i] = r
@@ -306,7 +329,7 @@ func (f *Fake) UpsertRank(r db.RankRow) error {
 		return f.UpsertErr
 	}
 	for i, ex := range f.Ranks {
-		if ex.Filename == r.Filename {
+		if ex.Filename == r.Filename && ex.ScreenshotsDirID == r.ScreenshotsDirID {
 			r.ID = ex.ID
 			r.ParsedAt = ex.ParsedAt
 			f.Ranks[i] = r
@@ -327,7 +350,7 @@ func (f *Fake) UpsertUnknown(r db.UnknownRow) error {
 		return f.UpsertErr
 	}
 	for i, ex := range f.Unknowns {
-		if ex.Filename == r.Filename {
+		if ex.Filename == r.Filename && ex.ScreenshotsDirID == r.ScreenshotsDirID {
 			r.ID = ex.ID
 			r.ParsedAt = ex.ParsedAt
 			f.Unknowns[i] = r

@@ -18,7 +18,7 @@ func (s *SQLStore) UpsertTeams(r TeamsRow) error {
 			eliminations, assists, deaths, damage, healing, mitigation, queue_type,
 			parser_generation
 		) VALUES (?,?,?,`+suppliedInstantOrNow+`, ?,?,?,?,?,?,?,?)
-		ON CONFLICT(filename) DO UPDATE SET
+		ON CONFLICT(screenshots_dir_id, filename) DO UPDATE SET
 			match_key          = excluded.match_key,
 			screenshots_dir_id = excluded.screenshots_dir_id,
 			eliminations = excluded.eliminations,
