@@ -57,11 +57,6 @@ export function savableItems(items: FocusItem[]): FocusItem[] {
     .filter((item) => item.text !== '')
 }
 
-/** Whether two lists would save the same, so an autosave can skip a no-op. */
-export function sameItems(a: FocusItem[], b: FocusItem[]): boolean {
-  if (a.length !== b.length) return false
-  return a.every((item, i) => item.item_id === b[i]!.item_id && item.text === b[i]!.text)
-}
 
 /**
  * The live list: everything not yet retired, in the order the server

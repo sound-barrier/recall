@@ -71,7 +71,13 @@
 # 48 as of the Reviews tab: self_review.go, the shell over the pkg/review leaf
 # (the player's saved review sittings) — the same shape as the other leaf
 # shells: the write gate first, the store call, the match broadcast.
-pkg/app                                       48
+# 49 as of focus items: focus.go, the PLAYER's assembled list — the one
+# read that spans two coaching families (received and self-authored) and
+# therefore belongs to neither shell. The ordering it applies (coach
+# first, each source newest-first) is a product decision two UI surfaces
+# must agree on, which is exactly why it lives on the server side of the
+# seam rather than being re-derived twice in Vue.
+pkg/app                                       49
 
 # pkg/db — the SQLite store: schema + additive-column registry, the migration
 # engine, per-screenshot-type CRUD, the Store interface and its *SQLStore
@@ -86,7 +92,13 @@ pkg/app                                       48
 # pass: store_share_exports.go, the "share with a coach" SENT ledger — a new
 # sidecar concern (a receipt about a file, not match history), spelled
 # per-concern like its siblings.
-pkg/db                                        32
+# 33 as of focus items: store_focus_items.go, the three tables behind
+# "what to work on" (coach-authored, the player's own sitting, and what a
+# coach sent). One concern — the focus list — spelled in one file the way
+# every other concern here is, and the three tables belong together
+# precisely because a status change has to find a row in either
+# player-side family from an item id alone.
+pkg/db                                        33
 
 # pkg/parser — the OCR pipeline: Tesseract invocation, per-screenshot-type field
 # extraction, the embedded owdata YAML set, golden-file projection. One
@@ -126,7 +138,11 @@ pkg/fixtures                                  13
 # and their middleware, which is one responsibility spelled per-endpoint-group
 # and the actual reason for the count. 20 as of the Reviews tab:
 # server_self_review.go, the /api/v1/self-reviews endpoint group.
-pkg/cmd                                       20
+# 21 as of focus items: server_focus.go, the /api/v1/focus endpoint group
+# — reading the player's whole list and moving one item along it. A group
+# of its own rather than a corner of the coach or self-review files,
+# because the list spans both and belongs to neither.
+pkg/cmd                                       21
 
 
 # ── Frontend ───────────────────────────────────────────────────────────
@@ -156,7 +172,13 @@ frontend/src/client                           exempt
 # test dir plus the spec's BASENAME, so a nested spec still finds its baselines
 # at this root. Corollary worth knowing before adding a spec: two specs sharing
 # a basename in different feature folders would share one snapshot directory.
-frontend/tests/e2e                            12
+#
+# 13: _session-sse.ts — the faked parse event stream and the local-date
+# stamps to drive it. It earned root status the moment a second spec
+# needed it: the session tally and the focus nudge both key off "a parse
+# landed inside a live session", and a copied EventSource stub in two
+# specs is two stubs to keep in step.
+frontend/tests/e2e                            13
 
 # The e2e feature folders below are budgeted individually, on purpose. A spec
 # count is a FEATURE count here — the TDD rule mandates a failing spec per
@@ -224,7 +246,11 @@ frontend/tests/e2e/match                      22
 # already carved out into their own folders.
 # 26: bulk-bar-layout.spec.ts — the floating bulk bar's geometry contract
 # (no row displacement on tick; every button inside the bar at three widths).
-frontend/tests/e2e/matches                    26
+# 27: focus-nudge.spec.ts — the third toast raised off a completed parse,
+# beside the session tally and the tilt nudge. Same folder for the same
+# reason those are here: it is driven by the parse lifecycle over the
+# matches view, not by the Reviews tab whose data it happens to show.
+frontend/tests/e2e/matches                    27
 
 # frontend/tests/e2e/narrow — everything that shrinks the set: the narrow panel
 # facets (time scope, season, teammates, reviewed-by, since-anchor, leaver /
@@ -309,7 +335,12 @@ frontend/src/match/elo                        13
 # wider — each renders one dossier slice as a tile — and they arrived together
 # because they share match-baseline-helpers, not because the directory grew a
 # new family, which is the condition that would have earned a split instead.
-frontend/src/components/dashboard/widgets     44
+# 45: FocusNowWidget — one more tile on the same surface. It is the one
+# widget here that reads server state rather than the dossier (the focus
+# list is about the PLAYER, not about the narrowed set), which is a
+# difference in where its data comes from, not a second responsibility
+# for the directory: it still renders one slice as a tile.
+frontend/src/components/dashboard/widgets     45
 
 
 

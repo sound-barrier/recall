@@ -132,7 +132,7 @@ func Update(s Store, reviewID string, in UpdateInput) (Session, error) {
 		return Session{}, err
 	}
 	if err := s.UpdateSelfReview(reviewID, title); err != nil {
-		return Session{}, mapStoreErr(err)
+		return Session{}, MapStoreErr(err)
 	}
 	return Get(s, reviewID)
 }
@@ -146,7 +146,7 @@ func SetMatches(s Store, reviewID string, matchKeys []string) (Session, error) {
 		return Session{}, err
 	}
 	if err := s.SetSelfReviewMatches(reviewID, keys); err != nil {
-		return Session{}, mapStoreErr(err)
+		return Session{}, MapStoreErr(err)
 	}
 	return Get(s, reviewID)
 }
@@ -168,7 +168,7 @@ func Finish(s Store, reviewID string) (Session, error) {
 		return Session{}, err
 	}
 	if err := s.FinishSelfReview(reviewID); err != nil {
-		return Session{}, mapStoreErr(err)
+		return Session{}, MapStoreErr(err)
 	}
 	flags, err := s.LoadReviews()
 	if err != nil {
@@ -232,11 +232,15 @@ func normalizeMatchKeys(s Store, in []string) ([]string, error) {
 	return keys, nil
 }
 
-// mapStoreErr turns the store's sentinels into this package's, so a caller
+// MapStoreErr turns the store's sentinels into this package's, so a caller
 // (and the HTTP ladder) speaks one vocabulary. Both are kept in the chain —
 // errors.Is answers to either — but this package's comes first, which is the
 // one the ladder maps.
-func mapStoreErr(err error) error {
+//
+// Exported because the focus-list write goes to the store directly (it has
+// no logic of its own to justify a wrapper here) and must still answer 404
+// for a sitting that is not there, the way every other route does.
+func MapStoreErr(err error) error {
 	switch {
 	case errors.Is(err, db.ErrSelfReviewUnknown):
 		return fmt.Errorf("%w: %w", ErrNotFound, err)

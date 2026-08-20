@@ -100,6 +100,11 @@ func (s *SQLStore) CreateSelfReview(r SelfReview) (SelfReview, error) {
 	if err != nil {
 		return SelfReview{}, fmt.Errorf("create self review: %w", err)
 	}
+	// The parent row only. The focus list lives in its own table and is
+	// written by SetSelfReviewFocusItems, so echoing the caller's back would
+	// claim a write that did not happen — the Fake returns the stored
+	// (empty) list, and the two must not disagree.
+	r.FocusItems = nil
 	if err := insertSelfReviewMatches(tx, r.ReviewID, r.MatchKeys); err != nil {
 		return SelfReview{}, err
 	}

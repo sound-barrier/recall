@@ -17,6 +17,10 @@ import { useFocusQuery } from '@/queries/focus'
 
 const query = useFocusQuery(true)
 const items = computed(() => activeFocus(query.data.value ?? []).slice(0, 3))
+// "Nothing yet" is a CLAIM about the player's list. A read that failed
+// knows nothing about it, and retry is off client-wide, so saying it there
+// tells a player with a coach's live list that they have nothing to work on.
+const failed = computed(() => query.isError.value)
 </script>
 
 <template>
@@ -29,6 +33,9 @@ const items = computed(() => activeFocus(query.data.value ?? []).slice(0, 3))
       <span class="focus-now-from">{{ item.source === 'coach' ? (item.coach_name || 'your coach') : 'you' }}</span>
     </li>
   </ol>
+  <p v-else-if="failed" class="focus-now-empty" role="status">
+    Couldn't read your list. Open the Reviews tab to try again.
+  </p>
   <p v-else class="focus-now-empty">
     Nothing yet — finish a review, or open a coach's notes.
   </p>

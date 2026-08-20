@@ -26,6 +26,7 @@ type ReturnStore interface {
 	SetCoachReturnDecision(returnID int64, noteID, decision string) error
 	DeleteCoachReturn(id int64) error
 	UpsertReceivedFocusItem(item db.ReceivedFocusItem) error
+	DeleteReceivedFocusItemsFrom(coachName, sessionDate string) error
 }
 
 // Decision values the player records against a staged note.
@@ -99,6 +100,13 @@ func Stage(st ReturnStore, payload []byte, localHandle string) (sheet ReturnShee
 	if existing, ok, err := st.LookupCoachReturnByHash(hash); err != nil {
 		return ReturnSheet{}, false, fmt.Errorf("coach: look up staged return: %w", err)
 	} else if ok {
+		// Re-land on the way through. The upsert is idempotent and never
+		// resets a status the player moved, and landing is NOT transactional
+		// with the insert above — a partial first import would otherwise be
+		// unrecoverable, because this branch is the only one a retry reaches.
+		if err := landFocusItems(st, f, localHandle); err != nil {
+			return ReturnSheet{}, false, err
+		}
 		sheet, err := buildSheet(st, existing, localHandle)
 		return sheet, true, err
 	}
@@ -118,7 +126,7 @@ func Stage(st ReturnStore, payload []byte, localHandle string) (sheet ReturnShee
 	if err != nil {
 		return ReturnSheet{}, false, fmt.Errorf("coach: stage return: %w", err)
 	}
-	if err := landFocusItems(st, f); err != nil {
+	if err := landFocusItems(st, f, localHandle); err != nil {
 		return ReturnSheet{}, false, err
 	}
 	sheet, err = Sheet(st, id, localHandle)
@@ -136,10 +144,18 @@ func Stage(st ReturnStore, payload []byte, localHandle string) (sheet ReturnShee
 //
 // Upserting on item_id means re-importing the same file never resets a
 // status the player has already moved.
-func landFocusItems(st ReturnStore, f NotesFile) error {
+func landFocusItems(st ReturnStore, f NotesFile, localHandle string) error {
+	// A file written about someone else is not your coach talking to you.
+	// The sheet warns about it, but by then the items would already be on
+	// the player's list — and "no deny" would make a stranger's homework
+	// permanent. The warning has to come before the landing, not after.
+	if handlesDiffer(localHandle, f.Player.Handle) {
+		return nil
+	}
 	for i, it := range f.FocusItems {
+		item := db.FocusItem{ItemID: it.ItemID, Text: it.Text, Status: db.FocusNew, SortOrder: i}
 		err := st.UpsertReceivedFocusItem(db.ReceivedFocusItem{
-			FocusItem:   db.FocusItem{ItemID: it.ItemID, Text: it.Text, Status: db.FocusNew, SortOrder: i},
+			FocusItem:   item,
 			CoachName:   f.CoachName,
 			SessionDate: f.SessionDate,
 		})
@@ -211,7 +227,7 @@ func buildSheet(st ReturnStore, r db.CoachReturn, localHandle string) (ReturnShe
 	}
 	sheet := ReturnSheet{
 		ID: r.ID, CoachName: r.CoachName, PlayerHandle: r.PlayerHandle, SessionDate: r.SessionDate,
-		ImportedAt: r.ImportedAt, FocusItems: f.FocusItems,
+		ImportedAt: r.ImportedAt, FocusItems: emptyIfNilItems(f.FocusItems),
 		Notes:          make([]ReturnItem, 0, len(f.Notes)),
 		Decisions:      make(map[string]string, len(r.Decisions)),
 		PlayerMismatch: handlesDiffer(localHandle, r.PlayerHandle),
@@ -237,4 +253,13 @@ func buildSheet(st ReturnStore, r db.CoachReturn, localHandle string) (ReturnShe
 func handlesDiffer(local, fromFile string) bool {
 	local = strings.TrimSpace(local)
 	return local != "" && !strings.EqualFold(local, strings.TrimSpace(fromFile))
+}
+
+// emptyIfNilItems keeps the wire honest: the schema declares focus_items a
+// non-nullable array, and an archive with notes but no items is legal.
+func emptyIfNilItems(items []FocusItem) []FocusItem {
+	if items == nil {
+		return []FocusItem{}
+	}
+	return items
 }

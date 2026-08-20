@@ -9,10 +9,12 @@
  * Driven over the same SSE mock the session tally uses: parse-complete →
  * refetch → the session is live → GET /focus → the toast.
  */
+import AxeBuilder from '@axe-core/playwright'
 import type { Page, Route } from '@playwright/test'
 
 import { test, expect } from '../_fixtures'
-import { installSSEMock, localStamp } from '../_session-sse'
+import { emitParseEvent, installSSEMock, localStamp } from '../_session-sse'
+import { pinTheme } from '../_theme-matrix'
 
 const nudge = (page: Page) => page.getByRole('status', { name: 'What to focus on this session' })
 
@@ -58,9 +60,7 @@ async function harness(page: Page, focus: unknown[] = FOCUS) {
   return {
     setBatch: (next: unknown[]) => { batch = next },
     reads: () => focusReads,
-    emit: () => page.evaluate(() => {
-      ;(window as unknown as { __recallSSE: { emit: (n: string, d?: unknown) => void } }).__recallSSE.emit('parse-complete')
-    }),
+    emit: () => emitParseEvent(page),
   }
 }
 
@@ -122,4 +122,29 @@ test.describe('what to focus on this session', () => {
     await h.emit()
     await expect(nudge(page)).toHaveCount(0)
   })
+})
+
+// The a11y sweep opens every view in every theme, but it never drives a
+// parse — so this toast is the one surface it structurally cannot reach.
+// It is also the only place `--accent` (its border) and `--accent-text`
+// (its hover) sit together, so a token regression here would ship unseen.
+test.describe('what to focus on this session — accessibility', () => {
+  for (const theme of ['day', 'dark', 'night', 'high-contrast']) {
+    test(`raises no axe violations in the ${theme} theme`, async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      await pinTheme(page, theme)
+      const h = await harness(page)
+      await page.goto('/')
+      await expect(page.getByRole('tab', { name: /^Matches/ })).toBeVisible()
+
+      h.setBatch([rec(90, 'victory'), rec(50, 'victory'), rec(10, 'defeat')])
+      await h.emit()
+      await expect(nudge(page)).toBeVisible()
+
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+        .analyze()
+      expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([])
+    })
+  }
 })

@@ -175,6 +175,12 @@ func WriteSelfReview(store db.Store, r db.SelfReview) error {
 	// What the sitting concluded travels with it. Unlike the notes below,
 	// the list is not narrowed to the surviving members: an item is about
 	// the player, not about one match.
+	// Through the validator, not straight to the store: a hand-edited bundle
+	// could otherwise inject blank text or a non-UUID item_id that every
+	// later read would serve.
+	if err := db.ValidateFocusItems(r.FocusItems); err != nil {
+		return fmt.Errorf("import: self review focus items %q: %w", r.ReviewID, err)
+	}
 	if err := store.SetSelfReviewFocusItems(r.ReviewID, r.FocusItems); err != nil {
 		return fmt.Errorf("import: self review focus items %q: %w", r.ReviewID, err)
 	}

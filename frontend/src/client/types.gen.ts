@@ -965,7 +965,7 @@ export type CoachSessionView = {
     /**
      * What this player is being told to work on, in order.
      */
-    focus_items?: Array<FocusItem>;
+    focus_items: Array<FocusItem>;
     /**
      * Notes already written about this player — including ones from
      * an earlier session, which is what "resurfaces when that
@@ -1053,7 +1053,7 @@ export type CoachReturnSheet = {
      * player's list as `new` the moment the archive is staged.
      *
      */
-    focus_items?: Array<FocusItem>;
+    focus_items: Array<FocusItem>;
     notes: Array<CoachReturnItem>;
     /**
      * Decisions so far, keyed by `note_id`. A note with no entry is

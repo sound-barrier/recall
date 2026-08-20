@@ -47,8 +47,11 @@ var (
 	// the wrapped message names the field (400).
 	ErrNoteInvalid = errors.New("coach: invalid note")
 	// ErrFocusItemInvalid reports a focus list that breaks its own rules —
-	// a non-UUID or repeated item_id, blank or over-long text, too many rows.
-	ErrFocusItemInvalid = errors.New("coach: invalid focus item")
+	// a non-UUID or repeated item_id, blank or over-long text, too many
+	// rows. An ALIAS of the store's, because the rule set moved there when
+	// pkg/bundle needed it too: two sentinels for one rule would mean the
+	// HTTP ladder answering 400 for one caller and 500 for another.
+	ErrFocusItemInvalid = db.ErrFocusItemInvalid
 	// ErrMomentEmpty — a moment write whose body is spec-valid but says
 	// nothing. Separate from ErrNoteInvalid because it maps to 409 rather
 	// than 400: the request parsed fine and the refusal is semantic, the
@@ -78,13 +81,13 @@ var (
 	// ErrReturnOrphan — a decision targets a note whose match is not in the
 	// player's history (409).
 	ErrReturnOrphan = errors.New("coach: note is not about a match in your history")
-	// ErrReturnNoMatches — the archive has nothing to show: no summary, and
-	// no note about a match in this history (409). The wrapped message says
-	// which of the two cases it is.
+	// ErrReturnNoMatches — the archive has nothing to show: no focus items,
+	// and no note about a match in this history (409). The wrapped message
+	// says which of the two cases it is.
 	ErrReturnNoMatches = errors.New("coach: nothing in this notes file applies to your history")
 	// ErrCoachNameRequired — export needs the coach's name set (409).
 	ErrCoachNameRequired = errors.New("coach: coach name is required")
-	// ErrNothingToExport — no notes and no summary to export (409).
+	// ErrNothingToExport — no notes and no focus items to export (409).
 	ErrNothingToExport = errors.New("coach: nothing to export")
 )
 
@@ -94,28 +97,7 @@ var (
 // note is first saved.
 func NewID() string { return db.NewCoachNoteID() }
 
-// IsUUID reports whether s is the canonical 8-4-4-4-12 hex form
-// (case-insensitive). Shape only — version and variant bits are not
-// checked, because ids from other builds are opaque keys here.
-func IsUUID(s string) bool {
-	if len(s) != 36 {
-		return false
-	}
-	for i, r := range s {
-		switch i {
-		case 8, 13, 18, 23:
-			if r != '-' {
-				return false
-			}
-		default:
-			if !isHexRune(r) {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-func isHexRune(r rune) bool {
-	return ('0' <= r && r <= '9') || ('a' <= r && r <= 'f') || ('A' <= r && r <= 'F')
-}
+// IsUUID reports whether s is the canonical 8-4-4-4-12 hex form. Delegates
+// to the store's, which is where the minter lives — one shape check for one
+// identity rule.
+func IsUUID(s string) bool { return db.IsUUID(s) }

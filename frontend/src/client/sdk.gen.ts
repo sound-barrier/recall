@@ -1240,8 +1240,8 @@ export const runDatabaseMaintenance = <ThrowOnError extends boolean = false>(opt
  * List every player this user has coached, most recently touched first
  *
  * The coach's roster: one row per player whose bundle was ever opened,
- * with the note count, the newest note's stamp, and the stored
- * session summary. Notes persist between sessions — reopening the
+ * with the note count, the newest note's stamp, and what they are
+ * being told to work on. Notes persist between sessions — reopening the
  * player's next bundle resurfaces them — so the roster is the proof
  * of work the tab otherwise had no way to show.
  *
@@ -1351,9 +1351,10 @@ export const exportDiagnosticBundle = <ThrowOnError extends boolean = false>(opt
  * manifest/data.json or notes.json) are rejected with `400`;
  * semantic failures — an unsupported schema, a bundle a player
  * shared FOR coaching (open it as a session instead), a coaching
- * session in progress, a notes file with nothing to show (no
- * summary AND no note about a match in this history) — with `409`.
- * A notes file carrying only a session summary IS stageable.
+ * session in progress, a notes file with nothing to show (no focus
+ * items AND no note about a match in this history) — with `409`.
+ * A notes file carrying only a focus list IS stageable, and staging
+ * lands those items on the player's list right away.
  * Existing data is left untouched in both rejection paths.
  *
  * For a full-fidelity backup/restore (every table, including edits
@@ -1558,8 +1559,8 @@ export const putCoachFocusItems = <ThrowOnError extends boolean = false>(options
  *
  * Refuses rather than shipping something unattributable: `404` with
  * no session open, `409` without a coach name in Settings, before the
- * player's handle is confirmed, or when there is no note and no
- * summary yet.
+ * player's handle is confirmed, or when nothing has been written —
+ * no note and no focus item.
  *
  */
 export const exportCoachNotes = <ThrowOnError extends boolean = false>(options?: Options<ExportCoachNotesData, ThrowOnError>): RequestResult<ExportCoachNotesResponses, ExportCoachNotesErrors, ThrowOnError> => (options?.client ?? client).post<ExportCoachNotesResponses, ExportCoachNotesErrors, ThrowOnError>({ url: '/api/v1/coach/session/export', ...options });
@@ -1712,10 +1713,11 @@ export const deleteSelfReview = <ThrowOnError extends boolean = false>(options: 
 export const getSelfReview = <ThrowOnError extends boolean = false>(options: Options<GetSelfReviewData, ThrowOnError>): RequestResult<GetSelfReviewResponses, GetSelfReviewErrors, ThrowOnError> => (options.client ?? client).get<GetSelfReviewResponses, GetSelfReviewErrors, ThrowOnError>({ url: '/api/v1/self-reviews/{review_id}', ...options });
 
 /**
- * Rename the sitting or rewrite its summary
+ * Rename the sitting
  *
- * Replaces the title and the set-level summary ("what to work on").
- * Both are trimmed; `400` past their bounds. Returns the sitting.
+ * Replaces the title, trimmed; `400` past its bound. Returns the
+ * sitting. What the sitting CONCLUDED is a list of its own —
+ * `PUT /api/v1/self-reviews/{review_id}/focus-items`.
  *
  */
 export const updateSelfReview = <ThrowOnError extends boolean = false>(options: Options<UpdateSelfReviewData, ThrowOnError>): RequestResult<UpdateSelfReviewResponses, UpdateSelfReviewErrors, ThrowOnError> => (options.client ?? client).put<UpdateSelfReviewResponses, UpdateSelfReviewErrors, ThrowOnError>({

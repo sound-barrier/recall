@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
+	"unicode/utf8"
 )
 
 var (
@@ -11,6 +13,9 @@ var (
 	ErrFocusItemUnknown = errors.New("focus item not found")
 	// ErrFocusItemStatusInvalid reports a status outside new/working/done.
 	ErrFocusItemStatusInvalid = errors.New("invalid focus item status")
+	// ErrFocusItemInvalid reports a list that breaks its own rules — a
+	// non-UUID or repeated item_id, blank or over-long text, too many rows.
+	ErrFocusItemInvalid = errors.New("invalid focus item")
 )
 
 // The focus list — "what to work on", as rows rather than one free-text
@@ -80,11 +85,19 @@ type FocusItemStore interface {
 	// SetFocusItemStatus moves one item — in either player-side family — to
 	// new/working/done. ErrFocusItemUnknown when no item carries that id.
 	SetFocusItemStatus(itemID, status string) error
+
+	// DeleteReceivedFocusItemsFrom drops everything one archive landed,
+	// keyed the way the archive identifies itself. Discarding a staged
+	// return is the ONE way a coach's item leaves the player's list —
+	// there is no per-item deny, so "I did not mean to import that" has
+	// to have an answer somewhere.
+	DeleteReceivedFocusItemsFrom(coachName, sessionDate string) error
 }
 
 func (s *SQLStore) SetCoachFocusItems(playerRef int64, items []FocusItem) error {
 	return s.replaceFocusItems(focusReplace{
 		deleteSQL: `DELETE FROM coach_focus_items WHERE player_ref = ?`,
+		bornSQL:   `SELECT item_id, created_at FROM coach_focus_items WHERE player_ref = ?`,
 		insertSQL: `INSERT INTO coach_focus_items (item_id, player_ref, text, sort_order, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ` + suppliedInstantOrNow + `, ` + suppliedInstantOrNow + `)`,
 		// The coach's authored list carries no status: it is what they are
@@ -108,6 +121,7 @@ func (s *SQLStore) SetSelfReviewFocusItems(reviewID string, items []FocusItem) e
 	}
 	return s.replaceFocusItems(focusReplace{
 		deleteSQL: `DELETE FROM self_review_focus_items WHERE review_id = ?`,
+		bornSQL:   `SELECT item_id, created_at FROM self_review_focus_items WHERE review_id = ?`,
 		insertSQL: `INSERT INTO self_review_focus_items (item_id, review_id, text, status, sort_order, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ` + suppliedInstantOrNow + `, ` + suppliedInstantOrNow + `)`,
 		withStatus: true,
@@ -117,8 +131,11 @@ func (s *SQLStore) SetSelfReviewFocusItems(reviewID string, items []FocusItem) e
 
 // focusReplace is one authored family's replacement shape.
 type focusReplace struct {
-	deleteSQL  string
-	insertSQL  string
+	deleteSQL string
+	insertSQL string
+	// bornSQL reads (item_id, created_at) for the owner, so a wholesale
+	// replacement can carry each surviving item's birthday across.
+	bornSQL    string
 	withStatus bool
 	owner      any
 }
@@ -135,6 +152,13 @@ func (s *SQLStore) replaceFocusItems(fam focusReplace, items []FocusItem) error 
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	// When an item was FIRST written, read before the wipe takes it away.
+	// Autosave calls this on every keystroke burst, so re-stamping created_at
+	// each time would make every item look like it was written just now.
+	born, err := bornAt(tx, fam)
+	if err != nil {
+		return err
+	}
 	if _, err := tx.Exec(fam.deleteSQL, fam.owner); err != nil {
 		return fmt.Errorf("clear focus items: %w", err)
 	}
@@ -143,7 +167,11 @@ func (s *SQLStore) replaceFocusItems(fam focusReplace, items []FocusItem) error 
 		if fam.withStatus {
 			args = append(args, statusOrDefault(item.Status, FocusWorking))
 		}
-		args = append(args, i, item.CreatedAt, item.UpdatedAt)
+		createdAt := item.CreatedAt
+		if was, ok := born[item.ItemID]; ok && createdAt == "" {
+			createdAt = was
+		}
+		args = append(args, i, createdAt, item.UpdatedAt)
 		if _, err := tx.Exec(fam.insertSQL, args...); err != nil {
 			return fmt.Errorf("insert focus item: %w", err)
 		}
@@ -245,10 +273,13 @@ func (s *SQLStore) UpsertReceivedFocusItem(item ReceivedFocusItem) error {
 	return nil
 }
 
+// LoadReceivedFocusItems reads every received item, newest session first.
+// coach_name sits before sort_order so two coaches whose archives share a
+// session date read as two lists rather than interleaving item-by-item.
 func (s *SQLStore) LoadReceivedFocusItems() ([]ReceivedFocusItem, error) {
 	rows, err := s.db.Query(
 		`SELECT item_id, coach_name, session_date, text, status, sort_order, received_at, updated_at
-		   FROM received_focus_items ORDER BY session_date DESC, sort_order, id`)
+		   FROM received_focus_items ORDER BY session_date DESC, coach_name, sort_order, id`)
 	if err != nil {
 		return nil, fmt.Errorf("load received focus items: %w", err)
 	}
@@ -287,4 +318,75 @@ func (s *SQLStore) SetFocusItemStatus(itemID, status string) error {
 		}
 	}
 	return ErrFocusItemUnknown
+}
+
+func (s *SQLStore) DeleteReceivedFocusItemsFrom(coachName, sessionDate string) error {
+	_, err := s.db.Exec(
+		`DELETE FROM received_focus_items WHERE coach_name = ? AND session_date = ?`,
+		coachName, sessionDate)
+	if err != nil {
+		return fmt.Errorf("delete received focus items: %w", err)
+	}
+	return nil
+}
+
+// bornAt reads the created_at each surviving item already carries, keyed by
+// item_id. The replacement is wholesale, so without this an item's birthday
+// would move every time the list around it was edited.
+func bornAt(tx *sql.Tx, fam focusReplace) (map[string]string, error) {
+	rows, err := tx.Query(fam.bornSQL, fam.owner)
+	if err != nil {
+		return nil, fmt.Errorf("read focus item stamps: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	out := map[string]string{}
+	for rows.Next() {
+		var id, createdAt string
+		if err := rows.Scan(&id, &createdAt); err != nil {
+			return nil, fmt.Errorf("scan focus item stamp: %w", err)
+		}
+		out[id] = createdAt
+	}
+	return out, rows.Err()
+}
+
+// Bounds on a focus list, wherever it comes from — a coach's live PUT, the
+// player's own sitting, a notes archive, a restored bundle.
+const (
+	// MaxFocusItemRunes bounds one line of what to work on: a sentence, not
+	// an essay. The essay is the note.
+	MaxFocusItemRunes = 2000
+	// MaxFocusItems bounds the list. A sitting that concluded fifty things
+	// concluded nothing.
+	MaxFocusItems = 50
+)
+
+// ValidateFocusItems holds a list to its rules.
+//
+// ONE implementation, here beside the type, rather than one per package
+// that writes a list: pkg/coach, pkg/review and pkg/bundle all reach the
+// same three tables, and two rule sets that merely "agree" today are two
+// that drift tomorrow. item_id follows note_id's identity rule for the same
+// reason — it has to survive an export/import round trip without colliding.
+func ValidateFocusItems(items []FocusItem) error {
+	if len(items) > MaxFocusItems {
+		return fmt.Errorf("%w: more than %d focus items", ErrFocusItemInvalid, MaxFocusItems)
+	}
+	seen := make(map[string]bool, len(items))
+	for _, it := range items {
+		if !IsUUID(it.ItemID) {
+			return fmt.Errorf("%w: item_id %q is not a UUID", ErrFocusItemInvalid, it.ItemID)
+		}
+		if seen[it.ItemID] {
+			return fmt.Errorf("%w: duplicate item_id %q", ErrFocusItemInvalid, it.ItemID)
+		}
+		seen[it.ItemID] = true
+		if strings.TrimSpace(it.Text) == "" {
+			return fmt.Errorf("%w: an item carries no text", ErrFocusItemInvalid)
+		}
+		if utf8.RuneCountInString(it.Text) > MaxFocusItemRunes {
+			return fmt.Errorf("%w: an item exceeds %d characters", ErrFocusItemInvalid, MaxFocusItemRunes)
+		}
+	}
+	return nil
 }

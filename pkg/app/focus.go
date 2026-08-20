@@ -2,8 +2,8 @@ package app
 
 import (
 	"fmt"
-	"slices"
 	"strings"
+	"time"
 
 	"recall/pkg/db"
 )
@@ -55,9 +55,10 @@ func (a *App) FocusList() ([]FocusEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("focus: load own items: %w", err)
 	}
-	// Newest sitting first, so the player's own half reads the way the
-	// coach's half does.
-	for _, s := range slices.Backward(sittings) {
+	// LoadSelfReviews is already newest-first (ORDER BY created_at DESC),
+	// which is the order this half wants: a walk BACKWARD over it led the
+	// player's own items with whatever they concluded six months ago.
+	for _, s := range sittings {
 		for _, it := range byReview[s.ReviewID] {
 			out = append(out, FocusEntry{
 				ItemID: it.ItemID, Text: it.Text, Status: it.Status,
@@ -68,7 +69,15 @@ func (a *App) FocusList() ([]FocusEntry, error) {
 	return out, nil
 }
 
+// day is the calendar day an instant falls on IN THE VIEWER'S ZONE.
+//
+// A sitting opened at 18:00 in UTC-7 is stamped past midnight UTC, so
+// slicing the first ten characters printed tomorrow's date under something
+// the player wrote this evening.
 func day(instant string) string {
+	if t, err := time.Parse(time.RFC3339, instant); err == nil {
+		return t.Local().Format(time.DateOnly)
+	}
 	if len(instant) >= 10 {
 		return instant[:10]
 	}

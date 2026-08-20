@@ -44,7 +44,8 @@ func (a *App) CreateSelfReview(in review.CreateInput) (review.Session, error) {
 	return review.Create(a.store, in)
 }
 
-// UpdateSelfReview replaces the sitting's title and summary.
+// UpdateSelfReview renames the sitting. What it concluded lives in its
+// focus items — SetSelfReviewFocusItems.
 func (a *App) UpdateSelfReview(reviewID string, in review.UpdateInput) (review.Session, error) {
 	if err := a.assertSelfReviewWritable(); err != nil {
 		return review.Session{}, err
@@ -181,8 +182,12 @@ func (a *App) SetSelfReviewFocusItems(reviewID string, items []db.FocusItem) (re
 	if err := review.ValidateFocusItems(items); err != nil {
 		return review.Session{}, err
 	}
+	// Through the review package's mapper, not raw: db.ErrSelfReviewUnknown
+	// carries no problem-ladder entry, so returning it as-is answered 500
+	// for a sitting that simply is not there — where every sibling route
+	// answers 404.
 	if err := a.store.SetSelfReviewFocusItems(reviewID, items); err != nil {
-		return review.Session{}, err
+		return review.Session{}, review.MapStoreErr(err)
 	}
 	return review.Get(a.store, reviewID)
 }

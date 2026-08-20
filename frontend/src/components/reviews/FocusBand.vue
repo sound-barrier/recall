@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, useTemplateRef } from 'vue'
 
 import { SetFocusItemStatus, type FocusEntry } from '@/api-client'
 import { formatPlayerDay } from '@/match/coach/coach-time'
@@ -38,11 +38,28 @@ function provenance(e: FocusEntry): string {
   return `${who} · ${formatPlayerDay(e.from)}`
 }
 
+const bandHead = useTemplateRef<HTMLElement>('bandHead')
+
+/**
+ * Both moves destroy the control that was pressed: Accept unmounts itself
+ * (the row is no longer `new`) and "Got this" takes the whole row out of
+ * the live list. A button that vanishes under the finger leaves focus on
+ * `<body>`, so the next Tab restarts from the top of the document.
+ *
+ * Focus goes to the band's own heading rather than a guessed neighbor:
+ * the row that would have been "next" may itself have just moved, and the
+ * heading is the one thing on this surface that is always still there.
+ */
+function restoreFocus(): void {
+  void nextTick(() => bandHead.value?.focus())
+}
+
 async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
   if (blocked.value) return
   try {
     await SetFocusItemStatus(e.item_id, status)
     await invalidateFocus()
+    restoreFocus()
   } catch (err) {
     appStore.setErrorFromRaw(String(err))
   }
@@ -51,7 +68,7 @@ async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
 
 <template>
   <section class="paper focus-band" aria-labelledby="focus-band-head">
-    <h3 id="focus-band-head" class="focus-band-head paper-rule-hatch">
+    <h3 id="focus-band-head" ref="bandHead" class="focus-band-head paper-rule-hatch" tabindex="-1">
       What you're working on
     </h3>
 
@@ -63,9 +80,13 @@ async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
     <ol v-if="active.length" class="focus-band-list">
       <li v-for="e in active" :key="e.item_id" class="focus-band-row">
         <div class="focus-band-text">
-          <p class="focus-band-line">{{ e.text }}</p>
+          <p class="focus-band-line">
+            {{ e.text }}
+          </p>
           <p class="focus-band-from">
-            {{ provenance(e) }}<template v-if="isNew(e)"> · new</template>
+            {{ provenance(e) }}<template v-if="isNew(e)">
+              · new
+            </template>
           </p>
         </div>
         <div class="focus-band-actions">
@@ -75,6 +96,7 @@ async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
             class="paper-btn"
             :disabled="blocked"
             :title="blockedReason || undefined"
+            :aria-label="`Accept: ${e.text}`"
             @click="move(e, 'working')"
           >
             Accept
@@ -84,6 +106,7 @@ async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
             class="paper-chip"
             :disabled="blocked"
             :title="blockedReason || undefined"
+            :aria-label="`Got this: ${e.text}`"
             @click="move(e, 'done')"
           >
             Got this
@@ -99,8 +122,12 @@ async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
       <ul v-if="showRetired" class="focus-band-list focus-band-done">
         <li v-for="e in retired" :key="e.item_id" class="focus-band-row">
           <div class="focus-band-text">
-            <p class="focus-band-line">{{ e.text }}</p>
-            <p class="focus-band-from">{{ provenance(e) }}</p>
+            <p class="focus-band-line">
+              {{ e.text }}
+            </p>
+            <p class="focus-band-from">
+              {{ provenance(e) }}
+            </p>
           </div>
         </li>
       </ul>

@@ -46,26 +46,34 @@ describe('FocusBand', () => {
   // acknowledging it and retiring it.
   it('offers Accept and Got this — and never a way to refuse', () => {
     renderBand([entry({ source: 'coach', coach_name: 'Ordo', status: 'new' })])
-    expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Got this' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Accept: hold the angle' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Got this: hold the angle' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /deny|reject|skip|dismiss|delete/i })).not.toBeInTheDocument()
+  })
+
+  // Five rows meant five buttons a screen reader could only call "Got
+  // this", with nothing to tell them apart.
+  it('names each action by the item it acts on', () => {
+    renderBand([entry({ item_id: '1', text: 'hold the angle' }), entry({ item_id: '2', text: 'ult economy' })])
+    expect(screen.getByRole('button', { name: 'Got this: hold the angle' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Got this: ult economy' })).toBeInTheDocument()
   })
 
   it('offers no Accept on an item you wrote yourself', () => {
     renderBand([entry()])
-    expect(screen.queryByRole('button', { name: 'Accept' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Got this' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Accept/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Got this: hold the angle' })).toBeInTheDocument()
   })
 
   it('accepts a coach item into working', async () => {
     renderBand([entry({ item_id: 'c-1', source: 'coach', status: 'new' })])
-    await fireEvent.click(screen.getByRole('button', { name: 'Accept' }))
+    await fireEvent.click(screen.getByRole('button', { name: /^Accept/ }))
     expect(setStatus).toHaveBeenCalledWith('c-1', 'working')
   })
 
   it('retires an item without deleting it', async () => {
     renderBand([entry({ item_id: 's-1' })])
-    await fireEvent.click(screen.getByRole('button', { name: 'Got this' }))
+    await fireEvent.click(screen.getByRole('button', { name: /^Got this/ }))
     expect(setStatus).toHaveBeenCalledWith('s-1', 'done')
   })
 
@@ -80,8 +88,8 @@ describe('FocusBand', () => {
 
   it('refuses both moves while writes are locked, and says why', () => {
     renderBand([entry({ source: 'coach', status: 'new' })], 'A coaching session is open.')
-    expect(screen.getByRole('button', { name: 'Accept' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Got this' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /^Accept/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /^Got this/ })).toBeDisabled()
   })
 
   it('keeps the live list in the order it was handed', () => {
