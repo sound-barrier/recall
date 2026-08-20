@@ -93,10 +93,12 @@ function pickTag(v: string) {
 </script>
 
 <template>
-  <!-- Sticky bulk-action bar, surfaced contextually whenever any row
-       is selected — same pattern Gmail / Linear / GitHub Issues use.
-       Sticky within the parent section so it follows the user down
-       the leaves list. -->
+  <!-- Floating bulk-action bar, surfaced contextually whenever any row is
+       selected — the Linear / Gmail pattern. It FLOATS over the viewport
+       bottom instead of inserting above the list: an in-flow bar shoved
+       every row down by its own height the moment a checkbox was ticked,
+       so the row under the cursor became a different row and the tick
+       looked like it missed. -->
   <div
     class="bulk-action-bar"
     role="region"
@@ -310,17 +312,29 @@ function pickTag(v: string) {
 
 <style scoped>
 .bulk-action-bar {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 0.55rem;
+  width: max-content;
+  max-width: min(96vw, 78rem);
   padding: 0.45rem 0.65rem;
   border: 1px solid var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
-  border-radius: var(--radius);
-  position: sticky;
-  top: 0.4rem;
-  z-index: 4;
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 30%, transparent);
+
+  /* Opaque, not the usual translucent tint: the bar floats over row text,
+     and rows bleeding through read as a rendering glitch. */
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface-3));
+  border-radius: var(--radius-lg);
+
+  /* Above the rows and the sticky day rules it floats over; below every
+     modal surface (the detail panel, lightbox and friends live at 100+). */
+  z-index: 40;
+  box-shadow: 0 8px 24px rgb(var(--shadow-rgb) / 35%);
 }
 
 .bab-glyph { color: var(--accent-text); font-size: var(--type-xl); line-height: 1; }
