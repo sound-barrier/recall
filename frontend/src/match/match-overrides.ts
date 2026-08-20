@@ -39,10 +39,23 @@ function isHeroStatPath(parts: string[]): boolean {
   return parts.length === 5 && parts[1] === 'heroes_played' && parts[3] === 'stats'
 }
 
-/** Rebuild the full override set currently applied to the record. */
+/**
+ * Rebuild the full override set currently applied to the record.
+ *
+ * This has to be COMPLETE, because the store's upsert is a whole-row
+ * replace: a scalar arriving nil is the per-field revert to OCR. Sending a
+ * partial set therefore reverts everything it forgot to mention.
+ *
+ * Which is why a manual match cannot be read off `edited_fields`. It has no
+ * OCR row underneath, so there is nothing to revert TO and nothing is
+ * marked as edited — the list is empty by design. Every field it carries is
+ * the user's, so every field it carries is the override set.
+ */
 export function overrideSetFromRecord(rec: MatchRecord): UserMatchDataInput {
-  const out: UserMatchDataInput = {}
   const data = (rec.data ?? {}) as Record<string, unknown>
+  if (rec.source === 'manual') return manualOverrideSet(rec, data)
+
+  const out: UserMatchDataInput = {}
   for (const path of rec.edited_fields ?? []) {
     const parts = path.split('.')
     if (parts[0] !== 'data') continue
@@ -50,6 +63,28 @@ export function overrideSetFromRecord(rec: MatchRecord): UserMatchDataInput {
       reconstructTopLevel(out, parts[1] ?? '', data)
     } else if (isHeroStatPath(parts)) {
       reconstructStat(out, rec, parts[2] ?? '', parts[4] ?? '')
+    }
+  }
+  return out
+}
+
+/**
+ * Everything a manual match holds. Only fields actually present travel — an
+ * absent one must stay absent rather than becoming an explicit null, which
+ * the store would read as a revert.
+ */
+function manualOverrideSet(rec: MatchRecord, data: Record<string, unknown>): UserMatchDataInput {
+  const out: UserMatchDataInput = {}
+  for (const field of Object.keys(data)) {
+    if (data[field] === undefined || data[field] === null) continue
+    if (isScalarField(field) || field === 'heroes_played' || field === 'sr'
+      || field === 'rank_modifiers') {
+      reconstructTopLevel(out, field, data)
+    }
+  }
+  for (const hero of (data.heroes_played as MatchRecord['data']['heroes_played'] ?? [])) {
+    for (const statKey of Object.keys(hero.stats ?? {})) {
+      reconstructStat(out, rec, hero.hero, statKey)
     }
   }
   return out
