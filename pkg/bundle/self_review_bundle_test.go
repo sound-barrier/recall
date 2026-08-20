@@ -250,7 +250,7 @@ func TestImport_RejectsASittingOrMomentWithoutItsID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			store := dbtest.New()
 			payload := payloadWithData(t, map[string]any{
-				"schema":       dataSchemaV2,
+				"schema":       dataSchema,
 				"summaries":    []map[string]any{{"Filename": "a.png", "MatchKey": "m1"}},
 				"self_reviews": []map[string]any{tc.sitting},
 			})

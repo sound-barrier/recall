@@ -46,7 +46,7 @@ func newCoachMux(t *testing.T) (*dbtest.Fake, *http.ServeMux) {
 // a single keyless record.
 func coachBundle(t *testing.T, handle string, matchKeys ...string) []byte {
 	t.Helper()
-	data := bundle.DataV2{Schema: "recall-export/v2", RecallVersion: "test"}
+	data := bundle.DataV2{Schema: "recall-export/v1", RecallVersion: "test"}
 	for _, key := range matchKeys {
 		data.Summaries = append(data.Summaries, db.SummaryRow{
 			Filename: key + ".png", MatchKey: key, Map: "numbani", Hero: "ana", Result: "victory",

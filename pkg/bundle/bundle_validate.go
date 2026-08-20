@@ -44,7 +44,7 @@ type issueSink func(kind, msg string)
 // the three pieces:
 //
 //   - `manifest.json`: provenance + the screenshot → match_key map
-//   - `data.json`:     the `recall-export/v2` row tables + user layer
+//   - `data.json`:     the `recall-export/v1` row tables + user layer
 //     (v1 bundles still import; v2 is what export writes)
 //   - `screenshots/`:  the on-disk image bytes
 //
@@ -57,7 +57,7 @@ type issueSink func(kind, msg string)
 //
 //  1. manifest.json + data.json are both present
 //  2. manifest.schema == BundleSchemaV1
-//  3. data.schema     is a vintage this build reads (exportSchemaOrder)
+//  3. data.schema     == exportSchema
 //  4. manifest.match_count matches the distinct match_key set
 //     derived from the manifest's screenshots map AND data.json's
 //     row tables (they must agree)
@@ -181,8 +181,7 @@ func decodeBundleData(dataBytes []byte, add issueSink) (DataV2, error) {
 	}
 	if !supportedExportSchema(dataDoc.Schema) {
 		add(IssueWrongDataSchema,
-			fmt.Sprintf("data.schema = %q, want one of %s",
-				dataDoc.Schema, strings.Join(exportSchemaOrder, ", ")))
+			fmt.Sprintf("data.schema = %q, want %q", dataDoc.Schema, exportSchema))
 	}
 	var dataProbe struct {
 		ScreenshotsDirs map[string]string `json:"screenshots_dirs"`

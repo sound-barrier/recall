@@ -8,10 +8,6 @@ package bundle
 // test; widens no real API.
 var MaxZipEntryBytes = &maxZipEntryBytes
 
-// DropPreV3RankReadings + the schema constants, so the external test can pin
-// the rule that a pre-v3 bundle's rank readings are not trustworthy.
-var (
-	DropPreV3RankReadings = dropPreV3RankReadings
-	ExportSchemaV2        = exportSchemaV2
-	ExportSchemaV3        = exportSchemaV3
-)
+// The data.json schema string, so the external test can spell it without
+// re-deriving it. There is exactly one, by policy — see export_bundle.go.
+var ExportSchema = exportSchema

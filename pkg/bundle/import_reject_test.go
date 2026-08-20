@@ -20,7 +20,7 @@ func okManifest() map[string]any {
 
 func okData() map[string]any {
 	return map[string]any{
-		"schema":    dataSchemaV2,
+		"schema":    dataSchema,
 		"summaries": []map[string]any{{"Filename": "a.png", "MatchKey": "m1"}},
 	}
 }
@@ -150,7 +150,7 @@ func TestImport_RejectsMissingOrUndecodableCoreFiles(t *testing.T) {
 				t.Helper()
 				return buildZip(t,
 					jsonFileEntry(t, "manifest.json", okManifest()),
-					fileEntry("data.json", []byte(`{"schema":"recall-export/v2","summ`)),
+					fileEntry("data.json", []byte(`{"schema":"recall-export/v1","summ`)),
 				)
 			},
 			wantMsg: "data.json decode:",
@@ -200,7 +200,7 @@ func TestImport_RejectsUnsupportedSchemasAsNonMalformed(t *testing.T) {
 					jsonFileEntry(t, "data.json", d),
 				)
 			},
-			wantMsg: `import: unsupported data schema "recall-export/v99" (this build accepts recall-export/v1, recall-export/v2, recall-export/v3, recall-export/v4)`,
+			wantMsg: `import: unsupported data schema "recall-export/v99" (this build accepts "recall-export/v1")`,
 		},
 	}
 	for _, tc := range tests {

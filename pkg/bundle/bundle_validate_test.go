@@ -26,7 +26,7 @@ func consistentParts() bundleParts {
 			"screenshots": map[string]string{"a.png": "m1"},
 		},
 		data: map[string]any{
-			"schema":    dataSchemaV2,
+			"schema":    dataSchema,
 			"summaries": []map[string]any{{"Filename": "a.png", "MatchKey": "m1"}},
 		},
 		shots: map[string][]byte{"a.png": []byte("png")},
@@ -80,11 +80,6 @@ func runValidationCases(t *testing.T, cases []validationCase) {
 func TestValidate_PresenceAndSchemaIssues(t *testing.T) {
 	runValidationCases(t, []validationCase{
 		{"consistent bundle", func(*bundleParts) {}, nil},
-		{
-			"data.json from the v1 era is still valid",
-			func(p *bundleParts) { p.data["schema"] = dataSchemaV1 },
-			nil,
-		},
 		{
 			// Some archivers emit explicit directory entries; counting one
 			// as a screenshot would flag every such bundle as an orphan.
