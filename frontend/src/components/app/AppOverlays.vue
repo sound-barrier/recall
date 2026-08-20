@@ -18,6 +18,7 @@ import { useParseStore } from '@/stores/parse'
 import { useSettingsStore } from '@/stores/settings'
 import { useUiStore } from '@/stores/ui'
 import { useOnboardingTourBridge } from '@/composables/app/useOnboardingTourBridge'
+import { useFocusNudge } from '@/composables/matches/useFocusNudge'
 import { useTiltNudge } from '@/composables/matches/list/useTiltNudge'
 import { screenshotURL } from '@/match/match-helpers'
 import StartupErrorModal from '@/components/app/StartupErrorModal.vue'
@@ -43,6 +44,7 @@ const MatchAnchorToast = lazyOverlay(() => import('@/components/matches/toasts/M
 const MatchUndoToast = lazyOverlay(() => import('@/components/matches/toasts/MatchUndoToast.vue'))
 const TiltNudgeToast = lazyOverlay(() => import('@/components/matches/toasts/TiltNudgeToast.vue'))
 const SessionSummaryToast = lazyOverlay(() => import('@/components/matches/toasts/SessionSummaryToast.vue'))
+const FocusNudgeToast = lazyOverlay(() => import('@/components/matches/toasts/FocusNudgeToast.vue'))
 const MatchScreenshotLightbox = lazyOverlay(() => import('@/components/matches/detail/MatchScreenshotLightbox.vue'))
 const KeyboardShortcutsModal = lazyOverlay(() => import('@/components/app/KeyboardShortcutsModal.vue'))
 const CommandPalette = lazyOverlay(() => import('@/components/shared/CommandPalette.vue'))
@@ -120,7 +122,13 @@ const {
   ignoredPanelOpen,
   ignoredScreenshots,
   sessionToast,
+  currentSession,
 } = storeToRefs(parseStore)
+
+// What to work on, while there is still a game left to work on it in.
+// Gated on a session being live, so the read only ever fires off a parse the
+// user asked for — never at boot.
+const focusNudge = useFocusNudge(currentSession)
 
 // Tilt nudge — evaluated over the FULL record set (tilt is about
 // actual recent play, not the current narrow); dismissal is
@@ -176,6 +184,14 @@ const lightboxSrc = computed(() => {
   <SessionSummaryToast
     :state="sessionToast"
     @dismiss="parseStore.dismissSessionToast"
+  />
+
+  <!-- What to focus on this session: the top three of the player's list,
+       coach items first. Session-scoped; never auto-dismisses. -->
+  <FocusNudgeToast
+    :items="focusNudge.items.value"
+    :visible="focusNudge.visible.value"
+    @dismiss="focusNudge.dismiss"
   />
 
   <!-- Tilt nudge — dismissible break suggestion on a collapsed loss

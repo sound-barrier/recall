@@ -45,6 +45,11 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
   // the freshest matches form an ACTIVE session (see
   // currentSessionSummary); token restarts the toast timer per run.
   const sessionToast = ref<(SessionSummary & { token: number }) | null>(null)
+  // The session ITSELF, separate from the toast that reports it. Dismissing
+  // the tally does not end the session, and anything else that wants to know
+  // a session is live (the focus readout) must not read that dismissal as
+  // "no session" — which is exactly what reading sessionToast would say.
+  const currentSession = ref<SessionSummary | null>(null)
   // Dismissal sticks to the SESSION, not to the toast instance. Keyed on the
   // token, "×" survived exactly one game: the next parse built a fresh token
   // and put the same readout back, all evening, re-announcing itself to a
@@ -176,6 +181,7 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
     const fresh = getQueryClient().getQueryData<MatchRecord[]>(qk.matches) ?? []
     if (outcome === 'complete') {
       const session = sessionActive.value ? null : currentSessionSummary(fresh)
+      currentSession.value = session
       const dismissed = session !== null && session.startedAt === dismissedSessionStart.value
       sessionToast.value = session && !dismissed ? { ...session, token: Date.now() } : null
       lastParsedAt.value = Date.now()
@@ -219,6 +225,7 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
     parseProgress,
     watchActivity,
     sessionToast,
+    currentSession,
     dismissSessionToast,
     parseLog,
     lastParsedAt,
