@@ -85,11 +85,20 @@ CREATE TABLE IF NOT EXISTS summary_screenshots (
   -- TEXT RFC3339 (like every timestamp here — see the header note); UTC
   -- RFC3339 sorts lexicographically.
   played_at_utc TEXT,
-  perf_elim_total INTEGER NOT NULL DEFAULT 0,
+  -- The player's own E/A/D for the match, off the SUMMARY performance panel.
+  -- Same names as teams_screenshots' columns because it is the same fact: two
+  -- screenshots observe one number, and the read-time fold reconciles them.
+  -- They were once perf_*_total, which read as a different quantity and cost a
+  -- SUMMARY-only match its whole KDA — the aggregator populated the performance
+  -- block from them and left the E/A/D scalars the UI actually renders at zero.
+  eliminations INTEGER NOT NULL DEFAULT 0,
+  assists INTEGER NOT NULL DEFAULT 0,
+  deaths INTEGER NOT NULL DEFAULT 0,
+  -- The per-10-minute rates are a SECOND observation off the same panel, not a
+  -- derivation of the totals above — no writer computes one from the other, and
+  -- game_length is itself OCR. They stay.
   perf_elim_avg_per_10min REAL NOT NULL DEFAULT 0,
-  perf_assists_total INTEGER NOT NULL DEFAULT 0,
   perf_assists_avg_per_10min REAL NOT NULL DEFAULT 0,
-  perf_deaths_total INTEGER NOT NULL DEFAULT 0,
   perf_deaths_avg_per_10min REAL NOT NULL DEFAULT 0,
   -- Parser output vintage that produced this row (parser.Generation). NULL =
   -- written before the column existed, which is stale by definition. Drives the

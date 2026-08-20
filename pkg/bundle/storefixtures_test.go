@@ -38,7 +38,7 @@ func seededStore(t *testing.T, shotsDir string) *dbtest.Fake {
 	f.DirIDs = map[string]int64{shotsDir: seededDirID}
 	f.Summaries = []db.SummaryRow{{
 		ID: 11, Filename: "summary-1.png", MatchKey: "m1", ScreenshotsDirID: seededDirID,
-		Map: "ilios", Result: "victory", ParsedAt: "2026-05-01T00:00:00Z", PerfElimTotal: 21,
+		Map: "ilios", Result: "victory", ParsedAt: "2026-05-01T00:00:00Z", Eliminations: 21,
 		HeroesPlayed: []db.SummaryHeroPlayed{{Hero: "ana", PercentPlayed: 80, PlayTime: "08:12"}},
 	}}
 	f.Teams = []db.TeamsRow{{

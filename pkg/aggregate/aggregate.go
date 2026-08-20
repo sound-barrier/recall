@@ -61,8 +61,7 @@ func MatchKey(key string, snap db.Screenshots, sc Sidecars) (match.Record, bool)
 		return match.Record{}, false
 	}
 	rec := FoldGroup(key, vs, snap.ScreenshotsDirs)
-	InferSoleHeroPercent(&rec.Data)
-	InferResultFromRank(&rec.Data)
+	ApplyReadTimeInference(&rec.Data)
 	attachMatchSidecars(&rec, key, snap, sc)
 	return rec, true
 }

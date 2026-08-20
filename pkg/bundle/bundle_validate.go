@@ -57,7 +57,7 @@ type issueSink func(kind, msg string)
 //
 //  1. manifest.json + data.json are both present
 //  2. manifest.schema == BundleSchemaV1
-//  3. data.schema     == exportSchemaV1
+//  3. data.schema     is a vintage this build reads (exportSchemaOrder)
 //  4. manifest.match_count matches the distinct match_key set
 //     derived from the manifest's screenshots map AND data.json's
 //     row tables (they must agree)
@@ -181,8 +181,8 @@ func decodeBundleData(dataBytes []byte, add issueSink) (DataV2, error) {
 	}
 	if !supportedExportSchema(dataDoc.Schema) {
 		add(IssueWrongDataSchema,
-			fmt.Sprintf("data.schema = %q, want one of %q, %q, %q",
-				dataDoc.Schema, exportSchemaV1, exportSchemaV2, exportSchemaV3))
+			fmt.Sprintf("data.schema = %q, want one of %s",
+				dataDoc.Schema, strings.Join(exportSchemaOrder, ", ")))
 	}
 	var dataProbe struct {
 		ScreenshotsDirs map[string]string `json:"screenshots_dirs"`

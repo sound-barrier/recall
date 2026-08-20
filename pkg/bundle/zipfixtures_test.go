@@ -16,6 +16,8 @@ const (
 	bundleSchemaV1 = "recall-bundle/v1"
 	dataSchemaV1   = "recall-export/v1"
 	dataSchemaV2   = "recall-export/v2"
+	dataSchemaV3   = "recall-export/v3"
+	dataSchemaV4   = "recall-export/v4"
 )
 
 // zipEntry is one member of a synthetic bundle ZIP. `raw` writes the body

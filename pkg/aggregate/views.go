@@ -53,23 +53,18 @@ func summaryToView(r db.SummaryRow) ScreenshotView {
 			Map: r.Map, MapRaw: r.MapRaw, Playlist: r.Playlist, Hero: r.Hero, HeroRaw: r.HeroRaw,
 			Result: r.Result, FinalScore: r.FinalScore,
 			Date: r.Date, FinishedAt: r.FinishedAt, GameLength: r.GameLength,
-			PlayedAtUTC: derefString(r.PlayedAtUTC),
+			PlayedAtUTC:  derefString(r.PlayedAtUTC),
+			Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
 		},
 	}
-	if r.PerfElimTotal > 0 || r.PerfAssistsTotal > 0 || r.PerfDeathsTotal > 0 {
+	// The panel carries the per-10-minute rates and nothing else the scalars
+	// above don't already say. Its Totals are filled at read time from the
+	// merged scalars (InferPerformanceTotals) so one correction moves both.
+	if r.PerfElimAvgPer10Min > 0 || r.PerfAssistsAvgPer10Min > 0 || r.PerfDeathsAvgPer10Min > 0 {
 		view.data.Performance = &parser.Performance{
-			Eliminations: parser.PerformanceStat{
-				Total:       r.PerfElimTotal,
-				AvgPer10Min: r.PerfElimAvgPer10Min,
-			},
-			Assists: parser.PerformanceStat{
-				Total:       r.PerfAssistsTotal,
-				AvgPer10Min: r.PerfAssistsAvgPer10Min,
-			},
-			Deaths: parser.PerformanceStat{
-				Total:       r.PerfDeathsTotal,
-				AvgPer10Min: r.PerfDeathsAvgPer10Min,
-			},
+			Eliminations: parser.PerformanceStat{AvgPer10Min: r.PerfElimAvgPer10Min},
+			Assists:      parser.PerformanceStat{AvgPer10Min: r.PerfAssistsAvgPer10Min},
+			Deaths:       parser.PerformanceStat{AvgPer10Min: r.PerfDeathsAvgPer10Min},
 		}
 	}
 	for _, h := range r.HeroesPlayed {
