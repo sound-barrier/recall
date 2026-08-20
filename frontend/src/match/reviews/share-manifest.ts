@@ -28,7 +28,7 @@ function labelOf(record: MatchRecord | undefined, matchKey: string): string {
 /**
  * One row per key, in the order the caller resolved them.
  *
- * A key the record set cannot resolve still gets a row, labelled by its key
+ * A key the record set cannot resolve still gets a row, labeled by its key
  * and carrying no code. Dropping it would be the worse failure: the share
  * would go out a match short, silently, and a match nobody can look up is
  * certainly not one anybody can prove has a replay code.

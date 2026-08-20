@@ -275,3 +275,26 @@ from the masthead, so a dismissed pointer costs zero bytes on boot; what
 grew the initial graph is eager by nature — the palette action, the
 masthead gate, and api.ts's facades for the new routes. Measured 340821B
 initial / 1738978B total.
+
+## 2026-08 — Send to Coach, and one dialog shape instead of two
+
+`MAX_INITIAL_CSS_BYTES` 80000 → 82000, `MAX_TOTAL_CSS_BYTES` 415000 → 418000.
+
+The new surface is the Send-to-Coach dialog — the manifest of what is going
+out, the replay-code gap each row does or does not have, and the panel that
+sends you to fix the ones missing one. Sharing used to be a checkbox inside a
+dialog labeled for backups.
+
+Its dialog chrome is free. The capped-sheet shape — pinned head, scrolling
+middle, pinned actions — had been spelled out twice by the time there were two
+such dialogs, and one copy was missing all three rules that make it work, which
+is why the export dialog was unreachable at any window under ~840px. It is now
+the `.sheet-*` family in `styles/system-alert.css`. Total CSS went DOWN 1165B
+across that extraction (416393B → 415228B).
+
+Initial CSS rose 748B in the same move, and that is the trade, not a
+regression: a cross-cutting family belongs in the eager global sheet, where
+Vue can no longer emit it once per scope hash. The same bookkeeping the
+2026-08 "404000 → 402000, DOWN" row records, run in the other direction.
+
+Measured 80213B initial / 415228B total.

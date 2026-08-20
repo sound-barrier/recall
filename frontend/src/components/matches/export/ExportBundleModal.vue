@@ -125,7 +125,7 @@ function onCancel() {
 }
 
 function focusable(): HTMLElement[] {
-  const box = document.querySelector<HTMLElement>('.export-bundle-modal-box')
+  const box = document.querySelector<HTMLElement>('.export-bundle-box')
   if (!box) return []
   const sel = 'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
   return Array.from(box.querySelectorAll<HTMLElement>(sel))
@@ -161,31 +161,31 @@ onBeforeUnmount(() => {
 <template>
   <div
     v-if="open"
-    class="export-bundle-modal"
+    class="sheet-overlay"
     role="dialog"
     aria-modal="true"
     aria-labelledby="export-bundle-title"
     aria-describedby="export-bundle-desc"
     data-testid="export-bundle-modal"
   >
-    <div class="export-bundle-modal-backdrop" aria-hidden="true" @click="onCancel" />
+    <div class="sheet-backdrop" aria-hidden="true" @click="onCancel" />
     <form
-      class="export-bundle-modal-box"
+      class="sheet-box export-bundle-box"
       @submit.prevent="onSubmit"
     >
-      <p class="eyebrow accent export-bundle-eyebrow">
+      <p class="eyebrow accent sheet-fixed export-bundle-eyebrow">
         Data &amp; Export
       </p>
-      <h2 id="export-bundle-title" class="export-bundle-title">
+      <h2 id="export-bundle-title" class="sheet-fixed export-bundle-title">
         Export bundle
       </h2>
-      <p id="export-bundle-desc" class="export-bundle-desc">
+      <p id="export-bundle-desc" class="sheet-fixed export-bundle-desc">
         A <code>.zip</code> containing each match's JSON data and
         every referenced screenshot.
         Restores via Settings → Backup &amp; Restore.
       </p>
 
-      <div class="export-bundle-body">
+      <div class="sheet-body">
         <div class="export-bundle-row">
           <span class="export-bundle-label">Selected matches</span>
           <span class="export-bundle-value">{{ selectedCount }}</span>
@@ -242,7 +242,7 @@ onBeforeUnmount(() => {
         </p>
       </div>
 
-      <div class="export-bundle-actions">
+      <div class="sheet-fixed export-bundle-actions">
         <button
           type="button"
           class="export-bundle-cancel"
@@ -266,68 +266,12 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/* The overlay scrolls too, as a second line of defence. `align-items: center`
-   pushes an over-tall box off BOTH edges and the top half is then unreachable
-   — so the box is capped below, and this is what catches anything the cap
-   cannot (a user-resized textarea, a font-size bump). ManualMatchModal does
-   the same. */
-.export-bundle-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-5);
-  overflow-y: auto;
-}
-
-/* The only thing that scrolls. useScrollLock cancels any wheel that does not
-   land in an `overflow-y: auto` element, so without this rule the modal was
-   not merely clipped — it was completely inert to the wheel. */
-.export-bundle-body {
-  flex: 1 1 auto;
-
-  /* Load-bearing: a flex item's default `min-height: auto` refuses to shrink
-     below its content, which would defeat the cap above entirely. */
-  min-height: 0;
-  overflow-y: auto;
-}
-
-/* Neither the title nor the way out may be squeezed by a tall body. */
-.export-bundle-eyebrow,
-.export-bundle-title,
-.export-bundle-desc,
-.export-bundle-actions {
-  flex: 0 0 auto;
-}
-
-.export-bundle-modal-backdrop {
-  position: absolute;
-  inset: 0;
-  background: color-mix(in srgb, var(--bg) 70%, transparent);
-  backdrop-filter: blur(2px);
-}
-
-/* Capped to the viewport as a flex column: the eyebrow and title above, the
-   actions row below, and only the middle scrolls. A dialog whose Cancel
-   button is off-screen is a trap, which is what this was in share mode at
-   any window under ~840px. Mirrors SettingsModal. */
-.export-bundle-modal-box {
-  position: relative;
-  z-index: 1;
+/* Shape comes from the .sheet-* family in styles/system-alert.css — capped,
+   pinned head and actions, only the middle scrolls. This dialog is why that
+   family exists: it shipped with none of the three rules and was a trap at
+   any window under ~840px. Only its width is its own. */
+.export-bundle-box {
   width: min(30rem, 100%);
-  max-height: calc(100dvh - 3rem);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: var(--surface);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-md);
-  padding: 1.6rem 1.6rem 1.3rem;
-  box-shadow:
-    0 22px 60px color-mix(in srgb, var(--bg) 70%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 .export-bundle-eyebrow {

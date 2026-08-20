@@ -1,7 +1,7 @@
 /**
  * Sending matches to a coach — the dialog, end to end.
  *
- * It used to be a checkbox inside a dialog labelled "Export bundle", which
+ * It used to be a checkbox inside a dialog labeled "Export bundle", which
  * is why nobody found it. What these specs pin is the part no unit test
  * can: the four front doors all reach the same dialog over the right set,
  * the replay-code requirement reads as a manifest rather than a count, and

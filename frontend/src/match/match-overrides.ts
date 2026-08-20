@@ -57,15 +57,22 @@ export function overrideSetFromRecord(rec: MatchRecord): UserMatchDataInput {
 
   const out: UserMatchDataInput = {}
   for (const path of rec.edited_fields ?? []) {
-    const parts = path.split('.')
-    if (parts[0] !== 'data') continue
-    if (parts.length === 2) {
-      reconstructTopLevel(out, parts[1] ?? '', data)
-    } else if (isHeroStatPath(parts)) {
-      reconstructStat(out, rec, parts[2] ?? '', parts[4] ?? '')
-    }
+    reconstructEditedPath(out, rec, path, data)
   }
   return out
+}
+
+/** Put back the one field a dotted `edited_fields` entry names. */
+function reconstructEditedPath(
+  out: UserMatchDataInput, rec: MatchRecord, path: string, data: Record<string, unknown>,
+): void {
+  const parts = path.split('.')
+  if (parts[0] !== 'data') return
+  if (parts.length === 2) {
+    reconstructTopLevel(out, parts[1] ?? '', data)
+  } else if (isHeroStatPath(parts)) {
+    reconstructStat(out, rec, parts[2] ?? '', parts[4] ?? '')
+  }
 }
 
 /**
@@ -75,24 +82,37 @@ export function overrideSetFromRecord(rec: MatchRecord): UserMatchDataInput {
  */
 function manualOverrideSet(rec: MatchRecord, data: Record<string, unknown>): UserMatchDataInput {
   const out: UserMatchDataInput = {}
-  for (const field of Object.keys(data)) {
-    if (data[field] === undefined || data[field] === null) continue
-    if (isScalarField(field) || field === 'heroes_played' || field === 'sr'
-      || field === 'rank_modifiers') {
-      reconstructTopLevel(out, field, data)
-    }
-  }
+  copyPresentFields(out, data)
   // Not a SCALAR_FIELDS member — it is never edited directly — but it has to
   // travel. A manual entry's instant comes from the wire offset, which the
   // wall clock cannot reproduce, so an omitted one is a lost moment rather
   // than a re-derivable one.
   if (typeof data.played_at_utc === 'string') out.played_at_utc = data.played_at_utc
+  copyHeroStats(out, rec, data)
+  return out
+}
+
+/** The fields reconstructTopLevel knows how to put back. */
+function travelsWholesale(field: string): boolean {
+  return isScalarField(field) || field === 'heroes_played' || field === 'sr'
+    || field === 'rank_modifiers'
+}
+
+function copyPresentFields(out: UserMatchDataInput, data: Record<string, unknown>): void {
+  for (const field of Object.keys(data)) {
+    if (data[field] === undefined || data[field] === null) continue
+    if (travelsWholesale(field)) reconstructTopLevel(out, field, data)
+  }
+}
+
+function copyHeroStats(
+  out: UserMatchDataInput, rec: MatchRecord, data: Record<string, unknown>,
+): void {
   for (const hero of (data.heroes_played as MatchRecord['data']['heroes_played'] ?? [])) {
     for (const statKey of Object.keys(hero.stats ?? {})) {
       reconstructStat(out, rec, hero.hero, statKey)
     }
   }
-  return out
 }
 
 function reconstructTopLevel(out: UserMatchDataInput, field: string, data: Record<string, unknown>): void {
