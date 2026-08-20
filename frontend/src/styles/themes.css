@@ -144,9 +144,11 @@
      direction), which keeps it the worst surface here.
 
      Worst surface (--paper-2): --ink 13.59 · --ink-dim 7.77 ·
-     --ink-faint 5.61 · --paper-accent 5.47 · --paper-win 6.59 (5.47 on
-     its tint) · --paper-loss 6.05 (5.01) · --paper-draw 6.33 (5.32) ·
-     --paper-focus 5.47 · paper on ink 15.03. */
+     --ink-faint 5.61 · --paper-accent 5.47 (4.62 on its own tint — the
+     tightest value in the whole family, 0.12 above the bar, so nudge the
+     Day accent and re-check THIS number first) · --paper-win 6.59 (5.47)
+     · --paper-loss 6.05 (5.01) · --paper-draw 6.33 (5.32) · --paper-focus
+     5.47 · paper on ink 15.03. */
   --paper: #f7efd6;
   --paper-2: #efe4c0;
   --paper-rule: rgb(74 74 74 / 22%);
@@ -365,10 +367,12 @@
      The verdict trio and accent are re-picked to the light ends of their
      ramps (inheriting the base stock's would work, but this palette
      boosts every other hue and paper should not be the exception).
-     Worst surface is --paper (the recessed --paper-2 is darker still):
-     --ink 21.00 · --ink-faint 17.14 · --paper-accent 11.65 (9.95 on its
-     tint) · --paper-win 13.06 (11.00) · --paper-loss 10.44 (9.04) ·
-     --paper-draw 13.10 (11.02) · --paper-focus 21.00 · paper on ink
+     This is the one palette where the recessed field goes LIGHTER, not
+     darker: the plate is already #000 and there is nowhere below it. So
+     --paper-2 is the worst surface here, and these are its numbers:
+     --ink 19.44 · --ink-faint 15.86 · --paper-accent 10.79 (8.77 on its
+     tint) · --paper-win 12.08 (9.72) · --paper-loss 9.66 (8.00) ·
+     --paper-draw 12.12 (9.74) · --paper-focus 19.44 · paper on ink
      21.00. */
   --paper: #000;
   --paper-2: #0d0d0d;

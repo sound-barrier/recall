@@ -1,7 +1,7 @@
 /* ─── Paper — the coaching session's ink-on-paper family ────────────
-   A coach's notes are written on paper: a light plate with dark ink that
-   stays that way under every theme (tokens in tokens.css, per-theme values
-   in themes.css). This file holds the family; the Film Room's geometry
+   A coach's notes are written on paper: a plate that FOLLOWS the theme —
+   dark ledger stock under the three dark palettes, cream under Day (tokens
+   in tokens.css, per-theme values in themes.css). This file holds the family; the Film Room's geometry
    stays scoped to its own components.
 
    `.paper` re-maps the app's text / accent-type / verdict / hairline
@@ -125,9 +125,14 @@
   border-color: var(--ink-dim);
 }
 
-/* The mark a noted frame carries on the reel's sprocket rail: a scrap of
-   paper on the dark rail. `.hollow` is the reviewed-only variant — the
-   state is also spoken by the frame's accessible-name suffix. */
+/* The mark a noted frame carries on the reel's sprocket rail, and the same
+   mark at label size on a shelf card. Both grounds are dark — the rail is
+   the page, the card is the plate — so one ink treatment serves both: a
+   filled chip of ink for a written note, an ink outline for a frame that
+   was only looked at. (It used to be a scrap of light PAPER on a dark
+   rail. When the plate went dark that inverted into a dark glyph on a dark
+   rail at 1.2:1, invisible, and the shelf card carried a scoped override
+   to undo it — the override is gone with the reason for it.) */
 .paper-mark {
   display: inline-flex;
   align-items: center;
@@ -139,22 +144,19 @@
   font-size: var(--type-4xs);
   font-weight: 700;
   line-height: 1;
-  color: var(--ink);
-  background: var(--paper);
-  border: 1px solid var(--paper-edge);
+  color: var(--paper);
+  background: var(--ink);
+  border: 1px solid var(--ink);
   border-radius: var(--radius-hair);
 }
 
 .paper-mark.hollow {
-  color: var(--paper);
+  color: var(--ink);
   background: transparent;
-  border-color: var(--paper);
+  border-color: var(--ink);
   border-style: dashed;
 }
 
-/* Ruled-paper hatch for the session strip and the reel's day labels —
-   the same technique as .brand-corner, on paper. The gradient's stroke
-   is --paper-rule, so it follows the theme's ink. */
 .paper-rule-hatch {
   color: var(--ink);
   background:
