@@ -166,21 +166,18 @@ func wantStagedSheet(id int64, importedAt string) coach.ReturnSheet {
 		ID: id, CoachName: "Ordo", PlayerHandle: "Sable", SessionDate: "2026-08-15",
 		ImportedAt: importedAt, Summary: "Work on ult timing.",
 		Notes: []coach.ReturnItem{
-			{Note: coach.Note{
+			{
 				NoteID: noteIDOne, MatchKey: keyIlios, Kind: "note", Text: "hold high ground",
 				FocusTags: []string{"positioning"}, ExtraTags: []string{}, MatchClock: "06:40", UpdatedAt: "2026-08-15T09:00:00Z",
-				Match: &coach.MatchContext{Map: "ilios", Hero: "ana", Result: "victory", Date: "2026-08-01", FinishedAt: "18:30"},
-			}, Status: coach.StatusPending},
-			{Note: coach.Note{
+				Match: &coach.MatchContext{Map: "ilios", Hero: "ana", Result: "victory", Date: "2026-08-01", FinishedAt: "18:30"}, Status: coach.StatusPending},
+			{
 				NoteID: noteIDTwo, MatchKey: keyRank, Kind: "reviewed_only",
 				FocusTags: []string{}, ExtraTags: []string{}, UpdatedAt: "2026-08-15T09:01:00Z",
-				Match: &coach.MatchContext{},
-			}, Status: coach.StatusPending},
-			{Note: coach.Note{
+				Match: &coach.MatchContext{}, Status: coach.StatusPending},
+			{
 				NoteID: orphanNoteID, MatchKey: orphanKey, Kind: "note", Text: "gone",
 				FocusTags: []string{"comms"}, ExtraTags: []string{},
-				Match: &coach.MatchContext{Map: "busan", Hero: "ana", Result: "defeat", Date: "2030-01-01", FinishedAt: "00:00"},
-			}, Status: coach.StatusOrphan},
+				Match: &coach.MatchContext{Map: "busan", Hero: "ana", Result: "defeat", Date: "2030-01-01", FinishedAt: "00:00"}, Status: coach.StatusOrphan},
 		},
 		Decisions: map[string]string{},
 		Pending:   2,

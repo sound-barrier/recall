@@ -76,8 +76,8 @@ func (f *Fake) EnsureCoachPlayer(playerID, handle string) (db.CoachPlayer, error
 		}
 		return f.CoachPlayers[i], nil
 	}
-	p := db.CoachPlayer{PlayerID: playerID, Handle: handle}
-	p.ID = nextID(f.CoachPlayers, func(p db.CoachPlayer) int64 { return p.ID })
+	p := db.CoachPlayer{PlayerID: playerID, Handle: handle,
+		ID: nextID(f.CoachPlayers, func(p db.CoachPlayer) int64 { return p.ID })}
 	f.CoachPlayers = append(f.CoachPlayers, p)
 	return p, nil
 }

@@ -154,7 +154,7 @@ func parseTesseractVersion(stdout, stderr string) (version string, supported boo
 	v = strings.TrimSpace(strings.TrimPrefix(v, "v"))
 	// Only major version 5 is officially supported. 3.x and 4.x may produce
 	// incorrect OCR output with the current parser logic.
-	major := strings.SplitN(v, ".", 2)[0]
+	major, _, _ := strings.Cut(v, ".")
 	return v, major == "5", ""
 }
 

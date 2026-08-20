@@ -81,8 +81,7 @@ func TestLoadProfiles_CorruptMetadataIsAnErrorNotAReset(t *testing.T) {
 	if p != nil {
 		t.Errorf("LoadProfiles returned a usable manager alongside the error: %+v", p)
 	}
-	var syntaxErr *json.SyntaxError
-	if !errors.As(err, &syntaxErr) {
+	if _, ok := errors.AsType[*json.SyntaxError](err); !ok {
 		t.Errorf("error %v does not wrap the JSON failure — the cause is unrecoverable from the message", err)
 	}
 }

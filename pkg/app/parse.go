@@ -398,8 +398,8 @@ func buildTeamsRow(filename, key string, dirID int64, r *parser.MatchResult) db.
 		Eliminations:     r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
 		Damage: r.Damage, Healing: r.Healing, Mitigation: r.Mitigation,
 		QueueType: r.QueueType,
-	}
-	row.HeroStats = flattenHeroStats(r.HeroesPlayed)
+
+		HeroStats: flattenHeroStats(r.HeroesPlayed)}
 	return row
 }
 
@@ -407,8 +407,8 @@ func buildPersonalRow(filename, key string, dirID int64, r *parser.MatchResult) 
 	row := db.PersonalRow{
 		Filename: filename, MatchKey: key, ScreenshotsDirID: dirID, Hero: r.Hero,
 		ParserGeneration: parser.Generation,
-	}
-	row.HeroStats = flattenHeroStats(r.HeroesPlayed)
+
+		HeroStats: flattenHeroStats(r.HeroesPlayed)}
 	return row
 }
 

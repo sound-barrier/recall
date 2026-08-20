@@ -13,15 +13,13 @@ import (
 // attaches to.
 func selfReviewRow(reviewID, createdAt string) db.SelfReviewNoteOnMatch {
 	return db.SelfReviewNoteOnMatch{
-		SelfReviewNote: db.SelfReviewNote{
-			ReviewID: reviewID, MatchKey: "m1", Kind: "note", Text: "held the choke",
-			MatchClock: "06:40", FocusTags: []string{"positioning"}, ExtraTags: []string{"tempo"},
-			Moments: []db.SelfReviewMoment{
-				{MomentID: "m1", MatchClock: "03:23", Text: "no off-angle", FocusTag: "positioning"},
-				{MomentID: "m2", MatchClock: "04:45", Text: "flank", SortOrder: 1},
-			},
-			CreatedAt: createdAt, UpdatedAt: "2026-08-18T20:00:00Z",
+		ReviewID: reviewID, MatchKey: "m1", Kind: "note", Text: "held the choke",
+		MatchClock: "06:40", FocusTags: []string{"positioning"}, ExtraTags: []string{"tempo"},
+		Moments: []db.SelfReviewMoment{
+			{MomentID: "m1", MatchClock: "03:23", Text: "no off-angle", FocusTag: "positioning"},
+			{MomentID: "m2", MatchClock: "04:45", Text: "flank", SortOrder: 1},
 		},
+		CreatedAt: createdAt, UpdatedAt: "2026-08-18T20:00:00Z",
 		ReviewTitle: "Tuesday Ana", ReviewCreatedAt: createdAt, ReviewFinishedAt: "2026-08-18T21:00:00Z",
 	}
 }
