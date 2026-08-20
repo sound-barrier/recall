@@ -14,7 +14,7 @@
 import { type Page, type Route } from '@playwright/test'
 
 import { routeCapture, type RouteCapture } from './_capture'
-import { SESSION_FIXTURE, type SessionMatch } from './_coach'
+import { SESSION_FIXTURE, type FocusItemWire, type SessionMatch } from './_coach'
 
 export interface SelfReviewNoteWire {
   match_key: string
@@ -31,7 +31,7 @@ export interface SelfReviewNoteWire {
 export interface SelfReviewWire {
   review_id: string
   title: string
-  summary: string
+  focus_items: FocusItemWire[]
   created_at: string
   updated_at: string
   finished_at?: string
@@ -78,7 +78,9 @@ export interface SelfReviewsMock {
   momentPut: RouteCapture<SelfReviewMomentPutBody>
   momentPutId: RouteCapture<string>
   /** Last `PUT /self-reviews/{id}` body. */
-  updatePut: RouteCapture<{ title: string; summary: string }>
+  updatePut: RouteCapture<{ title: string }>
+  /** Last `PUT /self-reviews/{id}/focus-items` body. */
+  focusPut: RouteCapture<{ items: FocusItemWire[] }>
   /** Review ids finished, in order. */
   finished: string[]
   /** Review ids deleted, in order. */
@@ -111,7 +113,7 @@ export function finishedSitting(over: Partial<SelfReviewWire> = {}): SelfReviewW
   return {
     review_id: SITTING_ID,
     title: "Tuesday's Ana games",
-    summary: 'Stop chasing flanks; hold the high ground and let them come.',
+    focus_items: [{ item_id: 'a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d', text: 'Stop chasing flanks; hold the high ground and let them come.', status: 'working' }],
     created_at: created,
     updated_at: created,
     finished_at: nowIso(-3 * 24 * 60 * A_MINUTE + 40 * A_MINUTE),
@@ -187,6 +189,7 @@ export async function mockSelfReviews(page: Page, opts: SelfReviewsMockOptions =
     momentPut: routeCapture('self review moment PUT body'),
     momentPutId: routeCapture('self review moment PUT id'),
     updatePut: routeCapture('self review PUT body'),
+    focusPut: routeCapture('self review focus items PUT body'),
     finished: [],
     deleted: [],
     reviews: () => [...state.reviews.values()],
@@ -221,7 +224,7 @@ export async function mockSelfReviews(page: Page, opts: SelfReviewsMockOptions =
         const id = state.minted === 0 ? SITTING_ID : `${OTHER_SITTING_ID.slice(0, -1)}${state.minted}`
         state.minted += 1
         const created: SelfReviewWire = {
-          review_id: id, title: body.title ?? '', summary: '', created_at: nowIso(), updated_at: nowIso(),
+          review_id: id, title: body.title ?? '', focus_items: [], created_at: nowIso(), updated_at: nowIso(),
           match_keys: [...new Set(body.match_keys)], notes: {},
         }
         state.reviews.set(id, created)
@@ -250,6 +253,16 @@ async function handleSittingRoute(route: Route, seg: string[], review: SelfRevie
   const method = route.request().method()
   if (seg.length === 1) return handleSittingHeader(route, method, review, ctx)
   if (seg.length === 2 && seg[1] === 'matches' && method === 'PUT') return handleSetMatches(route, review)
+  if (seg.length === 2 && seg[1] === 'focus-items' && method === 'PUT') {
+    const body = parseBody<{ items: FocusItemWire[] }>(route)
+    ctx.mock.focusPut.set(body)
+    // Items written in a sitting are born working: the player wrote them,
+    // so they are already on them. The server does this; the mock has to,
+    // or a spec reading the status back proves nothing.
+    review.focus_items = body.items.map((i) => ({ ...i, status: i.status ?? 'working' }))
+    review.updated_at = nowIso()
+    return fulfillJSON(route, review)
+  }
   if (seg.length === 2 && seg[1] === 'completion' && method === 'POST') {
     review.finished_at ??= nowIso()
     ctx.mock.finished.push(review.review_id)
@@ -263,10 +276,9 @@ interface MockContext { reviews: Map<string, SelfReviewWire>; mock: SelfReviewsM
 function handleSittingHeader(route: Route, method: string, review: SelfReviewWire, ctx: MockContext): Promise<void> {
   if (method === 'GET') return fulfillJSON(route, review)
   if (method === 'PUT') {
-    const body = parseBody<{ title: string; summary: string }>(route)
+    const body = parseBody<{ title: string }>(route)
     ctx.mock.updatePut.set(body)
     review.title = body.title
-    review.summary = body.summary
     review.updated_at = nowIso()
     return fulfillJSON(route, review)
   }
@@ -344,4 +356,54 @@ function handleMomentRoute(route: Route, method: string, { review, matchKey, mom
     return route.fulfill({ status: 204 })
   }
   return route.fallback()
+}
+
+/** One row of `GET /api/v1/focus` — the player's whole list. */
+export interface FocusEntryWire {
+  item_id: string
+  text: string
+  status: 'new' | 'working' | 'done'
+  source: 'coach' | 'self'
+  coach_name?: string
+  from: string
+}
+
+export interface FocusMock {
+  /** Status moves the band sent, in order. */
+  moves: { itemID: string; status: string }[]
+  entries: () => FocusEntryWire[]
+}
+
+/**
+ * `GET /api/v1/focus` + `PUT /api/v1/focus/{item_id}/status`, live: a move
+ * mutates the list, so a refetch after Accept reads what was written. The
+ * server assembles the order (coach items first) — the mock serves whatever
+ * it was handed, which is what lets a spec pin that the band does not
+ * re-sort.
+ */
+export async function mockFocus(page: Page, entries: FocusEntryWire[] = []): Promise<FocusMock> {
+  const state = [...entries]
+  const mock: FocusMock = { moves: [], entries: () => [...state] }
+
+  await page.route('**/api/v1/focus', async (route: Route) => {
+    if (route.request().method() !== 'GET') {
+      await route.fallback()
+      return
+    }
+    await fulfillJSON(route, state)
+  })
+  await page.route('**/api/v1/focus/*/status', async (route: Route) => {
+    const parts = new URL(route.request().url()).pathname.split('/')
+    const itemID = parts[parts.length - 2] ?? ''
+    const body = parseBody<{ status: FocusEntryWire['status'] }>(route)
+    const row = state.find((e) => e.item_id === itemID)
+    if (!row) {
+      await fulfillProblem(route, 404, 'focus item not found')
+      return
+    }
+    row.status = body.status
+    mock.moves.push({ itemID, status: body.status })
+    await route.fulfill({ status: 204, body: '' })
+  })
+  return mock
 }

@@ -97,7 +97,7 @@ export interface CoachSessionView {
   session_date: string
   match_count: number
   coach_name: string
-  summary: string
+  focus_items: FocusItemWire[]
   notes: CoachSessionNote[]
   /** True when the bundle named the player, so the handle arrives pre-filled. */
   handle_from_bundle: boolean
@@ -163,7 +163,7 @@ export interface CoachReturnSheet {
   player_handle: string
   session_date: string
   imported_at: string
-  summary: string
+  focus_items: FocusItemWire[]
   notes: CoachReturnNote[]
   decisions: Record<string, CoachDecision>
 }
@@ -370,6 +370,14 @@ export const RESURFACED_NOTES: CoachSessionNote[] = [
   },
 ]
 
+/** One line of "what to work on", as it travels on the wire. */
+export interface FocusItemWire {
+  item_id: string
+  text: string
+  status?: 'new' | 'working' | 'done'
+}
+
+export const RESURFACED_ITEM_ID = 'e1f2a3b4-5c6d-4e7f-8a9b-0c1d2e3f4a5b'
 export const RESURFACED_SUMMARY = 'Ult economy first, positioning second. Watch three of your own control losses back.'
 
 /** The notes file Ordo sent back — three notes on Sable's own matches, no decisions yet. */
@@ -379,7 +387,7 @@ export const RETURN_SHEET_FIXTURE: CoachReturnSheet = {
   player_handle: 'Sable',
   session_date: daysAgo(1),
   imported_at: `${daysAgo(0)}T09:12:00Z`,
-  summary: RESURFACED_SUMMARY,
+  focus_items: [{ item_id: RESURFACED_ITEM_ID, text: RESURFACED_SUMMARY }],
   notes: [
     {
       note_id: 'c1d2e3f4-0a1b-4c2d-9e3f-4a5b6c7d8e9f',
@@ -478,7 +486,7 @@ export interface CoachSessionMockOptions {
   coachName?: string
   /** Start with the session already open — pair with pinSessionResume(). */
   active?: boolean
-  summary?: string
+  focusItems?: FocusItemWire[]
 }
 
 export interface CoachSessionMock {
@@ -494,8 +502,8 @@ export interface CoachSessionMock {
   momentPutKey: RouteCapture<string>
   /** Moment ids the room sent a DELETE for, in order. */
   momentDeletes: string[]
-  /** Last `PUT /coach/session/summary` body. */
-  summaryPut: RouteCapture<{ text: string }>
+  /** Last `PUT /coach/session/focus-items` body. */
+  focusPut: RouteCapture<{ items: FocusItemWire[] }>
   /** Last `PUT /settings/coaching` body. */
   coachNamePut: RouteCapture<{ coach_name: string }>
   isActive: () => boolean
@@ -512,7 +520,7 @@ interface SessionState {
   notes: Map<string, CoachSessionNote>
   /** Moments per match key — several share a match, which is the point. */
   moments: Map<string, CoachSessionMoment[]>
-  summary: string
+  focusItems: FocusItemWire[]
   coachName: string
   active: boolean
   handleFromBundle: boolean
@@ -527,7 +535,7 @@ function viewOf(state: SessionState): CoachSessionView {
     session_date: daysAgo(0),
     match_count: state.session.matches.length,
     coach_name: state.coachName,
-    summary: state.summary,
+    focus_items: state.focusItems,
     notes: [...state.notes.values()],
     handle_from_bundle: state.handleFromBundle,
   }
@@ -600,7 +608,7 @@ async function routeSessionNotes(page: Page, state: SessionState, mock: CoachSes
     mock.notePutKey.set(key)
     await fulfillJSON(route, saved)
   })
-  // Registered BEFORE the summary route and AFTER the notes one. The notes
+  // Registered BEFORE the focus-items route and AFTER the notes one. The notes
   // glob is `notes/*`, and Playwright's `*` stops at a slash, so it does not
   // reach `notes/<key>/moments/<id>` — but the ordering is stated here anyway,
   // because a future `notes/**` would silently swallow every moment write.
@@ -639,19 +647,19 @@ async function routeSessionNotes(page: Page, state: SessionState, mock: CoachSes
     mock.momentPutKey.set(matchKey)
     await fulfillJSON(route, saved)
   })
-  await page.route('**/api/v1/coach/session/summary', async (route: Route) => {
+  await page.route('**/api/v1/coach/session/focus-items', async (route: Route) => {
     // Same 409 the note route mirrors, and for the same reason: the server
-    // keys the summary on the player too (PutCoachSummary → sessionPlayerLocked).
-    // This mock used to answer 204 here, which is precisely why the harness
-    // built to prove "the room asks first" could not see that the summary box
-    // accepted typing the server would refuse.
+    // keys the list on the player too (PutCoachFocusItems →
+    // sessionPlayerLocked). This mock used to answer 204 here, which is
+    // precisely why the harness built to prove "the room asks first" could
+    // not see that the box accepted typing the server would refuse.
     if (state.session.player.handle === '') {
-      await fulfillProblem(route, 409, 'confirm the player before writing a summary')
+      await fulfillProblem(route, 409, 'confirm the player before writing a focus list')
       return
     }
-    const body = parseBody<{ text: string }>(route)
-    state.summary = body.text
-    mock.summaryPut.set(body)
+    const body = parseBody<{ items: FocusItemWire[] }>(route)
+    state.focusItems = body.items
+    mock.focusPut.set(body)
     await route.fulfill({ status: 204, body: '' })
   })
 }
@@ -694,7 +702,7 @@ export async function mockCoachSession(page: Page, opts: CoachSessionMockOptions
     session: opened,
     notes: noteMap(opts.notes ?? []),
     moments: new Map(),
-    summary: opts.summary ?? '',
+    focusItems: opts.focusItems ?? [],
     coachName: opts.coachName ?? COACH_NAME,
     active: opts.active ?? false,
     handleFromBundle: opened.player.handle !== '',
@@ -708,7 +716,7 @@ export async function mockCoachSession(page: Page, opts: CoachSessionMockOptions
     momentPut: routeCapture<CoachMomentPutBody>('coach moment PUT body'),
     momentPutKey: routeCapture<string>('coach moment PUT match key'),
     momentDeletes: [],
-    summaryPut: routeCapture<{ text: string }>('coach summary PUT body'),
+    focusPut: routeCapture<{ items: FocusItemWire[] }>('coach focus list PUT body'),
     coachNamePut: routeCapture<{ coach_name: string }>('coaching settings PUT body'),
     isActive: () => state.active,
     openCount: () => state.opens,
@@ -717,7 +725,7 @@ export async function mockCoachSession(page: Page, opts: CoachSessionMockOptions
     swapPlayer: (session, notes = []) => {
       state.session = session
       state.notes = noteMap(notes)
-      state.summary = ''
+      state.focusItems = []
       state.handleFromBundle = session.player.handle !== ''
     },
   }
@@ -929,7 +937,11 @@ export async function openCoachRoom(page: Page, theme: string): Promise<void> {
   await silenceParseEvents(page)
   await seedProfiles(page)
   await seedCoachOwnMatches(page)
-  await mockCoachSession(page, { notes: RESURFACED_NOTES, summary: RESURFACED_SUMMARY, active: true })
+  await mockCoachSession(page, {
+    notes: RESURFACED_NOTES,
+    focusItems: [{ item_id: RESURFACED_ITEM_ID, text: RESURFACED_SUMMARY }],
+    active: true,
+  })
   await pinSessionResume(page)
   await page.goto('/')
   await enterFilmRoom(page)

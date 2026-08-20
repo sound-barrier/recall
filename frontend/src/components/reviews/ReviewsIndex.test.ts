@@ -29,7 +29,7 @@ function note(noteId: string, over: Partial<CoachReturnItem> = {}): CoachReturnI
 function sheet(over: Partial<CoachReturnSheet> = {}): CoachReturnSheet {
   return {
     id: 7, coach_name: 'Ordo', player_handle: 'Sable', session_date: '2026-08-14',
-    imported_at: '2026-08-15T09:12:00Z', summary: '', notes: [note('n-1'), note('n-2')],
+    imported_at: '2026-08-15T09:12:00Z', focus_items: [], notes: [note('n-1'), note('n-2')],
     decisions: {}, pending: 2, player_mismatch: false, ...over,
   }
 }
@@ -139,7 +139,8 @@ describe('ReviewsIndex — reviews received', () => {
 // and a way to Matches.
 describe('ReviewsIndex — your own reviews', () => {
   const SITTING: SelfReview = {
-    review_id: 'r-1', title: "Tuesday's Ana games", summary: 'Stop chasing flanks.',
+    review_id: 'r-1', title: "Tuesday's Ana games",
+    focus_items: [{ item_id: 'f-1', text: 'Stop chasing flanks.' }],
     created_at: '2026-08-18T19:00:00Z', updated_at: '2026-08-18T19:00:00Z', finished_at: '2026-08-18T20:00:00Z',
     match_keys: ['match-2026-08-01T20-00-00'],
     notes: {
@@ -240,13 +241,13 @@ describe('ReviewsIndex — the sent ledger', () => {
   })
 })
 
-// 03's roster: one quiet row per coached player, work counted, the summary
-// quoted when one was written.
+// 03's roster: one quiet row per coached player, work counted, what they
+// are working on printed when a list was written.
 describe('ReviewsIndex — the coach roster', () => {
-  it('lists players with counts, day, and summary; pluralizes honestly', () => {
+  it('lists players with counts, day, and focus list; pluralizes honestly', () => {
     renderShelf({
       roster: [
-        { id: 2, handle: 'Sable', note_count: 12, last_note_at: '2026-08-14T20:00:00Z', summary: 'Ult economy first.' },
+        { id: 2, handle: 'Sable', note_count: 12, last_note_at: '2026-08-14T20:00:00Z', focus_items: ['Ult economy first.'] },
         { id: 1, handle: 'Kestrel', note_count: 1 },
       ],
     })

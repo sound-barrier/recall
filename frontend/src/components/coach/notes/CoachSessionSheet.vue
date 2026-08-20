@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import SheetFocusTally from '@/components/coach/notes/SheetFocusTally.vue'
 import SheetRecord from '@/components/coach/notes/SheetRecord.vue'
-import SheetSummary from '@/components/coach/notes/SheetSummary.vue'
+import SheetFocusItems from '@/components/coach/notes/SheetFocusItems.vue'
+import type { FocusItem } from '@/api'
 import type { CoachPlayerView, CoachSaveState } from '@/components/coach/room/coach-room-props'
 import type { FocusCount } from '@/match/coach/coach-notes'
 import type { WLDTally } from '@/match/match-stats-helpers'
@@ -10,7 +11,7 @@ import type { WLDTally } from '@/match/match-stats-helpers'
 // what the coach wants them to work on. Written on paper — the plate
 // re-maps the app's text / verdict tokens inside itself, so .eyebrow,
 // .score-num and the rest render here with no parallel rules. The record,
-// the focus tally and the summary box are the pieces every sheet shares
+// the focus tally and the focus list are the pieces every sheet shares
 // (the player's own review sitting composes its own from them); what is
 // left here is the coach's: who, the message, Export, End.
 
@@ -23,27 +24,28 @@ withDefaults(defineProps<{
   endArmed?: boolean
   /** "7 notes · 19 moments · 1 reviewed only · Ordo" — from notesSummaryLine(). */
   notesLine: string
-  summary: string
-  /** Where the summary's own autosave stands. */
-  summarySaveState?: CoachSaveState
+  /** What this player is being told to work on, in the coach's order. */
+  focusItems: FocusItem[]
+  /** Where the focus list's own autosave stands. */
+  focusSaveState?: CoachSaveState
   canExport?: boolean
   /** Why Export is unavailable — shown as its title, per the write-gate copy. */
   exportReason?: string
   /**
-   * Non-empty when the summary cannot be saved yet — the session names no
-   * player, so the server has nowhere to key it. The box refuses typing for
-   * the same reason the note editor does: accepting a paragraph every PUT
-   * will refuse loses it.
+   * Non-empty when the list cannot be saved yet — the session names no
+   * player, so the server has nowhere to key it. The rows refuse typing for
+   * the same reason the note editor does: accepting words every PUT will
+   * refuse loses them.
    */
   blockedReason?: string
 }>(), {
   canExport: true, exportReason: undefined, blockedReason: '',
-  endArmed: false, summarySaveState: 'idle',
+  endArmed: false, focusSaveState: 'idle',
 })
 
 const emit = defineEmits<{
   'keep-working': []
-  'update-summary': [text: string]
+  'update-focus-items': [items: FocusItem[]]
   /** Re-open the room's "who is this?" prompt — the bundle only suggested. */
   'change-player': []
   export: []
@@ -72,12 +74,12 @@ const emit = defineEmits<{
 
     <SheetRecord :wld="wld" :win-rate="winRate" />
     <SheetFocusTally :focus-tally="focusTally" :notes-line="notesLine" />
-    <SheetSummary
-      id="coach-session-summary"
-      :summary="summary"
-      :save-state="summarySaveState"
+    <SheetFocusItems
+      id="coach-session-focus"
+      :items="focusItems"
+      :save-state="focusSaveState"
       :blocked-reason="blockedReason"
-      @update="(text: string) => emit('update-summary', text)"
+      @update="(items: FocusItem[]) => emit('update-focus-items', items)"
     />
 
     <p class="sheet-persist">

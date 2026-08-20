@@ -29,6 +29,10 @@ export const qk = {
   // The player's own saved review sittings — its own branch: it is the
   // player's data, not part of the coaching loop, and it outlives both.
   selfReviews: ['self-reviews'] as const,
+  // What the player is working on — assembled server-side from BOTH
+  // families that feed it, so it is its own read rather than something
+  // derived from the two branches above.
+  focus: ['focus'] as const,
   shares: ['shares'] as const,
   coachPlayers: ['coach-players'] as const,
   system: {

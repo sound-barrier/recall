@@ -9,7 +9,7 @@ function rec(key: string, result: string): MatchRecord {
 
 function sitting(over: Partial<SelfReview> = {}): SelfReview {
   return {
-    review_id: 'r-1', title: '', summary: '', created_at: '2026-08-18T19:00:00Z', updated_at: '2026-08-18T19:00:00Z',
+    review_id: 'r-1', title: '', focus_items: [], created_at: '2026-08-18T19:00:00Z', updated_at: '2026-08-18T19:00:00Z',
     match_keys: ['a', 'b', 'c'],
     notes: {
       a: { match_key: 'a', kind: 'note', text: 'held', focus_tags: [], extra_tags: [], match_clock: '', created_at: '', updated_at: '' },
@@ -29,11 +29,14 @@ describe('shelfCard', () => {
     expect(card.finished).toBe(false)
   })
 
-  it('names an untitled sitting by its day and excerpts a long summary', () => {
-    const card = shelfCard(sitting({ summary: 'x'.repeat(200), finished_at: '2026-08-18T20:00:00Z' }), [])
+  it('names an untitled sitting by its day and excerpts a long focus list', () => {
+    const card = shelfCard(sitting({
+      focus_items: [{ item_id: 'f-1', text: 'x'.repeat(200) }],
+      finished_at: '2026-08-18T20:00:00Z',
+    }), [])
     expect(card.title).toBe('Review of 2026-08-18')
-    expect(card.summaryExcerpt.length).toBe(140)
-    expect(card.summaryExcerpt.endsWith('…')).toBe(true)
+    expect(card.focusExcerpt.length).toBe(140)
+    expect(card.focusExcerpt.endsWith('…')).toBe(true)
     expect(card.finished).toBe(true)
   })
 

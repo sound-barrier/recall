@@ -4,12 +4,14 @@ import { defineStore } from 'pinia'
 import {
   CreateSelfReview, DeleteSelfReview, DeleteSelfReviewMoment, DeleteSelfReviewNote,
   FinishSelfReview, GetSelfReview, PutSelfReviewMoment, PutSelfReviewNote,
-  SetSelfReviewMatches, UpdateSelfReview,
+  SetSelfReviewFocusItems, SetSelfReviewMatches, UpdateSelfReview,
+  type FocusItem,
   type SelfReview,
 } from '@/api-client'
 import { useCoachAutosave } from '@/composables/coach/useCoachAutosave'
 import { useReviewDrafts } from '@/composables/coach/useReviewDrafts'
 import { momentSaveKey } from '@/match/coach/coach-moments'
+import { savableItems } from '@/match/reviews/focus-items'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 import { invalidateSelfReviews, upsertSelfReview, useSelfReviewsQuery } from '@/queries/selfReview'
@@ -24,12 +26,19 @@ import { useMatchesStore } from '@/stores/matches'
 // session (useReviewDrafts), pointed at the sitting's routes.
 //
 // One sitting is "open" at a time — the one the room shows. Its notes and
-// moments autosave through the per-key queue; the header (title + summary)
+// moments autosave through the per-key queue; the header (the title)
 // saves as one PUT under one key. Finish flushes, stamps, and closes the
 // room back onto the shelf.
 
-/** The autosave key the sitting's title + summary save under — one PUT carries both. */
+/** The autosave key the sitting's title saves under. */
 export const HEADER_SAVE_KEY = 'header'
+
+/**
+ * The autosave key the focus list saves under. Separate from the header:
+ * they are separate PUTs, so sharing a queue slot would let a title
+ * keystroke displace a list edit that had not gone out yet.
+ */
+export const FOCUS_SAVE_KEY = 'focus-items'
 
 export const useSelfReviewStore = defineStore('selfReview', () => {
   const appStore = useAppStore()
@@ -46,7 +55,7 @@ export const useSelfReviewStore = defineStore('selfReview', () => {
   const open = computed(() => reviews.value.find((r) => r.review_id === openId.value) ?? null)
   const roomOpen = computed(() => open.value !== null)
   const title = ref('')
-  const summary = ref('')
+  const focusItems = ref<FocusItem[]>([])
   const selectedKey = ref('')
 
   // The sitting's matches, in the player's order, from the player's own
@@ -103,7 +112,7 @@ export const useSelfReviewStore = defineStore('selfReview', () => {
     upsertSelfReview(sitting)
     openId.value = sitting.review_id
     title.value = sitting.title
-    summary.value = sitting.summary
+    focusItems.value = sitting.focus_items
     selectedKey.value = ''
     drafts.hydrate(Object.values(sitting.notes).map((n) => ({ ...n, moments: n.moments ?? [] })))
   }
@@ -154,17 +163,25 @@ export const useSelfReviewStore = defineStore('selfReview', () => {
     await reporting(() => openSitting(reviewID))
   }
 
-  function updateHeader(next: { title?: string; summary?: string }): void {
-    if (next.title !== undefined) title.value = next.title
-    if (next.summary !== undefined) summary.value = next.summary
+  function updateTitle(text: string): void {
+    title.value = text
     const id = openId.value
     queueSave(HEADER_SAVE_KEY, async () => {
-      const saved = await UpdateSelfReview(id, title.value, summary.value)
-      upsertSelfReview(saved)
+      upsertSelfReview(await UpdateSelfReview(id, title.value))
     })
   }
-  const updateTitle = (text: string): void => updateHeader({ title: text })
-  const updateSummary = (text: string): void => updateHeader({ summary: text })
+
+  // What the sitting concluded. Blank rows are the editor's own scaffolding
+  // — the row you are about to type into — so they stay on screen and never
+  // reach the wire.
+  function updateFocusItems(items: FocusItem[]): void {
+    focusItems.value = items
+    const id = openId.value
+    const saving = savableItems(items)
+    queueSave(FOCUS_SAVE_KEY, async () => {
+      upsertSelfReview(await SetSelfReviewFocusItems(id, saving))
+    })
+  }
 
   // The shelf reads the sitting's notes to draw its rail; the room's writes
   // land there once the list is re-read. Cheap and honest: the list goes
@@ -248,10 +265,10 @@ export const useSelfReviewStore = defineStore('selfReview', () => {
 
   return {
     reviews, listQuery, open, openId, roomOpen, records,
-    title, summary, selectedKey, notes, moments,
+    title, focusItems, selectedKey, notes, moments,
     saveStateFor, hasFailedSaves,
     openSitting: openFromShelf, createFromKeys, selectKey,
-    updateNote, updateMoment, removeMoment, updateTitle, updateSummary,
+    updateNote, updateMoment, removeMoment, updateTitle, updateFocusItems,
     close, finish, remove, removeNoteFromSitting, removeMatchFromOpenSitting,
   }
 })

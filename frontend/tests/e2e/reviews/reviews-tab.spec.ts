@@ -199,10 +199,10 @@ test.describe('07 Reviews — the tab', () => {
     await expect(sentRows.nth(1)).toContainText(new RegExp(`answered by ${COACH_NAME}`))
   })
 
-  // The coach's summary — the one thing they wrote about the whole set —
-  // used to be readable exactly once: while a note was still undecided.
-  // Now it lives on the received card, and the notes reopen from there.
-  test('a received card carries the coach summary and reopens the notes', async ({ page }) => {
+  // What the coach said to work on used to be readable exactly once: while
+  // a note was still undecided. Now it lives on the received card, and the
+  // notes reopen from there.
+  test('a received card carries the coach focus list and reopens the notes', async ({ page }) => {
     await mockMatchesWithCoachNotes(page)
     const decided = Object.fromEntries(RETURN_SHEET_FIXTURE.notes.map((n) => [n.note_id, 'accepted' as const]))
     await mockInbox(page, [{ ...RETURN_SHEET_FIXTURE, decisions: decided }])
@@ -237,7 +237,7 @@ test.describe('07 Reviews — the tab', () => {
       await route.fulfill({
         status: 200, contentType: 'application/json',
         body: JSON.stringify([
-          { id: 2, handle: 'Sable', note_count: 12, last_note_at: '2026-08-14T20:00:00Z', summary: 'Ult economy first.' },
+          { id: 2, handle: 'Sable', note_count: 12, last_note_at: '2026-08-14T20:00:00Z', focus_items: ['Ult economy first.'] },
           { id: 1, handle: 'Kestrel', note_count: 3, last_note_at: '2026-07-01T20:00:00Z' },
         ]),
       })

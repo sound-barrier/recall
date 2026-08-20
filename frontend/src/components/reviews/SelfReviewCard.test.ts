@@ -14,7 +14,7 @@ function card(over: Partial<ShelfCard> = {}): ShelfCard {
     reviewId: 'r-1', title: "Tuesday's Ana games", dayKey: '2026-08-18', finished: false,
     matchCount: 3, missingCount: 0, matchKeys: ['k1', 'k2', 'k3'],
     wld: { w: 2, l: 1, d: 0 }, rail: ['written', 'reviewed', 'bare'], writtenCount: 1,
-    summaryExcerpt: 'Stop chasing flanks.', ...over,
+    focusExcerpt: 'Stop chasing flanks.', ...over,
   }
 }
 
