@@ -23,12 +23,12 @@ let onError: (raw: string) => void
 let onSaved: (message: string) => void
 let showMatches: (keys: string[], why: string) => void
 
-function make(records: MatchRecord[] = [READY, BLOCKED]) {
+function make(records: MatchRecord[] = [READY, BLOCKED], sessionActive = false) {
   onError = vi.fn<(raw: string) => void>()
   onSaved = vi.fn<(message: string) => void>()
   showMatches = vi.fn<(keys: string[], why: string) => void>()
   const deps: ShareWithCoachDeps = {
-    records: ref(records), onError, onSaved, showMatches,
+    records: ref(records), onError, onSaved, showMatches, sessionActive: () => sessionActive,
   }
   return useShareWithCoach(deps)
 }
@@ -70,10 +70,37 @@ describe('useShareWithCoach', () => {
     expect(share.shareBlocked.value).toBeUndefined()
   })
 
-  it('refuses an empty set', () => {
+  // An empty set never gets a dialog at all: opening one over nothing is a
+  // dead end, and the four doors disable at zero for the same reason.
+  it('refuses to open over an empty set', () => {
     const share = make()
     share.requestShare([], 'selection')
-    expect(share.shareBlocked.value).toBe('Nothing selected to send.')
+    expect(share.shareOpen.value).toBe(false)
+  })
+
+  // The buttons disable during a session, but a disabled button is a
+  // courtesy: the corpus on screen is the coach's loaned one, and sending it
+  // on signed with the player's own handle is what must not happen.
+  it('refuses to open, or to send, while a coaching session is live', async () => {
+    const share = make([READY], true)
+    share.requestShare(['m-1'], 'row')
+    expect(share.shareOpen.value).toBe(false)
+    await share.confirmShare(SUBMISSION)
+    expect(exportBundle).not.toHaveBeenCalled()
+  })
+
+  // shareBusy is composable-scoped, so a send that settles after the user
+  // dismissed and reopened over a NEW set used to close that second dialog
+  // and wipe its keys.
+  it('a settled send does not close a dialog opened after it', async () => {
+    const share = make([READY])
+    share.requestShare(['m-1'], 'row')
+    const inFlight = share.confirmShare(SUBMISSION)
+    share.closeShare()
+    share.requestShare(['m-1'], 'selection')
+    await inFlight
+    expect(share.shareOpen.value).toBe(true)
+    expect(share.shareKeys.value).toEqual(['m-1'])
   })
 
   // Hidden matches were hidden on purpose and an unknown-map match is

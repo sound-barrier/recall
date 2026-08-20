@@ -4,7 +4,7 @@
 // MatchesView's action handlers (hideSelected, beginMoveLive, etc.)
 // stay where they wire to App.vue's API.
 import { computed, ref } from 'vue'
-import { useWriteGate } from '@/composables/shared/useWriteGate'
+import { SESSION_SHARE_REASON, useWriteGate } from '@/composables/shared/useWriteGate'
 import type { PlayMode, QueueType } from '@/api-client'
 import TypeaheadDropdown from '@/components/shared/TypeaheadDropdown.vue'
 
@@ -74,7 +74,6 @@ const { writesLocked, lockedTitle, sessionActive } = useWriteGate()
 // loaned matches — the generic "end the session to change your own matches"
 // is the wrong sentence for a review affordance pointed at them.
 const SESSION_REVIEW_REASON = 'These matches are on loan — notes go in the film room.'
-const SESSION_SHARE_REASON = 'These matches are on loan — you can only send your own to a coach.'
 const reviewTitle = computed(() => (sessionActive.value
   ? SESSION_REVIEW_REASON
   : lockedTitle('Review the selected matches in the film room')))

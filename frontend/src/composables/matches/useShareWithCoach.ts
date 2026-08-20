@@ -36,6 +36,8 @@ export interface ShareWithCoachDeps {
   onSaved: (message: string) => void
   /** Put the code-less matches on screen so they can be fixed. */
   showMatches: (keys: string[], why: string) => Promise<unknown> | void
+  /** True while a coaching session is open — see requestShare. */
+  sessionActive: () => boolean
 }
 
 const SUBJECT: Record<ShareOrigin, (n: number) => string> = {
@@ -50,6 +52,9 @@ export function useShareWithCoach(deps: ShareWithCoachDeps) {
   const shareKeys = ref<string[]>([])
   const shareOrigin = ref<ShareOrigin>('selection')
   const shareBusy = ref(false)
+  // Bumped on every open, so a send can tell whether the dialog it is
+  // finishing for is still the one on screen.
+  let openToken = 0
 
   const shareManifest = computed<ShareManifestRow[]>(
     () => shareManifestRows(shareKeys.value, deps.records.value))
@@ -75,9 +80,17 @@ export function useShareWithCoach(deps: ShareWithCoachDeps) {
    * growing their own copy of the replay-code logic.
    */
   function requestShare(matchKeys: readonly string[], origin: ShareOrigin): void {
+    // The four doors each disable their own button, but a disabled button is
+    // a courtesy and this is the refusal: during a session the corpus on
+    // screen is the coach's loaned one, and sending it on signed with your
+    // own handle is the thing that must not happen — keyboard path, forced
+    // click or otherwise. Nothing to send is refused here for the same
+    // reason: an empty dialog is a dead end, not a decision.
+    if (deps.sessionActive() || matchKeys.length === 0) return
     shareKeys.value = [...matchKeys]
     shareOrigin.value = origin
     shareOpen.value = true
+    openToken += 1
   }
 
   function closeShare(): void {
@@ -92,6 +105,11 @@ export function useShareWithCoach(deps: ShareWithCoachDeps) {
   }
 
   async function confirmShare(submission: ShareSubmission): Promise<void> {
+    if (deps.sessionActive()) return
+    // Which open this send belongs to. shareBusy is composable-scoped, so a
+    // user who dismisses mid-flight and reopens over a NEW set would have the
+    // second dialog force-closed and its keys wiped when the first settled.
+    const token = openToken
     shareBusy.value = true
     try {
       const saved = await ExportBundle({
@@ -118,8 +136,10 @@ export function useShareWithCoach(deps: ShareWithCoachDeps) {
       deps.onError(String(e))
     } finally {
       shareBusy.value = false
-      shareOpen.value = false
-      shareKeys.value = []
+      if (token === openToken) {
+        shareOpen.value = false
+        shareKeys.value = []
+      }
     }
   }
 

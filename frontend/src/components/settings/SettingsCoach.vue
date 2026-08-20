@@ -102,7 +102,7 @@ async function commit() {
             <label for="player-handle-input">Your player handle</label>
           </h4>
           <p class="setting-desc">
-            The name your coach sees when you share matches with them. Filled in
+            The name your coach sees when you send matches to them. Filled in
             for you from the last time you shared, so the share dialog stops
             asking.
           </p>

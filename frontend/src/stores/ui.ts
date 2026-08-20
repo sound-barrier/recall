@@ -163,6 +163,13 @@ export const useUiStore = defineStore('ui', () => {
     || manualMatchOpen.value
     || settingsDialogOpen.value
     || paletteOpen.value
+    // Both export dialogs. Without them, clicking a non-interactive spot
+    // inside the box drops focus to <body> and `/` then navigates to Matches
+    // BEHIND the dialog and focuses the narrow search — a focus trap only
+    // intercepts Tab and Escape, so a programmatic .focus() out of it is
+    // invisible. Listing them here also makes the background inert.
+    || matchesStore.exportBundleOpen
+    || matchesStore.shareOpen
     || appStore.aboutOpen,
   )
 

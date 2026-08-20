@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 import { useScrollLock } from '@/composables/shared/keyboard/useScrollLock'
-import { useWriteGate } from '@/composables/shared/useWriteGate'
+import { SESSION_SHARE_REASON_ONE, useWriteGate } from '@/composables/shared/useWriteGate'
 
 // Right-click context menu for a Matches list row. Quick actions
 // without first opening the detail panel:
@@ -18,15 +18,15 @@ import { useWriteGate } from '@/composables/shared/useWriteGate'
 //      pasted as a recall:// URL the desktop app can resolve).
 //   7. Open source folder — Wails-only; opens the screenshots dir
 //      in the host OS file manager via RevealScreenshotsDir.
-//   8. Hide match (soft-delete; same SetMatchVisibility(true) the
+//   8. Review this match — opens a sitting over this one row.
+//   9. Send to a coach — opens the share dialog over this one row.
+//  10. Hide match (soft-delete; same SetMatchVisibility(true) the
 //      bulk-action bar uses, so an Unhide path already exists in
 //      the detail panel + the Bulk Hidden drawer).
 //
-// Positioning is fixed-element at (x, y) — the raw mouse
-// coordinates of the contextmenu event. The viewport-edge clamp
-// is intentionally NOT implemented yet: the menu is small
-// (~ 180 × 220 px) and almost never overlaps the edge in real
-// use. Add the clamp when a user reports it.
+// Positioning is fixed-element at (x, y) — the raw mouse coordinates of the
+// contextmenu event — then corrected against the viewport once the menu can
+// be measured. See the clamp below for why it is measured and not estimated.
 
 const props = defineProps<{
   position: { x: number; y: number } | null
@@ -60,7 +60,7 @@ const reviewTitle = computed(() => (sessionActive.value
 // session this row is the coach's loaned match, and a bundle of someone
 // else's match signed with your handle is worse than a blocked write.
 const sendTitle = computed(() => (sessionActive.value
-  ? 'This match is on loan — you can only send your own to a coach.'
+  ? SESSION_SHARE_REASON_ONE
   : 'Send this match to a coach'))
 
 function onReviewMatch() {
@@ -137,7 +137,6 @@ const menuStyle = computed(() => {
   const at = clamped.value ?? { left: props.position.x, top: props.position.y }
   return { left: `${at.left}px`, top: `${at.top}px` }
 })
-
 
 function onWindowClick(e: MouseEvent) {
   const target = e.target as Node | null

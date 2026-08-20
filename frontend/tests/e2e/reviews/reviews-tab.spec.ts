@@ -95,9 +95,12 @@ test.describe('07 Reviews — the tab', () => {
     await tab(page).click()
     const send = panel(page).getByRole('button', { name: /send to a coach/i })
     await expect(send).toContainText('(2 showing on Matches)')
+    await expect(page.getByRole('tab', { name: /^Reviews/ })).toHaveAttribute('aria-selected', 'true')
     await send.click()
 
-    await expect(page.getByRole('tab', { name: /^Reviews/ })).toHaveAttribute('aria-selected', 'true')
+    // The tablist is deliberately unreachable from here — the dialog freezes
+    // the background (inert + aria-hidden), the same contract every other
+    // modal keeps — so "it did not navigate" is asserted on the way out.
     const dialog = page.getByRole('dialog', { name: 'Send to a coach' })
     await expect(dialog).toBeVisible()
     await expect(dialog.getByLabel('Your handle (required)')).toBeVisible()
@@ -112,6 +115,11 @@ test.describe('07 Reviews — the tab', () => {
     await expect(dialog.getByRole('list', { name: 'Matches going to your coach' })
       .getByRole('listitem')).toHaveCount(2)
     await expect(dialog.getByRole('button', { name: /Show the 2 on Matches/ })).toBeVisible()
+
+    // Dismissed, and the player is exactly where they were.
+    await dialog.getByRole('button', { name: 'Cancel' }).click()
+    await expect(dialog).toBeHidden()
+    await expect(page.getByRole('tab', { name: /^Reviews/ })).toHaveAttribute('aria-selected', 'true')
   })
 
   // Notes waiting on a decision are the shelf's own rows here — one per
