@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 
+import FocusBand from '@/components/reviews/FocusBand.vue'
 import SelfReviewCard from '@/components/reviews/SelfReviewCard.vue'
 import type { CoachReturnSheet, ShareExport } from '@/api-client'
 import { formatPlayerDay } from '@/match/coach/coach-time'
@@ -9,6 +10,7 @@ import { latestSessionKeys } from '@/match/dossier/match-momentum-helpers'
 import { matchTime } from '@/match/match-time-helpers'
 import { groupReceivedReviews } from '@/match/reviews/reviews-helpers'
 import { shelfCard } from '@/match/reviews/shelf-helpers'
+import { useFocusQuery } from '@/queries/focus'
 import { useCoachPlayersQuery, useShareExportsQuery } from '@/queries/selfReview'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
@@ -37,7 +39,7 @@ const database = useDatabaseStore()
 const matches = useMatchesStore()
 const ui = useUiStore()
 
-const { writesLocked, lockedTitle, guardWrite } = useWriteGate()
+const { writesLocked, lockedTitle, lockReason, guardWrite } = useWriteGate()
 const { inbox } = storeToRefs(returns)
 const { records } = storeToRefs(matches)
 const selfReview = useSelfReviewStore()
@@ -96,10 +98,18 @@ function sheetFor(r: { coachName: string; sessionDate: string }) {
   return inbox.value.find((s) => s.coach_name === r.coachName && s.session_date === r.sessionDate)
 }
 
+/** What that coach said to work on, as one line for the card. */
+function focusLine(r: { coachName: string; sessionDate: string }): string {
+  return (sheetFor(r)?.focus_items ?? []).map((i) => i.text).join(' · ')
+}
+
 // The sent ledger: the receipt that a set left. A row pairs with the return
 // that ANSWERS it — a sheet whose matches overlap the sent set — because the
 // ledger records who signed the bundle (you), not who received it.
 const sharesQuery = useShareExportsQuery(() => appStore.view === 'reviews')
+// Same tab gate as the shelf: read when 07 is on screen, never at boot.
+const focusQuery = useFocusQuery(() => appStore.view === 'reviews')
+const focusEntries = computed(() => focusQuery.data.value ?? [])
 const sentRows = computed(() => (sharesQuery.data.value ?? []).map((e) => ({
   ...e,
   answeredBy: answeringCoach(e),
@@ -211,6 +221,10 @@ function openBundle(): void {
         </button>
       </li>
     </ul>
+
+    <!-- What you're working on, above the arc: the whole point of the
+         cycle below is to produce this, and both halves of it feed here. -->
+    <FocusBand :entries="focusEntries" :blocked-reason="lockReason" />
 
     <!-- 01 / YOUR OWN REVIEWS -->
     <div id="sec-your-own-reviews" class="settings-section">
@@ -344,8 +358,8 @@ function openBundle(): void {
             <p class="eyebrow ink review-card-line">
               {{ received02Label(r) }}
             </p>
-            <p v-if="sheetFor(r)?.summary" class="review-card-summary">
-              {{ sheetFor(r)?.summary }}
+            <p v-if="focusLine(r)" class="review-card-summary">
+              {{ focusLine(r) }}
             </p>
             <div class="review-card-actions">
               <button
@@ -430,7 +444,7 @@ function openBundle(): void {
       <ul v-if="roster.length" class="reviews-waiting" aria-label="Players you have coached">
         <li v-for="p in roster" :key="p.id" class="reviews-waiting-row reviews-skipped-row">
           <span class="reviews-waiting-line">
-            {{ rosterLine(p) }}<template v-if="p.summary"> — “{{ p.summary }}”</template>
+            {{ rosterLine(p) }}<template v-if="p.focus_items?.length"> — {{ p.focus_items.join(' · ') }}</template>
           </span>
         </li>
       </ul>

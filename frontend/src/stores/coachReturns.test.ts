@@ -44,7 +44,7 @@ function sheet(over: Partial<CoachReturnSheet> = {}): CoachReturnSheet {
     player_handle: 'Sable',
     session_date: '2026-08-14',
     imported_at: '2026-08-15T09:12:00Z',
-    summary: '',
+    focus_items: [],
     notes: [returnNote('n-1'), returnNote('n-2')],
     decisions: {},
     pending: 0,
@@ -60,7 +60,7 @@ function sessionView() {
     session_date: '2026-08-15',
     match_count: 2,
     coach_name: 'Ordo',
-    summary: '',
+    focus_items: [],
     notes: [],
     handle_from_bundle: true,
   }

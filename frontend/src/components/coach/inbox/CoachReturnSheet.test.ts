@@ -39,7 +39,7 @@ function sheet(over: Partial<Sheet> = {}): Sheet {
     player_handle: 'Sable',
     session_date: '2026-08-14',
     imported_at: '2026-08-15T09:12:00Z',
-    summary: 'Ult economy first, positioning second.',
+    focus_items: [{ item_id: 'f-1', text: 'Ult economy first, positioning second.' }],
     notes: [note('n-1'), note('n-2', { match_key: MATCH_B })],
     decisions: {},
     pending: 2,

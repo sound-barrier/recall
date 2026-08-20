@@ -165,7 +165,7 @@ test.describe('film room — desk notes', () => {
     const session = await openRoom(page)
     await frames(page).filter({ hasText: KINGS_ROW_DISPLAY }).click()
 
-    await page.getByRole('button', { name: /^\+ Add/ }).click()
+    await page.getByRole('button', { name: '+ Add', exact: true }).click()
     await page.getByRole('textbox', { name: /new focus/i }).fill('tempo')
     await page.keyboard.press('Enter')
     await expect(focusChip(page, 'tempo', true)).toBeVisible()
@@ -225,12 +225,30 @@ test.describe('film room — session sheet', () => {
     await expect(tally.getByRole('listitem').filter({ hasText: 'positioning' })).toContainText('1')
   })
 
-  test('the summary autosaves as PUT /coach/session/summary', async ({ page }) => {
+  test('the focus list autosaves as PUT /coach/session/focus-items', async ({ page }) => {
     const session = await openRoom(page)
-    await page.getByRole('textbox', { name: /What to work on/ }).fill('Ult economy first. Then positioning on control.')
+    await page.getByRole('button', { name: '+ Add an item' }).click()
+    await page.getByRole('textbox', { name: 'What to work on, item 1' }).fill('Ult economy first')
 
-    await expect.poll(() => session.summaryPut.seen()).toBe(true)
-    expect(session.summaryPut.get()).toEqual({ text: 'Ult economy first. Then positioning on control.' })
+    await expect.poll(() => session.focusPut.seen()).toBe(true)
+    const sent = session.focusPut.get().items
+    expect(sent).toHaveLength(1)
+    expect(sent[0]?.text).toBe('Ult economy first')
+  })
+
+  test('a second item goes out beside the first, in the coach order', async ({ page }) => {
+    const session = await openRoom(page)
+    const sentTexts = (): string[] =>
+      (session.focusPut.seen() ? session.focusPut.get().items : []).map((i) => i.text)
+
+    await page.getByRole('button', { name: '+ Add an item' }).click()
+    await page.getByRole('textbox', { name: 'What to work on, item 1' }).fill('Ult economy first')
+    await expect.poll(sentTexts).toEqual(['Ult economy first'])
+
+    await page.getByRole('button', { name: '+ Add an item' }).click()
+    await page.getByRole('textbox', { name: 'What to work on, item 2' }).fill('Hold the high ground')
+
+    await expect.poll(sentTexts).toEqual(['Ult economy first', 'Hold the high ground'])
   })
 
   test('Export downloads recall-coach-notes-*.zip', async ({ page }) => {

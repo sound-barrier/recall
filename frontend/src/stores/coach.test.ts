@@ -31,7 +31,7 @@ function sessionView(over: Record<string, unknown> = {}) {
     session_date: '2026-08-15',
     match_count: 2,
     coach_name: 'Ordo',
-    summary: '',
+    focus_items: [],
     notes: [],
     handle_from_bundle: true,
     ...over,
@@ -86,7 +86,7 @@ beforeEach(() => {
     SetCoachSessionPlayer: vi.fn(async () => sessionView({ player: { id: '', handle: 'Wren', message: '' } })),
     PutCoachNote: vi.fn(async () => undefined),
     DeleteCoachNote: vi.fn(async () => undefined),
-    PutCoachSummary: vi.fn(async () => undefined),
+    PutCoachFocusItems: vi.fn(async () => undefined),
     ExportCoachNotes: vi.fn(async () => 'recall-coach-notes-sable.zip'),
   }
   setApiBacking(api)
@@ -160,7 +160,7 @@ describe('coach store — opening a bundle', () => {
   })
 
   it('hydrates the notes the coach wrote about this player in an earlier session', async () => {
-    api.OpenCoachBundle = vi.fn(async () => sessionView({ notes: [RESURFACED], summary: 'Ult economy first.' }))
+    api.OpenCoachBundle = vi.fn(async () => sessionView({ notes: [RESURFACED], focus_items: [{ item_id: 'f-1', text: 'Ult economy first.' }] }))
     setApiBacking(api)
     const coach = useCoachStore()
 
@@ -170,13 +170,13 @@ describe('coach store — opening a bundle', () => {
     expect(coach.notes[MATCH_A]).toEqual({
       kind: 'note', text: 'Late peel on B.', focusTags: ['positioning'], extraTags: [], matchClock: '06:40',
     })
-    expect(coach.summary).toBe('Ult economy first.')
+    expect(coach.focusItems).toEqual([{ item_id: 'f-1', text: 'Ult economy first.' }])
   })
 })
 
 describe('coach store — the stale-draft leak', () => {
   it("replaces the notes wholesale, so a second player's editor starts empty", async () => {
-    api.OpenCoachBundle = vi.fn(async () => sessionView({ notes: [RESURFACED], summary: 'Ult economy first.' }))
+    api.OpenCoachBundle = vi.fn(async () => sessionView({ notes: [RESURFACED], focus_items: [{ item_id: 'f-1', text: 'Ult economy first.' }] }))
     setApiBacking(api)
     const coach = useCoachStore()
 
@@ -189,14 +189,14 @@ describe('coach store — the stale-draft leak', () => {
     await settle()
 
     api.OpenCoachBundle = vi.fn(async () => sessionView({
-      player: { id: 'wren-id', handle: 'Wren', message: '' }, notes: [], summary: '',
+      player: { id: 'wren-id', handle: 'Wren', message: '' }, notes: [], focus_items: [],
     }))
     setApiBacking(api)
     await coach.openBundle()
     await settle()
 
     expect(coach.notes).toEqual({})
-    expect(coach.summary).toBe('')
+    expect(coach.focusItems).toEqual([])
     expect(coach.selectedKey).toBe('')
   })
 })
@@ -266,33 +266,48 @@ describe('coach store — autosave', () => {
     expect(coach.hasFailedSaves).toBe(true)
   })
 
-  it('autosaves the session summary', async () => {
+  it('autosaves the focus list', async () => {
     const coach = useCoachStore()
     await coach.openBundle()
     await settle()
 
-    coach.updateSummary('Ult economy first.')
-    expect(coach.summary).toBe('Ult economy first.')
+    coach.updateFocusItems([{ item_id: 'f-1', text: 'Ult economy first.' }])
+    expect(coach.focusItems).toEqual([{ item_id: 'f-1', text: 'Ult economy first.' }])
     await vi.advanceTimersByTimeAsync(1000)
 
-    expect(api.PutCoachSummary).toHaveBeenCalledWith('Ult economy first.')
+    expect(api.PutCoachFocusItems).toHaveBeenCalledWith([{ item_id: 'f-1', text: 'Ult economy first.' }])
   })
 
-  // The summary rides the same per-key queue as the notes, under a key of
-  // its own. Every match key carries a match-/unmatched-/ambiguous- prefix,
-  // so none can ever claim that slot — if one could, the sentence typed
-  // into the summary would silently replace the note queued beside it.
-  it('queues the summary beside a note in the same burst, never on top of it', async () => {
+  // A blank row is the editor's own scaffolding — the row you are about to
+  // type into. It stays on screen and never reaches the wire, which the
+  // server would refuse anyway.
+  it('does not send the blank row the editor is holding open', async () => {
+    const coach = useCoachStore()
+    await coach.openBundle()
+    await settle()
+
+    coach.updateFocusItems([{ item_id: 'f-1', text: 'Ult economy first.' }, { item_id: 'f-2', text: '  ' }])
+    await vi.advanceTimersByTimeAsync(1000)
+
+    expect(api.PutCoachFocusItems).toHaveBeenCalledWith([{ item_id: 'f-1', text: 'Ult economy first.' }])
+    expect(coach.focusItems).toHaveLength(2)
+  })
+
+  // The list rides the same per-key queue as the notes, under a key of its
+  // own. Every match key carries a match-/unmatched-/ambiguous- prefix, so
+  // none can ever claim that slot — if one could, the item typed into the
+  // list would silently replace the note queued beside it.
+  it('queues the list beside a note in the same burst, never on top of it', async () => {
     const coach = useCoachStore()
     await coach.openBundle()
     await settle()
 
     coach.updateNote(MATCH_A, draft({ text: 'Peel earlier, on B.' }))
-    coach.updateSummary('Ult economy first.')
+    coach.updateFocusItems([{ item_id: 'f-1', text: 'Ult economy first.' }])
     await vi.advanceTimersByTimeAsync(1000)
 
     expect(api.PutCoachNote).toHaveBeenCalledTimes(1)
-    expect(api.PutCoachSummary).toHaveBeenCalledTimes(1)
+    expect(api.PutCoachFocusItems).toHaveBeenCalledTimes(1)
     expect(coach.saveStateFor(MATCH_A)).toBe('saved')
   })
 
@@ -561,15 +576,15 @@ describe('coach store — ending the session', () => {
     expect(app.error).not.toBe('')
   })
 
-  it('flushes the summary the coach was still typing when End was clicked', async () => {
+  it('flushes the list the coach was still typing when End was clicked', async () => {
     const coach = useCoachStore()
     await coach.openBundle()
     await settle()
 
-    coach.updateSummary('Ult economy first.')
+    coach.updateFocusItems([{ item_id: 'f-1', text: 'Ult economy first.' }])
     await coach.endSession()
 
-    expect(api.PutCoachSummary).toHaveBeenCalledWith('Ult economy first.')
+    expect(api.PutCoachFocusItems).toHaveBeenCalledWith([{ item_id: 'f-1', text: 'Ult economy first.' }])
   })
 })
 

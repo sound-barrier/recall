@@ -18,11 +18,11 @@ import { seedQuery } from '@/test-utils/queryTestUtils'
 const SESSION: CoachSessionView = {
   player: { id: 'sable-id', handle: 'Sable', message: '' },
   exported_at: '2026-08-14T18:30:00Z', session_date: '2026-08-15', match_count: 1,
-  coach_name: 'Ordo', summary: '', notes: [], handle_from_bundle: true,
+  coach_name: 'Ordo', focus_items: [], notes: [], handle_from_bundle: true,
 }
 
 const SITTING: SelfReview = {
-  review_id: 'r-1', title: 'Mine', summary: '', created_at: '2026-08-18T19:00:00Z', updated_at: '2026-08-18T19:00:00Z',
+  review_id: 'r-1', title: 'Mine', focus_items: [], created_at: '2026-08-18T19:00:00Z', updated_at: '2026-08-18T19:00:00Z',
   match_keys: ['match-2026-08-01T20-00-00'], notes: {},
 }
 

@@ -24,7 +24,7 @@ const open = computed(() => returnSheet.value !== null)
 const decisions = useCoachReturnDecisions(returnSheet)
 
 const coachName = computed(() => returnSheet.value?.coach_name ?? 'your coach')
-const summary = computed(() => returnSheet.value?.summary ?? '')
+const focusItems = computed(() => returnSheet.value?.focus_items ?? [])
 const notes = computed(() => returnSheet.value?.notes ?? [])
 const mismatchedHandle = computed(() =>
   returnSheet.value?.player_mismatch ? returnSheet.value.player_handle : '')
@@ -89,9 +89,21 @@ useModalFocusTrap(open, {
         <h2 class="return-title">
           Notes from {{ coachName }}
         </h2>
-        <p v-if="summary" class="return-summary">
-          {{ summary }}
-        </p>
+        <section v-if="focusItems.length" class="return-focus" aria-labelledby="return-focus-head">
+          <p id="return-focus-head" class="eyebrow ink">What to work on</p>
+          <!-- No Skip, and no per-item decision. A coach's items are live
+               the moment the file is staged; they are already in "What
+               you're working on" and are acknowledged there. A player can
+               disagree with their coach — they still have to hear it. -->
+          <ul class="return-focus-list">
+            <li v-for="item in focusItems" :key="item.item_id">
+              {{ item.text }}
+            </li>
+          </ul>
+          <p class="return-focus-note">
+            These are already on your list. Accept them there when you have read them.
+          </p>
+        </section>
         <p v-if="mismatchedHandle" class="return-mismatch">
           This notes file was written about {{ mismatchedHandle }}. Accept only what belongs here.
         </p>
@@ -251,4 +263,26 @@ useModalFocusTrap(open, {
   padding-top: 0.6rem;
   border-top: 1px solid var(--paper-rule);
 }
+.return-focus {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.return-focus-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--ink);
+}
+
+.return-focus-list li {
+  margin: 0.15rem 0;
+}
+
+.return-focus-note {
+  margin: 0.1rem 0 0;
+  font-size: var(--type-sm);
+  color: var(--ink-dim);
+}
+
 </style>

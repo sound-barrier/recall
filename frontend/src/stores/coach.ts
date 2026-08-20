@@ -3,13 +3,14 @@ import { defineStore } from 'pinia'
 
 import {
   CloseCoachSession, DeleteCoachMoment, DeleteCoachNote, ExportCoachNotes,
-  OpenCoachBundle, PutCoachMoment, PutCoachNote, PutCoachSummary,
+  OpenCoachBundle, PutCoachFocusItems, PutCoachMoment, PutCoachNote,
   SetCoachSessionPlayer,
-  type CoachSessionView,
+  type CoachSessionView, type FocusItem,
 } from '@/api-client'
 import { useCoachAutosave } from '@/composables/coach/useCoachAutosave'
 import { useReviewDrafts } from '@/composables/coach/useReviewDrafts'
-import { SUMMARY_SAVE_KEY } from '@/match/coach/coach-notes'
+import { FOCUS_SAVE_KEY } from '@/match/coach/coach-notes'
+import { savableItems } from '@/match/reviews/focus-items'
 import {
   clearCoachSessionData, setCoachSessionData, setCoachSessionResume,
   useCoachSessionMatchesQuery, useCoachSessionQuery,
@@ -29,9 +30,9 @@ import { useAppStore } from '@/stores/app'
 // loaned corpus from HERE, and the arrow only points one way.
 
 /**
- * Save-queue key for the set-level summary. Every match key carries a
- * `match-` / `unmatched-` / `ambiguous-` prefix (see `@/match/match-key`),
- * so no note can ever queue under this one and displace the summary.
+ * Save-queue key for the focus list. Every match key carries a `match-` /
+ * `unmatched-` / `ambiguous-` prefix (see `@/match/match-key`), so no note
+ * can ever queue under this one and displace the list.
  */
 
 /** Refusal shown when a bundle is opened while the walkthrough is running. */
@@ -84,7 +85,7 @@ export const useCoachStore = defineStore('coach', () => {
   const loanedRecords = computed(() => (sessionActive.value ? corpusQuery.data.value ?? [] : []))
 
   // ── The room's editable state ─────────────────────────────────────
-  const summary = ref('')
+  const focusItems = ref<FocusItem[]>([])
   const selectedKey = ref('')
   const dirtySinceExport = ref(false)
 
@@ -155,7 +156,7 @@ export const useCoachStore = defineStore('coach', () => {
     discardSaves()
     exportedTo.value = ''
     drafts.hydrate(view?.notes ?? [])
-    summary.value = view?.summary ?? ''
+    focusItems.value = view?.focus_items ?? []
     selectedKey.value = ''
     dirtySinceExport.value = false
   }, { immediate: true })
@@ -182,10 +183,13 @@ export const useCoachStore = defineStore('coach', () => {
     }
   }
 
-  function updateSummary(text: string): void {
-    summary.value = text
+  function updateFocusItems(items: FocusItem[]): void {
+    focusItems.value = items
     markDirty()
-    queueSave(SUMMARY_SAVE_KEY, async () => { await PutCoachSummary(text) })
+    // Blank rows are the editor's own scaffolding — the row you are about
+    // to type into — so they stay on screen and never reach the wire.
+    const saving = savableItems(items)
+    queueSave(FOCUS_SAVE_KEY, async () => { await PutCoachFocusItems(saving) })
   }
 
   // Ending with unexported notes asks once more — the archive the player
@@ -263,7 +267,7 @@ export const useCoachStore = defineStore('coach', () => {
     }
   }
 
-  // End the loan. Queued autosaves are FLUSHED first: notes and the summary
+  // End the loan. Queued autosaves are FLUSHED first: notes and the list
   // are keyed by player, not by session — they are re-hydrated the next time
   // this bundle is opened — so a draft caught inside the debounce would
   // otherwise be lost for good.
@@ -399,7 +403,7 @@ export const useCoachStore = defineStore('coach', () => {
     loanedRecords,
     notes,
     moments,
-    summary,
+    focusItems,
     selectedKey,
     saveStateFor,
     hasFailedSaves,
@@ -417,7 +421,7 @@ export const useCoachStore = defineStore('coach', () => {
     updateMoment,
     copyReplayCode,
     removeMoment,
-    updateSummary,
+    updateFocusItems,
     setTourOpen,
     setNarrowSuspender,
     openBundle,

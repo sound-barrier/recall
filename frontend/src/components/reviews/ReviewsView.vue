@@ -9,7 +9,7 @@ import { lazyView } from '@/components/app/lazy-view'
 import type { CoachLabels, CoachPlayerView } from '@/components/coach/room/coach-room-props'
 import ReviewsIndex from '@/components/reviews/ReviewsIndex.vue'
 import SelfReviewSheet from '@/components/reviews/SelfReviewSheet.vue'
-import { HEADER_SAVE_KEY, useSelfReviewStore } from '@/stores/selfReview'
+import { FOCUS_SAVE_KEY, HEADER_SAVE_KEY, useSelfReviewStore } from '@/stores/selfReview'
 import { useCoachStore } from '@/stores/coach'
 
 // 07 Reviews — the home of the review cycle.
@@ -79,7 +79,7 @@ const { onCopyReplayCode: copyReplayCode } = useMatchActions()
       :notes="coachStore.notes"
       :moments="coachStore.moments"
       :selected-key="coachStore.selectedKey"
-      :summary="coachStore.summary"
+      :focus-items="coachStore.focusItems"
       :coach-name="coachStore.coachName"
       :save-state-for="coachStore.saveStateFor"
       :can-export="coachStore.canExportNotes"
@@ -91,7 +91,7 @@ const { onCopyReplayCode: copyReplayCode } = useMatchActions()
       @update-moment="coachStore.updateMoment"
       @remove-moment="coachStore.removeMoment"
       @copy-replay="coachStore.copyReplayCode"
-      @update-summary="coachStore.updateSummary"
+      @update-focus-items="coachStore.updateFocusItems"
       @confirm-player="coachStore.setPlayerHandle"
       @export="coachStore.exportNotes"
       @end="coachStore.requestEndSession"
@@ -107,7 +107,7 @@ const { onCopyReplayCode: copyReplayCode } = useMatchActions()
       :notes="selfReview.notes"
       :moments="selfReview.moments"
       :selected-key="selfReview.selectedKey"
-      :summary="selfReview.summary"
+      :focus-items="selfReview.focusItems"
       :save-state-for="selfReview.saveStateFor"
       :labels="coachLabels"
       removable-frames
@@ -125,12 +125,13 @@ const { onCopyReplayCode: copyReplayCode } = useMatchActions()
           :win-rate="winRate"
           :focus-tally="focusTally"
           :notes-line="notesLine"
-          :summary="selfReview.summary"
+          :focus-items="selfReview.focusItems"
           :header-save-state="selfReview.saveStateFor(HEADER_SAVE_KEY)"
+          :focus-save-state="selfReview.saveStateFor(FOCUS_SAVE_KEY)"
           :finished-at="sitting.finished_at ?? ''"
           :blocked-reason="lockReason"
           @update-title="selfReview.updateTitle"
-          @update-summary="selfReview.updateSummary"
+          @update-focus-items="selfReview.updateFocusItems"
           @finish="selfReview.finish()"
           @close="selfReview.close()"
         />

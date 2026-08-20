@@ -191,4 +191,4 @@ export function fromWireNote(n: Pick<CoachNoteWire, 'kind'> & Partial<CoachNoteW
  * second literal 'summary' spelled at the asking end is a silent mismatch,
  * not a compile error.
  */
-export const SUMMARY_SAVE_KEY = 'summary'
+export const FOCUS_SAVE_KEY = 'summary'

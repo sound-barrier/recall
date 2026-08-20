@@ -19,7 +19,7 @@ function returnSheet(): CoachReturnSheet {
     player_handle: 'Sable',
     session_date: '2026-08-14',
     imported_at: '2026-08-15T09:12:00Z',
-    summary: '',
+    focus_items: [],
     notes: [],
     decisions: {},
     pending: 3,

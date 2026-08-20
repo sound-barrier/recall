@@ -17,7 +17,7 @@ const PLAYER = { handle: 'Sable', message: 'Watch my ult timing on control.' }
 
 function renderRoom(props: Record<string, unknown> = {}, options: Record<string, unknown> = {}) {
   return render(CoachRoomView, {
-    props: { player: PLAYER, records: [EARLY, LATE], notes: {}, selectedKey: '', summary: '', coachName: 'Ordo', ...props },
+    props: { player: PLAYER, records: [EARLY, LATE], notes: {}, selectedKey: '', focusItems: [{ item_id: 'f-1', text: '' }], coachName: 'Ordo', ...props },
     ...options,
   })
 }
@@ -81,10 +81,13 @@ describe('CoachRoomView — what it reports upward', () => {
     expect(view.emitted('update-note')).toEqual([[EARLY.match_key, { ...emptyDraft(), focusTags: ['positioning'] }]])
   })
 
-  it('reports the session summary', async () => {
+  it('reports the focus list', async () => {
     const view = renderRoom()
-    await fireEvent.update(screen.getByRole('textbox', { name: /What to work on/ }), 'Ult economy first.')
-    expect(view.emitted('update-summary')).toEqual([['Ult economy first.']])
+    await fireEvent.update(
+      screen.getByRole('textbox', { name: 'What to work on, item 1' }), 'Ult economy first.')
+    expect(view.emitted('update-focus-items')).toEqual([
+      [[{ item_id: 'f-1', text: 'Ult economy first.' }]],
+    ])
   })
 
   it('relays export and end', async () => {
@@ -146,12 +149,12 @@ describe('CoachRoomView — who is this?', () => {
       .toHaveTextContent(/before writing notes/)
   })
 
-  // The note editor was blocked but the sheet's summary was not, so a coach
+  // The note editor was blocked but the sheet's list was not, so a coach
   // could type "what to work on" against a bundle naming nobody, have every
-  // PUT refused unseen, and lose the paragraph when they answered the prompt.
-  it('will not take a summary that has nowhere to be saved either', () => {
+  // PUT refused unseen, and lose the words when they answered the prompt.
+  it('will not take a focus list that has nowhere to be saved either', () => {
     renderRoom({ player: ANONYMOUS })
-    expect(screen.getByRole('textbox', { name: 'What to work on' })).toBeDisabled()
+    expect(screen.getByRole('textbox', { name: 'What to work on, item 1' })).toBeDisabled()
   })
 
   it('lets the coach correct a handle the bundle suggested', async () => {

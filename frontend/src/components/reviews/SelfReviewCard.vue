@@ -69,8 +69,8 @@ const MARK_TITLE = {
       <p :id="`${headId}-state`" class="src-state">
         {{ formatPlayerDay(card.dayKey) }} · {{ spoken }}
       </p>
-      <p v-if="card.summaryExcerpt" class="src-summary">
-        {{ card.summaryExcerpt }}
+      <p v-if="card.focusExcerpt" class="src-summary">
+        {{ card.focusExcerpt }}
       </p>
       <div v-if="armed" class="src-warn" role="alert">
         <p class="src-warn-line">

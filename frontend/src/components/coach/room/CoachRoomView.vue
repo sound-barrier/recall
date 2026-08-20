@@ -12,7 +12,8 @@ import {
 import { useCoachReelKeyboard } from '@/composables/coach/useCoachReelKeyboard'
 import { useCoachRoom } from '@/composables/coach/useCoachRoom'
 import { momentSaveKey, type CoachMoment } from '@/match/coach/coach-moments'
-import { SUMMARY_SAVE_KEY, notesSummaryLine, type CoachNoteDraft } from '@/match/coach/coach-notes'
+import type { FocusItem } from '@/api'
+import { FOCUS_SAVE_KEY, notesSummaryLine, type CoachNoteDraft } from '@/match/coach/coach-notes'
 
 // The Film Room: reel · desk · sheet. The shell owns the layout and the
 // derived state (useCoachRoom) and nothing else — it takes the loaned
@@ -30,7 +31,7 @@ const props = withDefaults(defineProps<{
   /** The coach's moments, keyed by match key — several per match. */
   moments?: Record<string, CoachMoment[]>
   selectedKey?: string
-  summary?: string
+  focusItems?: FocusItem[]
   /** Signed on the notes; the sheet's tally line names the coach. */
   coachName?: string
   /** Where each key's autosave stands — the desk reads the frame it shows. */
@@ -63,7 +64,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   moments: () => ({}),
   selectedKey: '',
-  summary: '',
+  focusItems: () => [],
   coachName: '',
   saveStateFor: (): CoachSaveState => 'idle',
   endArmed: false,
@@ -83,7 +84,7 @@ const emit = defineEmits<{
   'remove-moment': [matchKey: string, momentId: string]
   'copy-replay': [matchKey: string]
   'remove-frame': [matchKey: string]
-  'update-summary': [text: string]
+  'update-focus-items': [items: FocusItem[]]
   'confirm-player': [handle: string]
   export: []
   end: []
@@ -215,13 +216,13 @@ function step(key: string | null): void {
           :win-rate="room.winRate.value"
           :focus-tally="room.focusTally.value"
           :notes-line="notesLine"
-          :summary="summary"
-          :summary-save-state="saveStateFor(SUMMARY_SAVE_KEY)"
+          :focus-items="focusItems"
+          :focus-save-state="saveStateFor(FOCUS_SAVE_KEY)"
           :end-armed="endArmed"
           :can-export="canExport"
           :export-reason="exportReason"
           :blocked-reason="blockedReason"
-          @update-summary="(text: string) => emit('update-summary', text)"
+          @update-focus-items="(items: FocusItem[]) => emit('update-focus-items', items)"
           @change-player="correcting = true"
           @export="emit('export')"
           @end="emit('end')"

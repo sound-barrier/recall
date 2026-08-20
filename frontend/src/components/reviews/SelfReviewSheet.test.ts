@@ -8,13 +8,13 @@ function renderSheet(over: Record<string, unknown> = {}) {
   return render(SelfReviewSheet, {
     props: {
       title: '', wld: { w: 2, l: 1, d: 0 }, winRate: 67, focusTally: [{ tag: 'positioning', count: 2 }],
-      notesLine: '2 notes · 1 moment', summary: '', ...over,
+      notesLine: '2 notes · 1 moment', focusItems: [{ item_id: 'f-1', text: '' }], ...over,
     },
   })
 }
 
 describe('SelfReviewSheet', () => {
-  it('is the review sheet: a title to give it, the record, the summary, Finish and the way back', async () => {
+  it('is the review sheet: a title to give it, the record, the list, Finish and the way back', async () => {
     const { emitted } = renderSheet()
     expect(screen.getByRole('complementary', { name: 'Review sheet' })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Review record' })).toHaveTextContent('2')
@@ -28,8 +28,8 @@ describe('SelfReviewSheet', () => {
     const user = userEvent.setup()
     await user.type(screen.getByRole('textbox', { name: 'Title' }), 'T')
     expect(emitted()['update-title']?.at(-1)).toEqual(['T'])
-    await user.type(screen.getByRole('textbox', { name: 'What to work on' }), 'S')
-    expect(emitted()['update-summary']?.at(-1)).toEqual(['S'])
+    await user.type(screen.getByRole('textbox', { name: 'What to work on, item 1' }), 'S')
+    expect(emitted()['update-focus-items']?.at(-1)).toEqual([[{ item_id: 'f-1', text: 'S' }]])
     await user.click(screen.getByRole('button', { name: '← Back to reviews' }))
     expect(emitted()['close']).toHaveLength(1)
   })

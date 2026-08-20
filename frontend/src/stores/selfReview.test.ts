@@ -6,7 +6,8 @@ import { setApiBacking, type SelfReview } from '@/api-client'
 import { qk } from '@/queries/keys'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
-import { HEADER_SAVE_KEY, useSelfReviewStore } from '@/stores/selfReview'
+import type { FocusItem } from '@/api-client'
+import { FOCUS_SAVE_KEY, HEADER_SAVE_KEY, useSelfReviewStore } from '@/stores/selfReview'
 import { seedQuery } from '@/test-utils/queryTestUtils'
 
 // The player's own review sitting, driven through the store's public
@@ -20,7 +21,7 @@ const KEY_B = 'match-2026-08-02T20-00-00'
 
 function sitting(over: Partial<SelfReview> = {}): SelfReview {
   return {
-    review_id: 'r-1', title: '', summary: '', created_at: '2026-08-18T19:00:00Z', updated_at: '2026-08-18T19:00:00Z',
+    review_id: 'r-1', title: '', focus_items: [], created_at: '2026-08-18T19:00:00Z', updated_at: '2026-08-18T19:00:00Z',
     match_keys: [KEY_B, KEY_A], notes: {}, ...over,
   }
 }
@@ -35,7 +36,8 @@ beforeEach(() => {
     ListSelfReviews: vi.fn(async () => []),
     CreateSelfReview: vi.fn(async (_title: string, keys: string[]) => sitting({ match_keys: keys })),
     GetSelfReview: vi.fn(async () => sitting()),
-    UpdateSelfReview: vi.fn(async (_id: string, title: string, summary: string) => sitting({ title, summary })),
+    UpdateSelfReview: vi.fn(async (_id: string, title: string) => sitting({ title })),
+    SetSelfReviewFocusItems: vi.fn(async (_id: string, items: FocusItem[]) => sitting({ focus_items: items })),
     FinishSelfReview: vi.fn(async () => sitting({ finished_at: '2026-08-18T20:00:00Z' })),
     DeleteSelfReview: vi.fn(async () => undefined),
     SetSelfReviewMatches: vi.fn(async (_id: string, keys: string[]) => sitting({ match_keys: keys })),
@@ -74,22 +76,26 @@ describe('selfReview store — a sitting from the bulk bar', () => {
     expect(store.records.map((r) => r.match_key)).toEqual([KEY_B, KEY_A])
   })
 
-  it('autosaves a note to the sitting, and the title + summary as one header PUT', async () => {
+  it('autosaves a note, the title, and the focus list under their own keys', async () => {
     const store = useSelfReviewStore()
     await store.createFromKeys([KEY_A])
     await settle()
 
     store.updateNote(KEY_A, { kind: 'note', text: 'held the choke', focusTags: ['positioning'], extraTags: [], matchClock: '' })
     store.updateTitle("Tuesday's Ana games")
-    store.updateSummary('Stop chasing flanks.')
+    store.updateFocusItems([{ item_id: 'f-1', text: 'Stop chasing flanks.' }])
     await vi.advanceTimersByTimeAsync(1000)
 
     expect(api.PutSelfReviewNote).toHaveBeenCalledWith('r-1', KEY_A, {
       kind: 'note', text: 'held the choke', focus_tags: ['positioning'], extra_tags: [], match_clock: '',
     })
     expect(api.UpdateSelfReview).toHaveBeenCalledTimes(1)
-    expect(api.UpdateSelfReview).toHaveBeenCalledWith('r-1', "Tuesday's Ana games", 'Stop chasing flanks.')
+    expect(api.UpdateSelfReview).toHaveBeenCalledWith('r-1', "Tuesday's Ana games")
+    // Its OWN queue key: sharing the header's would let a title keystroke
+    // displace a list edit that had not gone out yet.
+    expect(api.SetSelfReviewFocusItems).toHaveBeenCalledWith('r-1', [{ item_id: 'f-1', text: 'Stop chasing flanks.' }])
     expect(store.saveStateFor(HEADER_SAVE_KEY)).toBe('saved')
+    expect(store.saveStateFor(FOCUS_SAVE_KEY)).toBe('saved')
   })
 
   it('Finish flushes what is queued, stamps the sitting, and closes the room', async () => {

@@ -26,7 +26,8 @@ export interface ShelfCard {
   /** One mark per member, in the sitting's order. */
   rail: RailMark[]
   writtenCount: number
-  summaryExcerpt: string
+  /** What the sitting concluded, joined into one line for the card. */
+  focusExcerpt: string
 }
 
 const EXCERPT_RUNES = 140
@@ -50,7 +51,7 @@ export function shelfCard(sitting: SelfReview, records: readonly MatchRecord[]):
     wld: tallyWLD(members),
     rail,
     writtenCount: rail.filter((m) => m === 'written').length,
-    summaryExcerpt: excerpt(sitting.summary),
+    focusExcerpt: excerpt(sitting.focus_items.map((i) => i.text).join(" · ")),
   }
 }
 

@@ -416,7 +416,11 @@ export async function seedReviewsEmpty(page: Page): Promise<void> {
       body: JSON.stringify([{
         review_id: 'theme-matrix-sitting',
         title: 'Theme matrix sitting',
-        summary: 'One sitting, so the shelf renders a paper card.',
+        focus_items: [{
+          item_id: 'a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d',
+          text: 'One sitting, so the shelf renders a paper card.',
+          status: 'working',
+        }],
         created_at: '2026-05-10T20:00:00Z',
         updated_at: '2026-05-10T20:00:00Z',
         finished_at: '2026-05-10T21:00:00Z',
@@ -427,12 +431,48 @@ export async function seedReviewsEmpty(page: Page): Promise<void> {
   })
 }
 
+/**
+ * `GET /api/v1/focus` with one of each kind, so the band on 07 paints its
+ * rows, its Accept (coach, unacknowledged) and its retired-count toggle in
+ * every theme rather than only its empty sentence.
+ */
+export async function seedFocus(page: Page): Promise<void> {
+  await page.route('**/api/v1/focus', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.fallback()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          item_id: 'c0000000-0000-4000-8000-000000000001',
+          text: 'Hold the high ground until the second bubble.',
+          status: 'new', source: 'coach', coach_name: 'Ordo', from: '2026-05-09',
+        },
+        {
+          item_id: 'c0000000-0000-4000-8000-000000000002',
+          text: 'Ult economy on control.',
+          status: 'working', source: 'self', from: '2026-05-10',
+        },
+        {
+          item_id: 'c0000000-0000-4000-8000-000000000003',
+          text: 'Call the dive.',
+          status: 'done', source: 'self', from: '2026-05-08',
+        },
+      ]),
+    })
+  })
+}
+
 export async function openView(page: Page, tabId: string, theme: string): Promise<void> {
   await pinTheme(page, theme)
   await silenceParseEvents(page)
   await seedMatches(page)
   await seedProfiles(page)
   await seedReviewsEmpty(page)
+  await seedFocus(page)
   await page.goto('/')
   await page.locator(`#${tabId}`).click()
   await expect(page.locator(`#${tabId}`)).toHaveAttribute('aria-selected', 'true')

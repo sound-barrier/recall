@@ -26,7 +26,7 @@ function sheet(over: Partial<CoachReturnSheet> = {}): CoachReturnSheet {
     player_handle: 'Sable',
     session_date: '2026-08-14',
     imported_at: '2026-08-15T09:12:00Z',
-    summary: 'Ult economy first.',
+    focus_items: [{ item_id: 'f-1', text: 'Ult economy first.' }],
     notes: [note({ note_id: 'n1' }), note({ note_id: 'n2' }), note({ note_id: 'n3' })],
     decisions: {},
     pending: 3,
