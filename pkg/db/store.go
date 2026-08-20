@@ -282,6 +282,10 @@ type Store interface {
 	// The "share with a coach" SENT ledger. See store_share_exports.go.
 	ShareExportStore
 
+	// "What to work on", as rows — the coach's authored list, the player's
+	// own, and what a coach sent them. See store_focus_items.go.
+	FocusItemStore
+
 	// Clear deletes every row in every table — children cascade — EXCEPT the
 	// coach-authored family (coach_players / coach_notes /
 	// coach_session_summaries), which is not match history.
