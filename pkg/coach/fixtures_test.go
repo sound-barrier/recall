@@ -40,7 +40,7 @@ func seededStore(t *testing.T) *dbtest.Fake {
 	f.Summaries = []db.SummaryRow{{
 		ID: 11, Filename: "2026-08-01_18-30-00-summary.png", MatchKey: keyIlios, ScreenshotsDirID: seedDirID,
 		Map: "ilios", Hero: "ana", Result: "victory", Date: "2026-08-01", FinishedAt: "18:30",
-		ParsedAt: "2026-08-01T18:31:00Z", PerfElimTotal: 21,
+		ParsedAt: "2026-08-01T18:31:00Z", Eliminations: 21,
 		HeroesPlayed: []db.SummaryHeroPlayed{{Hero: "ana"}},
 	}}
 	f.Teams = []db.TeamsRow{{

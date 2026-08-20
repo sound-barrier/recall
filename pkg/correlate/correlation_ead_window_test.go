@@ -242,9 +242,9 @@ func TestResolveMatchKey_LiveAatlisCascade_EndToEnd(t *testing.T) {
 		Filename: sumFile, MatchKey: gotSum,
 		Map: sumResult.Map, Hero: sumResult.Hero, Result: sumResult.Result,
 		Date: sumResult.Date, FinishedAt: sumResult.FinishedAt,
-		PerfElimTotal:    sumResult.Eliminations,
-		PerfAssistsTotal: sumResult.Assists,
-		PerfDeathsTotal:  sumResult.Deaths,
+		Eliminations: sumResult.Eliminations,
+		Assists:      sumResult.Assists,
+		Deaths:       sumResult.Deaths,
 	})
 
 	// 2. Post-match TEAMS at 21:49:55.46 — same EAD as the
@@ -327,7 +327,7 @@ func TestMatchByEAD_BridgesToExistingSummaryByPerfEAD(t *testing.T) {
 			MatchKey: "match-2026-05-10T21-29-28",
 			Map:      "aatlis", Hero: "lucio",
 			Date: "2026-05-10", FinishedAt: "21:29",
-			PerfElimTotal: 17, PerfAssistsTotal: 14, PerfDeathsTotal: 7,
+			Eliminations: 17, Assists: 14, Deaths: 7,
 		}},
 	}
 	// A TEAMS that arrives 1.5 seconds later with the same EAD —

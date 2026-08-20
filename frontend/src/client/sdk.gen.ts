@@ -1263,7 +1263,7 @@ export const listShareExports = <ThrowOnError extends boolean = false>(options?:
 /**
  * Build a selection-aware export bundle (ZIP)
  *
- * Builds a `.zip` containing a `recall-export/v2` JSON payload
+ * Builds a `.zip` containing a `recall-export/v4` JSON payload
  * (filtered to the requested matches) at `data.json`, every
  * referenced screenshot under `screenshots/<filename>`, and a
  * root `manifest.json` listing screenshot → match_key mappings
@@ -1283,10 +1283,12 @@ export const listShareExports = <ThrowOnError extends boolean = false>(options?:
  * `include_hidden: true` exports every hidden match.
  *
  * Merge into another install via `POST /api/v1/imports` — the
- * `data.json` shape is the `recall-export/v2` envelope, which
+ * `data.json` shape is the `recall-export/v4` envelope, which
  * carries the user layer (edits, annotations, reviews, queue and
  * play-mode picks, hidden and pinned flags) alongside the OCR row
- * tables. `recall-export/v1` bundles still import unchanged.
+ * tables. Every older vintage — `v1` through `v3` — still imports;
+ * each one names a field the payloads before it could not express,
+ * and the reader adapts them on the way in.
  *
  * Supplying `share` switches the export to SHARE mode — the
  * bundle a player hands a coach. The manifest then carries a

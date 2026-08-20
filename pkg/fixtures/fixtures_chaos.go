@@ -136,8 +136,8 @@ var chaosShapes = map[chaosCategory]func(*chaosCtx){
 		c.s.Hero = emoji + " " + c.s.Hero
 	},
 	chaosNumericExtreme: func(c *chaosCtx) {
-		c.s.PerfElimTotal = 1 << (20 + c.rng.Intn(8)) // 1M – 256M
-		c.s.PerfAssistsTotal = -1 * c.rng.Intn(100)   // negative
+		c.s.Eliminations = 1 << (20 + c.rng.Intn(8)) // 1M – 256M
+		c.s.Assists = -1 * c.rng.Intn(100)           // negative
 		if c.sb != nil {
 			c.sb.Damage = 1 << 28
 			c.sb.Healing = -1 * c.rng.Intn(50000)

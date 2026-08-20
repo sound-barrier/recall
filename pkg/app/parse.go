@@ -380,11 +380,11 @@ func buildSummaryRow(filename, key string, dirID int64, r *parser.MatchResult) d
 		PlayedAtUTC: canonicalPlayedAtUTC(r.Date, r.FinishedAt),
 	}
 	if r.Performance != nil {
-		row.PerfElimTotal = r.Performance.Eliminations.Total
+		row.Eliminations = r.Performance.Eliminations.Total
 		row.PerfElimAvgPer10Min = r.Performance.Eliminations.AvgPer10Min
-		row.PerfAssistsTotal = r.Performance.Assists.Total
+		row.Assists = r.Performance.Assists.Total
 		row.PerfAssistsAvgPer10Min = r.Performance.Assists.AvgPer10Min
-		row.PerfDeathsTotal = r.Performance.Deaths.Total
+		row.Deaths = r.Performance.Deaths.Total
 		row.PerfDeathsAvgPer10Min = r.Performance.Deaths.AvgPer10Min
 	}
 	for _, h := range r.HeroesPlayed {

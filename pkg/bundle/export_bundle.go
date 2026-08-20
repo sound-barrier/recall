@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"time"
 
@@ -45,6 +46,20 @@ const exportSchemaV2 = "recall-export/v2"
 // database to prevent. An importer cannot tell the two apart in a v1/v2
 // payload, so it drops both to nil; this version is how it knows to.
 const exportSchemaV3 = "recall-export/v3"
+
+// exportSchemaV4 marks a bundle whose summary rows spell the player's E/A/D
+// the way every other table does — eliminations / assists / deaths.
+//
+// Same root cause as V3: db.SummaryRow carries no json tags, so the wire keys
+// ARE the Go field names, and those three were once PerfElimTotal,
+// PerfAssistsTotal and PerfDeathsTotal — a name that read as a different
+// quantity and left the aggregator populating a performance panel nothing
+// rendered while the scalars the UI does render stayed at zero.
+//
+// The difference from V3 is what the older payload deserves. A pre-v3 rank
+// reading could not be trusted, so it is dropped. These are the same integers
+// under an older key, so they are ADOPTED — see adoptPreV4SummaryEAD.
+const exportSchemaV4 = "recall-export/v4"
 
 // BundleSchemaV1 is the wire-schema identifier the bundle's
 // manifest carries. Bumping the constant is a breaking change to
@@ -294,7 +309,7 @@ func bundleScreenshotMap(t parentTables) map[string]string {
 // ScreenshotsDirID to 0 (use configured dir).
 func writeBundleData(zw *zip.Writer, t parentTables, user bundleUserLayer, exportedAt, version string, now time.Time) error {
 	dataDoc := DataV2{
-		Schema:        exportSchemaV3,
+		Schema:        exportSchemaV4,
 		ExportedAt:    exportedAt,
 		RecallVersion: version,
 		Summaries:     t.summaries,
@@ -475,16 +490,27 @@ func bundleWriteRaw(zw *zip.Writer, name string, body []byte, mt time.Time) erro
 	return nil
 }
 
+// exportSchemaOrder is every data.json vintage this build reads, oldest first.
+// ONE list: supportedExportSchema asks whether a string is in it, and the
+// per-version compat gates ask how far along it sits — so minting a version is
+// one line here rather than an edit to every `schema == exportSchemaVN` in the
+// package, each of which is a gate that silently reads wrong when missed.
+var exportSchemaOrder = []string{exportSchemaV1, exportSchemaV2, exportSchemaV3, exportSchemaV4}
+
 // supportedExportSchema reports whether this build can read a data.json of that
-// vintage. One list, so the validator and the reader can never disagree about
-// what is importable.
+// vintage, so the validator and the reader can never disagree about what is
+// importable.
 func supportedExportSchema(schema string) bool {
-	switch schema {
-	case exportSchemaV1, exportSchemaV2, exportSchemaV3:
-		return true
-	default:
-		return false
-	}
+	return slices.Contains(exportSchemaOrder, schema)
+}
+
+// schemaAtLeast reports whether a bundle's schema is `floor` or newer. Unknown
+// schemas answer false — supportedExportSchema has already refused them, and
+// "older than everything" is the safe reading for a gate guarding a value an
+// old payload could not express.
+func schemaAtLeast(schema, floor string) bool {
+	have := slices.Index(exportSchemaOrder, schema)
+	return have >= 0 && have >= slices.Index(exportSchemaOrder, floor)
 }
 
 // dropPreV3RankReadings clears the rank readings a pre-v3 bundle cannot express
@@ -493,7 +519,7 @@ func supportedExportSchema(schema string) bool {
 // not report it, which is the only true statement available. Re-parsing the
 // screenshots is what recovers the real numbers.
 func dropPreV3RankReadings(schema string, ranks []db.RankRow) []db.RankRow {
-	if schema == exportSchemaV3 {
+	if schemaAtLeast(schema, exportSchemaV3) {
 		return ranks
 	}
 	out := make([]db.RankRow, len(ranks))
@@ -503,4 +529,49 @@ func dropPreV3RankReadings(schema string, ranks []db.RankRow) []db.RankRow {
 		out[i].ChangePercent = nil
 	}
 	return out
+}
+
+// preV4Summary is the shape a bundle written before exportSchemaV4 used for the
+// three fields that were renamed. Decoded ALONGSIDE the typed payload rather
+// than through it, because db.SummaryRow no longer has anywhere to put them and
+// teaching it would push bundle-vintage knowledge down into the store types.
+type preV4Summary struct {
+	PerfElimTotal    int
+	PerfAssistsTotal int
+	PerfDeathsTotal  int
+}
+
+// adoptPreV4SummaryEAD fills in E/A/D for a bundle that spelled them the old
+// way. It reads the same data.json bytes a second time, so the two decodes walk
+// the same array in the same order and index i means the same row in both.
+//
+// Only ever fills a zero: a payload carrying both spellings (impossible from any
+// released build, but cheap to be right about) keeps the current one.
+func adoptPreV4SummaryEAD(dataBytes []byte, data *DataV2) error {
+	if schemaAtLeast(data.Schema, exportSchemaV4) || len(data.Summaries) == 0 {
+		return nil
+	}
+	var legacy struct {
+		Summaries []preV4Summary `json:"summaries"`
+	}
+	if err := json.Unmarshal(dataBytes, &legacy); err != nil {
+		return fmt.Errorf("%w: data.json legacy summary decode: %w", ErrImportMalformed, err)
+	}
+	n := min(len(legacy.Summaries), len(data.Summaries))
+	for i := range n {
+		adoptOneSummaryEAD(&data.Summaries[i], legacy.Summaries[i])
+	}
+	return nil
+}
+
+func adoptOneSummaryEAD(row *db.SummaryRow, old preV4Summary) {
+	if row.Eliminations == 0 {
+		row.Eliminations = old.PerfElimTotal
+	}
+	if row.Assists == 0 {
+		row.Assists = old.PerfAssistsTotal
+	}
+	if row.Deaths == 0 {
+		row.Deaths = old.PerfDeathsTotal
+	}
 }

@@ -50,3 +50,34 @@ func InferResultFromRank(d *parser.MatchResult) {
 		}
 	}
 }
+
+// InferPerformanceTotals fills the SUMMARY performance panel's totals from the
+// match's E/A/D. The panel and the scalars are two readings of ONE fact, so
+// only one of them is stored — and this is the read-time step that makes the
+// other agree with it. That is what keeps a correction whole: an eliminations
+// override moves the scalar, and the panel follows.
+//
+// A match with no SUMMARY screenshot has no panel and does not grow one here —
+// nothing observed its per-10-minute rates, and inventing a block of zeroes
+// would claim otherwise.
+//
+// READ-TIME ONLY, like its siblings: nothing derived ever reaches the store.
+func InferPerformanceTotals(d *parser.MatchResult) {
+	if d.Performance == nil {
+		return
+	}
+	d.Performance.Eliminations.Total = d.Eliminations
+	d.Performance.Assists.Total = d.Assists
+	d.Performance.Deaths.Total = d.Deaths
+}
+
+// ApplyReadTimeInference runs every read-time inference over one match, in the
+// order they depend on each other. Every read path calls THIS — the store-backed
+// one in pkg/app, the bundle-backed one the film room builds, and the per-key
+// extract behind the live "match-updated" event — so a new inference cannot
+// reach two of the three and be missing from the third.
+func ApplyReadTimeInference(d *parser.MatchResult) {
+	InferSoleHeroPercent(d)
+	InferResultFromRank(d)
+	InferPerformanceTotals(d)
+}

@@ -171,8 +171,7 @@ func BuildRecords(d bundle.DataV2) []match.Record {
 	aggregate.AttachPlayModes(recs, d.PlayModes)
 	aggregate.AttachAmbiguity(recs, nil)
 	for i := range recs {
-		aggregate.InferSoleHeroPercent(&recs[i].Data)
-		aggregate.InferResultFromRank(&recs[i].Data)
+		aggregate.ApplyReadTimeInference(&recs[i].Data)
 		recs[i].ThumbnailFile = ""
 		recs[i].SourceDirIDs = nil
 	}

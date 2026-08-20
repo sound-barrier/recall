@@ -13,9 +13,9 @@ import "database/sql"
 const upsertSummarySQL = `INSERT INTO summary_screenshots (
 			filename, match_key, screenshots_dir_id, parsed_at,
 			map, map_raw, playlist, hero, hero_raw, result, final_score, date, finished_at, game_length, played_at_utc,
-			perf_elim_total, perf_elim_avg_per_10min,
-			perf_assists_total, perf_assists_avg_per_10min,
-			perf_deaths_total, perf_deaths_avg_per_10min,
+			eliminations, perf_elim_avg_per_10min,
+			assists, perf_assists_avg_per_10min,
+			deaths, perf_deaths_avg_per_10min,
 			parser_generation
 		) VALUES (?,?,?,` + suppliedInstantOrNow + `, ?,?,?,?,?,?,?,?,?,?,?, ?,?, ?,?, ?,?, ?)
 		ON CONFLICT(screenshots_dir_id, filename) DO UPDATE SET
@@ -32,11 +32,11 @@ const upsertSummarySQL = `INSERT INTO summary_screenshots (
 			finished_at = excluded.finished_at,
 			game_length = excluded.game_length,
 			played_at_utc = excluded.played_at_utc,
-			perf_elim_total            = excluded.perf_elim_total,
+			eliminations               = excluded.eliminations,
 			perf_elim_avg_per_10min    = excluded.perf_elim_avg_per_10min,
-			perf_assists_total         = excluded.perf_assists_total,
+			assists                    = excluded.assists,
 			perf_assists_avg_per_10min = excluded.perf_assists_avg_per_10min,
-			perf_deaths_total          = excluded.perf_deaths_total,
+			deaths                     = excluded.deaths,
 			perf_deaths_avg_per_10min  = excluded.perf_deaths_avg_per_10min,
 			-- In the SET clause: a re-parse re-reads the screenshot, so the row's
 			-- vintage becomes the CURRENT generation, not the one it first had.
@@ -57,9 +57,9 @@ func (s *SQLStore) UpsertSummary(r SummaryRow) error {
 		r.Map, r.MapRaw, r.Playlist, r.Hero, r.HeroRaw,
 		r.Result, r.FinalScore,
 		r.Date, r.FinishedAt, r.GameLength, r.PlayedAtUTC,
-		r.PerfElimTotal, r.PerfElimAvgPer10Min,
-		r.PerfAssistsTotal, r.PerfAssistsAvgPer10Min,
-		r.PerfDeathsTotal, r.PerfDeathsAvgPer10Min,
+		r.Eliminations, r.PerfElimAvgPer10Min,
+		r.Assists, r.PerfAssistsAvgPer10Min,
+		r.Deaths, r.PerfDeathsAvgPer10Min,
 		r.ParserGeneration,
 	).Scan(&id)
 	if err != nil {
@@ -85,9 +85,9 @@ func loadSummaries(q querier) ([]SummaryRow, error) {
 	rows, err := q.Query(`SELECT
 		id, filename, match_key, parsed_at, screenshots_dir_id,
 		map, map_raw, playlist, hero, hero_raw, result, final_score, date, finished_at, game_length, played_at_utc,
-		perf_elim_total, perf_elim_avg_per_10min,
-		perf_assists_total, perf_assists_avg_per_10min,
-		perf_deaths_total, perf_deaths_avg_per_10min,
+		eliminations, perf_elim_avg_per_10min,
+		assists, perf_assists_avg_per_10min,
+		deaths, perf_deaths_avg_per_10min,
 		-- COALESCE: a row written before the column existed reports 0, which is
 		-- stale by definition — the same reading NULL carries in StaleParseCount.
 		COALESCE(parser_generation, 0)
@@ -105,9 +105,9 @@ func loadSummaries(q querier) ([]SummaryRow, error) {
 		if err := rows.Scan(
 			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID,
 			&r.Map, &r.MapRaw, &r.Playlist, &r.Hero, &r.HeroRaw, &r.Result, &r.FinalScore, &r.Date, &r.FinishedAt, &r.GameLength, &r.PlayedAtUTC,
-			&r.PerfElimTotal, &r.PerfElimAvgPer10Min,
-			&r.PerfAssistsTotal, &r.PerfAssistsAvgPer10Min,
-			&r.PerfDeathsTotal, &r.PerfDeathsAvgPer10Min, &r.ParserGeneration,
+			&r.Eliminations, &r.PerfElimAvgPer10Min,
+			&r.Assists, &r.PerfAssistsAvgPer10Min,
+			&r.Deaths, &r.PerfDeathsAvgPer10Min, &r.ParserGeneration,
 		); err != nil {
 			return nil, err
 		}

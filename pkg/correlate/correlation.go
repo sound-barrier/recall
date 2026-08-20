@@ -200,9 +200,9 @@ func summaryExistingCandidate(r db.SummaryRow) Candidate {
 		r: &parser.MatchResult{
 			Map: r.Map, Playlist: r.Playlist, Hero: r.Hero,
 			Date: r.Date, FinishedAt: r.FinishedAt,
-			Eliminations: r.PerfElimTotal,
-			Assists:      r.PerfAssistsTotal,
-			Deaths:       r.PerfDeathsTotal,
+			Eliminations: r.Eliminations,
+			Assists:      r.Assists,
+			Deaths:       r.Deaths,
 		},
 	}
 }

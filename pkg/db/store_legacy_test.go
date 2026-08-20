@@ -78,11 +78,11 @@ func writeLegacyDB(t *testing.T, path string) {
 		date          TEXT,
 		finished_at   TEXT,
 		game_length   TEXT,
-		perf_elim_total            INTEGER NOT NULL DEFAULT 0,
+		eliminations            INTEGER NOT NULL DEFAULT 0,
 		perf_elim_avg_per_10min    REAL    NOT NULL DEFAULT 0,
-		perf_assists_total         INTEGER NOT NULL DEFAULT 0,
+		assists         INTEGER NOT NULL DEFAULT 0,
 		perf_assists_avg_per_10min REAL    NOT NULL DEFAULT 0,
-		perf_deaths_total          INTEGER NOT NULL DEFAULT 0,
+		deaths          INTEGER NOT NULL DEFAULT 0,
 		perf_deaths_avg_per_10min  REAL    NOT NULL DEFAULT 0
 	)`); err != nil {
 		t.Fatalf("create legacy table: %v", err)

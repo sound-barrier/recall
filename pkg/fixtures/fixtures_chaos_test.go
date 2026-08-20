@@ -160,7 +160,7 @@ func hasChaosSignature(s db.SummaryRow) bool {
 		return true // long-strings
 	case containsAny(s.Hero, fixtures.ChaosEmojis), containsAny(s.Map, fixtures.ChaosEmojis):
 		return true // unicode
-	case s.PerfElimTotal > 100_000 || s.PerfAssistsTotal < 0:
+	case s.Eliminations > 100_000 || s.Assists < 0:
 		return true // numeric-extreme
 	case len(s.HeroesPlayed) > 10:
 		return true // cardinality

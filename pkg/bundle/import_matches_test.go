@@ -84,7 +84,7 @@ func assertParentRowsRoundTripped(t *testing.T, dst *dbtest.Fake) {
 
 func assertSummaryRoundTripped(t *testing.T, s db.SummaryRow) {
 	t.Helper()
-	if s.Filename != "summary-1.png" || s.MatchKey != "m1" || s.Map != "ilios" || s.PerfElimTotal != 21 {
+	if s.Filename != "summary-1.png" || s.MatchKey != "m1" || s.Map != "ilios" || s.Eliminations != 21 {
 		t.Errorf("summary = %+v", s)
 	}
 	if len(s.HeroesPlayed) != 1 || s.HeroesPlayed[0].Hero != "ana" || s.HeroesPlayed[0].PlayTime != "08:12" {

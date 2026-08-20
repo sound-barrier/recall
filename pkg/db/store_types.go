@@ -122,11 +122,15 @@ type SummaryRow struct {
 	// FinishedAt above stay naive-local for the correlator; this is additive.
 	PlayedAtUTC *string
 
-	PerfElimTotal          int
+	// Eliminations / Assists / Deaths are the player's own, off the SUMMARY
+	// performance panel — the same fact TeamsRow carries under the same
+	// names. The read-time fold reconciles the two observations.
+	Eliminations int
+	Assists      int
+	Deaths       int
+
 	PerfElimAvgPer10Min    float64
-	PerfAssistsTotal       int
 	PerfAssistsAvgPer10Min float64
-	PerfDeathsTotal        int
 	PerfDeathsAvgPer10Min  float64
 
 	HeroesPlayed []SummaryHeroPlayed

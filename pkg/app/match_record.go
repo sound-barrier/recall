@@ -52,8 +52,7 @@ func (a *App) GetMatchResults() ([]match.Record, error) {
 		return nil, err
 	}
 	for i := range recs {
-		aggregate.InferSoleHeroPercent(&recs[i].Data)
-		aggregate.InferResultFromRank(&recs[i].Data)
+		aggregate.ApplyReadTimeInference(&recs[i].Data)
 	}
 	a.attachThumbnails(recs)
 	return recs, nil

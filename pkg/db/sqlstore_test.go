@@ -47,11 +47,11 @@ func TestSQLStore_Summary_UpsertThenLoadRoundTrip(t *testing.T) {
 		FinishedAt: "21:29",
 		GameLength: "11:25",
 
-		PerfElimTotal:          17,
+		Eliminations:           17,
 		PerfElimAvgPer10Min:    14.5,
-		PerfAssistsTotal:       16,
+		Assists:                16,
 		PerfAssistsAvgPer10Min: 13.6,
-		PerfDeathsTotal:        11,
+		Deaths:                 11,
 		PerfDeathsAvgPer10Min:  9.4,
 
 		HeroesPlayed: []db.SummaryHeroPlayed{
