@@ -26,7 +26,6 @@ type ReturnStore interface {
 	SetCoachReturnDecision(returnID int64, noteID, decision string) error
 	DeleteCoachReturn(id int64) error
 	UpsertReceivedFocusItem(item db.ReceivedFocusItem) error
-	DeleteReceivedFocusItemsFrom(coachName, sessionDate string) error
 }
 
 // Decision values the player records against a staged note.
@@ -104,7 +103,7 @@ func Stage(st ReturnStore, payload []byte, localHandle string) (sheet ReturnShee
 		// resets a status the player moved, and landing is NOT transactional
 		// with the insert above — a partial first import would otherwise be
 		// unrecoverable, because this branch is the only one a retry reaches.
-		if err := landFocusItems(st, f, localHandle); err != nil {
+		if err := landFocusItems(st, existing.ID, f, localHandle); err != nil {
 			return ReturnSheet{}, false, err
 		}
 		sheet, err := buildSheet(st, existing, localHandle)
@@ -126,7 +125,7 @@ func Stage(st ReturnStore, payload []byte, localHandle string) (sheet ReturnShee
 	if err != nil {
 		return ReturnSheet{}, false, fmt.Errorf("coach: stage return: %w", err)
 	}
-	if err := landFocusItems(st, f, localHandle); err != nil {
+	if err := landFocusItems(st, id, f, localHandle); err != nil {
 		return ReturnSheet{}, false, err
 	}
 	sheet, err = Sheet(st, id, localHandle)
@@ -144,7 +143,7 @@ func Stage(st ReturnStore, payload []byte, localHandle string) (sheet ReturnShee
 //
 // Upserting on item_id means re-importing the same file never resets a
 // status the player has already moved.
-func landFocusItems(st ReturnStore, f NotesFile, localHandle string) error {
+func landFocusItems(st ReturnStore, returnID int64, f NotesFile, localHandle string) error {
 	// A file written about someone else is not your coach talking to you.
 	// The sheet warns about it, but by then the items would already be on
 	// the player's list — and "no deny" would make a stranger's homework
@@ -155,9 +154,8 @@ func landFocusItems(st ReturnStore, f NotesFile, localHandle string) error {
 	for i, it := range f.FocusItems {
 		item := db.FocusItem{ItemID: it.ItemID, Text: it.Text, Status: db.FocusNew, SortOrder: i}
 		err := st.UpsertReceivedFocusItem(db.ReceivedFocusItem{
-			FocusItem:   item,
-			CoachName:   f.CoachName,
-			SessionDate: f.SessionDate,
+			FocusItem: item,
+			ReturnID:  returnID,
 		})
 		if err != nil {
 			return fmt.Errorf("coach: land focus item: %w", err)

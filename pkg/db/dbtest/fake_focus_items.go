@@ -119,8 +119,7 @@ func (f *Fake) UpsertReceivedFocusItem(item db.ReceivedFocusItem) error {
 		}
 		// A re-import updates the words and the order but NEVER the status:
 		// the player has already acted on this one.
-		existing.CoachName = item.CoachName
-		existing.SessionDate = item.SessionDate
+		existing.ReturnID = item.ReturnID
 		existing.Text = item.Text
 		existing.SortOrder = item.SortOrder
 		existing.UpdatedAt = now
@@ -132,12 +131,30 @@ func (f *Fake) UpsertReceivedFocusItem(item db.ReceivedFocusItem) error {
 	return nil
 }
 
+// LoadReceivedFocusItems mirrors the SQL join: an item's coach and session
+// date come from the return it arrived in, never from the item row, so a
+// caller cannot read a provenance the archive did not write.
 func (f *Fake) LoadReceivedFocusItems() ([]db.ReceivedFocusItem, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	out := append([]db.ReceivedFocusItem(nil), f.ReceivedFocusItems...)
+	returns := map[int64]db.CoachReturn{}
+	for _, r := range f.CoachReturns {
+		returns[r.ID] = r
+	}
+	out := make([]db.ReceivedFocusItem, 0, len(f.ReceivedFocusItems))
+	for _, it := range f.ReceivedFocusItems {
+		r, ok := returns[it.ReturnID]
+		if !ok {
+			continue // the SQL FK makes this state unreachable
+		}
+		it.CoachName, it.SessionDate = r.CoachName, r.SessionDate
+		out = append(out, it)
+	}
 	slices.SortStableFunc(out, func(a, b db.ReceivedFocusItem) int {
 		if c := cmp.Compare(b.SessionDate, a.SessionDate); c != 0 {
+			return c
+		}
+		if c := cmp.Compare(a.CoachName, b.CoachName); c != 0 {
 			return c
 		}
 		return cmp.Compare(a.SortOrder, b.SortOrder)
@@ -172,18 +189,4 @@ func (f *Fake) SetFocusItemStatus(itemID, status string) error {
 		return nil
 	}
 	return db.ErrFocusItemUnknown
-}
-
-func (f *Fake) DeleteReceivedFocusItemsFrom(coachName, sessionDate string) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	kept := f.ReceivedFocusItems[:0]
-	for _, it := range f.ReceivedFocusItems {
-		if it.CoachName == coachName && it.SessionDate == sessionDate {
-			continue
-		}
-		kept = append(kept, it)
-	}
-	f.ReceivedFocusItems = kept
-	return nil
 }

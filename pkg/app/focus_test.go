@@ -46,13 +46,23 @@ func seedFocusList(t *testing.T, store *dbtest.Fake) {
 		{ItemID: itemSelfNew, Text: "last night's thought"},
 		{ItemID: itemRetired, Text: "already got this", Status: db.FocusDone},
 	}))
-	for _, it := range []db.ReceivedFocusItem{
-		{ItemID: itemCoachOld, Text: "an older lesson", Status: db.FocusWorking,
-			CoachName: "Ordo", SessionDate: "2026-03-01"},
-		{ItemID: itemCoachNew, Text: "the latest lesson", Status: db.FocusNew,
-			CoachName: "Ordo", SessionDate: "2026-08-18"},
+	// A coach item's coach and date are its RETURN's, so each one needs the
+	// archive it arrived in — two here, because the two are months apart.
+	for _, r := range []struct {
+		hash, date, itemID, text, status string
+	}{
+		{"hash-march", "2026-03-01", itemCoachOld, "an older lesson", db.FocusWorking},
+		{"hash-august", "2026-08-18", itemCoachNew, "the latest lesson", db.FocusNew},
 	} {
-		mustNoErr(t, store.UpsertReceivedFocusItem(it))
+		id, err := store.InsertCoachReturn(db.CoachReturn{
+			ContentHash: r.hash, CoachName: "Ordo", PlayerHandle: "player",
+			SessionDate: r.date, NotesJSON: []byte("{}"),
+		})
+		mustNoErr(t, err)
+		mustNoErr(t, store.UpsertReceivedFocusItem(db.ReceivedFocusItem{
+			ItemID: r.itemID, Text: r.text, Status: r.status,
+			ReturnID: id,
+		}))
 	}
 }
 

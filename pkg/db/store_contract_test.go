@@ -799,10 +799,9 @@ func assertSelfFocusItems(t *testing.T, s db.Store) {
 // and a re-import never resets a status the player already moved.
 func assertReceivedFocusItems(t *testing.T, s db.Store) {
 	t.Helper()
+	returnID := insertReturn(t, s, "hash-ordo", "Ordo", "2026-08-14")
 	landed := db.ReceivedFocusItem{
-		ItemID: "r-item-1", Text: "ult economy first",
-		CoachName:   "Ordo",
-		SessionDate: "2026-08-14",
+		ItemID: "r-item-1", Text: "ult economy first", ReturnID: returnID,
 	}
 	mustNoErr(t, s.UpsertReceivedFocusItem(landed))
 	got, err := s.LoadReceivedFocusItems()
@@ -854,32 +853,6 @@ func TestStoreContract_DeletingASittingTakesItsFocusItems(t *testing.T) {
 			mustNoErr(t, err)
 			if len(byReview[reviewID]) != 0 {
 				t.Errorf("items survived the sitting: %+v", byReview[reviewID])
-			}
-		})
-	}
-}
-
-// Discarding a staged return unlands what it put on the player's list. It is
-// the ONLY way a coach's item ever leaves — there is no per-item deny — so
-// without it an archive imported by mistake is permanent.
-func TestStoreContract_DiscardingAnArchiveUnlandsItsFocusItems(t *testing.T) {
-	for _, impl := range storeImpls {
-		t.Run(impl.name, func(t *testing.T) {
-			s := impl.open(t)
-			for _, it := range []db.ReceivedFocusItem{
-				{ItemID: "r-1", Text: "from ordo", CoachName: "Ordo", SessionDate: "2026-08-18"},
-				{ItemID: "r-2", Text: "from wren", CoachName: "Wren", SessionDate: "2026-08-18"},
-			} {
-				mustNoErr(t, s.UpsertReceivedFocusItem(it))
-			}
-
-			mustNoErr(t, s.DeleteReceivedFocusItemsFrom("Ordo", "2026-08-18"))
-
-			left, err := s.LoadReceivedFocusItems()
-			mustNoErr(t, err)
-			// Only that archive's — a second coach on the same date stays.
-			if len(left) != 1 || left[0].ItemID != "r-2" {
-				t.Errorf("left = %+v, want only Wren's item", left)
 			}
 		})
 	}

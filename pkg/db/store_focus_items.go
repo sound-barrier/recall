@@ -24,7 +24,7 @@ var (
 //
 //   - coach_focus_items       what THIS user tells a player to work on
 //   - self_review_focus_items what the player wrote in their own sitting
-//   - received_focus_items    what a coach sent THIS user
+//   - received_focus_items    what a coach sent THIS user, per return
 //
 // The player's list is the last two together. `status` is the player's own
 // progress and has no 'denied' arm: a coach's item is active the moment it
@@ -51,10 +51,17 @@ type FocusItem struct {
 	UpdatedAt string
 }
 
-// ReceivedFocusItem is a coach's item as it landed here, carrying who sent
-// it and when so the player's list can say so and order by it.
+// ReceivedFocusItem is a coach's item as it landed here. ReturnID is what the
+// row stores: the archive it arrived in owns it, and the cascade retires it
+// when that archive is discarded.
+//
+// CoachName and SessionDate are the RETURN's, projected by the read so the
+// player's list can say who sent an item and order by when. They are ignored
+// on write — a caller cannot give an item a different coach from the archive
+// it came in.
 type ReceivedFocusItem struct {
 	FocusItem
+	ReturnID    int64
 	CoachName   string
 	SessionDate string
 }
@@ -75,23 +82,21 @@ type FocusItemStore interface {
 	// LoadAllSelfReviewFocusItems reads every sitting's list, keyed by review.
 	LoadAllSelfReviewFocusItems() (map[string][]FocusItem, error)
 
-	// UpsertReceivedFocusItem lands one coach item, keyed on item_id so
-	// importing the same notes file twice updates rather than duplicates.
-	// A re-import never resets a status the player has already moved.
+	// UpsertReceivedFocusItem lands one coach item against the return that
+	// carried it, keyed on item_id so importing the same notes file twice
+	// updates rather than duplicates. A re-import never resets a status the
+	// player has already moved.
 	UpsertReceivedFocusItem(item ReceivedFocusItem) error
 	// LoadReceivedFocusItems reads every received item, newest session first.
 	LoadReceivedFocusItems() ([]ReceivedFocusItem, error)
 
 	// SetFocusItemStatus moves one item — in either player-side family — to
 	// new/working/done. ErrFocusItemUnknown when no item carries that id.
+	//
+	// There is no delete beside it: discarding the staged return is the ONE
+	// way a coach's item leaves the player's list, and DeleteCoachReturn's
+	// cascade is how that happens.
 	SetFocusItemStatus(itemID, status string) error
-
-	// DeleteReceivedFocusItemsFrom drops everything one archive landed,
-	// keyed the way the archive identifies itself. Discarding a staged
-	// return is the ONE way a coach's item leaves the player's list —
-	// there is no per-item deny, so "I did not mean to import that" has
-	// to have an answer somewhere.
-	DeleteReceivedFocusItemsFrom(coachName, sessionDate string) error
 }
 
 func (s *SQLStore) SetCoachFocusItems(playerRef int64, items []FocusItem) error {
@@ -255,15 +260,14 @@ func scanFocusItems(rows *sql.Rows) ([]FocusItem, error) {
 func (s *SQLStore) UpsertReceivedFocusItem(item ReceivedFocusItem) error {
 	_, err := s.db.Exec(
 		`INSERT INTO received_focus_items
-		   (item_id, coach_name, session_date, text, status, sort_order, received_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, `+suppliedInstantOrNow+`, `+suppliedInstantOrNow+`)
+		   (item_id, return_id, text, status, sort_order, received_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, `+suppliedInstantOrNow+`, `+suppliedInstantOrNow+`)
 		 ON CONFLICT(item_id) DO UPDATE SET
-		   coach_name   = excluded.coach_name,
-		   session_date = excluded.session_date,
-		   text         = excluded.text,
-		   sort_order   = excluded.sort_order,
-		   updated_at   = STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')`,
-		item.ItemID, item.CoachName, item.SessionDate, item.Text,
+		   return_id  = excluded.return_id,
+		   text       = excluded.text,
+		   sort_order = excluded.sort_order,
+		   updated_at = STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')`,
+		item.ItemID, item.ReturnID, item.Text,
 		statusOrDefault(item.Status, FocusNew), item.SortOrder,
 		item.CreatedAt, item.UpdatedAt,
 	)
@@ -273,13 +277,17 @@ func (s *SQLStore) UpsertReceivedFocusItem(item ReceivedFocusItem) error {
 	return nil
 }
 
-// LoadReceivedFocusItems reads every received item, newest session first.
+// LoadReceivedFocusItems reads every received item, newest session first,
+// joining each to the return that carried it for the coach and the date.
 // coach_name sits before sort_order so two coaches whose archives share a
 // session date read as two lists rather than interleaving item-by-item.
 func (s *SQLStore) LoadReceivedFocusItems() ([]ReceivedFocusItem, error) {
 	rows, err := s.db.Query(
-		`SELECT item_id, coach_name, session_date, text, status, sort_order, received_at, updated_at
-		   FROM received_focus_items ORDER BY session_date DESC, coach_name, sort_order, id`)
+		`SELECT i.item_id, i.return_id, r.coach_name, r.session_date, i.text,
+		        i.status, i.sort_order, i.received_at, i.updated_at
+		   FROM received_focus_items i
+		   JOIN coach_returns r ON r.id = i.return_id
+		  ORDER BY r.session_date DESC, r.coach_name, i.sort_order, i.id`)
 	if err != nil {
 		return nil, fmt.Errorf("load received focus items: %w", err)
 	}
@@ -288,7 +296,7 @@ func (s *SQLStore) LoadReceivedFocusItems() ([]ReceivedFocusItem, error) {
 	out := []ReceivedFocusItem{}
 	for rows.Next() {
 		var it ReceivedFocusItem
-		if err := rows.Scan(&it.ItemID, &it.CoachName, &it.SessionDate, &it.Text,
+		if err := rows.Scan(&it.ItemID, &it.ReturnID, &it.CoachName, &it.SessionDate, &it.Text,
 			&it.Status, &it.SortOrder, &it.CreatedAt, &it.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan received focus item: %w", err)
 		}
@@ -318,16 +326,6 @@ func (s *SQLStore) SetFocusItemStatus(itemID, status string) error {
 		}
 	}
 	return ErrFocusItemUnknown
-}
-
-func (s *SQLStore) DeleteReceivedFocusItemsFrom(coachName, sessionDate string) error {
-	_, err := s.db.Exec(
-		`DELETE FROM received_focus_items WHERE coach_name = ? AND session_date = ?`,
-		coachName, sessionDate)
-	if err != nil {
-		return fmt.Errorf("delete received focus items: %w", err)
-	}
-	return nil
 }
 
 // bornAt reads the created_at each surviving item already carries, keyed by

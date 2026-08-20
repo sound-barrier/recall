@@ -90,25 +90,19 @@ func (a *App) DecideCoachReturn(id int64, decisions []coach.Decision) (coach.Ret
 }
 
 // DeleteCoachReturn drops a staged return, its decisions, and the focus
-// items it landed. The blocks an earlier accept wrote onto matches stay —
-// they are the player's notes now; DeleteMatchCoachNote removes those one
-// at a time.
+// items it landed — the last of those by cascade, since received_focus_items
+// references the return. The blocks an earlier accept wrote onto matches
+// stay: they are the player's notes now, and DeleteMatchCoachNote removes
+// those one at a time.
 //
 // The items go because there is no per-item deny: a coach's item is live on
 // arrival and can only be retired, so discarding the archive it came in is
-// the one answer to "I did not mean to import that".
+// the one answer to "I did not mean to import that". It takes ONLY that
+// archive's items — a coach who sends two files in a day used to lose both
+// sets to either discard.
 func (a *App) DeleteCoachReturn(id int64) error {
 	if err := a.assertNoCoachSession(); err != nil {
 		return err
-	}
-	staged, ok, err := a.store.LoadCoachReturn(id)
-	if err != nil {
-		return fmt.Errorf("coach: load staged return: %w", err)
-	}
-	if ok {
-		if err := a.store.DeleteReceivedFocusItemsFrom(staged.CoachName, staged.SessionDate); err != nil {
-			return fmt.Errorf("coach: drop landed focus items: %w", err)
-		}
 	}
 	return a.store.DeleteCoachReturn(id)
 }
