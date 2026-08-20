@@ -44,6 +44,9 @@ type Store interface {
 	// LoadAllFilenames returns every filename across all five parent
 	// tables, so the parse loop can skip OCR for already-parsed files.
 	LoadAllFilenames() (map[string]bool, error)
+	// LoadFilenamesForDir is LoadAllFilenames scoped to one screenshots
+	// folder — what the parse skip set needs, since filename is a basename.
+	LoadFilenamesForDir(dirID int64) (map[string]bool, error)
 
 	// LookupMatchKeysForFilename returns every distinct match_key
 	// referenced by `filename` across the five parent tables. Used by

@@ -22,7 +22,13 @@ func (a *App) GetNewScreenshotCount() (int, error) {
 	if dir == "" {
 		return 0, nil
 	}
-	skip, err := a.parsedSkipSet(false)
+	// Same folder the run itself would use, so the count and the run cannot
+	// disagree about what is already parsed.
+	dirID, err := a.store.EnsureScreenshotsDir(dir)
+	if err != nil {
+		return 0, err
+	}
+	skip, err := a.parsedSkipSet(dirID, false)
 	if err != nil {
 		return 0, err
 	}

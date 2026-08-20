@@ -3,11 +3,11 @@ package db
 import "database/sql"
 
 // UpsertSummary writes a SUMMARY parent row + its summary_heroes_played
-// children inside a single transaction. ON CONFLICT(filename) updates
+// children inside a single transaction. ON CONFLICT(screenshots_dir_id, filename) updates
 // every scalar except parsed_at (preserves the first-insert timestamp
 // across re-parses). Children use DELETE-then-INSERT — see the package
 // comment on store.go for why.
-// upsertSummarySQL is the parent upsert: ON CONFLICT(filename) keeps
+// upsertSummarySQL is the parent upsert: ON CONFLICT(screenshots_dir_id, filename) keeps
 // re-parses idempotent, and parsed_at is deliberately absent from the
 // SET clause so the first-insert timestamp survives them.
 const upsertSummarySQL = `INSERT INTO summary_screenshots (
@@ -18,7 +18,7 @@ const upsertSummarySQL = `INSERT INTO summary_screenshots (
 			perf_deaths_total, perf_deaths_avg_per_10min,
 			parser_generation
 		) VALUES (?,?,?,` + suppliedInstantOrNow + `, ?,?,?,?,?,?,?,?,?,?,?, ?,?, ?,?, ?,?, ?)
-		ON CONFLICT(filename) DO UPDATE SET
+		ON CONFLICT(screenshots_dir_id, filename) DO UPDATE SET
 			match_key          = excluded.match_key,
 			screenshots_dir_id = excluded.screenshots_dir_id,
 			map         = excluded.map,

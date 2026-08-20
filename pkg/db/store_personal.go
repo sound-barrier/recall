@@ -16,7 +16,7 @@ func (s *SQLStore) UpsertPersonal(r PersonalRow) error {
 		`INSERT INTO personal_screenshots (filename, match_key, screenshots_dir_id, parsed_at, hero, hero_raw,
 			parser_generation)
 		VALUES (?,?,?,`+suppliedInstantOrNow+`,?,?,?)
-		ON CONFLICT(filename) DO UPDATE SET
+		ON CONFLICT(screenshots_dir_id, filename) DO UPDATE SET
 			match_key          = excluded.match_key,
 			screenshots_dir_id = excluded.screenshots_dir_id,
 			hero               = excluded.hero,

@@ -41,7 +41,7 @@ func openLegacyStore(t *testing.T, checkList string) *db.SQLStore {
 	// vocabulary — standing in for an install from before the chip existed.
 	if _, err := d.Exec(`CREATE TABLE rank_screenshots (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		filename TEXT UNIQUE NOT NULL,
+		filename TEXT NOT NULL,
 		match_key TEXT NOT NULL,
 		parsed_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
 		screenshots_dir_id INTEGER,
@@ -54,7 +54,12 @@ func openLegacyStore(t *testing.T, checkList string) *db.SQLStore {
 		-- before any modifier was ever inserted.
 		rank_progress INTEGER,
 		change_percent INTEGER,
-		result TEXT NOT NULL DEFAULT ''
+		result TEXT NOT NULL DEFAULT '',
+		-- The pair key the parents carry. This fixture is deliberately stale
+		-- about the modifier VOCABULARY, which is what the test is about; it is
+		-- not a fixture for an out-of-date filename key, and pre-1.0 the answer
+		-- to a schema that old is wipe-and-relaunch (CONTRIBUTING.md).
+		UNIQUE (screenshots_dir_id, filename)
 	)`); err != nil {
 		t.Fatal(err)
 	}

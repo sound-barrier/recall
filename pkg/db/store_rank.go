@@ -15,7 +15,7 @@ const upsertRankSQL = `INSERT INTO rank_screenshots (
 			rank, level, rank_progress, change_percent, result, rank_percentile,
 			modifiers_raw, parser_generation
 		) VALUES (?,?,?,` + suppliedInstantOrNow + `, ?,?,?,?,?,?,?,?)
-		ON CONFLICT(filename) DO UPDATE SET
+		ON CONFLICT(screenshots_dir_id, filename) DO UPDATE SET
 			match_key          = excluded.match_key,
 			screenshots_dir_id = excluded.screenshots_dir_id,
 			rank           = excluded.rank,

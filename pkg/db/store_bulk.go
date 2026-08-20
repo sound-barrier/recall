@@ -126,8 +126,30 @@ func (s *SQLStore) LoadMatchKeys() (map[string]bool, error) {
 }
 
 func (s *SQLStore) collectFilenames(table string, out map[string]bool) error {
-	// #nosec G202 -- table name comes from a hard-coded slice, not user input.
-	rows, err := s.db.Query(`SELECT filename FROM ` + table)
+	return s.collectFilenamesWhere(table, "", nil, out)
+}
+
+// LoadFilenamesForDir is collectFilenames scoped to ONE screenshots folder.
+//
+// The parse skip set has to be folder-scoped, because filename is a basename
+// and screenshots_dirs accumulates rows as the user re-points the folder. A
+// basename-keyed skip set meant a same-named capture in a second folder was
+// treated as already parsed and silently never ingested — no row, no failed
+// entry, no Unknown-tab appearance, and left out of the pending count too.
+func (s *SQLStore) LoadFilenamesForDir(dirID int64) (map[string]bool, error) {
+	out := map[string]bool{}
+	for _, t := range parentTables {
+		if err := s.collectFilenamesWhere(t, `WHERE screenshots_dir_id = ?`, []any{dirID}, out); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+func (s *SQLStore) collectFilenamesWhere(table, where string, args []any, out map[string]bool) error {
+	// #nosec G202 -- table name comes from a hard-coded slice, and `where` is
+	// one of the constant predicates above.
+	rows, err := s.db.Query(`SELECT filename FROM `+table+` `+where, args...)
 	if err != nil {
 		return err
 	}
