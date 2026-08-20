@@ -71,6 +71,3 @@ var matchKeyTables = []string{
 	"share_export_matches",
 	"user_match_data",
 }
-
-// MatchKeyTables is the registry above, for tests that hold it to schema.sql.
-func MatchKeyTables() []string { return append([]string(nil), matchKeyTables...) }
