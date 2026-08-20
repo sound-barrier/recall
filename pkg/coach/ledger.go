@@ -27,6 +27,11 @@ type ledgerPage struct {
 
 type ledgerNote struct {
 	Note
+	// TextHTML is the note's markdown rendered to the fixed tag vocabulary
+	// (RenderMarkdown escapes first, emits no attributes but <ol start>), so
+	// a coach reading the ledger sees the same emphasis and lists the player
+	// wrote — not the asterisks around them.
+	TextHTML     template.HTML
 	ReviewedOnly bool
 }
 
@@ -37,7 +42,11 @@ type ledgerNote struct {
 func RenderLedger(f NotesFile) ([]byte, error) {
 	page := ledgerPage{NotesFile: f, NoteCount: len(f.Notes), Notes: make([]ledgerNote, 0, len(f.Notes))}
 	for _, n := range f.Notes {
-		page.Notes = append(page.Notes, ledgerNote{Note: n, ReviewedOnly: n.Kind == KindReviewedOnly})
+		page.Notes = append(page.Notes, ledgerNote{
+			Note:         n,
+			TextHTML:     template.HTML(RenderMarkdown(n.Text)), //nolint:gosec // RenderMarkdown escapes its input and emits a fixed tag set
+			ReviewedOnly: n.Kind == KindReviewedOnly,
+		})
 	}
 	var buf bytes.Buffer
 	if err := ledgerTemplate.Execute(&buf, page); err != nil {

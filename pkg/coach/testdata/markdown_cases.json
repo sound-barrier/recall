@@ -1,0 +1,145 @@
+{
+  "_comment": [
+    "The note grammar, as ONE table. Two renderers read it — pkg/coach/markdown.go",
+    "for the exported ledger.html and frontend/src/match/markdown/render-markdown.ts",
+    "for every in-app reading surface — and both are tested against these exact",
+    "pairs. Two implementations of one grammar only stay honest if a single",
+    "fixture pins them; add a case here first, then make both sides pass it.",
+    "",
+    "The grammar is deliberately small: what the note toolbar can write, and",
+    "nothing else. No links, no images, no tables, no raw HTML — a note is",
+    "prose a player or a coach typed, not a document."
+  ],
+  "cases": [
+    {
+      "name": "plain text is a paragraph",
+      "in": "Held the choke, then chased.",
+      "out": "<p>Held the choke, then chased.</p>"
+    },
+    {
+      "name": "blank line splits paragraphs",
+      "in": "First thought.\n\nSecond thought.",
+      "out": "<p>First thought.</p><p>Second thought.</p>"
+    },
+    {
+      "name": "single newline is a soft break inside one paragraph",
+      "in": "First line.\nSecond line.",
+      "out": "<p>First line.<br>Second line.</p>"
+    },
+    {
+      "name": "bold",
+      "in": "Hold **high ground** first.",
+      "out": "<p>Hold <strong>high ground</strong> first.</p>"
+    },
+    {
+      "name": "italic",
+      "in": "Hold *high ground* first.",
+      "out": "<p>Hold <em>high ground</em> first.</p>"
+    },
+    {
+      "name": "strikethrough",
+      "in": "~~Chase the flank~~ hold the angle.",
+      "out": "<p><del>Chase the flank</del> hold the angle.</p>"
+    },
+    {
+      "name": "bold wins over italic on the same run",
+      "in": "**bold** and *thin*",
+      "out": "<p><strong>bold</strong> and <em>thin</em></p>"
+    },
+    {
+      "name": "emphasis inside a word is left alone",
+      "in": "ult_economy and ult_timing",
+      "out": "<p>ult_economy and ult_timing</p>"
+    },
+    {
+      "name": "an unclosed marker stays literal",
+      "in": "**not closed",
+      "out": "<p>**not closed</p>"
+    },
+    {
+      "name": "title",
+      "in": "# Ult timing",
+      "out": "<h3>Ult timing</h3>"
+    },
+    {
+      "name": "subheading",
+      "in": "## Second half",
+      "out": "<h4>Second half</h4>"
+    },
+    {
+      "name": "heading with emphasis",
+      "in": "# **Ult** timing",
+      "out": "<h3><strong>Ult</strong> timing</h3>"
+    },
+    {
+      "name": "bulleted list",
+      "in": "- hold the angle\n- track the ult",
+      "out": "<ul><li>hold the angle</li><li>track the ult</li></ul>"
+    },
+    {
+      "name": "numbered list",
+      "in": "1. hold the angle\n2. track the ult",
+      "out": "<ol><li>hold the angle</li><li>track the ult</li></ol>"
+    },
+    {
+      "name": "a numbered list keeps its own numbering start",
+      "in": "3. third\n4. fourth",
+      "out": "<ol start=\"3\"><li>third</li><li>fourth</li></ol>"
+    },
+    {
+      "name": "list items carry emphasis",
+      "in": "- **hold** the angle",
+      "out": "<ul><li><strong>hold</strong> the angle</li></ul>"
+    },
+    {
+      "name": "a list ends at a blank line",
+      "in": "- one\n\nafter",
+      "out": "<ul><li>one</li></ul><p>after</p>"
+    },
+    {
+      "name": "heading then list then prose",
+      "in": "# Focus\n\n- angle\n- ult\n\nThat is it.",
+      "out": "<h3>Focus</h3><ul><li>angle</li><li>ult</li></ul><p>That is it.</p>"
+    },
+    {
+      "name": "html in the source is escaped, never passed through",
+      "in": "<script>alert(1)</script>",
+      "out": "<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>"
+    },
+    {
+      "name": "an html-looking attribute is escaped inside emphasis",
+      "in": "**<img src=x onerror=alert(1)>**",
+      "out": "<p><strong>&lt;img src=x onerror=alert(1)&gt;</strong></p>"
+    },
+    {
+      "name": "ampersands and quotes are escaped",
+      "in": "Ana & \"Kiriko\" vs 'Lucio'",
+      "out": "<p>Ana &amp; &#34;Kiriko&#34; vs &#39;Lucio&#39;</p>"
+    },
+    {
+      "name": "empty input renders nothing",
+      "in": "",
+      "out": ""
+    },
+    {
+      "name": "whitespace-only input renders nothing",
+      "in": "   \n\n  ",
+      "out": ""
+    },
+    {
+      "name": "trailing and leading blank lines are dropped",
+      "in": "\n\nOne thought.\n\n",
+      "out": "<p>One thought.</p>"
+    },
+    {
+      "name": "a hash without a space is not a heading",
+      "in": "#notatag",
+      "out": "<p>#notatag</p>"
+    },
+    {
+      "name": "a dash without a space is not a bullet",
+      "in": "-5 percent",
+      "out": "<p>-5 percent</p>"
+    }
+  ]
+}

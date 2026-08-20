@@ -3,22 +3,28 @@ import { focusTagLabel, type FocusCount } from '@/match/coach/coach-notes'
 
 // "Focus so far": the tally of focus tags across the sitting's notes, and the
 // one-line count under it ("7 notes · 19 moments · 1 reviewed only").
-defineProps<{
+//
+// The TALLY half is a coach's readout: focus tags are filed by a coach
+// writing about someone else's matches. A player's own sitting has no tag
+// chips on its notes, so the tally there would be permanently empty — it
+// turns off, and the count line (which is true either way) stays.
+withDefaults(defineProps<{
   focusTally: FocusCount[]
   notesLine: string
-}>()
+  showTally?: boolean
+}>(), { showTally: true })
 </script>
 
 <template>
   <div class="sheet-block">
-    <span class="eyebrow ink">Focus so far</span>
-    <ul v-if="focusTally.length" class="sheet-tally" aria-label="Focus tally">
+    <span v-if="showTally" class="eyebrow ink">Focus so far</span>
+    <ul v-if="showTally && focusTally.length" class="sheet-tally" aria-label="Focus tally">
       <li v-for="row in focusTally" :key="row.tag" class="tally-row">
         <span class="tally-tag">{{ focusTagLabel(row.tag) }}</span>
         <span class="tally-count">{{ row.count }}</span>
       </li>
     </ul>
-    <p v-else class="sheet-quiet">
+    <p v-else-if="showTally" class="sheet-quiet">
       No focus tags yet.
     </p>
     <p class="sheet-notes-line">

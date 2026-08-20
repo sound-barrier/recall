@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import NoteProse from '@/components/coach/notes/NoteProse.vue'
 import { computed } from 'vue'
 
 import type { MatchRecord } from '@/api-client'
@@ -137,7 +138,7 @@ const earlierWords = computed(() => {
       <span class="eyebrow">Already said about this match</span>
       <blockquote v-for="said in earlierWords" :key="said.key" class="card-quote">
         <span class="eyebrow card-quote-who">{{ said.who }}</span>
-        {{ said.text }}
+        <NoteProse :text="said.text" />
       </blockquote>
     </section>
 
