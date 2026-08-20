@@ -167,3 +167,22 @@ func (a *App) emitMatchesByKey(keys []string) {
 		a.emitMatchByKey(k)
 	}
 }
+
+// SetSelfReviewFocusItems replaces what the sitting concluded, in the
+// player's order, and returns the sitting.
+//
+// Items born here start Working: the player wrote them, so they are already
+// on them — a coach's items arrive New because acknowledging one is a
+// separate act from being told it.
+func (a *App) SetSelfReviewFocusItems(reviewID string, items []db.FocusItem) (review.Session, error) {
+	if err := a.assertSelfReviewWritable(); err != nil {
+		return review.Session{}, err
+	}
+	if err := review.ValidateFocusItems(items); err != nil {
+		return review.Session{}, err
+	}
+	if err := a.store.SetSelfReviewFocusItems(reviewID, items); err != nil {
+		return review.Session{}, err
+	}
+	return review.Get(a.store, reviewID)
+}

@@ -38,9 +38,9 @@ type SelfReviewStore interface {
 	// restore-replayable stamp. Notes on the input are ignored — they are
 	// written through UpsertSelfReviewNote. Returns the stored row.
 	CreateSelfReview(r SelfReview) (SelfReview, error)
-	// UpdateSelfReview replaces the title and summary. ErrSelfReviewUnknown
+	// UpdateSelfReview renames the sitting. ErrSelfReviewUnknown
 	// when no such review.
-	UpdateSelfReview(reviewID, title, summary string) error
+	UpdateSelfReview(reviewID, title string) error
 	// FinishSelfReview stamps finished_at; a second finish keeps the first
 	// stamp. ErrSelfReviewUnknown when no such review.
 	FinishSelfReview(reviewID string) error
@@ -92,10 +92,10 @@ func (s *SQLStore) CreateSelfReview(r SelfReview) (SelfReview, error) {
 	}
 	defer func() { _ = tx.Rollback() }()
 	err = tx.QueryRow(
-		`INSERT INTO self_reviews (review_id, title, summary, created_at, updated_at, finished_at)
-		 VALUES (?, ?, ?, `+suppliedInstantOrNow+`, `+suppliedInstantOrNow+`, NULLIF(?, ''))
+		`INSERT INTO self_reviews (review_id, title, created_at, updated_at, finished_at)
+		 VALUES (?, ?, `+suppliedInstantOrNow+`, `+suppliedInstantOrNow+`, NULLIF(?, ''))
 		 RETURNING created_at, updated_at, COALESCE(finished_at, '')`,
-		r.ReviewID, r.Title, r.Summary, r.CreatedAt, r.UpdatedAt, r.FinishedAt,
+		r.ReviewID, r.Title, r.CreatedAt, r.UpdatedAt, r.FinishedAt,
 	).Scan(&r.CreatedAt, &r.UpdatedAt, &r.FinishedAt)
 	if err != nil {
 		return SelfReview{}, fmt.Errorf("create self review: %w", err)
@@ -135,11 +135,11 @@ func insertSelfReviewMatches(tx *sql.Tx, reviewID string, matchKeys []string) er
 	return nil
 }
 
-func (s *SQLStore) UpdateSelfReview(reviewID, title, summary string) error {
+func (s *SQLStore) UpdateSelfReview(reviewID, title string) error {
 	res, err := s.db.Exec(
-		`UPDATE self_reviews SET title = ?, summary = ?,
+		`UPDATE self_reviews SET title = ?,
 		   updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
-		 WHERE review_id = ?`, title, summary, reviewID)
+		 WHERE review_id = ?`, title, reviewID)
 	if err != nil {
 		return fmt.Errorf("update self review: %w", err)
 	}
@@ -261,7 +261,7 @@ func (s *SQLStore) LoadSelfReview(reviewID string) (SelfReview, bool, error) {
 func (s *SQLStore) loadSelfReviews(where string, args []any) ([]SelfReview, error) {
 	// #nosec G202 -- where is one of the constant predicates above.
 	rows, err := s.db.Query(
-		`SELECT review_id, title, summary, created_at, updated_at, COALESCE(finished_at, '')
+		`SELECT review_id, title, created_at, updated_at, COALESCE(finished_at, '')
 		 FROM self_reviews `+where+` ORDER BY created_at DESC, review_id`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("load self reviews: %w", err)
@@ -270,7 +270,7 @@ func (s *SQLStore) loadSelfReviews(where string, args []any) ([]SelfReview, erro
 	var out []SelfReview
 	for rows.Next() {
 		var r SelfReview
-		if err := rows.Scan(&r.ReviewID, &r.Title, &r.Summary, &r.CreatedAt, &r.UpdatedAt, &r.FinishedAt); err != nil {
+		if err := rows.Scan(&r.ReviewID, &r.Title, &r.CreatedAt, &r.UpdatedAt, &r.FinishedAt); err != nil {
 			return nil, fmt.Errorf("load self reviews: %w", err)
 		}
 		out = append(out, r)
@@ -283,6 +283,9 @@ func (s *SQLStore) loadSelfReviews(where string, args []any) ([]SelfReview, erro
 			return nil, err
 		}
 		if out[i].Notes, err = s.loadSelfReviewNotesFor(out[i].ReviewID); err != nil {
+			return nil, err
+		}
+		if out[i].FocusItems, err = s.LoadSelfReviewFocusItems(out[i].ReviewID); err != nil {
 			return nil, err
 		}
 	}

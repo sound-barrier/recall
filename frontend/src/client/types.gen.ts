@@ -963,9 +963,9 @@ export type CoachSessionView = {
      */
     coach_name: string;
     /**
-     * The set-level "what to work on" note.
+     * What this player is being told to work on, in order.
      */
-    summary: string;
+    focus_items?: Array<FocusItem>;
     /**
      * Notes already written about this player — including ones from
      * an earlier session, which is what "resurfaces when that
@@ -1048,9 +1048,12 @@ export type CoachReturnSheet = {
      */
     imported_at: string;
     /**
-     * The coach's set-level note.
+     * What the coach is telling the player to work on. Unlike the
+     * notes below these are not decided on — they land in the
+     * player's list as `new` the moment the archive is staged.
+     *
      */
-    summary: string;
+    focus_items?: Array<FocusItem>;
     notes: Array<CoachReturnItem>;
     /**
      * Decisions so far, keyed by `note_id`. A note with no entry is
@@ -1172,9 +1175,9 @@ export type CoachPlayerSummary = {
      */
     last_note_at?: string;
     /**
-     * The stored session summary, if one was written.
+     * What this player is working on, in order.
      */
-    summary?: string;
+    focus_items?: Array<string>;
 };
 
 /**
@@ -1214,9 +1217,9 @@ export type SelfReview = {
     review_id: string;
     title: string;
     /**
-     * The set-level note — "what to work on".
+     * What the sitting concluded, in the player's order.
      */
-    summary: string;
+    focus_items: Array<FocusItem>;
     /**
      * RFC3339.
      */
@@ -1270,7 +1273,65 @@ export type SelfReviewCreateInput = {
 
 export type SelfReviewUpdateInput = {
     title: string;
-    summary: string;
+};
+
+/**
+ * The player's own progress on one item. A coach's item arrives `new`
+ * and Accept moves it to `working`; the player's own is born
+ * `working`; "Got this" retires either to `done`. There is no
+ * `denied` — see `PUT /api/v1/focus/{item_id}/status`.
+ *
+ */
+export type FocusStatus = 'new' | 'working' | 'done';
+
+/**
+ * One line of "what to work on".
+ */
+export type FocusItem = {
+    /**
+     * A UUID minted client-side and stable across export and import —
+     * the identity rule `note_id` already follows, and what lets a
+     * re-imported archive update an item instead of duplicating it.
+     *
+     */
+    item_id: string;
+    text: string;
+    status?: FocusStatus;
+};
+
+/**
+ * One line of the player's list, with enough provenance to say where
+ * it came from and to order it.
+ *
+ */
+export type FocusEntry = {
+    item_id: string;
+    text: string;
+    status: FocusStatus;
+    /**
+     * Coach items outrank the player's own in the readout.
+     */
+    source: 'coach' | 'self';
+    /**
+     * Who sent it. Absent on the player's own items.
+     */
+    coach_name?: string;
+    /**
+     * The coach's session date, or the day the sitting was opened
+     * (YYYY-MM-DD). What each source orders by.
+     *
+     */
+    from: string;
+};
+
+/**
+ * A whole focus list. `items` is required but may be empty — clearing
+ * a list is something a client says out loud, so an omitted or null
+ * `items` is a `400` rather than a silent wipe.
+ *
+ */
+export type FocusItemsInput = {
+    items: Array<FocusItem>;
 };
 
 export type SelfReviewMatchesInput = {
@@ -4825,20 +4886,14 @@ export type PutCoachMomentResponses = {
 
 export type PutCoachMomentResponse = PutCoachMomentResponses[keyof PutCoachMomentResponses];
 
-export type PutCoachSummaryData = {
-    body: {
-        /**
-         * The summary. Empty string clears the stored summary.
-         *
-         */
-        text: string;
-    };
+export type PutCoachFocusItemsData = {
+    body: FocusItemsInput;
     path?: never;
     query?: never;
-    url: '/api/v1/coach/session/summary';
+    url: '/api/v1/coach/session/focus-items';
 };
 
-export type PutCoachSummaryErrors = {
+export type PutCoachFocusItemsErrors = {
     /**
      * Malformed request body or query parameters.
      */
@@ -4861,16 +4916,16 @@ export type PutCoachSummaryErrors = {
     500: ProblemDetails;
 };
 
-export type PutCoachSummaryError = PutCoachSummaryErrors[keyof PutCoachSummaryErrors];
+export type PutCoachFocusItemsError = PutCoachFocusItemsErrors[keyof PutCoachFocusItemsErrors];
 
-export type PutCoachSummaryResponses = {
+export type PutCoachFocusItemsResponses = {
     /**
-     * Summary saved (or cleared).
+     * List saved (or cleared).
      */
     204: void;
 };
 
-export type PutCoachSummaryResponse = PutCoachSummaryResponses[keyof PutCoachSummaryResponses];
+export type PutCoachFocusItemsResponse = PutCoachFocusItemsResponses[keyof PutCoachFocusItemsResponses];
 
 export type ExportCoachNotesData = {
     body?: never;
@@ -5425,6 +5480,128 @@ export type SetSelfReviewMatchesResponses = {
 };
 
 export type SetSelfReviewMatchesResponse = SetSelfReviewMatchesResponses[keyof SetSelfReviewMatchesResponses];
+
+export type ListFocusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/focus';
+};
+
+export type ListFocusErrors = {
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type ListFocusError = ListFocusErrors[keyof ListFocusErrors];
+
+export type ListFocusResponses = {
+    /**
+     * The list, coach items first.
+     */
+    200: Array<FocusEntry>;
+};
+
+export type ListFocusResponse = ListFocusResponses[keyof ListFocusResponses];
+
+export type SetFocusItemStatusData = {
+    body: {
+        status: FocusStatus;
+    };
+    path: {
+        /**
+         * The item's UUID, stable across export and import.
+         */
+        item_id: string;
+    };
+    query?: never;
+    url: '/api/v1/focus/{item_id}/status';
+};
+
+export type SetFocusItemStatusErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type SetFocusItemStatusError = SetFocusItemStatusErrors[keyof SetFocusItemStatusErrors];
+
+export type SetFocusItemStatusResponses = {
+    /**
+     * Status moved.
+     */
+    204: void;
+};
+
+export type SetFocusItemStatusResponse = SetFocusItemStatusResponses[keyof SetFocusItemStatusResponses];
+
+export type SetSelfReviewFocusItemsData = {
+    body: FocusItemsInput;
+    path: {
+        /**
+         * A self-review sitting's id — a UUID minted on create. It is also the
+         * identity a share bundle and a profile move carry the sitting under,
+         * so a re-import updates the same sitting instead of duplicating it.
+         *
+         */
+        review_id: string;
+    };
+    query?: never;
+    url: '/api/v1/self-reviews/{review_id}/focus-items';
+};
+
+export type SetSelfReviewFocusItemsErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type SetSelfReviewFocusItemsError = SetSelfReviewFocusItemsErrors[keyof SetSelfReviewFocusItemsErrors];
+
+export type SetSelfReviewFocusItemsResponses = {
+    /**
+     * The sitting with its new list.
+     */
+    200: SelfReview;
+};
+
+export type SetSelfReviewFocusItemsResponse = SetSelfReviewFocusItemsResponses[keyof SetSelfReviewFocusItemsResponses];
 
 export type FinishSelfReviewData = {
     body?: never;

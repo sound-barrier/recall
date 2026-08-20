@@ -37,8 +37,8 @@ var (
 	// normalization. 409 — the body parses; a sitting over nothing is not a
 	// sitting.
 	ErrNoMatches = errors.New("review: a self review needs at least one match")
-	// ErrTitleInvalid reports a title or summary past its bound. 400.
-	ErrTitleInvalid = errors.New("review: invalid title or summary")
+	// ErrTitleInvalid reports a title past its bound. 400.
+	ErrTitleInvalid = errors.New("review: invalid title")
 	// ErrTooManyMatches reports a set past the ceiling. 400 — the body is
 	// well-formed and the schema says so (maxItems), like a too-long title.
 	ErrTooManyMatches = errors.New("review: too many matches for one self review")
@@ -48,9 +48,6 @@ const (
 	// MaxTitleRunes bounds the sitting's name — a label on a shelf card, not
 	// a paragraph.
 	MaxTitleRunes = 120
-	// MaxSummaryRunes bounds the set-level summary, the same ceiling the
-	// coach's notes-file summary carries.
-	MaxSummaryRunes = 20000
 	// MaxMatchesPerReview is a ceiling, not a target: a sitting is a handful
 	// of games looked at closely.
 	MaxMatchesPerReview = 200
@@ -74,10 +71,10 @@ type CreateInput struct {
 	MatchKeys []string `json:"match_keys"`
 }
 
-// UpdateInput is the body of a title/summary write.
+// UpdateInput is the body of a rename. What the sitting concluded lives in
+// its focus items, not here.
 type UpdateInput struct {
-	Title   string `json:"title"`
-	Summary string `json:"summary"`
+	Title string `json:"title"`
 }
 
 // Create opens a sitting over the given keys, in the given order. Refuses an
@@ -128,17 +125,13 @@ func getRow(s Store, reviewID string) (db.SelfReview, error) {
 	return r, nil
 }
 
-// Update replaces the title and summary.
+// Update renames the sitting.
 func Update(s Store, reviewID string, in UpdateInput) (Session, error) {
 	title, err := normalizeTitle(in.Title)
 	if err != nil {
 		return Session{}, err
 	}
-	summary := strings.TrimSpace(in.Summary)
-	if utf8.RuneCountInString(summary) > MaxSummaryRunes {
-		return Session{}, fmt.Errorf("%w: summary exceeds %d characters", ErrTitleInvalid, MaxSummaryRunes)
-	}
-	if err := s.UpdateSelfReview(reviewID, title, summary); err != nil {
+	if err := s.UpdateSelfReview(reviewID, title); err != nil {
 		return Session{}, mapStoreErr(err)
 	}
 	return Get(s, reviewID)

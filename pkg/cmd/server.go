@@ -342,6 +342,7 @@ func newAPIMux(a *app.App) *http.ServeMux {
 	// /api/v1/self-reviews… — the player's own saved review sittings.
 	// Registers in server_self_review.go.
 	registerSelfReviewRoutes(apiMux, a)
+	registerFocusRoutes(apiMux, a)
 
 	// ── Test-harness-only routes ────────────────────────────────────
 	// No-op unless RECALL_E2E=1 (the Playwright e2e harness). Never in

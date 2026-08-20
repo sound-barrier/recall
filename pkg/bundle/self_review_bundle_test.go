@@ -30,10 +30,16 @@ const (
 func seedSitting(t *testing.T, s db.Store) {
 	t.Helper()
 	if _, err := s.CreateSelfReview(db.SelfReview{
-		ReviewID: sittingID, Title: "May sitting", Summary: "Hold nade.",
+		ReviewID: sittingID, Title: "May sitting",
 		CreatedAt: sittingCreatedAt, UpdatedAt: sittingUpdatedAt, MatchKeys: []string{"m2", "m1"},
 	}); err != nil {
 		t.Fatalf("seed sitting: %v", err)
+	}
+	// The list lives in its own table, so CreateSelfReview does not carry it.
+	if err := s.SetSelfReviewFocusItems(sittingID, []db.FocusItem{
+		{ItemID: "b2c3d4e5-6f7a-4b8c-9d0e-1f2a3b4c5d6e", Text: "Hold nade."},
+	}); err != nil {
+		t.Fatalf("seed focus items: %v", err)
 	}
 	for _, k := range []string{"m1", "m2"} {
 		if _, err := s.UpsertSelfReviewNote(db.SelfReviewNote{
@@ -114,8 +120,11 @@ func TestExport_CarriesASittingOverItsIncludedKeysOnly(t *testing.T) {
 		t.Fatalf("self_reviews = %+v, want the one sitting that touches m1 (the m3-only sitting stays home)", d.SelfReviews)
 	}
 	got := d.SelfReviews[0]
-	if got.ReviewID != sittingID || got.Title != "May sitting" || got.Summary != "Hold nade." || got.CreatedAt != sittingCreatedAt {
+	if got.ReviewID != sittingID || got.Title != "May sitting" || got.CreatedAt != sittingCreatedAt {
 		t.Errorf("sitting header = %+v", got)
+	}
+	if len(got.FocusItems) != 1 || got.FocusItems[0].Text != "Hold nade." {
+		t.Errorf("focus items = %+v, want what the sitting concluded to travel with it", got.FocusItems)
 	}
 	// Narrowed to the included m1.
 	assertMembers(t, got, "m1")

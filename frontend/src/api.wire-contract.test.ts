@@ -190,8 +190,14 @@ const COACH: WireCase[] = [
   },
   { name: 'DeleteCoachNote', call: () => api.DeleteCoachNote(KEY), method: 'DELETE', path: `/api/v1/coach/session/notes/${KEY}` },
   {
-    name: 'PutCoachSummary', method: 'PUT', path: '/api/v1/coach/session/summary',
-    call: () => api.PutCoachSummary('Ult economy first.'), body: { text: 'Ult economy first.' },
+    name: 'PutCoachFocusItems', method: 'PUT', path: '/api/v1/coach/session/focus-items',
+    call: () => api.PutCoachFocusItems([{ item_id: 'c7d8e9f0-1a2b-4c3d-8e4f-5a6b7c8d9e0f', text: 'Ult economy first.' }]),
+    body: { items: [{ item_id: 'c7d8e9f0-1a2b-4c3d-8e4f-5a6b7c8d9e0f', text: 'Ult economy first.' }] },
+  },
+  { name: 'ListFocus', call: () => api.ListFocus(), method: 'GET', path: '/api/v1/focus' },
+  {
+    name: 'SetFocusItemStatus', method: 'PUT', path: '/api/v1/focus/f-1/status',
+    call: () => api.SetFocusItemStatus('f-1', 'working'), body: { status: 'working' },
   },
   { name: 'ListCoachReturns',  call: () => api.ListCoachReturns(),   method: 'GET',    path: '/api/v1/coach/returns' },
   { name: 'GetCoachReturn',    call: () => api.GetCoachReturn(7),    method: 'GET',    path: '/api/v1/coach/returns/7' },

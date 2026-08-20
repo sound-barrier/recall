@@ -125,7 +125,7 @@ func TestStage_RefusesAFileWithNothingToShow(t *testing.T) {
 		want    string
 	}{
 		{"notes about matches the player lacks", unmatchedNotes(t), "none of its 2 notes name a match you have"},
-		{"neither notes nor summary", emptyNotes(t), "no notes and no summary"},
+		{"neither notes nor items", emptyNotes(t), "no notes and nothing to work on"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -435,5 +435,46 @@ func TestDecide_TwoCoachesAccumulateOnOneMatch(t *testing.T) {
 	}
 	if want := []string{"Prior", "Ordo", "Wren"}; !reflect.DeepEqual(coachNamesOf(blocks), want) {
 		t.Errorf("coaches on Ilios = %v, want %v — blocks accumulate, one per coach", coachNamesOf(blocks), want)
+	}
+}
+
+// A coach's items are live on arrival: staging puts them straight into the
+// player's list as `new`. They are not decided on the way notes are —
+// Accept only acknowledges one, and there is no deny.
+func TestStage_LandsFocusItemsImmediately(t *testing.T) {
+	st := dbtest.New()
+	stageReturn(t, st, returnedNotes(t), "Sable")
+
+	got, err := st.LoadReceivedFocusItems()
+	if err != nil {
+		t.Fatalf("LoadReceivedFocusItems: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("received items = %d, want the file's one", len(got))
+	}
+	if got[0].Text != "Work on ult timing." || got[0].Status != db.FocusNew {
+		t.Errorf("item = %+v, want the file's text, status new", got[0])
+	}
+	if got[0].CoachName != "Ordo" || got[0].SessionDate != "2026-08-15" {
+		t.Errorf("item = %+v, want it to carry who sent it and when", got[0])
+	}
+}
+
+// Re-importing the same file must not undo progress the player has made.
+func TestStage_ReimportKeepsAStatusThePlayerMoved(t *testing.T) {
+	st := dbtest.New()
+	stageReturn(t, st, returnedNotes(t), "Sable")
+	items, _ := st.LoadReceivedFocusItems()
+	if err := st.SetFocusItemStatus(items[0].ItemID, db.FocusDone); err != nil {
+		t.Fatalf("SetFocusItemStatus: %v", err)
+	}
+
+	if _, already, err := coach.Stage(st, returnedNotes(t), "Sable"); err != nil || !already {
+		t.Fatalf("second Stage = (already %v, %v), want (true, nil)", already, err)
+	}
+
+	again, _ := st.LoadReceivedFocusItems()
+	if len(again) != 1 || again[0].Status != db.FocusDone {
+		t.Errorf("items after re-import = %+v, want the one item still done", again)
 	}
 }

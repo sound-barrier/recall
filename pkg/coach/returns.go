@@ -25,6 +25,7 @@ type ReturnStore interface {
 	LoadCoachReturn(id int64) (db.CoachReturn, bool, error)
 	SetCoachReturnDecision(returnID int64, noteID, decision string) error
 	DeleteCoachReturn(id int64) error
+	UpsertReceivedFocusItem(item db.ReceivedFocusItem) error
 }
 
 // Decision values the player records against a staged note.
@@ -117,8 +118,36 @@ func Stage(st ReturnStore, payload []byte, localHandle string) (sheet ReturnShee
 	if err != nil {
 		return ReturnSheet{}, false, fmt.Errorf("coach: stage return: %w", err)
 	}
+	if err := landFocusItems(st, f); err != nil {
+		return ReturnSheet{}, false, err
+	}
 	sheet, err = Sheet(st, id, localHandle)
 	return sheet, false, err
+}
+
+// landFocusItems puts a coach's list into the player's own list the moment
+// the file is staged, as `new`.
+//
+// Items are NOT decided on the way notes are. A note is about one match and
+// the player may not even have that match, so it waits to be accepted or
+// skipped; an item is what the coach is telling them to work on, so it is
+// live on arrival and Accept only acknowledges it. There is no deny — a
+// player can disagree with their coach, but they have to hear it first.
+//
+// Upserting on item_id means re-importing the same file never resets a
+// status the player has already moved.
+func landFocusItems(st ReturnStore, f NotesFile) error {
+	for i, it := range f.FocusItems {
+		err := st.UpsertReceivedFocusItem(db.ReceivedFocusItem{
+			FocusItem:   db.FocusItem{ItemID: it.ItemID, Text: it.Text, Status: db.FocusNew, SortOrder: i},
+			CoachName:   f.CoachName,
+			SessionDate: f.SessionDate,
+		})
+		if err != nil {
+			return fmt.Errorf("coach: land focus item: %w", err)
+		}
+	}
+	return nil
 }
 
 // nothingToStage names which of the two empty cases the refused file is, so
@@ -126,9 +155,9 @@ func Stage(st ReturnStore, payload []byte, localHandle string) (sheet ReturnShee
 // "no matches".
 func nothingToStage(notes []Note) error {
 	if len(notes) == 0 {
-		return fmt.Errorf("%w: it carries no notes and no summary", ErrReturnNoMatches)
+		return fmt.Errorf("%w: it carries no notes and nothing to work on", ErrReturnNoMatches)
 	}
-	return fmt.Errorf("%w: none of its %d notes name a match you have, and it carries no summary", ErrReturnNoMatches, len(notes))
+	return fmt.Errorf("%w: none of its %d notes name a match you have, and nothing to work on", ErrReturnNoMatches, len(notes))
 }
 
 func anyLocalNote(notes []Note, keys map[string]bool) bool {

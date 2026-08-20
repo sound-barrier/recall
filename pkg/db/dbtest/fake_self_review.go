@@ -36,17 +36,17 @@ func (f *Fake) CreateSelfReview(r db.SelfReview) (db.SelfReview, error) {
 	r.MatchKeys = distinctKeys(r.MatchKeys)
 	r.Notes = map[string]db.SelfReviewNote{}
 	f.SelfReviews[r.ReviewID] = r
-	return cloneSelfReview(r), nil
+	return f.cloneSelfReview(r), nil
 }
 
-func (f *Fake) UpdateSelfReview(reviewID, title, summary string) error {
+func (f *Fake) UpdateSelfReview(reviewID, title string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	r, ok := f.SelfReviews[reviewID]
 	if !ok {
 		return db.ErrSelfReviewUnknown
 	}
-	r.Title, r.Summary, r.UpdatedAt = title, summary, nowRFC3339()
+	r.Title, r.UpdatedAt = title, nowRFC3339()
 	f.SelfReviews[reviewID] = r
 	return nil
 }
@@ -101,7 +101,7 @@ func (f *Fake) LoadSelfReviews() ([]db.SelfReview, error) {
 	defer f.mu.Unlock()
 	out := make([]db.SelfReview, 0, len(f.SelfReviews))
 	for _, r := range f.SelfReviews {
-		out = append(out, cloneSelfReview(r))
+		out = append(out, f.cloneSelfReview(r))
 	}
 	// Newest first, review_id as the tie-break — the SQL ORDER BY.
 	slices.SortStableFunc(out, func(a, b db.SelfReview) int {
@@ -120,7 +120,7 @@ func (f *Fake) LoadSelfReview(reviewID string) (db.SelfReview, bool, error) {
 	if !ok {
 		return db.SelfReview{}, false, nil
 	}
-	return cloneSelfReview(r), true, nil
+	return f.cloneSelfReview(r), true, nil
 }
 
 func (f *Fake) UpsertSelfReviewNote(n db.SelfReviewNote) (db.SelfReviewNote, error) {
@@ -298,13 +298,17 @@ func (f *Fake) dropSelfReviewMembershipForKey(matchKey string) {
 
 // cloneSelfReview hands the caller its own copy: the Fake's rows are shared
 // state, and a test that mutates a returned slice must not reach back in.
-func cloneSelfReview(r db.SelfReview) db.SelfReview {
+// cloneSelfReview mirrors the SQL loader: the row plus everything that
+// hangs off it, including the focus list, which lives in its own table.
+// Callers hold f.mu.
+func (f *Fake) cloneSelfReview(r db.SelfReview) db.SelfReview {
 	r.MatchKeys = slices.Clone(r.MatchKeys)
 	notes := make(map[string]db.SelfReviewNote, len(r.Notes))
 	for k, n := range r.Notes {
 		notes[k] = cloneSelfReviewNote(n)
 	}
 	r.Notes = notes
+	r.FocusItems = slices.Clone(f.SelfReviewFocusItems[r.ReviewID])
 	return r
 }
 

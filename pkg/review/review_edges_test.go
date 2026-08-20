@@ -31,15 +31,15 @@ func TestPutMoment_EditReplacesTheText(t *testing.T) {
 	}
 }
 
-func TestUpdate_RefusesASummaryPastTheBound(t *testing.T) {
+func TestUpdate_RefusesATitlePastTheBound(t *testing.T) {
 	s := storeWithMatches(t)
 	r := mustCreate(t, s, keyA)
-	long := strings.Repeat("x", review.MaxSummaryRunes+1)
-	if _, err := review.Update(s, r.ReviewID, review.UpdateInput{Summary: long}); !errors.Is(err, review.ErrTitleInvalid) {
-		t.Errorf("summary past the bound = %v, want ErrTitleInvalid", err)
+	long := strings.Repeat("x", review.MaxTitleRunes+1)
+	if _, err := review.Update(s, r.ReviewID, review.UpdateInput{Title: long}); !errors.Is(err, review.ErrTitleInvalid) {
+		t.Errorf("title past the bound = %v, want ErrTitleInvalid", err)
 	}
-	if got := mustGet(t, s, r.ReviewID); got.Summary != "" {
-		t.Errorf("a refused update wrote the summary: %d runes", len(got.Summary))
+	if got := mustGet(t, s, r.ReviewID); got.Title == long {
+		t.Error("a refused update wrote the title")
 	}
 }
 

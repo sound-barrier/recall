@@ -481,12 +481,14 @@ type CoachDecision struct {
 type SelfReview struct {
 	ReviewID   string
 	Title      string
-	Summary    string
 	CreatedAt  string
 	UpdatedAt  string
 	FinishedAt string
 	MatchKeys  []string
 	Notes      map[string]SelfReviewNote
+	// FocusItems is what the sitting concluded — what the player is going
+	// to work on — in the order they wrote it.
+	FocusItems []FocusItem
 }
 
 // SelfReviewNote is the player's one note per (review, match): the same

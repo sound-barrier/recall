@@ -35,8 +35,8 @@ func roundTripSelfReview(t *testing.T, s db.Store) {
 	if !ok {
 		t.Fatal("review not found after create")
 	}
-	if got.Title != "Tuesday's Ana games" || got.Summary != "Stop chasing flanks." {
-		t.Errorf("title/summary = %q / %q", got.Title, got.Summary)
+	if got.Title != "Tuesday's Ana games" {
+		t.Errorf("title = %q", got.Title)
 	}
 	// Member order is the player's, not sorted.
 	if len(got.MatchKeys) != 2 || got.MatchKeys[0] != reviewKeyB || got.MatchKeys[1] != reviewKeyA {
@@ -58,7 +58,7 @@ func writeSitting(t *testing.T, s db.Store) string {
 	if created.ReviewID == "" || created.CreatedAt == "" || created.UpdatedAt == "" || created.FinishedAt != "" {
 		t.Fatalf("created = %+v, want a minted id, stamps, and no finish", created)
 	}
-	mustNoErr(t, s.UpdateSelfReview(created.ReviewID, "Tuesday's Ana games", "Stop chasing flanks."))
+	mustNoErr(t, s.UpdateSelfReview(created.ReviewID, "Tuesday's Ana games"))
 	_, err = s.UpsertSelfReviewNote(db.SelfReviewNote{
 		ReviewID: created.ReviewID, MatchKey: reviewKeyA, Kind: "note", Text: "held high ground",
 		FocusTags: []string{"positioning", "positioning", ""}, ExtraTags: []string{"tempo"},
@@ -198,7 +198,7 @@ func assertRefusesWhatIsNotThere(t *testing.T, s db.Store, reviewID string) {
 			_, err := s.UpsertSelfReviewMoment(reviewID, reviewKeyB, db.SelfReviewMoment{MomentID: "m", MatchClock: "01:00", Text: "x"})
 			return err
 		}, db.ErrSelfReviewMatchUnknown},
-		{"update missing", func() error { return s.UpdateSelfReview("ghost", "t", "s") }, db.ErrSelfReviewUnknown},
+		{"update missing", func() error { return s.UpdateSelfReview("ghost", "t") }, db.ErrSelfReviewUnknown},
 		{"finish missing", func() error { return s.FinishSelfReview("ghost") }, db.ErrSelfReviewUnknown},
 	}
 	for _, tc := range refusals {

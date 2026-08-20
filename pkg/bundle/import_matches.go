@@ -172,6 +172,12 @@ func WriteSelfReview(store db.Store, r db.SelfReview) error {
 	if _, err := store.CreateSelfReview(r); err != nil {
 		return fmt.Errorf("import: self review %q: %w", r.ReviewID, err)
 	}
+	// What the sitting concluded travels with it. Unlike the notes below,
+	// the list is not narrowed to the surviving members: an item is about
+	// the player, not about one match.
+	if err := store.SetSelfReviewFocusItems(r.ReviewID, r.FocusItems); err != nil {
+		return fmt.Errorf("import: self review focus items %q: %w", r.ReviewID, err)
+	}
 	for _, k := range r.MatchKeys {
 		n, ok := r.Notes[k]
 		if !ok {

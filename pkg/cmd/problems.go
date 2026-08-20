@@ -143,6 +143,7 @@ var defaultProblems = []errStatus{
 	{db.ErrMatchCoachNoteUnknown, probNotFound},
 	{review.ErrNotFound, probNotFound},
 	{review.ErrMatchNotInReview, probNotFound},
+	{db.ErrFocusItemUnknown, probNotFound},
 
 	// Two rungs out of order on purpose, for the wrapped chains:
 	//   - a notes ARCHIVE whose note fails the kind rules wraps ErrNoteShape
@@ -163,6 +164,7 @@ var defaultProblems = []errStatus{
 	{app.ErrMatchKeyRequired, probInvalidBody},
 	{coach.ErrNoteInvalid, probInvalidBody},
 	{coach.ErrFocusItemInvalid, probInvalidBody},
+	{db.ErrFocusItemStatusInvalid, probInvalidBody},
 	{coach.ErrHandleInvalid, probInvalidBody},
 	{app.ErrCoachNameInvalid, probInvalidBody},
 	{review.ErrTitleInvalid, probInvalidBody},

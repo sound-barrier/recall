@@ -6,6 +6,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/coach"
+	"recall/pkg/db"
 	"recall/pkg/matchedit"
 	"recall/pkg/review"
 )
@@ -28,6 +29,7 @@ func registerSelfReviewRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("PUT /api/v1/self-reviews/{review_id}", handleUpdateSelfReview(a))
 	apiMux.HandleFunc("DELETE /api/v1/self-reviews/{review_id}", handleDeleteSelfReview(a))
 	apiMux.HandleFunc("PUT /api/v1/self-reviews/{review_id}/matches", handleSetSelfReviewMatches(a))
+	apiMux.HandleFunc("PUT /api/v1/self-reviews/{review_id}/focus-items", handleSetSelfReviewFocusItems(a))
 	apiMux.HandleFunc("POST /api/v1/self-reviews/{review_id}/completion", handleFinishSelfReview(a))
 	apiMux.HandleFunc("PUT /api/v1/self-reviews/{review_id}/notes/{match_key}", handlePutSelfReviewNote(a))
 	apiMux.HandleFunc("DELETE /api/v1/self-reviews/{review_id}/notes/{match_key}", handleDeleteSelfReviewNote(a))
@@ -141,6 +143,42 @@ func handleSetSelfReviewMatches(a *app.App) http.HandlerFunc {
 		}
 		writeJSON(w, r, updated, nil)
 	}
+}
+
+// handleSetSelfReviewFocusItems replaces what the sitting concluded, in the
+// player's order. An empty list clears it, so `items` is required but may be
+// empty — the same contract the coach's list answers to.
+func handleSetSelfReviewFocusItems(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, ok := reviewIDFromPath(w, r)
+		if !ok {
+			return
+		}
+		var body struct {
+			Items *[]review.FocusItem `json:"items"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
+			return
+		}
+		if body.Items == nil {
+			writeProblem(w, r, probInvalidBody, "items is required")
+			return
+		}
+		updated, err := a.SetSelfReviewFocusItems(id, focusRowsFromWire(*body.Items))
+		if writeError(w, r, err) {
+			return
+		}
+		writeJSON(w, r, updated, nil)
+	}
+}
+
+func focusRowsFromWire(items []review.FocusItem) []db.FocusItem {
+	out := make([]db.FocusItem, 0, len(items))
+	for _, it := range items {
+		out = append(out, db.FocusItem{ItemID: it.ItemID, Text: it.Text, Status: it.Status})
+	}
+	return out
 }
 
 // handleFinishSelfReview is POST /completion — no verb in the path, the
