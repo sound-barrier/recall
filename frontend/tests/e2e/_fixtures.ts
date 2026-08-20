@@ -39,6 +39,10 @@ export const test = base.extend({
         // assertions race against a locked UI. The dedicated
         // first-run spec clears this flag in its own beforeEach.
         localStorage.setItem('recall.firstRunAccountNamed', 'true')
+        // The what's-new strip is likewise pre-dismissed — it would
+        // otherwise add two buttons to every view in every spec. Its own
+        // spec (app/whats-new.spec.ts) opts back in.
+        localStorage.setItem('recall.whatsNew.reviewsTab', 'seen')
       } catch (_) {
         // Some sandboxed contexts forbid localStorage. The tour
         // composable's persistence layer also swallows the error,

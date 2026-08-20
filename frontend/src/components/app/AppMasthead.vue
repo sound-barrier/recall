@@ -11,6 +11,7 @@ import { OpenURL } from '@/api-client'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
 import { useSelfReviewStore } from '@/stores/selfReview'
+import WhatsNewStrip from '@/components/app/WhatsNewStrip.vue'
 import { useCoachReturnsStore } from '@/stores/coachReturns'
 import { useMatchesStore } from '@/stores/matches'
 import { useParseStore } from '@/stores/parse'
@@ -210,4 +211,7 @@ const winRate = computed(() => winrateOrNull(wld.value.w, wld.value.w + wld.valu
   <!-- The sitting's lighter bridge: no loan rule (nothing is on loan), just
        the way back, and only while the player is away from its tab. -->
   <CoachNavStrip v-else-if="sittingAway" />
+  <!-- The one-time feature pointer, for installs that predate the tab. Kept
+       out of a session's chrome — a loan is not the moment. -->
+  <WhatsNewStrip v-if="!sessionActive" />
 </template>
