@@ -316,3 +316,49 @@ describe('CoachNoteEditor — the formatting toolbar', () => {
     expect(bold).toHaveAccessibleDescription('Writes are locked.')
   })
 })
+
+describe('CoachNoteEditor — the switch and the toolbar', () => {
+  it('turns the toolbar off while "Nothing to add" is on', () => {
+    renderEditor({ kind: 'reviewed_only' }, { voice: 'your' })
+    expect(screen.getByRole('button', { name: 'Bold' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Bulleted list' })).toBeDisabled()
+  })
+
+  it('does not let a formatting press convert a "Nothing to add" note', async () => {
+    // Bold on an empty reviewed_only note wrote `****`, which reads as a
+    // written note — the switch then disabled itself with "clear it first"
+    // and there was no way back.
+    const view = renderEditor({ kind: 'reviewed_only' }, { voice: 'your' })
+    await fireEvent.click(screen.getByRole('button', { name: 'Bold' }))
+    expect(view.emitted('update')).toBeUndefined()
+  })
+
+  it('caps the field at what the server accepts', () => {
+    renderEditor({}, { voice: 'your' })
+    expect(screen.getByRole('textbox', { name: /note/i })).toHaveAttribute('maxlength', '4000')
+  })
+
+  it('refuses a formatting press that would push the note past the cap', async () => {
+    const view = renderEditor({ text: 'x'.repeat(4000) }, { voice: 'your' })
+    await fireEvent.click(screen.getByRole('button', { name: 'Bulleted list' }))
+    expect(view.emitted('update')).toBeUndefined()
+  })
+})
+
+describe('CoachNoteEditor — your own voice', () => {
+  it('files no clock and no tags', () => {
+    renderEditor({}, { voice: 'your' })
+    expect(screen.queryByLabelText('In-match clock')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'ult economy' })).not.toBeInTheDocument()
+  })
+
+  it('sheds a clock and tags a note picked up before the split', async () => {
+    // Neither has a field on screen any more, so an edit is the only chance
+    // to clear them — and a leftover clock on a reviewed_only kind is a
+    // shape the server refuses, which would fail every autosave forever.
+    const view = renderEditor({ text: 'peel', focusTags: ['positioning'], matchClock: '04:12' }, { voice: 'your' })
+    await fireEvent.update(screen.getByRole('textbox', { name: /note/i }), 'peel earlier')
+    expect(lastUpdate(view).focusTags).toEqual([])
+    expect(lastUpdate(view).matchClock).toBe('')
+  })
+})

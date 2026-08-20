@@ -73,6 +73,22 @@ const reviewedBlockedReason = 'A written note already counts as reviewed — cle
 
 const blocked = computed(() => props.blockedReason !== '')
 
+// What the server accepts (maxNoteTextRunes, pkg/coach/note.go). The field
+// carries it so typing stops at the cap, and the toolbar checks it so a Bold
+// press at exactly 4000 cannot push the note into a state where every
+// autosave fails with nothing on screen to explain it.
+const MAX_NOTE_TEXT = 4000
+
+// Formatting is off while the switch says there is nothing to add. Pressing
+// Bold on an empty reviewed_only note used to write `****`, which reads as a
+// written note — so the switch disabled itself with "clear it first" and the
+// note could never go back.
+const toolsDisabled = computed(() => blocked.value || reviewed.value)
+const toolsDisabledReason = computed(() => {
+  if (blocked.value) return props.blockedReason
+  return reviewed.value ? `${switchLabel.value} is on — turn it off to write.` : undefined
+})
+
 // The words follow the voice: a coach writes for someone else to read next
 // time; you write for yourself. And "Reviewed" is the coach's stamp — over
 // your own matches the switch means "looked at, nothing to add".
@@ -92,7 +108,14 @@ const reviewedDisabledReason = computed(() => {
 })
 
 function emitDraft(patch: Partial<CoachNoteDraft>): void {
-  emit('update', { ...props.draft, ...patch })
+  const next = { ...props.draft, ...patch }
+  // Your own notes carry neither — the Moments strip owns the clock and the
+  // tag, per match. Stripping on every emit rather than only on render means
+  // a note that picked either up before the split can still be cleared, and
+  // a leftover clock can never ride along with a reviewed_only kind, which
+  // the server refuses outright.
+  if (props.voice === 'your') emit('update', { ...next, focusTags: [], matchClock: '' })
+  else emit('update', next)
 }
 
 function toggleTag(list: 'focusTags' | 'extraTags', tag: string): void {
@@ -123,6 +146,7 @@ function onNoteInput(e: Event): void {
 // where the helper said — the editor is controlled, so the value only
 // returns through the prop and the selection would otherwise collapse.
 function applyEdit(next: { text: string; start: number; end: number }): void {
+  if (next.text.length > MAX_NOTE_TEXT) return
   emitDraft({ kind: 'note', text: next.text })
   void nextTick(() => {
     const field = noteField.value
@@ -134,19 +158,19 @@ function applyEdit(next: { text: string; start: number; end: number }): void {
 
 function markInline(mark: InlineMark): void {
   const field = noteField.value
-  if (!field || blocked.value) return
+  if (!field || toolsDisabled.value) return
   applyEdit(applyInlineMark(props.draft.text, field.selectionStart, field.selectionEnd, mark))
 }
 
 function markLine(mark: LineMark): void {
   const field = noteField.value
-  if (!field || blocked.value) return
+  if (!field || toolsDisabled.value) return
   applyEdit(applyLineMark(props.draft.text, field.selectionStart, field.selectionEnd, mark))
 }
 
 // ⌘/Ctrl+B and +I, the two every text field on every platform answers.
 function onNoteKeydown(e: KeyboardEvent): void {
-  if (!(e.metaKey || e.ctrlKey) || e.altKey) return
+  if (!(e.metaKey || e.ctrlKey) || e.altKey || toolsDisabled.value) return
   const key = e.key.toLowerCase()
   if (key !== 'b' && key !== 'i') return
   e.preventDefault()
@@ -256,8 +280,8 @@ function toggleReviewed(): void {
         class="paper-chip note-tool"
         :class="{ 'note-tool-em': b.mark === 'italic', 'note-tool-del': b.mark === 'strike' }"
         :aria-label="b.label"
-        :disabled="blocked"
-        :title="blocked ? blockedReason : b.label"
+        :disabled="toolsDisabled"
+        :title="toolsDisabledReason ?? b.label"
         @click="markInline(b.mark)"
       >
         {{ b.glyph }}
@@ -269,8 +293,8 @@ function toggleReviewed(): void {
         type="button"
         class="paper-chip note-tool"
         :aria-label="b.label"
-        :disabled="blocked"
-        :title="blocked ? blockedReason : b.label"
+        :disabled="toolsDisabled"
+        :title="toolsDisabledReason ?? b.label"
         @click="markLine(b.mark)"
       >
         {{ b.glyph }}
@@ -281,6 +305,7 @@ function toggleReviewed(): void {
       ref="noteField"
       class="note-text"
       rows="5"
+      :maxlength="MAX_NOTE_TEXT"
       :value="draft.text"
       :disabled="blocked"
       :title="blocked ? blockedReason : undefined"

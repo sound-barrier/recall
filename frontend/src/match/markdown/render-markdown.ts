@@ -28,27 +28,90 @@ function escapeHTML(raw: string): string {
   return raw.replace(/[&<>"']/g, (ch) => ESCAPES[ch] ?? ch)
 }
 
-// Inline emphasis, applied to already-escaped text. Longest marker first so
-// `**bold**` never matches as two italics. `[^\s]` on the open side and the
-// close side is what keeps `ult_economy` and a lone `-5` literal: a marker
-// must hug its content.
-const INLINE: readonly { pattern: RegExp; tag: string }[] = [
-  { pattern: /\*\*(\S(?:[\s\S]*?\S)?)\*\*/g, tag: 'strong' },
-  { pattern: /~~(\S(?:[\s\S]*?\S)?)~~/g, tag: 'del' },
-  { pattern: /\*(\S(?:[\s\S]*?\S)?)\*/g, tag: 'em' },
+// The space set, written out rather than spelled `\s`. JavaScript's `\s` is
+// Unicode-aware and Go's is ASCII-only, so a non-breaking space pasted out of
+// a word processor would open a heading on one renderer and stay literal on
+// the other. Two implementations of one grammar cannot disagree about what a
+// space is.
+const SPACE = ' \t\r\n'
+
+function isSpace(ch: string | undefined): boolean {
+  return ch !== undefined && SPACE.includes(ch)
+}
+
+interface Marker {
+  open: string
+  tags: readonly string[]
+}
+
+// Longest run first: `***bold italic***` must not match as `**` plus a stray
+// `*`, which is exactly what the toolbar produces when you bold an italic run.
+const MARKERS: readonly Marker[] = [
+  { open: '***', tags: ['strong', 'em'] },
+  { open: '**', tags: ['strong'] },
+  { open: '~~', tags: ['del'] },
+  { open: '*', tags: ['em'] },
 ]
 
+/** Index of the marker that closes one opened at `from`, or -1. */
+function closeOf(text: string, from: number, marker: string): number {
+  for (let k = from + 1; k + marker.length <= text.length; k++) {
+    if (!text.startsWith(marker, k)) continue
+    // A marker must hug its content: the close cannot follow a space, which
+    // is what keeps `ult_economy` and a lone `-5` literal.
+    if (isSpace(text[k - 1])) continue
+    return k
+  }
+  return -1
+}
+
+function openAt(text: string, i: number): { marker: Marker; close: number } | null {
+  for (const marker of MARKERS) {
+    if (!text.startsWith(marker.open, i)) continue
+    const bodyStart = i + marker.open.length
+    if (isSpace(text[bodyStart])) continue
+    const close = closeOf(text, bodyStart, marker.open)
+    if (close > bodyStart) return { marker, close }
+  }
+  return null
+}
+
+/**
+ * Inline emphasis over already-escaped text.
+ *
+ * A recursive scan rather than one global replace per marker: sequential
+ * passes emit crossed tags for interleaved markers (`**a *b** c*` came out
+ * `<strong>a <em>b</strong> c</em>`), and a browser then re-shapes that into
+ * a DOM neither renderer described. Scanning left to right and recursing into
+ * each body can only ever produce well-nested output.
+ */
 function inline(escaped: string): string {
-  let out = escaped
-  for (const { pattern, tag } of INLINE) {
-    out = out.replace(pattern, (_m, body: string) => `<${tag}>${body}</${tag}>`)
+  let out = ''
+  let i = 0
+  while (i < escaped.length) {
+    const found = openAt(escaped, i)
+    if (!found) {
+      out += escaped[i]
+      i += 1
+      continue
+    }
+    const { marker, close } = found
+    const body = inline(escaped.slice(i + marker.open.length, close))
+    const opened = marker.tags.map((t) => `<${t}>`).join('')
+    const closed = [...marker.tags].reverse().map((t) => `</${t}>`).join('')
+    out += opened + body + closed
+    i = close + marker.open.length
   }
   return out
 }
 
-const HEADING = /^(#{1,2})\s+(.*)$/
-const BULLET = /^[-*]\s+(.*)$/
-const NUMBERED = /^(\d{1,9})[.)]\s+(.*)$/
+const HEADING = /^(#{1,2})[ \t]+(.*)$/
+const BULLET = /^[-*][ \t]+(.*)$/
+const NUMBERED = /^(\d{1,9})[.)][ \t]+(.*)$/
+// Trimmed explicitly for the same reason `SPACE` is spelled out: JS `trim()`
+// strips a byte-order mark and Go's `TrimSpace` does not, and Go trims U+0085
+// where JS does not.
+const EDGE_SPACE = /^[ \t\r]+|[ \t\r]+$/g
 
 type Block =
   | { kind: 'p'; lines: string[] }
@@ -64,34 +127,38 @@ type Block =
  */
 function blocksOf(source: string): Block[] {
   const blocks: Block[] = []
-  let open: Block | null = null
-  const close = (): void => {
-    if (open) blocks.push(open)
-    open = null
-  }
-
+  // `open` is folded through the loop rather than closed over by a `close()`
+  // helper: a nested function that assigns it defeats the checker's flow
+  // analysis, which then reads every later `open.kind` as `never`.
+  let open: Block | undefined
   for (const rawLine of source.split(/\r?\n/)) {
-    const line = rawLine.trim()
-    if (line === '') {
-      close()
-      continue
-    }
-    const next = classify(line)
-    if (next.kind === 'h') {
-      close()
-      blocks.push(next)
-      continue
-    }
-    // Same kind as what is open → the line joins it; otherwise it starts one.
-    if (open?.kind !== next.kind) {
-      close()
-      open = next
-    } else {
-      absorb(open, line)
-    }
+    open = fold(blocks, open, rawLine.replace(EDGE_SPACE, ''))
   }
-  close()
+  if (open) blocks.push(open)
   return blocks
+}
+
+/**
+ * Take one line into the block list, returning whatever is left open. A blank
+ * line closes what is open; a heading is its own block; a line of the same
+ * kind joins what is open; anything else closes it and starts a new one.
+ */
+function fold(blocks: Block[], open: Block | undefined, line: string): Block | undefined {
+  if (line === '') {
+    if (open) blocks.push(open)
+    return undefined
+  }
+  const next = classify(line)
+  if (open && open.kind === next.kind && next.kind !== 'h') {
+    absorb(open, line)
+    return open
+  }
+  if (open) blocks.push(open)
+  if (next.kind === 'h') {
+    blocks.push(next)
+    return undefined
+  }
+  return next
 }
 
 /** What a line starts, as a fresh block carrying that line's content. */
@@ -125,16 +192,32 @@ function absorb(open: Block, line: string): void {
   }
 }
 
-function renderBlock(block: Block): string {
+/**
+ * The note's shallowest heading, which becomes its h3.
+ *
+ * Notes render INSIDE a card that already owns the page's h2, so the top
+ * heading is an h3 — and a note that only ever uses `##` must still start at
+ * h3 rather than skipping a level, which is precisely what axe's
+ * heading-order rule reports. The toolbar offers Subheading on its own, so
+ * that note is one click away.
+ */
+function topHeadingLevel(blocks: Block[]): number {
+  let top = 2
+  for (const block of blocks) {
+    if (block.kind === 'h' && block.level < top) top = block.level
+  }
+  return top
+}
+
+function renderBlock(block: Block, topLevel: number): string {
   const item = (text: string): string => `<li>${inline(escapeHTML(text))}</li>`
   switch (block.kind) {
     case 'p':
       return `<p>${block.lines.map((l) => inline(escapeHTML(l))).join('<br>')}</p>`
-    case 'h':
-      // A note's "title" is an h3: these render INSIDE a card that already
-      // owns the page's h2, so starting at h1 would break the heading order
-      // every a11y pass checks.
-      return `<h${block.level + 2}>${inline(escapeHTML(block.text))}</h${block.level + 2}>`
+    case 'h': {
+      const tag = `h${3 + block.level - topLevel}`
+      return `<${tag}>${inline(escapeHTML(block.text))}</${tag}>`
+    }
     case 'ul':
       return `<ul>${block.items.map(item).join('')}</ul>`
     case 'ol': {
@@ -146,5 +229,7 @@ function renderBlock(block: Block): string {
 
 /** Render a note's markdown to the fixed HTML vocabulary. Safe to v-html. */
 export function renderMarkdown(source: string): string {
-  return blocksOf(source).map(renderBlock).join('')
+  const blocks = blocksOf(source)
+  const topLevel = topHeadingLevel(blocks)
+  return blocks.map((b) => renderBlock(b, topLevel)).join('')
 }
