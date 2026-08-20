@@ -313,7 +313,7 @@ CREATE TABLE IF NOT EXISTS match_annotation_leavers (
   match_key TEXT NOT NULL,
   side TEXT NOT NULL CHECK (side IN ('self', 'team', 'enemy')),
   PRIMARY KEY (match_key, side),
-  FOREIGN KEY (match_key) REFERENCES match_annotations (match_key) ON DELETE CASCADE
+  FOREIGN KEY (match_key) REFERENCES match_annotations (match_key) ON UPDATE CASCADE ON DELETE CASCADE
 ) STRICT;
 -- statement-end
 
@@ -321,7 +321,7 @@ CREATE TABLE IF NOT EXISTS match_annotation_throwers (
   match_key TEXT NOT NULL,
   side TEXT NOT NULL CHECK (side IN ('self', 'team', 'enemy')),
   PRIMARY KEY (match_key, side),
-  FOREIGN KEY (match_key) REFERENCES match_annotations (match_key) ON DELETE CASCADE
+  FOREIGN KEY (match_key) REFERENCES match_annotations (match_key) ON UPDATE CASCADE ON DELETE CASCADE
 ) STRICT;
 -- statement-end
 
@@ -329,7 +329,7 @@ CREATE TABLE IF NOT EXISTS match_annotation_members (
   match_key TEXT NOT NULL,
   member TEXT NOT NULL,
   PRIMARY KEY (match_key, member),
-  FOREIGN KEY (match_key) REFERENCES match_annotations (match_key) ON DELETE CASCADE
+  FOREIGN KEY (match_key) REFERENCES match_annotations (match_key) ON UPDATE CASCADE ON DELETE CASCADE
 ) STRICT;
 -- statement-end
 
@@ -337,7 +337,7 @@ CREATE TABLE IF NOT EXISTS match_annotation_tags (
   match_key TEXT NOT NULL,
   tag TEXT NOT NULL,
   PRIMARY KEY (match_key, tag),
-  FOREIGN KEY (match_key) REFERENCES match_annotations (match_key) ON DELETE CASCADE
+  FOREIGN KEY (match_key) REFERENCES match_annotations (match_key) ON UPDATE CASCADE ON DELETE CASCADE
 ) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_match_annotation_tags_tag ON match_annotation_tags (tag);
@@ -504,7 +504,7 @@ CREATE TABLE IF NOT EXISTS user_match_data (
 -- matching the OCR "first in heroes_played is primary" rule). percent_played /
 -- play_time may be NULL (manual entry has neither).
 CREATE TABLE IF NOT EXISTS user_match_heroes (
-  match_key TEXT NOT NULL REFERENCES user_match_data (match_key) ON DELETE CASCADE,
+  match_key TEXT NOT NULL REFERENCES user_match_data (match_key) ON UPDATE CASCADE ON DELETE CASCADE,
   hero TEXT NOT NULL,
   percent_played INTEGER,
   play_time TEXT,
@@ -514,7 +514,7 @@ CREATE TABLE IF NOT EXISTS user_match_heroes (
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS user_match_hero_stats (
-  match_key TEXT NOT NULL REFERENCES user_match_data (match_key) ON DELETE CASCADE,
+  match_key TEXT NOT NULL REFERENCES user_match_data (match_key) ON UPDATE CASCADE ON DELETE CASCADE,
   hero TEXT NOT NULL,
   stat_key TEXT NOT NULL,
   stat_value INTEGER NOT NULL,
@@ -523,7 +523,7 @@ CREATE TABLE IF NOT EXISTS user_match_hero_stats (
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS user_match_sr (
-  match_key TEXT NOT NULL REFERENCES user_match_data (match_key) ON DELETE CASCADE,
+  match_key TEXT NOT NULL REFERENCES user_match_data (match_key) ON UPDATE CASCADE ON DELETE CASCADE,
   hero TEXT NOT NULL,
   sr INTEGER NOT NULL DEFAULT 0,
   change INTEGER NOT NULL DEFAULT 0,
@@ -532,7 +532,7 @@ CREATE TABLE IF NOT EXISTS user_match_sr (
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS user_match_rank_modifiers (
-  match_key TEXT NOT NULL REFERENCES user_match_data (match_key) ON DELETE CASCADE,
+  match_key TEXT NOT NULL REFERENCES user_match_data (match_key) ON UPDATE CASCADE ON DELETE CASCADE,
   -- Same vocabulary as the OCR twin rank_modifiers above, and asserted against
   -- the parser by the same test — a modifier the parser accepts must not be
   -- unenterable as a user edit (and vice versa).
@@ -827,7 +827,7 @@ CREATE TABLE IF NOT EXISTS self_review_notes (
   updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   UNIQUE (review_id, match_key),
   FOREIGN KEY (review_id, match_key)
-    REFERENCES self_review_matches (review_id, match_key) ON DELETE CASCADE
+    REFERENCES self_review_matches (review_id, match_key) ON UPDATE CASCADE ON DELETE CASCADE
 ) STRICT;
 -- statement-end
 

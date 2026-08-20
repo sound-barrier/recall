@@ -33,3 +33,44 @@ var parentTables = []string{
 	"rank_screenshots",
 	"unknown_screenshots",
 }
+
+// matchKeyTables is every table that names a match by its match_key and is
+// NOT reached through a parent's cascade. One list, because match_key is the
+// match's identity and a match can be RENAMED — resolving an ambiguous
+// screenshot does exactly that — so anything missing here is silently
+// stranded on a key nothing will look up again.
+//
+// It is deliberately not "every table with a match_key column":
+//
+//   - The user_match_* children, the match_annotation_* children and
+//     self_review_notes reach their key through a parent FK declared
+//     ON UPDATE CASCADE, so renaming the parent renames them. Listing them
+//     here would be a second, competing write.
+//   - coach_notes is excluded on purpose. Its match_key belongs to ANOTHER
+//     player's corpus — it is what this user, as a coach, wrote about a
+//     loaned match. Renaming one of our own keys must not touch it.
+//
+// storeSchemaCompletenessTest pins this against schema.sql, so a new table
+// with a match_key column fails the build rather than going quietly missing.
+var matchKeyTables = []string{
+	"summary_screenshots",
+	"teams_screenshots",
+	"personal_screenshots",
+	"rank_screenshots",
+	"unknown_screenshots",
+	"ambiguous_candidates",
+	"hidden_matches",
+	"pinned_matches",
+	"match_annotations",
+	"match_moments",
+	"match_reviews",
+	"match_queue",
+	"match_play_mode",
+	"match_coach_notes",
+	"self_review_matches",
+	"share_export_matches",
+	"user_match_data",
+}
+
+// MatchKeyTables is the registry above, for tests that hold it to schema.sql.
+func MatchKeyTables() []string { return append([]string(nil), matchKeyTables...) }
