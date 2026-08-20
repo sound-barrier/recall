@@ -44,6 +44,9 @@ func (s *SQLStore) HardDeleteMatch(matchKey string) error {
 	if err := forgetAmbiguitySurface(tx, matchKey); err != nil {
 		return err
 	}
+	if err := forgetIngestedFiles(tx, matchKey); err != nil {
+		return err
+	}
 	for _, t := range parentTables {
 		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
 		if _, err := tx.Exec(`DELETE FROM `+t+` WHERE match_key = ?`, matchKey); err != nil {
@@ -73,6 +76,27 @@ func (s *SQLStore) HardDeleteMatch(matchKey string) error {
 		}
 	}
 	return tx.Commit()
+}
+
+// forgetIngestedFiles drops the dedup-registry rows for the match's own
+// screenshots, and — by the self-FK's cascade — for any byte-identical copy
+// registered against one of them. A duplicate is skipped before OCR on every
+// run including ReParseAll, so a copy left standing after its canonical left
+// the corpus is a screenshot the app will never look at again.
+//
+// Reads the parent rows for filenames, so it must run BEFORE the parent wipe,
+// like forgetAmbiguitySurface below.
+func forgetIngestedFiles(tx *sql.Tx, matchKey string) error {
+	for _, t := range parentTables {
+		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
+		if _, err := tx.Exec(
+			`DELETE FROM ingested_files WHERE filename IN
+			 (SELECT filename FROM `+t+` WHERE match_key = ?)`, matchKey,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // forgetAmbiguitySurface makes the ambiguity surface forget the match: rows

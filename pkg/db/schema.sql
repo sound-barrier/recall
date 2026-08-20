@@ -457,14 +457,25 @@ CREATE TABLE IF NOT EXISTS match_play_mode (
 
 -- Content-hash registry for every image the parse loop has examined.
 -- duplicate_of names the canonical filename when this file was a
--- byte-identical copy (skipped before OCR); '' for originals. Lets a
+-- byte-identical copy (skipped before OCR); NULL for originals. Lets a
 -- Steam+system-shortcut double-save cost zero Tesseract time and zero
 -- duplicate rows. Only files ingested after this table shipped carry
 -- hashes — older history simply never matches.
+--
+-- The self-reference is declared, and it is load-bearing rather than
+-- decorative: a duplicate is skipped before OCR on EVERY run, ReParseAll
+-- included, so a row naming a canonical that no longer exists costs the
+-- player a recoverable screenshot with no diagnostic anywhere — no parent
+-- row, no failed_files entry, nothing on the Unknown tab. CASCADE means the
+-- copy cannot outlive what it is a copy of.
+--
+-- NULL rather than '' for originals because SQLite exempts a NULL child key
+-- from the FK check; '' would demand a parent row named ''. The Go surface
+-- keeps "" and the store maps the two at the boundary.
 CREATE TABLE IF NOT EXISTS ingested_files (
   filename TEXT PRIMARY KEY,
   content_hash TEXT NOT NULL,
-  duplicate_of TEXT NOT NULL DEFAULT '',
+  duplicate_of TEXT REFERENCES ingested_files (filename) ON DELETE CASCADE,
   first_seen_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
 ) STRICT;
 -- statement-end

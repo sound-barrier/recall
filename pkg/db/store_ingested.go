@@ -3,10 +3,14 @@ package db
 // UpsertIngestedFile records (or refreshes) a file's content hash in
 // the dedup registry. first_seen_at survives re-parses the same way
 // parsed_at does on the parent tables.
+//
+// NULLIF/COALESCE here and on the read are the whole of the ""-vs-NULL
+// boundary: callers say "" for an original, the column says NULL so the
+// self-FK exempts it, and neither side has to know about the other.
 func (s *SQLStore) UpsertIngestedFile(filename, contentHash, duplicateOf string) error {
 	_, err := s.db.Exec(
 		`INSERT INTO ingested_files (filename, content_hash, duplicate_of)
-		 VALUES (?,?,?)
+		 VALUES (?,?,NULLIF(?,''))
 		 ON CONFLICT(filename) DO UPDATE SET
 		   content_hash = excluded.content_hash,
 		   duplicate_of = excluded.duplicate_of`,
@@ -17,7 +21,7 @@ func (s *SQLStore) UpsertIngestedFile(filename, contentHash, duplicateOf string)
 
 // LoadIngestedFiles returns the whole registry keyed by filename.
 func (s *SQLStore) LoadIngestedFiles() (map[string]IngestedFile, error) {
-	rows, err := s.db.Query(`SELECT filename, content_hash, duplicate_of FROM ingested_files`)
+	rows, err := s.db.Query(`SELECT filename, content_hash, COALESCE(duplicate_of, '') FROM ingested_files`)
 	if err != nil {
 		return nil, err
 	}
