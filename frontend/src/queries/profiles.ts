@@ -22,9 +22,7 @@ export function useProfilesData() {
   const query = useProfilesQuery()
   const profiles = computed(() => query.data.value?.profiles ?? [])
   const active = computed(() => query.data.value?.active ?? '')
-  const immutable = computed(() => query.data.value?.immutable ?? [])
-  const isReadOnly = computed(() => immutable.value.includes(active.value) && active.value !== '')
-  return { query, profiles, active, immutable, isReadOnly }
+  return { query, profiles, active }
 }
 
 export function invalidateProfiles(): Promise<void> {

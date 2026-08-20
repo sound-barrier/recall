@@ -50,9 +50,6 @@ func (a *App) CreateManualMatch(input match.ManualMatchInput) (match.Record, err
 	if err := a.assertNoCoachSession(); err != nil {
 		return match.Record{}, err
 	}
-	if err := a.assertActiveMutable(); err != nil {
-		return match.Record{}, err
-	}
 	key, err := matchedit.CreateManual(a.store, input)
 	if err != nil {
 		return match.Record{}, err

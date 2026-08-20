@@ -17,21 +17,13 @@ export function useMatchesMovePicker(opts: {
 }) {
   // Backed by the shared profiles derivation — a fetch failure leaves the
   // list empty, which suppresses the Move button rather than erroring.
-  const { profiles, active, immutable } = useProfilesData()
-  const availableProfiles = computed(() => ({
-    active: active.value,
-    profiles: profiles.value,
-    immutable: immutable.value,
-  }))
+  const { profiles, active } = useProfilesData()
   const movePickerOpen = ref<'live' | 'archive' | null>(null)
 
-  // Read-only profiles (the tour's sample) reject a move-in server-side, so
-  // exclude them from the target list along with the active profile itself.
+  // Every profile but the active one is a valid target — the tour's sample
+  // included, now that it is a writable sandbox.
   const otherProfiles = computed(() =>
-    availableProfiles.value.profiles.filter(
-      (p) => p !== availableProfiles.value.active && !availableProfiles.value.immutable.includes(p),
-    ),
-  )
+    profiles.value.filter((p) => p !== active.value))
 
   function beginMoveLive() {
     if (otherProfiles.value.length === 0) return

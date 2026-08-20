@@ -41,7 +41,7 @@ const {
 } = storeToRefs(parseStore)
 const { parse, onCancelParse, refreshParse } = parseStore
 // Parsing writes matches: rejected server-side (409) on the tour's
-// read-only sample profile and while a coaching session holds the view, so
+// while a coaching session holds the view (the one write lock), so
 // both affordances go dead with the reason on them.
 const { writesLocked, sessionActive, lockReason } = useWriteGate()
 const matchedCount = computed(() => matchesStore.records.length)
@@ -66,10 +66,6 @@ const runParseTitle = computed(() => {
       <p v-if="sessionActive" class="readonly-note" data-readonly-note>
         🔒 A coaching session is open — parsing and watching are disabled while you
         review another player's matches. End the session to parse your own again.
-      </p>
-      <p v-else-if="writesLocked" class="readonly-note" data-readonly-note>
-        🔒 This is a read-only sample profile — parsing and watching are disabled.
-        Switch to your own profile to add matches.
       </p>
       <div v-if="!tesseractReady || !screenshotsDir" class="readiness" data-readiness-checklist>
         <h2 class="settings-heading missing">

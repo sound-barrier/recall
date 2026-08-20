@@ -20,7 +20,7 @@ import type { MatchRecord } from '@/api'
 // everything else stays the real module.
 vi.mock('@/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api')>()),
-  GetProfiles:        vi.fn(async () => ({ active: 'main', profiles: ['main'], immutable: [] })),
+  GetProfiles:        vi.fn(async () => ({ active: 'main', profiles: ['main'] })),
   GetMatchResults:    vi.fn(async () => []),
   SetMatchVisibility: vi.fn(async () => undefined),
   HardDeleteMatch:    vi.fn(async () => undefined),
@@ -440,7 +440,7 @@ describe('MatchesView — Move to profile picker', () => {
   })
 
   it('clicking Move to… reveals the target picker (when other profiles exist)', async () => {
-    vi.mocked(GetProfiles).mockResolvedValue({ active: 'main', profiles: ['alt', 'main'], immutable: [] })
+    vi.mocked(GetProfiles).mockResolvedValue({ active: 'main', profiles: ['alt', 'main'] })
     renderView([makeRecord({ match_key: 'k1' })])
     // Macrotask tick: the profiles query notifies observers through the
     // notifyManager's setTimeout scheduling, which flushPromises misses.
@@ -454,7 +454,7 @@ describe('MatchesView — Move to profile picker', () => {
   })
 
   it('clicking a target chip emits move-matches with the ticked keys + target', async () => {
-    vi.mocked(GetProfiles).mockResolvedValue({ active: 'main', profiles: ['alt', 'main'], immutable: [] })
+    vi.mocked(GetProfiles).mockResolvedValue({ active: 'main', profiles: ['alt', 'main'] })
     const records = [
       makeRecord({ match_key: 'k1' }),
       makeRecord({ match_key: 'k2' }, { finished_at: '22:30' }),
@@ -476,7 +476,7 @@ describe('MatchesView — Move to profile picker', () => {
   })
 
   it('Cancel reverts the picker without emitting', async () => {
-    vi.mocked(GetProfiles).mockResolvedValue({ active: 'main', profiles: ['alt', 'main'], immutable: [] })
+    vi.mocked(GetProfiles).mockResolvedValue({ active: 'main', profiles: ['alt', 'main'] })
     renderView([makeRecord({ match_key: 'k1' })])
     await new Promise(r => setTimeout(r, 0))
 

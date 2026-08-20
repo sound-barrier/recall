@@ -87,27 +87,6 @@ func TestLoadProfiles_CorruptMetadataIsAnErrorNotAReset(t *testing.T) {
 	}
 }
 
-// The immutable list is a sidecar; a name in it that isn't a real profile must
-// not make anything read-only. Otherwise a stale entry left over from a rename
-// or a hand edit would lock a later profile that happened to reuse the name.
-func TestLoadProfiles_IgnoresImmutableNamesOutsideTheProfileList(t *testing.T) {
-	base := writeMeta(t, t.TempDir(),
-		`{"active_profile":"main","profiles":["main"],"immutable":["main","ghost"]}`)
-	p, err := profiles.LoadProfiles(base)
-	mustNoErr(t, err)
-	if !p.IsImmutable("main") {
-		t.Error("a listed immutable profile lost its read-only flag")
-	}
-	if p.IsImmutable("ghost") {
-		t.Error("an unlisted name was honored as immutable")
-	}
-	// Re-creating that name yields a normal, writable profile.
-	mustNoErr(t, p.Create("ghost"))
-	if p.IsImmutable("ghost") {
-		t.Error("newly created profile inherited a stale immutable entry")
-	}
-}
-
 // The install root is not writable (a file sits where the directory belongs).
 // Startup captures this as a fatal, so the message has to name the stage.
 func TestLoadProfiles_UnusableBaseDirIsReported(t *testing.T) {

@@ -323,7 +323,7 @@ func (a *App) PutCoachSummary(text string) error {
 }
 
 // assertNoCoachSession is the write gate (design rule 1): the first line of
-// every mutating orchestrator, the way assertActiveMutable is. While a
+// every mutating orchestrator. While a
 // session is open the coach is looking at somebody else's history, so a
 // write aimed at "this match" would land on a key their own database has
 // never seen. Deliberately NOT applied to the folder watcher's debounce

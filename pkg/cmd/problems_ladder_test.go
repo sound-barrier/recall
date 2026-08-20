@@ -87,10 +87,9 @@ var sentinels = []sentinel{
 	{"ErrNoFailedFiles", app.ErrNoFailedFiles, "no failed files to bundle"},
 	{"ErrNoParseInFlight", app.ErrNoParseInFlight, "no parse in flight"},
 	{"ErrParseInFlight", app.ErrParseInFlight, "a parse is already in flight"},
-	{"ErrProfileActive", app.ErrProfileActive, ""},       // re-export of a leaf sentinel; message owned there
-	{"ErrProfileExists", app.ErrProfileExists, ""},       // re-export of a leaf sentinel; message owned there
-	{"ErrProfileImmutable", app.ErrProfileImmutable, ""}, // re-export of a leaf sentinel; message owned there
-	{"ErrProfileNotFound", app.ErrProfileNotFound, ""},   // re-export of a leaf sentinel; message owned there
+	{"ErrProfileActive", app.ErrProfileActive, ""},     // re-export of a leaf sentinel; message owned there
+	{"ErrProfileExists", app.ErrProfileExists, ""},     // re-export of a leaf sentinel; message owned there
+	{"ErrProfileNotFound", app.ErrProfileNotFound, ""}, // re-export of a leaf sentinel; message owned there
 	{"ErrProfileSwitchDuringParse", app.ErrProfileSwitchDuringParse, "profiles: a parse is in flight — retry when it finishes"},
 	{"ErrRestoreInvalid", app.ErrRestoreInvalid, "restore: not a valid Recall database"},
 	{"ErrSelfUpdateUnavailable", app.ErrSelfUpdateUnavailable, "self-update unavailable on this install"},
@@ -264,7 +263,6 @@ func carvedSentinels() []carvedSentinel {
 		{"ErrProfileExists", app.ErrProfileExists, profiles.ErrProfileExists},
 		{"ErrProfileNotFound", app.ErrProfileNotFound, profiles.ErrProfileNotFound},
 		{"ErrProfileActive", app.ErrProfileActive, profiles.ErrProfileActive},
-		{"ErrProfileImmutable", app.ErrProfileImmutable, profiles.ErrProfileImmutable},
 		{"ErrInvalidProfileName", app.ErrInvalidProfileName, profiles.ErrInvalidProfileName},
 		{"ErrMoveTargetIsActive", app.ErrMoveTargetIsActive, profiles.ErrMoveTargetIsActive},
 		{"ErrMoveStrandsCandidate", app.ErrMoveStrandsCandidate, profiles.ErrMoveStrandsCandidate},

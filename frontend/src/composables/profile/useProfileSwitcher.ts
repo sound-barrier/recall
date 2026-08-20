@@ -19,7 +19,7 @@ export function useProfileSwitcher() {
   const { query: profilesQuery, profiles, active } = useProfilesData()
   // Creating and renaming a profile write to the profile registry, so they
   // ask the gate. SWITCHING deliberately does not: it is navigation, and
-  // blocking it on the read-only sample profile would strand the user
+  // blocking it on a locked state would strand the user
   // there with no way back to their own data.
   const { guardWrite } = useWriteGate()
   // Freshen the sync-readable scope for profile-scoped localStorage keys
