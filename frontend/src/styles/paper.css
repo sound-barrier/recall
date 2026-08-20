@@ -41,10 +41,13 @@
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius-md);
 
-  /* Native form controls (the note textarea, the clock input) key their
-     default chrome off color-scheme; the plate is a light surface under
-     every theme, including the three dark ones. */
-  color-scheme: light;
+  /* Native form controls (the note textarea, the clock input), scrollbars
+     and autofill key their default chrome off color-scheme. The plate
+     follows the THEME now — dark stock under the three dark palettes,
+     cream under Day — so the token carries the answer rather than this
+     rule asserting one. Hardcoding `light` here is what put light
+     textarea chrome and light scrollbars inside a dark plate. */
+  color-scheme: var(--paper-scheme);
 }
 
 .paper :focus-visible {
