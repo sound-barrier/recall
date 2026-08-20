@@ -32,6 +32,9 @@ function onSavePreset() {
       <input
         v-model="newPresetName"
         type="text"
+        spellcheck="false"
+        autocomplete="off"
+        autocorrect="off"
         class="np-presets-input"
         placeholder="Save current narrow as…"
         aria-label="Preset name"

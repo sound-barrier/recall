@@ -119,6 +119,8 @@ function onRowKeydown(index: number, e: KeyboardEvent): void {
           class="focus-text"
           type="text"
           maxlength="2000"
+          spellcheck="true"
+          autocorrect="off"
           :value="item.text"
           :disabled="blocked()"
           :title="blockedReason || undefined"

@@ -102,6 +102,8 @@ function onTitleInput(e: Event): void {
         type="text"
         :value="title"
         maxlength="120"
+        spellcheck="true"
+        autocorrect="off"
         placeholder="Name this review…"
         :disabled="blockedReason !== ''"
         :aria-describedby="showNameNudge ? 'self-sheet-name-nudge' : undefined"

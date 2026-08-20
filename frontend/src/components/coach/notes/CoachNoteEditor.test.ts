@@ -362,3 +362,26 @@ describe('CoachNoteEditor — your own voice', () => {
     expect(lastUpdate(view).matchClock).toBe('')
   })
 })
+
+describe('CoachNoteEditor — the typing itself', () => {
+  // macOS substitutes words as you type and shows a balloon over the field.
+  // A note is prose, so the useful behavior is the opposite: underline what
+  // looks wrong, offer alternatives on right-click, and never rewrite what
+  // someone actually typed.
+  it('asks to be underlined, not corrected', () => {
+    renderEditor({}, { voice: 'your' })
+    const field = screen.getByRole('textbox', { name: /note/i })
+    expect(field).toHaveAttribute('spellcheck', 'true')
+    expect(field).toHaveAttribute('autocorrect', 'off')
+  })
+
+  // A focus tag is a filing label from a small vocabulary, not a sentence.
+  // Underlining "ult_economy" is noise and correcting it is damage.
+  it('leaves the tag field out of it', async () => {
+    renderEditor()
+    await fireEvent.click(screen.getByRole('button', { name: '+ Add' }))
+    const tag = screen.getByRole('textbox', { name: 'New focus tag' })
+    expect(tag).toHaveAttribute('spellcheck', 'false')
+    expect(tag).toHaveAttribute('autocorrect', 'off')
+  })
+})
