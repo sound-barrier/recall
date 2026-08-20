@@ -1,8 +1,10 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"recall/pkg/bundle"
 	"recall/pkg/db"
@@ -78,13 +80,43 @@ func (a *App) ExportBundle(opts ExportBundleOptions) ([]byte, error) {
 // share is recognizably the same player and the coach's notes follow them
 // even after a handle change. The confirmed handle is persisted too — it
 // is what a returning notes file is matched against.
+// ErrShareNeedsReplayCode refuses a share whose matches carry no replay
+// code: a coach reviews by WATCHING the replay, and a bundle they cannot
+// load hands them nothing to review. Plain exports (backups) and the
+// player's own self-review sittings are unaffected — nothing is watched
+// remotely there.
+var ErrShareNeedsReplayCode = errors.New("share needs a replay code on every match")
+
 func (a *App) ExportShareBundle(opts ExportBundleOptions, player SharePlayer) ([]byte, error) {
 	identity, err := a.shareIdentity(player)
 	if err != nil {
 		return nil, err
 	}
+	if err := a.assertShareReplayCodes(opts.MatchKeys); err != nil {
+		return nil, err
+	}
 	opts.Player = &identity
 	return a.exportBundle(opts)
+}
+
+// assertShareReplayCodes checks every selected match carries a replay code,
+// and says how many do not — the dialog mirrors this check so a user
+// normally never reaches the 409.
+func (a *App) assertShareReplayCodes(matchKeys []string) error {
+	annotations, err := a.store.LoadAnnotations()
+	if err != nil {
+		return fmt.Errorf("load annotations for share: %w", err)
+	}
+	missing := 0
+	for _, key := range matchKeys {
+		if strings.TrimSpace(annotations[key].ReplayCode) == "" {
+			missing++
+		}
+	}
+	if missing > 0 {
+		return fmt.Errorf("%w: %d of %d selected matches have none", ErrShareNeedsReplayCode, missing, len(matchKeys))
+	}
+	return nil
 }
 
 // RecordShareReceipt writes the sent-ledger row for a share that actually

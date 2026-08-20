@@ -96,6 +96,23 @@ const {
   records,
 } = storeToRefs(matchesStore)
 
+// Share mode requires a replay code on every match going out — a coach
+// reviews by watching the replay. The modal gets the SELECTED gaps as
+// labels it can print, and the toggled-in extras (hidden / unknown) as
+// counts it weighs only while their toggle is on.
+const hasReplayCode = (r: { annotation?: { replay_code?: string } }) =>
+  (r.annotation?.replay_code ?? '').trim() !== ''
+
+const missingReplayLabels = computed(() => {
+  const byKey = new Map(records.value.map((r) => [r.match_key, r]))
+  return exportBundleSelectedKeys.value
+    .map((k) => byKey.get(k))
+    .filter((r) => r !== undefined && !hasReplayCode(r))
+    .map((r) => [r!.data?.map, r!.data?.date].filter(Boolean).join(' · ') || r!.match_key)
+})
+const hiddenMissingReplay = computed(() => hiddenRecords.value.filter((r) => !hasReplayCode(r)).length)
+const unknownMissingReplay = computed(() => unknownRecords.value.filter((r) => !hasReplayCode(r)).length)
+
 // Parse — the unsupported-engine gate, the ignored-screenshots panel, and the
 // post-run session tally toast.
 const {
@@ -251,6 +268,9 @@ const lightboxSrc = computed(() => {
     :selected-count="exportBundleSelectedKeys.length"
     :hidden-count="hiddenRecords.length"
     :unknown-count="unknownRecords.length"
+    :missing-replay="missingReplayLabels"
+    :hidden-missing-replay="hiddenMissingReplay"
+    :unknown-missing-replay="unknownMissingReplay"
     @close="closeExportBundle"
     @export="onExportBundleConfirm"
   />

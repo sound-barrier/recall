@@ -63,3 +63,19 @@ for (const width of [1024, 1440, 1920]) {
     expect(box.y + box.height).toBeGreaterThan(700)
   })
 }
+
+test('the dropdown menus open UPWARD, fully inside the viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await openList(page)
+  await page.locator('.leaf-row').first().locator('.leaf-checkbox').click()
+
+  await page.getByRole('button', { name: 'Set play mode' }).click()
+  const item = page.getByRole('menuitem', { name: 'Competitive' })
+  await expect(item).toBeVisible()
+  const box = (await item.boundingBox())!
+  expect(box.y).toBeGreaterThanOrEqual(0)
+  expect(box.y + box.height, 'menu item below the fold').toBeLessThanOrEqual(800)
+  // Upward: the menu sits ABOVE its trigger.
+  const trigger = (await page.getByRole('button', { name: 'Set play mode' }).boundingBox())!
+  expect(box.y + box.height).toBeLessThanOrEqual(trigger.y + 1)
+})

@@ -44,6 +44,11 @@ func newTestApp(t *testing.T, fs *dbtest.Fake) (*app.App, *http.ServeMux) {
 func seedMatchKeys(fs *dbtest.Fake, keys ...string) {
 	for _, key := range keys {
 		fs.Summaries = append(fs.Summaries, db.SummaryRow{Filename: key + ".png", MatchKey: key})
+		// Share mode requires a replay code on every match; the seeds carry
+		// one so the export tests exercise what they each mean to.
+		if err := fs.SetAnnotation(db.Annotation{MatchKey: key, ReplayCode: "AB12CD"}); err != nil {
+			panic(err)
+		}
 	}
 }
 
