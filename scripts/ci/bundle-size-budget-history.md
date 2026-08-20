@@ -265,3 +265,13 @@ Measured 1731092B JS / 406134B CSS. The index and room bytes ride the lazy
 Reviews chunk; the initial graph gained only the palette action, the
 ui-store hint flag and the clause — initial JS stayed under its unchanged
 340000 budget (339107B).
+
+## 2026-08 — reviews UX pass, tiers 2–3 (initial JS 340000 → 344000, total JS 1736000 → 1742000)
+
+The sent ledger + coach roster (two new routes end to end), remove-a-match
+from the desk, read-again + summary on the received card, the sitting's
+masthead bridge, and the what's-new strip. The strip is a lazy chunk gated
+from the masthead, so a dismissed pointer costs zero bytes on boot; what
+grew the initial graph is eager by nature — the palette action, the
+masthead gate, and api.ts's facades for the new routes. Measured 340821B
+initial / 1738978B total.

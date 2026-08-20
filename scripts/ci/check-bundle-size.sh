@@ -62,7 +62,13 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # bindings only while the room is open, and the room opens for a sitting as
 # well as a session. Measured 338381B — the store, its query module and the
 # SDK surface the Phase 3 bump already noted as the first-paint cost.
-: "${MAX_INITIAL_JS_BYTES:=340000}"
+# 2026-08: 340000 -> 344000 -- the reviews-UX pass's eager tail (measured
+# 340821B): the palette's "Review my last session" action + runner (the
+# palette is eager chrome), the masthead's what's-new gate (the strip itself
+# is a lazy chunk that a dismissed pointer never fetches), the ui-store
+# pick-hint flag, the reviewSet narrow clause, and the api.ts facades for
+# the two new routes (api.ts is one eager module).
+: "${MAX_INITIAL_JS_BYTES:=344000}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
@@ -207,7 +213,11 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # voice threading (measured 1731092B). The index/room bytes ride the lazy
 # Reviews chunk; what reached the initial graph is the palette action, the
 # ui-store hint flag and the narrow clause.
-: "${MAX_TOTAL_JS_BYTES:=1736000}"
+# 2026-08: 1736000 -> 1742000 -- the pass's Tier 2/3 tail: the sent ledger
+# and coach-roster queries + strips, remove-a-match from the desk, the
+# read-again surfaces, the sitting's nav-strip mode, and the lazy what's-new
+# strip (measured 1738978B).
+: "${MAX_TOTAL_JS_BYTES:=1742000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
