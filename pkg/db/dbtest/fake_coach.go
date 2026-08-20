@@ -314,6 +314,10 @@ func (f *Fake) DeleteCoachReturn(id int64) error {
 	if len(f.CoachReturns) == before {
 		return db.ErrCoachReturnUnknown
 	}
+	// received_focus_items.return_id is ON DELETE CASCADE; the Fake keeps no
+	// engine, so the cascade is spelled here.
+	f.ReceivedFocusItems = slices.DeleteFunc(f.ReceivedFocusItems,
+		func(it db.ReceivedFocusItem) bool { return it.ReturnID == id })
 	return nil
 }
 

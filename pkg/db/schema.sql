@@ -970,14 +970,24 @@ CREATE INDEX IF NOT EXISTS idx_self_review_focus_items_review
   ON self_review_focus_items (review_id, sort_order);
 -- statement-end
 
--- A coach's items as they landed here. No foreign key: they arrive from a
--- notes file, keyed by the coach and the session that wrote them, and they
--- must survive every sitting the player opens afterwards.
+-- A coach's items as they landed here. They belong to the RETURN they arrived
+-- in, and to nothing else: who sent them and when are the return's facts, read
+-- back through the join rather than copied down here.
+--
+-- The copy was worse than untidy. coach_returns is keyed on content_hash
+-- because (coach_name, session_date) is NOT unique — a coach who sends a
+-- morning file and a corrected afternoon one the same day has two returns
+-- with identical strings — and the discard deleted items by exactly that
+-- non-unique pair. Discarding the afternoon file took the morning file's
+-- items with it, statuses and all, and with no per-item deny there was no way
+-- to put them back except re-importing them as `new`.
+--
+-- ON DELETE CASCADE now IS the discard: a coach's item cannot outlive the
+-- return that carried it, and cannot die with a different one.
 CREATE TABLE IF NOT EXISTS received_focus_items (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   item_id TEXT NOT NULL UNIQUE,
-  coach_name TEXT NOT NULL,
-  session_date TEXT NOT NULL,
+  return_id INTEGER NOT NULL REFERENCES coach_returns (id) ON DELETE CASCADE,
   text TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'working', 'done')),
   sort_order INTEGER NOT NULL DEFAULT 0,
@@ -987,4 +997,7 @@ CREATE TABLE IF NOT EXISTS received_focus_items (
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_received_focus_items_status
   ON received_focus_items (status, sort_order);
+-- statement-end
+CREATE INDEX IF NOT EXISTS idx_received_focus_items_return
+  ON received_focus_items (return_id);
 -- statement-end
