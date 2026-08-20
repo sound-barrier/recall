@@ -130,18 +130,36 @@
   --shadow-rgb: 74 74 74;
   --color-scheme: light;
 
-  /* Paper on cream. Night's --paper is a near-twin of this palette's
-     --surface, so on Day the plate would vanish into the page; the
-     legal-pad yellow makes it a distinct surface, and the brand-gray edge
-     is the same bordered-card guarantee every Day card carries. The ink
-     set is inherited — one ink for every paper. Worst surface (--paper-2):
-     --ink 13.59 · --ink-dim 7.77 · --ink-faint 5.61 · --paper-accent 5.47
-     · --paper-win 6.59 (5.47 on its tint) · --paper-loss 6.05 (5.01) ·
-     --paper-draw 6.33 (5.32) · --paper-focus 5.47 · paper on ink 15.03. */
+  /* Paper on cream — the one LIGHT plate, on the one light theme. The
+     legal-pad yellow keeps it a distinct surface against this palette's
+     own --surface, and the brand-gray edge is the same bordered-card
+     guarantee every Day card carries.
+
+     The whole set is spelled out here, ink included. It used to inherit
+     the ink from the base — which worked only while the base plate was
+     also light. The base is the dark ledger stock now, so an inherited
+     ink would be light ink on cream; these values are the ones Day
+     always rendered, now stated rather than borrowed. --paper-2 is the
+     recessed field and goes one step DARKER than the plate (the light
+     direction), which keeps it the worst surface here.
+
+     Worst surface (--paper-2): --ink 13.59 · --ink-dim 7.77 ·
+     --ink-faint 5.61 · --paper-accent 5.47 · --paper-win 6.59 (5.47 on
+     its tint) · --paper-loss 6.05 (5.01) · --paper-draw 6.33 (5.32) ·
+     --paper-focus 5.47 · paper on ink 15.03. */
   --paper: #f7efd6;
   --paper-2: #efe4c0;
   --paper-rule: rgb(74 74 74 / 22%);
   --paper-edge: #4a4a4a;
+  --ink: #1f1a14;
+  --ink-dim: #4a4238;
+  --ink-faint: #5f5749;
+  --paper-accent: #8f4500;
+  --paper-win: #0a5a2a;
+  --paper-loss: #9c2537;
+  --paper-draw: #6f480e;
+  --paper-focus: #8f4500;
+  --paper-scheme: light;
 }
 
 /* DARK — sits between Day's cream and Night's near-black. Grounds
@@ -240,9 +258,12 @@
   --grid-line:    rgb(255 255 255 / 4%);
   --primary-text-on-accent: #2a1a00;
 
-  /* No --paper* overrides: the paper plate is self-contained (its own
-     ground and ink), and Night's set is already tuned for a light plate
-     on a dark page — the #2a2a2a ground here changes nothing on it. */
+  /* No --paper* overrides — and now for the right reason. The base set
+     is the dark ledger stock, tuned against the darkest page it has to
+     sit on; this palette's #2a2a2a ground is lighter than that, so the
+     plate reads as a recessed leaf of paper on a desk rather than the
+     cream card that used to be pasted here. The ink clears AA on the
+     plate by the base block's numbers, which do not move with the page. */
 }
 
 /* HIGH-CONTRAST — opt-in tournament-booth / low-vision mode. Strips
@@ -333,24 +354,34 @@
      #f35, where white sits at ~3.5:1 and black clears ~5.9:1. */
   --primary-text-on-danger: #000;
 
-  /* Paper goes to the same extremes as the rest of this palette: a white
-     plate, black ink, no dim step (hierarchy by weight, as with --text-dim
-     above), a white edge like every other border here, and a black focus
-     ring — the boosted gold accent is ~1.6:1 on white and cannot ring a
-     control on paper. --paper-accent and the verdict trio inherit; they
-     were tuned for a light ground and only gain contrast on pure white.
-     Worst surface (--paper-2): --ink 17.78 · --ink-faint 14.73 ·
-     --paper-accent 5.89 · --paper-win 7.09 (5.86 on its tint) ·
-     --paper-loss 6.50 (5.35) · --paper-draw 6.81 (5.68) · --paper-focus
-     17.78 · paper on ink 21.00. */
-  --paper: #fff;
-  --paper-2: #ececec;
-  --paper-rule: rgb(0 0 0 / 40%);
+  /* Paper goes to the same extremes as the rest of this palette, and in
+     the same DIRECTION: a black plate on a black page, white ink, no dim
+     step (hierarchy by weight, as with --text-dim above), a white edge
+     like every other border here, and a white focus ring. It used to be
+     a white plate — 21:1 either way, but a sheet of white in the middle
+     of a pure-black page was the loudest instance of the mismatch this
+     palette is supposed to be the strictest about.
+
+     The verdict trio and accent are re-picked to the light ends of their
+     ramps (inheriting the base stock's would work, but this palette
+     boosts every other hue and paper should not be the exception).
+     Worst surface is --paper (the recessed --paper-2 is darker still):
+     --ink 21.00 · --ink-faint 17.14 · --paper-accent 11.65 (9.95 on its
+     tint) · --paper-win 13.06 (11.00) · --paper-loss 10.44 (9.04) ·
+     --paper-draw 13.10 (11.02) · --paper-focus 21.00 · paper on ink
+     21.00. */
+  --paper: #000;
+  --paper-2: #0d0d0d;
+  --paper-rule: rgb(255 255 255 / 40%);
   --paper-edge: #fff;
-  --ink: #000;
-  --ink-dim: #000;
-  --ink-faint: #1a1a1a;
-  --paper-focus: #000;
+  --ink: #fff;
+  --ink-dim: #fff;
+  --ink-faint: #e8e8e8;
+  --paper-accent: #ffb066;
+  --paper-win: #7ee0a0;
+  --paper-loss: #ff9aa8;
+  --paper-draw: #f0c76e;
+  --paper-focus: #fff;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

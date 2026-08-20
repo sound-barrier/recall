@@ -32,7 +32,20 @@
     "--dps": "#ff7a5a",
     "--support": "#7dffac",
     "--identity-accent": "#c9762e",
-    "--primary-text-on-accent": "#1a0a00"
+    "--primary-text-on-accent": "#1a0a00",
+    "--paper": "#262019",
+    "--paper-2": "#1b1712",
+    "--paper-rule": "#f2ede124",
+    "--paper-edge": "#68604f",
+    "--ink": "#f2ede1",
+    "--ink-dim": "#c2bbab",
+    "--ink-faint": "#a49c8c",
+    "--paper-accent": "#f2a862",
+    "--paper-win": "#74c894",
+    "--paper-loss": "#f295a3",
+    "--paper-draw": "#ddb968",
+    "--paper-focus": "#f2a862",
+    "--paper-scheme": "dark"
   },
   "designSystem": {
     "eyebrow": {

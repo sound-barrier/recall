@@ -149,41 +149,55 @@
   --accent-text:  #F5A623;    /* same as --accent in dark mode (good contrast on dark bg) */
 
   /* ─── Paper — the coaching session's ink-on-paper surface ──────
-     The Film Room's note editor, session sheet, and the coach's note
-     block in a player's journal are written on PAPER: a light plate that
-     stays light under every theme, the way --on-dark-plate is text on a
-     plate that stays dark. It cannot borrow the surface/text tokens
-     (they flip with the theme), so it carries its own set. styles/
-     paper.css re-maps --text* / --accent-text / --win|loss|draw /
-     --hairline to these INSIDE `.paper`, so .eyebrow, .badge, .score-num
-     render on paper with no parallel rules.
+     The Film Room's note editor, session sheet, the Moments strip, the
+     shelf cards and the coach's note block in a player's journal are
+     written on PAPER. It cannot borrow the surface/text tokens (a shared
+     class rendered on paper would then read the page's palette), so it
+     carries its own set, and styles/paper.css re-maps --text* /
+     --accent-text / --win|loss|draw / --hairline to these INSIDE
+     `.paper` — so .eyebrow, .badge and .score-num render on paper with
+     no parallel rules.
 
-     Two rules for the set: --paper-accent is the Day accent-text rust,
-     never the bright --accent (1.9:1 on a light ground as type); and the
-     verdict trio is one step darker than Day's so each clears AA as text
-     on its OWN 12% tint over --paper-2, the darkest paper composite (Day's
-     values sat at 4.3–4.5:1 there).
+     The stock FOLLOWS THE THEME. It used to be one light plate under
+     every theme, on the reasoning that a plate is self-contained; in
+     practice three of the four themes are dark-grounded (night #0a0b0d,
+     dark #2a2a2a, high contrast #000) and a cream plate on each of them
+     read as a different app pasted into the page. So the base set here
+     is a DARK ledger stock for the three dark themes, and Day overrides
+     the whole set back to cream in themes.css.
 
-     Worst-surface contrast (on --paper-2), Night — Dark inherits the
-     whole set, its page ground does not touch a self-contained plate:
-       --ink 13.98 · --ink-dim 7.99 · --ink-faint 5.77 · --paper-accent
-       5.63 · --paper-win 6.78 (5.63 on its tint) · --paper-loss 6.22
-       (5.16) · --paper-draw 6.52 (5.46) · --paper-focus 5.63 (needs 3:1)
-       · paper text on an ink fill 15.57.
-     Day and high contrast override the plate values below in themes.css
-     and carry their own numbers. */
-  --paper: #f5f3ee;
-  --paper-2: #ebe7dd;
-  --paper-rule: rgb(31 26 20 / 16%);
-  --paper-edge: #c9c2b2;
-  --ink: #1f1a14;
-  --ink-dim: #4a4238;
-  --ink-faint: #5f5749;
-  --paper-accent: #8f4500;
-  --paper-win: #0a5a2a;
-  --paper-loss: #9c2537;
-  --paper-draw: #6f480e;
-  --paper-focus: #8f4500;
+     Two inversions come with the flip. --paper-2 is the RECESSED field
+     (a note textarea, a clock input): under light stock it went one
+     step darker, under dark stock it goes one step DARKER STILL than
+     the plate, the way an inset well reads in a dark UI — which also
+     makes --paper, not --paper-2, the worst surface for light ink. And
+     the verdict trio and accent are the LIGHT ends of their ramps, one
+     step brighter than the page's own, so each clears AA as text on its
+     OWN 12% tint over the plate.
+
+     Worst-surface contrast (on --paper, the lighter of the two):
+       --ink 13.80 · --ink-dim 8.43 · --ink-faint 5.92 · --paper-accent
+       8.10 (6.39 on its tint) · --paper-win 8.01 (6.35) · --paper-loss
+       7.37 (5.89) · --paper-draw 8.61 (6.71) · --paper-focus 8.10
+       (needs 3:1) · paper text on an ink fill 13.80.
+     Day and high contrast override the plate below in themes.css and
+     carry their own numbers. */
+  --paper: #262019;
+  --paper-2: #1b1712;
+  --paper-rule: rgb(242 237 225 / 14%);
+  --paper-edge: #68604f;
+  --ink: #f2ede1;
+  --ink-dim: #c2bbab;
+  --ink-faint: #a49c8c;
+  --paper-accent: #f2a862;
+  --paper-win: #74c894;
+  --paper-loss: #f295a3;
+  --paper-draw: #ddb968;
+  --paper-focus: #f2a862;
+
+  /* Native chrome inside the plate — textarea rendering, scrollbars,
+     autofill — follows the stock, not the page. paper.css reads it. */
+  --paper-scheme: dark;
 
   /* Shadow tint, as a bare `R G B` triplet so each rule keeps its OWN
      alpha: `box-shadow: 0 8px 24px rgb(var(--shadow-rgb) / 45%)`.

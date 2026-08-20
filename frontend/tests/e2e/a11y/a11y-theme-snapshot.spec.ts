@@ -67,6 +67,14 @@ async function captureStructure(page: Page, tabId: string) {
       '--win', '--loss', '--draw',
       '--tank', '--dps', '--support',
       '--identity-accent', '--primary-text-on-accent',
+      // The paper family. It was absent until the plate went dark, which
+      // meant a wholesale flip of every paper token produced ZERO snapshot
+      // diff — the guard that exists to make a palette change reviewable
+      // could not see the one surface that carries its own palette.
+      '--paper', '--paper-2', '--paper-rule', '--paper-edge',
+      '--ink', '--ink-dim', '--ink-faint',
+      '--paper-accent', '--paper-win', '--paper-loss', '--paper-draw',
+      '--paper-focus', '--paper-scheme',
     ]
     const cssTokens: Record<string, string> = {}
     for (const t of tokensOfInterest) {
