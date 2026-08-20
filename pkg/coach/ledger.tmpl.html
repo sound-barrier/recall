@@ -44,7 +44,15 @@
   .chip.focus { border: 1px solid var(--ink-dim); color: var(--ink); text-transform: uppercase; }
   .chip.extra { background: var(--paper-2); color: var(--ink-dim); }
   .clock { color: var(--ink-dim); margin-right: 0.5rem; }
-  .text { white-space: pre-wrap; margin: 0; }
+  /* Note bodies are rendered markdown (see RenderMarkdown): the blocks
+     carry their own spacing, so this no longer preserves raw newlines. */
+  .text { margin: 0; }
+  .text > :first-child { margin-top: 0; }
+  .text > :last-child { margin-bottom: 0; }
+  .text p { margin: 0 0 0.5rem; }
+  .text h3, .text h4 { font-size: 0.95rem; margin: 0.6rem 0 0.3rem; text-transform: none; letter-spacing: 0; color: var(--ink); }
+  .text ul, .text ol { margin: 0 0 0.5rem; padding-left: 1.2rem; }
+  .text li { margin: 0.1rem 0; }
   /* The moments read down the match, which is the order they are already in.
      The clock is the column the eye follows, so it is fixed-width and the
      text hangs off it. */
@@ -95,7 +103,7 @@
     {{range .ExtraTags}}<li class="chip extra">{{.}}</li>{{end}}
   </ul>
   {{end}}
-  {{if or .Text .MatchClock}}<p class="text">{{if .MatchClock}}<span class="clock mono">[{{.MatchClock}}]</span>{{end}}{{.Text}}</p>{{end}}
+  {{if or .Text .MatchClock}}<div class="text">{{if .MatchClock}}<span class="clock mono">[{{.MatchClock}}]</span>{{end}}{{.TextHTML}}</div>{{end}}
   {{if .Moments}}
   <ol class="moments">
     {{range .Moments}}

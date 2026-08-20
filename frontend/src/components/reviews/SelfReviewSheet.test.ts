@@ -14,12 +14,16 @@ function renderSheet(over: Record<string, unknown> = {}) {
 }
 
 describe('SelfReviewSheet', () => {
-  it('is the review sheet: a title to give it, the record, the tally, the summary, Finish and the way back', async () => {
+  it('is the review sheet: a title to give it, the record, the summary, Finish and the way back', async () => {
     const { emitted } = renderSheet()
     expect(screen.getByRole('complementary', { name: 'Review sheet' })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Review record' })).toHaveTextContent('2')
     expect(screen.getByText('67%')).toBeInTheDocument()
-    expect(screen.getByText('positioning')).toBeInTheDocument()
+    // No focus tally: tags are a coach's filing system and the self note
+    // carries none, so the tally half is off and only the count line stays.
+    expect(screen.queryByText('positioning')).not.toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Focus tally' })).not.toBeInTheDocument()
+    expect(screen.getByText('2 notes · 1 moment')).toBeInTheDocument()
 
     const user = userEvent.setup()
     await user.type(screen.getByRole('textbox', { name: 'Title' }), 'T')

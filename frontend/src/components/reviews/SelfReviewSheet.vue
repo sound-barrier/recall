@@ -105,7 +105,9 @@ function onTitleInput(e: Event): void {
     </div>
 
     <SheetRecord :wld="wld" :win-rate="winRate" label="Review record" />
-    <SheetFocusTally :focus-tally="focusTally" :notes-line="notesLine" />
+    <!-- Count line only: focus tags are a coach's filing system, and the
+         self note carries none, so the tally half would never fill. -->
+    <SheetFocusTally :focus-tally="focusTally" :notes-line="notesLine" :show-tally="false" />
     <SheetSummary
       id="self-review-summary"
       :summary="summary"

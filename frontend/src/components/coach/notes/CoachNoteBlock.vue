@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
+import NoteProse from '@/components/coach/notes/NoteProse.vue'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { focusTagLabel } from '@/match/coach/coach-notes'
 import type { NoteBlockView } from '@/match/coach/note-block-view'
@@ -84,9 +85,7 @@ function reopenSitting() {
       <span class="paper-chip cnb-reviewed">{{ block.status }}</span>
     </header>
 
-    <p v-if="block.text" class="cnb-text">
-      {{ block.text }}
-    </p>
+    <NoteProse v-if="block.text" class="cnb-text" :text="block.text" />
     <p v-else-if="!moments.length" class="cnb-text is-mark">
       Reviewed — nothing to add.
     </p>

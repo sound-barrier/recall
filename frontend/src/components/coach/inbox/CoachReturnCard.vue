@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import NoteProse from '@/components/coach/notes/NoteProse.vue'
 import { computed } from 'vue'
 
 import type { CoachDecisionEnum, CoachReturnItem } from '@/api-client'
@@ -78,9 +79,7 @@ function pick(decision: CoachDecisionEnum) {
     <p v-if="reviewedOnly && !note.moments?.length" class="return-card-text is-mark">
       Reviewed — nothing to add.
     </p>
-    <p v-else-if="note.text" class="return-card-text">
-      {{ note.text }}
-    </p>
+    <NoteProse v-else-if="note.text" class="return-card-text" :text="note.text" />
 
     <p v-if="note.match_clock" class="return-card-clock">
       {{ note.match_clock }}

@@ -4,6 +4,9 @@ import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { SAVE_LABEL, type CoachSaveState } from '@/components/coach/room/coach-room-props'
 import type { RoomVoice } from '@/components/coach/room/coach-room-props'
 import {
+  applyInlineMark, applyLineMark, type InlineMark, type LineMark,
+} from '@/match/markdown/note-toolbar'
+import {
   FOCUS_TAGS, focusTagLabel, noteMark, parseMatchClock, type CoachNoteDraft,
 } from '@/match/coach/coach-notes'
 
@@ -42,6 +45,7 @@ const emit = defineEmits<{
 
 const CLOCK_HINT_ID = 'coach-note-clock-hint'
 
+const noteField = useTemplateRef<HTMLTextAreaElement>('noteField')
 const clockRaw = ref(props.draft.matchClock)
 const addingTag = ref(false)
 const newTag = ref('')
@@ -75,6 +79,11 @@ const blocked = computed(() => props.blockedReason !== '')
 const notePlaceholder = computed(() => (props.voice === 'your'
   ? 'What will you do differently next time?'
   : 'What should they watch for next time?'))
+
+// A coach files notes ABOUT someone else's match, so a clock and a focus
+// tag are how they point at the moment they mean. Over your own matches the
+// Moments strip already owns both, per match — the note is prose.
+const filesUnderTags = computed(() => props.voice !== 'your')
 const switchLabel = computed(() => (props.voice === 'your' ? 'Nothing to add' : 'Reviewed'))
 const statusLine = computed(() => (blocked.value ? props.blockedReason : SAVE_LABEL[props.saveState]))
 const reviewedDisabledReason = computed(() => {
@@ -109,6 +118,54 @@ function onNoteInput(e: Event): void {
   emitDraft({ kind: 'note', text: e.target.value })
 }
 
+// The toolbar reads the live selection off the field, asks the pure helper
+// for the next (text, selection), emits the draft, and puts the caret back
+// where the helper said — the editor is controlled, so the value only
+// returns through the prop and the selection would otherwise collapse.
+function applyEdit(next: { text: string; start: number; end: number }): void {
+  emitDraft({ kind: 'note', text: next.text })
+  void nextTick(() => {
+    const field = noteField.value
+    if (!field) return
+    field.focus()
+    field.setSelectionRange(next.start, next.end)
+  })
+}
+
+function markInline(mark: InlineMark): void {
+  const field = noteField.value
+  if (!field || blocked.value) return
+  applyEdit(applyInlineMark(props.draft.text, field.selectionStart, field.selectionEnd, mark))
+}
+
+function markLine(mark: LineMark): void {
+  const field = noteField.value
+  if (!field || blocked.value) return
+  applyEdit(applyLineMark(props.draft.text, field.selectionStart, field.selectionEnd, mark))
+}
+
+// ⌘/Ctrl+B and +I, the two every text field on every platform answers.
+function onNoteKeydown(e: KeyboardEvent): void {
+  if (!(e.metaKey || e.ctrlKey) || e.altKey) return
+  const key = e.key.toLowerCase()
+  if (key !== 'b' && key !== 'i') return
+  e.preventDefault()
+  markInline(key === 'b' ? 'bold' : 'italic')
+}
+
+const TOOLBAR_INLINE: readonly { mark: InlineMark; label: string; glyph: string }[] = [
+  { mark: 'bold', label: 'Bold', glyph: 'B' },
+  { mark: 'italic', label: 'Italic', glyph: 'I' },
+  { mark: 'strike', label: 'Strikethrough', glyph: 'S' },
+]
+
+const TOOLBAR_LINE: readonly { mark: LineMark; label: string; glyph: string }[] = [
+  { mark: 'title', label: 'Title', glyph: 'H1' },
+  { mark: 'subtitle', label: 'Subheading', glyph: 'H2' },
+  { mark: 'bullet', label: 'Bulleted list', glyph: '•' },
+  { mark: 'number', label: 'Numbered list', glyph: '1.' },
+]
+
 function onClockInput(e: Event): void {
   if (!(e.target instanceof HTMLInputElement)) return
   clockRaw.value = e.target.value
@@ -139,7 +196,7 @@ function toggleReviewed(): void {
       </p>
     </div>
 
-    <div class="note-chips" role="group" aria-label="Focus tags">
+    <div v-if="filesUnderTags" class="note-chips" role="group" aria-label="Focus tags">
       <button
         v-for="tag in FOCUS_TAGS"
         :key="tag"
@@ -188,8 +245,40 @@ function toggleReviewed(): void {
     </div>
 
     <label class="eyebrow ink note-label" for="coach-note-text">Note</label>
+    <!-- Markdown, written by buttons. The value stays the plain string the
+         wire already carries; every surface that reads it renders the same
+         grammar (NoteProse / RenderMarkdown). -->
+    <div class="note-toolbar" role="toolbar" aria-label="Formatting">
+      <button
+        v-for="b in TOOLBAR_INLINE"
+        :key="b.mark"
+        type="button"
+        class="paper-chip note-tool"
+        :class="{ 'note-tool-em': b.mark === 'italic', 'note-tool-del': b.mark === 'strike' }"
+        :aria-label="b.label"
+        :disabled="blocked"
+        :title="blocked ? blockedReason : b.label"
+        @click="markInline(b.mark)"
+      >
+        {{ b.glyph }}
+      </button>
+      <span class="note-tool-sep" aria-hidden="true" />
+      <button
+        v-for="b in TOOLBAR_LINE"
+        :key="b.mark"
+        type="button"
+        class="paper-chip note-tool"
+        :aria-label="b.label"
+        :disabled="blocked"
+        :title="blocked ? blockedReason : b.label"
+        @click="markLine(b.mark)"
+      >
+        {{ b.glyph }}
+      </button>
+    </div>
     <textarea
       id="coach-note-text"
+      ref="noteField"
       class="note-text"
       rows="5"
       :value="draft.text"
@@ -197,10 +286,11 @@ function toggleReviewed(): void {
       :title="blocked ? blockedReason : undefined"
       :placeholder="notePlaceholder"
       @input="onNoteInput"
+      @keydown="onNoteKeydown"
     />
 
     <div class="note-row">
-      <div class="note-clock-cell">
+      <div v-if="filesUnderTags" class="note-clock-cell">
         <label class="eyebrow ink note-label" for="coach-note-clock">In-match clock</label>
         <input
           id="coach-note-clock"
@@ -286,6 +376,33 @@ function toggleReviewed(): void {
 .note-add { border-style: dashed; }
 
 .note-label { margin-top: 0.2rem; }
+
+/* The formatting row. Chips, not buttons with chrome — the note is a sheet
+   of paper and the tools sit on it like a stamp set. */
+.note-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.note-tool {
+  min-width: 1.9rem;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: var(--type-3xs);
+  font-weight: 700;
+}
+
+.note-tool-em { font-style: italic; }
+.note-tool-del { text-decoration: line-through; }
+
+.note-tool-sep {
+  width: 1px;
+  height: 1.1rem;
+  margin: 0 0.15rem;
+  background: var(--paper-rule);
+}
 
 .note-new-tag, .note-text, .note-clock {
   font-family: var(--body);

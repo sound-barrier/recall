@@ -210,3 +210,109 @@ describe('CoachNoteEditor — blocked from saving', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Autosaves as you write')
   })
 })
+
+// The note is prose with a small markdown toolbar, and in the PLAYER's own
+// voice it is ONLY prose: the in-match clock and the focus-tag chips belong
+// to the coach filing notes about someone else, and duplicated what the
+// Moments strip already owns per match.
+describe('CoachNoteEditor — the self voice is prose', () => {
+  it('drops the clock and the tag chips when the matches are your own', () => {
+    renderEditor({}, { voice: 'your' })
+    expect(screen.queryByLabelText('In-match clock')).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Focus tags' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'positioning' })).not.toBeInTheDocument()
+    // What stays: the prose, its toolbar, and the nothing-to-add switch.
+    expect(screen.getByRole('textbox', { name: 'Note' })).toBeInTheDocument()
+    expect(screen.getByRole('toolbar', { name: 'Formatting' })).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'Nothing to add' })).toBeInTheDocument()
+  })
+
+  it("keeps both for a coach's session", () => {
+    renderEditor({}, { voice: 'their' })
+    expect(screen.getByLabelText('In-match clock')).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Focus tags' })).toBeInTheDocument()
+    expect(screen.getByRole('toolbar', { name: 'Formatting' })).toBeInTheDocument()
+  })
+})
+
+describe('CoachNoteEditor — the formatting toolbar', () => {
+  // The editor is CONTROLLED — it renders from the draft prop and never
+  // holds one — so a toolbar test seeds the text through the prop, the way
+  // the room's store feeds it back, and only the SELECTION comes from the
+  // field.
+  function seeded(text: string) {
+    const view = renderEditor({ text }, { voice: 'your' })
+    const box = screen.getByRole('textbox', { name: 'Note' }) as HTMLTextAreaElement
+    return { view, box }
+  }
+
+  it('wraps the selection in bold', async () => {
+    const { view, box } = seeded('hold the angle')
+    box.setSelectionRange(5, 8) // "the"
+    await fireEvent.click(screen.getByRole('button', { name: 'Bold' }))
+    expect(lastUpdate(view).text).toBe('hold **the** angle')
+  })
+
+  it('wraps the selection in italic', async () => {
+    const { view, box } = seeded('hold the angle')
+    box.setSelectionRange(0, 4)
+    await fireEvent.click(screen.getByRole('button', { name: 'Italic' }))
+    expect(lastUpdate(view).text).toBe('*hold* the angle')
+  })
+
+  it('wraps the selection in strikethrough', async () => {
+    const { view, box } = seeded('chase')
+    box.setSelectionRange(0, 5)
+    await fireEvent.click(screen.getByRole('button', { name: 'Strikethrough' }))
+    expect(lastUpdate(view).text).toBe('~~chase~~')
+  })
+
+  it('unwraps a mark that is already there', async () => {
+    const { view, box } = seeded('hold **the** angle')
+    box.setSelectionRange(5, 12) // "**the**"
+    await fireEvent.click(screen.getByRole('button', { name: 'Bold' }))
+    expect(lastUpdate(view).text).toBe('hold the angle')
+  })
+
+  it('prefixes the line for a title', async () => {
+    const { view, box } = seeded('Ult timing')
+    box.setSelectionRange(0, 0)
+    await fireEvent.click(screen.getByRole('button', { name: 'Title' }))
+    expect(lastUpdate(view).text).toBe('# Ult timing')
+  })
+
+  it('a second press on a title takes it off', async () => {
+    const { view, box } = seeded('# Ult timing')
+    box.setSelectionRange(0, 0)
+    await fireEvent.click(screen.getByRole('button', { name: 'Title' }))
+    expect(lastUpdate(view).text).toBe('Ult timing')
+  })
+
+  it('replaces one line mark with another rather than stacking them', async () => {
+    const { view, box } = seeded('- angle')
+    box.setSelectionRange(0, 0)
+    await fireEvent.click(screen.getByRole('button', { name: 'Title' }))
+    expect(lastUpdate(view).text).toBe('# angle')
+  })
+
+  it('prefixes every selected line for a bulleted list', async () => {
+    const { view, box } = seeded('angle\nult\ncomms')
+    box.setSelectionRange(0, 15)
+    await fireEvent.click(screen.getByRole('button', { name: 'Bulleted list' }))
+    expect(lastUpdate(view).text).toBe('- angle\n- ult\n- comms')
+  })
+
+  it('numbers an ordered list down the selection', async () => {
+    const { view, box } = seeded('angle\nult')
+    box.setSelectionRange(0, 9)
+    await fireEvent.click(screen.getByRole('button', { name: 'Numbered list' }))
+    expect(lastUpdate(view).text).toBe('1. angle\n2. ult')
+  })
+
+  it('is disabled with the reason while writes are blocked', () => {
+    renderEditor({}, { voice: 'your', blockedReason: 'Writes are locked.' })
+    const bold = screen.getByRole('button', { name: 'Bold' })
+    expect(bold).toBeDisabled()
+    expect(bold).toHaveAccessibleDescription('Writes are locked.')
+  })
+})
