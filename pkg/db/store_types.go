@@ -407,14 +407,6 @@ type CoachNoteMoment struct {
 	UpdatedAt  string
 }
 
-// CoachSummary is the coach's one set-level note for a player ("what to work
-// on"), authored once per player and re-surfaced on every session.
-type CoachSummary struct {
-	PlayerRef int64
-	Text      string
-	UpdatedAt string
-}
-
 // CoachPlayerSummary is one roster row: a player this user has coached,
 // with enough to recognize the work.
 type CoachPlayerSummary struct {
@@ -422,7 +414,9 @@ type CoachPlayerSummary struct {
 	Handle     string
 	NoteCount  int
 	LastNoteAt string
-	Summary    string
+	// FocusItems is what this coach told that player to work on, in order —
+	// the roster's version of the set-level note it replaces.
+	FocusItems []string
 }
 
 // MatchCoachNote is a coach-RECEIVED note the local user accepted onto one

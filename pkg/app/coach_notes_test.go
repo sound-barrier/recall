@@ -25,7 +25,7 @@ func TestCoachSession_ResurfacesEarlierNotes(t *testing.T) {
 	if _, err := a.PutCoachNote(playerMatchRialto, writtenNote()); err != nil {
 		t.Fatalf("PutCoachNote: %v", err)
 	}
-	mustNoErr(t, a.PutCoachSummary(sessionSummary))
+	mustNoErr(t, a.PutCoachFocusItems([]coach.FocusItem{{ItemID: sessionFocusID, Text: sessionFocus}}))
 	mustNoErr(t, a.CloseCoachSession())
 
 	view, err := a.OpenCoachSession(payload)
@@ -33,8 +33,8 @@ func TestCoachSession_ResurfacesEarlierNotes(t *testing.T) {
 	if len(view.Notes) != 1 || view.Notes[0].MatchKey != playerMatchRialto {
 		t.Fatalf("second open notes = %+v, want the earlier note on %s", view.Notes, playerMatchRialto)
 	}
-	if view.Summary != sessionSummary {
-		t.Errorf("second open summary = %q, want %q", view.Summary, sessionSummary)
+	if len(view.FocusItems) != 1 || view.FocusItems[0].Text != sessionFocus {
+		t.Errorf("second open focus items = %+v, want %q", view.FocusItems, sessionFocus)
 	}
 	if view.CoachName != coachName {
 		t.Errorf("view coach_name = %q, want %q", view.CoachName, coachName)
@@ -110,8 +110,8 @@ func TestCoachSession_AnonymousBundleNeedsAHandleFirst(t *testing.T) {
 	if _, err := a.PutCoachNote(playerMatchRialto, writtenNote()); !errors.Is(err, coach.ErrHandleRequired) {
 		t.Errorf("PutCoachNote before a handle = %v, want coach.ErrHandleRequired", err)
 	}
-	if err := a.PutCoachSummary("anything"); !errors.Is(err, coach.ErrHandleRequired) {
-		t.Errorf("PutCoachSummary before a handle = %v, want coach.ErrHandleRequired", err)
+	if err := a.PutCoachFocusItems(nil); !errors.Is(err, coach.ErrHandleRequired) {
+		t.Errorf("PutCoachFocusItems before a handle = %v, want coach.ErrHandleRequired", err)
 	}
 	confirmed, err := a.SetCoachSessionPlayer("  Kestrel  ")
 	mustNoErr(t, err)
@@ -188,7 +188,7 @@ func TestCoachSession_NoteSurfaceNeedsASession(t *testing.T) {
 	for name, err := range map[string]error{
 		"PutCoachNote":           noteErr,
 		"DeleteCoachNote":        a.DeleteCoachNote(playerMatchRialto),
-		"PutCoachSummary":        a.PutCoachSummary("x"),
+		"PutCoachFocusItems":     a.PutCoachFocusItems(nil),
 		"SetCoachSessionPlayer":  playerErr,
 		"GetCoachSessionMatches": matchesErr,
 		"ExportCoachNotes":       exportErr,

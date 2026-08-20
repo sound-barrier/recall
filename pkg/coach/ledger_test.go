@@ -53,11 +53,26 @@ func TestRenderLedger_Smoke(t *testing.T) {
 	}
 }
 
-func TestRenderLedger_OmitsAnEmptySummaryBlock(t *testing.T) {
+func TestRenderLedger_OmitsAnEmptyFocusList(t *testing.T) {
 	f := validNotesFile()
-	f.Summary = ""
+	f.FocusItems = nil
 	if out := renderLedger(t, f); strings.Contains(out, "What to work on") {
-		t.Error("summary heading rendered for an empty summary")
+		t.Error("focus heading rendered for an empty list")
+	}
+}
+
+func TestRenderLedger_ListsEveryFocusItemInOrder(t *testing.T) {
+	f := validNotesFile()
+	f.FocusItems = []coach.FocusItem{
+		{ItemID: focusIDOne, Text: "FIRST-ITEM"},
+		{ItemID: focusIDTwo, Text: "SECOND-ITEM"},
+	}
+	out := renderLedger(t, f)
+	if !strings.Contains(out, "What to work on") {
+		t.Fatal("focus heading missing")
+	}
+	if strings.Index(out, "FIRST-ITEM") > strings.Index(out, "SECOND-ITEM") {
+		t.Error("focus items rendered out of file order")
 	}
 }
 
@@ -85,7 +100,7 @@ func TestRenderLedger_EscapesEverything(t *testing.T) {
 	f := validNotesFile()
 	f.CoachName = hostile
 	f.Player.Handle = hostile
-	f.Summary = hostile
+	f.FocusItems = []coach.FocusItem{{ItemID: focusIDOne, Text: hostile}}
 	f.Notes[0].Text = hostile
 	f.Notes[0].ExtraTags = []string{hostile}
 	f.Notes[0].Match.Map = hostile

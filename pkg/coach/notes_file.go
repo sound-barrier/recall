@@ -34,13 +34,18 @@ type NotesFile struct {
 	CoachName     string `json:"coach_name"`
 	Player        Player `json:"player"`
 	SessionDate   string `json:"session_date"`
-	Summary       string `json:"summary"`
-	Notes         []Note `json:"notes"`
+	// FocusItems is what the coach wants the player to work on, in order —
+	// the set-level conclusion of the session, as separate items so the
+	// player can acknowledge and retire each one. (It replaces a single
+	// free-text `summary`, which nothing on either side could act on.)
+	FocusItems []FocusItem `json:"focus_items"`
+	Notes      []Note      `json:"notes"`
 }
 
 const (
 	maxNameRunes    = 64
-	maxSummaryRunes = 20000
+	maxItemRunes    = 2000
+	maxFocusItems   = 50
 	maxNotesPerFile = 5000
 )
 
@@ -101,8 +106,8 @@ func validateNotesHeader(f NotesFile) error {
 	if _, err := time.Parse(time.DateOnly, f.SessionDate); err != nil {
 		return fmt.Errorf("%w: session_date %q is not YYYY-MM-DD", ErrNotesMalformed, f.SessionDate)
 	}
-	if utf8.RuneCountInString(f.Summary) > maxSummaryRunes {
-		return fmt.Errorf("%w: summary exceeds %d characters", ErrNotesMalformed, maxSummaryRunes)
+	if err := ValidateFocusItems(f.FocusItems); err != nil {
+		return fmt.Errorf("%w: %w", ErrNotesMalformed, err)
 	}
 	return nil
 }
@@ -174,4 +179,42 @@ func validateFileMoments(moments []Moment) error {
 func IsTrackedMatchKey(key string) bool {
 	k, err := match.ParseKey(key)
 	return err == nil && k.IsTracked()
+}
+
+// FocusItem is one line of "what to work on" as it travels. ItemID is the
+// coach's UUID, stable across re-exports — the player's side upserts on it,
+// so opening the same file twice updates rather than duplicates, and never
+// resets a status the player has already moved.
+type FocusItem struct {
+	ItemID string `json:"item_id"`
+	Text   string `json:"text"`
+}
+
+// ValidateFocusItems holds a focus list to the same rules wherever it comes
+// from — a live PUT from the coach's own session or a list read out of a
+// notes archive. One set of rules, so a list this build writes is a list it
+// will read back.
+func ValidateFocusItems(items []FocusItem) error {
+	if len(items) > maxFocusItems {
+		return fmt.Errorf("%w: more than %d focus_items", ErrFocusItemInvalid, maxFocusItems)
+	}
+	seen := make(map[string]bool, len(items))
+	for _, it := range items {
+		// item_id follows note_id's identity rule for the same reason: it
+		// has to survive an export/import round trip without colliding.
+		if !IsUUID(it.ItemID) {
+			return fmt.Errorf("%w: focus_items item_id %q is not a UUID", ErrFocusItemInvalid, it.ItemID)
+		}
+		if seen[it.ItemID] {
+			return fmt.Errorf("%w: duplicate focus_items item_id %q", ErrFocusItemInvalid, it.ItemID)
+		}
+		seen[it.ItemID] = true
+		if strings.TrimSpace(it.Text) == "" {
+			return fmt.Errorf("%w: a focus_items entry carries no text", ErrFocusItemInvalid)
+		}
+		if utf8.RuneCountInString(it.Text) > maxItemRunes {
+			return fmt.Errorf("%w: a focus_items entry exceeds %d characters", ErrFocusItemInvalid, maxItemRunes)
+		}
+	}
+	return nil
 }

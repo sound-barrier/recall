@@ -98,7 +98,6 @@ type Fake struct {
 	CoachNotes   map[int64]map[string]db.CoachNote
 	// Keyed by the parent note's PUBLIC id, mirroring the SQL loader.
 	CoachNoteMoments map[string][]db.CoachNoteMoment
-	CoachSummaries   map[int64]db.CoachSummary
 	MatchCoachNotes  []db.MatchCoachNote
 	CoachReturns     []db.CoachReturn
 	// The player's saved self-review sittings, keyed by review_id — match
@@ -384,7 +383,7 @@ func (f *Fake) Clear() error {
 	// match_moments, and the Fake once did not, which no assertion noticed.
 	f.MatchMoments = nil
 	// The received coach layer is match history; the authored family
-	// (CoachPlayers / CoachNotes / CoachSummaries) deliberately survives.
+	// (CoachPlayers / CoachNotes / CoachFocusItems) deliberately survives.
 	f.MatchCoachNotes = nil
 	f.CoachReturns = nil
 	f.SelfReviews = nil

@@ -307,17 +307,28 @@ func (a *App) DeleteCoachMoment(matchKey, momentID string) error {
 	return nil
 }
 
-// PutCoachSummary saves the one set-level note for the session's player
-// ("what to work on"). An empty text clears it.
-func (a *App) PutCoachSummary(text string) error {
+// PutCoachFocusItems replaces what the coach is telling this player to work
+// on, in the given order. An empty list clears it. The list is per PLAYER,
+// not per session — it re-surfaces every time that bundle is opened, which
+// is the whole point of telling someone what to work on.
+func (a *App) PutCoachFocusItems(items []coach.FocusItem) error {
 	a.coachMu.Lock()
 	defer a.coachMu.Unlock()
 	playerRef, err := a.sessionPlayerLocked()
 	if err != nil {
 		return err
 	}
-	if err := a.store.SetCoachSummary(playerRef, strings.TrimSpace(text)); err != nil {
-		return fmt.Errorf("coach: save summary: %w", err)
+	// Refuse rather than quietly dropping a row: an item the coach typed and
+	// the app silently discarded is worse than a message saying why.
+	if err := coach.ValidateFocusItems(items); err != nil {
+		return err
+	}
+	rows := make([]db.FocusItem, 0, len(items))
+	for _, it := range items {
+		rows = append(rows, db.FocusItem{ItemID: it.ItemID, Text: strings.TrimSpace(it.Text)})
+	}
+	if err := a.store.SetCoachFocusItems(playerRef, rows); err != nil {
+		return fmt.Errorf("coach: save focus items: %w", err)
 	}
 	return nil
 }
@@ -354,33 +365,42 @@ func (a *App) endCoachSession() {
 // holds coachMu.
 func (a *App) coachViewLocked(now time.Time) (coach.SessionView, error) {
 	s := a.coachSession
-	notes, summary, err := a.coachWorkLocked(s)
+	notes, focus, err := a.coachWorkLocked(s)
 	if err != nil {
 		return coach.SessionView{}, err
 	}
-	return s.View(notes, summary, a.settingsSnapshot().CoachName, now), nil
+	return s.View(notes, focus, a.settingsSnapshot().CoachName, now), nil
 }
 
 // coachWorkLocked loads what the coach has already written about this
 // player. A session with no confirmed player has nothing to load.
-func (a *App) coachWorkLocked(s *coach.Session) ([]coach.Note, string, error) {
+func (a *App) coachWorkLocked(s *coach.Session) ([]coach.Note, []coach.FocusItem, error) {
 	playerRef := s.PlayerRef()
 	if playerRef == 0 {
-		return nil, "", nil
+		return nil, nil, nil
 	}
 	stored, err := a.store.LoadCoachNotes(playerRef)
 	if err != nil {
-		return nil, "", fmt.Errorf("coach: load notes: %w", err)
+		return nil, nil, fmt.Errorf("coach: load notes: %w", err)
 	}
 	moments, err := a.store.LoadCoachNoteMoments(playerRef)
 	if err != nil {
-		return nil, "", fmt.Errorf("coach: load note moments: %w", err)
+		return nil, nil, fmt.Errorf("coach: load note moments: %w", err)
 	}
-	summary, _, err := a.store.LoadCoachSummary(playerRef)
+	items, err := a.store.LoadCoachFocusItems(playerRef)
 	if err != nil {
-		return nil, "", fmt.Errorf("coach: load summary: %w", err)
+		return nil, nil, fmt.Errorf("coach: load focus items: %w", err)
 	}
-	return coach.Notes(s, stored, moments), summary.Text, nil
+	return coach.Notes(s, stored, moments), toWireFocusItems(items), nil
+}
+
+// toWireFocusItems is the one place the store's row shape becomes the wire's.
+func toWireFocusItems(rows []db.FocusItem) []coach.FocusItem {
+	out := make([]coach.FocusItem, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, coach.FocusItem{ItemID: r.ItemID, Text: r.Text})
+	}
+	return out
 }
 
 // sessionPlayerLocked returns the confirmed player every note write hangs

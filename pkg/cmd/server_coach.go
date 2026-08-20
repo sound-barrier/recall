@@ -47,7 +47,7 @@ func registerCoachRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("DELETE /api/v1/coach/session/notes/{match_key}", handleDeleteCoachNote(a))
 	apiMux.HandleFunc("PUT /api/v1/coach/session/notes/{match_key}/moments/{moment_id}", handlePutCoachMoment(a))
 	apiMux.HandleFunc("DELETE /api/v1/coach/session/notes/{match_key}/moments/{moment_id}", handleDeleteCoachMoment(a))
-	apiMux.HandleFunc("PUT /api/v1/coach/session/summary", handlePutCoachSummary(a))
+	apiMux.HandleFunc("PUT /api/v1/coach/session/focus-items", handlePutCoachFocusItems(a))
 	apiMux.HandleFunc("POST /api/v1/coach/session/export", handleExportCoachNotes(a))
 
 	apiMux.HandleFunc("GET /api/v1/coach/returns", handleListCoachReturns(a))
@@ -218,17 +218,25 @@ func handleDeleteCoachMoment(a *app.App) http.HandlerFunc {
 	}
 }
 
-// handlePutCoachSummary saves the one set-level note for the session's
-// player ("what to work on"). An empty text clears it, so the field is
-// required but may be blank.
-func handlePutCoachSummary(a *app.App) http.HandlerFunc {
+// handlePutCoachFocusItems replaces what the coach is telling this player to
+// work on, in the given order. An empty list clears it, so the field is
+// required but may be empty.
+func handlePutCoachFocusItems(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		text, err := decodeStringBody(r, "text")
-		if err != nil {
-			writeProblem(w, r, probInvalidBody, err.Error())
+		var body struct {
+			Items *[]coach.FocusItem `json:"items"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
-		if writeError(w, r, a.PutCoachSummary(text)) {
+		// A pointer so an omitted or null `items` is a malformed body rather
+		// than a silent "clear the list" — clearing is `[]`, said out loud.
+		if body.Items == nil {
+			writeProblem(w, r, probInvalidBody, "items is required")
+			return
+		}
+		if writeError(w, r, a.PutCoachFocusItems(*body.Items)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -414,11 +422,11 @@ func decodeDecisions(r *http.Request) ([]coach.Decision, error) {
 
 // coachPlayerSummaryWire is one roster row on the wire.
 type coachPlayerSummaryWire struct {
-	ID         int64  `json:"id"`
-	Handle     string `json:"handle"`
-	NoteCount  int    `json:"note_count"`
-	LastNoteAt string `json:"last_note_at,omitempty"`
-	Summary    string `json:"summary,omitempty"`
+	ID         int64    `json:"id"`
+	Handle     string   `json:"handle"`
+	NoteCount  int      `json:"note_count"`
+	LastNoteAt string   `json:"last_note_at,omitempty"`
+	FocusItems []string `json:"focus_items,omitempty"`
 }
 
 // handleListCoachPlayers reads the roster — every player this user has
@@ -433,7 +441,7 @@ func handleListCoachPlayers(a *app.App) http.HandlerFunc {
 		for _, p := range roster {
 			wire = append(wire, coachPlayerSummaryWire{
 				ID: p.ID, Handle: p.Handle, NoteCount: p.NoteCount,
-				LastNoteAt: p.LastNoteAt, Summary: p.Summary,
+				LastNoteAt: p.LastNoteAt, FocusItems: p.FocusItems,
 			})
 		}
 		writeJSON(w, r, wire, nil)

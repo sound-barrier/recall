@@ -50,13 +50,17 @@ const reviewedByCoach = matchedit.ReviewedByCoach
 // ReturnSheet is one staged notes file as GET /coach/returns renders it:
 // the header, every note with its status, and the decisions so far.
 type ReturnSheet struct {
-	ID           int64        `json:"id"`
-	CoachName    string       `json:"coach_name"`
-	PlayerHandle string       `json:"player_handle"`
-	SessionDate  string       `json:"session_date"`
-	ImportedAt   string       `json:"imported_at"`
-	Summary      string       `json:"summary"`
-	Notes        []ReturnItem `json:"notes"`
+	ID           int64  `json:"id"`
+	CoachName    string `json:"coach_name"`
+	PlayerHandle string `json:"player_handle"`
+	SessionDate  string `json:"session_date"`
+	ImportedAt   string `json:"imported_at"`
+	// FocusItems is what the coach wants worked on, in order. They are NOT
+	// decided on like the notes below: a coach's item is active the moment
+	// the file lands, and the player acknowledges it from their focus list
+	// rather than admitting it here.
+	FocusItems []FocusItem  `json:"focus_items"`
+	Notes      []ReturnItem `json:"notes"`
 	// Decisions is keyed by note_id; a note with no entry is undecided.
 	Decisions map[string]string `json:"decisions"`
 	// Pending counts the notes still awaiting a decision (orphans excluded).
@@ -101,7 +105,9 @@ func Stage(st ReturnStore, payload []byte, localHandle string) (sheet ReturnShee
 	if err != nil {
 		return ReturnSheet{}, false, fmt.Errorf("coach: load match keys: %w", err)
 	}
-	if strings.TrimSpace(f.Summary) == "" && !anyLocalNote(f.Notes, keys) {
+	// A coach may end a session having written only the focus list, so items
+	// alone are enough to stage.
+	if len(f.FocusItems) == 0 && !anyLocalNote(f.Notes, keys) {
 		return ReturnSheet{}, false, nothingToStage(f.Notes)
 	}
 	id, err := st.InsertCoachReturn(db.CoachReturn{
@@ -176,7 +182,7 @@ func buildSheet(st ReturnStore, r db.CoachReturn, localHandle string) (ReturnShe
 	}
 	sheet := ReturnSheet{
 		ID: r.ID, CoachName: r.CoachName, PlayerHandle: r.PlayerHandle, SessionDate: r.SessionDate,
-		ImportedAt: r.ImportedAt, Summary: f.Summary,
+		ImportedAt: r.ImportedAt, FocusItems: f.FocusItems,
 		Notes:          make([]ReturnItem, 0, len(f.Notes)),
 		Decisions:      make(map[string]string, len(r.Decisions)),
 		PlayerMismatch: handlesDiffer(localHandle, r.PlayerHandle),

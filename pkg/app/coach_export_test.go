@@ -15,7 +15,7 @@ func TestExportCoachNotes_PacksTheSessionsWork(t *testing.T) {
 	if _, err := a.PutCoachNote(playerMatchRialto, writtenNote()); err != nil {
 		t.Fatalf("PutCoachNote: %v", err)
 	}
-	mustNoErr(t, a.PutCoachSummary(sessionSummary))
+	mustNoErr(t, a.PutCoachFocusItems([]coach.FocusItem{{ItemID: sessionFocusID, Text: sessionFocus}}))
 
 	name, payload, err := a.ExportCoachNotes()
 	mustNoErr(t, err)
@@ -38,8 +38,8 @@ func assertExportedNotesFile(t *testing.T, file coach.NotesFile) {
 		t.Errorf("attribution = coach %q / player %q, want %q / %q",
 			file.CoachName, file.Player.Handle, coachName, playerHandle)
 	}
-	if file.Summary != sessionSummary {
-		t.Errorf("summary = %q, want %q", file.Summary, sessionSummary)
+	if len(file.FocusItems) != 1 || file.FocusItems[0].Text != sessionFocus {
+		t.Errorf("focus items = %+v, want %q", file.FocusItems, sessionFocus)
 	}
 	if len(file.Notes) != 1 {
 		t.Fatalf("notes = %+v, want exactly one", file.Notes)

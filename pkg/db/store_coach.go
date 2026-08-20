@@ -81,12 +81,6 @@ type CoachStore interface {
 	// player, keyed by the parent note's PUBLIC id.
 	LoadCoachNoteMoments(playerRef int64) (map[string][]CoachNoteMoment, error)
 
-	// SetCoachSummary upserts the player's session summary; "" deletes it.
-	// ErrCoachPlayerUnknown when playerRef names no player.
-	SetCoachSummary(playerRef int64, text string) error
-	// LoadCoachSummary returns (summary, true) when one is stored.
-	LoadCoachSummary(playerRef int64) (CoachSummary, bool, error)
-
 	// UpsertMatchCoachNote accepts a received note onto a local match. Keyed
 	// by note_id: a repeat import updates the block in place (children
 	// replaced, accepted_at preserved) rather than adding a second one.

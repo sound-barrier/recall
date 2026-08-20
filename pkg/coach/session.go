@@ -44,14 +44,14 @@ type Session struct {
 
 // SessionView is the session as GET/POST /coach/session return it.
 type SessionView struct {
-	Player           Player `json:"player"`
-	ExportedAt       string `json:"exported_at"`
-	SessionDate      string `json:"session_date"`
-	MatchCount       int    `json:"match_count"`
-	CoachName        string `json:"coach_name"`
-	Summary          string `json:"summary"`
-	Notes            []Note `json:"notes"`
-	HandleFromBundle bool   `json:"handle_from_bundle"`
+	Player           Player      `json:"player"`
+	ExportedAt       string      `json:"exported_at"`
+	SessionDate      string      `json:"session_date"`
+	MatchCount       int         `json:"match_count"`
+	CoachName        string      `json:"coach_name"`
+	FocusItems       []FocusItem `json:"focus_items"`
+	Notes            []Note      `json:"notes"`
+	HandleFromBundle bool        `json:"handle_from_bundle"`
 }
 
 // OpenSession renders a player's bundle into a Session. A coach notes
@@ -120,9 +120,12 @@ func (s *Session) MatchContextFor(key string) *MatchContext {
 
 // View assembles the wire view of the session. session_date is the UTC
 // date of the clock passed in, so the App decides "today" once.
-func (s *Session) View(notes []Note, summary, coachName string, now time.Time) SessionView {
+func (s *Session) View(notes []Note, focus []FocusItem, coachName string, now time.Time) SessionView {
 	if notes == nil {
 		notes = []Note{}
+	}
+	if focus == nil {
+		focus = []FocusItem{}
 	}
 	return SessionView{
 		Player:           s.Player,
@@ -130,7 +133,7 @@ func (s *Session) View(notes []Note, summary, coachName string, now time.Time) S
 		SessionDate:      SessionDate(now),
 		MatchCount:       s.MatchCount(),
 		CoachName:        coachName,
-		Summary:          summary,
+		FocusItems:       focus,
 		Notes:            notes,
 		HandleFromBundle: s.HandleFromBundle,
 	}

@@ -39,7 +39,7 @@ func TestStage_WireShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, key := range []string{`"id":`, `"coach_name":"Ordo"`, `"player_handle":"Sable"`, `"session_date":"2026-08-15"`, `"imported_at":`, `"summary":`, `"notes":[{`, `"decisions":{}`, `"pending":2`, `"player_mismatch":false`,
+	for _, key := range []string{`"id":`, `"coach_name":"Ordo"`, `"player_handle":"Sable"`, `"session_date":"2026-08-15"`, `"imported_at":`, `"focus_items":[{`, `"notes":[{`, `"decisions":{}`, `"pending":2`, `"player_mismatch":false`,
 		`"note_id":"` + noteIDOne + `"`, `"match_key":"` + keyIlios + `"`, `"kind":"note"`, `"focus_tags":["positioning"]`, `"extra_tags":[]`, `"match_clock":"06:40"`, `"match":{"map":"ilios"`, `"status":"pending"`, `"status":"orphan"`} {
 		if !strings.Contains(string(b), key) {
 			t.Errorf("sheet JSON lacks %s: %s", key, b)
@@ -98,20 +98,20 @@ func TestStage_SameFileTwiceIsTheSameSheet(t *testing.T) {
 	}
 }
 
-// A coach can end a session having written only the set-level summary —
+// A coach can end a session having written only the focus list —
 // ExportNotes allows it deliberately — so the player must be able to stage
 // that file even though it names no match at all.
-func TestStage_AcceptsASummaryWithNoNotes(t *testing.T) {
+func TestStage_AcceptsFocusItemsWithNoNotes(t *testing.T) {
 	st := dbtest.New()
 	sheet := stageReturn(t, st, summaryOnlyNotes(t), "Sable")
-	if sheet.Summary != "Work on ult timing." {
-		t.Errorf("summary = %q, want the file's", sheet.Summary)
+	if len(sheet.FocusItems) != 1 || sheet.FocusItems[0].Text != "Work on ult timing." {
+		t.Errorf("focus items = %+v, want the file's", sheet.FocusItems)
 	}
 	if len(sheet.Notes) != 0 || sheet.Pending != 0 {
 		t.Errorf("sheet = %+v, want no notes and nothing pending", sheet)
 	}
 	if returns, _ := st.LoadCoachReturns(); len(returns) != 1 {
-		t.Errorf("staged returns = %d, want the summary-only file staged", len(returns))
+		t.Errorf("staged returns = %d, want the items-only file staged", len(returns))
 	}
 }
 

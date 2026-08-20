@@ -44,8 +44,8 @@ type storeLayers struct {
 // coachWork is the coach-authored family for one player — the deliberate
 // exception to byte-identity.
 type coachWork struct {
-	Notes   map[string]db.CoachNote
-	Summary db.CoachSummary
+	Notes map[string]db.CoachNote
+	Focus []db.FocusItem
 }
 
 // mustGet unwraps a (value, error) store read. Spreading the call —
@@ -84,9 +84,9 @@ func snapshotLayers(t *testing.T, a *app.App, s db.Store) storeLayers {
 
 func snapshotCoachWork(t *testing.T, s db.Store, playerRef int64) coachWork {
 	t.Helper()
-	summary, _, err := s.LoadCoachSummary(playerRef)
+	focus, err := s.LoadCoachFocusItems(playerRef)
 	mustNoErr(t, err)
-	return coachWork{Notes: mustGet(s.LoadCoachNotes(playerRef)), Summary: summary}
+	return coachWork{Notes: mustGet(s.LoadCoachNotes(playerRef)), Focus: focus}
 }
 
 // seedCoachHistory fills the coach's OWN database: their matches, every
@@ -163,12 +163,15 @@ func TestCoachSession_WritesOnlyTheCoachsOwnNotes(t *testing.T) {
 	if note.Text != writtenNote().Text {
 		t.Errorf("stored note text = %q, want %q", note.Text, writtenNote().Text)
 	}
-	if written.Summary.Text != sessionSummary {
-		t.Errorf("stored summary = %q, want %q", written.Summary.Text, sessionSummary)
+	if len(written.Focus) != 1 || written.Focus[0].Text != sessionFocus {
+		t.Errorf("stored focus items = %+v, want %q", written.Focus, sessionFocus)
 	}
 }
 
-const sessionSummary = "hold high ground longer before committing"
+const (
+	sessionFocus   = "hold high ground longer before committing"
+	sessionFocusID = "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
+)
 
 // exerciseSessionSurface drives everything a coach does in a session: read
 // the view and the reel, write a note, mark one reviewed-only, delete a
@@ -188,7 +191,7 @@ func exerciseSessionSurface(t *testing.T, a *app.App) {
 		t.Fatalf("PutCoachNote(reviewed_only): %v", err)
 	}
 	mustNoErr(t, a.DeleteCoachNote(playerMatchIlios))
-	mustNoErr(t, a.PutCoachSummary(sessionSummary))
+	mustNoErr(t, a.PutCoachFocusItems([]coach.FocusItem{{ItemID: sessionFocusID, Text: sessionFocus}}))
 	if _, _, err := a.ExportCoachNotes(); err != nil {
 		t.Fatalf("ExportCoachNotes: %v", err)
 	}

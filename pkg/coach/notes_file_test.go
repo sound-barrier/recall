@@ -10,8 +10,10 @@ import (
 )
 
 const (
-	noteIDOne = "a3f1c2d4-8e9b-4a7c-b6d5-1f2e3d4c5b6a"
-	noteIDTwo = "b7e2d3c4-9f0a-4b8d-8c1e-2a3b4c5d6e7f"
+	noteIDOne  = "a3f1c2d4-8e9b-4a7c-b6d5-1f2e3d4c5b6a"
+	noteIDTwo  = "b7e2d3c4-9f0a-4b8d-8c1e-2a3b4c5d6e7f"
+	focusIDOne = "e5f6a7b8-2c3d-4e5f-9a0b-1c2d3e4f5a6b"
+	focusIDTwo = "f6a7b8c9-3d4e-4f5a-8b1c-2d3e4f5a6b7c"
 )
 
 // validNotesFile is the smallest notes file that passes every rule.
@@ -23,7 +25,7 @@ func validNotesFile() coach.NotesFile {
 		CoachName:     "Ordo",
 		Player:        coach.Player{ID: sharePlayer().ID, Handle: "Sable"},
 		SessionDate:   "2026-08-15",
-		Summary:       "Work on ult timing.",
+		FocusItems:    []coach.FocusItem{{ItemID: focusIDOne, Text: "Work on ult timing."}},
 		Notes: []coach.Note{
 			{NoteID: noteIDOne, MatchKey: keyIlios, Kind: "note", Text: "hold high ground", FocusTags: []string{"positioning"}, ExtraTags: []string{}, MatchClock: "06:40", UpdatedAt: "2026-08-15T09:00:00Z",
 				Match: &coach.MatchContext{Map: "ilios", Hero: "ana", Result: "victory", Date: "2026-08-01", FinishedAt: "18:30"}},
@@ -38,9 +40,9 @@ func TestValidateNotesFile_AcceptsAValidFile(t *testing.T) {
 	}
 	empty := validNotesFile()
 	empty.Notes = nil
-	empty.Summary = ""
+	empty.FocusItems = nil
 	if err := coach.ValidateNotesFile(empty); err != nil {
-		t.Fatalf("a file with no notes and no summary is still well-formed: %v", err)
+		t.Fatalf("a file with no notes and no items is still well-formed: %v", err)
 	}
 	anonymous := validNotesFile()
 	anonymous.Player.ID = ""
@@ -76,7 +78,12 @@ func TestValidateNotesFile_Rejects(t *testing.T) {
 		{"player id not a uuid", func(f *coach.NotesFile) { f.Player.ID = "sable" }, coach.ErrNotesMalformed, "player.id"},
 		{"bad session date", func(f *coach.NotesFile) { f.SessionDate = "15/08/2026" }, coach.ErrNotesMalformed, "session_date"},
 		{"missing session date", func(f *coach.NotesFile) { f.SessionDate = "" }, coach.ErrNotesMalformed, "session_date"},
-		{"long summary", func(f *coach.NotesFile) { f.Summary = strings.Repeat("s", 20001) }, coach.ErrNotesMalformed, "summary"},
+		{"long focus item", func(f *coach.NotesFile) { f.FocusItems[0].Text = strings.Repeat("s", 2001) }, coach.ErrNotesMalformed, "focus_items"},
+		{"blank focus item", func(f *coach.NotesFile) { f.FocusItems[0].Text = "  " }, coach.ErrNotesMalformed, "focus_items"},
+		{"focus item id not a uuid", func(f *coach.NotesFile) { f.FocusItems[0].ItemID = "item-1" }, coach.ErrNotesMalformed, "item_id"},
+		{"duplicate focus item id", func(f *coach.NotesFile) {
+			f.FocusItems = append(f.FocusItems, coach.FocusItem{ItemID: focusIDOne, Text: "again"})
+		}, coach.ErrNotesMalformed, "item_id"},
 		{"too many notes", func(f *coach.NotesFile) { f.Notes = tooMany }, coach.ErrNotesMalformed, "5000"},
 		{"duplicate note id", func(f *coach.NotesFile) { f.Notes[1].NoteID = f.Notes[0].NoteID }, coach.ErrNotesMalformed, "note_id"},
 		{"duplicate match key", func(f *coach.NotesFile) { f.Notes[1].MatchKey = f.Notes[0].MatchKey }, coach.ErrNotesMalformed, "match_key"},
