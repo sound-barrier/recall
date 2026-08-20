@@ -17,6 +17,7 @@ import { useOWData } from '@/composables/shared/useOWData'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
 import { useExportBundle } from '@/composables/matches/useExportBundle'
+import { useShareWithCoach } from '@/composables/matches/useShareWithCoach'
 import { useParseStore } from '@/stores/parse'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -273,6 +274,16 @@ export const useMatchesStore = defineStore('matches', () => {
     onSaved: (m) => useAppStore().setNotice(m),
   })
 
+  // Sending matches to a coach — its own verb, not a mode of the export
+  // above. Every entry point hands it explicit keys; it owns everything
+  // downstream of them (the manifest, the replay-code gaps, the send).
+  const shareWithCoach = useShareWithCoach({
+    records,
+    onError: (m) => useAppStore().setErrorFromRaw(m),
+    onSaved: (m) => useAppStore().setNotice(m),
+    showMatches: showOnlyMatches,
+  })
+
   return {
     // markRaw the composable bundles: Pinia's reactive() store deep-unwraps
     // nested refs, which would turn matchesNarrow.narrowedRecords (a Ref) into
@@ -307,5 +318,19 @@ export const useMatchesStore = defineStore('matches', () => {
     closeExportBundle: exportBundle.closeExportBundle,
     onExportMatchesCSV: exportBundle.onExportMatchesCSV,
     onExportBundleConfirm: exportBundle.onExportBundleConfirm,
+
+    // Send to a coach — same-named keys so storeToRefs consumers read the
+    // composable's own vocabulary.
+    shareOpen: shareWithCoach.shareOpen,
+    shareBusy: shareWithCoach.shareBusy,
+    shareManifest: shareWithCoach.shareManifest,
+    shareMissing: shareWithCoach.shareMissing,
+    shareSummary: shareWithCoach.shareSummary,
+    shareSubject: shareWithCoach.shareSubject,
+    shareBlocked: shareWithCoach.shareBlocked,
+    requestShare: shareWithCoach.requestShare,
+    closeShare: shareWithCoach.closeShare,
+    showMissingOnMatches: shareWithCoach.showMissingOnMatches,
+    confirmShare: shareWithCoach.confirmShare,
   }
 })
