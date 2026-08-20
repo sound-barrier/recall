@@ -4,7 +4,7 @@
  * The rank-ladder chart plots ladderScore(), a synthetic tier/level/progress
  * composite whose y-axis means nothing outside this app. rank_percentile is
  * the one rank number that is ground truth straight off the screenshot, so it
- * gets a chart on a real 0–100 axis.
+ * gets a chart on a banded axis around the player's own readings.
  *
  * SPARSITY IS THE DESIGN CONSTRAINT, not an edge case. Only post-placement
  * season-4 rank screens report a percentile — 3 of 89 golden captures today —

@@ -3,7 +3,7 @@ import { TIER_ORDER, DIVISIONS_PER_TIER } from '@/match/trends/match-trends-help
 
 import { describe, it, expect, afterEach } from 'vitest'
 
-import { rankLadderOption, winrateOption, lineOption, rankDeltaOption, heatmapOption } from '@/components/matches/trends/trend-options'
+import { rankLadderOption, rankPercentileOption, winrateOption, lineOption, rankDeltaOption, heatmapOption } from '@/components/matches/trends/trend-options'
 import type { RankPoint, RankSeries, TrendSeries, WinrateGrid } from '@/match/trends/match-trends-helpers'
 
 // The shared INTERACTION spreads a bottom zoom/pan slider into every
@@ -424,5 +424,38 @@ describe('trend-options — lines with no role token', () => {
     document.documentElement.removeAttribute('style')
 
     expect(stops.map((s) => s.color)).toEqual(['rgba(128, 128, 128, 0.25)', 'rgba(128, 128, 128, 0)'])
+  })
+})
+
+// "Ranked above" reads in a BAND around the player's own readings, not the
+// full population axis: an always-Gold player lives at 20-40%, and a 0-100
+// axis flattened their entire history into a near-horizontal line. The band
+// is the data padded ±10 points, rounded outward to tens, clamped to [0,100].
+describe('rankPercentileOption — the banded axis', () => {
+  const series = (vs: number[]) => [{
+    key: 'tank', name: 'Tank',
+    points: vs.map((v, i) => ({ t: i + 1, v, matchKey: `m${i}` })),
+  }]
+
+  const axis = (vs: number[]) => {
+    const y = rankPercentileOption(series(vs) as never).yAxis as { min: number; max: number }
+    return [y.min, y.max]
+  }
+
+  it('a flat always-Gold reading gets its neighborhood, not the world', () => {
+    expect(axis([30, 30, 30])).toEqual([20, 40])
+  })
+
+  it('a moving series is padded and rounded outward to tens', () => {
+    expect(axis([57, 61])).toEqual([40, 80])
+  })
+
+  it('clamps at the population edges', () => {
+    expect(axis([95, 97])).toEqual([80, 100])
+    expect(axis([3])).toEqual([0, 20])
+  })
+
+  it('an empty series falls back to the full axis', () => {
+    expect(axis([])).toEqual([0, 100])
   })
 })
