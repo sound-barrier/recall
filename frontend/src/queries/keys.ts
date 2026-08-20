@@ -30,6 +30,7 @@ export const qk = {
   // player's data, not part of the coaching loop, and it outlives both.
   selfReviews: ['self-reviews'] as const,
   shares: ['shares'] as const,
+  coachPlayers: ['coach-players'] as const,
   system: {
     referenceData: ['system', 'reference-data'] as const,
     version:       ['system', 'version'] as const,

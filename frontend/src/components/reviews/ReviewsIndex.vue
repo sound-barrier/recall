@@ -9,7 +9,7 @@ import { latestSessionKeys } from '@/match/dossier/match-momentum-helpers'
 import { matchTime } from '@/match/match-time-helpers'
 import { groupReceivedReviews } from '@/match/reviews/reviews-helpers'
 import { shelfCard } from '@/match/reviews/shelf-helpers'
-import { useShareExportsQuery } from '@/queries/selfReview'
+import { useCoachPlayersQuery, useShareExportsQuery } from '@/queries/selfReview'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
 import { useCoachReturnsStore } from '@/stores/coachReturns'
@@ -151,6 +151,17 @@ function received02Label(r: { sessionDate: string; noteCount: number; matchKeys:
 }
 
 // ── 03 For someone else ────────────────────────────────────────────────
+// The roster: notes persist between sessions keyed by player, and until
+// this list the tab had no way to show that work ever happened.
+const rosterQuery = useCoachPlayersQuery(() => appStore.view === 'reviews')
+const roster = computed(() => rosterQuery.data.value ?? [])
+
+function rosterLine(p: { handle: string; note_count: number; last_note_at?: string }): string {
+  const notes = `${p.note_count} ${p.note_count === 1 ? 'note' : 'notes'}`
+  const last = p.last_note_at ? ` · last session ${formatPlayerDay(p.last_note_at.slice(0, 10))}` : ''
+  return `${p.handle} · ${notes}${last}`
+}
+
 function openBundle(): void {
   void coach.openBundle()
 }
@@ -395,7 +406,18 @@ function openBundle(): void {
           </div>
         </div>
       </div>
-      <p class="reviews-empty">
+      <ul v-if="roster.length" class="reviews-waiting" aria-label="Players you have coached">
+        <li v-for="p in roster" :key="p.id" class="reviews-waiting-row reviews-skipped-row">
+          <span class="reviews-waiting-line">
+            {{ rosterLine(p) }}<template v-if="p.summary"> — “{{ p.summary }}”</template>
+          </span>
+        </li>
+      </ul>
+      <p v-if="roster.length" class="reviews-empty">
+        Your notes stay with you, filed by player. Open their next bundle
+        and the notes resurface — a second session builds on the first.
+      </p>
+      <p v-else class="reviews-empty">
         No one has sent you a bundle yet — when a player shares their
         matches with you, this is where you open them.
       </p>

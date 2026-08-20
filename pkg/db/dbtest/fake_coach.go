@@ -440,3 +440,32 @@ func (f *Fake) noteExists(playerRef int64, noteID string) bool {
 	}
 	return false
 }
+
+// LoadCoachPlayers mirrors the SQL roster: every coached player with note
+// count, newest note stamp, and summary — most recently touched first
+// (never-touched players last, newest id first among them).
+func (f *Fake) LoadCoachPlayers() ([]db.CoachPlayerSummary, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]db.CoachPlayerSummary, 0, len(f.CoachPlayers))
+	for _, p := range f.CoachPlayers {
+		row := db.CoachPlayerSummary{ID: p.ID, Handle: p.Handle}
+		for _, n := range f.CoachNotes[p.ID] {
+			row.NoteCount++
+			if n.UpdatedAt > row.LastNoteAt {
+				row.LastNoteAt = n.UpdatedAt
+			}
+		}
+		if cs, ok := f.CoachSummaries[p.ID]; ok {
+			row.Summary = cs.Text
+		}
+		out = append(out, row)
+	}
+	slices.SortFunc(out, func(a, b db.CoachPlayerSummary) int {
+		if c := cmp.Compare(b.LastNoteAt, a.LastNoteAt); c != 0 {
+			return c
+		}
+		return cmp.Compare(b.ID, a.ID)
+	})
+	return out, nil
+}

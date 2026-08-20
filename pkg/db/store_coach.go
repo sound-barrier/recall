@@ -47,6 +47,10 @@ type CoachStore interface {
 	// a coach's earlier notes follow the player through an upgrade. A
 	// second player_id sharing a handle is a different player.
 	EnsureCoachPlayer(playerID, handle string) (CoachPlayer, error)
+	// LoadCoachPlayers is the roster: every player this user has coached,
+	// with note count, the newest note stamp, and the stored summary —
+	// most recently touched first.
+	LoadCoachPlayers() ([]CoachPlayerSummary, error)
 	// RenameCoachPlayer changes the display handle only. ErrCoachPlayerUnknown
 	// when id names no row.
 	RenameCoachPlayer(id int64, handle string) error

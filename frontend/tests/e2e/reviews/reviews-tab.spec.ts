@@ -222,6 +222,31 @@ test.describe('07 Reviews — the tab', () => {
     await expect(page.getByRole('dialog', { name: new RegExp(`Notes from ${COACH_NAME}`) })).toBeVisible()
   })
 
+  // 03 used to list nothing — a coach's proof of work vanished with each
+  // session even though the notes persist. The roster is that proof.
+  test('03 lists the players this user has coached', async ({ page }) => {
+    await page.route('**/api/v1/coach/players', async (route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify([
+          { id: 2, handle: 'Sable', note_count: 12, last_note_at: '2026-08-14T20:00:00Z', summary: 'Ult economy first.' },
+          { id: 1, handle: 'Kestrel', note_count: 3, last_note_at: '2026-07-01T20:00:00Z' },
+        ]),
+      })
+    })
+    await page.goto('/')
+    await tab(page).click()
+
+    const rows = panel(page).getByRole('list', { name: 'Players you have coached' }).getByRole('listitem')
+    await expect(rows).toHaveCount(2)
+    await expect(rows.nth(0)).toContainText(/Sable/)
+    await expect(rows.nth(0)).toContainText(/12 notes/)
+    await expect(rows.nth(0)).toContainText(/Ult economy first/)
+    await expect(rows.nth(1)).toContainText(/Kestrel/)
+    // The way to resume is stated, not implied.
+    await expect(panel(page).getByText(/Open their next bundle and the notes resurface/)).toBeVisible()
+  })
+
   test('hosts the film room while a coaching session is open', async ({ page }) => {
     await mockCoachSession(page, { notes: RESURFACED_NOTES, active: true })
     await pinSessionResume(page)

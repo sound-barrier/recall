@@ -1161,6 +1161,23 @@ export type MatchCoachNote = {
 };
 
 /**
+ * One roster row — a player this user has coached.
+ */
+export type CoachPlayerSummary = {
+    id: number;
+    handle: string;
+    note_count: number;
+    /**
+     * RFC3339 of the newest note; absent when none written.
+     */
+    last_note_at?: string;
+    /**
+     * The stored session summary, if one was written.
+     */
+    summary?: string;
+};
+
+/**
  * One recorded share-with-a-coach export.
  */
 export type ShareExport = {
@@ -4242,6 +4259,31 @@ export type RunDatabaseMaintenanceResponses = {
 };
 
 export type RunDatabaseMaintenanceResponse = RunDatabaseMaintenanceResponses[keyof RunDatabaseMaintenanceResponses];
+
+export type ListCoachPlayersData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/coach/players';
+};
+
+export type ListCoachPlayersErrors = {
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type ListCoachPlayersError = ListCoachPlayersErrors[keyof ListCoachPlayersErrors];
+
+export type ListCoachPlayersResponses = {
+    /**
+     * The roster.
+     */
+    200: Array<CoachPlayerSummary>;
+};
+
+export type ListCoachPlayersResponse = ListCoachPlayersResponses[keyof ListCoachPlayersResponses];
 
 export type ListShareExportsData = {
     body?: never;

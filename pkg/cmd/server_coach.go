@@ -42,6 +42,7 @@ func registerCoachRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("DELETE /api/v1/coach/session", handleCloseCoachSession(a))
 	apiMux.HandleFunc("PUT /api/v1/coach/session/player", handleSetCoachSessionPlayer(a))
 	apiMux.HandleFunc("GET /api/v1/coach/session/matches", handleGetCoachSessionMatches(a))
+	apiMux.HandleFunc("GET /api/v1/coach/players", handleListCoachPlayers(a))
 	apiMux.HandleFunc("PUT /api/v1/coach/session/notes/{match_key}", handlePutCoachNote(a))
 	apiMux.HandleFunc("DELETE /api/v1/coach/session/notes/{match_key}", handleDeleteCoachNote(a))
 	apiMux.HandleFunc("PUT /api/v1/coach/session/notes/{match_key}/moments/{moment_id}", handlePutCoachMoment(a))
@@ -409,4 +410,32 @@ func decodeDecisions(r *http.Request) ([]coach.Decision, error) {
 		out = append(out, coach.Decision{NoteID: noteID, Decision: *verdict})
 	}
 	return out, nil
+}
+
+// coachPlayerSummaryWire is one roster row on the wire.
+type coachPlayerSummaryWire struct {
+	ID         int64  `json:"id"`
+	Handle     string `json:"handle"`
+	NoteCount  int    `json:"note_count"`
+	LastNoteAt string `json:"last_note_at,omitempty"`
+	Summary    string `json:"summary,omitempty"`
+}
+
+// handleListCoachPlayers reads the roster — every player this user has
+// coached, most recently touched first.
+func handleListCoachPlayers(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		roster, err := a.ListCoachPlayers()
+		if writeError(w, r, err) {
+			return
+		}
+		wire := make([]coachPlayerSummaryWire, 0, len(roster))
+		for _, p := range roster {
+			wire = append(wire, coachPlayerSummaryWire{
+				ID: p.ID, Handle: p.Handle, NoteCount: p.NoteCount,
+				LastNoteAt: p.LastNoteAt, Summary: p.Summary,
+			})
+		}
+		writeJSON(w, r, wire, nil)
+	}
 }

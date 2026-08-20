@@ -656,3 +656,57 @@ func assertSentNewestFirst(t *testing.T, sent []db.ShareExport) {
 		t.Errorf("saved path = %q, want the recorded one", sent[0].SavedPath)
 	}
 }
+
+// The roster: every player this user has coached, with enough to recognize
+// the work — how many notes, when last touched, and the summary. Both
+// implementations agree, newest work first.
+func TestStoreContract_LoadCoachPlayersRoster(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			sable, err := s.EnsureCoachPlayer("uuid-sable", "Sable")
+			mustNoErr(t, err)
+			vex, err := s.EnsureCoachPlayer("uuid-vex", "Vex")
+			mustNoErr(t, err)
+			seedRosterNotes(t, s, sable.ID, vex.ID)
+
+			roster, err := s.LoadCoachPlayers()
+			mustNoErr(t, err)
+			if len(roster) != 2 {
+				t.Fatalf("roster = %d rows, want 2", len(roster))
+			}
+			if roster[0].Handle != "Vex" || roster[1].Handle != "Sable" {
+				t.Fatalf("order = [%s %s], want most recently touched first [Vex Sable]", roster[0].Handle, roster[1].Handle)
+			}
+			if roster[1].NoteCount != 2 || roster[0].NoteCount != 1 {
+				t.Errorf("note counts = [%d %d], want [1 2]", roster[0].NoteCount, roster[1].NoteCount)
+			}
+			if roster[1].Summary != "hold angles" {
+				t.Errorf("summary = %q, want the stored one", roster[1].Summary)
+			}
+			if roster[0].LastNoteAt == "" {
+				t.Error("LastNoteAt is empty, want the newest note stamp")
+			}
+		})
+	}
+}
+
+func seedRosterNotes(t *testing.T, s db.Store, sableRef, vexRef int64) {
+	t.Helper()
+	_, err := s.UpsertCoachNote(db.CoachNote{
+		NoteID: "n-1", PlayerRef: sableRef, MatchKey: "m-1", Kind: "note", Text: "early",
+		CreatedAt: "2026-05-01T10:00:00Z", UpdatedAt: "2026-05-01T10:00:00Z",
+	})
+	mustNoErr(t, err)
+	_, err = s.UpsertCoachNote(db.CoachNote{
+		NoteID: "n-2", PlayerRef: sableRef, MatchKey: "m-2", Kind: "note", Text: "later",
+		CreatedAt: "2026-05-02T10:00:00Z", UpdatedAt: "2026-05-02T10:00:00Z",
+	})
+	mustNoErr(t, err)
+	mustNoErr(t, s.SetCoachSummary(sableRef, "hold angles"))
+	_, err = s.UpsertCoachNote(db.CoachNote{
+		NoteID: "n-3", PlayerRef: vexRef, MatchKey: "m-9", Kind: "note", Text: "newest",
+		CreatedAt: "2026-06-01T10:00:00Z", UpdatedAt: "2026-06-01T10:00:00Z",
+	})
+	mustNoErr(t, err)
+}

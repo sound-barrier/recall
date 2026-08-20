@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/vue-query'
 import { toValue, type MaybeRefOrGetter } from 'vue'
 
-import { ListSelfReviews, ListShareExports, type SelfReview } from '@/api-client'
+import { ListCoachPlayers, ListSelfReviews, ListShareExports, type SelfReview } from '@/api-client'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 
@@ -23,6 +23,15 @@ export function useShareExportsQuery(enabled: MaybeRefOrGetter<boolean>) {
   return useQuery({
     queryKey: qk.shares,
     queryFn: ListShareExports,
+    enabled: () => toValue(enabled),
+  }, getQueryClient())
+}
+
+// The coach's roster — 03's list, same tab gate.
+export function useCoachPlayersQuery(enabled: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: qk.coachPlayers,
+    queryFn: ListCoachPlayers,
     enabled: () => toValue(enabled),
   }, getQueryClient())
 }

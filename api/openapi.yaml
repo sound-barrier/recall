@@ -2259,6 +2259,29 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/coach/players:
+    get:
+      operationId: ListCoachPlayers
+      tags: [Coaching]
+      summary: List every player this user has coached, most recently touched first
+      description: |
+        The coach's roster: one row per player whose bundle was ever opened,
+        with the note count, the newest note's stamp, and the stored
+        session summary. Notes persist between sessions — reopening the
+        player's next bundle resurfaces them — so the roster is the proof
+        of work the tab otherwise had no way to show.
+      responses:
+        "200":
+          description: The roster.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CoachPlayerSummary"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/shares:
     get:
       operationId: ListShareExports
@@ -4820,6 +4843,25 @@ components:
         accepted_at:
           type: string
           description: When the player accepted the note (RFC3339).
+
+    CoachPlayerSummary:
+      type: object
+      description: One roster row — a player this user has coached.
+      required: [id, handle, note_count]
+      properties:
+        id:
+          type: integer
+          format: int64
+        handle:
+          type: string
+        note_count:
+          type: integer
+        last_note_at:
+          type: string
+          description: RFC3339 of the newest note; absent when none written.
+        summary:
+          type: string
+          description: The stored session summary, if one was written.
 
     ShareExport:
       type: object
