@@ -18,7 +18,6 @@ function renderModal(over: {
       selectedCount:  over.selectedCount ?? 3,
       hiddenCount:    over.hiddenCount   ?? 2,
       unknownCount:   over.unknownCount  ?? 5,
-      shareIntent:    over.shareIntent   ?? false,
     },
   })
 }
@@ -132,7 +131,7 @@ describe('ExportBundleModal — emits', () => {
     const e = emitted('export')
     expect(e).toBeTruthy()
     expect(e[0]).toEqual([{
-      filename: 'my-backup.zip', includeHidden: true, includeUnknown: false, share: null,
+      filename: 'my-backup.zip', includeHidden: true, includeUnknown: false,
     }])
   })
 })
@@ -256,140 +255,43 @@ describe('ExportBundleModal — open/close lifecycle', () => {
 // Two exports leave this modal and they are not the same artifact: a plain
 // bundle is a backup, a share bundle names its player so a coach can open it
 // as a session (and a mis-clicked Import refuses it). The player has to be
-// able to tell which one they just made.
-describe('ExportBundleModal — sharing with a coach', () => {
-  const shareToggle = () => screen.getByRole('checkbox', { name: /Share with a coach/ })
-  const handleField = () => screen.getByLabelText('Your handle (required)')
-
-  it('offers a plain export by default, with no identity asked for', () => {
+// able to tell which one they just made.// Sharing left this dialog entirely — it has its own now
+// (SendToCoachModal). These are the guards that it stays gone: a checkbox
+// nobody could find is exactly how it got buried the first time.
+describe('ExportBundleModal — sharing is not its job', () => {
+  it('offers no way to share, and asks for no identity', () => {
     renderModal()
-    expect(shareToggle()).not.toBeChecked()
+    expect(screen.queryByRole('checkbox', { name: /Share with a coach/ })).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Your handle (required)')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/Message for your coach/)).not.toBeInTheDocument()
     expect(screen.getByRole('dialog', { name: 'Export bundle' })).toBeInTheDocument()
   })
 
-  // "Send matches out" on the Reviews tab and the palette's share action
-  // mean share — the dialog opens in that mode rather than making the player
-  // find the toggle, and titles itself for it.
-  it('opens already in share mode when the caller meant to share', () => {
-    renderModal({ shareIntent: true })
-    expect(shareToggle()).toBeChecked()
-    expect(handleField()).toBeInTheDocument()
-    expect(screen.getByRole('dialog', { name: 'Share with a coach' })).toBeInTheDocument()
-  })
-
-  it('asks who the coach is reviewing once share mode is on', async () => {
+  it('always offers a backup filename, never a share one', () => {
     renderModal()
-    await user().click(shareToggle())
-    expect(handleField()).toBeInTheDocument()
-    expect(screen.getByLabelText(/Message for your coach/)).toBeInTheDocument()
+    expect((screen.getByLabelText('Filename') as HTMLInputElement).value)
+      .toMatch(/^recall-bundle-\d{8}-\d{6}\.zip$/)
   })
 
-  // The default filename the modal OFFERS. What the saved file is actually
-  // called is api-platform's fallback stem, asserted in api.test.ts — this
-  // field is a suggestion the export path does not read.
-  it('renames itself, the button and the filename it offers, so the two modes cannot be confused', async () => {
-    renderModal()
-    await user().click(shareToggle())
-    expect(screen.getByRole('dialog', { name: 'Share with a coach' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Filename')).toHaveDisplayValue(/^recall-share-\d{8}-\d{6}\.zip$/)
-  })
-
-  it('will not share until the handle is filled in', async () => {
-    renderModal()
-    await user().click(shareToggle())
-    expect(screen.getByRole('button', { name: 'Share' })).toBeDisabled()
-    await user().type(handleField(), 'Sable')
-    expect(screen.getByRole('button', { name: 'Share' })).toBeEnabled()
-  })
-
-  it('emits the share identity with the request', async () => {
-    const { emitted } = renderModal({ selectedCount: 2 })
-    await user().click(shareToggle())
-    await user().type(handleField(), 'Sable')
-    await user().type(screen.getByLabelText(/Message for your coach/), 'Ult timing?')
-    await user().click(screen.getByRole('button', { name: 'Share' }))
-
-    expect(emitted('export')[0]).toEqual([expect.objectContaining({
-      includeHidden: false,
-      includeUnknown: false,
-      share: { handle: 'Sable', message: 'Ult timing?' },
-    })])
-  })
-
-  it('emits no identity for a plain export', async () => {
-    const { emitted } = renderModal({ selectedCount: 2 })
-    await user().click(hiddenToggle())
+  // A backup is for the person who made it, and their own replay codes are
+  // no business of it. The gate belongs to the coach path alone.
+  it('ignores replay codes entirely', async () => {
+    const view = renderModal()
     await user().click(submitBtn())
-
-    expect(emitted('export')[0]).toEqual([expect.objectContaining({
-      includeHidden: true,
-      includeUnknown: false,
-      share: null,
-    })])
+    expect(view.emitted('export')).toBeTruthy()
   })
 
-  it('drops back to a plain export when the modal is reopened', async () => {
-    const { rerender } = renderModal()
-    await user().click(shareToggle())
-    await rerender({ open: false, selectedCount: 3, hiddenCount: 2, unknownCount: 5 })
-    await rerender({ open: true, selectedCount: 3, hiddenCount: 2, unknownCount: 5 })
-    await nextTick()
-
-    expect(shareToggle()).not.toBeChecked()
+  it('emits no share block at all', async () => {
+    const view = renderModal()
+    await user().click(submitBtn())
+    const request = view.emitted<[Record<string, unknown>]>('export')![0]![0]
+    expect(request).not.toHaveProperty('share')
   })
 })
 
 describe('ExportBundleModal — the eyebrow', () => {
-  it('reads as prose in both modes', async () => {
+  it('files itself under Data & Export', () => {
     renderModal()
     expect(screen.getByText('Data & Export')).toBeInTheDocument()
-    await user().click(screen.getByRole('checkbox', { name: /Share with a coach/ }))
-    expect(screen.getByText('Coaching')).toBeInTheDocument()
-  })
-})
-
-// Share mode requires a replay code on every match going out — a coach
-// reviews by WATCHING the replay. The gaps disable Share with the reason
-// and the list; toggling in code-less hidden/unknown extras counts too;
-// a plain export ignores all of it.
-describe('ExportBundleModal — replay codes gate the share', () => {
-  it('refuses the share while a selected match lacks a code, and names it', async () => {
-    render(ExportBundleModal, {
-      props: {
-        open: true, selectedCount: 2, hiddenCount: 0, unknownCount: 0,
-        shareIntent: true, missingReplay: ['numbani · 2026-08-18'],
-      },
-    })
-    await fireEvent.update(screen.getByLabelText('Your handle (required)'), 'Sable')
-    expect(screen.getByTestId('export-submit')).toBeDisabled()
-    expect(screen.getByRole('alert')).toHaveTextContent(/1 of these matches has no replay/)
-    expect(screen.getByText('numbani · 2026-08-18')).toBeInTheDocument()
-  })
-
-  it('counts toggled-in extras only while their toggle is on', async () => {
-    render(ExportBundleModal, {
-      props: {
-        open: true, selectedCount: 1, hiddenCount: 2, unknownCount: 0,
-        shareIntent: true, missingReplay: [], hiddenMissingReplay: 2,
-      },
-    })
-    await fireEvent.update(screen.getByLabelText('Your handle (required)'), 'Sable')
-    expect(screen.getByTestId('export-submit')).toBeEnabled()
-    await fireEvent.click(screen.getByRole('checkbox', { name: /hidden/i }))
-    expect(screen.getByTestId('export-submit')).toBeDisabled()
-    expect(screen.getByRole('alert')).toHaveTextContent(/2 of these matches have no replay/)
-  })
-
-  it('a plain export ignores replay codes entirely', () => {
-    render(ExportBundleModal, {
-      props: {
-        open: true, selectedCount: 2, hiddenCount: 0, unknownCount: 0,
-        missingReplay: ['numbani · 2026-08-18'],
-      },
-    })
-    expect(screen.getByTestId('export-submit')).toBeEnabled()
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

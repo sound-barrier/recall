@@ -19,14 +19,14 @@ const READY = rec('m-1', 'A1B2C3')
 const BLOCKED = rec('m-2')
 
 let exportBundle: ReturnType<typeof vi.fn>
-let onError: ReturnType<typeof vi.fn>
-let onSaved: ReturnType<typeof vi.fn>
-let showMatches: ReturnType<typeof vi.fn>
+let onError: (raw: string) => void
+let onSaved: (message: string) => void
+let showMatches: (keys: string[], why: string) => void
 
 function make(records: MatchRecord[] = [READY, BLOCKED]) {
-  onError = vi.fn()
-  onSaved = vi.fn()
-  showMatches = vi.fn()
+  onError = vi.fn<(raw: string) => void>()
+  onSaved = vi.fn<(message: string) => void>()
+  showMatches = vi.fn<(keys: string[], why: string) => void>()
   const deps: ShareWithCoachDeps = {
     records: ref(records), onError, onSaved, showMatches,
   }

@@ -39,7 +39,13 @@ const database = useDatabaseStore()
 const matches = useMatchesStore()
 const ui = useUiStore()
 
-const { writesLocked, lockedTitle, lockReason, guardWrite } = useWriteGate()
+const { writesLocked, lockedTitle, lockReason, sessionActive, guardWrite } = useWriteGate()
+
+// Sending is a read, so the write gate is the wrong test — but during a
+// session the matches on screen are the COACH'S loaned corpus, and a
+// bundle of somebody else's matches signed with your handle is worse than
+// a blocked write.
+const LOANED_REASON = 'These matches are on loan — you can only send your own to a coach.'
 const { inbox } = storeToRefs(returns)
 const { records } = storeToRefs(matches)
 const selfReview = useSelfReviewStore()
@@ -151,16 +157,19 @@ const readOnlySheets = computed(() => {
 const noCoachYet = computed(() =>
   waiting.value.length === 0 && received.value.length === 0 && readOnlySheets.value.length === 0)
 
-// The count the share button carries — the narrowed set, because that is
-// exactly what sharing bundles.
-const showingCount = computed(() => matches.matchesNarrow.narrowedRecords.value.length)
+// What the send button carries — the narrowed set, because that is exactly
+// what it bundles.
+const narrowedKeys = computed(() =>
+  matches.matchesNarrow.narrowedRecords.value.map((r) => r.match_key))
+const showingCount = computed(() => narrowedKeys.value.length)
 
 function notesFromLine(count: number, coachName: string): string {
   return `${count} note${count === 1 ? '' : 's'} from ${coachName}`
 }
 
-function shareWithCoach(): void {
-  void matches.shareNarrowedWithCoach()
+function sendToCoach(): void {
+  if (sessionActive.value) return
+  matches.requestShare(narrowedKeys.value, 'narrow')
 }
 
 function openNotesFile(): void {
@@ -310,8 +319,14 @@ function openBundle(): void {
             </p>
           </div>
           <div class="setting-control">
-            <button type="button" class="btn ghost" @click="shareWithCoach">
-              Share with a coach… ({{ showingCount }} showing on Matches)
+            <button
+              type="button"
+              class="btn ghost"
+              :disabled="sessionActive"
+              :title="sessionActive ? LOANED_REASON : undefined"
+              @click="sendToCoach"
+            >
+              Send to a coach… ({{ showingCount }} showing on Matches)
             </button>
           </div>
         </div>

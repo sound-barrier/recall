@@ -103,9 +103,9 @@ describe('useCommandPalette', () => {
     it('runs each one it offers, and only what that one does', async () => {
       const { palette, matches } = await setup([rec('m1')])
       const opened: string[] = []
-      // The share runner goes through the store's one share action, so the
+      // The send runner goes through the store's one requestShare, so the
       // Reviews tab and the palette cannot drift.
-      matches.shareNarrowedWithCoach = (() => { opened.push('share') }) as never
+      matches.requestShare = (() => { opened.push('share') }) as never
       const coach = useCoachStore()
       coach.openBundle = (async () => { opened.push('open-bundle') }) as never
       const selfReview = useSelfReviewStore()
@@ -127,7 +127,7 @@ describe('useCommandPalette', () => {
     it('does nothing at all for an action it has no runner for', async () => {
       const { palette, matches } = await setup([rec('m1')])
       let touched = false
-      matches.shareNarrowedWithCoach = (() => { touched = true }) as never
+      matches.requestShare = (() => { touched = true }) as never
       const coach = useCoachStore()
       coach.openBundle = (async () => { touched = true }) as never
 

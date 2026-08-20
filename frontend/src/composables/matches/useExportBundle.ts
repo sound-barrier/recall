@@ -13,39 +13,19 @@ export interface ExportBundleDeps {
   onSaved: (message: string) => void
 }
 
-// Who a share-mode bundle is about. The stable player id is minted
-// server-side, so the player only names themselves.
-interface ExportBundleShare {
-  handle: string
-  message: string
-}
-
-/**
- * One trip through the export modal. `share` is the whole difference between
- * a backup and a bundle a coach can open as a session, so it travels with
- * the rest of the knobs rather than as a fourth positional argument.
- */
+/** One trip through the export modal. */
 export interface ExportBundleRequest {
   /** What the user typed as the destination name; '' falls back to the default. */
   filename: string
   includeHidden: boolean
   includeUnknown: boolean
-  /** null for a plain export. */
-  share: ExportBundleShare | null
 }
 
 export function useExportBundle(deps: ExportBundleDeps) {
   const exportBundleOpen = ref(false)
   const exportBundleSelectedKeys = ref<string[]>([])
-  // Whether the dialog opens already in share mode. The bulk bar's "Export
-  // bundle…" leaves the choice to the user; the Reviews tab's "Send matches
-  // out" and the palette's share action have already made it, and asking
-  // again is a checkbox the user has to find.
-  const exportBundleShareIntent = ref(false)
-
-  function onExportBundleRequest(matchKeys: string[], opts: { share?: boolean } = {}) {
+  function onExportBundleRequest(matchKeys: string[]) {
     exportBundleSelectedKeys.value = matchKeys
-    exportBundleShareIntent.value = opts.share === true
     exportBundleOpen.value = true
   }
 
@@ -69,13 +49,12 @@ export function useExportBundle(deps: ExportBundleDeps) {
         // Browser mode saves under this name; in the desktop build the
         // native save dialog is the naming affordance and owns it.
         filename: request.filename,
-        ...(request.share ? { share: request.share } : {}),
       })
       // "" means the native save dialog was dismissed — nothing was written,
       // so there is nothing to report. Otherwise say where it went: this is
       // the one action whose whole point is producing a file for somebody
       // else, and it used to finish in complete silence.
-      if (saved) deps.onSaved(request.share ? `Shared: ${saved}` : `Saved: ${saved}`)
+      if (saved) deps.onSaved(`Saved: ${saved}`)
     } catch (e) {
       deps.onError(String(e))
     } finally {
@@ -87,7 +66,6 @@ export function useExportBundle(deps: ExportBundleDeps) {
   return {
     exportBundleOpen,
     exportBundleSelectedKeys,
-    exportBundleShareIntent,
     onExportBundleRequest,
     closeExportBundle,
     onExportMatchesCSV,
