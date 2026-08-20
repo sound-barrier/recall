@@ -54,3 +54,16 @@ export function upsertSelfReview(sitting: SelfReview): void {
     return at < 0 ? [sitting, ...list] : list.map((r, i) => (i === at ? sitting : r))
   })
 }
+
+/**
+ * Mark the SENT ledger stale after a share leaves.
+ *
+ * Same reasoning as invalidateSelfReviews above, and the same bug it was
+ * written for: the query is gated on the Reviews tab being on screen, so a
+ * refetch of it is silently skipped while the tab is elsewhere — which is
+ * exactly where you are when you send matches from Matches. Without this a
+ * share did not appear in the ledger until the app restarted.
+ */
+export function invalidateShareExports(): Promise<unknown> {
+  return getQueryClient().invalidateQueries({ queryKey: qk.shares })
+}
