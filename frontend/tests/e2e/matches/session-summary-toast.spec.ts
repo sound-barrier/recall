@@ -12,7 +12,7 @@
 import type { Route } from '@playwright/test'
 
 import { test, expect } from '../_fixtures'
-import { installSSEMock, localStamp } from '../_session-sse'
+import { emitParseEvent, installSSEMock, localStamp } from '../_session-sse'
 
 function rec(minutesAgo: number, result: string, change?: number) {
   const s = localStamp(minutesAgo)
@@ -41,9 +41,7 @@ test.describe('session summary toast', () => {
     await expect(page.locator('.session-summary-toast')).toHaveCount(0)
 
     batch = [rec(90, 'victory'), rec(50, 'victory'), rec(10, 'defeat')]
-    await page.evaluate(() => {
-      ;(window as unknown as { __recallSSE: { emit: (n: string, d?: unknown) => void } }).__recallSSE.emit('parse-complete')
-    })
+    await emitParseEvent(page)
 
     const toast = page.locator('.session-summary-toast')
     await expect(toast).toBeVisible()
@@ -62,9 +60,7 @@ test.describe('session summary toast', () => {
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(batch) })
     })
-    const emit = () => page.evaluate(() => {
-      ;(window as unknown as { __recallSSE: { emit: (n: string, d?: unknown) => void } }).__recallSSE.emit('parse-complete')
-    })
+    const emit = () => emitParseEvent(page)
 
     await page.goto('/')
     await expect(page.getByRole('tab', { name: /^Matches/ })).toBeVisible()
@@ -99,9 +95,7 @@ test.describe('session summary toast', () => {
     await expect(page.getByRole('tab', { name: /^Matches/ })).toBeVisible()
 
     batch = [rec(90, 'victory', 20), rec(50, 'victory', 21), rec(10, 'defeat', -25)]
-    await page.evaluate(() => {
-      ;(window as unknown as { __recallSSE: { emit: (n: string, d?: unknown) => void } }).__recallSSE.emit('parse-complete')
-    })
+    await emitParseEvent(page)
 
     const toast = page.locator('.session-summary-toast')
     await expect(toast).toBeVisible()
@@ -130,9 +124,7 @@ test.describe('session summary toast', () => {
     await expect(page.getByRole('tab', { name: /^Matches/ })).toBeVisible()
 
     batch = [rec(50, 'victory'), rec(10, 'defeat')]
-    await page.evaluate(() => {
-      ;(window as unknown as { __recallSSE: { emit: (n: string, d?: unknown) => void } }).__recallSSE.emit('parse-complete')
-    })
+    await emitParseEvent(page)
 
     const toast = page.locator('.session-summary-toast')
     await expect(toast).toBeVisible()
@@ -155,9 +147,7 @@ test.describe('session summary toast', () => {
       { ...rec(7 * 24 * 60 + 120, 'victory') },
       { ...rec(7 * 24 * 60 + 60, 'defeat') },
     ]
-    await page.evaluate(() => {
-      ;(window as unknown as { __recallSSE: { emit: (n: string, d?: unknown) => void } }).__recallSSE.emit('parse-complete')
-    })
+    await emitParseEvent(page)
 
     await expect(page.locator('.leaf-row').first()).toBeVisible()
     await expect(page.locator('.session-summary-toast')).toHaveCount(0)

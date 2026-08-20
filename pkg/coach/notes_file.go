@@ -6,6 +6,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"recall/pkg/db"
 	"recall/pkg/match"
 )
 
@@ -107,7 +108,7 @@ func validateNotesHeader(f NotesFile) error {
 		return fmt.Errorf("%w: session_date %q is not YYYY-MM-DD", ErrNotesMalformed, f.SessionDate)
 	}
 	if err := ValidateFocusItems(f.FocusItems); err != nil {
-		return fmt.Errorf("%w: %w", ErrNotesMalformed, err)
+		return fmt.Errorf("%w: focus_items: %w", ErrNotesMalformed, err)
 	}
 	return nil
 }
@@ -190,31 +191,13 @@ type FocusItem struct {
 	Text   string `json:"text"`
 }
 
-// ValidateFocusItems holds a focus list to the same rules wherever it comes
-// from — a live PUT from the coach's own session or a list read out of a
-// notes archive. One set of rules, so a list this build writes is a list it
-// will read back.
+// ValidateFocusItems holds a focus list to its rules. Delegates to the
+// store's, which owns them — a list this build writes has to be one it
+// will read back, and that only holds with one rule set.
 func ValidateFocusItems(items []FocusItem) error {
-	if len(items) > maxFocusItems {
-		return fmt.Errorf("%w: more than %d focus_items", ErrFocusItemInvalid, maxFocusItems)
-	}
-	seen := make(map[string]bool, len(items))
+	rows := make([]db.FocusItem, 0, len(items))
 	for _, it := range items {
-		// item_id follows note_id's identity rule for the same reason: it
-		// has to survive an export/import round trip without colliding.
-		if !IsUUID(it.ItemID) {
-			return fmt.Errorf("%w: focus_items item_id %q is not a UUID", ErrFocusItemInvalid, it.ItemID)
-		}
-		if seen[it.ItemID] {
-			return fmt.Errorf("%w: duplicate focus_items item_id %q", ErrFocusItemInvalid, it.ItemID)
-		}
-		seen[it.ItemID] = true
-		if strings.TrimSpace(it.Text) == "" {
-			return fmt.Errorf("%w: a focus_items entry carries no text", ErrFocusItemInvalid)
-		}
-		if utf8.RuneCountInString(it.Text) > maxItemRunes {
-			return fmt.Errorf("%w: a focus_items entry exceeds %d characters", ErrFocusItemInvalid, maxItemRunes)
-		}
+		rows = append(rows, db.FocusItem{ItemID: it.ItemID, Text: it.Text})
 	}
-	return nil
+	return db.ValidateFocusItems(rows)
 }

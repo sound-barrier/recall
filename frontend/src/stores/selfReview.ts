@@ -13,6 +13,7 @@ import { useReviewDrafts } from '@/composables/coach/useReviewDrafts'
 import { momentSaveKey } from '@/match/coach/coach-moments'
 import { savableItems } from '@/match/reviews/focus-items'
 import { getQueryClient } from '@/queries/client'
+import { invalidateFocus } from '@/queries/focus'
 import { qk } from '@/queries/keys'
 import { invalidateSelfReviews, upsertSelfReview, useSelfReviewsQuery } from '@/queries/selfReview'
 import { useAppStore } from '@/stores/app'
@@ -180,6 +181,10 @@ export const useSelfReviewStore = defineStore('selfReview', () => {
     const saving = savableItems(items)
     queueSave(FOCUS_SAVE_KEY, async () => {
       upsertSelfReview(await SetSelfReviewFocusItems(id, saving))
+      // The band on 07 and the session readout both read GET /focus, whose
+      // staleTime is Infinity — without this they show the list as it was
+      // when first read, so a sitting's conclusions never appear at all.
+      await invalidateFocus()
     })
   }
 

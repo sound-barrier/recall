@@ -68,10 +68,20 @@ function remove(index: number): void {
   focusRow(Math.max(0, index - 1))
 }
 
+/**
+ * Reorder, and keep the finger on the button. Sending focus to the row's
+ * text field instead made moving an item three places up read ↑ Tab ↑ Tab ↑
+ * rather than ↑↑↑ — and these are buttons rather than a drag handle
+ * precisely because they answer to a keyboard.
+ */
 function move(index: number, delta: number): void {
   if (blocked()) return
   emit('update', moveBy(props.items, index, delta))
-  focusRow(index + delta)
+  const direction = delta < 0 ? 'up' : 'down'
+  void nextTick(() => {
+    document.querySelector<HTMLButtonElement>(
+      `[aria-label="Move item ${index + delta + 1} ${direction}"]`)?.focus()
+  })
 }
 
 /**
@@ -97,8 +107,10 @@ function onRowKeydown(index: number, e: KeyboardEvent): void {
 
 <template>
   <div class="sheet-block">
-    <p :id="`${id}-label`" class="eyebrow ink">{{ label }}</p>
-    <ul class="focus-list">
+    <p :id="`${id}-label`" class="eyebrow ink">
+      {{ label }}
+    </p>
+    <ul class="focus-list" :aria-labelledby="`${id}-label`">
       <li v-for="(item, i) in items" :key="item.item_id" class="focus-row">
         <span class="focus-mark" aria-hidden="true">•</span>
         <input
@@ -110,7 +122,7 @@ function onRowKeydown(index: number, e: KeyboardEvent): void {
           :value="item.text"
           :disabled="blocked()"
           :title="blockedReason || undefined"
-          :aria-label="`What to work on, item ${i + 1}`"
+          :aria-label="`${label}, item ${i + 1}`"
           :placeholder="i === 0 ? placeholder : ''"
           @input="onInput(i, $event)"
           @keydown="onRowKeydown(i, $event)"

@@ -2,12 +2,12 @@ package app_test
 
 import (
 	"errors"
-	"recall/pkg/db"
 	"strings"
 	"testing"
 
 	"recall/pkg/app"
 	"recall/pkg/coach"
+	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
 	"recall/pkg/match"
 	"recall/pkg/matchedit"

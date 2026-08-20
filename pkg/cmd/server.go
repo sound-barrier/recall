@@ -131,33 +131,6 @@ func decodeRequiredString(r *http.Request, field string) (string, error) {
 	return v, nil
 }
 
-// decodeStringBody is decodeRequiredString's sibling for the fields whose
-// EMPTY value is meaningful — "" clears the coaching summary and unsets the
-// coach name, so a blank string is a legal write rather than a malformed
-// body. Absent, null, and non-string values are still 400-shaped errors:
-// the spec declares each field required and non-nullable.
-func decodeStringBody(r *http.Request, field string) (string, error) {
-	body := map[string]json.RawMessage{}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		return "", fmt.Errorf("body must be {%q:\"...\"}", field)
-	}
-	raw, ok := body[field]
-	if !ok {
-		return "", fmt.Errorf("%s is required", field)
-	}
-	// encoding/json unmarshals `null` into a string as a no-op — no error,
-	// value untouched — so without this guard an explicit null would read
-	// as "" and quietly perform the clear the empty string means.
-	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
-		return "", fmt.Errorf("%s must be a string, not null", field)
-	}
-	var v string
-	if err := json.Unmarshal(raw, &v); err != nil {
-		return "", fmt.Errorf("%s must be a string", field)
-	}
-	return v, nil
-}
-
 // decodeRequiredStringArray decodes a required `type: array` body
 // field whose items are strings. Rejects `null` and `[null, ...]`
 // shapes that Go's default decoder otherwise accepts as nil / "".
@@ -176,7 +149,7 @@ func decodeRequiredStringArray(field string, raw json.RawMessage) ([]string, err
 	return derefStringArray(field, in)
 }
 
-// decodeOptionalBool is decodeStringBody's boolean sibling, for fields
+// decodeOptionalBool is decodeRequiredString's boolean sibling, for fields
 // that the OpenAPI spec declares as `type: boolean` with a default.
 // Absent field → default-zero (false) + no error. Explicit `null` is
 // a schema violation (boolean is non-nullable in OpenAPI 3.1 unless

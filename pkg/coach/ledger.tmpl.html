@@ -50,8 +50,10 @@
   .said { display: flex; align-items: baseline; gap: 0.1rem; }
   .said .clock { flex: none; }
   .said .text { flex: 1; min-width: 0; }
-  .focus { margin: 0; padding-left: 1.2rem; }
-  .focus li { margin: 0.25rem 0; }
+  /* Scoped to the list: a bare `.focus` also matched every `chip focus`
+     pill below, taking its padding and its item margin. */
+  .focus-list { margin: 0; padding-left: 1.2rem; }
+  .focus-list li { margin: 0.25rem 0; }
   /* Note bodies are rendered markdown (see RenderMarkdown): the blocks
      carry their own spacing, so this no longer preserves raw newlines. */
   .text { margin: 0; }
@@ -90,7 +92,7 @@
 {{if .FocusItems}}
 <section class="summary">
   <h2>What to work on</h2>
-  <ol class="focus">
+  <ol class="focus-list">
     {{range .FocusItems}}<li>{{.Text}}</li>{{end}}
   </ol>
 </section>

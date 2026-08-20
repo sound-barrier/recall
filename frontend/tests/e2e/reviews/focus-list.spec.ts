@@ -71,7 +71,7 @@ test.describe("07 Reviews — what you're working on", () => {
 
     const row = band(page).getByRole('listitem').first()
     await expect(row).toContainText('new')
-    await row.getByRole('button', { name: 'Accept' }).click()
+    await row.getByRole('button', { name: /^Accept/ }).click()
 
     await expect.poll(() => focus.moves).toEqual([
       { itemID: FROM_COACH.item_id, status: 'working' },
@@ -79,14 +79,14 @@ test.describe("07 Reviews — what you're working on", () => {
     // The band refetches, so the acknowledged row loses both its badge and
     // its Accept without a reload.
     await expect(row).not.toContainText('new')
-    await expect(row.getByRole('button', { name: 'Accept' })).toHaveCount(0)
+    await expect(row.getByRole('button', { name: /^Accept/ })).toHaveCount(0)
   })
 
   test('an item you wrote yourself is never offered an Accept', async ({ page }) => {
     await mockFocus(page, [FROM_SELF])
     await openTab(page)
-    await expect(band(page).getByRole('button', { name: 'Accept' })).toHaveCount(0)
-    await expect(band(page).getByRole('button', { name: 'Got this' })).toBeVisible()
+    await expect(band(page).getByRole('button', { name: /^Accept/ })).toHaveCount(0)
+    await expect(band(page).getByRole('button', { name: /^Got this/ })).toBeVisible()
   })
 
   // There is no deny. Nothing on this band refuses an item a coach sent.
@@ -103,7 +103,7 @@ test.describe("07 Reviews — what you're working on", () => {
     await openTab(page)
 
     await band(page).getByRole('listitem').nth(1)
-      .getByRole('button', { name: 'Got this' }).click()
+      .getByRole('button', { name: /^Got this/ }).click()
 
     await expect.poll(() => focus.moves).toEqual([
       { itemID: FROM_SELF.item_id, status: 'done' },

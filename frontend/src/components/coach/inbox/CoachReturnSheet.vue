@@ -90,7 +90,9 @@ useModalFocusTrap(open, {
           Notes from {{ coachName }}
         </h2>
         <section v-if="focusItems.length" class="return-focus" aria-labelledby="return-focus-head">
-          <p id="return-focus-head" class="eyebrow ink">What to work on</p>
+          <p id="return-focus-head" class="eyebrow ink">
+            What to work on
+          </p>
           <!-- No Skip, and no per-item decision. A coach's items are live
                the moment the file is staged; they are already in "What
                you're working on" and are acknowledged there. A player can
@@ -263,6 +265,7 @@ useModalFocusTrap(open, {
   padding-top: 0.6rem;
   border-top: 1px solid var(--paper-rule);
 }
+
 .return-focus {
   display: flex;
   flex-direction: column;

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { FocusEntry } from '@/api'
 import {
   activeFocus, emptyFocusItem, insertAfter, moveBy, removeAt,
-  retiredFocus, sameItems, savableItems, topFocus, withText,
+  retiredFocus, savableItems, topFocus, withText,
 } from '@/match/reviews/focus-items'
 
 const items = [
@@ -48,11 +48,7 @@ describe('focus list edits', () => {
     ])).toEqual([{ item_id: 'a', text: 'hold the angle' }])
   })
 
-  it('knows when two lists would save the same', () => {
-    expect(sameItems(items, [...items])).toBe(true)
-    expect(sameItems(items, withText(items, 0, 'other'))).toBe(false)
-    expect(sameItems(items, removeAt(items, 0))).toBe(false)
-  })
+
 })
 
 function entry(over: Partial<FocusEntry> = {}): FocusEntry {

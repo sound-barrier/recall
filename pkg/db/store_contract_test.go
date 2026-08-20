@@ -834,3 +834,87 @@ func assertReceivedFocusItems(t *testing.T, s db.Store) {
 		t.Error("SetFocusItemStatus(denied) succeeded — there is no deny")
 	}
 }
+
+// Deleting a sitting takes its focus items with it. The SQL store gets that
+// from ON DELETE CASCADE with the pragma on; the Fake has to do it by hand,
+// and a fake that forgets is worse than no fake — a test would pass here and
+// fail in production.
+func TestStoreContract_DeletingASittingTakesItsFocusItems(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			reviewID := writeSitting(t, s)
+			mustNoErr(t, s.SetSelfReviewFocusItems(reviewID, []db.FocusItem{
+				{ItemID: "s-gone", Text: "goes with it"},
+			}))
+
+			mustNoErr(t, s.DeleteSelfReview(reviewID))
+
+			byReview, err := s.LoadAllSelfReviewFocusItems()
+			mustNoErr(t, err)
+			if len(byReview[reviewID]) != 0 {
+				t.Errorf("items survived the sitting: %+v", byReview[reviewID])
+			}
+		})
+	}
+}
+
+// Discarding a staged return unlands what it put on the player's list. It is
+// the ONLY way a coach's item ever leaves — there is no per-item deny — so
+// without it an archive imported by mistake is permanent.
+func TestStoreContract_DiscardingAnArchiveUnlandsItsFocusItems(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			for _, it := range []db.ReceivedFocusItem{
+				{ItemID: "r-1", Text: "from ordo", CoachName: "Ordo", SessionDate: "2026-08-18"},
+				{ItemID: "r-2", Text: "from wren", CoachName: "Wren", SessionDate: "2026-08-18"},
+			} {
+				mustNoErr(t, s.UpsertReceivedFocusItem(it))
+			}
+
+			mustNoErr(t, s.DeleteReceivedFocusItemsFrom("Ordo", "2026-08-18"))
+
+			left, err := s.LoadReceivedFocusItems()
+			mustNoErr(t, err)
+			// Only that archive's — a second coach on the same date stays.
+			if len(left) != 1 || left[0].ItemID != "r-2" {
+				t.Errorf("left = %+v, want only Wren's item", left)
+			}
+		})
+	}
+}
+
+// A focus list is replaced wholesale on every autosave, so an item's
+// created_at has to survive the wipe — otherwise every item's birthday moves
+// each time the list around it is edited.
+func TestStoreContract_ReplacingAListKeepsEachItemsBirthday(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			player, err := s.EnsureCoachPlayer("uuid-birthday", "Sable")
+			mustNoErr(t, err)
+			mustNoErr(t, s.SetCoachFocusItems(player.ID, []db.FocusItem{
+				{ItemID: "b-1", Text: "first", CreatedAt: "2026-01-01T00:00:00Z"},
+			}))
+			first, err := s.LoadCoachFocusItems(player.ID)
+			mustNoErr(t, err)
+
+			// A later edit that adds a row must not restamp the old one.
+			mustNoErr(t, s.SetCoachFocusItems(player.ID, []db.FocusItem{
+				{ItemID: "b-1", Text: "first, reworded"},
+				{ItemID: "b-2", Text: "second"},
+			}))
+			after, err := s.LoadCoachFocusItems(player.ID)
+			mustNoErr(t, err)
+
+			if len(after) != 2 {
+				t.Fatalf("items = %+v, want two", after)
+			}
+			if after[0].CreatedAt != first[0].CreatedAt {
+				t.Errorf("created_at moved: %q -> %q", first[0].CreatedAt, after[0].CreatedAt)
+			}
+			assertRFC3339(t, "CreatedAt", after[1].CreatedAt)
+		})
+	}
+}

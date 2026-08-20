@@ -7,6 +7,7 @@ import {
 } from '@/api-client'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { getQueryClient } from '@/queries/client'
+import { invalidateFocus } from '@/queries/focus'
 import { removeCoachReturn, upsertCoachReturn, useCoachReturnsQuery } from '@/queries/coach'
 import { qk } from '@/queries/keys'
 import { useAppStore } from '@/stores/app'
@@ -78,11 +79,19 @@ export const useCoachReturnsStore = defineStore('coachReturns', () => {
     returnSheet.value = null
   }
 
-  /** Open the sheet an import just staged — it came back with the POST. */
+  /**
+   * Open the sheet an import just staged — it came back with the POST.
+   *
+   * The server has ALREADY landed the archive's focus items (staging is
+   * what makes a coach's items live), so the player's list is stale the
+   * moment this returns — and the sheet it opens says "these are already
+   * on your list", which had better be true.
+   */
   function stageImportedNotes(sheet: CoachReturnSheet): void {
     const staged = withPending(sheet)
     upsertCoachReturn(staged)
     returnSheet.value = staged
+    void invalidateFocus()
   }
 
   // Merge the verdicts into the cached sheet rather than re-reading it: the
@@ -119,6 +128,9 @@ export const useCoachReturnsStore = defineStore('coachReturns', () => {
       await DeleteCoachReturn(id)
       removeCoachReturn(id)
       returnSheet.value = null
+      // Discarding takes the archive's focus items back off the list — the
+      // one way a coach's item ever leaves it, since there is no deny.
+      await invalidateFocus()
     } catch (e) {
       useAppStore().setErrorFromRaw(String(e))
     }

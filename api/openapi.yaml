@@ -75,7 +75,8 @@ tags:
     description: |
       The player's own saved review sittings — sit down with a set of your
       own matches and review them the way a coach would: per-match notes
-      with focus tags, timestamped moments, a set-level summary. Named,
+      with focus tags, timestamped moments, a list of what to work on.
+      Named,
       dated, listable, reopenable. Each note lands on its match as a block
       the moment it is written; finishing marks every member match reviewed
       by self (where a coach has not already).
@@ -2266,8 +2267,8 @@ paths:
       summary: List every player this user has coached, most recently touched first
       description: |
         The coach's roster: one row per player whose bundle was ever opened,
-        with the note count, the newest note's stamp, and the stored
-        session summary. Notes persist between sessions — reopening the
+        with the note count, the newest note's stamp, and what they are
+        being told to work on. Notes persist between sessions — reopening the
         player's next bundle resurfaces them — so the roster is the proof
         of work the tab otherwise had no way to show.
       responses:
@@ -2453,9 +2454,10 @@ paths:
         manifest/data.json or notes.json) are rejected with `400`;
         semantic failures — an unsupported schema, a bundle a player
         shared FOR coaching (open it as a session instead), a coaching
-        session in progress, a notes file with nothing to show (no
-        summary AND no note about a match in this history) — with `409`.
-        A notes file carrying only a session summary IS stageable.
+        session in progress, a notes file with nothing to show (no focus
+        items AND no note about a match in this history) — with `409`.
+        A notes file carrying only a focus list IS stageable, and staging
+        lands those items on the player's list right away.
         Existing data is left untouched in both rejection paths.
 
         For a full-fidelity backup/restore (every table, including edits
@@ -2828,8 +2830,8 @@ paths:
 
         Refuses rather than shipping something unattributable: `404` with
         no session open, `409` without a coach name in Settings, before the
-        player's handle is confirmed, or when there is no note and no
-        summary yet.
+        player's handle is confirmed, or when nothing has been written —
+        no note and no focus item.
       responses:
         "200":
           description: |
@@ -3110,10 +3112,11 @@ paths:
     put:
       operationId: UpdateSelfReview
       tags: [Self review]
-      summary: Rename the sitting or rewrite its summary
+      summary: Rename the sitting
       description: |
-        Replaces the title and the set-level summary ("what to work on").
-        Both are trimmed; `400` past their bounds. Returns the sitting.
+        Replaces the title, trimmed; `400` past its bound. Returns the
+        sitting. What the sitting CONCLUDED is a list of its own —
+        `PUT /api/v1/self-reviews/{review_id}/focus-items`.
       requestBody:
         required: true
         content:
@@ -4713,7 +4716,7 @@ components:
         The open coaching session as the Film Room renders it: who it is
         about, when the bundle was exported, and everything the coach has
         written about this player so far.
-      required: [player, exported_at, session_date, match_count, coach_name, summary, notes, handle_from_bundle]
+      required: [player, exported_at, session_date, match_count, coach_name, focus_items, notes, handle_from_bundle]
       properties:
         player:
           $ref: "#/components/schemas/CoachPlayer"
@@ -4811,7 +4814,7 @@ components:
       description: |
         One staged notes archive on the player's side: the header, every
         note with its status, and the decisions recorded so far.
-      required: [id, coach_name, player_handle, session_date, imported_at, summary, notes, decisions, pending, player_mismatch]
+      required: [id, coach_name, player_handle, session_date, imported_at, focus_items, notes, decisions, pending, player_mismatch]
       properties:
         id:
           type: integer

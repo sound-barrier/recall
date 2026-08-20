@@ -30,7 +30,7 @@ func PutNote(s Store, reviewID, matchKey string, in coach.NoteInput) (Note, erro
 		ExtraTags:  normalized.ExtraTags,
 	})
 	if err != nil {
-		return Note{}, mapStoreErr(err)
+		return Note{}, MapStoreErr(err)
 	}
 	return noteFromRow(saved), nil
 }
@@ -71,7 +71,7 @@ func PutMoment(s Store, reviewID, matchKey, momentID string, in matchedit.Moment
 		SortOrder:  sortOrderFor(existing, momentID),
 	})
 	if err != nil {
-		return Moment{}, mapStoreErr(err)
+		return Moment{}, MapStoreErr(err)
 	}
 	return momentFromRow(saved), nil
 }

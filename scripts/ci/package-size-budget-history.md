@@ -65,3 +65,9 @@ a folder silently regrows what it just shed.
 | 2026-08-19 | reviews-ux | `frontend/src/components/app` | 14 → 15 | `WhatsNewStrip.vue`: the one-time feature pointer (app chrome beside the banners); its gate composable rides `composables/app`, under budget. |
 | 2026-08-19 | reviews-ux | `frontend/tests/e2e/app` | 14 → 15 | `whats-new.spec.ts`: the strip is shell chrome on every view, so its spec sits with the shell's. |
 | 2026-08-20 | bulk-bar-float | `frontend/tests/e2e/matches` | 25 → 26 | `bulk-bar-layout.spec.ts`: the floating bar's geometry contract — rows must not move when it appears; every button inside at 1024/1440/1920. |
+| 2026-08-20 | review-surfaces | `pkg/db` | 32 → 33 | `store_focus_items.go`: the three tables behind "what to work on" (coach-authored, the player's own sitting, and what a coach sent), replacing the single free-text `coach_session_summaries`. |
+| 2026-08-20 | review-surfaces | `pkg/app` | 48 → 49 | `focus.go`: the player's assembled list — the one read spanning two coaching families, and the ordering (coach first, newest-first) two UI surfaces must agree on. |
+| 2026-08-20 | review-surfaces | `pkg/cmd` | 20 → 21 | `server_focus.go`: the `/api/v1/focus` endpoint group — read the whole list, move one item along it. |
+| 2026-08-20 | review-surfaces | `frontend/src/components/dashboard/widgets` | 44 → 45 | `FocusNowWidget.vue`: one more tile; the first here that reads server state rather than the dossier, because the focus list is about the player, not the narrowed set. |
+| 2026-08-20 | review-surfaces | `frontend/tests/e2e` | 12 → 13 | `_session-sse.ts`: the faked parse event stream + local-date stamps, extracted once a second spec (the focus nudge) needed what the session tally already had. |
+| 2026-08-20 | review-surfaces | `frontend/tests/e2e/matches` | 26 → 27 | `focus-nudge.spec.ts`: the third parse-driven toast, beside the session tally and the tilt nudge. |

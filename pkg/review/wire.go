@@ -1,13 +1,6 @@
 package review
 
-import (
-	"fmt"
-	"strings"
-	"unicode/utf8"
-
-	"recall/pkg/coach"
-	"recall/pkg/db"
-)
+import "recall/pkg/db"
 
 // The sitting as the API renders it. The shapes mirror the coach's session
 // wire (coach.Note / coach.Moment) on purpose: the room's editor and desk are
@@ -114,36 +107,9 @@ func focusItemsFromRows(rows []db.FocusItem) []FocusItem {
 	return out
 }
 
-// MaxFocusItemRunes bounds one line of what to work on: a sentence, not an
-// essay — the essay is the note.
-const MaxFocusItemRunes = 2000
-
-// MaxFocusItems bounds the list. A sitting that concluded fifty things
-// concluded nothing.
-const MaxFocusItems = 50
-
-// ValidateFocusItems holds the player's own list to the same rules a
-// coach's list answers to (coach.ValidateFocusItems): a UUID item_id,
-// unique, non-blank text within the bound.
+// ValidateFocusItems holds the player's own list to its rules. Delegates:
+// pkg/db owns the rule set, because pkg/coach and pkg/bundle write the same
+// tables and two rule sets that merely agree today are two that drift.
 func ValidateFocusItems(items []db.FocusItem) error {
-	if len(items) > MaxFocusItems {
-		return fmt.Errorf("%w: more than %d focus items", ErrTitleInvalid, MaxFocusItems)
-	}
-	seen := make(map[string]bool, len(items))
-	for _, it := range items {
-		if !coach.IsUUID(it.ItemID) {
-			return fmt.Errorf("%w: focus item_id %q is not a UUID", ErrTitleInvalid, it.ItemID)
-		}
-		if seen[it.ItemID] {
-			return fmt.Errorf("%w: duplicate focus item_id %q", ErrTitleInvalid, it.ItemID)
-		}
-		seen[it.ItemID] = true
-		if strings.TrimSpace(it.Text) == "" {
-			return fmt.Errorf("%w: a focus item carries no text", ErrTitleInvalid)
-		}
-		if utf8.RuneCountInString(it.Text) > MaxFocusItemRunes {
-			return fmt.Errorf("%w: a focus item exceeds %d characters", ErrTitleInvalid, MaxFocusItemRunes)
-		}
-	}
-	return nil
+	return db.ValidateFocusItems(items)
 }

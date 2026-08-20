@@ -15,8 +15,8 @@ import (
 // It refuses rather than shipping something unattributable:
 // coach.ErrNoSession with none open, coach.ErrCoachNameRequired without a
 // name in Settings, coach.ErrHandleRequired before the player is
-// confirmed, and coach.ErrNothingToExport when there is no note and no
-// summary yet.
+// confirmed, and coach.ErrNothingToExport when there is nothing written —
+// no note and no focus item.
 func (a *App) ExportCoachNotes() (name string, payload []byte, err error) {
 	a.coachMu.RLock()
 	defer a.coachMu.RUnlock()

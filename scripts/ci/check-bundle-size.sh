@@ -217,7 +217,14 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # and coach-roster queries + strips, remove-a-match from the desk, the
 # read-again surfaces, the sitting's nav-strip mode, and the lazy what's-new
 # strip (measured 1738978B).
-: "${MAX_TOTAL_JS_BYTES:=1742000}"
+# 2026-08: 1742000 -> 1760000 -- the review-surfaces pass: two markdown
+# renderers (the note grammar in TS, mirroring pkg/coach for the ledger),
+# the note toolbar, the shared focus-list editor and its pure edits, the
+# band on 07, the session nudge, the focus-now widget, the focus query,
+# and the SDK surface for four new routes (measured 1755696B). All but
+# api.ts and the nudge ride lazy chunks — initial JS moved 340821B ->
+# 342983B, still under its own line.
+: "${MAX_TOTAL_JS_BYTES:=1760000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
@@ -246,7 +253,11 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # 2026-08: 406000 -> 409000 -- the reviews-UX pass: the index's start block
 # and received-card title face, the card's ink rail marks + armed-warning
 # body, the pick-hint strip (measured 406134B).
-: "${MAX_TOTAL_CSS_BYTES:=409000}"
+# 2026-08: 409000 -> 415000 -- the review-surfaces pass: the focus-list
+# editor rows and their tool chips, the band on 07 (rows, provenance,
+# the retired fold), the session nudge toast, the focus-now widget, and
+# the ledger's flexed clock row (measured 412644B).
+: "${MAX_TOTAL_CSS_BYTES:=415000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never

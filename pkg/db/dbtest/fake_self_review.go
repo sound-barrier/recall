@@ -71,6 +71,11 @@ func (f *Fake) DeleteSelfReview(reviewID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	delete(f.SelfReviews, reviewID)
+	// self_review_focus_items.review_id is ON DELETE CASCADE and the pragma
+	// is on, so the SQL store loses these with the parent. A fake that kept
+	// them would let a test pass here and fail there, which is what makes a
+	// corner-cutting fake worse than no fake.
+	delete(f.SelfReviewFocusItems, reviewID)
 	return nil
 }
 

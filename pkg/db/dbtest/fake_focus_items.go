@@ -13,10 +13,21 @@ import (
 // a re-landed coach item keeps the status the player moved it to, and a
 // status change finds an item in either player-side family by id alone.
 
-func stampFocus(items []db.FocusItem) []db.FocusItem {
+// stampFocus mirrors the SQL store's replacement: sort_order is the index,
+// and an item already in the list keeps the created_at it was born with —
+// the replacement is wholesale, so without `born` every autosave would move
+// every item's birthday to now.
+func stampFocus(items, born []db.FocusItem) []db.FocusItem {
+	wasBorn := make(map[string]string, len(born))
+	for _, it := range born {
+		wasBorn[it.ItemID] = it.CreatedAt
+	}
 	now := time.Now().UTC().Format("2006-01-02T15:04:05Z")
 	out := make([]db.FocusItem, 0, len(items))
 	for i, it := range items {
+		if it.CreatedAt == "" {
+			it.CreatedAt = wasBorn[it.ItemID]
+		}
 		if it.CreatedAt == "" {
 			it.CreatedAt = now
 		}
@@ -44,7 +55,7 @@ func (f *Fake) SetCoachFocusItems(playerRef int64, items []db.FocusItem) error {
 	if f.CoachFocusItems == nil {
 		f.CoachFocusItems = map[int64][]db.FocusItem{}
 	}
-	stamped := stampFocus(items)
+	stamped := stampFocus(items, f.CoachFocusItems[playerRef])
 	// The coach's authored list carries no status — mirror the SQL columns.
 	for i := range stamped {
 		stamped[i].Status = ""
@@ -68,7 +79,7 @@ func (f *Fake) SetSelfReviewFocusItems(reviewID string, items []db.FocusItem) er
 	if f.SelfReviewFocusItems == nil {
 		f.SelfReviewFocusItems = map[string][]db.FocusItem{}
 	}
-	stamped := stampFocus(items)
+	stamped := stampFocus(items, f.SelfReviewFocusItems[reviewID])
 	for i := range stamped {
 		stamped[i].Status = focusStatusOr(stamped[i].Status, db.FocusWorking)
 	}
@@ -161,4 +172,18 @@ func (f *Fake) SetFocusItemStatus(itemID, status string) error {
 		return nil
 	}
 	return db.ErrFocusItemUnknown
+}
+
+func (f *Fake) DeleteReceivedFocusItemsFrom(coachName, sessionDate string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	kept := f.ReceivedFocusItems[:0]
+	for _, it := range f.ReceivedFocusItems {
+		if it.CoachName == coachName && it.SessionDate == sessionDate {
+			continue
+		}
+		kept = append(kept, it)
+	}
+	f.ReceivedFocusItems = kept
+	return nil
 }

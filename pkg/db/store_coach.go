@@ -189,3 +189,29 @@ func loadChildValuesByID(q querier, query string, args []any, assign func(parent
 	}
 	return rows.Err()
 }
+
+// IsUUID reports whether s is the canonical 8-4-4-4-12 hex form
+// (case-insensitive). Shape only — version and variant bits are not
+// checked, because ids from other builds are opaque keys here.
+func IsUUID(s string) bool {
+	if len(s) != 36 {
+		return false
+	}
+	for i, r := range s {
+		switch i {
+		case 8, 13, 18, 23:
+			if r != '-' {
+				return false
+			}
+		default:
+			if !isHexRune(r) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func isHexRune(r rune) bool {
+	return ('0' <= r && r <= '9') || ('a' <= r && r <= 'f') || ('A' <= r && r <= 'F')
+}
