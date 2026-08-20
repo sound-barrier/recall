@@ -5114,6 +5114,11 @@ components:
       properties:
         item_id:
           type: string
+          # The server checks the canonical 8-4-4-4-12 hex shape and refuses
+          # anything else with a 400, so the schema has to say so — an
+          # unconstrained `string` here made every generated empty id a
+          # "schema-compliant request the API rejected".
+          pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           description: |
             A UUID minted client-side and stable across export and import —
             the identity rule `note_id` already follows, and what lets a
@@ -5162,6 +5167,12 @@ components:
         items:
           type: array
           maxItems: 50
+          # The rows are a set: item_id is UNIQUE in every table this lands
+          # in, so the same item twice is a 400. JSON Schema cannot say
+          # "unique BY item_id", but it can say the rows are distinct, which
+          # is true and is what keeps a fuzzer from generating fifty copies
+          # of one row and calling the refusal a drift.
+          uniqueItems: true
           items:
             $ref: "#/components/schemas/FocusItem"
 
