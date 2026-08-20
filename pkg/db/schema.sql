@@ -71,7 +71,9 @@ CREATE TABLE IF NOT EXISTS summary_screenshots (
   playlist TEXT NOT NULL DEFAULT '',
   hero TEXT NOT NULL DEFAULT '',
   hero_raw TEXT NOT NULL DEFAULT '',
-  result TEXT NOT NULL DEFAULT '',
+  -- '' when the banner did not read; the trio otherwise. CHECKed like its
+  -- user_match_data twin, because the IMPORT path validates neither.
+  result TEXT NOT NULL DEFAULT '' CHECK (result IN ('', 'victory', 'defeat', 'draw')),
   final_score TEXT NOT NULL DEFAULT '',
   date TEXT NOT NULL DEFAULT '',
   finished_at TEXT NOT NULL DEFAULT '',
@@ -145,7 +147,7 @@ CREATE TABLE IF NOT EXISTS teams_screenshots (
   -- Queue format inferred from players-per-team on the teams:
   -- 'role' (5v5) or 'open' (6v6); '' when the count couldn't be read.
   -- A user-set match_queue annotation overrides this at read time.
-  queue_type TEXT NOT NULL DEFAULT '',
+  queue_type TEXT NOT NULL DEFAULT '' CHECK (queue_type IN ('', 'role', 'open')),
   -- Parser output vintage that produced this row (parser.Generation). NULL =
   -- written before the column existed, which is stale by definition. Drives the
   -- "these matches would gain data from a Re-parse All" count; see
@@ -225,7 +227,7 @@ CREATE TABLE IF NOT EXISTS rank_screenshots (
   -- a match that genuinely moved nothing.
   rank_progress INTEGER,
   change_percent INTEGER,
-  result TEXT NOT NULL DEFAULT '',
+  result TEXT NOT NULL DEFAULT '' CHECK (result IN ('', 'victory', 'defeat', 'draw')),
   -- Modifier-row text this release's vocabulary could not account for.
   --
   -- ONE COLUMN, not a child table, which bends "a new repeating-group dimension
@@ -793,7 +795,14 @@ CREATE TABLE IF NOT EXISTS match_coach_note_moments (
   moment_id TEXT NOT NULL,
   match_clock TEXT NOT NULL,
   text TEXT NOT NULL,
-  focus_tag TEXT NOT NULL DEFAULT '',
+  -- The sibling vocabulary, spelled out rather than trusted. notes_file.go
+  -- validates every moment through IsFocusTag, but bundle.Import hands the
+  -- moment straight to the writer, and the tag then escapes through
+  -- GET /matches in violation of the CoachFocusTagEnum the API publishes.
+  focus_tag TEXT NOT NULL DEFAULT '' CHECK (focus_tag IN (
+    '', 'positioning', 'ult_economy', 'target_priority', 'cooldowns',
+    'hero_pick', 'comms', 'mechanics', 'mental'
+  )),
   sort_order INTEGER NOT NULL DEFAULT 0,
   -- Unique WITHIN the block, the same constraint its authored twin carries:
   -- the id comes from a file another machine wrote, so it is not a namespace
