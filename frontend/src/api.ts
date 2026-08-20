@@ -30,6 +30,7 @@ import type {
   CoachNoteInput,
   CoachReturnSheet,
   CoachSessionView,
+  CoachPlayerSummary,
   SelfReview,
   SelfReviewNote,
   ShareExport,
@@ -73,6 +74,7 @@ export type {
   CoachSessionView,
   MatchCoachNote,
   MatchSelfReviewNote,
+  CoachPlayerSummary,
   SelfReview,
   ShareExport,
   SelfReviewNote,
@@ -732,6 +734,11 @@ export function GetSelfReview(reviewID: string): Promise<SelfReview> {
 
 export function UpdateSelfReview(reviewID: string, title: string, summary: string): Promise<SelfReview> {
   return unwrap(sdk.updateSelfReview({ path: { review_id: reviewID }, body: { title, summary } }))
+}
+
+/** The coach's roster — every player this user has coached, newest work first. */
+export function ListCoachPlayers(): Promise<CoachPlayerSummary[]> {
+  return unwrap(sdk.listCoachPlayers())
 }
 
 /** The sent ledger — every share-with-a-coach export, newest first. */

@@ -415,6 +415,16 @@ type CoachSummary struct {
 	UpdatedAt string
 }
 
+// CoachPlayerSummary is one roster row: a player this user has coached,
+// with enough to recognize the work.
+type CoachPlayerSummary struct {
+	ID         int64
+	Handle     string
+	NoteCount  int
+	LastNoteAt string
+	Summary    string
+}
+
 // MatchCoachNote is a coach-RECEIVED note the local user accepted onto one
 // of their own matches. NoteID is the coach's UUID, so importing the same
 // notes file twice upserts rather than duplicates. Blocks accumulate per

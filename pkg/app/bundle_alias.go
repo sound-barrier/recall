@@ -103,6 +103,12 @@ func (a *App) ListShareExports() ([]db.ShareExport, error) {
 	return a.store.ListShareExports()
 }
 
+// ListCoachPlayers reads the roster — every player this user has coached,
+// most recently touched first. The Reviews tab's 03 section.
+func (a *App) ListCoachPlayers() ([]db.CoachPlayerSummary, error) {
+	return a.store.LoadCoachPlayers()
+}
+
 // exportBundle is the shared aggregate-then-pack tail of both export modes.
 func (a *App) exportBundle(opts ExportBundleOptions) ([]byte, error) {
 	recs, err := a.GetMatchResults()

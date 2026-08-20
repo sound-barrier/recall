@@ -405,3 +405,34 @@ func (s *SQLStore) LoadCoachNoteMoments(playerRef int64) (map[string][]CoachNote
 	}
 	return out, nil
 }
+
+// LoadCoachPlayers is the roster — every coached player, most recently
+// touched first. A player with zero notes (ensured but never written about)
+// still lists: the coach met them, and the row says the work is empty.
+func (s *SQLStore) LoadCoachPlayers() ([]CoachPlayerSummary, error) {
+	rows, err := s.db.Query(`
+		SELECT
+			p.id,
+			p.handle,
+			COUNT(n.id),
+			COALESCE(MAX(n.updated_at), ''),
+			COALESCE(cs.text, '')
+		FROM coach_players AS p
+		LEFT JOIN coach_notes AS n ON n.player_ref = p.id
+		LEFT JOIN coach_session_summaries AS cs ON cs.player_ref = p.id
+		GROUP BY p.id
+		ORDER BY MAX(n.updated_at) DESC NULLS LAST, p.id DESC`)
+	if err != nil {
+		return nil, fmt.Errorf("load coach players: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	out := []CoachPlayerSummary{}
+	for rows.Next() {
+		var r CoachPlayerSummary
+		if err := rows.Scan(&r.ID, &r.Handle, &r.NoteCount, &r.LastNoteAt, &r.Summary); err != nil {
+			return nil, fmt.Errorf("scan coach player summary: %w", err)
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
