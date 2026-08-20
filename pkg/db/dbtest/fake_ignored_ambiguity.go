@@ -147,10 +147,85 @@ func (f *Fake) ResolveAmbiguous(filename, ambiguousMatchKey, newMatchKey string)
 		return false, nil
 	}
 	delete(f.Ambiguous, filename)
-	rekeyRows(f.Summaries, ambiguousMatchKey, newMatchKey)
-	rekeyRows(f.Teams, ambiguousMatchKey, newMatchKey)
-	rekeyRows(f.Personals, ambiguousMatchKey, newMatchKey)
-	rekeyRows(f.Ranks, ambiguousMatchKey, newMatchKey)
-	rekeyRows(f.Unknowns, ambiguousMatchKey, newMatchKey)
+	f.renameMatchKey(ambiguousMatchKey, newMatchKey)
 	return true, nil
+}
+
+// renameMatchKey mirrors SQLStore.renameMatchKey: match_key is the match's
+// identity and it is mutable, so a rename has to reach EVERY collection that
+// names a match — not just the five parents. A fake that moved only the
+// parents would let a test pass while production stranded the user's pins,
+// notes and overrides on a dead key (and grew a phantom manual match out of
+// the orphaned override row).
+func (f *Fake) renameMatchKey(from, to string) {
+	rekeyRows(f.Summaries, from, to)
+	rekeyRows(f.Teams, from, to)
+	rekeyRows(f.Personals, from, to)
+	rekeyRows(f.Ranks, from, to)
+	rekeyRows(f.Unknowns, from, to)
+
+	rekeyBool(f.Hidden, from, to)
+	rekeyBool(f.Pinned, from, to)
+	rekeyMap(f.Reviews, from, to)
+	rekeyMap(f.Queues, from, to)
+	rekeyMap(f.PlayModes, from, to)
+	rekeyMap(f.UserMatchData, from, to)
+	rekeyMap(f.MatchMoments, from, to)
+	if a, ok := f.Annotations[from]; ok {
+		a.MatchKey = to
+		f.Annotations[to] = a
+		delete(f.Annotations, from)
+	}
+	for i := range f.MatchCoachNotes {
+		if f.MatchCoachNotes[i].MatchKey == from {
+			f.MatchCoachNotes[i].MatchKey = to
+		}
+	}
+	f.renameInSelfReviews(from, to)
+	f.renameInCandidates(from, to)
+}
+
+// A sitting names its members by key and files its notes under the same, so
+// both move.
+func (f *Fake) renameInSelfReviews(from, to string) {
+	for id, r := range f.SelfReviews {
+		for i, k := range r.MatchKeys {
+			if k == from {
+				r.MatchKeys[i] = to
+			}
+		}
+		if n, ok := r.Notes[from]; ok {
+			n.MatchKey = to
+			r.Notes[to] = n
+			delete(r.Notes, from)
+		}
+		f.SelfReviews[id] = r
+	}
+}
+
+// A candidate naming the old key would offer the user an attachment that
+// resurrects a match that no longer exists under that name.
+func (f *Fake) renameInCandidates(from, to string) {
+	for filename, cands := range f.Ambiguous {
+		for i := range cands {
+			if cands[i].MatchKey == from {
+				cands[i].MatchKey = to
+			}
+		}
+		f.Ambiguous[filename] = cands
+	}
+}
+
+func rekeyBool(m map[string]bool, from, to string) {
+	if v, ok := m[from]; ok {
+		m[to] = v
+		delete(m, from)
+	}
+}
+
+func rekeyMap[V any](m map[string]V, from, to string) {
+	if v, ok := m[from]; ok {
+		m[to] = v
+		delete(m, from)
+	}
 }

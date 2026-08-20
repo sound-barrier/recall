@@ -1,5 +1,10 @@
 package db
 
+import (
+	"database/sql"
+	"fmt"
+)
+
 // ApplyAmbiguity replaces the candidate set for filename. Idempotent:
 // a re-parse that no longer triggers ambiguity (cands == nil) clears
 // every prior candidate row; a re-parse that surfaces a different
@@ -76,14 +81,8 @@ func (s *SQLStore) ResolveAmbiguous(filename, ambiguousMatchKey, newMatchKey str
 	if n == 0 {
 		return false, nil
 	}
-	for _, table := range parentTables {
-		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
-		if _, err := tx.Exec(
-			`UPDATE `+table+` SET match_key = ? WHERE match_key = ?`,
-			newMatchKey, ambiguousMatchKey,
-		); err != nil {
-			return false, err
-		}
+	if err := renameMatchKey(tx, ambiguousMatchKey, newMatchKey); err != nil {
+		return false, err
 	}
 	return true, tx.Commit()
 }
@@ -158,4 +157,28 @@ func loadAllAmbiguousCandidates(q querier) (map[string][]AmbiguousCandidate, err
 		out[filename] = append(out[filename], c)
 	}
 	return out, rows.Err()
+}
+
+// renameMatchKey moves a match from one key to another, everywhere.
+//
+// match_key is the match's identity and it is MUTABLE — resolving an
+// ambiguous screenshot renames one — but it is declared a foreign key
+// nowhere, because a match is five parent rows rather than one referenceable
+// row. So the rename has to be written out, and it has to be complete: a
+// table left behind keeps rows on a key nothing will ever look up again, and
+// in user_match_data's case the orphan comes back as a phantom manual match
+// (an override row with no screenshot row is exactly what
+// SynthesizeManualMatches looks for).
+//
+// The cascading children come along on their parents' ON UPDATE CASCADE.
+func renameMatchKey(tx *sql.Tx, from, to string) error {
+	for _, table := range matchKeyTables {
+		// #nosec G202 -- table names come from a hard-coded registry.
+		if _, err := tx.Exec(
+			`UPDATE OR REPLACE `+table+` SET match_key = ? WHERE match_key = ?`, to, from,
+		); err != nil {
+			return fmt.Errorf("rename match key in %s: %w", table, err)
+		}
+	}
+	return nil
 }
