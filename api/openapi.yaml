@@ -2611,6 +2611,12 @@ paths:
         did not, the handle itself is the identity, so typing a different
         one switches to that player. Either way the notes for the resolved
         player re-hydrate, which is why the whole view is the response.
+
+        A handle is not a key — two people do use the same name — so an id
+        arriving where more than one id-less player already goes by that
+        handle is a `409`. Picking one would attach this player's id to the
+        other's notes, and hand them over on the next share-back export.
+        Rename one of them first.
       requestBody:
         required: true
         content:
@@ -2637,6 +2643,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          description: More than one id-less player goes by that handle.
         "500":
           $ref: "#/components/responses/InternalError"
 

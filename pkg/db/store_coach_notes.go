@@ -38,13 +38,19 @@ func (s *SQLStore) EnsureCoachPlayer(playerID, handle string) (CoachPlayer, erro
 // bundle carried one; else the handle (NOCASE). With a player_id in hand only
 // an id-less handle row may be adopted — it gets the id backfilled — so two
 // identified players sharing a handle stay two rows.
+//
+// The adopt is how a player who shared anonymously, from a build predating the
+// player identity, keeps their notes when they upgrade. It is NOT a guess: if
+// two id-less rows go by that handle, this refuses rather than picking one,
+// because the backfill would attribute one player's notes to another and the
+// next share-back export would hand them over.
 func findOrAdoptCoachPlayer(tx *sql.Tx, playerID, handle string) (CoachPlayer, bool, error) {
 	if playerID != "" {
 		p, found, err := selectCoachPlayer(tx, `WHERE player_id = ?`, playerID)
 		if err != nil || found {
 			return p, found, err
 		}
-		p, found, err = selectCoachPlayer(tx, `WHERE handle = ? AND player_id IS NULL ORDER BY id LIMIT 1`, handle)
+		p, found, err = selectSoleIDLessPlayer(tx, handle)
 		if err != nil || !found {
 			return p, found, err
 		}
@@ -55,6 +61,41 @@ func findOrAdoptCoachPlayer(tx *sql.Tx, playerID, handle string) (CoachPlayer, b
 		return p, true, nil
 	}
 	return selectCoachPlayer(tx, `WHERE handle = ? ORDER BY id LIMIT 1`, handle)
+}
+
+// selectSoleIDLessPlayer reads the one id-less row under a handle, or reports
+// ErrCoachHandleAmbiguous when there are two. LIMIT 2 rather than LIMIT 1: the
+// point is to SEE the second row, which an ORDER BY over LIMIT 1 hides behind
+// a stable, plausible answer.
+func selectSoleIDLessPlayer(tx *sql.Tx, handle string) (CoachPlayer, bool, error) {
+	rows, err := tx.Query(
+		`SELECT id, player_id, handle FROM coach_players
+		  WHERE handle = ? AND player_id IS NULL ORDER BY id LIMIT 2`, handle)
+	if err != nil {
+		return CoachPlayer{}, false, fmt.Errorf("find coach player: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var found []CoachPlayer
+	for rows.Next() {
+		var p CoachPlayer
+		var playerID sql.NullString
+		if err := rows.Scan(&p.ID, &playerID, &p.Handle); err != nil {
+			return CoachPlayer{}, false, fmt.Errorf("scan coach player: %w", err)
+		}
+		p.PlayerID = playerID.String
+		found = append(found, p)
+	}
+	if err := rows.Err(); err != nil {
+		return CoachPlayer{}, false, fmt.Errorf("find coach player: %w", err)
+	}
+	if len(found) > 1 {
+		return CoachPlayer{}, false, fmt.Errorf("%w: %q", ErrCoachHandleAmbiguous, handle)
+	}
+	if len(found) == 0 {
+		return CoachPlayer{}, false, nil
+	}
+	return found[0], true, nil
 }
 
 // selectCoachPlayer reads one row by the given predicate; (zero, false, nil)

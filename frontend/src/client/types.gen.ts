@@ -4632,6 +4632,10 @@ export type SetCoachSessionPlayerErrors = {
      */
     404: ProblemDetails;
     /**
+     * More than one id-less player goes by that handle.
+     */
+    409: unknown;
+    /**
      * Unhandled server-side error.
      */
     500: ProblemDetails;

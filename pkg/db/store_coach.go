@@ -21,6 +21,11 @@ import (
 var (
 	// ErrCoachPlayerUnknown reports a playerRef no coach_players row carries.
 	ErrCoachPlayerUnknown = errors.New("coach player not found")
+	// ErrCoachHandleAmbiguous reports more than one id-less player row under
+	// one handle, where adopting either would be a guess. handle is not a key
+	// and cannot be — two people do use the same name — so the coach has to
+	// say which one this is, by renaming the other.
+	ErrCoachHandleAmbiguous = errors.New("coach: more than one player goes by this handle")
 	// ErrCoachNoteUnknown reports a note_id this player has no note for —
 	// a moment write naming a note that was deleted, or one from another
 	// session's id space.

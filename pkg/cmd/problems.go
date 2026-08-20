@@ -181,6 +181,10 @@ var defaultProblems = []errStatus{
 	{coach.ErrCoachNameRequired, probConflict},
 	{coach.ErrNothingToExport, probConflict},
 	{review.ErrNoMatches, probConflict},
+	// Reachable from BOTH coach-player paths — opening a session on a bundle
+	// and confirming the handle by hand — which is why it sits here rather
+	// than on either handler.
+	{db.ErrCoachHandleAmbiguous, probConflict},
 }
 
 // writeError writes err to w as an RFC 9457 problem and reports whether it wrote
