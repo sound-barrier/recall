@@ -41,7 +41,7 @@ RUFF_VERSION = "0.16.3"
 SQLFLUFF_VERSION = "4.3.0"
 # Biome runs on-demand via npx (like Spectral/markdownlint), so it's a version
 # string here rather than a [tools] binary.
-BIOME_VERSION = "2.5.8"
+BIOME_VERSION = "2.5.9"
 
 # Pin Go to the exact mise-installed toolchain so `go build`/`go test` never
 # auto-download a different one (parity with what actions/setup-go@v6 set in CI).
@@ -49,7 +49,7 @@ GOTOOLCHAIN = "local"
 
 [tools]
 # Language runtimes (match go.mod / CI).
-go = "1.26.6"
+go = "1.27.0"
 # Keep in sync with the root .node-version (consumed by actions/setup-node
 # in CI); `task check-deps` asserts the two agree.
 node = "26"
@@ -76,7 +76,10 @@ jq = "latest"
 # (not the registry) on purpose: a prebuilt binary compiled with an older Go
 # rejects a project targeting a newer Go directive, so it must be compiled with
 # this toolchain's Go — exactly what `go install …@latest` did in CI before.
-"go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint" = "latest"
+# Exact-pinned (was "latest"): a lint-version change alters what the gate
+# flags, so bumps are deliberate — pick the version, run the sweep, fix what
+# it surfaces, commit both together.
+"go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint" = "v2.13.0"
 "go:golang.org/x/tools/cmd/deadcode" = "latest"
 "go:golang.org/x/vuln/cmd/govulncheck" = "latest"
 # Condition (branch) coverage — an informational report, never a gate. Go's
@@ -89,7 +92,7 @@ jq = "latest"
 # in lockstep with the wails/v3 module in go.mod: the CLI generates bindings the
 # module has to understand, so a split between them fails at generate time, not
 # at build time.
-"go:github.com/wailsapp/wails/v3/cmd/wails3" = "v3.0.0-beta.9"
+"go:github.com/wailsapp/wails/v3/cmd/wails3" = "v3.0.0-beta.10"
 
 # CI-only reporters (JUnit XML for the test job, Cobertura XML for the Go
 # coverage job). Devs get them too via `mise install`; CI installs them

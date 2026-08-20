@@ -104,8 +104,7 @@ func registerSystemProbeAndActionRoutes(apiMux *http.ServeMux, a *app.App) {
 	// No body — the channel and target are implicit.
 	apiMux.HandleFunc("POST /api/v1/system/data-update", func(w http.ResponseWriter, r *http.Request) {
 		got, err := a.ApplyGameDataUpdate()
-		var checksumErr *app.ChecksumError
-		if errors.As(err, &checksumErr) {
+		if checksumErr, ok := errors.AsType[*app.ChecksumError](err); ok {
 			writeProblem(w, r, probDataVerify, checksumErr.Error(),
 				withFailedAssets(checksumErr.Asset))
 			return
