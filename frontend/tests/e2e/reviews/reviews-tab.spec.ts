@@ -74,7 +74,7 @@ test.describe('07 Reviews — the tab', () => {
     // Sections are numbered because they are an arc: you → a coach → someone
     // else. Each carries its action whether or not it is empty.
     await expect(panel(page).getByRole('heading', { name: 'From a coach' })).toBeVisible()
-    await expect(panel(page).getByRole('button', { name: /share with a coach/i })).toBeVisible()
+    await expect(panel(page).getByRole('button', { name: /send to a coach/i }).first()).toBeVisible()
     // The other way notes arrive is permanent, not a hint that deletes
     // itself after the first review.
     await expect(panel(page).getByRole('button', { name: /open a notes file/i })).toBeVisible()
@@ -85,31 +85,33 @@ test.describe('07 Reviews — the tab', () => {
   })
 
   // Sharing is called what the dialog calls it, and the button carries the
-  // live count of what would be shared — the set is decided on Matches, and
-  // a player who has not looked deserves to know how big it is BEFORE the
-  // dialog. It lands on Matches (the narrow the dialog counts is only
-  // visible there) and the dialog opens ALREADY in share mode — the same
-  // one action the palette runs, so neither can drift.
-  test('Share with a coach carries the live count and lands on Matches with the share dialog open', async ({ page }) => {
+  // Live count of what would go out — the set is decided on Matches, and a
+  // player who has not looked deserves to know how big it is BEFORE the
+  // dialog. It no longer NAVIGATES to Matches: the dialog names every match
+  // going out, so dragging the user off the page they were on stopped being
+  // the price of knowing what "2 matches" meant.
+  test('Send to a coach carries the live count and opens the dialog where you stand', async ({ page }) => {
     await page.goto('/')
     await tab(page).click()
-    const share = panel(page).getByRole('button', { name: /share with a coach/i })
-    await expect(share).toContainText('(2 showing on Matches)')
-    await share.click()
+    const send = panel(page).getByRole('button', { name: /send to a coach/i })
+    await expect(send).toContainText('(2 showing on Matches)')
+    await send.click()
 
-    await expect(page.getByRole('tab', { name: /^Matches/ })).toHaveAttribute('aria-selected', 'true')
-    const dialog = page.getByRole('dialog', { name: 'Share with a coach' })
+    await expect(page.getByRole('tab', { name: /^Reviews/ })).toHaveAttribute('aria-selected', 'true')
+    const dialog = page.getByRole('dialog', { name: 'Send to a coach' })
     await expect(dialog).toBeVisible()
-    await expect(dialog.getByRole('checkbox', { name: /Share with a coach/ })).toBeChecked()
     await expect(dialog.getByLabel('Your handle (required)')).toBeVisible()
 
-    // A coach reviews by WATCHING the replay: the fixture's matches carry
-    // no replay codes, so the share refuses with the reason and the
-    // matches that need one. (Self reviews never need a code — nothing is
-    // watched remotely there.)
+    // A coach reviews by WATCHING the replay: the fixture's matches carry no
+    // replay codes, so the send refuses — and names WHICH, one row each,
+    // rather than counting them into a warning box. (Self reviews never need
+    // a code; nothing is watched remotely there.)
     await dialog.getByLabel('Your handle (required)').fill('Sable')
-    await expect(dialog.getByTestId('export-submit')).toBeDisabled()
-    await expect(dialog.getByText(/no replay code/)).toBeVisible()
+    await expect(dialog.getByTestId('send-to-coach-submit')).toBeDisabled()
+    await expect(dialog.getByText(/2 need a replay code/)).toBeVisible()
+    await expect(dialog.getByRole('list', { name: 'Matches going to your coach' })
+      .getByRole('listitem')).toHaveCount(2)
+    await expect(dialog.getByRole('button', { name: /Show the 2 on Matches/ })).toBeVisible()
   })
 
   // Notes waiting on a decision are the shelf's own rows here — one per

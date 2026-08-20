@@ -321,7 +321,7 @@ function openBundle(): void {
         <div class="setting-row">
           <div class="setting-info">
             <h4 class="setting-label">
-              Share matches with a coach
+              Send matches to a coach
             </h4>
             <p class="setting-desc">
               Sends the matches showing on Matches — narrow the list there to

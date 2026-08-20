@@ -133,7 +133,7 @@ export interface DisplayNames {
 
 /**
  * @param inCoachingSession suppresses the coaching actions. Inside the Film
- * Room the corpus is somebody else's matches, so "Share matches with a coach"
+ * Room the corpus is somebody else's matches, so "Send matches to a coach"
  * would open the share dialog over the loaned set, and "Open a player's
  * bundle" is a 409 — one session at a time. An entry that cannot do its job
  * is worse than no entry: it was added to make the feature findable, and a

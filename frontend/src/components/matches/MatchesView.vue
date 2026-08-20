@@ -437,6 +437,7 @@ const {
           @select-all="selectAllVisible"
           @hide="hideSelected"
           @review-these="reviewSelected"
+          @send-to-coach="matchesStore.requestShare([...selectedKeys], 'selection')"
           @export-bundle="matchesStore.onExportBundleRequest([...selectedKeys])"
           @export-csv="requestCsvExport([...selectedKeys])"
           @bulk-tag="onBulkTag"
