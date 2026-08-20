@@ -82,6 +82,11 @@ function manualOverrideSet(rec: MatchRecord, data: Record<string, unknown>): Use
       reconstructTopLevel(out, field, data)
     }
   }
+  // Not a SCALAR_FIELDS member — it is never edited directly — but it has to
+  // travel. A manual entry's instant comes from the wire offset, which the
+  // wall clock cannot reproduce, so an omitted one is a lost moment rather
+  // than a re-derivable one.
+  if (typeof data.played_at_utc === 'string') out.played_at_utc = data.played_at_utc
   for (const hero of (data.heroes_played as MatchRecord['data']['heroes_played'] ?? [])) {
     for (const statKey of Object.keys(hero.stats ?? {})) {
       reconstructStat(out, rec, hero.hero, statKey)

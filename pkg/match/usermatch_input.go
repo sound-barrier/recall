@@ -8,19 +8,24 @@ package match
 // domain layer so the JSON contract doesn't leak SQL field names (the same
 // reason Annotation mirrors db.Annotation).
 type UserMatchDataInput struct {
-	Map           *string             `json:"map,omitempty"`
-	Hero          *string             `json:"hero,omitempty"`
-	Eliminations  *int                `json:"eliminations,omitempty"`
-	Assists       *int                `json:"assists,omitempty"`
-	Deaths        *int                `json:"deaths,omitempty"`
-	Damage        *int                `json:"damage,omitempty"`
-	Healing       *int                `json:"healing,omitempty"`
-	Mitigation    *int                `json:"mitigation,omitempty"`
-	Result        *string             `json:"result,omitempty"`
-	FinalScore    *string             `json:"final_score,omitempty"`
-	Date          *string             `json:"date,omitempty"`
-	FinishedAt    *string             `json:"finished_at,omitempty"`
-	GameLength    *string             `json:"game_length,omitempty"`
+	Map          *string `json:"map,omitempty"`
+	Hero         *string `json:"hero,omitempty"`
+	Eliminations *int    `json:"eliminations,omitempty"`
+	Assists      *int    `json:"assists,omitempty"`
+	Deaths       *int    `json:"deaths,omitempty"`
+	Damage       *int    `json:"damage,omitempty"`
+	Healing      *int    `json:"healing,omitempty"`
+	Mitigation   *int    `json:"mitigation,omitempty"`
+	Result       *string `json:"result,omitempty"`
+	FinalScore   *string `json:"final_score,omitempty"`
+	Date         *string `json:"date,omitempty"`
+	FinishedAt   *string `json:"finished_at,omitempty"`
+	GameLength   *string `json:"game_length,omitempty"`
+	// PlayedAtUTC is the canonical instant. Carried so a manual entry's
+	// EXACT moment — computed from the wire offset, which is information the
+	// wall clock cannot reproduce — survives a later edit. Omit it and the
+	// store derives one from date + finished_at in the machine's zone.
+	PlayedAtUTC   *string             `json:"played_at_utc,omitempty"`
 	Rank          *string             `json:"rank,omitempty"`
 	Level         *int                `json:"level,omitempty"`
 	RankProgress  *int                `json:"rank_progress,omitempty"`

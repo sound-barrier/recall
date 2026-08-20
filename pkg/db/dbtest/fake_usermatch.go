@@ -2,8 +2,10 @@ package dbtest
 
 import (
 	"maps"
+	"time"
 
 	"recall/pkg/db"
+	"recall/pkg/match"
 )
 
 // User match-data override layer — the Fake mirrors the SQLStore as a single
@@ -19,6 +21,14 @@ func (f *Fake) UpsertUserMatchData(d db.UserMatchData) error {
 	// Mirror SQLStore's updated_at: the restore's instant when it carries one,
 	// the clock when it doesn't.
 	d.UpdatedAt = suppliedInstantOrNow(d.UpdatedAt)
+	// Mirror the store: the canonical instant is filled from the wall clock
+	// the same write carries, and a supplied one is never second-guessed.
+	if d.PlayedAtUTC == nil && d.Date != nil && d.FinishedAt != nil {
+		if t, ok := match.LocalWallClockToUTC(*d.Date, *d.FinishedAt, time.Local); ok {
+			utc := t.UTC().Format("2006-01-02T15:04:05Z")
+			d.PlayedAtUTC = &utc
+		}
+	}
 	f.UserMatchData[d.MatchKey] = d
 	return nil
 }
