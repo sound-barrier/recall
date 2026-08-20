@@ -3,6 +3,9 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"time"
+
+	"recall/pkg/match"
 )
 
 // User match-data override layer — the single store backing both inline edits
@@ -14,7 +17,29 @@ import (
 // read time, so a match_key here with no screenshot row anywhere IS a manual
 // match.
 
+// derivePlayedAtUTC fills the canonical instant from the wall clock the same
+// write is carrying, so no caller can update the inputs and leave the output
+// stale. Every viewer-clock reader PREFERS played_at_utc over the naive
+// date/finished_at beside it, so a corrected date with an untouched instant
+// shows the old time behind a ✎ marker — and no client could fix it, because
+// played_at_utc is not a field of the override input.
+//
+// A supplied instant is never second-guessed: a manual entry's comes from the
+// wire offset, which is information the wall clock cannot reproduce (the
+// offset is not stored anywhere). This only fills a blank.
+func derivePlayedAtUTC(d UserMatchData) UserMatchData {
+	if d.PlayedAtUTC != nil || d.Date == nil || d.FinishedAt == nil {
+		return d
+	}
+	if t, ok := match.LocalWallClockToUTC(*d.Date, *d.FinishedAt, time.Local); ok {
+		utc := t.UTC().Format("2006-01-02T15:04:05Z")
+		d.PlayedAtUTC = &utc
+	}
+	return d
+}
+
 func (s *SQLStore) UpsertUserMatchData(d UserMatchData) error {
+	d = derivePlayedAtUTC(d)
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err

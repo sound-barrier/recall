@@ -104,6 +104,7 @@ describe('overrideSetFromRecord — a manual match', () => {
       map: 'rialto', hero: 'ana', result: 'victory',
       date: '2026-08-18', finished_at: '20:10',
       eliminations: 20, deaths: 4,
+      played_at_utc: '2026-08-19T02:10:00Z',
       heroes_played: [{ hero: 'ana', percent_played: 100 }],
     },
   } as unknown as MatchRecord
@@ -120,6 +121,12 @@ describe('overrideSetFromRecord — a manual match', () => {
     expect(set.heroes).toEqual([
       { hero: 'ana', percent_played: 100, play_time: undefined, position: 0 },
     ])
+  })
+
+  // The instant comes from the wire offset, which the wall clock cannot
+  // reproduce — so an omitted one is a lost moment, not a re-derivable one.
+  it('carries the exact instant a manual entry was given', () => {
+    expect(overrideSetFromRecord(manual).played_at_utc).toBe('2026-08-19T02:10:00Z')
   })
 
   it('leaves out what the match does not carry, so nothing is invented', () => {

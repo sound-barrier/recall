@@ -235,6 +235,15 @@ export type UserMatchDataInput = {
     date?: string;
     finished_at?: string;
     game_length?: string;
+    /**
+     * The canonical instant (RFC3339 UTC). Carried so a manual entry's
+     * EXACT moment — derived from the wire offset, which the wall clock
+     * cannot reproduce — survives a later edit. Omit it and the server
+     * derives one from `date` + `finished_at` in the machine's zone, so
+     * a corrected wall clock can never leave a stale instant behind.
+     *
+     */
+    played_at_utc?: string;
     rank?: string;
     level?: number;
     rank_progress?: number;

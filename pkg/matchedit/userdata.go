@@ -140,6 +140,7 @@ func userMatchDataFromInput(matchKey string, in match.UserMatchDataInput) db.Use
 		Date:          in.Date,
 		FinishedAt:    in.FinishedAt,
 		GameLength:    in.GameLength,
+		PlayedAtUTC:   in.PlayedAtUTC,
 		Rank:          in.Rank,
 		Level:         in.Level,
 		RankProgress:  in.RankProgress,
