@@ -1440,6 +1440,12 @@ export const openCoachSession = <ThrowOnError extends boolean = false>(options: 
  * one switches to that player. Either way the notes for the resolved
  * player re-hydrate, which is why the whole view is the response.
  *
+ * A handle is not a key — two people do use the same name — so an id
+ * arriving where more than one id-less player already goes by that
+ * handle is a `409`. Picking one would attach this player's id to the
+ * other's notes, and hand them over on the next share-back export.
+ * Rename one of them first.
+ *
  */
 export const setCoachSessionPlayer = <ThrowOnError extends boolean = false>(options: Options<SetCoachSessionPlayerData, ThrowOnError>): RequestResult<SetCoachSessionPlayerResponses, SetCoachSessionPlayerErrors, ThrowOnError> => (options.client ?? client).put<SetCoachSessionPlayerResponses, SetCoachSessionPlayerErrors, ThrowOnError>({
     url: '/api/v1/coach/session/player',

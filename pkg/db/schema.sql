@@ -641,6 +641,12 @@ CREATE TABLE IF NOT EXISTS user_match_rank_modifiers (
 -- side; NULL for anonymous/older bundles, where the case-insensitive handle
 -- is the only identity available (UNIQUE tolerates many NULLs). handle is
 -- display-only and may be corrected by the coach.
+--
+-- handle carries no UNIQUE and cannot: two people genuinely do use one name.
+-- Which is why findOrAdoptCoachPlayer refuses rather than picks when an
+-- incoming id finds more than one id-less row under a handle — the adopt
+-- backfills the id, so a wrong pick attributes one player's notes to another
+-- and exports them to them.
 CREATE TABLE IF NOT EXISTS coach_players (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   player_id TEXT UNIQUE,

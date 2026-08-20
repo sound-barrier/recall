@@ -65,12 +65,16 @@ func (f *Fake) EnsureCoachPlayer(playerID, handle string) (db.CoachPlayer, error
 			return f.CoachPlayers[i], nil
 		}
 	}
-	// With a player_id in hand only an id-less handle row may be adopted;
-	// anonymous lookups take the earliest handle match.
-	i := slices.IndexFunc(f.CoachPlayers, func(p db.CoachPlayer) bool {
-		return strings.EqualFold(p.Handle, handle) && (playerID == "" || p.PlayerID == "")
-	})
-	if i >= 0 {
+	// With a player_id in hand only an id-less handle row may be adopted, and
+	// only when there is exactly one — two would make the backfill a guess
+	// that hands one player's notes to another. Anonymous lookups take the
+	// earliest handle match.
+	matches := idLessHandleMatches(f.CoachPlayers, handle, playerID)
+	if playerID != "" && len(matches) > 1 {
+		return db.CoachPlayer{}, fmt.Errorf("%w: %q", db.ErrCoachHandleAmbiguous, handle)
+	}
+	if len(matches) > 0 {
+		i := matches[0]
 		if playerID != "" {
 			f.CoachPlayers[i].PlayerID = playerID
 		}
@@ -80,6 +84,19 @@ func (f *Fake) EnsureCoachPlayer(playerID, handle string) (db.CoachPlayer, error
 		ID: nextID(f.CoachPlayers, func(p db.CoachPlayer) int64 { return p.ID })}
 	f.CoachPlayers = append(f.CoachPlayers, p)
 	return p, nil
+}
+
+// idLessHandleMatches indexes the rows EnsureCoachPlayer may resolve a handle
+// to: every handle match for an anonymous lookup, only the id-less ones when a
+// player id is in hand.
+func idLessHandleMatches(players []db.CoachPlayer, handle, playerID string) []int {
+	var out []int
+	for i, p := range players {
+		if strings.EqualFold(p.Handle, handle) && (playerID == "" || p.PlayerID == "") {
+			out = append(out, i)
+		}
+	}
+	return out
 }
 
 func (f *Fake) RenameCoachPlayer(id int64, handle string) error {
