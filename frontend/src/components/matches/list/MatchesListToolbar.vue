@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 
 import type { Density } from '@/composables/matches/table/useDensity'
-import { useWriteGate } from '@/composables/shared/useWriteGate'
+import { NOTHING_TO_SEND_REASON, SESSION_SHARE_REASON, useWriteGate } from '@/composables/shared/useWriteGate'
 import { useAddMatchMenu } from '@/composables/matches/list/useAddMatchMenu'
 
 // The Matches members-section header toolbar: the "N matches" title, the
@@ -10,7 +10,7 @@ import { useAddMatchMenu } from '@/composables/matches/list/useAddMatchMenu'
 // jump-to-undated button. Extracted from MatchesView (the workspace shell)
 // so the shell sheds this control cluster + its scoped CSS; state lives in
 // the shell + useSortGroupMenu, threaded in as props / events back out.
-defineProps<{
+const props = defineProps<{
   matchCount: number
   sortGroupOpen: boolean
   sortGroupLabel: string
@@ -60,9 +60,11 @@ const { writesLocked, lockedTitle, sessionActive } = useWriteGate()
 // Sending is a read, so the write gate is the wrong test — but during a
 // session the list is the coach's loaned corpus, and a bundle of someone
 // else's matches signed with your handle is worse than a blocked write.
-const sendTitle = computed(() => (sessionActive.value
-  ? 'These matches are on loan — you can only send your own to a coach.'
-  : 'Send these matches to a coach'))
+const sendTitle = computed(() => {
+  if (sessionActive.value) return SESSION_SHARE_REASON
+  if (props.shareTargetCount === 0) return NOTHING_TO_SEND_REASON
+  return 'Send these matches to a coach'
+})
 // Destructured to top-level consts: a template `ref="…"` binds by NAME and
 // cannot take a dotted path, so `ref="addMenu.triggerEl"` would silently
 // register a ref literally called "addMenu.triggerEl" and leave the
@@ -133,7 +135,7 @@ const {
         type="button"
         class="import-matches-btn"
         data-send-to-coach
-        :disabled="sessionActive"
+        :disabled="sessionActive || shareTargetCount === 0"
         :title="sendTitle"
         @click="emit('send-to-coach')"
       >

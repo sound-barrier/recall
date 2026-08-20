@@ -47,13 +47,28 @@ async function prefillHandle(): Promise<void> {
   } catch { /* the field is editable; a failed prefill is not an error */ }
 }
 
+// `immediate: true` because this component is lazy-loaded and rendered
+// unconditionally: a share requested before its chunk resolves mounts it with
+// shareOpen ALREADY true, and a plain watcher never runs. The filename would
+// stay empty and the server would fall back to the BACKUP name — handing a
+// coach a file named like a backup is the confusion this dialog exists to end.
+// useModalFocusTrap carries the same note for the same reason.
 watch(shareOpen, (open) => {
   if (!open) return
   handle.value = ''
   message.value = ''
   filename.value = defaultFilename()
   void prefillHandle()
-})
+}, { immediate: true })
+
+// The manifest is one row per match and `narrow` can be the whole corpus, so
+// it is capped. The count above it is the whole truth; these rows exist to make
+// a gap NAMEABLE, and a name you have to scroll past hundreds of others to
+// reach is not one.
+const MANIFEST_ROWS_SHOWN = 12
+const shownManifest = computed(() => shareManifest.value.slice(0, MANIFEST_ROWS_SHOWN))
+const hiddenManifestCount = computed(() =>
+  Math.max(0, shareManifest.value.length - MANIFEST_ROWS_SHOWN))
 
 const needsHandle = computed(() => handle.value.trim() === '')
 const canSend = computed(() =>
@@ -112,6 +127,7 @@ function onSend(): void {
           class="send-to-coach-input"
           type="text"
           maxlength="64"
+          aria-required="true"
           placeholder="the name your coach knows you by"
           spellcheck="false"
           autocomplete="off"
@@ -132,34 +148,11 @@ function onSend(): void {
           autocorrect="off"
         />
 
-        <p class="send-to-coach-summary">
-          {{ shareSummary }}
-        </p>
-        <!-- One row per match, so a gap is a match with a name rather than a
-             number in a warning box. -->
-        <ul class="send-to-coach-manifest" aria-label="Matches going to your coach">
-          <li
-            v-for="row in shareManifest"
-            :key="row.matchKey"
-            class="send-to-coach-row"
-            :class="{ 'is-missing': row.replayCode === '' }"
-          >
-            <span class="send-to-coach-row-label">{{ row.label }}</span>
-            <span v-if="row.replayCode" class="send-to-coach-code">{{ row.replayCode }}</span>
-            <span v-else class="send-to-coach-gap">no replay code</span>
-          </li>
-        </ul>
-
-        <div v-if="shareMissing.length" class="send-to-coach-fix" role="alert">
-          <p class="send-to-coach-fix-line">
-            A coach cannot load a match without its replay code. Add each one in
-            the match's journal, then send.
-          </p>
-          <button type="button" class="btn ghost" @click="matches.showMissingOnMatches()">
-            Show {{ shareMissing.length === 1 ? 'it' : `the ${shareMissing.length}` }} on Matches →
-          </button>
-        </div>
-
+        <!-- Above the manifest, deliberately. The manifest is one row per
+             match and a wide narrow is hundreds of them, so anything below it
+             is off screen at the moment the user decides to send — and this is
+             the one fact a person needs BEFORE handing a file to another
+             human. The dialog this replaced learned that the hard way. -->
         <p class="send-to-coach-warn">
           The bundle carries these matches whole — your journal notes, moments,
           tags, squads, BattleTags, replay codes and any reviews a coach has
@@ -180,6 +173,39 @@ function onSend(): void {
           autocorrect="off"
           data-testid="send-to-coach-filename"
         >
+
+        <div v-if="shareMissing.length" class="send-to-coach-fix" role="alert">
+          <p class="send-to-coach-fix-line">
+            A coach cannot load a match without its replay code. Add each one in
+            the match's journal, then send.
+          </p>
+          <button type="button" class="btn ghost" @click="matches.showMissingOnMatches()">
+            Show {{ shareMissing.length === 1 ? 'it' : `the ${shareMissing.length}` }} on Matches →
+          </button>
+        </div>
+
+        <p class="send-to-coach-summary">
+          {{ shareSummary }}
+        </p>
+        <!-- One row per match, so a gap is a match with a name rather than a
+             number in a warning box. Capped, because the set can be the whole
+             narrow: the point of the list is to make the gaps nameable, and
+             the fix box above already counts them all. -->
+        <ul class="send-to-coach-manifest" aria-label="Matches going to your coach">
+          <li
+            v-for="row in shownManifest"
+            :key="row.matchKey"
+            class="send-to-coach-row"
+            :class="{ 'is-missing': row.replayCode === '' }"
+          >
+            <span class="send-to-coach-row-label">{{ row.label }}</span>
+            <span v-if="row.replayCode" class="send-to-coach-code">{{ row.replayCode }}</span>
+            <span v-else class="send-to-coach-gap">no replay code</span>
+          </li>
+        </ul>
+        <p v-if="hiddenManifestCount > 0" class="send-to-coach-more">
+          …and {{ hiddenManifestCount }} more
+        </p>
       </div>
 
       <div class="sheet-fixed send-to-coach-actions">
@@ -195,12 +221,22 @@ function onSend(): void {
           type="submit"
           class="send-to-coach-send"
           :disabled="!canSend"
-          :title="blockedReason"
+          :aria-describedby="blockedReason ? 'send-to-coach-blocked' : undefined"
           data-testid="send-to-coach-submit"
         >
           {{ shareBusy ? 'Sending…' : 'Send' }}
         </button>
       </div>
+      <!-- Visible text, not a title on a disabled button: a title there is
+           announced by nothing and shown on hover a mouse cannot deliver. -->
+      <p
+        v-if="blockedReason"
+        id="send-to-coach-blocked"
+        class="sheet-fixed send-to-coach-blocked"
+        role="status"
+      >
+        {{ blockedReason }}
+      </p>
     </form>
   </div>
 </template>
@@ -211,6 +247,19 @@ function onSend(): void {
    away at every window height. Only the width is this dialog's own. */
 .send-to-coach-box {
   width: min(32rem, 100%);
+}
+
+.send-to-coach-more {
+  margin: 0.35rem 0 0;
+  font-size: var(--type-xs);
+  color: var(--text-dim);
+}
+
+.send-to-coach-blocked {
+  margin: 0.6rem 0 0;
+  font-size: var(--type-xs);
+  color: var(--text-dim);
+  text-align: right;
 }
 
 .send-to-coach-title {

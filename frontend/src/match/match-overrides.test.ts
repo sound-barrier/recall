@@ -106,6 +106,8 @@ describe('overrideSetFromRecord — a manual match', () => {
       eliminations: 20, deaths: 4,
       played_at_utc: '2026-08-19T02:10:00Z',
       heroes_played: [{ hero: 'ana', percent_played: 100 }],
+      sr: [{ hero: 'ana', sr: 2400, change: 21 }],
+      modifiers: ['demotion protection'],
     },
   } as unknown as MatchRecord
 
@@ -118,6 +120,19 @@ describe('overrideSetFromRecord — a manual match', () => {
     expect(set.finished_at).toBe('20:10')
     expect(set.eliminations).toBe(20)
     expect(set.deaths).toBe(4)
+    expect(set.heroes).toEqual([
+      { hero: 'ana', percent_played: 100, play_time: undefined, position: 0 },
+    ])
+  })
+
+  // Every list the record holds travels too. The gate that decides this once
+  // named `rank_modifiers` — the SQLite TABLE name, which is not a field of
+  // MatchData at all — so modifiers were dropped from every override set, and
+  // the store's whole-row replace then wiped them on the next unrelated edit.
+  it('carries the lists a manual match holds, not just its scalars', () => {
+    const set = overrideSetFromRecord(manual)
+    expect(set.modifiers).toEqual(['demotion protection'])
+    expect(set.sr).toEqual([{ hero: 'ana', sr: 2400, change: 21 }])
     expect(set.heroes).toEqual([
       { hero: 'ana', percent_played: 100, play_time: undefined, position: 0 },
     ])

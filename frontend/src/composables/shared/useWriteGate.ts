@@ -23,6 +23,28 @@ import { useCoachStore } from '@/stores/coach'
 export const SESSION_LOCK_REASON
   = 'A coaching session is open — end the session to change your own matches.'
 
+/**
+ * Shown on every "send to a coach" affordance while a session is open. A
+ * separate sentence from SESSION_LOCK_REASON because sharing is not blocked
+ * by the lock on WRITES — the matches on screen are someone else's, and
+ * sending them on is the thing that must not happen. Four doors say it; they
+ * say it from here.
+ */
+export const SESSION_SHARE_REASON
+  = 'These matches are on loan — you can only send your own to a coach.'
+
+/** The same sentence for a single row (the context menu). */
+export const SESSION_SHARE_REASON_ONE
+  = 'This match is on loan — you can only send your own to a coach.'
+
+/**
+ * Shown when the set to send is empty. An enabled "Send 0 to a coach…" opens
+ * a dialog with nothing in it and a Send that cannot fire — a dead end where
+ * a disabled button with a reason is the whole answer.
+ */
+export const NOTHING_TO_SEND_REASON
+  = 'Nothing to send — narrow to some matches, or tick the ones you want.'
+
 export interface WriteGate {
   /** True while the lock applies: disable the affordance. */
   writesLocked: ComputedRef<boolean>

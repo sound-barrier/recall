@@ -92,10 +92,15 @@ function manualOverrideSet(rec: MatchRecord, data: Record<string, unknown>): Use
   return out
 }
 
-/** The fields reconstructTopLevel knows how to put back. */
+// The fields reconstructTopLevel knows how to put back. `modifiers` is the
+// wire name; this said `rank_modifiers`, which is the SQLite TABLE name and
+// appears nowhere in MatchData — so a manual match's modifiers were dropped
+// from every override set, and the store's whole-row replace then wiped
+// user_match_rank_modifiers on the next unrelated stat edit.
+const WHOLESALE_FIELDS = ['heroes_played', 'sr', 'modifiers']
+
 function travelsWholesale(field: string): boolean {
-  return isScalarField(field) || field === 'heroes_played' || field === 'sr'
-    || field === 'rank_modifiers'
+  return isScalarField(field) || WHOLESALE_FIELDS.includes(field)
 }
 
 function copyPresentFields(out: UserMatchDataInput, data: Record<string, unknown>): void {

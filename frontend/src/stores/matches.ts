@@ -266,6 +266,7 @@ export const useMatchesStore = defineStore('matches', () => {
     onError: (m) => useAppStore().setErrorFromRaw(m),
     onSaved: (m) => useAppStore().setNotice(m),
     showMatches: showOnlyMatches,
+    sessionActive: () => useCoachStore().sessionActive,
   })
 
   return {

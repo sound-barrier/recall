@@ -201,7 +201,7 @@ describe('matches store — load() boot coordinator', () => {
 // is only visible there, and the dialog says "N matches"), then open the
 // export dialog over the NARROWED keys — the set on screen, not the whole
 // history — with the share intent set so the dialog opens in share mode.
-describe('matches store — shareNarrowedWithCoach', () => {
+describe('matches store — sending matches to a coach', () => {
   it('lands on Matches and opens the dialog over the narrowed set, meaning share', async () => {
     api.GetMatchResults.mockResolvedValue([
       rec('m-1'), { ...rec('m-2'), data: { map: 'ilios', date: '2026-05-11' } },

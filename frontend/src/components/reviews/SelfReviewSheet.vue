@@ -95,6 +95,9 @@ function onTitleInput(e: Event): void {
 
     <div class="sheet-block">
       <label class="eyebrow ink" for="self-review-title">Title</label>
+      <!-- spellcheck ON, unlike the profile and preset NAMES elsewhere: a
+           title is a sentence about a session and people write them wrong,
+           where a name is a label the user coined and cannot misspell. -->
       <input
         id="self-review-title"
         ref="titleField"

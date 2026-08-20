@@ -19,7 +19,9 @@ import { useDatabaseStore } from '@/stores/database'
 import { useMatchesStore } from '@/stores/matches'
 import { useSelfReviewStore } from '@/stores/selfReview'
 import { useUiStore } from '@/stores/ui'
-import { useWriteGate } from '@/composables/shared/useWriteGate'
+import {
+  NOTHING_TO_SEND_REASON, SESSION_SHARE_REASON, useWriteGate,
+} from '@/composables/shared/useWriteGate'
 
 // The tab's front of house, where the reels come off and go back on.
 //
@@ -45,7 +47,6 @@ const { writesLocked, lockedTitle, lockReason, sessionActive, guardWrite } = use
 // session the matches on screen are the COACH'S loaned corpus, and a
 // bundle of somebody else's matches signed with your handle is worse than
 // a blocked write.
-const LOANED_REASON = 'These matches are on loan — you can only send your own to a coach.'
 const { inbox } = storeToRefs(returns)
 const { records } = storeToRefs(matches)
 const selfReview = useSelfReviewStore()
@@ -283,7 +284,7 @@ function openBundle(): void {
             type="button"
             class="btn ghost"
             :disabled="sessionActive || sessionKeys.length === 0"
-            :title="sessionActive ? LOANED_REASON
+            :title="sessionActive ? SESSION_SHARE_REASON
               : (sessionKeys.length === 0 ? 'No matches yet — parse or add some first' : undefined)"
             @click="matches.requestShare(sessionKeys, 'last-session')"
           >
@@ -334,8 +335,9 @@ function openBundle(): void {
             <button
               type="button"
               class="btn ghost"
-              :disabled="sessionActive"
-              :title="sessionActive ? LOANED_REASON : undefined"
+              :disabled="sessionActive || showingCount === 0"
+              :title="sessionActive ? SESSION_SHARE_REASON
+                : (showingCount === 0 ? NOTHING_TO_SEND_REASON : undefined)"
               @click="sendToCoach"
             >
               Send to a coach… ({{ showingCount }} showing on Matches)
