@@ -257,17 +257,42 @@ export function rankDeltaOption(series: TrendSeries[]): TrendOption {
 
 // "Ranked above" — the share of players below you, over time.
 //
-// A true 0-100 axis, fixed rather than data-fitted: the reader's question is
-// "where am I in the population", and an auto-scaled axis would turn a 3-point
-// wobble between 57 and 61 into a dramatic climb. min/max also keep a
-// single-point series from rendering on a degenerate axis.
+// The axis is a BAND around the player's own readings, not the full 0-100
+// population: an always-Gold player lives around 20-40%, and the fixed axis
+// this chart used to wear flattened their entire history into one
+// near-horizontal line at knee height. The band is the data padded ±10
+// points and rounded outward to tens (so a flat 30% reads as 20-40), clamped
+// to [0,100]; an empty series falls back to the full axis so the frame still
+// renders. Padding by a fixed ±10 rather than fitting tight keeps the
+// original concern honest too — a 3-point wobble spans at most a third of a
+// band that is at least 20 points tall, not the whole chart.
 //
 // The line CONNECTS ACROSS GAPS on purpose. Only post-placement rank screens
 // report a percentile, so consecutive readings are usually weeks and dozens of
 // matches apart; drawing them as isolated dots would hide the trend that is the
 // entire reason to plot it. Points are marked so the reader can still see that
 // the underlying evidence is sparse.
+const PERCENTILE_BAND_PAD = 10
+
+function percentileBand(series: TrendSeries[]): { min: number; max: number } {
+  let lo = Infinity
+  let hi = -Infinity
+  for (const s of series) {
+    for (const p of s.points) {
+      if (p.v == null) continue
+      lo = Math.min(lo, p.v)
+      hi = Math.max(hi, p.v)
+    }
+  }
+  if (!Number.isFinite(lo)) return { min: 0, max: 100 }
+  return {
+    min: Math.max(0, Math.floor((lo - PERCENTILE_BAND_PAD) / 10) * 10),
+    max: Math.min(100, Math.ceil((hi + PERCENTILE_BAND_PAD) / 10) * 10),
+  }
+}
+
 export function rankPercentileOption(series: TrendSeries[]): TrendOption {
+  const band = percentileBand(series)
   return {
     ...interaction(),
     grid: GRID,
@@ -280,7 +305,7 @@ export function rankPercentileOption(series: TrendSeries[]): TrendOption {
       },
     },
     xAxis: { type: 'time' },
-    yAxis: { type: 'value', min: 0, max: 100 },
+    yAxis: { type: 'value', min: band.min, max: band.max },
     series: series.map((s) => ({
       name: s.name,
       type: 'line' as const,
