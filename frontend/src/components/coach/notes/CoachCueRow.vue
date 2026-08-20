@@ -114,6 +114,8 @@ function onTagChange(tag: string) {
         :id="`cue-text-${moment.momentId}`"
         class="cue-text"
         rows="2"
+        spellcheck="true"
+        autocorrect="off"
         :value="moment.text"
         :disabled="blocked"
         :title="blocked ? blockedReason : undefined"

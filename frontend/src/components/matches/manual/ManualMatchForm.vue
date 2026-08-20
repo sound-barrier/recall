@@ -288,6 +288,8 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
         v-model="f.note.value"
         class="mm-input mm-textarea"
         rows="2"
+        spellcheck="true"
+        autocorrect="off"
         placeholder="What happened? Anything to review later?"
       />
     </section>

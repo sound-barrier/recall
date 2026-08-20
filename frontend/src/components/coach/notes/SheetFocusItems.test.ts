@@ -107,3 +107,11 @@ describe('SheetFocusItems', () => {
     expect(row(1)).toHaveAttribute('maxlength', '2000')
   })
 })
+
+describe('SheetFocusItems — the typing itself', () => {
+  it('asks to be underlined, not corrected', () => {
+    renderList()
+    expect(row(1)).toHaveAttribute('spellcheck', 'true')
+    expect(row(1)).toHaveAttribute('autocorrect', 'off')
+  })
+})

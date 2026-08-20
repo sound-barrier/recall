@@ -157,6 +157,9 @@ const popoverStyle = computed(() =>
           <input
             v-model="mapQuery"
             type="search"
+            spellcheck="false"
+            autocomplete="off"
+            autocorrect="off"
             class="mrc-search"
             data-mr-map-search
             placeholder="Find a map…"
