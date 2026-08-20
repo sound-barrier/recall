@@ -126,3 +126,85 @@ test.describe('matches — export bundle', () => {
     await expect(modal).toBeHidden()
   })
 })
+
+/**
+ * The dialog has to fit the window, or be scrollable to.
+ *
+ * It was neither. Flex-centred with no `max-height`, a box taller than the
+ * viewport overflowed symmetrically — and the TOP half of an
+ * `align-items: center` overflow is unreachable by any means. Nothing in the
+ * stack scrolled either: `useScrollLock` cancels every wheel that does not
+ * land in an `overflow-y: auto` element, and there was none. The desktop
+ * window floor is 768px (pkg/cmd/window_size.go) and the user can drag it
+ * smaller than that, so "it fits on my monitor" was never the contract.
+ */
+test.describe('export bundle — the dialog fits the window', () => {
+  async function openModal(page: import('@playwright/test').Page) {
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(KEYS.map((_, i) => record(i))),
+      })
+    })
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Matches/ }).click()
+    await expect(page.locator('.leaf-row')).toHaveCount(3)
+    await page.locator('.leaf-row').nth(0).locator('.leaf-checkbox').click()
+    await page.getByTestId('bulk-export-bundle').click()
+    const modal = page.getByTestId('export-bundle-modal')
+    await expect(modal).toBeVisible()
+    return modal
+  }
+
+  // 700 is below the app's own 768px window floor — the case a laptop user
+  // actually hits. 420 is the extreme that proves the head and the actions
+  // row are genuinely pinned rather than merely fitting.
+  for (const height of [700, 420]) {
+  test(`starts on screen and scrolls its body at ${height}px`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height })
+    const modal = await openModal(page)
+    const box = modal.locator('.export-bundle-modal-box')
+
+    const bb = (await box.boundingBox())!
+    expect(bb.y, 'the top of the dialog is on screen').toBeGreaterThanOrEqual(-1)
+    expect(bb.y + bb.height, 'the bottom of the dialog is on screen').toBeLessThanOrEqual(height + 1)
+
+    // Whatever the actions row sits below has to be reachable. Asserted only
+    // if there IS an overflow, so the case cannot pass vacuously.
+    const body = modal.locator('.export-bundle-body')
+    const overflows = await body.evaluate((el) => el.scrollHeight > el.clientHeight + 4)
+    if (overflows) {
+      // The wheel is the assertion that matters: useScrollLock cancels any
+      // wheel that does not land in an `overflow-y: auto` element, so a
+      // max-height with no scroller would satisfy every other check here
+      // and still be completely inert under the mouse.
+      await body.hover()
+      await page.mouse.wheel(0, 400)
+      await expect.poll(() => body.evaluate((el) => el.scrollTop)).toBeGreaterThan(0)
+
+      // And the title stays put while the body moves.
+      const titleTop = async () => (await modal.locator('.export-bundle-title').boundingBox())!.y
+      const before = await titleTop()
+      await body.evaluate((el) => { el.scrollTop = el.scrollHeight })
+      expect(await titleTop(), 'the title is pinned').toBeCloseTo(before, 0)
+    }
+
+    // The way out is always visible — a dialog you cannot cancel is a trap.
+    const cancel = modal.getByRole('button', { name: 'Cancel' })
+    const cb = (await cancel.boundingBox())!
+    expect(cb.y, 'Cancel is on screen').toBeGreaterThanOrEqual(0)
+    expect(cb.y + cb.height, 'Cancel is fully on screen').toBeLessThanOrEqual(height + 1)
+  })
+  }
+
+  test('grows no scrollbar when it already fits', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 1000 })
+    const modal = await openModal(page)
+    const body = modal.locator('.export-bundle-body')
+    expect(
+      await body.evaluate((el) => el.scrollHeight <= el.clientHeight + 4),
+      'a dialog that fits does not scroll',
+    ).toBe(true)
+  })
+})

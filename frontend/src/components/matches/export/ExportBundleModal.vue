@@ -293,110 +293,112 @@ onBeforeUnmount(() => {
         fewer matches to share less.
       </p>
 
-      <div class="export-bundle-row">
-        <span class="export-bundle-label">Selected matches</span>
-        <span class="export-bundle-value">{{ selectedCount }}</span>
-      </div>
+      <div class="export-bundle-body">
+        <div class="export-bundle-row">
+          <span class="export-bundle-label">Selected matches</span>
+          <span class="export-bundle-value">{{ selectedCount }}</span>
+        </div>
 
-      <label class="export-bundle-toggle">
-        <input
-          v-model="includeUnknown"
-          type="checkbox"
-          :disabled="unknownCount === 0"
-          data-testid="include-unknown"
-        >
-        <span>
-          Include
-          <strong>{{ unknownCount }}</strong>
-          unknown match{{ unknownCount === 1 ? '' : 'es' }}
-        </span>
-      </label>
+        <label class="export-bundle-toggle">
+          <input
+            v-model="includeUnknown"
+            type="checkbox"
+            :disabled="unknownCount === 0"
+            data-testid="include-unknown"
+          >
+          <span>
+            Include
+            <strong>{{ unknownCount }}</strong>
+            unknown match{{ unknownCount === 1 ? '' : 'es' }}
+          </span>
+        </label>
 
-      <label class="export-bundle-toggle">
-        <input
-          v-model="includeHidden"
-          type="checkbox"
-          :disabled="hiddenCount === 0"
-          data-testid="include-hidden"
-        >
-        <span>
-          Include
-          <strong>{{ hiddenCount }}</strong>
-          hidden match{{ hiddenCount === 1 ? '' : 'es' }}
-        </span>
-      </label>
+        <label class="export-bundle-toggle">
+          <input
+            v-model="includeHidden"
+            type="checkbox"
+            :disabled="hiddenCount === 0"
+            data-testid="include-hidden"
+          >
+          <span>
+            Include
+            <strong>{{ hiddenCount }}</strong>
+            hidden match{{ hiddenCount === 1 ? '' : 'es' }}
+          </span>
+        </label>
 
-      <label class="export-bundle-toggle export-bundle-share-toggle">
-        <input v-model="sharing" type="checkbox">
-        <span>Share with a coach</span>
-      </label>
+        <label class="export-bundle-toggle export-bundle-share-toggle">
+          <input v-model="sharing" type="checkbox">
+          <span>Share with a coach</span>
+        </label>
 
-      <div v-if="sharing" class="export-bundle-share">
-        <label class="export-bundle-field-label" for="export-bundle-handle">
-          Your handle (required)
+        <div v-if="sharing" class="export-bundle-share">
+          <label class="export-bundle-field-label" for="export-bundle-handle">
+            Your handle (required)
+          </label>
+          <input
+            id="export-bundle-handle"
+            v-model="shareHandle"
+            type="text"
+            class="export-bundle-input"
+            autocomplete="off"
+            spellcheck="false"
+            aria-required="true"
+            placeholder="The name your coach knows you by"
+          >
+          <label class="export-bundle-field-label" for="export-bundle-message">
+            Message for your coach (optional)
+          </label>
+          <textarea
+            id="export-bundle-message"
+            v-model="shareMessage"
+            class="export-bundle-input export-bundle-message"
+            rows="3"
+            placeholder="What do you want them to look at?"
+          />
+          <!-- A coach reviews by WATCHING the replay — a bundle they cannot
+               load hands them nothing to review. The note names the gaps and
+               where the code goes; the server refuses the same share with a
+               409, so this is the honest gate, not a nag. -->
+          <div v-if="missingReplayCount > 0" class="export-bundle-missing-replay" role="alert">
+            <p class="export-bundle-missing-line">
+              {{ missingReplayCount }} of these matches {{ missingReplayCount === 1 ? 'has' : 'have' }} no replay
+              code — a coach can't watch what they can't load. Add each code in
+              the match's journal (Replay code field), then share.
+            </p>
+            <ul v-if="missingReplayPreview.length" class="export-bundle-missing-list">
+              <li v-for="label in missingReplayPreview" :key="label">
+                {{ label }}
+              </li>
+              <li v-if="missingReplay.length > missingReplayPreview.length">
+                …and {{ missingReplay.length - missingReplayPreview.length }} more
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <label class="export-bundle-field-label" for="export-bundle-filename">
+          Filename
         </label>
         <input
-          id="export-bundle-handle"
-          v-model="shareHandle"
+          id="export-bundle-filename"
+          ref="inputEl"
+          v-model="filename"
           type="text"
           class="export-bundle-input"
           autocomplete="off"
           spellcheck="false"
-          aria-required="true"
-          placeholder="The name your coach knows you by"
+          required
+          :disabled="busy"
+          data-testid="filename"
         >
-        <label class="export-bundle-field-label" for="export-bundle-message">
-          Message for your coach (optional)
-        </label>
-        <textarea
-          id="export-bundle-message"
-          v-model="shareMessage"
-          class="export-bundle-input export-bundle-message"
-          rows="3"
-          placeholder="What do you want them to look at?"
-        />
-        <!-- A coach reviews by WATCHING the replay — a bundle they cannot
-             load hands them nothing to review. The note names the gaps and
-             where the code goes; the server refuses the same share with a
-             409, so this is the honest gate, not a nag. -->
-        <div v-if="missingReplayCount > 0" class="export-bundle-missing-replay" role="alert">
-          <p class="export-bundle-missing-line">
-            {{ missingReplayCount }} of these matches {{ missingReplayCount === 1 ? 'has' : 'have' }} no replay
-            code — a coach can't watch what they can't load. Add each code in
-            the match's journal (Replay code field), then share.
-          </p>
-          <ul v-if="missingReplayPreview.length" class="export-bundle-missing-list">
-            <li v-for="label in missingReplayPreview" :key="label">
-              {{ label }}
-            </li>
-            <li v-if="missingReplay.length > missingReplayPreview.length">
-              …and {{ missingReplay.length - missingReplayPreview.length }} more
-            </li>
-          </ul>
-        </div>
+
+        <p class="export-bundle-preview">
+          Bundle will include ~
+          <strong>{{ previewCount }}</strong>
+          match{{ previewCount === 1 ? '' : 'es' }} total.
+        </p>
       </div>
-
-      <label class="export-bundle-field-label" for="export-bundle-filename">
-        Filename
-      </label>
-      <input
-        id="export-bundle-filename"
-        ref="inputEl"
-        v-model="filename"
-        type="text"
-        class="export-bundle-input"
-        autocomplete="off"
-        spellcheck="false"
-        required
-        :disabled="busy"
-        data-testid="filename"
-      >
-
-      <p class="export-bundle-preview">
-        Bundle will include ~
-        <strong>{{ previewCount }}</strong>
-        match{{ previewCount === 1 ? '' : 'es' }} total.
-      </p>
 
       <div class="export-bundle-actions">
         <button
@@ -448,6 +450,11 @@ onBeforeUnmount(() => {
   color: var(--text-dim);
 }
 
+/* The overlay scrolls too, as a second line of defence. `align-items: center`
+   pushes an over-tall box off BOTH edges and the top half is then unreachable
+   — so the box is capped below, and this is what catches anything the cap
+   cannot (a user-resized textarea, a font-size bump). ManualMatchModal does
+   the same. */
 .export-bundle-modal {
   position: fixed;
   inset: 0;
@@ -456,6 +463,27 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   padding: var(--space-5);
+  overflow-y: auto;
+}
+
+/* The only thing that scrolls. useScrollLock cancels any wheel that does not
+   land in an `overflow-y: auto` element, so without this rule the modal was
+   not merely clipped — it was completely inert to the wheel. */
+.export-bundle-body {
+  flex: 1 1 auto;
+
+  /* Load-bearing: a flex item's default `min-height: auto` refuses to shrink
+     below its content, which would defeat the cap above entirely. */
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Neither the title nor the way out may be squeezed by a tall body. */
+.export-bundle-eyebrow,
+.export-bundle-title,
+.export-bundle-desc,
+.export-bundle-actions {
+  flex: 0 0 auto;
 }
 
 .export-bundle-modal-backdrop {
@@ -465,10 +493,18 @@ onBeforeUnmount(() => {
   backdrop-filter: blur(2px);
 }
 
+/* Capped to the viewport as a flex column: the eyebrow and title above, the
+   actions row below, and only the middle scrolls. A dialog whose Cancel
+   button is off-screen is a trap, which is what this was in share mode at
+   any window under ~840px. Mirrors SettingsModal. */
 .export-bundle-modal-box {
   position: relative;
   z-index: 1;
   width: min(30rem, 100%);
+  max-height: calc(100dvh - 3rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--accent);
   border-radius: var(--radius-md);
@@ -575,6 +611,9 @@ onBeforeUnmount(() => {
   border-left: 2px solid var(--accent);
 }
 
+/* Resizable, and safely so now: the box is capped and the body scrolls, so
+   dragging this taller just gives the body something to scroll rather than
+   pushing the dialog off screen. Before the cap it was a one-way trap. */
 .export-bundle-message {
   font-family: var(--body);
   line-height: 1.45;

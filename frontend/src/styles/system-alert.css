@@ -273,6 +273,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow-y: auto;
 
   /* stylelint-disable-next-line scale-unlimited/declaration-strict-value --
      modal scrim. tokens.css names this case when it scopes --shadow-rgb
@@ -282,8 +283,16 @@
   backdrop-filter: blur(4px);
 }
 
+/* Capped and scrollable. Short, fixed content, so the whole box scrolls
+   rather than splitting a pinned head off it (KeyboardShortcutsModal's
+   shape, not SettingsModal's) — but it must still be capped: an
+   `align-items: center` overlay pushes an over-tall box off BOTH edges and
+   the top half is then unreachable, and useScrollLock cancels every wheel
+   that does not land in an `overflow-y: auto` element. */
 .modal-box {
   position: relative;
+  max-height: calc(100dvh - 3rem);
+  overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
