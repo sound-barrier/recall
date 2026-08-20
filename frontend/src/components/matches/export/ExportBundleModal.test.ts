@@ -117,7 +117,7 @@ describe('ExportBundleModal — emits', () => {
     const { emitted, baseElement } = renderModal()
     // The backdrop is a deliberately aria-hidden dimming layer.
     // eslint-disable-next-line testing-library/no-node-access -- aria-hidden dimming layer has no accessible surface
-    await user().click(baseElement.querySelector('.export-bundle-modal-backdrop')!)
+    await user().click(baseElement.querySelector('.sheet-backdrop')!)
     expect(emitted('close')).toBeTruthy()
   })
 

@@ -8,7 +8,7 @@ import { useMatchesStore } from '@/stores/matches'
 
 // Sending matches to a coach.
 //
-// This used to be a checkbox inside a dialog labelled for backups, which is
+// This used to be a checkbox inside a dialog labeled for backups, which is
 // why nobody found it. It is its own dialog now, and because sharing is the
 // whole job rather than a mode, the replay-code requirement can be what it
 // should always have been: not a disabled button with an explanation in its
@@ -84,25 +84,25 @@ function onSend(): void {
 <template>
   <div
     v-if="shareOpen"
-    class="send-to-coach"
+    class="sheet-overlay"
     role="dialog"
     aria-modal="true"
     aria-labelledby="send-to-coach-title"
     data-testid="send-to-coach"
   >
-    <div class="send-to-coach-backdrop" aria-hidden="true" @click="matches.closeShare()" />
-    <form class="send-to-coach-box" @submit.prevent="onSend">
-      <p class="eyebrow accent send-to-coach-eyebrow">
+    <div class="sheet-backdrop" aria-hidden="true" @click="matches.closeShare()" />
+    <form class="sheet-box send-to-coach-box" @submit.prevent="onSend">
+      <p class="eyebrow accent sheet-fixed send-to-coach-eyebrow">
         Coaching
       </p>
-      <h2 id="send-to-coach-title" class="send-to-coach-title">
+      <h2 id="send-to-coach-title" class="sheet-fixed send-to-coach-title">
         Send to a coach
       </h2>
-      <p class="send-to-coach-subject">
+      <p class="sheet-fixed send-to-coach-subject">
         {{ shareSubject }}
       </p>
 
-      <div class="send-to-coach-body">
+      <div class="sheet-body">
         <label class="send-to-coach-field-label" for="send-to-coach-handle">
           Your handle (required)
         </label>
@@ -182,7 +182,7 @@ function onSend(): void {
         >
       </div>
 
-      <div class="send-to-coach-actions">
+      <div class="sheet-fixed send-to-coach-actions">
         <button
           type="button"
           class="send-to-coach-cancel"
@@ -206,59 +206,11 @@ function onSend(): void {
 </template>
 
 <style scoped>
-/* Born with the shape ExportBundleModal had to be retrofitted into: capped,
-   a flex column, and only the middle scrolls — so the Send button is one
-   click away at every window height. See that file for what happens
-   otherwise. */
-.send-to-coach {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-5);
-  overflow-y: auto;
-}
-
-.send-to-coach-backdrop {
-  position: absolute;
-  inset: 0;
-  background: color-mix(in srgb, var(--bg) 70%, transparent);
-  backdrop-filter: blur(2px);
-}
-
+/* Shape comes from the .sheet-* family in styles/system-alert.css — capped,
+   pinned head and actions, only the middle scrolls, so Send is one click
+   away at every window height. Only the width is this dialog's own. */
 .send-to-coach-box {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
   width: min(32rem, 100%);
-  max-height: calc(100dvh - 3rem);
-  overflow: hidden;
-  padding: 1.6rem 1.6rem 1.3rem;
-  background: var(--surface);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-md);
-  box-shadow:
-    0 22px 60px color-mix(in srgb, var(--bg) 70%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
-}
-
-.send-to-coach-eyebrow,
-.send-to-coach-title,
-.send-to-coach-subject,
-.send-to-coach-actions {
-  flex: 0 0 auto;
-}
-
-.send-to-coach-body {
-  flex: 1 1 auto;
-
-  /* A flex item's default min-height refuses to shrink below its content,
-     which would defeat the cap above entirely. */
-  min-height: 0;
-  overflow-y: auto;
 }
 
 .send-to-coach-title {

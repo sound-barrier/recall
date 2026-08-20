@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS summary_screenshots (
   playlist TEXT NOT NULL DEFAULT '',
   hero TEXT NOT NULL DEFAULT '',
   hero_raw TEXT NOT NULL DEFAULT '',
-  -- '' when the banner did not read; the trio otherwise. CHECKed like its
+  -- '' when the banner did not read; the trio otherwise. given a CHECK like its
   -- user_match_data twin, because the IMPORT path validates neither.
   result TEXT NOT NULL DEFAULT '' CHECK (result IN ('', 'victory', 'defeat', 'draw')),
   final_score TEXT NOT NULL DEFAULT '',

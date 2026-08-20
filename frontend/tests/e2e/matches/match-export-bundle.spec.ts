@@ -130,7 +130,7 @@ test.describe('matches — export bundle', () => {
 /**
  * The dialog has to fit the window, or be scrollable to.
  *
- * It was neither. Flex-centred with no `max-height`, a box taller than the
+ * It was neither. Flex-centered with no `max-height`, a box taller than the
  * viewport overflowed symmetrically — and the TOP half of an
  * `align-items: center` overflow is unreachable by any means. Nothing in the
  * stack scrolled either: `useScrollLock` cancels every wheel that does not
@@ -164,7 +164,7 @@ test.describe('export bundle — the dialog fits the window', () => {
   test(`starts on screen and scrolls its body at ${height}px`, async ({ page }) => {
     await page.setViewportSize({ width: 1280, height })
     const modal = await openModal(page)
-    const box = modal.locator('.export-bundle-modal-box')
+    const box = modal.locator('.sheet-box')
 
     const bb = (await box.boundingBox())!
     expect(bb.y, 'the top of the dialog is on screen').toBeGreaterThanOrEqual(-1)
@@ -172,7 +172,7 @@ test.describe('export bundle — the dialog fits the window', () => {
 
     // Whatever the actions row sits below has to be reachable. Asserted only
     // if there IS an overflow, so the case cannot pass vacuously.
-    const body = modal.locator('.export-bundle-body')
+    const body = modal.locator('.sheet-body')
     const overflows = await body.evaluate((el) => el.scrollHeight > el.clientHeight + 4)
     if (overflows) {
       // The wheel is the assertion that matters: useScrollLock cancels any
@@ -201,7 +201,7 @@ test.describe('export bundle — the dialog fits the window', () => {
   test('grows no scrollbar when it already fits', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 1000 })
     const modal = await openModal(page)
-    const body = modal.locator('.export-bundle-body')
+    const body = modal.locator('.sheet-body')
     expect(
       await body.evaluate((el) => el.scrollHeight <= el.clientHeight + 4),
       'a dialog that fits does not scroll',

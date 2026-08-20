@@ -302,6 +302,70 @@
   box-shadow: 0 24px 60px rgb(var(--shadow-rgb) / 60%);
 }
 
+/* ── The capped SHEET: a pinned head, a scrolling middle, pinned actions ──
+   SettingsModal's shape, spelled once. The sibling family above is for a
+   short, fixed box that scrolls whole; this is for a dialog with a form in
+   it and a way out at the bottom that must never leave the screen.
+
+   Three rules, all load-bearing together — the export dialog shipped with
+   none of them and was a trap at any window under ~840px:
+     - the overlay scrolls too, because `align-items: center` pushes an
+       over-tall box off BOTH edges and the TOP half is then unreachable;
+     - the box is capped, so it does not get that tall in the first place;
+     - the body is the one `overflow-y: auto` element, because useScrollLock
+       cancels every wheel that does not land in one — without it the dialog
+       is not merely clipped, it is inert.
+
+   dvh, not vh: the app ships in a WebView. The 3rem is the overlay's own
+   --space-5 padding, top and bottom. */
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  overflow-y: auto;
+}
+
+.sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.sheet-box {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 3rem);
+  overflow: hidden;
+  padding: 1.6rem 1.6rem 1.3rem;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  box-shadow:
+    0 22px 60px color-mix(in srgb, var(--bg) 70%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.sheet-body {
+  flex: 1 1 auto;
+
+  /* A flex item's default `min-height: auto` refuses to shrink below its
+     content, which would defeat the cap above entirely. */
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Neither the title nor the way out may be squeezed by a tall body. */
+.sheet-fixed {
+  flex: 0 0 auto;
+}
+
 .modal-icon {
   color: var(--accent-text);
   margin-bottom: 0.9rem;

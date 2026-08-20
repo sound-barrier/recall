@@ -94,7 +94,14 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # surface, plus its token family across four themes (measured 78007B).
 # It is eager because the loan slip and session rule appear on every tab
 # while a session is open. ~2KB headroom.
-: "${MAX_INITIAL_CSS_BYTES:=80000}"
+# 2026-08: 80000 -> 82000 -- the .sheet-* family in styles/system-alert.css:
+# the capped dialog with a pinned head, a scrolling middle and pinned actions.
+# It moves bytes from lazy chunks INTO the eager sheet by design — two dialogs
+# had spelled that shape out separately, and one of them had it wrong enough
+# to be a trap at any window under ~840px. Total CSS went DOWN paying for this
+# (see the total's own row); the initial graph is where a cross-cutting family
+# belongs. Measured 80213B; ~1.8KB headroom.
+: "${MAX_INITIAL_CSS_BYTES:=82000}"
 # The Matches "Trends" charts pull in ECharts (tree-shaken to line + bar
 # charts, grid/tooltip/legend/markline/data-zoom/brush components, canvas
 # renderer). It rides in its own lazily-loaded chunk (TrendChart-*.js),
@@ -267,7 +274,12 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # editor rows and their tool chips, the band on 07 (rows, provenance,
 # the retired fold), the session nudge toast, the focus-now widget, and
 # the ledger's flexed clock row (measured 412644B).
-: "${MAX_TOTAL_CSS_BYTES:=415000}"
+# 2026-08: 415000 -> 418000 -- the Send-to-Coach dialog: its manifest rows,
+# replay-code gaps and the fix-these panel. Its dialog CHROME costs nothing,
+# because extracting the shared .sheet-* family took 1165B of duplicate back
+# out at the same time (416393B before the extraction, 415228B after). New
+# surface; ~2.8KB headroom.
+: "${MAX_TOTAL_CSS_BYTES:=418000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never
