@@ -143,7 +143,13 @@ export function buildPaletteItems(
   records: readonly PaletteRecord[],
   names: DisplayNames = {},
   inCoachingSession = false,
+  writesLocked = false,
 ): PaletteItem[] {
-  const actions = inCoachingSession ? [] : ACTION_ITEMS
+  // A session hides every action (the palette is over someone else's loan);
+  // a read-only profile hides only the one that writes — starting a review.
+  // Sharing and opening a bundle are reads.
+  const actions = inCoachingSession
+    ? []
+    : ACTION_ITEMS.filter((a) => !(writesLocked && a.target === 'review-last-session'))
   return [...viewItems(), ...actions, ...matchItems(records, names)]
 }

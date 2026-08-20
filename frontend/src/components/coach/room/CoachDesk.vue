@@ -122,17 +122,21 @@ function onRemoveFrame(): void {
         @prev="emit('prev')"
         @next="emit('next')"
       />
+      <!-- App-surface buttons, not paper ones: this strip sits on the room's
+           own background, where paper ink has no contrast. Blocked (a
+           read-only profile) outranks the last-frame reason — the same
+           precedence every sibling control uses. -->
       <div v-if="removable !== 'none'" class="desk-remove">
         <button
           type="button"
-          class="paper-btn"
-          :disabled="removable === 'last'"
-          :title="removable === 'last' ? LAST_FRAME_REASON : undefined"
+          class="btn ghost"
+          :disabled="removable === 'last' || blockedReason !== ''"
+          :title="blockedReason || (removable === 'last' ? LAST_FRAME_REASON : undefined)"
           @click="onRemoveFrame"
         >
           {{ removeArmed ? 'Take it out — its note and moments go with it' : 'Take this match out of the review' }}
         </button>
-        <button v-if="removeArmed" type="button" class="paper-btn" @click="removeArmed = false">
+        <button v-if="removeArmed" type="button" class="btn ghost" @click="removeArmed = false">
           Keep it
         </button>
       </div>

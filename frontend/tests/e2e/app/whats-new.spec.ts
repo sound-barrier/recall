@@ -15,20 +15,16 @@ test.describe("what's new", () => {
     await silenceParseEvents(page)
     await seedProfiles(page)
     // Opt back in: the shared fixture pre-dismisses the strip for every
-    // other spec; this one exists to see it. Init scripts run in order (so
-    // this lands after the fixture's set) and on EVERY navigation — the
-    // sessionStorage latch makes the removal a one-shot, or the reload
-    // assertions would test the init script instead of the app.
+    // other spec; this one exists to see it. Init scripts run in order, so
+    // this removal lands after the fixture's set.
     await page.addInitScript(() => {
-      try {
-        if (sessionStorage.getItem('wn-armed') === null) {
-          sessionStorage.setItem('wn-armed', '1')
-          localStorage.removeItem('recall.whatsNew.reviewsTab')
-        }
-      } catch (_) { /* mirrored */ }
+      try { localStorage.removeItem('recall.whatsNew.reviewsTab') } catch (_) { /* mirrored */ }
     })
   })
 
+  // Permanence is asserted on the PERSISTED value, not on a reload: the
+  // shared fixture re-writes the dismissal key on every navigation, so a
+  // post-reload "strip is gone" would test the fixture, not the app.
   test('announces the Reviews tab once; Show me lands there and retires the strip', async ({ page }) => {
     await page.goto('/')
     await expect(strip(page)).toBeVisible()
@@ -36,17 +32,13 @@ test.describe("what's new", () => {
     await strip(page).getByRole('button', { name: 'Show me' }).click()
     await expect(page.getByRole('tab', { name: /^Reviews/ })).toHaveAttribute('aria-selected', 'true')
     await expect(strip(page)).toHaveCount(0)
-    await page.reload()
-    await expect(page.getByRole('tablist')).toBeVisible()
-    await expect(strip(page)).toHaveCount(0)
+    expect(await page.evaluate(() => localStorage.getItem('recall.whatsNew.reviewsTab'))).toBe('seen')
   })
 
-  test('dismissing it is permanent', async ({ page }) => {
+  test('dismissing it persists', async ({ page }) => {
     await page.goto('/')
     await strip(page).getByRole('button', { name: 'Not now' }).click()
     await expect(strip(page)).toHaveCount(0)
-    await page.reload()
-    await expect(page.getByRole('tablist')).toBeVisible()
-    await expect(strip(page)).toHaveCount(0)
+    expect(await page.evaluate(() => localStorage.getItem('recall.whatsNew.reviewsTab'))).toBe('seen')
   })
 })

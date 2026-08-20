@@ -84,17 +84,26 @@ func (a *App) ExportShareBundle(opts ExportBundleOptions, player SharePlayer) ([
 		return nil, err
 	}
 	opts.Player = &identity
-	data, err := a.exportBundle(opts)
+	return a.exportBundle(opts)
+}
+
+// RecordShareReceipt writes the sent-ledger row for a share that actually
+// LEFT — called at the boundary that knows it did, not at build time: the
+// server handler once the bytes are handed to the browser (path unknowable
+// there), and the Wails saver once the file is on disk (path known). A
+// receipt written at build time outlived a canceled save dialog. The handle
+// recorded is the RESOLVED one — a blank input falls back to the persisted
+// handle exactly as the bundle's manifest did. Failing to write the receipt
+// is a warning, never an eaten share.
+func (a *App) RecordShareReceipt(player SharePlayer, savedPath string, matchKeys []string) {
+	identity, err := a.shareIdentity(player)
 	if err != nil {
-		return nil, err
+		slog.Warn("share receipt not recorded", "error", err)
+		return
 	}
-	// The receipt: sharing used to leave no trace anywhere in the app. A
-	// ledger write failing must not eat a bundle that already exists — the
-	// export is the user's ask, the receipt is bookkeeping.
-	if _, err := a.store.RecordShareExport(identity.Handle, player.Message, "", opts.MatchKeys); err != nil {
-		slog.Warn("share export not recorded", "error", err)
+	if _, err := a.store.RecordShareExport(identity.Handle, player.Message, savedPath, matchKeys); err != nil {
+		slog.Warn("share receipt not recorded", "error", err)
 	}
-	return data, nil
 }
 
 // ListShareExports reads the sent ledger, newest first — the Reviews tab's

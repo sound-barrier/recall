@@ -201,11 +201,14 @@ export const useSelfReviewStore = defineStore('selfReview', () => {
     const current = open.value
     if (!current || current.match_keys.length <= 1) return
     await reporting(async () => {
+      // Drafts first, THEN the round trip: a debounced save firing during
+      // the await would write the note straight back onto a match the
+      // sitting no longer holds.
+      dropDraft(matchKey)
+      if (selectedKey.value === matchKey) selectedKey.value = ''
       const remaining = current.match_keys.filter((k) => k !== matchKey)
       const updated = await SetSelfReviewMatches(current.review_id, remaining)
       upsertSelfReview(updated)
-      dropDraft(matchKey)
-      if (selectedKey.value === matchKey) selectedKey.value = ''
       await getQueryClient().refetchQueries({ queryKey: qk.matches })
     })
   }

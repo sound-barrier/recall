@@ -62,6 +62,14 @@ function onFinish(): void {
 
 const finished = computed(() => props.finishedAt !== '')
 
+// finished_at is a UTC instant; the chip speaks the VIEWER's day.
+const finishedDay = computed(() => {
+  const d = new Date(props.finishedAt)
+  if (Number.isNaN(d.getTime())) return props.finishedAt.slice(0, 10)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return formatPlayerDay(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`)
+})
+
 function onTitleInput(e: Event): void {
   if (!(e.target instanceof HTMLInputElement)) return
   emit('update-title', e.target.value)
@@ -119,7 +127,7 @@ function onTitleInput(e: Event): void {
          going back is the primary, and re-finishing is the quiet edge case
          it is — not a primary that reads as "Save again". -->
     <p v-if="finished" class="eyebrow ink self-sheet-finished">
-      Finished · {{ formatPlayerDay(finishedAt.slice(0, 10)) }}
+      Finished · {{ finishedDay }}
     </p>
     <footer class="sheet-actions">
       <template v-if="!finished">

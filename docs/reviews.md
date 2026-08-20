@@ -101,14 +101,17 @@ In the dialog, tick **Share with a coach**. That changes what the file
 IS — it stamps your handle on it so their Recall can open it as a
 session rather than merging it into their own history.
 
-- **Your handle** — the name your coach knows you by. Filled in from the
-  last time you shared; you can also set it in Settings → Coaching.
+- **Your handle (required)** — the name your coach knows you by. Filled
+  in from the last time you shared; you can also set it in Settings →
+  Coaching.
 - **Message for your coach** — optional, and the most useful field in
   the dialog. "Watch my ult timing on control" gets you a better review
   than silence does.
 
 Save the `.zip` and send it however you like: Discord, email, a drive
-share. Recall has no opinion about that.
+share. Recall has no opinion about that — but it keeps the receipt: the
+Reviews tab lists every share you sent, and marks the ones a coach has
+answered.
 
 ### 3. Read what comes back
 
@@ -208,14 +211,17 @@ what the match was about — and the moments carry the specifics.
 
 ### 4. Send it back
 
-**Export notes** writes a `.zip` holding `notes.json` (what their Recall
+**1 · Export notes** writes a `.zip` holding `notes.json` (what their Recall
 reads) and `ledger.html` (a page you can open in a browser, or send to
 someone who does not use Recall). Send it back the same way the bundle
 came.
 
-**End session** hands their records back and returns you to your own
-history. Your notes stay with you — reopening the same player's bundle
-later brings them back, so a second session builds on the first.
+**2 · End session** hands their records back and lands you on the
+Reviews tab with a notice naming what ended (and where the notes file
+went, if you exported one). Your notes stay with you — the roster under
+*For someone else* lists every player you have coached, and reopening
+the same player's bundle later brings the notes back, so a second
+session builds on the first.
 
 ## Frequently confusing
 

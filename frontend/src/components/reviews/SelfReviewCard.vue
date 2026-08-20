@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, useTemplateRef } from 'vue'
 
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { formatPlayerDay } from '@/match/coach/coach-time'
@@ -24,12 +24,16 @@ const emit = defineEmits<{
 // happens in the BODY, so the footer never reflows under the pointer
 // between the first click and the second.
 const armed = ref(false)
+const confirmButton = useTemplateRef<HTMLButtonElement>('confirmButton')
 const { writesLocked, lockReason, guardWrite } = useWriteGate()
 
 function onDelete(): void {
   if (!guardWrite()) return
   if (!armed.value) {
     armed.value = true
+    // The footer's Delete unmounts on arming; without a hand-off the
+    // keyboard lands on <body> and a screen reader hears nothing.
+    void nextTick(() => confirmButton.value?.focus())
     return
   }
   armed.value = false
@@ -68,12 +72,12 @@ const MARK_TITLE = {
       <p v-if="card.summaryExcerpt" class="src-summary">
         {{ card.summaryExcerpt }}
       </p>
-      <div v-if="armed" class="src-warn">
+      <div v-if="armed" class="src-warn" role="alert">
         <p class="src-warn-line">
           Delete this review? Notes and moments go with it — the matches stay.
         </p>
         <div class="src-warn-actions">
-          <button type="button" class="paper-btn" @click="onDelete">
+          <button ref="confirmButton" type="button" class="paper-btn" @click="onDelete">
             Delete this review — notes go with it
           </button>
           <button type="button" class="paper-btn" @click="armed = false">
