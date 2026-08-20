@@ -3,6 +3,7 @@ package cmd_test
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -145,5 +146,70 @@ func TestExportBundle_PostRejectsMalformedJSON(t *testing.T) {
 	rec := postRaw(t, mux, "/api/v1/exports/bundle", "{not json")
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("status %d, want 400; body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+// The sent ledger is written by THIS boundary — once the bytes are built and
+// handed to the browser — so a share appears on GET /api/v1/shares, and a
+// refused share (no handle anywhere) leaves no receipt.
+func TestExportBundle_ShareModeWritesTheSentLedger(t *testing.T) {
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	store := dbtest.New()
+	seedMatchKeys(store, shareMatchKey)
+	_, mux := newTestApp(t, store)
+
+	rec := fire(t, mux, http.MethodPost, "/api/v1/exports/bundle", map[string]any{
+		"match_keys": []string{shareMatchKey},
+		"share":      map[string]any{"handle": "Sable", "message": "ult timing"},
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("share export = %d, want 200", rec.Code)
+	}
+
+	list := fire(t, mux, http.MethodGet, "/api/v1/shares", nil)
+	if list.Code != http.StatusOK {
+		t.Fatalf("GET /shares = %d, want 200", list.Code)
+	}
+	var sent []struct {
+		Handle    string   `json:"handle"`
+		Message   string   `json:"message"`
+		MatchKeys []string `json:"match_keys"`
+	}
+	if err := json.Unmarshal(list.Body.Bytes(), &sent); err != nil {
+		t.Fatalf("decode shares: %v", err)
+	}
+	if len(sent) != 1 || sent[0].Handle != "Sable" || sent[0].Message != "ult timing" {
+		t.Fatalf("shares = %+v, want the one receipt", sent)
+	}
+	if len(sent[0].MatchKeys) != 1 || sent[0].MatchKeys[0] != shareMatchKey {
+		t.Fatalf("receipt keys = %v, want [%s]", sent[0].MatchKeys, shareMatchKey)
+	}
+}
+
+func TestExportBundle_RefusedShareLeavesNoReceipt(t *testing.T) {
+	rec := postShareBundle(t, map[string]any{"handle": ""})
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("blank-handle share = %d, want 409", rec.Code)
+	}
+	// postShareBundle stands up its own app; re-create the same shape to read
+	// the ledger through the API.
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	store := dbtest.New()
+	seedMatchKeys(store, shareMatchKey)
+	_, mux := newTestApp(t, store)
+	rec = fire(t, mux, http.MethodPost, "/api/v1/exports/bundle", map[string]any{
+		"match_keys": []string{shareMatchKey},
+		"share":      map[string]any{"handle": ""},
+	})
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("blank-handle share = %d, want 409", rec.Code)
+	}
+	list := fire(t, mux, http.MethodGet, "/api/v1/shares", nil)
+	var sent []any
+	if err := json.Unmarshal(list.Body.Bytes(), &sent); err != nil {
+		t.Fatalf("decode shares: %v", err)
+	}
+	if len(sent) != 0 {
+		t.Fatalf("shares after a refused export = %d rows, want 0", len(sent))
 	}
 }

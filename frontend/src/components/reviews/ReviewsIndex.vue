@@ -17,6 +17,7 @@ import { useDatabaseStore } from '@/stores/database'
 import { useMatchesStore } from '@/stores/matches'
 import { useSelfReviewStore } from '@/stores/selfReview'
 import { useUiStore } from '@/stores/ui'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // The tab's front of house, where the reels come off and go back on.
 //
@@ -36,6 +37,7 @@ const database = useDatabaseStore()
 const matches = useMatchesStore()
 const ui = useUiStore()
 
+const { writesLocked, lockedTitle, guardWrite } = useWriteGate()
 const { inbox } = storeToRefs(returns)
 const { records } = storeToRefs(matches)
 const selfReview = useSelfReviewStore()
@@ -50,14 +52,17 @@ const shelfCards = computed(() => sittings.value.map((s) => shelfCard(s, records
 // the session gap — last night's games as much as tonight's, which is why it
 // is not called "today's". "Last N" is simply the newest N the history holds.
 const LAST_N_CAP = 10
-const sessionKeys = computed(() => latestSessionKeys(records.value))
-const lastNKeys = computed(() => [...records.value]
+// Hidden matches were hidden on purpose — a quick start must not quietly
+// sweep them back into a review.
+const visibleRecords = computed(() => records.value.filter((r) => !r.hidden))
+const sessionKeys = computed(() => latestSessionKeys(visibleRecords.value))
+const lastNKeys = computed(() => [...visibleRecords.value]
   .sort((a, b) => matchTime(b).localeCompare(matchTime(a)))
   .slice(0, LAST_N_CAP)
   .map((r) => r.match_key))
 
 function startOver(keys: readonly string[]): void {
-  if (keys.length === 0) return
+  if (keys.length === 0 || !guardWrite()) return
   void selfReview.createFromKeys([...keys])
 }
 
@@ -104,12 +109,26 @@ function answeringCoach(e: ShareExport): string {
   const sent = new Set(e.match_keys)
   const answer = inbox.value.find((sheet: CoachReturnSheet) =>
     sheet.imported_at > e.exported_at && sheet.notes.some((n) => sent.has(n.match_key)))
-  return answer?.coach_name ?? ''
+  if (answer) return answer.coach_name
+  // A sheet can be discarded after its notes were accepted; the blocks on
+  // the matches are then the only record the answer arrived.
+  const block = received.value.find((r) =>
+    r.sessionDate >= e.exported_at.slice(0, 10) && r.matchKeys.some((k) => sent.has(k)))
+  return block?.coachName ?? ''
+}
+
+// exported_at is a UTC instant; render the VIEWER's day, not UTC's — a
+// share made at 19:00 in UTC-8 is "today", not tomorrow.
+function localDay(rfc3339: string): string {
+  const d = new Date(rfc3339)
+  if (Number.isNaN(d.getTime())) return rfc3339.slice(0, 10)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return formatPlayerDay(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`)
 }
 
 function sentLine(e: { match_keys: string[]; exported_at: string }): string {
   const n = e.match_keys.length
-  return `Sent ${n} ${n === 1 ? 'match' : 'matches'} · ${formatPlayerDay(e.exported_at.slice(0, 10))}`
+  return `Sent ${n} ${n === 1 ? 'match' : 'matches'} · ${localDay(e.exported_at)}`
 }
 
 // Decided sheets none of whose notes landed — skipped, or removed since.
@@ -158,7 +177,7 @@ const roster = computed(() => rosterQuery.data.value ?? [])
 
 function rosterLine(p: { handle: string; note_count: number; last_note_at?: string }): string {
   const notes = `${p.note_count} ${p.note_count === 1 ? 'note' : 'notes'}`
-  const last = p.last_note_at ? ` · last session ${formatPlayerDay(p.last_note_at.slice(0, 10))}` : ''
+  const last = p.last_note_at ? ` · last session ${localDay(p.last_note_at)}` : ''
   return `${p.handle} · ${notes}${last}`
 }
 
@@ -216,8 +235,8 @@ function openBundle(): void {
           <button
             type="button"
             class="btn primary"
-            :disabled="sessionKeys.length === 0"
-            :title="sessionKeys.length === 0 ? 'No matches yet — parse or add some first' : undefined"
+            :disabled="writesLocked || sessionKeys.length === 0"
+            :title="writesLocked ? lockedTitle('Open a review over your last session') : (sessionKeys.length === 0 ? 'No matches yet — parse or add some first' : undefined)"
             @click="startOver(sessionKeys)"
           >
             Review my last session ({{ sessionKeys.length }})
@@ -226,6 +245,8 @@ function openBundle(): void {
             v-if="lastNKeys.length > sessionKeys.length"
             type="button"
             class="btn"
+            :disabled="writesLocked"
+            :title="writesLocked ? lockedTitle('Open a review over your newest matches') : undefined"
             @click="startOver(lastNKeys)"
           >
             Review my last {{ lastNKeys.length }}
@@ -307,7 +328,7 @@ function openBundle(): void {
             <template v-if="e.answeredBy">answered by {{ e.answeredBy }}.</template>
             <template v-else>nothing back yet.</template>
           </span>
-          <button type="button" class="btn ghost" @click="matches.showOnlyMatches(e.match_keys, `matches you sent ${formatPlayerDay(e.exported_at.slice(0, 10))}`)">
+          <button type="button" class="btn ghost" @click="matches.showOnlyMatches(e.match_keys, `matches you sent ${localDay(e.exported_at)}`)">
             Show these matches →
           </button>
         </li>

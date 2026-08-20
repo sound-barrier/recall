@@ -69,7 +69,7 @@ for (const theme of THEMES) {
     await settleView(page, 'tab-matches')
 
     const banner = page.getByRole('status').filter({ hasText: new RegExp(`from ${COACH_NAME} waiting`) })
-    await banner.getByRole('button', { name: 'Review' }).click()
+    await banner.getByRole('button', { name: 'Read the notes' }).click()
     const dialog = page.getByRole('dialog', { name: new RegExp(`Notes from ${COACH_NAME}`) })
     await expect(dialog).toBeVisible()
     await expect(dialog.getByRole('radiogroup')).toHaveCount(RETURN_SHEET_FIXTURE.notes.length)

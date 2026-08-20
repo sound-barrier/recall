@@ -115,3 +115,25 @@
     transform: none;
   }
 }
+
+/* The one-shot pick-hint and the "Showing <review set>" strip — the house
+   banner shape (surface fill, accent stripe), the same one the Reviews tab's
+   waiting rows wear, so the trail reads as one voice across both tabs. */
+.review-pick-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.6rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+}
+
+.review-pick-hint-line {
+  flex: 1 1 auto;
+  font-size: var(--type-lg);
+  color: var(--text);
+}

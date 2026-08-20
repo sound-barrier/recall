@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
+import { onUnmounted, computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
 import { provideMatchesContext } from '@/composables/matches/useMatchesContext'
 import MatchesSortGroupPopover from '@/components/matches/list/MatchesSortGroupPopover.vue'
 import MatchesTableSortPopover from '@/components/matches/table/MatchesTableSortPopover.vue'
@@ -184,6 +184,10 @@ const {
 // ticks cleared, THEN the sitting opens — so coming back to the list never
 // re-offers a selection whose work is already done (a second press used to
 // mint a twin sitting).
+// Leaving the list retires the pick-hint — a hint pointing at rows that
+// are no longer on screen (or at someone else's loaned rows) is noise.
+onUnmounted(() => uiStore.clearReviewPickHint())
+
 async function reviewSelected(): Promise<void> {
   const keys = [...selectedKeys.value]
   clearSelection()

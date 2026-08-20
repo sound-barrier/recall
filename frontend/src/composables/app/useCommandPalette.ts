@@ -10,6 +10,7 @@ import { latestSessionKeys } from '@/match/dossier/match-momentum-helpers'
 import { useCoachStore } from '@/stores/coach'
 import { useSelfReviewStore } from '@/stores/selfReview'
 import { useUiStore } from '@/stores/ui'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // Enough to fill the list without scoring the reader's patience. The corpus is
 // already capped upstream; this caps what is DRAWN.
@@ -39,6 +40,7 @@ export function useCommandPalette(): {
   const ui = useUiStore()
   const ow = useOWData()
   const coach = useCoachStore()
+  const { writesLocked, guardWrite } = useWriteGate()
 
   const query = ref('')
   const cursor = ref(0)
@@ -53,6 +55,7 @@ export function useCommandPalette(): {
     matches.matchesNarrow.narrowedRecords.value,
     { hero: ow.heroDisplayName, map: ow.mapDisplayName },
     coach.sessionActive,
+    writesLocked.value,
   ))
 
   const results = computed<PaletteResult[]>(() => {
@@ -117,7 +120,10 @@ export function useCommandPalette(): {
   // an empty history there is nothing to open a sitting over — landing on
   // the tab that says so beats silently doing nothing.
   async function reviewLastSession(): Promise<void> {
-    const keys = latestSessionKeys(matches.records)
+    // Belt to the corpus filter's suspenders — a stale result list could
+    // still offer the entry for one render after the lock flipped.
+    if (!guardWrite()) return
+    const keys = latestSessionKeys(matches.records.filter((r) => !r.hidden))
     if (keys.length === 0) {
       await app.goToView('reviews')
       return

@@ -245,6 +245,11 @@ func (a *App) saveBundleDialog(opts ExportBundleOptions, player *SharePlayer, fi
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return "", fmt.Errorf("write bundle: %w", err)
 	}
+	// The share's receipt, only now that the file is really on disk — a
+	// canceled dialog or a failed write leaves no row claiming it left.
+	if player != nil {
+		a.RecordShareReceipt(*player, path, opts.MatchKeys)
+	}
 	return path, nil
 }
 

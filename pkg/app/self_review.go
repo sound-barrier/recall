@@ -28,9 +28,20 @@ func (a *App) GetSelfReview(reviewID string) (review.Session, error) {
 	return review.Get(a.store, reviewID)
 }
 
+// assertSelfReviewWritable is the pair of locks every sitting write asks:
+// no open coach session (the visible records are someone else's loan) and a
+// mutable profile (the read-only sample refuses corpus writes everywhere —
+// the frontend gate is defense in depth, and this is the depth).
+func (a *App) assertSelfReviewWritable() error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
+	return a.assertActiveMutable()
+}
+
 // CreateSelfReview opens a sitting over the given matches.
 func (a *App) CreateSelfReview(in review.CreateInput) (review.Session, error) {
-	if err := a.assertNoCoachSession(); err != nil {
+	if err := a.assertSelfReviewWritable(); err != nil {
 		return review.Session{}, err
 	}
 	return review.Create(a.store, in)
@@ -38,7 +49,7 @@ func (a *App) CreateSelfReview(in review.CreateInput) (review.Session, error) {
 
 // UpdateSelfReview replaces the sitting's title and summary.
 func (a *App) UpdateSelfReview(reviewID string, in review.UpdateInput) (review.Session, error) {
-	if err := a.assertNoCoachSession(); err != nil {
+	if err := a.assertSelfReviewWritable(); err != nil {
 		return review.Session{}, err
 	}
 	r, err := review.Update(a.store, reviewID, in)
@@ -53,7 +64,7 @@ func (a *App) UpdateSelfReview(reviewID string, in review.UpdateInput) (review.S
 // SetSelfReviewMatches replaces the sitting's set; a note on a match that
 // leaves goes with it, so that match is re-broadcast too.
 func (a *App) SetSelfReviewMatches(reviewID string, matchKeys []string) (review.Session, error) {
-	if err := a.assertNoCoachSession(); err != nil {
+	if err := a.assertSelfReviewWritable(); err != nil {
 		return review.Session{}, err
 	}
 	before, err := review.Get(a.store, reviewID)
@@ -71,7 +82,7 @@ func (a *App) SetSelfReviewMatches(reviewID string, matchKeys []string) (review.
 // DeleteSelfReview removes the sitting and its blocks from every match it
 // touched; the reviewed-by flags a finish stamped stay.
 func (a *App) DeleteSelfReview(reviewID string) error {
-	if err := a.assertNoCoachSession(); err != nil {
+	if err := a.assertSelfReviewWritable(); err != nil {
 		return err
 	}
 	// Read the set first so the matches that lose a block can be
@@ -90,7 +101,7 @@ func (a *App) DeleteSelfReview(reviewID string) error {
 // FinishSelfReview stamps the sitting done and every member match reviewed
 // by self where a coach has not already.
 func (a *App) FinishSelfReview(reviewID string) (review.Session, error) {
-	if err := a.assertNoCoachSession(); err != nil {
+	if err := a.assertSelfReviewWritable(); err != nil {
 		return review.Session{}, err
 	}
 	r, err := review.Finish(a.store, reviewID)
@@ -103,7 +114,7 @@ func (a *App) FinishSelfReview(reviewID string) (review.Session, error) {
 
 // PutSelfReviewNote saves the sitting's note about one match.
 func (a *App) PutSelfReviewNote(reviewID, matchKey string, in coach.NoteInput) (review.Note, error) {
-	if err := a.assertNoCoachSession(); err != nil {
+	if err := a.assertSelfReviewWritable(); err != nil {
 		return review.Note{}, err
 	}
 	n, err := review.PutNote(a.store, reviewID, matchKey, in)
@@ -116,7 +127,7 @@ func (a *App) PutSelfReviewNote(reviewID, matchKey string, in coach.NoteInput) (
 
 // DeleteSelfReviewNote removes the sitting's note about one match.
 func (a *App) DeleteSelfReviewNote(reviewID, matchKey string) error {
-	if err := a.assertNoCoachSession(); err != nil {
+	if err := a.assertSelfReviewWritable(); err != nil {
 		return err
 	}
 	if err := review.DeleteNote(a.store, reviewID, matchKey); err != nil {
@@ -129,7 +140,7 @@ func (a *App) DeleteSelfReviewNote(reviewID, matchKey string) error {
 // PutSelfReviewMoment saves one timestamped moment on the sitting's note
 // about a match, opening the note as reviewed_only when there is none.
 func (a *App) PutSelfReviewMoment(reviewID, matchKey, momentID string, in matchedit.MomentInput) (review.Moment, error) {
-	if err := a.assertNoCoachSession(); err != nil {
+	if err := a.assertSelfReviewWritable(); err != nil {
 		return review.Moment{}, err
 	}
 	m, err := review.PutMoment(a.store, reviewID, matchKey, momentID, in)
@@ -142,7 +153,7 @@ func (a *App) PutSelfReviewMoment(reviewID, matchKey, momentID string, in matche
 
 // DeleteSelfReviewMoment removes one moment from the sitting's note.
 func (a *App) DeleteSelfReviewMoment(reviewID, matchKey, momentID string) error {
-	if err := a.assertNoCoachSession(); err != nil {
+	if err := a.assertSelfReviewWritable(); err != nil {
 		return err
 	}
 	if err := review.DeleteMoment(a.store, reviewID, matchKey, momentID); err != nil {

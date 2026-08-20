@@ -8,6 +8,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/match"
+	"recall/pkg/review"
 )
 
 // The manager persists per-profile immutability and carries it through
@@ -94,6 +95,16 @@ func TestApp_TestProfileRejectsMutations(t *testing.T) {
 		if !errors.Is(err, app.ErrProfileImmutable) {
 			t.Errorf("%s on the read-only profile = %v, want ErrProfileImmutable", name, err)
 		}
+	}
+
+	// A self-review sitting is a corpus write the frontend refuses on the
+	// read-only sample (the whole sheet locks with the reason); the server
+	// says the same 409 — the gate is defense in depth, and this is the depth.
+	if _, err := a.CreateSelfReview(review.CreateInput{MatchKeys: []string{"match-2026-01-01T00-00-00"}}); !errors.Is(err, app.ErrProfileImmutable) {
+		t.Errorf("CreateSelfReview on the read-only profile = %v, want ErrProfileImmutable", err)
+	}
+	if _, err := a.SetSelfReviewMatches("some-id", []string{"k"}); !errors.Is(err, app.ErrProfileImmutable) {
+		t.Errorf("SetSelfReviewMatches on the read-only profile = %v, want ErrProfileImmutable", err)
 	}
 
 	// Small edits — removing matches from the existing corpus — are NOT imports,
