@@ -789,7 +789,6 @@ CREATE TABLE IF NOT EXISTS coach_return_decisions (
 CREATE TABLE IF NOT EXISTS self_reviews (
   review_id TEXT PRIMARY KEY,
   title TEXT NOT NULL DEFAULT '',
-  summary TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   finished_at TEXT

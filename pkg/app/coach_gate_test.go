@@ -113,7 +113,8 @@ func gatedSelfReviewWrites(a *app.App) map[string]func() error {
 		},
 		"DeleteSelfReview": func() error { return a.DeleteSelfReview("r") },
 		"SetSelfReviewFocusItems": func() error {
-			return a.SetSelfReviewFocusItems("r", []db.FocusItem{{ItemID: "i", Text: "t"}})
+			_, err := a.SetSelfReviewFocusItems("r", []db.FocusItem{{ItemID: coach.NewID(), Text: "t"}})
+			return err
 		},
 		// The player's own list — a coach's items land in it, but moving one
 		// is the player acting on their data, so the gate covers it.

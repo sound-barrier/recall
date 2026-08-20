@@ -90,19 +90,3 @@ func (a *App) SetFocusItemStatus(itemID, status string) error {
 	}
 	return a.store.SetFocusItemStatus(itemID, status)
 }
-
-// SetSelfReviewFocusItems replaces a sitting's own items, in order.
-func (a *App) SetSelfReviewFocusItems(reviewID string, items []db.FocusItem) error {
-	if err := a.assertSelfReviewWritable(); err != nil {
-		return err
-	}
-	clean := make([]db.FocusItem, 0, len(items))
-	for _, it := range items {
-		text := strings.TrimSpace(it.Text)
-		if text == "" {
-			continue
-		}
-		clean = append(clean, db.FocusItem{ItemID: it.ItemID, Text: text, Status: it.Status})
-	}
-	return a.store.SetSelfReviewFocusItems(reviewID, clean)
-}

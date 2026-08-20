@@ -2784,31 +2784,28 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /api/v1/coach/session/summary:
+  /api/v1/coach/session/focus-items:
     put:
-      operationId: PutCoachSummary
+      operationId: PutCoachFocusItems
       tags: [Coaching]
-      summary: Save the session summary
+      summary: Replace what this player is told to work on
       description: |
-        The one set-level note for the session's player ("what to work
-        on"). An empty `text` clears it, so the field is required but may
-        be blank.
+        PUT of the whole list, in the coach's order — "what to work on", as
+        rows rather than one blob. An empty array clears it, so `items` is
+        required but may be empty; an omitted or null `items` is a `400`,
+        because clearing the list is something a client says out loud.
+
+        The list re-surfaces every session, and travels in the exported
+        archive as `focus_items`.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [text]
-              properties:
-                text:
-                  type: string
-                  maxLength: 20000
-                  description: |
-                    The summary. Empty string clears the stored summary.
+              $ref: "#/components/schemas/FocusItemsInput"
       responses:
         "204":
-          description: Summary saved (or cleared).
+          description: List saved (or cleared).
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
@@ -3176,6 +3173,105 @@ paths:
       responses:
         "200":
           description: The sitting over its new set.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelfReview"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/focus:
+    get:
+      operationId: ListFocus
+      tags: [Self review]
+      summary: What the player is working on
+      description: |
+        The player's whole list, assembled from the two families that feed
+        it: what a coach sent and what the player wrote in their own
+        sittings. Coach items come first, then the player's own; each source
+        newest first. `done` items are included — retiring one is not
+        deleting it — and the caller decides what to show.
+      responses:
+        "200":
+          description: The list, coach items first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FocusEntry"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/focus/{item_id}/status:
+    parameters:
+      - name: item_id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: The item's UUID, stable across export and import.
+    put:
+      operationId: SetFocusItemStatus
+      tags: [Self review]
+      summary: Move one item along the player's list
+      description: |
+        `new` → `working` is Accept, `working` → `done` is "Got this".
+
+        There is no deny and no delete. A coach's item is live the moment it
+        lands, so Accept acknowledges it rather than admitting it, and
+        retiring one drops it from the live readout without removing what
+        was said. A player can disagree with their coach; they still have to
+        hear it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: "#/components/schemas/FocusStatus"
+      responses:
+        "204":
+          description: Status moved.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/self-reviews/{review_id}/focus-items:
+    parameters:
+      - $ref: "#/components/parameters/ReviewID"
+    put:
+      operationId: SetSelfReviewFocusItems
+      tags: [Self review]
+      summary: Replace what this sitting concluded
+      description: |
+        PUT of the whole list, in the player's order. Items written here are
+        born `working` — the player wrote them, so they are already on them,
+        where a coach's items arrive `new` because being told a thing and
+        acknowledging it are separate acts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FocusItemsInput"
+      responses:
+        "200":
+          description: The sitting with its new list.
           content:
             application/json:
               schema:
@@ -4637,9 +4733,11 @@ components:
             The name notes are signed with, from
             `GET /api/v1/settings/coaching`. Empty until it is set, which
             is what disables Export.
-        summary:
-          type: string
-          description: The set-level "what to work on" note.
+        focus_items:
+          type: array
+          items:
+            $ref: "#/components/schemas/FocusItem"
+          description: What this player is being told to work on, in order.
         notes:
           type: array
           items:
@@ -4731,9 +4829,14 @@ components:
         imported_at:
           type: string
           description: When this archive was staged (RFC3339).
-        summary:
-          type: string
-          description: The coach's set-level note.
+        focus_items:
+          type: array
+          items:
+            $ref: "#/components/schemas/FocusItem"
+          description: |
+            What the coach is telling the player to work on. Unlike the
+            notes below these are not decided on — they land in the
+            player's list as `new` the moment the archive is staged.
         notes:
           type: array
           items:
@@ -4864,9 +4967,11 @@ components:
         last_note_at:
           type: string
           description: RFC3339 of the newest note; absent when none written.
-        summary:
-          type: string
-          description: The stored session summary, if one was written.
+        focus_items:
+          type: array
+          items:
+            type: string
+          description: What this player is working on, in order.
 
     ShareExport:
       type: object
@@ -4900,17 +5005,18 @@ components:
         One self-review sitting, whole: the header, the member keys in the
         player's order, and the notes keyed by match. `finished_at` is
         absent while the sitting is in progress.
-      required: [review_id, title, summary, created_at, updated_at, match_keys, notes]
+      required: [review_id, title, focus_items, created_at, updated_at, match_keys, notes]
       properties:
         review_id:
           type: string
         title:
           type: string
           maxLength: 120
-        summary:
-          type: string
-          maxLength: 20000
-          description: The set-level note — "what to work on".
+        focus_items:
+          type: array
+          items:
+            $ref: "#/components/schemas/FocusItem"
+          description: What the sitting concluded, in the player's order.
         created_at:
           type: string
           description: RFC3339.
@@ -4983,14 +5089,78 @@ components:
 
     SelfReviewUpdateInput:
       type: object
-      required: [title, summary]
+      required: [title]
       properties:
         title:
           type: string
           maxLength: 120
-        summary:
+
+    FocusStatus:
+      type: string
+      enum: [new, working, done]
+      description: |
+        The player's own progress on one item. A coach's item arrives `new`
+        and Accept moves it to `working`; the player's own is born
+        `working`; "Got this" retires either to `done`. There is no
+        `denied` — see `PUT /api/v1/focus/{item_id}/status`.
+
+    FocusItem:
+      type: object
+      description: One line of "what to work on".
+      required: [item_id, text]
+      properties:
+        item_id:
           type: string
-          maxLength: 20000
+          description: |
+            A UUID minted client-side and stable across export and import —
+            the identity rule `note_id` already follows, and what lets a
+            re-imported archive update an item instead of duplicating it.
+        text:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        status:
+          $ref: "#/components/schemas/FocusStatus"
+
+    FocusEntry:
+      type: object
+      description: |
+        One line of the player's list, with enough provenance to say where
+        it came from and to order it.
+      required: [item_id, text, status, source, from]
+      properties:
+        item_id:
+          type: string
+        text:
+          type: string
+        status:
+          $ref: "#/components/schemas/FocusStatus"
+        source:
+          type: string
+          enum: [coach, self]
+          description: Coach items outrank the player's own in the readout.
+        coach_name:
+          type: string
+          description: Who sent it. Absent on the player's own items.
+        from:
+          type: string
+          description: |
+            The coach's session date, or the day the sitting was opened
+            (YYYY-MM-DD). What each source orders by.
+
+    FocusItemsInput:
+      type: object
+      description: |
+        A whole focus list. `items` is required but may be empty — clearing
+        a list is something a client says out loud, so an omitted or null
+        `items` is a `400` rather than a silent wipe.
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/FocusItem"
 
     SelfReviewMatchesInput:
       type: object

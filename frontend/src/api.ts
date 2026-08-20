@@ -31,6 +31,9 @@ import type {
   CoachReturnSheet,
   CoachSessionView,
   CoachPlayerSummary,
+  FocusEntry,
+  FocusItem,
+  FocusStatus,
   SelfReview,
   SelfReviewNote,
   ShareExport,
@@ -75,6 +78,9 @@ export type {
   MatchCoachNote,
   MatchSelfReviewNote,
   CoachPlayerSummary,
+  FocusEntry,
+  FocusItem,
+  FocusStatus,
   SelfReview,
   ShareExport,
   SelfReviewNote,
@@ -656,9 +662,20 @@ export function DeleteCoachMoment(matchKey: string, momentID: string): Promise<v
   }))
 }
 
-// The set-level "what to work on" note. An empty string clears it.
-export function PutCoachSummary(text: string): Promise<void> {
-  return unwrapVoid(sdk.putCoachSummary({ body: { text } }))
+// What this player is being told to work on, in the coach's order. An empty
+// array clears the list; `items` is never omitted, so a wipe is deliberate.
+export function PutCoachFocusItems(items: FocusItem[]): Promise<void> {
+  return unwrapVoid(sdk.putCoachFocusItems({ body: { items } }))
+}
+
+/** The player's own list, coach items first. */
+export function ListFocus(): Promise<FocusEntry[]> {
+  return unwrap(sdk.listFocus())
+}
+
+/** Accept (new → working) or retire ("Got this", → done) one item. */
+export function SetFocusItemStatus(itemID: string, status: FocusStatus): Promise<void> {
+  return unwrapVoid(sdk.setFocusItemStatus({ path: { item_id: itemID }, body: { status } }))
 }
 
 // One of the PLAYER's own timestamped moments on their own match. The moment
@@ -732,8 +749,13 @@ export function GetSelfReview(reviewID: string): Promise<SelfReview> {
   return unwrap(sdk.getSelfReview({ path: { review_id: reviewID } }))
 }
 
-export function UpdateSelfReview(reviewID: string, title: string, summary: string): Promise<SelfReview> {
-  return unwrap(sdk.updateSelfReview({ path: { review_id: reviewID }, body: { title, summary } }))
+export function UpdateSelfReview(reviewID: string, title: string): Promise<SelfReview> {
+  return unwrap(sdk.updateSelfReview({ path: { review_id: reviewID }, body: { title } }))
+}
+
+/** What the sitting concluded, in the player's order. */
+export function SetSelfReviewFocusItems(reviewID: string, items: FocusItem[]): Promise<SelfReview> {
+  return unwrap(sdk.setSelfReviewFocusItems({ path: { review_id: reviewID }, body: { items } }))
 }
 
 /** The coach's roster — every player this user has coached, newest work first. */

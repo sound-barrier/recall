@@ -88,7 +88,7 @@ func assertSittingAfterWrites(t *testing.T, mux *http.ServeMux, base string) {
 	got := get(t, mux, base)
 	mustStatus(t, got, http.StatusOK, "get")
 	sitting := decodeSession(t, got.Body.Bytes())
-	if sitting.Summary != "Stop chasing flanks." || len(sitting.Notes) != 2 {
+	if len(sitting.Notes) != 2 {
 		t.Errorf("after writes = %+v", sitting)
 	}
 	if sitting.Notes["match-b"].Kind != "reviewed_only" || len(sitting.Notes["match-b"].Moments) != 1 || sitting.Notes["match-b"].Moments[0].MatchClock != "04:45" {

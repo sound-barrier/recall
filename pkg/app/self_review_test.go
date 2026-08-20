@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"errors"
+	"recall/pkg/db"
 	"strings"
 	"testing"
 
@@ -45,7 +46,7 @@ func TestSelfReview_RoundTripThroughTheOrchestrator(t *testing.T) {
 
 	done, err := a.FinishSelfReview(r.ReviewID)
 	mustNoErr(t, err)
-	if done.FinishedAt == "" || done.Summary != "Stop chasing flanks." {
+	if done.FinishedAt == "" || len(done.FocusItems) != 1 || done.FocusItems[0].Text != "Stop chasing flanks." {
 		t.Errorf("finished = %+v", done)
 	}
 	assertFinishFlags(t, a)
@@ -86,7 +87,9 @@ func writeSitting(t *testing.T, a *app.App) review.Session {
 	// A moment on a match with no note opens the note.
 	_, err = a.PutSelfReviewMoment(r.ReviewID, playerMatchIlios, "m-c", matchedit.MomentInput{MatchClock: "1:00", Text: "opened by a moment"})
 	mustNoErr(t, err)
-	_, err = a.UpdateSelfReview(r.ReviewID, review.UpdateInput{Title: "Sunday set", Summary: "Stop chasing flanks."})
+	_, err = a.UpdateSelfReview(r.ReviewID, review.UpdateInput{Title: "Sunday set"})
+	mustNoErr(t, err)
+	_, err = a.SetSelfReviewFocusItems(r.ReviewID, []db.FocusItem{{ItemID: "b2c3d4e5-6f7a-4b8c-9d0e-1f2a3b4c5d6e", Text: "Stop chasing flanks."}})
 	mustNoErr(t, err)
 	return r
 }

@@ -112,8 +112,8 @@ func TestGetUpdateSetMatches(t *testing.T) {
 		{"Update ghost", func() error { _, err := review.Update(s, "ghost", review.UpdateInput{}); return err }, review.ErrNotFound},
 		{"SetMatches empty", func() error { _, err := review.SetMatches(s, r.ReviewID, nil); return err }, review.ErrNoMatches},
 	})
-	updated, err := review.Update(s, r.ReviewID, review.UpdateInput{Title: "Ilios control", Summary: " Hold nade. "})
-	if err != nil || updated.Title != "Ilios control" || updated.Summary != "Hold nade." {
+	updated, err := review.Update(s, r.ReviewID, review.UpdateInput{Title: " Ilios control "})
+	if err != nil || updated.Title != "Ilios control" {
 		t.Errorf("Update = %+v, %v", updated, err)
 	}
 	_, err = review.PutNote(s, r.ReviewID, keyA, coach.NoteInput{Kind: "note", Text: "kept"})

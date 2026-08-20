@@ -1,6 +1,13 @@
 package review
 
-import "recall/pkg/db"
+import (
+	"fmt"
+	"strings"
+	"unicode/utf8"
+
+	"recall/pkg/coach"
+	"recall/pkg/db"
+)
 
 // The sitting as the API renders it. The shapes mirror the coach's session
 // wire (coach.Note / coach.Moment) on purpose: the room's editor and desk are
@@ -12,7 +19,7 @@ import "recall/pkg/db"
 type Session struct {
 	ReviewID   string          `json:"review_id"`
 	Title      string          `json:"title"`
-	Summary    string          `json:"summary"`
+	FocusItems []FocusItem     `json:"focus_items"`
 	CreatedAt  string          `json:"created_at"`
 	UpdatedAt  string          `json:"updated_at"`
 	FinishedAt string          `json:"finished_at,omitempty"`
@@ -35,6 +42,14 @@ type Note struct {
 	UpdatedAt string   `json:"updated_at"`
 }
 
+// FocusItem is one line of what the sitting concluded — a thing to work on.
+// Status is the player's own progress: new, working, done.
+type FocusItem struct {
+	ItemID string `json:"item_id"`
+	Text   string `json:"text"`
+	Status string `json:"status"`
+}
+
 // Moment is one timestamped observation inside a note.
 type Moment struct {
 	MomentID   string `json:"moment_id"`
@@ -49,7 +64,7 @@ type Moment struct {
 
 func sessionFromRow(r db.SelfReview) Session {
 	out := Session{
-		ReviewID: r.ReviewID, Title: r.Title, Summary: r.Summary,
+		ReviewID: r.ReviewID, Title: r.Title, FocusItems: focusItemsFromRows(r.FocusItems),
 		CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt, FinishedAt: r.FinishedAt,
 		MatchKeys: emptyIfNil(r.MatchKeys), Notes: make(map[string]Note, len(r.Notes)),
 	}
@@ -89,4 +104,46 @@ func emptyIfNil(s []string) []string {
 		return []string{}
 	}
 	return s
+}
+
+func focusItemsFromRows(rows []db.FocusItem) []FocusItem {
+	out := make([]FocusItem, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, FocusItem{ItemID: r.ItemID, Text: r.Text, Status: r.Status})
+	}
+	return out
+}
+
+// MaxFocusItemRunes bounds one line of what to work on: a sentence, not an
+// essay — the essay is the note.
+const MaxFocusItemRunes = 2000
+
+// MaxFocusItems bounds the list. A sitting that concluded fifty things
+// concluded nothing.
+const MaxFocusItems = 50
+
+// ValidateFocusItems holds the player's own list to the same rules a
+// coach's list answers to (coach.ValidateFocusItems): a UUID item_id,
+// unique, non-blank text within the bound.
+func ValidateFocusItems(items []db.FocusItem) error {
+	if len(items) > MaxFocusItems {
+		return fmt.Errorf("%w: more than %d focus items", ErrTitleInvalid, MaxFocusItems)
+	}
+	seen := make(map[string]bool, len(items))
+	for _, it := range items {
+		if !coach.IsUUID(it.ItemID) {
+			return fmt.Errorf("%w: focus item_id %q is not a UUID", ErrTitleInvalid, it.ItemID)
+		}
+		if seen[it.ItemID] {
+			return fmt.Errorf("%w: duplicate focus item_id %q", ErrTitleInvalid, it.ItemID)
+		}
+		seen[it.ItemID] = true
+		if strings.TrimSpace(it.Text) == "" {
+			return fmt.Errorf("%w: a focus item carries no text", ErrTitleInvalid)
+		}
+		if utf8.RuneCountInString(it.Text) > MaxFocusItemRunes {
+			return fmt.Errorf("%w: a focus item exceeds %d characters", ErrTitleInvalid, MaxFocusItemRunes)
+		}
+	}
+	return nil
 }
