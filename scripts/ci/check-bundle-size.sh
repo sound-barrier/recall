@@ -68,7 +68,15 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # is a lazy chunk that a dismissed pointer never fetches), the ui-store
 # pick-hint flag, the reviewSet narrow clause, and the api.ts facades for
 # the two new routes (api.ts is one eager module).
-: "${MAX_INITIAL_JS_BYTES:=344000}"
+# 2026-08: 344000 -> 348000 -- the focus nudge's wiring is eager by
+# construction (measured 345268B). The toast itself is a lazy overlay
+# chunk, but AppOverlays is eager and calls useFocusNudge in its setup —
+# it has to, because the nudge can be raised on any tab by a parse that
+# lands anywhere. What that pulls in is the composable, queries/focus.ts
+# and the focus-list helpers; the rest (the band, the item editor, the
+# widget) rides lazy chunks. Plus api.ts's facades for four new routes,
+# api.ts being one eager module. ~2.7KB headroom.
+: "${MAX_INITIAL_JS_BYTES:=348000}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
@@ -221,10 +229,12 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # renderers (the note grammar in TS, mirroring pkg/coach for the ledger),
 # the note toolbar, the shared focus-list editor and its pure edits, the
 # band on 07, the session nudge, the focus-now widget, the focus query,
-# and the SDK surface for four new routes (measured 1755696B). All but
-# api.ts and the nudge ride lazy chunks — initial JS moved 340821B ->
-# 342983B, still under its own line.
-: "${MAX_TOTAL_JS_BYTES:=1760000}"
+# and the SDK surface for four new routes. Then the adversarial reviews'
+# fixes on top: focus management and per-item accessible names on the band,
+# the widget's failed-read state, the session-expiry timer on the nudge
+# (measured 1759793B). Set at 1768000 rather than to the byte — landing on
+# a razor-thin margin just fails the gate on the next one-line change.
+: "${MAX_TOTAL_JS_BYTES:=1768000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
