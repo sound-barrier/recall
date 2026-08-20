@@ -82,8 +82,11 @@ pkg/app                                       48
 # forever by design — out of the arithmetic. 31 as of the Reviews tab:
 # store_self_review.go, the third coaching family (player-authored self review)
 # beside the authored and received ones — one more concern of the one
-# responsibility, spelled per-concern like the rest.
-pkg/db                                        31
+# responsibility, spelled per-concern like the rest. 32 as of the reviews-UX
+# pass: store_share_exports.go, the "share with a coach" SENT ledger — a new
+# sidecar concern (a receipt about a file, not match history), spelled
+# per-concern like its siblings.
+pkg/db                                        32
 
 # pkg/parser — the OCR pipeline: Tesseract invocation, per-screenshot-type field
 # extraction, the embedded owdata YAML set, golden-file projection. One
@@ -173,7 +176,9 @@ frontend/tests/e2e                            12
 # 14: the command palette. It is an APP-SHELL affordance — a chord that
 # reaches any view from anywhere — so it belongs with the shell specs rather
 # than in any one feature folder.
-frontend/tests/e2e/app                        14
+# 15: whats-new.spec.ts — the what's-new strip is app chrome (it rides under
+# the masthead on every view), so its spec lives with the shell's.
+frontend/tests/e2e/app                        15
 
 # frontend/tests/e2e/data-table — the tabular display modes of the match set:
 # the data table proper (columns, density, resize, multi-sort, frozen leading
@@ -359,4 +364,6 @@ frontend/src/components/matches/dossier       13
 # of App.vue into lazy-view.ts beside them, because the film room inside the
 # Reviews tab loads through it too — one failure surface for every view-sized
 # chunk, wherever the chunk is mounted.
-frontend/src/components/app                   14
+# 15: WhatsNewStrip.vue — the one-time feature pointer for installs the tour
+# (first-run only) can never reach; app chrome like the banners beside it.
+frontend/src/components/app                   15

@@ -11,7 +11,8 @@ import { OpenURL } from '@/api-client'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
 import { useSelfReviewStore } from '@/stores/selfReview'
-import WhatsNewStrip from '@/components/app/WhatsNewStrip.vue'
+import { useWhatsNew } from '@/composables/app/useWhatsNew'
+const WhatsNewStrip = defineAsyncComponent(() => import('@/components/app/WhatsNewStrip.vue'))
 import { useCoachReturnsStore } from '@/stores/coachReturns'
 import { useMatchesStore } from '@/stores/matches'
 import { useParseStore } from '@/stores/parse'
@@ -59,6 +60,12 @@ const sessionActive = computed(() => coach.sessionActive)
 // below carries the way back (its own component decides the wording).
 const selfReviewStore = useSelfReviewStore()
 const sittingAway = computed(() => selfReviewStore.roomOpen && view.value !== 'reviews')
+
+// The strip's gate lives out here (the strip owns its copy and actions):
+// usePersistedRef's cross-instance sync keeps this copy honest when the
+// strip's own instance writes the dismissal.
+const { unseen: whatsNewUnseenFn } = useWhatsNew('reviewsTab')
+const whatsNewUnseen = computed(() => whatsNewUnseenFn())
 
 // Two tabs carry a suffix beside their label, and both are counts of work
 // waiting: Unknown's unresolved records, and Reviews' coach notes waiting on
@@ -212,6 +219,8 @@ const winRate = computed(() => winrateOrNull(wld.value.w, wld.value.w + wld.valu
        the way back, and only while the player is away from its tab. -->
   <CoachNavStrip v-else-if="sittingAway" />
   <!-- The one-time feature pointer, for installs that predate the tab. Kept
-       out of a session's chrome — a loan is not the moment. -->
-  <WhatsNewStrip v-if="!sessionActive" />
+       out of a session's chrome — a loan is not the moment — and gated HERE
+       so a dismissed strip costs zero bytes on boot (the async chunk only
+       fetches while the pointer is still owed). -->
+  <WhatsNewStrip v-if="!sessionActive && whatsNewUnseen" />
 </template>

@@ -61,3 +61,6 @@ a folder silently regrows what it just shed.
 | 2026-08-18 | reviews-tab | `pkg/app` | 47 → 48 | `self_review.go`: the `*App` shell over the new `pkg/review` leaf — gate, store call, broadcast — like every other leaf shell. |
 | 2026-08-18 | reviews-tab | `pkg/cmd` | 19 → 20 | `server_self_review.go`: the `/api/v1/self-reviews` endpoint group. |
 | 2026-08-19 | reviews-tab | `frontend/tests/e2e` | 11 → 12 | `_reviews.ts`: the in-memory self-review server (sittings, notes, moments, the matches list carrying self blocks) behind the self-review specs — the ninth root helper the entry said would be a real decision. |
+| 2026-08-19 | reviews-ux | `pkg/db` | 31 → 32 | `store_share_exports.go`: the sent ledger (share_exports + share_export_matches) — the receipt that a share left, a new sidecar concern beside the three coaching families. |
+| 2026-08-19 | reviews-ux | `frontend/src/components/app` | 14 → 15 | `WhatsNewStrip.vue`: the one-time feature pointer (app chrome beside the banners); its gate composable rides `composables/app`, under budget. |
+| 2026-08-19 | reviews-ux | `frontend/tests/e2e/app` | 14 → 15 | `whats-new.spec.ts`: the strip is shell chrome on every view, so its spec sits with the shell's. |
