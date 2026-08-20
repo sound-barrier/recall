@@ -39,11 +39,13 @@ var (
 	ErrMatchKeyRequired = matchedit.ErrMatchKeyRequired
 	ErrInvalidResult    = matchedit.ErrInvalidResult
 	ErrStatOutOfRange   = matchedit.ErrStatOutOfRange
-	ErrUnknownMap       = matchedit.ErrUnknownMap
-	ErrUnknownHero      = matchedit.ErrUnknownHero
-	ErrManualNeedsMap   = matchedit.ErrManualNeedsMap
-	ErrInvalidPlayedAt  = matchedit.ErrInvalidPlayedAt
-	ErrInvalidRank      = matchedit.ErrInvalidRank
-	ErrUnknownRank      = matchedit.ErrUnknownRank
-	ErrMatchKeyExists   = matchedit.ErrMatchKeyExists
+	// ErrDuplicateHeroPosition — two heroes claim one roster slot.
+	ErrDuplicateHeroPosition = matchedit.ErrDuplicateHeroPosition
+	ErrUnknownMap            = matchedit.ErrUnknownMap
+	ErrUnknownHero           = matchedit.ErrUnknownHero
+	ErrManualNeedsMap        = matchedit.ErrManualNeedsMap
+	ErrInvalidPlayedAt       = matchedit.ErrInvalidPlayedAt
+	ErrInvalidRank           = matchedit.ErrInvalidRank
+	ErrUnknownRank           = matchedit.ErrUnknownRank
+	ErrMatchKeyExists        = matchedit.ErrMatchKeyExists
 )

@@ -558,13 +558,21 @@ CREATE TABLE IF NOT EXISTS user_match_data (
 -- Heroes-played list. position 0 = primary (drives card header + derived role,
 -- matching the OCR "first in heroes_played is primary" rule). percent_played /
 -- play_time may be NULL (manual entry has neither).
+--
+-- BOTH directions are keyed. The PK says one row per hero; UNIQUE (match_key,
+-- position) says one hero per slot, which is what makes position an ordering
+-- rather than a number the row happens to carry. Without it two heroes could
+-- sit at 0, and the reader — which sorts on position alone — would let SQLite's
+-- alphabetical tiebreak pick the primary hero, deterministically and stably
+-- enough to read as data.
 CREATE TABLE IF NOT EXISTS user_match_heroes (
   match_key TEXT NOT NULL REFERENCES user_match_data (match_key) ON UPDATE CASCADE ON DELETE CASCADE,
   hero TEXT NOT NULL,
   percent_played INTEGER,
   play_time TEXT,
   position INTEGER NOT NULL DEFAULT 0,
-  PRIMARY KEY (match_key, hero)
+  PRIMARY KEY (match_key, hero),
+  UNIQUE (match_key, position)
 ) STRICT;
 -- statement-end
 

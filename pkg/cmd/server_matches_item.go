@@ -334,6 +334,7 @@ func handleUpdateMatchData(a *app.App) http.HandlerFunc {
 		if writeError(w, r, a.UpdateMatchData(matchKey, input),
 			errStatus{app.ErrInvalidResult, probInvalidBody},
 			errStatus{app.ErrStatOutOfRange, probInvalidBody},
+			errStatus{app.ErrDuplicateHeroPosition, probInvalidBody},
 			errStatus{app.ErrUnknownMap, probConflict},
 			errStatus{app.ErrUnknownHero, probConflict}) {
 			return

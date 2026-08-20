@@ -589,6 +589,11 @@ paths:
         that field omitted. Overridden fields surface in the record's
         `edited_fields` and flip `source` to `ocr_edited`. Idempotent.
 
+        `heroes[].position` is the roster's ORDER, and 0 is the primary
+        hero — it drives the card header and the derived role. Two entries
+        claiming one position is a `400`: the read sorts on position alone,
+        so a tie would hand the choice of primary hero to a tiebreak.
+
         Reset to pure OCR with the matching `DELETE`.
       requestBody:
         required: true

@@ -180,3 +180,46 @@ func TestSQLStore_DeleteUserMatchData_CascadesEveryChildTable(t *testing.T) {
 		}
 	}
 }
+
+// position is an ORDER, not a number the row happens to carry: 0 is the
+// primary hero, and the reader sorts on position alone. Two heroes at one
+// slot would let SQLite's tiebreak name the primary hero — alphabetically,
+// deterministically, and stably enough to read as data rather than damage.
+//
+// matchedit refuses this before it reaches the store, with an error the caller
+// can read. The UNIQUE is the backstop under that, for every writer that is
+// not the edit path — a bundle import, a future caller, a hand-rolled client.
+func TestSQLStore_UserMatchHeroes_RefusesTwoHeroesInOneSlot(t *testing.T) {
+	s := openMemory(t)
+	err := s.UpsertUserMatchData(db.UserMatchData{
+		MatchKey: "match-20260101120000",
+		Heroes: []db.UserMatchHero{
+			{Hero: "ana", Position: 0},
+			{Hero: "reinhardt", Position: 0},
+		},
+	})
+	if err == nil {
+		t.Fatal("two heroes at position 0 were accepted; the roster has no primary hero it can name")
+	}
+	if !strings.Contains(err.Error(), "UNIQUE") {
+		t.Errorf("err = %v, want the (match_key, position) UNIQUE to be what refused it", err)
+	}
+}
+
+// The same hero arriving twice is still deduped rather than refused — that is
+// the composite PK doing its job, and the targeted ON CONFLICT above must not
+// have turned it into an error.
+func TestSQLStore_UserMatchHeroes_StillDedupesARepeatedHero(t *testing.T) {
+	s := openMemory(t)
+	const key = "match-20260101120000"
+	mustNoErr(t, s.UpsertUserMatchData(db.UserMatchData{
+		MatchKey: key,
+		Heroes: []db.UserMatchHero{
+			{Hero: "ana", Position: 0},
+			{Hero: "ana", Position: 0},
+		},
+	}))
+	if n := countRows(t, s, "user_match_heroes"); n != 1 {
+		t.Errorf("user_match_heroes = %d rows, want 1", n)
+	}
+}
