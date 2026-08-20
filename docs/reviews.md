@@ -29,11 +29,17 @@ match* for just one). The film room opens over them, inside the Reviews
 tab, in your own clock: the reel on the left, one match on the desk, the
 review's sheet on the right.
 
-Per match, write a note and file it under a focus tag or two, and mark
-**moments** — a time and what happened — on the strip. Each note lands on
-its match the second you write it: open the match in Matches and the
-block is there, reading *Your review · in progress*. On the sheet, give
-the review a title and write the one thing to take into your next games.
+Per match, write a note and mark **moments** — a time and what happened —
+on the strip. The note is prose: a small toolbar gives you bold, italic,
+strikethrough, two heading levels and bulleted or numbered lists, and what
+you write renders that way everywhere it is read afterwards. Each note
+lands on its match the second you write it: open the match in Matches and
+the block is there, reading *Your review · in progress*.
+
+On the sheet, give the review a title and fill in **What to work on** — a
+list, one line per thing. That list is the point of the whole exercise:
+it is what shows up under *What you're working on* at the top of the
+Reviews tab, and what Recall says back to you next time you are playing.
 
 **Finish review** marks every match in the set *reviewed by self* (a coach's
 mark, if one is already there, stays) and keeps the review under
@@ -129,6 +135,13 @@ under. For each one you choose:
   match is marked reviewed by a coach.
 - **Skip** — nothing lands.
 
+Above the cards, if your coach wrote one, is their **What to work on**
+list. Those are not decided on the way the notes are: they are already on
+your list the moment the file is staged. You can disagree with your coach
+— but you have to have heard them first, so there is no way to refuse one
+here. Discarding the whole file is the only thing that takes them back
+off.
+
 Nothing is written until you press **Finish**. **Decide later** saves
 exactly what you have decided so far and closes; a banner stays up on
 every tab — **Read the notes** reopens the sheet — until every note has
@@ -222,6 +235,29 @@ went, if you exported one). Your notes stay with you — the roster under
 *For someone else* lists every player you have coached, and reopening
 the same player's bundle later brings the notes back, so a second
 session builds on the first.
+
+## What you're working on
+
+At the top of the Reviews tab is one list: everything you are working on,
+whatever it came from. Your coach's items come first, then your own, each
+newest first.
+
+Two things you can do to an item, and deliberately not a third:
+
+- **Accept** — you have read what your coach sent. It stays on the list;
+  accepting is acknowledging it, not agreeing to it.
+- **Got this** — you are done with it. It comes off the live list and
+  folds behind a count, because retiring something is not unsaying it.
+
+There is no way to delete an item or turn one down. An item you wrote is
+yours to retire; an item your coach wrote is theirs to have said.
+
+When you are mid-session — Recall knows, because a parse just landed
+between games — the top three come back to you once, in the corner, so
+you can take them into the next match. Once per session; close it and it
+stays closed until the next one. There is also a **What you're working
+on** widget you can add to the Matches dossier if you want it in front of
+you all the time.
 
 ## Frequently confusing
 
