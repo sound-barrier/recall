@@ -475,7 +475,11 @@ function pickTag(v: string) {
 
 .bab-menu {
   position: absolute;
-  top: calc(100% + 4px);
+
+  /* The bar floats at the viewport BOTTOM, so its menus drop UP — opening
+     downward put every menu item below the fold, where it looked (and on
+     some font metrics, was) unclickable. */
+  bottom: calc(100% + 4px);
   left: 0;
   z-index: 6;
   min-width: 12rem;

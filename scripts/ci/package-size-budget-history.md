@@ -64,3 +64,4 @@ a folder silently regrows what it just shed.
 | 2026-08-19 | reviews-ux | `pkg/db` | 31 → 32 | `store_share_exports.go`: the sent ledger (share_exports + share_export_matches) — the receipt that a share left, a new sidecar concern beside the three coaching families. |
 | 2026-08-19 | reviews-ux | `frontend/src/components/app` | 14 → 15 | `WhatsNewStrip.vue`: the one-time feature pointer (app chrome beside the banners); its gate composable rides `composables/app`, under budget. |
 | 2026-08-19 | reviews-ux | `frontend/tests/e2e/app` | 14 → 15 | `whats-new.spec.ts`: the strip is shell chrome on every view, so its spec sits with the shell's. |
+| 2026-08-20 | bulk-bar-float | `frontend/tests/e2e/matches` | 25 → 26 | `bulk-bar-layout.spec.ts`: the floating bar's geometry contract — rows must not move when it appears; every button inside at 1024/1440/1920. |

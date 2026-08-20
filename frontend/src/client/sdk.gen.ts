@@ -1268,6 +1268,11 @@ export const listShareExports = <ThrowOnError extends boolean = false>(options?:
  * referenced screenshot under `screenshots/<filename>`, and a
  * root `manifest.json` listing screenshot → match_key mappings
  * for sanity-checking after restore.
+ * Share mode additionally requires a REPLAY CODE on every selected
+ * match — a coach reviews by watching the replay, and a bundle they
+ * cannot load hands them nothing to review; a share whose matches
+ * lack one is refused with `409`. Plain exports (backups) carry no
+ * such requirement.
  *
  * The `match_keys` body field carries the user's explicit
  * selection. `include_unknown` adds every record whose

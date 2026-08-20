@@ -349,3 +349,47 @@ describe('ExportBundleModal — the eyebrow', () => {
     expect(screen.getByText('Coaching')).toBeInTheDocument()
   })
 })
+
+// Share mode requires a replay code on every match going out — a coach
+// reviews by WATCHING the replay. The gaps disable Share with the reason
+// and the list; toggling in code-less hidden/unknown extras counts too;
+// a plain export ignores all of it.
+describe('ExportBundleModal — replay codes gate the share', () => {
+  it('refuses the share while a selected match lacks a code, and names it', async () => {
+    render(ExportBundleModal, {
+      props: {
+        open: true, selectedCount: 2, hiddenCount: 0, unknownCount: 0,
+        shareIntent: true, missingReplay: ['numbani · 2026-08-18'],
+      },
+    })
+    await fireEvent.update(screen.getByLabelText('Your handle (required)'), 'Sable')
+    expect(screen.getByTestId('export-submit')).toBeDisabled()
+    expect(screen.getByRole('alert')).toHaveTextContent(/1 of these matches has no replay/)
+    expect(screen.getByText('numbani · 2026-08-18')).toBeInTheDocument()
+  })
+
+  it('counts toggled-in extras only while their toggle is on', async () => {
+    render(ExportBundleModal, {
+      props: {
+        open: true, selectedCount: 1, hiddenCount: 2, unknownCount: 0,
+        shareIntent: true, missingReplay: [], hiddenMissingReplay: 2,
+      },
+    })
+    await fireEvent.update(screen.getByLabelText('Your handle (required)'), 'Sable')
+    expect(screen.getByTestId('export-submit')).toBeEnabled()
+    await fireEvent.click(screen.getByRole('checkbox', { name: /hidden/i }))
+    expect(screen.getByTestId('export-submit')).toBeDisabled()
+    expect(screen.getByRole('alert')).toHaveTextContent(/2 of these matches have no replay/)
+  })
+
+  it('a plain export ignores replay codes entirely', () => {
+    render(ExportBundleModal, {
+      props: {
+        open: true, selectedCount: 2, hiddenCount: 0, unknownCount: 0,
+        missingReplay: ['numbani · 2026-08-18'],
+      },
+    })
+    expect(screen.getByTestId('export-submit')).toBeEnabled()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+})

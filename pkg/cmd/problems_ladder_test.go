@@ -92,6 +92,7 @@ var sentinels = []sentinel{
 	{"ErrProfileNotFound", app.ErrProfileNotFound, ""}, // re-export of a leaf sentinel; message owned there
 	{"ErrProfileSwitchDuringParse", app.ErrProfileSwitchDuringParse, "profiles: a parse is in flight — retry when it finishes"},
 	{"ErrRestoreInvalid", app.ErrRestoreInvalid, "restore: not a valid Recall database"},
+	{"ErrShareNeedsReplayCode", app.ErrShareNeedsReplayCode, "share needs a replay code on every match"},
 	{"ErrSelfUpdateUnavailable", app.ErrSelfUpdateUnavailable, "self-update unavailable on this install"},
 	{"ErrStatOutOfRange", app.ErrStatOutOfRange, "invalid stat: a numeric value is out of range"},
 	{"ErrUnknownHero", app.ErrUnknownHero, "unknown hero: not in the Overwatch roster"},

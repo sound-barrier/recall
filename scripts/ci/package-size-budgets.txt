@@ -222,7 +222,9 @@ frontend/tests/e2e/match                      22
 # largest folder in the tree because it is the app's primary view; it is one
 # responsibility, and the specific bands (narrow, trends, table, dossier) are
 # already carved out into their own folders.
-frontend/tests/e2e/matches                    25
+# 26: bulk-bar-layout.spec.ts — the floating bulk bar's geometry contract
+# (no row displacement on tick; every button inside the bar at three widths).
+frontend/tests/e2e/matches                    26
 
 # frontend/tests/e2e/narrow — everything that shrinks the set: the narrow panel
 # facets (time scope, season, teammates, reviewed-by, since-anchor, leaver /

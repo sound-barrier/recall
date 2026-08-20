@@ -140,7 +140,8 @@ func handleExportBundle(a *app.App) http.HandlerFunc {
 		data, err := exportBundlePayload(a, req)
 		if writeError(w, r, err,
 			errStatus{bundle.ErrPlayerIdentityInvalid, probInvalidBody},
-			errStatus{app.ErrNoPlayerHandle, probConflict}) {
+			errStatus{app.ErrNoPlayerHandle, probConflict},
+			errStatus{app.ErrShareNeedsReplayCode, probConflict}) {
 			return
 		}
 		// The receipt, now that the bytes exist and are being handed to the

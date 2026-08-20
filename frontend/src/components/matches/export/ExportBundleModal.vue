@@ -30,7 +30,17 @@ const props = withDefaults(defineProps<{
   unknownCount:   number
   /** Open already in share mode — the caller has made the choice. */
   shareIntent?:   boolean
-}>(), { shareIntent: false })
+  /**
+   * Selected matches with NO replay code, as printable labels. A coach
+   * reviews by watching the replay, so share mode refuses while any match
+   * going out lacks one (the server says the same 409); plain exports
+   * ignore these entirely, and a self review never needs a code.
+   */
+  missingReplay?: readonly string[]
+  /** Code-less counts among the toggled-in extras, weighed only while their toggle is on. */
+  hiddenMissingReplay?:  number
+  unknownMissingReplay?: number
+}>(), { shareIntent: false, missingReplay: () => [], hiddenMissingReplay: 0, unknownMissingReplay: 0 })
 
 const emit = defineEmits<{
   close: []
@@ -145,9 +155,19 @@ const previewCount = computed(() => {
   return n
 })
 
+// Every code-less match the CURRENT toggles would send.
+const missingReplayCount = computed(() => {
+  if (!sharing.value) return 0
+  let n = props.missingReplay.length
+  if (includeHidden.value)  n += props.hiddenMissingReplay
+  if (includeUnknown.value) n += props.unknownMissingReplay
+  return n
+})
+
 const canSubmit = computed(() => {
   if (busy.value) return false
   if (sharing.value && shareHandle.value.trim() === '') return false
+  if (missingReplayCount.value > 0) return false
   return previewCount.value > 0
 })
 
@@ -158,8 +178,14 @@ const submitBlockedReason = computed(() => {
   if (sharing.value && shareHandle.value.trim() === '') {
     return 'Enter the handle your coach knows you by — the bundle is signed with it.'
   }
+  if (missingReplayCount.value > 0) {
+    return 'Every match going to a coach needs a replay code — add each one in the match\'s journal.'
+  }
   return 'Nothing selected to export.'
 })
+
+// The gaps the note prints — a handful is enough to act on.
+const missingReplayPreview = computed(() => props.missingReplay.slice(0, 4))
 
 // Everything that tells the two modes apart on screen, in one place.
 const title = computed(() => (sharing.value ? 'Share with a coach' : 'Export bundle'))
@@ -329,6 +355,25 @@ onBeforeUnmount(() => {
           rows="3"
           placeholder="What do you want them to look at?"
         />
+        <!-- A coach reviews by WATCHING the replay — a bundle they cannot
+             load hands them nothing to review. The note names the gaps and
+             where the code goes; the server refuses the same share with a
+             409, so this is the honest gate, not a nag. -->
+        <div v-if="missingReplayCount > 0" class="export-bundle-missing-replay" role="alert">
+          <p class="export-bundle-missing-line">
+            {{ missingReplayCount }} of these matches {{ missingReplayCount === 1 ? 'has' : 'have' }} no replay
+            code — a coach can't watch what they can't load. Add each code in
+            the match's journal (Replay code field), then share.
+          </p>
+          <ul v-if="missingReplayPreview.length" class="export-bundle-missing-list">
+            <li v-for="label in missingReplayPreview" :key="label">
+              {{ label }}
+            </li>
+            <li v-if="missingReplay.length > missingReplayPreview.length">
+              …and {{ missingReplay.length - missingReplayPreview.length }} more
+            </li>
+          </ul>
+        </div>
       </div>
 
       <label class="export-bundle-field-label" for="export-bundle-filename">
@@ -377,6 +422,32 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.export-bundle-missing-replay {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.5rem 0.65rem;
+  margin-top: 0.5rem;
+  background: var(--loss-soft);
+  border: 1px solid var(--loss);
+  border-radius: var(--radius);
+}
+
+.export-bundle-missing-line {
+  margin: 0;
+  font-size: var(--type-md);
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.export-bundle-missing-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-family: var(--mono);
+  font-size: var(--type-xs);
+  color: var(--text-dim);
+}
+
 .export-bundle-modal {
   position: fixed;
   inset: 0;

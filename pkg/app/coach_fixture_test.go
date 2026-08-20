@@ -52,7 +52,7 @@ func playerCorpus(store db.Store) error {
 			return err
 		}
 	}
-	if err := store.SetAnnotation(db.Annotation{MatchKey: playerMatchRialto, Note: "held the point", Tags: []string{"stack"}}); err != nil {
+	if err := seedPlayerAnnotations(store); err != nil {
 		return err
 	}
 	if err := store.SetReview(playerMatchRialto, "self"); err != nil {
@@ -218,4 +218,21 @@ func writtenNote() coach.NoteInput {
 		FocusTags:  []string{"positioning"},
 		MatchClock: "6:40",
 	}
+}
+
+// seedPlayerAnnotations gives every fixture match its journal layer — and a
+// replay code on each, because share mode requires one on every match going
+// to a coach and these fixtures feed the share tests.
+func seedPlayerAnnotations(store db.Store) error {
+	annotations := []db.Annotation{
+		{MatchKey: playerMatchRialto, Note: "held the point", Tags: []string{"stack"}, ReplayCode: "AB12CD"},
+		{MatchKey: playerMatchIlios, ReplayCode: "EF34GH"},
+		{MatchKey: playerMatchManual, ReplayCode: "IJ56KL"},
+	}
+	for _, a := range annotations {
+		if err := store.SetAnnotation(a); err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -102,6 +102,14 @@ test.describe('07 Reviews — the tab', () => {
     await expect(dialog).toBeVisible()
     await expect(dialog.getByRole('checkbox', { name: /Share with a coach/ })).toBeChecked()
     await expect(dialog.getByLabel('Your handle (required)')).toBeVisible()
+
+    // A coach reviews by WATCHING the replay: the fixture's matches carry
+    // no replay codes, so the share refuses with the reason and the
+    // matches that need one. (Self reviews never need a code — nothing is
+    // watched remotely there.)
+    await dialog.getByLabel('Your handle (required)').fill('Sable')
+    await expect(dialog.getByTestId('export-submit')).toBeDisabled()
+    await expect(dialog.getByText(/no replay code/)).toBeVisible()
   })
 
   // Notes waiting on a decision are the shelf's own rows here — one per
