@@ -63,3 +63,10 @@ var (
 	EnsureAdditiveColumns = ensureAdditiveColumns
 	ColumnExists          = columnExists
 )
+
+// MatchKeyTables exposes the match_key registry to schema_registry_test, which
+// holds it to schema.sql. A shim rather than a real export: nothing in
+// production reads the list — renameMatchKey walks it directly — so exporting
+// it would be a public symbol with no caller, which the deadcode gate refuses
+// and rightly.
+func MatchKeyTables() []string { return append([]string(nil), matchKeyTables...) }
