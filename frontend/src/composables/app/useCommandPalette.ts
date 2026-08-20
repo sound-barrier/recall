@@ -112,7 +112,7 @@ export function useCommandPalette(): {
   // compile.
   const ACTION_RUNNERS: Record<PaletteActionTarget, () => Promise<void>> = {
     'open-bundle': () => coach.openBundle(),
-    'share-with-coach': shareTheNarrowedSet,
+    'send-to-coach': sendTheNarrowedSet,
     'review-last-session': reviewLastSession,
   }
 
@@ -135,10 +135,15 @@ export function useCommandPalette(): {
     return Object.hasOwn(ACTION_RUNNERS, target)
   }
 
-  // The store's one share action lands on Matches itself, so the set being
-  // shared is the set on screen.
-  function shareTheNarrowedSet(): Promise<void> {
-    return matches.shareNarrowedWithCoach()
+  // The set on screen. The dialog names every match going out, so it no
+  // longer has to drag the user to Matches to make "N matches" mean
+  // something — which is why this stopped navigating.
+  function sendTheNarrowedSet(): Promise<void> {
+    matches.requestShare(
+      matches.matchesNarrow.narrowedRecords.value.map((r) => r.match_key),
+      'narrow',
+    )
+    return Promise.resolve()
   }
 
   // Returns whether anything ran, so the caller can leave the palette open on

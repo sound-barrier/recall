@@ -213,11 +213,14 @@ describe('matches store — shareNarrowedWithCoach', () => {
     await app.goToView('reviews')
     matches.matchesNarrow.pickedMaps.value = new Set(['rialto'])
 
-    await matches.shareNarrowedWithCoach()
+    matches.requestShare(
+      matches.matchesNarrow.narrowedRecords.value.map(r => r.match_key), 'narrow')
 
-    expect(app.view).toBe('matches')
-    expect(matches.exportBundleOpen).toBe(true)
-    expect(matches.exportBundleSelectedKeys).toEqual(['m-1'])
-    expect(matches.exportBundleShareIntent).toBe(true)
+    // No navigation any more: the dialog names every match going out, so it
+    // no longer has to drag the user to Matches to make "N matches" mean
+    // something.
+    expect(app.view).toBe('reviews')
+    expect(matches.shareOpen).toBe(true)
+    expect(matches.shareManifest.map(r => r.matchKey)).toEqual(['m-1'])
   })
 })

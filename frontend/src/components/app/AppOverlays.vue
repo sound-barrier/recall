@@ -38,6 +38,7 @@ const AboutModal = lazyOverlay(() => import('@/components/update/AboutModal.vue'
 const SettingsModal = lazyOverlay(() => import('@/components/settings/SettingsModal.vue'))
 const FirstRunProfileModal = lazyOverlay(() => import('@/components/app/FirstRunProfileModal.vue'))
 const ExportBundleModal = lazyOverlay(() => import('@/components/matches/export/ExportBundleModal.vue'))
+const SendToCoachModal = lazyOverlay(() => import('@/components/reviews/SendToCoachModal.vue'))
 const IgnoredFilesPanel = lazyOverlay(() => import('@/components/ingest/ignored/IgnoredFilesPanel.vue'))
 const MatchDetailPanel = lazyOverlay(() => import('@/components/matches/detail/MatchDetailPanel.vue'))
 const MatchAnchorToast = lazyOverlay(() => import('@/components/matches/toasts/MatchAnchorToast.vue'))
@@ -94,26 +95,8 @@ const {
   unknownRecords,
   exportBundleOpen,
   exportBundleSelectedKeys,
-  exportBundleShareIntent,
   records,
 } = storeToRefs(matchesStore)
-
-// Share mode requires a replay code on every match going out — a coach
-// reviews by watching the replay. The modal gets the SELECTED gaps as
-// labels it can print, and the toggled-in extras (hidden / unknown) as
-// counts it weighs only while their toggle is on.
-const hasReplayCode = (r: { annotation?: { replay_code?: string } }) =>
-  (r.annotation?.replay_code ?? '').trim() !== ''
-
-const missingReplayLabels = computed(() => {
-  const byKey = new Map(records.value.map((r) => [r.match_key, r]))
-  return exportBundleSelectedKeys.value
-    .map((k) => byKey.get(k))
-    .filter((r) => r !== undefined && !hasReplayCode(r))
-    .map((r) => [r!.data?.map, r!.data?.date].filter(Boolean).join(' · ') || r!.match_key)
-})
-const hiddenMissingReplay = computed(() => hiddenRecords.value.filter((r) => !hasReplayCode(r)).length)
-const unknownMissingReplay = computed(() => unknownRecords.value.filter((r) => !hasReplayCode(r)).length)
 
 // Parse — the unsupported-engine gate, the ignored-screenshots panel, and the
 // post-run session tally toast.
@@ -280,16 +263,17 @@ const lightboxSrc = computed(() => {
        "Export bundle…" button. -->
   <ExportBundleModal
     :open="exportBundleOpen"
-    :share-intent="exportBundleShareIntent"
     :selected-count="exportBundleSelectedKeys.length"
     :hidden-count="hiddenRecords.length"
     :unknown-count="unknownRecords.length"
-    :missing-replay="missingReplayLabels"
-    :hidden-missing-replay="hiddenMissingReplay"
-    :unknown-missing-replay="unknownMissingReplay"
     @close="closeExportBundle"
     @export="onExportBundleConfirm"
   />
+
+  <!-- Sending matches to a coach. Reads the store directly (the overlay
+       cluster's rule) — and taking no props is what moved the replay-code
+       math out of this file, where it never belonged. -->
+  <SendToCoachModal />
 
   <IgnoredFilesPanel
     :is-open="ignoredPanelOpen"
