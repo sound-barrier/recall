@@ -277,6 +277,18 @@ function openBundle(): void {
           <button type="button" class="btn ghost" @click="pickMatches">
             Pick matches…
           </button>
+          <!-- The same set "Review my last session" acts on, sent instead of
+               reviewed — so the two quick-picks are provably the same matches. -->
+          <button
+            type="button"
+            class="btn ghost"
+            :disabled="sessionActive || sessionKeys.length === 0"
+            :title="sessionActive ? LOANED_REASON
+              : (sessionKeys.length === 0 ? 'No matches yet — parse or add some first' : undefined)"
+            @click="matches.requestShare(sessionKeys, 'last-session')"
+          >
+            Send my last session to a coach ({{ sessionKeys.length }})
+          </button>
         </div>
       </div>
 

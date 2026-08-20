@@ -16,6 +16,7 @@ const props = {
   density: 'comfortable' as const,
   undatedCount: 0,
   grouped: false,
+  shareTargetCount: 3,
 }
 
 describe('MatchesListToolbar — write gate', () => {

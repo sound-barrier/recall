@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import type { Density } from '@/composables/matches/table/useDensity'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { useAddMatchMenu } from '@/composables/matches/list/useAddMatchMenu'
@@ -18,6 +20,13 @@ defineProps<{
   // Expand/Collapse-all control only makes sense then — flat mode has no
   // sections to fold.
   grouped: boolean
+  /**
+   * How many matches "Send to a coach…" would send — the ticked rows when
+   * there are any, otherwise everything showing. The count rides the label
+   * so the ticked-rows-win rule is visible BEFORE the click rather than
+   * discovered after it.
+   */
+  shareTargetCount: number
 }>()
 
 const emit = defineEmits<{
@@ -28,6 +37,8 @@ const emit = defineEmits<{
   // primary entry point for the no-Tesseract persona; always reachable since
   // the toolbar renders even with an empty set.
   'add-match': []
+  /** Open the Send-to-a-coach dialog over the ticked rows, or the narrow. */
+  'send-to-coach': []
   // Open the same modal in its stripped leaver-exit mode — map + result only,
   // for a match Overwatch dropped from history because you left early.
   'add-leaver-exit': []
@@ -44,7 +55,14 @@ const emit = defineEmits<{
 // Manual add + bundle import write matches — rejected (409) on the read-only
 // sample profile AND while a coaching session holds the view, so disable
 // them there with the reason on the title.
-const { writesLocked, lockedTitle } = useWriteGate()
+const { writesLocked, lockedTitle, sessionActive } = useWriteGate()
+
+// Sending is a read, so the write gate is the wrong test — but during a
+// session the list is the coach's loaned corpus, and a bundle of someone
+// else's matches signed with your handle is worse than a blocked write.
+const sendTitle = computed(() => (sessionActive.value
+  ? 'These matches are on loan — you can only send your own to a coach.'
+  : 'Send these matches to a coach'))
 // Destructured to top-level consts: a template `ref="…"` binds by NAME and
 // cannot take a dotted path, so `ref="addMenu.triggerEl"` would silently
 // register a ref literally called "addMenu.triggerEl" and leave the
@@ -111,6 +129,16 @@ const {
           </button>
         </div>
       </div>
+      <button
+        type="button"
+        class="import-matches-btn"
+        data-send-to-coach
+        :disabled="sessionActive"
+        :title="sendTitle"
+        @click="emit('send-to-coach')"
+      >
+        Send {{ shareTargetCount }} to a coach…
+      </button>
       <button
         type="button"
         class="import-matches-btn"

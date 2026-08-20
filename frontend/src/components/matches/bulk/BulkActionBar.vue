@@ -34,6 +34,10 @@ const emit = defineEmits<{
   // Open a self-review sitting over the selection — the film room over your
   // own matches. A write to the player's data, so gated like Hide.
   reviewThese:  []
+  // Send the selection to a coach. A READ of the player's own data, so not
+  // write-gated — but silenced during a session, when these rows are the
+  // coach's loaned corpus rather than the player's own.
+  sendToCoach:  []
   exportBundle: []
   exportCsv:    []
   moveBegin:    []
@@ -70,9 +74,14 @@ const { writesLocked, lockedTitle, sessionActive } = useWriteGate()
 // loaned matches — the generic "end the session to change your own matches"
 // is the wrong sentence for a review affordance pointed at them.
 const SESSION_REVIEW_REASON = 'These matches are on loan — notes go in the film room.'
+const SESSION_SHARE_REASON = 'These matches are on loan — you can only send your own to a coach.'
 const reviewTitle = computed(() => (sessionActive.value
   ? SESSION_REVIEW_REASON
   : lockedTitle('Review the selected matches in the film room')))
+
+const sendTitle = computed(() => (sessionActive.value
+  ? SESSION_SHARE_REASON
+  : 'Send the selected matches to a coach'))
 
 function pickPlayMode(v: PlayMode) {
   openMenu.value = ''
@@ -139,6 +148,17 @@ function pickTag(v: string) {
       >
         <span class="bab-btn-glyph" aria-hidden="true">⌀</span>
         Hide
+      </button>
+      <button
+        type="button"
+        class="bulk-export"
+        data-testid="bulk-send-to-coach"
+        :disabled="sessionActive"
+        :title="sendTitle"
+        @click="emit('sendToCoach')"
+      >
+        <span class="bab-btn-glyph" aria-hidden="true">↗</span>
+        Send to a coach…
       </button>
       <button
         type="button"
