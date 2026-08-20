@@ -180,12 +180,18 @@
        8.10 (6.39 on its tint) · --paper-win 8.01 (6.35) · --paper-loss
        7.37 (5.89) · --paper-draw 8.61 (6.71) · --paper-focus 8.10
        (needs 3:1) · paper text on an ink fill 13.80.
+     --paper-edge is the one that is NOT type and still has a bar: paper.css
+     re-maps it to --border, so every shared control rendered on the plate
+     draws its boundary with it, and CoachSessionRule's hatched strip — the
+     only signal that the whole app is on loan — is two of these lines with
+     the page between them. It clears 3:1 in all three directions: 4.01 on
+     the plate, 3.57 on Dark's #2a2a2a ground, 4.90 on Night's #0a0b0d.
      Day and high contrast override the plate below in themes.css and
      carry their own numbers. */
   --paper: #262019;
   --paper-2: #1b1712;
   --paper-rule: rgb(242 237 225 / 14%);
-  --paper-edge: #68604f;
+  --paper-edge: #877e6a;
   --ink: #f2ede1;
   --ink-dim: #c2bbab;
   --ink-faint: #a49c8c;

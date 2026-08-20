@@ -134,16 +134,6 @@ const MARK_TITLE = {
   min-height: 1rem;
 }
 
-/* The reel's marks are paper scraps on a DARK rail; on the card the rail
-   crosses paper, so the reviewed (hollow) variant's paper-colored dashes
-   vanished into the ground. On this surface the hollow mark is drawn in
-   ink instead. The written mark keeps its --paper-edge border, which
-   already reads here. */
-.src-mark.hollow {
-  color: var(--ink);
-  border-color: var(--ink);
-}
-
 .src-body {
   display: flex;
   flex-direction: column;

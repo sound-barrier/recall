@@ -390,7 +390,7 @@ export async function settleView(page: Page, tabId: string): Promise<void> {
  * embedded a leftover row's eyebrow and passed locally while failing CI.
  */
 export async function seedReviewsEmpty(page: Page): Promise<void> {
-  for (const path of ['self-reviews', 'coach/returns', 'shares', 'coach/players']) {
+  for (const path of ['coach/returns', 'shares', 'coach/players']) {
     await page.route(`**/api/v1/${path}`, async (route: Route) => {
       if (route.request().method() !== 'GET') {
         await route.fallback()
@@ -399,6 +399,32 @@ export async function seedReviewsEmpty(page: Page): Promise<void> {
       await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
     })
   }
+  // ONE sitting, so the Reviews view renders a paper shelf card. Every other
+  // list stays empty and pinned. This is not decoration: the structural
+  // snapshot's designSystem probes sample RENDERED elements, and with no
+  // sitting they sampled zero `.paper` anything — so the whole paper family
+  // could be repainted (and once was) with no snapshot diff at all, which is
+  // precisely the blindness this matrix exists to prevent.
+  await page.route('**/api/v1/self-reviews', async (route: Route) => {
+    if (route.request().method() !== 'GET') {
+      await route.fallback()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([{
+        review_id: 'theme-matrix-sitting',
+        title: 'Theme matrix sitting',
+        summary: 'One sitting, so the shelf renders a paper card.',
+        created_at: '2026-05-10T20:00:00Z',
+        updated_at: '2026-05-10T20:00:00Z',
+        finished_at: '2026-05-10T21:00:00Z',
+        match_keys: [],
+        notes: {},
+      }]),
+    })
+  })
 }
 
 export async function openView(page: Page, tabId: string, theme: string): Promise<void> {
