@@ -142,10 +142,19 @@ async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
   gap: 0.5rem;
 }
 
+/* The paper card's own head, not a one-off: same display face, same
+   weight, same uppercase, so the band reads as another sheet on the
+   pile rather than a heading level nothing else uses. */
 .focus-band-head {
   margin: 0;
-  font-size: var(--type-2xl);
+  padding-bottom: 0.35rem;
+  font-family: var(--display);
+  font-size: var(--type-3xl);
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1.1;
   color: var(--ink);
+  text-transform: uppercase;
 }
 
 .focus-band-empty {
