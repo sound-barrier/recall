@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { render, screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 
-import type { CoachReturnItem, CoachReturnSheet, MatchRecord, SelfReview } from '@/api-client'
+import type { CoachPlayerSummary, CoachReturnItem, CoachReturnSheet, MatchRecord, SelfReview, ShareExport } from '@/api-client'
 import ReviewsIndex from '@/components/reviews/ReviewsIndex.vue'
 import { qk } from '@/queries/keys'
 import { useAppStore } from '@/stores/app'
@@ -49,9 +49,17 @@ function coachBlock(id: string, coach: string, date: string) {
 }
 
 // Seed the inbox cache BEFORE any store exists so its observer starts fresh.
-function renderShelf(opts: { inbox?: CoachReturnSheet[]; records?: MatchRecord[]; sittings?: SelfReview[] } = {}) {
+function renderShelf(opts: {
+  inbox?: CoachReturnSheet[]
+  records?: MatchRecord[]
+  sittings?: SelfReview[]
+  shares?: ShareExport[]
+  roster?: CoachPlayerSummary[]
+} = {}) {
   seedQuery(qk.coach.returns, opts.inbox ?? [])
   seedQuery(qk.selfReviews, opts.sittings ?? [])
+  seedQuery(qk.shares, opts.shares ?? [])
+  seedQuery(qk.coachPlayers, opts.roster ?? [])
   setActivePinia(createPinia())
   const matches = useMatchesStore()
   matches.records = opts.records ?? []
@@ -186,5 +194,67 @@ describe('ReviewsIndex — your own reviews', () => {
     expect(create).toHaveBeenLastCalledWith([
       'match-2026-08-18T21-40-00', 'match-2026-08-18T21-00-00', 'match-2026-08-11T20-00-00',
     ])
+  })
+})
+
+// The sent ledger's receipt rows: newest first, counts spoken, and the
+// "answered" pairing — by a staged sheet, by accepted blocks when the sheet
+// was discarded, or not at all.
+describe('ReviewsIndex — the sent ledger', () => {
+  const SENT: ShareExport = {
+    id: 1, handle: 'Me', message: '', exported_at: '2026-08-10T20:00:00Z',
+    match_keys: ['match-2026-08-01T20-00-00'],
+  }
+
+  it('says nothing came back when nothing has', () => {
+    renderShelf({ shares: [SENT] })
+    const rows = within(screen.getByRole('list', { name: 'Matches you have sent out' })).getAllByRole('listitem')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toHaveTextContent(/Sent 1 match ·/)
+    expect(rows[0]).toHaveTextContent(/nothing back yet/)
+  })
+
+  it('pairs with the return sheet that answers it', () => {
+    renderShelf({
+      shares: [SENT],
+      inbox: [sheet({ imported_at: '2026-08-14T09:00:00Z', notes: [note('n-1', { match_key: 'match-2026-08-01T20-00-00' })] })],
+    })
+    expect(screen.getByText(/answered by Ordo/)).toBeInTheDocument()
+  })
+
+  it('still says answered when the sheet was discarded but the blocks landed', () => {
+    renderShelf({
+      shares: [SENT],
+      records: [rec('match-2026-08-01T20-00-00', { coach_notes: [coachBlock('a', 'Ordo', '2026-08-15')] })],
+    })
+    const sentRow = within(screen.getByRole('list', { name: 'Matches you have sent out' })).getAllByRole('listitem')[0]!
+    expect(sentRow).toHaveTextContent(/answered by Ordo/)
+  })
+
+  it('a sheet imported BEFORE the share does not answer it', () => {
+    renderShelf({
+      shares: [{ ...SENT, exported_at: '2026-08-16T20:00:00Z' }],
+      inbox: [sheet({ imported_at: '2026-08-14T09:00:00Z', notes: [note('n-1')] })],
+    })
+    expect(screen.getByText(/nothing back yet/)).toBeInTheDocument()
+  })
+})
+
+// 03's roster: one quiet row per coached player, work counted, the summary
+// quoted when one was written.
+describe('ReviewsIndex — the coach roster', () => {
+  it('lists players with counts, day, and summary; pluralizes honestly', () => {
+    renderShelf({
+      roster: [
+        { id: 2, handle: 'Sable', note_count: 12, last_note_at: '2026-08-14T20:00:00Z', summary: 'Ult economy first.' },
+        { id: 1, handle: 'Kestrel', note_count: 1 },
+      ],
+    })
+    const rows = within(screen.getByRole('list', { name: 'Players you have coached' })).getAllByRole('listitem')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toHaveTextContent(/Sable · 12 notes · last session/)
+    expect(rows[0]).toHaveTextContent(/Ult economy first/)
+    expect(rows[1]).toHaveTextContent('Kestrel · 1 note')
+    expect(screen.getByText(/Open their next bundle and the notes resurface/)).toBeInTheDocument()
   })
 })

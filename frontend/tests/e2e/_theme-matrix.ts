@@ -382,11 +382,31 @@ export async function settleView(page: Page, tabId: string): Promise<void> {
 }
 
 /** Navigate to a view with the theme pinned and the corpus seeded. */
+/**
+ * Pin every list the Reviews tab reads to empty. The suite shares ONE
+ * server and one HOME across every spec, so sittings/returns/shares/roster
+ * rows left by other specs (or a developer's local runs) would otherwise
+ * leak into the structural snapshots — the day-reviews baseline once
+ * embedded a leftover row's eyebrow and passed locally while failing CI.
+ */
+export async function seedReviewsEmpty(page: Page): Promise<void> {
+  for (const path of ['self-reviews', 'coach/returns', 'shares', 'coach/players']) {
+    await page.route(`**/api/v1/${path}`, async (route: Route) => {
+      if (route.request().method() !== 'GET') {
+        await route.fallback()
+        return
+      }
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+    })
+  }
+}
+
 export async function openView(page: Page, tabId: string, theme: string): Promise<void> {
   await pinTheme(page, theme)
   await silenceParseEvents(page)
   await seedMatches(page)
   await seedProfiles(page)
+  await seedReviewsEmpty(page)
   await page.goto('/')
   await page.locator(`#${tabId}`).click()
   await expect(page.locator(`#${tabId}`)).toHaveAttribute('aria-selected', 'true')

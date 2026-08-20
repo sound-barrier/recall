@@ -56,3 +56,54 @@ describe('CoachDesk', () => {
     expect(view.emitted('next')).toHaveLength(1)
   })
 })
+
+// The desk's take-this-match-out strip: a sitting's affordance, armed, and
+// refused for the last frame and for a locked profile — each with the reason.
+describe('CoachDesk — taking the match out of the review', () => {
+  it('is absent on a coach loan (removable: none)', () => {
+    renderDesk()
+    expect(screen.queryByRole('button', { name: 'Take this match out of the review' })).not.toBeInTheDocument()
+  })
+
+  it('arms, re-arms per frame, and only the second press emits', async () => {
+    const view = renderDesk({ removable: 'yes' })
+    await fireEvent.click(screen.getByRole('button', { name: 'Take this match out of the review' }))
+    expect(view.emitted()['remove-frame']).toBeUndefined()
+
+    // A new frame under an armed button disarms it — the second click must
+    // never land on a different match than the first asked about.
+    await view.rerender({ record: { ...RECORD, match_key: 'match-2026-08-08T22-00-00' } })
+    expect(screen.getByRole('button', { name: 'Take this match out of the review' })).toBeInTheDocument()
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Take this match out of the review' }))
+    await fireEvent.click(screen.getByRole('button', { name: /Take it out — its note and moments go with it/ }))
+    expect(view.emitted()['remove-frame']).toHaveLength(1)
+  })
+
+  it('Keep it disarms without emitting', async () => {
+    const view = renderDesk({ removable: 'yes' })
+    await fireEvent.click(screen.getByRole('button', { name: 'Take this match out of the review' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
+    expect(view.emitted()['remove-frame']).toBeUndefined()
+    expect(screen.getByRole('button', { name: 'Take this match out of the review' })).toBeInTheDocument()
+  })
+
+  it('refuses the last frame with the way out', () => {
+    renderDesk({ removable: 'last' })
+    const btn = screen.getByRole('button', { name: 'Take this match out of the review' })
+    expect(btn).toBeDisabled()
+    expect(btn).toHaveAccessibleDescription(/delete the review instead/)
+  })
+
+  it('a locked profile outranks the last-frame reason', () => {
+    renderDesk({ removable: 'yes', blockedReason: 'This is a read-only sample profile.' })
+    const btn = screen.getByRole('button', { name: 'Take this match out of the review' })
+    expect(btn).toBeDisabled()
+    expect(btn).toHaveAccessibleDescription('This is a read-only sample profile.')
+  })
+
+  it("says the sitting's own empty line when every member left the history", () => {
+    renderDesk({ record: null, reelEmpty: true, voice: 'your' })
+    expect(screen.getByText(/None of the matches in this review are in your history/)).toBeInTheDocument()
+  })
+})
