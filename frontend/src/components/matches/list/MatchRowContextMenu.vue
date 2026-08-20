@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 import { useScrollLock } from '@/composables/shared/keyboard/useScrollLock'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
@@ -56,8 +56,20 @@ const reviewTitle = computed(() => (sessionActive.value
   ? 'This match is on loan — notes go in the film room.'
   : lockedTitle('Review this match in the film room')))
 
+// Sending is a READ, so the write gate is the wrong test — but during a
+// session this row is the coach's loaned match, and a bundle of someone
+// else's match signed with your handle is worse than a blocked write.
+const sendTitle = computed(() => (sessionActive.value
+  ? 'This match is on loan — you can only send your own to a coach.'
+  : 'Send this match to a coach'))
+
 function onReviewMatch() {
   emit('review-match', props.matchKey)
+  emit('close')
+}
+
+function onSendToCoach() {
+  emit('send-to-coach', props.matchKey)
   emit('close')
 }
 
@@ -65,6 +77,8 @@ const emit = defineEmits<{
   close:        []
   'open-detail': [matchKey: string]
   'set-anchor':  [matchKey: string]
+  /** Open the Send-to-a-coach dialog over this one match. */
+  'send-to-coach': [matchKey: string]
   // Open the detail panel + focus a specific input. App.vue routes
   // these through selection.open + a focus-on-mount hint on the
   // detail panel's exposed methods.
@@ -111,9 +125,19 @@ function detach() {
   document.removeEventListener('keydown', onKeydown, true)
 }
 
-watch(() => props.position, (p) => {
-  if (p) attach()
-  else   detach()
+watch(() => props.position, async (p) => {
+  if (p) {
+    attach()
+    // Re-measure per open: the item count varies with replayCode/isWails,
+    // so a stale correction from the last open would clamp against the
+    // wrong height.
+    clamped.value = null
+    await nextTick()
+    correctPosition()
+  } else {
+    detach()
+    clamped.value = null
+  }
 }, { immediate: true })
 
 onBeforeUnmount(detach)
@@ -158,37 +182,36 @@ function onHide() {
   emit('close')
 }
 
-// Viewport-edge clamp — the original menu was small (~110 px tall)
-// and rarely overlapped the edge in real use, so the clamp was
-// deferred until the menu grew taller (~260 px with all 8
-// actions); right-clicks near the bottom of the leaves list
-// would render off-screen. Estimate the menu size and shift the
-// origin upward / leftward if the natural position would clip.
-const MENU_W = 220
-const MENU_H_BASE = 90  // header rows that always render
-const MENU_H_PER_ITEM = 36
-function clampedPosition(p: { x: number; y: number }): { left: string; top: string } {
-  if (typeof window === 'undefined') return { left: `${p.x}px`, top: `${p.y}px` }
-  // Estimate the live menu height — every menu item adds the same
-  // ~36px; the gated items (Copy replay code, Open source folder)
-  // only render under their conditions so the estimate adapts.
-  let itemCount = 5 // Open detail, Anchor, Tag, Edit annotation, Copy link, Hide (always-on)
-  if (props.replayCode) itemCount++
-  if (props.isWails)    itemCount++
-  const h = MENU_H_BASE + itemCount * MENU_H_PER_ITEM
-  const w = MENU_W
-  const margin = 8
-  const maxX = window.innerWidth  - w - margin
-  const maxY = window.innerHeight - h - margin
-  const left = Math.max(margin, Math.min(p.x, maxX))
-  const top  = Math.max(margin, Math.min(p.y, maxY))
-  return { left: `${left}px`, top: `${top}px` }
+// Viewport-edge clamp. Measured, not estimated.
+//
+// This used to add up a hand-written per-item height against a hand-counted
+// item count — and the count said five while seven items always rendered,
+// so the menu already ran ~72px past the bottom of the screen before this
+// change added an eighth. A constant every new item has to remember to bump
+// is a constant that will not be bumped.
+//
+// The menu is positioned at the raw point first and corrected after mount,
+// once it can be measured. The opacity transition covers the one frame.
+const EDGE_MARGIN = 8
+const clamped = ref<{ left: number; top: number } | null>(null)
+
+function correctPosition(): void {
+  const p = props.position
+  const box = menuRef.value
+  if (!p || !box) return
+  const r = box.getBoundingClientRect()
+  clamped.value = {
+    left: Math.max(EDGE_MARGIN, Math.min(p.x, window.innerWidth - r.width - EDGE_MARGIN)),
+    top: Math.max(EDGE_MARGIN, Math.min(p.y, window.innerHeight - r.height - EDGE_MARGIN)),
+  }
 }
 
 const menuStyle = computed(() => {
   if (!props.position) return {}
-  return clampedPosition(props.position)
+  const at = clamped.value ?? { left: props.position.x, top: props.position.y }
+  return { left: `${at.left}px`, top: `${at.top}px` }
 })
+
 </script>
 
 <template>
@@ -285,6 +308,18 @@ const menuStyle = computed(() => {
         >
           <span class="match-row-ctx-glyph" aria-hidden="true">⎘</span>
           Copy match link
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          class="match-row-ctx-item"
+          data-row-ctx-send-coach
+          :disabled="sessionActive"
+          :title="sendTitle"
+          @click="onSendToCoach"
+        >
+          <span class="match-row-ctx-glyph" aria-hidden="true">↗</span>
+          Send to a coach…
         </button>
         <button
           v-if="isWails"

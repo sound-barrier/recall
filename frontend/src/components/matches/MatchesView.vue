@@ -282,6 +282,14 @@ provideMatchesContext(matchesStore)
 // The leaf-row right-click menu — its state machine AND what each item does,
 // both in useMatchesRowActions. The eight one-line forwarders that used to sit
 // here named the menu's contract, so they live with the menu.
+// What "Send to a coach…" acts on: the rows you ticked when there are any,
+// otherwise everything showing. It lives here because this is the only
+// place that can see BOTH — the ticked set is view-local and the narrow
+// belongs to the store.
+const shareTargetKeys = computed(() => (selectedKeys.value.size > 0
+  ? [...selectedKeys.value]
+  : narrowedRecords.value.map((r) => r.match_key)))
+
 const {
   rowContextMenu,
   onRowContext,
@@ -306,6 +314,7 @@ const {
   copyReplayCode: onCopyReplayCode,
   copyMatchLink: onCopyMatchLink,
   openSourceFolder: onOpenSourceFolder,
+  sendToCoach: (k: string) => matchesStore.requestShare([k], 'row'),
 })
 </script>
 
@@ -401,7 +410,10 @@ const {
           :density="density"
           :undated-count="undatedCount"
           :grouped="groupBy !== 'none'"
+          :share-target-count="shareTargetKeys.length"
           @toggle-sort-group="onSortGroupTriggerClick"
+          @send-to-coach="matchesStore.requestShare(
+            shareTargetKeys, selectedKeys.size > 0 ? 'selection' : 'narrow')"
           @set-density="setDensity"
           @jump-to-undated="onJumpToUndated"
           @add-match="uiStore.openManualMatch('full')"
@@ -516,6 +528,7 @@ const {
         @copy-replay-code="rowAction.copyReplay"
         @copy-match-link="rowAction.copyLink"
         @open-source-folder="rowAction.openSourceFolder"
+        @send-to-coach="rowAction.sendToCoach"
         @review-match="(k: string) => selfReviewStore.createFromKeys([k])"
         @hide="rowAction.hide"
       />

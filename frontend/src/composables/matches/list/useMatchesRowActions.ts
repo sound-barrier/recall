@@ -22,6 +22,8 @@ export interface RowActionDeps {
   /** Bulk-hide, reused with a single key so there is one hide path. */
   hideMatches: (keys: string[]) => Promise<unknown> | void
   copyReplayCode: (matchKey: string) => Promise<unknown> | void
+  /** Open the Send-to-a-coach dialog over one match. */
+  sendToCoach: (matchKey: string) => void
   copyMatchLink: (matchKey: string) => Promise<unknown> | void
   openSourceFolder: (matchKey: string) => Promise<unknown> | void
 }
@@ -45,6 +47,10 @@ export function useMatchesRowActions(deps: RowActionDeps) {
       focusTag: (matchKey: string) => { ui.onOpenMatchAndFocus(matchKey, 'tag') },
       focusNote: (matchKey: string) => { ui.onOpenMatchAndFocus(matchKey, 'note') },
       copyReplay: (matchKey: string) => { void deps.copyReplayCode(matchKey) },
+      // One match, straight to the coach dialog. Goes through the bundle
+      // rather than an inline binding in the view — the menu's contract
+      // lives here, which is the whole reason this file exists.
+      sendToCoach: (matchKey: string) => { deps.sendToCoach(matchKey) },
       copyLink: (matchKey: string) => { void deps.copyMatchLink(matchKey) },
       openSourceFolder: (matchKey: string) => { void deps.openSourceFolder(matchKey) },
     },

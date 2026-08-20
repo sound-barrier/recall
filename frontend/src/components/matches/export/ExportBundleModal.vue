@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, toRef, watch } from 'vue'
 
-import { GetCoachingSettings } from '@/api-client'
 import { useScrollLock } from '@/composables/shared/keyboard/useScrollLock'
 import type { ExportBundleRequest } from '@/composables/matches/useExportBundle'
 
