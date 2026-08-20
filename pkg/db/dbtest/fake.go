@@ -415,6 +415,9 @@ func (f *Fake) Clear() error {
 	// coach's AUTHORED list survives, like the summary it replaces.
 	f.SelfReviewFocusItems = nil
 	f.ReceivedFocusItems = nil
+	// The dedup registry. A standing duplicate is skipped before OCR on every
+	// run, so a row surviving the wipe withholds its file forever.
+	f.IngestedFiles = nil
 	return nil
 }
 
@@ -479,6 +482,7 @@ func (f *Fake) HardDeleteMatch(matchKey string) error {
 	for fn := range doomed {
 		delete(f.Ambiguous, fn)
 	}
+	f.forgetIngestedFiles(doomed)
 	for fn, cands := range f.Ambiguous {
 		kept := cands[:0]
 		for _, c := range cands {
@@ -505,6 +509,21 @@ func (f *Fake) HardDeleteMatch(matchKey string) error {
 	f.dropCoachLayerForKey(matchKey)
 	f.dropSelfReviewMembershipForKey(matchKey)
 	return nil
+}
+
+// forgetIngestedFiles mirrors the SQL store: the deleted match's own files
+// leave the dedup registry, and ingested_files.duplicate_of ON DELETE CASCADE
+// takes every byte-identical copy of one with them. The Fake keeps no engine,
+// so the cascade is spelled out.
+func (f *Fake) forgetIngestedFiles(doomed map[string]bool) {
+	for fn := range doomed {
+		delete(f.IngestedFiles, fn)
+	}
+	for fn, rec := range f.IngestedFiles {
+		if doomed[rec.DuplicateOf] {
+			delete(f.IngestedFiles, fn)
+		}
+	}
 }
 
 // ReAggregateUnknowns walks Fake's Summaries / Teams /

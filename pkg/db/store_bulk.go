@@ -168,8 +168,8 @@ func (s *SQLStore) collectFilenamesWhere(table, where string, args []any, out ma
 // (children cascade), the screenshots_dirs lookup, the per-match
 // auxiliary tables (match_reviews, match_annotations with its
 // children cascading, hidden_matches, ambiguous_candidates, match_
-// queue, match_play_mode, the received coach layer), AND the
-// ignored_screenshots suppress list. Used by App.ClearDatabase, which
+// queue, match_play_mode, the received coach layer), the dedup
+// registry, AND the ignored_screenshots suppress list. Used by App.ClearDatabase, which
 // expects a "wipe my match history" semantic. Callers that
 // want the suppress list to survive (App.ClearDatabase's keep-
 // ignored opt-out path) snapshot the list, call Clear, then re-
@@ -209,6 +209,10 @@ func (s *SQLStore) Clear() error {
 		"pinned_matches",
 		"ambiguous_candidates",
 		"ignored_screenshots",
+		// The dedup registry. A standing duplicate is skipped before OCR on
+		// every run, ReParseAll included, so a row surviving a wipe of the
+		// history it describes silently withholds a screenshot forever.
+		"ingested_files",
 		"all_heroes_screenshots",
 		"user_match_data",   // user_match_* children cascade on the match_key FK
 		"match_coach_notes", // tag children cascade
