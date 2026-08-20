@@ -102,6 +102,43 @@ const emit = defineEmits<{
 
 const menuRef = ref<HTMLDivElement | null>(null)
 
+// Viewport-edge clamp. Measured, not estimated.
+//
+// Declared HERE, above the position watcher, and that is load-bearing: the
+// watcher is `immediate`, so its first run happens during setup, and a `const`
+// it touches from further down the file is still in its temporal dead zone.
+// It threw on every mount of this menu — which is every render of the Matches
+// list — and the error surfaced only as a banner over the view.
+//
+// This used to add up a hand-written per-item height against a hand-counted
+// item count — and the count said five while seven items always rendered,
+// so the menu already ran ~72px past the bottom of the screen before this
+// change added an eighth. A constant every new item has to remember to bump
+// is a constant that will not be bumped.
+//
+// The menu is positioned at the raw point first and corrected after mount,
+// once it can be measured. The opacity transition covers the one frame.
+const EDGE_MARGIN = 8
+const clamped = ref<{ left: number; top: number } | null>(null)
+
+function correctPosition(): void {
+  const p = props.position
+  const box = menuRef.value
+  if (!p || !box) return
+  const r = box.getBoundingClientRect()
+  clamped.value = {
+    left: Math.max(EDGE_MARGIN, Math.min(p.x, window.innerWidth - r.width - EDGE_MARGIN)),
+    top: Math.max(EDGE_MARGIN, Math.min(p.y, window.innerHeight - r.height - EDGE_MARGIN)),
+  }
+}
+
+const menuStyle = computed(() => {
+  if (!props.position) return {}
+  const at = clamped.value ?? { left: props.position.x, top: props.position.y }
+  return { left: `${at.left}px`, top: `${at.top}px` }
+})
+
+
 function onWindowClick(e: MouseEvent) {
   const target = e.target as Node | null
   if (target && menuRef.value?.contains(target)) return
@@ -181,36 +218,6 @@ function onHide() {
   emit('hide', props.matchKey)
   emit('close')
 }
-
-// Viewport-edge clamp. Measured, not estimated.
-//
-// This used to add up a hand-written per-item height against a hand-counted
-// item count — and the count said five while seven items always rendered,
-// so the menu already ran ~72px past the bottom of the screen before this
-// change added an eighth. A constant every new item has to remember to bump
-// is a constant that will not be bumped.
-//
-// The menu is positioned at the raw point first and corrected after mount,
-// once it can be measured. The opacity transition covers the one frame.
-const EDGE_MARGIN = 8
-const clamped = ref<{ left: number; top: number } | null>(null)
-
-function correctPosition(): void {
-  const p = props.position
-  const box = menuRef.value
-  if (!p || !box) return
-  const r = box.getBoundingClientRect()
-  clamped.value = {
-    left: Math.max(EDGE_MARGIN, Math.min(p.x, window.innerWidth - r.width - EDGE_MARGIN)),
-    top: Math.max(EDGE_MARGIN, Math.min(p.y, window.innerHeight - r.height - EDGE_MARGIN)),
-  }
-}
-
-const menuStyle = computed(() => {
-  if (!props.position) return {}
-  const at = clamped.value ?? { left: props.position.x, top: props.position.y }
-  return { left: `${at.left}px`, top: `${at.top}px` }
-})
 
 </script>
 
