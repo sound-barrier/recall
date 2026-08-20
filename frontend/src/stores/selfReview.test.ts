@@ -38,6 +38,7 @@ beforeEach(() => {
     UpdateSelfReview: vi.fn(async (_id: string, title: string, summary: string) => sitting({ title, summary })),
     FinishSelfReview: vi.fn(async () => sitting({ finished_at: '2026-08-18T20:00:00Z' })),
     DeleteSelfReview: vi.fn(async () => undefined),
+    SetSelfReviewMatches: vi.fn(async (_id: string, keys: string[]) => sitting({ match_keys: keys })),
     PutSelfReviewNote: vi.fn(async () => undefined),
     DeleteSelfReviewNote: vi.fn(async () => undefined),
     PutSelfReviewMoment: vi.fn(async () => undefined),
@@ -205,5 +206,72 @@ describe('selfReview store — a sitting from the bulk bar', () => {
     await store.createFromKeys([KEY_A])
     expect(store.roomOpen).toBe(false)
     expect(app.error).toMatch(/coaching session/)
+  })
+})
+
+// The desk's take-this-match-out and the bulk bar's twin-dedupe — the two
+// store paths the UX pass added.
+describe('selfReview store — editing the set and refusing twins', () => {
+  it('createFromKeys reopens an identical UNFINISHED sitting instead of minting a twin', async () => {
+    const existing = sitting({ review_id: 'r-open', match_keys: [KEY_A, KEY_B] })
+    api.ListSelfReviews = vi.fn(async () => [existing])
+    api.GetSelfReview = vi.fn(async () => existing)
+    setApiBacking(api)
+    const store = useSelfReviewStore()
+
+    await store.createFromKeys([KEY_B, KEY_A])
+    await settle()
+
+    expect(api.CreateSelfReview).not.toHaveBeenCalled()
+    expect(store.openId).toBe('r-open')
+  })
+
+  it('createFromKeys does NOT reopen a finished sitting over the same keys', async () => {
+    const done = sitting({ review_id: 'r-done', match_keys: [KEY_A], finished_at: '2026-08-18T20:00:00Z' })
+    api.ListSelfReviews = vi.fn(async () => [done])
+    setApiBacking(api)
+    const store = useSelfReviewStore()
+
+    await store.createFromKeys([KEY_A])
+    await settle()
+
+    expect(api.CreateSelfReview).toHaveBeenCalledWith('', [KEY_A])
+  })
+
+  it('createFromKeys over an empty selection does nothing', async () => {
+    const store = useSelfReviewStore()
+    await store.createFromKeys([])
+    expect(api.CreateSelfReview).not.toHaveBeenCalled()
+  })
+
+  it('removeMatchFromOpenSitting drops the draft first, replaces the set, clears the selection', async () => {
+    const store = useSelfReviewStore()
+    await store.createFromKeys([KEY_B, KEY_A])
+    await settle()
+    store.selectKey(KEY_B)
+    // A note mid-debounce on the match being removed must not resurrect.
+    store.updateNote(KEY_B, { kind: 'note', text: 'doomed', focusTags: [], extraTags: [], matchClock: '' })
+
+    await store.removeMatchFromOpenSitting(KEY_B)
+    await settle()
+    await vi.advanceTimersByTimeAsync(1000)
+
+    expect(api.SetSelfReviewMatches).toHaveBeenCalledWith('r-1', [KEY_A])
+    expect(api.PutSelfReviewNote).not.toHaveBeenCalled()
+    expect(store.selectedKey).toBe('')
+    expect(store.notes[KEY_B]).toBeUndefined()
+  })
+
+  it('removeMatchFromOpenSitting refuses the last match', async () => {
+    api.CreateSelfReview = vi.fn(async () => sitting({ match_keys: [KEY_A] }))
+    api.GetSelfReview = vi.fn(async () => sitting({ match_keys: [KEY_A] }))
+    setApiBacking(api)
+    const store = useSelfReviewStore()
+    await store.createFromKeys([KEY_A])
+    await settle()
+
+    await store.removeMatchFromOpenSitting(KEY_A)
+
+    expect(api.SetSelfReviewMatches).not.toHaveBeenCalled()
   })
 })

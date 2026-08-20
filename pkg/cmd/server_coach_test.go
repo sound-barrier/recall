@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -363,5 +364,66 @@ func TestCoachSessionExport_StreamsZipWithDisposition(t *testing.T) {
 	}
 	if _, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len())); err != nil {
 		t.Errorf("body is not a readable zip: %v", err)
+	}
+}
+
+// The roster round-trips through the wire: coached players with note counts,
+// newest work first, summaries included — the 03 section's data.
+func TestListCoachPlayers_RosterRoundTrip(t *testing.T) {
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	store := dbtest.New()
+	_, mux := newTestApp(t, store)
+
+	sable, err := store.EnsureCoachPlayer("uuid-sable", "Sable")
+	if err != nil {
+		t.Fatalf("EnsureCoachPlayer: %v", err)
+	}
+	if _, err := store.UpsertCoachNote(db.CoachNote{
+		NoteID: "n-1", PlayerRef: sable.ID, MatchKey: "m-1", Kind: "note", Text: "hold angles",
+		CreatedAt: "2026-05-01T10:00:00Z", UpdatedAt: "2026-05-01T10:00:00Z",
+	}); err != nil {
+		t.Fatalf("UpsertCoachNote: %v", err)
+	}
+	if err := store.SetCoachSummary(sable.ID, "ult economy first"); err != nil {
+		t.Fatalf("SetCoachSummary: %v", err)
+	}
+
+	assertRosterHasSable(t, fire(t, mux, http.MethodGet, "/api/v1/coach/players", nil))
+}
+
+// assertRosterHasSable decodes the roster wire shape and pins the one row.
+func assertRosterHasSable(t *testing.T, rec *httptest.ResponseRecorder) {
+	t.Helper()
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /coach/players = %d, want 200", rec.Code)
+	}
+	var roster []struct {
+		Handle     string `json:"handle"`
+		NoteCount  int    `json:"note_count"`
+		LastNoteAt string `json:"last_note_at"`
+		Summary    string `json:"summary"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &roster); err != nil {
+		t.Fatalf("decode roster: %v", err)
+	}
+	if len(roster) != 1 {
+		t.Fatalf("roster = %d rows, want 1", len(roster))
+	}
+	got := roster[0]
+	if got.Handle != "Sable" || got.NoteCount != 1 || got.Summary != "ult economy first" || got.LastNoteAt == "" {
+		t.Fatalf("roster row = %+v, want Sable with 1 note, the summary and a stamp", got)
+	}
+}
+
+// An empty roster is an empty ARRAY, not null — the frontend maps over it.
+func TestListCoachPlayers_EmptyIsAnArray(t *testing.T) {
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	_, mux := newTestApp(t, dbtest.New())
+	rec := fire(t, mux, http.MethodGet, "/api/v1/coach/players", nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /coach/players = %d, want 200", rec.Code)
+	}
+	if body := rec.Body.String(); body != "[]\n" && body != "[]" {
+		t.Fatalf("empty roster body = %q, want []", body)
 	}
 }

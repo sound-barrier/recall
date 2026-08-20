@@ -36,28 +36,14 @@
   },
   "designSystem": {
     "eyebrow": {
-      "count": 1,
-      "fontSize": [
-        "9.6px"
-      ],
-      "letterSpacing": [
-        "2.112px"
-      ],
-      "fontWeight": [
-        "700"
-      ],
-      "textTransform": [
-        "uppercase"
-      ],
-      "color": [
-        "rgb(230, 230, 230)"
-      ],
-      "backgroundColor": [
-        "rgba(0, 0, 0, 0)"
-      ],
-      "borderRadius": [
-        "0px"
-      ]
+      "count": 0,
+      "fontSize": [],
+      "letterSpacing": [],
+      "fontWeight": [],
+      "textTransform": [],
+      "color": [],
+      "backgroundColor": [],
+      "borderRadius": []
     },
     "card": {
       "count": 0,
@@ -80,7 +66,7 @@
       "borderRadius": []
     },
     "button": {
-      "count": 12,
+      "count": 15,
       "fontSize": [
         "12.48px",
         "13.3333px",
@@ -102,11 +88,14 @@
         "uppercase"
       ],
       "color": [
+        "rgb(0, 0, 0)",
         "rgb(230, 230, 230)",
         "rgb(255, 255, 255)"
       ],
       "backgroundColor": [
         "rgb(10, 10, 10)",
+        "rgb(107, 107, 107)",
+        "rgb(255, 191, 77)",
         "rgba(0, 0, 0, 0)"
       ],
       "borderRadius": [
@@ -163,7 +152,7 @@
       ]
     },
     "heading": {
-      "count": 8,
+      "count": 9,
       "fontSize": [
         "17.6px",
         "29.6px",
