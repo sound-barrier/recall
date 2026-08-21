@@ -114,7 +114,9 @@ test.describe('coaching session — open and end', () => {
     // Sable's noted frame hydrates the editor with the resurfaced text…
     await page.getByRole('button', { name: /— note written$/ }).click()
     const editor = page.getByRole('textbox', { name: 'Note' })
-    await expect(editor).toHaveValue(must(RESURFACED_NOTES[0], 'the resurfaced note').text)
+    // toContainText, not toHaveValue: the field is a rendered document now,
+    // and .value on a contenteditable throws rather than answering.
+    await expect(editor).toContainText(must(RESURFACED_NOTES[0], 'the resurfaced note').text)
     await expect(page.getByRole('button', { name: 'positioning', pressed: true })).toBeVisible()
     await endSession(page)
 
@@ -124,7 +126,7 @@ test.describe('coaching session — open and end', () => {
     await expect(loanSlip(page, 'Wren')).toBeVisible()
     await enterFilmRoom(page)
     await page.getByRole('list', { name: /Wren.s matches/ }).getByRole('button').first().click()
-    await expect(page.getByRole('textbox', { name: 'Note' })).toHaveValue('')
+    await expect(page.getByRole('textbox', { name: 'Note' })).toHaveText('')
     await expect(page.getByRole('button', { name: 'positioning', pressed: true })).toHaveCount(0)
     await expect(page.getByRole('button', { name: /— note written$/ })).toHaveCount(0)
     await expect(page.getByText(must(NOTED_MATCH.annotation?.note, "Sable's own note"))).toHaveCount(0)
@@ -142,14 +144,15 @@ test.describe('coaching session — open and end', () => {
 
     // The room asks, and refuses typing it could not save.
     await expect(identityPrompt(page)).toBeVisible()
-    await expect(page.getByRole('textbox', { name: 'Note' })).toBeDisabled()
+    await expect(page.getByRole('textbox', { name: 'Note' }))
+      .toHaveAttribute('aria-readonly', 'true')
 
     await confirmPlayer(page, 'Wren')
 
     await expect(identityPrompt(page)).toHaveCount(0)
     await expect(loanSlip(page, 'Wren')).toBeVisible()
     const editor = page.getByRole('textbox', { name: 'Note' })
-    await expect(editor).toBeEnabled()
+    await expect(editor).toHaveAttribute('aria-readonly', 'false')
     await editor.fill('Ult held too long on the second point.')
     await expect.poll(() => session.notes().map((n) => n.text))
       .toContain('Ult held too long on the second point.')

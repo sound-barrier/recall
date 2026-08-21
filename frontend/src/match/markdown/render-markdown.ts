@@ -16,7 +16,9 @@
 // with no attributes except an `<ol start>` — there is nothing for a
 // sanitizer to do afterwards.
 
-import { openAt, blocksOf, topHeadingLevel, type Block } from '@/match/markdown/note-blocks'
+import {
+  openAt, blocksOf, inlineSpans, topHeadingLevel, type Block, type SpanMark,
+} from '@/match/markdown/note-blocks'
 
 // The PARSER lives in note-blocks.ts; this file is the HTML emitter over what
 // it returns. The split is not cosmetic: `topHeadingLevel` below is lossy on
@@ -92,4 +94,78 @@ export function renderMarkdown(source: string): string {
   const blocks = blocksOf(source)
   const topLevel = topHeadingLevel(blocks)
   return blocks.map((b) => renderBlock(b, topLevel)).join('')
+}
+
+// ── search hits ─────────────────────────────────────────────────────────
+
+const TAG_OF: Record<SpanMark, string> = { strong: 'strong', em: 'em', del: 'del' }
+
+/**
+ * A note rendered with its search hits lit.
+ *
+ * A frontend-only sibling of renderMarkdown, and deliberately not part of the
+ * grammar the Go mirror answers to: the exported ledger has no search box, so
+ * there is nothing over there for `<mark>` to mirror. renderMarkdown itself is
+ * untouched and still byte-pinned to pkg/coach/markdown.go by the fixture.
+ *
+ * Highlighting cannot be applied to the SOURCE before rendering — the `<mark>`
+ * would land inside the markdown and either break a marker or be escaped into
+ * view. So it splits the spans the parser already produced, which also makes
+ * the match better than it was: terms now match the words a reader sees, not
+ * the characters the author typed, so searching `hold` finds it inside
+ * `**hold**`.
+ */
+export function renderMarkdownWithHits(source: string, terms: readonly string[]): string {
+  const wanted = terms.map((t) => t.toLowerCase()).filter((t) => t !== '')
+  if (wanted.length === 0) return renderMarkdown(source)
+  const blocks = blocksOf(source)
+  const topLevel = topHeadingLevel(blocks)
+  return blocks.map((b) => renderBlockWithHits(b, topLevel, wanted)).join('')
+}
+
+/** One line's spans as HTML, with every term occurrence wrapped in a mark. */
+function inlineHits(raw: string, terms: readonly string[]): string {
+  return inlineSpans(raw).map((span) => {
+    const inner = litText(span.text, terms)
+    return span.marks.reduceRight(
+      (html, mark) => `<${TAG_OF[mark]}>${html}</${TAG_OF[mark]}>`, inner)
+  }).join('')
+}
+
+/** Escaped text with each term occurrence wrapped, scanning case-insensitively. */
+function litText(text: string, terms: readonly string[]): string {
+  const lower = text.toLowerCase()
+  let out = ''
+  let i = 0
+  while (i < text.length) {
+    const hit = terms
+      .map((t) => ({ t, at: lower.startsWith(t, i) }))
+      .find((c) => c.at)
+    if (!hit) {
+      out += escapeHTML(text[i]!)
+      i += 1
+      continue
+    }
+    out += `<mark class="note-hit">${escapeHTML(text.slice(i, i + hit.t.length))}</mark>`
+    i += hit.t.length
+  }
+  return out
+}
+
+function renderBlockWithHits(block: Block, topLevel: number, terms: readonly string[]): string {
+  const item = (text: string): string => `<li>${inlineHits(text, terms)}</li>`
+  switch (block.kind) {
+    case 'p':
+      return `<p>${block.lines.map((l) => inlineHits(l, terms)).join('<br>')}</p>`
+    case 'h': {
+      const tag = `h${3 + block.level - topLevel}`
+      return `<${tag}>${inlineHits(block.text, terms)}</${tag}>`
+    }
+    case 'ul':
+      return `<ul>${block.items.map(item).join('')}</ul>`
+    case 'ol': {
+      const start = block.start === 1 ? '' : ` start="${block.start}"`
+      return `<ol${start}>${block.items.map(item).join('')}</ol>`
+    }
+  }
 }
