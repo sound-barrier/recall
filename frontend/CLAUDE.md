@@ -7,6 +7,55 @@ add-an-endpoint recipe) now live in `.claude/rules/api-design.md`, which
 auto-loads when you touch `frontend/src/api.ts` (or `api/**` / `pkg/cmd/**`) —
 read it before adding or changing any `/api/v1/...` call.
 
+## TypeScript & Vue style
+
+The [Vue 3 Style Guide](https://vuejs.org/style-guide/) is the baseline for
+component conventions not covered here (naming, prop casing, SFC element
+ordering). What follows is what Recall enforces on top, or has gotten wrong.
+
+- **TypeScript / Vue**: idiomatic TS — no `any`, narrow types at boundaries
+  (`Pick<>` or permissive interfaces so callers aren't forced to satisfy fields
+  the function never reads). Composition API; composables for stateful logic.
+  Pure helpers in `frontend/src/match/match-helpers.ts`, never inside an SFC's
+  `<script setup>`. Apply the same naming discipline as Go: component props,
+  composable returns, and helper functions should read like documentation.
+  Follow the [Vue 3 Style Guide](https://vuejs.org/style-guide/) for component
+  conventions not covered explicitly here (naming, prop casing, SFC element
+  ordering).
+
+- **Law of Demeter — accept what you read.** When a composable returns many
+  refs/handlers, bundle them as a single typed prop (the `CardStateApi` /
+  `FiltersApi` / `GroupingApi` pattern in `MatchesView.vue`) rather than
+  threading 30 props through. Treat the bundle as opaque.
+
+- **DRY with the rule of three.** Don't extract on the second occurrence — two
+  is coincidence. The `useTheme` / `useWeekStart` / `useIncludeUndated` family
+  earned the abstraction at three persisted-preference composables.
+
+- **Accessibility is enforced, not aspirational.**
+  `eslint-plugin-vuejs-accessibility` runs in `task lint`; the axe e2e suite
+  (`frontend/tests/e2e/a11y/a11y.spec.ts`) fails `task test-e2e` on any WCAG 2.1
+  A/AA violation across every theme × view combination. Keep both green:
+  label every control, clear AA contrast on every surface AND on a token's
+  own tint, preserve the skip link, focus traps, and keyboard operability.
+  Detailed patterns live in `.claude/rules/a11y.md` and `frontend/CLAUDE.md`.
+
+- **Deliberate npm version holds — behind latest for a reason, not neglect.**
+  **typescript** `~6.0.x` (tilde-pinned — typescript-eslint peers `typescript
+  <6.1.0`; revisit when `npm view typescript-eslint peerDependencies` admits
+  ≥6.1); **@playwright/test** exact pin (never a silent range resolve — 1.61's
+  Linux WebKit crashed two e2e specs on CI; verify both WebKit specs per bump);
+  **@hey-api/openapi-ts** exact pin (ships hundreds of 0.x versions — pick one
+  deliberately, ≥7 days old, regenerate + diff `src/client`); the **13
+  `@tiptap/*` packages** are exact-pinned and move in lockstep — `@tiptap/pm` is
+  a single ProseMirror bundle every extension resolves its `prosemirror-*` peers
+  through, so a split set loads two copies of `prosemirror-model` and every
+  `instanceof Node` check quietly starts answering false (bump all 13 in one
+  commit, then run the 34-case fixture suites in `note-tiptap.test.ts`); the
+  **`overrides` block** pins transitive-CVE fixes (drop an entry once the direct
+  dep ships a fixed tree). The wails trio spans both ecosystems and stays in the
+  root file.
+
 ## Architecture
 
 Vue 3 + composition API. No router. Cross-cutting state lives in **Pinia**
@@ -418,7 +467,18 @@ await a macrotask (`await new Promise(r => setTimeout(r, 0))`), not just
 
 **Two runners with disjoint file patterns.** Vitest → `src/**/*.test.ts` (unit + composable + SFC via Testing Library `render()`). Playwright → `frontend/tests/e2e/**/*.spec.ts` (real browser + axe-core a11y). Vitest's default discovery (`**/*.{test,spec}.ts`) WILL sweep in Playwright specs unless the include glob is pinned — loading one under Vitest crashes with `Playwright Test did not expect test.describe()`. Adding a new runner: pick an extension/dir the others don't claim AND update `vitest.config.ts` `test.include`.
 
-**Playwright e2e.** Specs in `frontend/tests/e2e/<feature>/` — one folder per feature area (`matches`, `match`, `dossier`, `data-table`, `narrow`, `trends`, `unknown`, `coach`, `elo`, `dashboard`, `onboarding`, `update`, `parse`, `settings`, `a11y`, `app`); pick the one whose surface the spec drives. The `tests/e2e/` ROOT holds only the shared harness: the `_*.ts` helpers (import them as `'../_fixtures'`) and the `coverage-*.ts` files `playwright.config.ts` names by path. The two `*-snapshots/` directories also stay at the root and are found by BASENAME (`snapshotPathTemplate` is `{testDir}/{testFileName}-snapshots/`), so two specs must never share a basename across folders. `task test-e2e` builds the frontend + `serveronly` binary into `/tmp/recall-e2e/`, serves on `:7099` with `HOME=/tmp/recall-e2e`. Mock backend with `page.route('**/api/...', route => route.fulfill({status, contentType, body: JSON.stringify(...)}))` — the server stays running across tests, so route mocks are the only way to drive feature-specific fixtures. Start here: `app/smoke.spec.ts` (loads, tab nav, skip-link), `a11y/a11y.spec.ts` (axe per view). Per the root `CLAUDE.md` TDD rule, every user-visible affordance starts with a failing spec here BEFORE implementation.
+**Playwright e2e.** Specs in `frontend/tests/e2e/<feature>/` — one folder per feature area (`matches`, `match`, `dossier`, `data-table`, `narrow`, `trends`, `unknown`, `coach`, `elo`, `dashboard`, `onboarding`, `update`, `parse`, `settings`, `a11y`, `app`); pick the one whose surface the spec drives. The `tests/e2e/` ROOT holds only the shared harness: the `_*.ts` helpers (import them as `'../_fixtures'`) and the `coverage-*.ts` files `playwright.config.ts` names by path. The two `*-snapshots/` directories also stay at the root and are found by BASENAME (`snapshotPathTemplate` is `{testDir}/{testFileName}-snapshots/`), so two specs must never share a basename across folders. `task test-e2e` builds the frontend + `serveronly` binary into `/tmp/recall-e2e/`, serves on `:7099` with `HOME=/tmp/recall-e2e`. Mock backend with `page.route('**/api/...', route => route.fulfill({status, contentType, body: JSON.stringify(...)}))` — the server stays running across tests, so route mocks are the only way to drive feature-specific fixtures. Start here: `app/smoke.spec.ts` (loads, tab nav, skip-link), `a11y/a11y.spec.ts` (axe per view). Every user-visible affordance starts with a failing spec here BEFORE implementation — see *UI features need a failing e2e first* below, which is the canonical statement of that rule.
+
+**UI features need a failing Playwright e2e first.** Any feature that adds or
+changes a user-visible affordance (button, filter, card state, modal, view)
+starts with a RED `frontend/tests/e2e/<feature>/*.spec.ts` — the specs live in
+feature folders, helpers stay at the `tests/e2e/` root — driving it through a
+real browser via `page.route()` mocks. Unit tests cover render branches and
+composable contracts, but only the e2e proves the full transport chain
+(api.ts ↔ /api/* ↔ Go handler ↔ Store ↔ aggregator ↔ Vue render). "Stitching a
+known pattern across layers" is NOT an exemption — the match-deletion feature
+shipped with a latent `r.json()`-on-204 bug because no e2e exercised the
+POST → reload round-trip.
 
 **The e2e locator ladder is NOT the unit ban list.** Native queries come first
 and `playwright/prefer-native-locators` enforces it: `locator('[role=tab]')`,
@@ -445,6 +505,58 @@ rebuild + kill before retesting:
 Symptom of a stale server: locator counts stay at pre-change values for ~14
 polling retries despite correct `page.route()` mocks. `task test-e2e` rebuilds
 for you.
+
+## Vue & TypeScript smells
+
+A smell is a *hint* to look closer, not a defect to reflexively refactor — weigh
+it against YAGNI and the rule of three first. The cross-cutting catalog (bloaters,
+couplers, dispensables) is in the root `CLAUDE.md`; these are the ones specific to
+this half of the codebase. A parenthetical marks which linter catches it
+(**lint**); the rest are review-time judgment.
+
+**Vue-specific:**
+
+- *`watch`/`watchEffect` as derived state* — writing a ref a `computed`
+  could express declaratively → derive during render; an effect is for real
+  external side effects.
+- *Side effects in a `computed`* — a getter that writes state, fires
+  requests, or touches the DOM → move the effect out; getters stay pure.
+- *Shadow state* — copying a prop/store value into a local `ref` "for
+  editing" with no explicit sync contract → `computed` get/set or an
+  explicit draft+commit.
+- *Prop mutation* — assigning to a prop or mutating a prop-passed object
+  (**lint** vue/no-mutating-props). Data flows down; store actions flow up.
+- *Giant SFC* — markup + business logic + styles past ~500 lines → pure
+  logic to `@/match/`, stateful logic to a composable, style bulk to a
+  scoped sibling stylesheet (`<style scoped src="./x.css">` keeps hash
+  scoping and chunk placement).
+- *Fetch outside the query layer* — a component or watcher fetching server
+  state directly → `src/queries/` owns server state (see
+  `frontend/CLAUDE.md`).
+- *Prop drilling / emit relay chains* — threading values through layers that
+  don't read them → components read the Pinia stores directly (this repo's
+  documented inversion of the generic advice).
+- *Un-`markRaw`'d composable bundle on a store* — Pinia's `reactive()`
+  deep-unwraps the bundle's inner refs and silently breaks them
+  (load-bearing gotcha in `frontend/CLAUDE.md`).
+- *`v-if` with `v-for` on one node* (**lint** vue flat/recommended);
+  *array index as `:key`* on reorderable lists — review-caught: the
+  preset only checks that a `:key` exists, and an index satisfies it.
+- *Manual DOM access* — `document.querySelector` in a component → template
+  refs (destructured to top-level consts — dotted `ref="obj.prop"` silently
+  registers nothing).
+
+**TypeScript-specific:**
+
+- `any` → a real type, or `unknown` narrowed at the boundary (**lint**
+  `no-explicit-any`).
+- *Assertion over narrowing* — `x as T` / non-null `x!` to silence the
+  checker → a type guard or an honest check (`noUncheckedIndexedAccess`
+  index access in numeric kernels is the accepted exception).
+- `enum` → a union of string literals, which needs no runtime shape.
+- *Over-wide boundary type* — forcing callers to satisfy fields you never
+  read → narrow with `Pick<>` or a permissive local interface (*see
+  TypeScript / Vue*).
 
 ## Gotchas
 
