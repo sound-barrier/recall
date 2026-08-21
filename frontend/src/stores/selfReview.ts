@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, markRaw, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import {
@@ -14,6 +14,7 @@ import { momentSaveKey } from '@/match/coach/coach-moments'
 import { savableItems } from '@/match/reviews/focus-items'
 import { getQueryClient } from '@/queries/client'
 import { invalidateFocus } from '@/queries/focus'
+import type { RoomApi } from '@/components/coach/room/coach-room-props'
 import { FOCUS_SAVE_KEY } from '@/match/coach/coach-notes'
 import { qk } from '@/queries/keys'
 import { invalidateSelfReviews, upsertSelfReview, useSelfReviewsQuery } from '@/queries/selfReview'
@@ -283,7 +284,23 @@ export const useSelfReviewStore = defineStore('selfReview', () => {
     })
   }
 
+  // The room's corpus as one bundle — see RoomApi. Same shape the coach store
+  // exposes, because the room is one component either way.
+  const roomApi = markRaw<RoomApi>({
+    records: () => records.value,
+    notes: () => notes.value,
+    moments: () => moments.value,
+    selectedKey: () => selectedKey.value,
+    focusItems: () => focusItems.value,
+    saveStateFor,
+    selectKey,
+    updateNote,
+    updateMoment,
+    removeMoment,
+  })
+
   return {
+    roomApi,
     reviews, listQuery, open, openId, roomOpen, records,
     title, focusItems, selectedKey, notes, moments,
     saveStateFor, hasFailedSaves,

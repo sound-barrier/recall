@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue'
+import { computed, markRaw, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 
 import {
@@ -7,6 +7,7 @@ import {
   SetCoachSessionPlayer,
   type CoachSessionView, type FocusItem,
 } from '@/api-client'
+import type { RoomApi } from '@/components/coach/room/coach-room-props'
 import { useCoachAutosave } from '@/composables/coach/useCoachAutosave'
 import { useReviewDrafts } from '@/composables/coach/useReviewDrafts'
 import { FOCUS_SAVE_KEY } from '@/match/coach/coach-notes'
@@ -389,7 +390,24 @@ export const useCoachStore = defineStore('coach', () => {
     }
   }
 
+  // The room's corpus as one bundle — see RoomApi. markRaw because Pinia's
+  // reactive() would otherwise walk it; every member is already a function, so
+  // there is nothing here that wants unwrapping.
+  const roomApi = markRaw<RoomApi>({
+    records: () => loanedRecords.value,
+    notes: () => notes.value,
+    moments: () => moments.value,
+    selectedKey: () => selectedKey.value,
+    focusItems: () => focusItems.value,
+    saveStateFor,
+    selectKey,
+    updateNote,
+    updateMoment,
+    removeMoment,
+  })
+
   return {
+    roomApi,
     session,
     sessionActive,
     player,

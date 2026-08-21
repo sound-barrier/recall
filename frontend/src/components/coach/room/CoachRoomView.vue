@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from 'vue'
 
-import type { MatchRecord } from '@/api-client'
 import CoachDesk from '@/components/coach/room/CoachDesk.vue'
 import CoachIdentityPrompt from '@/components/coach/room/CoachIdentityPrompt.vue'
 import CoachReel from '@/components/coach/reel/CoachReel.vue'
 import CoachSessionSheet from '@/components/coach/notes/CoachSessionSheet.vue'
 import {
-  DEFAULT_COACH_LABELS, type CoachLabels, type CoachPlayerView, type CoachSaveState, type RoomVoice,
+  DEFAULT_COACH_LABELS, type CoachLabels, type CoachPlayerView, type CoachSaveState,
+  type RoomApi, type RoomVoice,
 } from '@/components/coach/room/coach-room-props'
 import { useCoachReelKeyboard } from '@/composables/coach/useCoachReelKeyboard'
 import { useCoachRoom } from '@/composables/coach/useCoachRoom'
@@ -24,18 +24,13 @@ import { FOCUS_SAVE_KEY, notesSummaryLine, type CoachNoteDraft } from '@/match/c
 
 const props = withDefaults(defineProps<{
   player: CoachPlayerView
-  /** The player's loaned records — never the coach's own. */
-  records: MatchRecord[]
-  /** The coach's drafts, keyed by match key. */
-  notes: Record<string, CoachNoteDraft>
-  /** The coach's moments, keyed by match key — several per match. */
-  moments?: Record<string, CoachMoment[]>
-  selectedKey?: string
-  focusItems?: FocusItem[]
+  /**
+   * The corpus under review and the four ways to change it, as one bundle.
+   * Two stores drive this room and both expose exactly this shape.
+   */
+  api: RoomApi
   /** Signed on the notes; the sheet's tally line names the coach. */
   coachName?: string
-  /** Where each key's autosave stands — the desk reads the frame it shows. */
-  saveStateFor?: (matchKey: string) => CoachSaveState
   /** True once ending has been asked about and not yet confirmed. */
   endArmed?: boolean
   canExport?: boolean
@@ -78,10 +73,6 @@ const props = withDefaults(defineProps<{
 })
 
 const emit = defineEmits<{
-  select: [matchKey: string]
-  'update-note': [matchKey: string, draft: CoachNoteDraft]
-  'update-moment': [matchKey: string, moment: CoachMoment]
-  'remove-moment': [matchKey: string, momentId: string]
   'copy-replay': [matchKey: string]
   'remove-frame': [matchKey: string]
   'update-focus-items': [items: FocusItem[]]
@@ -92,13 +83,13 @@ const emit = defineEmits<{
 }>()
 
 const room = useCoachRoom({
-  records: () => props.records,
-  notes: () => props.notes,
-  selectedKey: () => props.selectedKey,
+  records: props.api.records,
+  notes: props.api.notes,
+  selectedKey: props.api.selectedKey,
 })
 
 const reelColumn = useTemplateRef<HTMLElement>('reelColumn')
-const select = (matchKey: string) => emit('select', matchKey)
+const select = (matchKey: string) => props.api.selectKey(matchKey)
 
 const { onReelKeydown } = useCoachReelKeyboard({
   keys: () => room.frames.value.map((frame) => frame.match_key),
@@ -107,14 +98,15 @@ const { onReelKeydown } = useCoachReelKeyboard({
   reel: reelColumn,
 })
 
-const notesLine = computed(() => notesSummaryLine(props.notes, props.coachName, props.moments))
+const notesLine = computed(() =>
+  notesSummaryLine(props.api.notes(), props.coachName, props.api.moments()))
 
 // A moment queues under its own key, so its save state cannot be read off the
 // match's. Without this a rejected moment left the row looking exactly like a
 // saved one, and the only signal anywhere was the Export button turning off
 // with a message that named neither the moment nor the match.
 const momentSaveStateFor = (momentId: string): CoachSaveState =>
-  props.saveStateFor(momentSaveKey(momentId))
+  props.api.saveStateFor(momentSaveKey(momentId))
 
 // Nobody confirmed: the room has to ask before it lets a word be typed,
 // because a note about a nameless player has no row to land in. Your own
@@ -155,7 +147,7 @@ function step(key: string | null): void {
           :handle="player.handle"
           :days="room.reelDays.value"
           :selected-key="room.activeKey.value"
-          :notes="notes"
+          :notes="api.notes()"
           :labels="labels"
           :voice="voice"
           @select="select"
@@ -178,9 +170,9 @@ function step(key: string | null): void {
           :reel-empty="room.frames.value.length === 0"
           :handle="player.handle"
           :draft="room.activeDraft.value"
-          :moments="props.moments[room.activeKey.value] ?? []"
+          :moments="api.moments()[room.activeKey.value] ?? []"
           :moment-save-state="momentSaveStateFor"
-          :save-state="saveStateFor(room.activeKey.value)"
+          :save-state="api.saveStateFor(room.activeKey.value)"
           :blocked-reason="blockedReason"
           :has-prev="room.prevKey.value !== null"
           :has-next="room.nextKey.value !== null"
@@ -188,9 +180,9 @@ function step(key: string | null): void {
           :voice="voice"
           :omit-review-id="omitReviewId"
           :removable="removableFrames ? (room.frames.value.length > 1 ? 'yes' : 'last') : 'none'"
-          @update-note="(draft: CoachNoteDraft) => emit('update-note', room.activeKey.value, draft)"
-          @update-moment="(m: CoachMoment) => emit('update-moment', room.activeKey.value, m)"
-          @remove-moment="(id: string) => emit('remove-moment', room.activeKey.value, id)"
+          @update-note="(draft: CoachNoteDraft) => api.updateNote(room.activeKey.value, draft)"
+          @update-moment="(m: CoachMoment) => api.updateMoment(room.activeKey.value, m)"
+          @remove-moment="(id: string) => api.removeMoment(room.activeKey.value, id)"
           @copy-replay="emit('copy-replay', room.activeKey.value)"
           @remove-frame="emit('remove-frame', room.activeKey.value)"
           @prev="step(room.prevKey.value)"
@@ -216,8 +208,8 @@ function step(key: string | null): void {
           :win-rate="room.winRate.value"
           :focus-tally="room.focusTally.value"
           :notes-line="notesLine"
-          :focus-items="focusItems"
-          :focus-save-state="saveStateFor(FOCUS_SAVE_KEY)"
+          :focus-items="api.focusItems()"
+          :focus-save-state="api.saveStateFor(FOCUS_SAVE_KEY)"
           :end-armed="endArmed"
           :can-export="canExport"
           :export-reason="exportReason"

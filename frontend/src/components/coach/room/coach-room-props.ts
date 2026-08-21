@@ -1,3 +1,7 @@
+import type { FocusItem, MatchRecord } from '@/api-client'
+import type { CoachMoment } from '@/match/coach/coach-moments'
+import type { CoachNoteDraft } from '@/match/coach/coach-notes'
+
 // The prop vocabulary the Film Room's components share. Everything in
 // `components/coach/` is presentational — props in, events out — so the
 // shapes live here rather than in any one SFC (a type exported from a
@@ -54,3 +58,37 @@ export const SAVE_LABEL: Record<CoachSaveState, string> = {
  * the desk, the editor and the strip are one component either way.
  */
 export type RoomVoice = 'their' | 'your'
+
+/**
+ * The corpus a review room reads and writes, as one bundle.
+ *
+ * Two stores drive this room — a coach's session over a loaned bundle, and the
+ * player's own sitting — and both exposed the identical ten members, which two
+ * call sites then spelled out as six props and four handlers each. That is a
+ * data clump: the members always travel together because they are one thing,
+ * the corpus under review.
+ *
+ * EVERY FIELD IS A FUNCTION, the same convention CardStateApi documents: Vue's
+ * auto-unwrap does not reach refs nested inside an object prop, so a bundle of
+ * refs would force `.value` in `<script setup>` and bare access in templates
+ * for the same member. Functions make the unwrap rule irrelevant — and, as a
+ * consequence, mean the bundle carries no refs for Pinia's `reactive()` to
+ * deep-unwrap on the way out of a store.
+ */
+export interface RoomApi {
+  /** The records under review — a coach's loaned corpus, or your own set. */
+  records: () => MatchRecord[]
+  /** Drafts keyed by match key. */
+  notes: () => Record<string, CoachNoteDraft>
+  /** Moments keyed by match key — several per match. */
+  moments: () => Record<string, CoachMoment[]>
+  /** The frame the reel is on. */
+  selectedKey: () => string
+  focusItems: () => FocusItem[]
+  /** Where one key's autosave stands. Moments queue under their own keys. */
+  saveStateFor: (key: string) => CoachSaveState
+  selectKey: (matchKey: string) => void
+  updateNote: (matchKey: string, draft: CoachNoteDraft) => void
+  updateMoment: (matchKey: string, moment: CoachMoment) => void
+  removeMoment: (matchKey: string, momentId: string) => void
+}
