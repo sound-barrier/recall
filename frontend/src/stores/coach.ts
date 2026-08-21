@@ -29,12 +29,6 @@ import { useAppStore } from '@/stores/app'
 // This store must NOT import the matches store: `records` there reads the
 // loaned corpus from HERE, and the arrow only points one way.
 
-/**
- * Save-queue key for the focus list. Every match key carries a `match-` /
- * `unmatched-` / `ambiguous-` prefix (see `@/match/match-key`), so no note
- * can ever queue under this one and displace the list.
- */
-
 /** Refusal shown when a bundle is opened while the walkthrough is running. */
 const TOUR_CONFLICT_REASON
   = 'Finish the walkthrough before opening a player\'s bundle.'

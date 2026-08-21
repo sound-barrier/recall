@@ -70,11 +70,6 @@ const reviewedBlockedReason = 'A written note already counts as reviewed — cle
 
 const blocked = computed(() => props.blockedReason !== '')
 
-// What the server accepts (maxNoteTextRunes, pkg/coach/note.go). The field
-// carries it so typing stops at the cap, and the toolbar checks it so a Bold
-// press at exactly 4000 cannot push the note into a state where every
-// autosave fails with nothing on screen to explain it.
-
 // Formatting is off while the switch says there is nothing to add. Pressing
 // Bold on an empty reviewed_only note used to write `****`, which reads as a
 // written note — so the switch disabled itself with "clear it first" and the
