@@ -6,6 +6,7 @@ import { DEFAULT_COACH_LABELS, type CoachLabels } from '@/components/coach/room/
 import { frameNameSuffix, noteMark, type CoachNoteDraft } from '@/match/coach/coach-notes'
 import { playerClockTime } from '@/match/coach/coach-time'
 import { formatUnknownMapLabel } from '@/match/match-label-helpers'
+import { notePlainText } from '@/match/markdown/note-blocks'
 
 // One frame on the film strip: the match as a single click target,
 // with the coach's mark on the sprocket rail beside it. The mark is
@@ -40,7 +41,12 @@ const RESULT_TINT: Record<string, string> = { victory: 'win', defeat: 'loss', dr
 const resultTint = computed(() => RESULT_TINT[result.value] ?? 'none')
 
 const mark = computed(() => noteMark(props.draft))
-const playerNote = computed(() => props.record.annotation?.note ?? '')
+// The plain words, not the markup. This quote sits inside a <button>, where
+// <p> and <ul> are an invalid content model — and not the raw markdown either,
+// which is what it printed before: a note reading "hold **the angle**" put the
+// asterisks in front of the coach, on the one surface too small to explain
+// them.
+const playerNote = computed(() => notePlainText(props.record.annotation?.note ?? ''))
 
 const accessibleName = computed(
   () => [mapName.value, clock.value, heroName.value, resultWord.value].filter(Boolean).join(' · ') + frameNameSuffix(props.draft),

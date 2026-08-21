@@ -62,8 +62,10 @@ test.describe('self review', () => {
     await expect(filmRoom(page).getByText('Film room · your review')).toBeVisible()
     // The editor speaks in YOUR voice: the coach's placeholder and the
     // coach's 'Reviewed' switch have no place over your own matches.
+    // aria-placeholder: the hint is painted in a ::before by the editor, which
+    // neither a reader nor a matcher can see, so the field names it in ARIA.
     await expect(filmRoom(page).getByRole('textbox', { name: 'Note' }))
-      .toHaveAttribute('placeholder', 'What will you do differently next time?')
+      .toHaveAttribute('aria-placeholder', 'What will you do differently next time?')
     await expect(filmRoom(page).getByRole('switch', { name: 'Nothing to add' })).toBeVisible()
     // The card's clock eyebrow drops the possessive — the reel already did.
     await expect(filmRoom(page).getByText('When · your clock')).toHaveCount(0)
@@ -120,7 +122,8 @@ test.describe('self review', () => {
     await expect(filmRoom(page)).toBeVisible()
     await expect(sheet(page).getByRole('textbox', { name: 'Title' })).toHaveValue("Tuesday's Ana games")
     // The room hydrated the sitting's note onto its match.
-    await expect(filmRoom(page).getByRole('textbox', { name: 'Note' })).toHaveValue('Held the choke, then chased.')
+    await expect(filmRoom(page).getByRole('textbox', { name: 'Note' }))
+      .toContainText('Held the choke, then chased.')
 
     // A finished sitting greets you with its state, not a repeat of the
     // primary verb: the chip sits above the actions, going back is the

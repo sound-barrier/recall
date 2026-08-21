@@ -50,6 +50,30 @@ function publishActive(e: EditorLike): void {
   emit('update:active', active)
 }
 
+/**
+ * The ARIA a textbox owes a reader, spelled out.
+ *
+ * A contenteditable maps to a textbox implicitly, but three things do not come
+ * for free. The NAME has to be given or the field is unlabeled to a screen
+ * reader and unfindable by getByRole(name). `aria-readonly` is how a refusal
+ * is announced — a disabled contenteditable is not "disabled" to anything, and
+ * `toBeEnabled` passes VACUOUSLY on one, so without this an assertion about a
+ * blocked field silently means nothing. And `aria-placeholder` names the hint
+ * the Placeholder extension paints in a ::before, which no reader and no
+ * matcher can see.
+ */
+function fieldAttributes(): Record<string, string> {
+  return {
+    role: 'textbox',
+    'aria-multiline': 'true',
+    'aria-label': props.label,
+    'aria-placeholder': props.placeholder,
+    'aria-readonly': props.disabled ? 'true' : 'false',
+    class: 'note-prose note-rich',
+    'data-note-surface': 'rich',
+  }
+}
+
 // What we last sent up. The autosave echo returns this exact string, and
 // recognizing it is what stops the round trip from touching the document.
 let lastEmitted = props.text
@@ -58,18 +82,7 @@ const editor = useEditor({
   content: textToDoc(props.text),
   editable: !props.disabled,
   extensions: noteExtensions(props.placeholder),
-  editorProps: {
-    attributes: {
-      // contenteditable maps to a textbox implicitly, but the accessible NAME
-      // has to be given — without it the field is unlabeled to a screen
-      // reader and unfindable by getByRole(name).
-      role: 'textbox',
-      'aria-multiline': 'true',
-      'aria-label': props.label,
-      class: 'note-prose note-rich',
-      'data-note-surface': 'rich',
-    },
-  },
+  editorProps: { attributes: fieldAttributes() },
   // onTransaction rather than onSelectionUpdate: pressing Bold with nothing
   // selected sets a STORED mark, which changes neither the document nor the
   // selection — so the toolbar would stay dark while the next character came
@@ -100,7 +113,14 @@ watch(() => props.text, (next) => {
   lastEmitted = next
 })
 
-watch(() => props.disabled, (off) => editor.value?.setEditable(!off))
+watch(() => props.disabled, (off) => {
+  const e = editor.value
+  if (!e) return
+  e.setEditable(!off)
+  // setOptions, not a template binding: these live on ProseMirror's own
+  // editable node, which Vue does not render.
+  e.setOptions({ editorProps: { attributes: fieldAttributes() } })
+})
 
 defineExpose({
   focus: () => editor.value?.commands.focus(),

@@ -130,7 +130,7 @@ const earlierWords = computed(() => {
     <section v-if="annotation?.note" class="card-section">
       <span class="eyebrow">{{ ownNoteLabel }}</span>
       <blockquote class="card-quote">
-        {{ annotation.note }}
+        <NoteProse :text="annotation.note" />
       </blockquote>
     </section>
 
