@@ -418,7 +418,7 @@ await a macrotask (`await new Promise(r => setTimeout(r, 0))`), not just
 
 **Two runners with disjoint file patterns.** Vitest → `src/**/*.test.ts` (unit + composable + SFC via Testing Library `render()`). Playwright → `frontend/tests/e2e/**/*.spec.ts` (real browser + axe-core a11y). Vitest's default discovery (`**/*.{test,spec}.ts`) WILL sweep in Playwright specs unless the include glob is pinned — loading one under Vitest crashes with `Playwright Test did not expect test.describe()`. Adding a new runner: pick an extension/dir the others don't claim AND update `vitest.config.ts` `test.include`.
 
-**Playwright e2e.** Specs in `frontend/tests/e2e/<feature>/` — one folder per feature area (`matches`, `match`, `dossier`, `data-table`, `narrow`, `trends`, `unknown`, `coach`, `elo`, `dashboard`, `onboarding`, `update`, `parse`, `settings`, `a11y`, `app`); pick the one whose surface the spec drives. The `tests/e2e/` ROOT holds only the shared harness: the `_*.ts` helpers (import them as `'../_fixtures'`) and the `coverage-*.ts` files `playwright.config.ts` names by path. The two `*-snapshots/` directories also stay at the root and are found by BASENAME (`snapshotPathTemplate` is `{testDir}/{testFileName}-snapshots/`), so two specs must never share a basename across folders. `make test-e2e` builds the frontend + `serveronly` binary into `/tmp/recall-e2e/`, serves on `:7099` with `HOME=/tmp/recall-e2e`. Mock backend with `page.route('**/api/...', route => route.fulfill({status, contentType, body: JSON.stringify(...)}))` — the server stays running across tests, so route mocks are the only way to drive feature-specific fixtures. Start here: `app/smoke.spec.ts` (loads, tab nav, skip-link), `a11y/a11y.spec.ts` (axe per view). Per the root `CLAUDE.md` TDD rule, every user-visible affordance starts with a failing spec here BEFORE implementation.
+**Playwright e2e.** Specs in `frontend/tests/e2e/<feature>/` — one folder per feature area (`matches`, `match`, `dossier`, `data-table`, `narrow`, `trends`, `unknown`, `coach`, `elo`, `dashboard`, `onboarding`, `update`, `parse`, `settings`, `a11y`, `app`); pick the one whose surface the spec drives. The `tests/e2e/` ROOT holds only the shared harness: the `_*.ts` helpers (import them as `'../_fixtures'`) and the `coverage-*.ts` files `playwright.config.ts` names by path. The two `*-snapshots/` directories also stay at the root and are found by BASENAME (`snapshotPathTemplate` is `{testDir}/{testFileName}-snapshots/`), so two specs must never share a basename across folders. `task test-e2e` builds the frontend + `serveronly` binary into `/tmp/recall-e2e/`, serves on `:7099` with `HOME=/tmp/recall-e2e`. Mock backend with `page.route('**/api/...', route => route.fulfill({status, contentType, body: JSON.stringify(...)}))` — the server stays running across tests, so route mocks are the only way to drive feature-specific fixtures. Start here: `app/smoke.spec.ts` (loads, tab nav, skip-link), `a11y/a11y.spec.ts` (axe per view). Per the root `CLAUDE.md` TDD rule, every user-visible affordance starts with a failing spec here BEFORE implementation.
 
 **The e2e locator ladder is NOT the unit ban list.** Native queries come first
 and `playwright/prefer-native-locators` enforces it: `locator('[role=tab]')`,
@@ -443,7 +443,7 @@ build failure, not a habit.
 rebuild + kill before retesting:
 `cd frontend && npm run build && cd .. && go build -tags serveronly -o /tmp/recall-e2e/recall-server . && lsof -i :7099 | awk 'NR==2 {print $2}' | xargs -r kill`.
 Symptom of a stale server: locator counts stay at pre-change values for ~14
-polling retries despite correct `page.route()` mocks. `make test-e2e` rebuilds
+polling retries despite correct `page.route()` mocks. `task test-e2e` rebuilds
 for you.
 
 ## Gotchas
@@ -467,7 +467,7 @@ for you.
   tests found" because it resolves its config relative to cwd and
   the sibling `node_modules` at the repo root confuses resolution.
   Use `cd frontend && …` or `npm --prefix frontend run …`. The
-  `make` targets (`make test-frontend`, `make test-e2e`, `make
+  `task` targets (`task test-frontend`, `task test-e2e`, `task
   cover-frontend`) handle cwd automatically.
 
 - **Vue 3 ref auto-unwrapping.** In `<script setup>`, refs are
@@ -495,11 +495,11 @@ for you.
 
 - **happy-dom `document.activeElement` fails `.toBe(wrapper.find(...).element)`** despite identical serialization. Compare via `.id` or another attribute, not element identity.
 
-- **Lefthook's frontend hooks (eslint/stylelint) routinely skip "no files for inspection"** even with files staged. Run `cd frontend && npm run lint:js` (`eslint .` — the WHOLE tree: src, tests, e2e specs, config files, `.cjs` scripts; only generated artifacts in `eslint.config.js`'s `ignores` are exempt) + `npx stylelint 'src/**/*.{vue,css}'` manually. `make lint` + CI catch it; only the local hook is unreliable.
+- **Lefthook's frontend hooks (eslint/stylelint) routinely skip "no files for inspection"** even with files staged. Run `cd frontend && npm run lint:js` (`eslint .` — the WHOLE tree: src, tests, e2e specs, config files, `.cjs` scripts; only generated artifacts in `eslint.config.js`'s `ignores` are exempt) + `npx stylelint 'src/**/*.{vue,css}'` manually. `task lint` + CI catch it; only the local hook is unreliable.
 
 - **`stylelint-config-standard` rejects BEM `--`.** `selector-class-pattern` only allows kebab-case (`.foo-modifier`, not `.foo--modifier`). Also requires empty line before every rule block (including `:hover` after `}`). Errors not warnings — most are autofixable via `npx stylelint --fix`.
 
-- **knip project scope is `src/**/*.{ts,vue}`.** No `ignoreDependencies` needed: knip ≥6.23 resolves typescript-eslint's internal `@eslint/js` use (the old ignore entry now trips a "remove from ignoreDependencies" hint), and `@vitest/coverage-v8` is detected via `coverage.provider: 'v8'`. Run via `make dead-code-ts`.
+- **knip project scope is `src/**/*.{ts,vue}`.** No `ignoreDependencies` needed: knip ≥6.23 resolves typescript-eslint's internal `@eslint/js` use (the old ignore entry now trips a "remove from ignoreDependencies" hint), and `@vitest/coverage-v8` is detected via `coverage.provider: 'v8'`. Run via `task dead-code-ts`.
 
 - **The TypeScript ceiling: typescript-eslint is the binding blocker.**
   `typescript-eslint`'s peer (`>=4.8.4 <6.1.0`, every `@typescript-eslint/*`
