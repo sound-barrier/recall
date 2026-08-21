@@ -58,7 +58,12 @@ export function useModalFocusTrap(
   function focusable(): HTMLElement[] {
     const box = document.querySelector<HTMLElement>(containerSelector)
     if (!box) return []
-    const sel = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    // A contenteditable is focusable and carries no tabindex, so without it
+    // named here a note editor is invisible to the wrap-around: Tab off the
+    // last element in the modal would leave the modal, which is the keyboard
+    // trap's whole job to prevent. `fieldEscapeHandled` below already knew
+    // about them; this did not.
+    const sel = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [contenteditable="true"], [tabindex]:not([tabindex="-1"])'
     return Array.from(box.querySelectorAll<HTMLElement>(sel))
   }
 
