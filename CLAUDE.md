@@ -58,29 +58,22 @@ without agreement on direction.
 
 ### Code style
 
-- **Go**: follow [Effective Go](https://go.dev/doc/effective_go). Accept
-  interfaces, return structs. Small interfaces (1–3 methods). Composition over
-  inheritance. Embedding only for behavior delegation, never just to store a
-  field. No premature abstraction — three similar lines beat one abstract one.
-  Do not introduce CGo dependencies; the pure-Go build constraint is
-  load-bearing for the release pipeline.
-
-- **Interface compliance — assert it at compile time.** Every concrete type that
-  is meant to satisfy an interface carries a static assertion next to its
-  definition so a drifting method set breaks the build at the type, not at some
-  distant call site (the k8s convention): `var _ Store = (*SQLStore)(nil)`. Use
-  the form that matches the receiver — `(*T)(nil)` for pointer-receiver methods,
-  `T{}` for value-receiver — never both (the wrong one won't compile). Canonical
-  in-repo: `pkg/db/store.go` (`*SQLStore`), `pkg/db/dbtest/fake.go` (`*Fake`). New
-  implementations — including any leaf packages carved out of `pkg/app` — add the
-  assertion in the same file as the type.
-
 - **Language: American English.** All identifiers, comments, docs, commit
   messages, and user-facing copy use American spellings — color, canceled,
   organize; never the British -our/-ise/doubled-l forms. Enforced mechanically
   by `misspell` (Go, `locale: US` in `.golangci.yml`) and `typos` (repo-wide,
   `locale = "en-us"` in `_typos.toml`), both wired into CI. (The literal
   British examples can't be written here — the linters rewrite them.)
+
+- **Language style lives with the language.** Go — `pkg/CLAUDE.md`, which names
+  [Effective Go](https://go.dev/doc/effective_go) and
+  [Google's Go Style Guide](https://google.github.io/styleguide/go/) as the
+  baseline and then states only what Recall enforces on top. Vue/TypeScript —
+  `frontend/CLAUDE.md`, which does the same with the
+  [Vue 3 Style Guide](https://vuejs.org/style-guide/). Shell —
+  [Google's Shell Style Guide](https://google.github.io/styleguide/shellguide.html),
+  with shellcheck enforcing correctness and the guide covering the naming and
+  quoting discipline it does not catch.
 
 - **Naming**: identifiers must reveal intent without a comment. If you find
   yourself writing a comment to explain a name, the name is wrong — rename it.
@@ -155,29 +148,6 @@ without agreement on direction.
   `reportUnusedDisableDirectives` police that every disable stays specific,
   explained, and live.
 
-- **TypeScript / Vue**: idiomatic TS — no `any`, narrow types at boundaries
-  (`Pick<>` or permissive interfaces so callers aren't forced to satisfy fields
-  the function never reads). Composition API; composables for stateful logic.
-  Pure helpers in `frontend/src/match/match-helpers.ts`, never inside an SFC's
-  `<script setup>`. Apply the same naming discipline as Go: component props,
-  composable returns, and helper functions should read like documentation.
-  Follow the [Vue 3 Style Guide](https://vuejs.org/style-guide/) for component
-  conventions not covered explicitly here (naming, prop casing, SFC element
-  ordering).
-
-- **Accessibility is enforced, not aspirational.**
-  `eslint-plugin-vuejs-accessibility` runs in `task lint`; the axe e2e suite
-  (`frontend/tests/e2e/a11y/a11y.spec.ts`) fails `task test-e2e` on any WCAG 2.1
-  A/AA violation across every theme × view combination. Keep both green:
-  label every control, clear AA contrast on every surface AND on a token's
-  own tint, preserve the skip link, focus traps, and keyboard operability.
-  Detailed patterns live in `.claude/rules/a11y.md` and `frontend/CLAUDE.md`.
-
-- **Shell scripts**: follow the
-  [Google Shell Style Guide](https://google.github.io/styleguide/shellguide.html).
-  shellcheck enforces correctness; the style guide covers naming conventions,
-  function structure, and quoting discipline that the linter doesn't catch.
-
 - **Comments**: default to none. Only when the WHY is non-obvious — a hidden
   constraint, a surprising invariant, a workaround for a specific bug. Never
   re-explain WHAT the code does; well-named identifiers already do that.
@@ -206,11 +176,10 @@ without agreement on direction.
     `WIDGET_REGISTRY` (`frontend/src/dashboard/widgets.ts`),
     `additiveColumns` (`pkg/db/schema.go`).
   - **L — Liskov substitution.** An implementation must honor the contract its
-    callers rely on — `dbtest.Fake` passes the same Store contract suite as
-    `*SQLStore`; a fake that cuts corners is a broken fake, not a shortcut.
+    callers rely on; a fake that cuts corners is a broken fake, not a shortcut.
   - **I — Interface segregation.** Depend only on what you use: small (1–3
     method) consumer-side interfaces in Go; the narrowest prop or `Pick<>` in
-    TS (*see TypeScript / Vue*).
+    TS (*see `frontend/CLAUDE.md`*).
   - **D — Dependency inversion.** High-level logic depends on a seam, not a
     concrete: production wires the real implementation, tests wire a fake —
     the `db.Store` interface threaded into `*App` via `NewWithStore`; the
@@ -221,16 +190,6 @@ without agreement on direction.
   delegation only (*see Code style*) and prefer a composed interface over one
   fat type. In Vue/TS, compose components and composables; a deep hierarchy is
   a design smell, a flat set of composed parts is the goal.
-
-- **Prefer function-variable seams over interfaces for one-method dependencies**
-  (duck typing in Go). When the seam has a single method and a single fake, an
-  interface is YAGNI. Examples: `runTesseractFunc` / `parseSingleFunc` in
-  `pkg/parser/`.
-
-- **Law of Demeter — accept what you read.** When a composable returns many
-  refs/handlers, bundle them as a single typed prop (the `CardStateApi` /
-  `FiltersApi` / `GroupingApi` pattern in `MatchesView.vue`) rather than
-  threading 30 props through. Treat the bundle as opaque.
 
 - **DRY with the rule of three.** Don't extract on the second occurrence — two
   is coincidence. The `useTheme` / `useWeekStart` / `useIncludeUndated` family
@@ -265,7 +224,7 @@ marks which linter catches it (**lint**) or which rule above it restates
 - *Primitive obsession* — a bare `string`/`int` carrying domain meaning (a
   match key, a hero slug) → a named type the compiler can track.
 - *Long parameter list* — 5+ positional params → bundle the cohesive ones
-  into a struct/options object, or split (*see Law of Demeter*; **lint**
+  into a struct/options object, or split (**lint**
   ESLint `max-params` ≤ 4; Go by review).
 - *Data clumps* — the same few fields travel together everywhere → give them
   a type (the `aggregate.Sidecars` shape).
@@ -306,7 +265,7 @@ marks which linter catches it (**lint**) or which rule above it restates
   asserting on privates → use the public surface (*see Test public
   interfaces*).
 - *Message chains* — `a.b().c().d()` threaded through layers → pass the one
-  bundled value needed (*see Law of Demeter*).
+  bundled value needed (*see the Law-of-Demeter bundles in `frontend/CLAUDE.md`*).
 
 **Modern additions:**
 
@@ -322,75 +281,13 @@ marks which linter catches it (**lint**) or which rule above it restates
   (**lint** `no-nested-ternary`).
 - *Mutating a parameter* — reassigning an argument in place → return a new
   value (**lint** `no-param-reassign`).
-
-**Go-specific:**
-
-- `any` as a shortcut → a concrete type or a small (1–3 method) interface;
-  legitimate only at true marshal/variadic boundaries (`writeJSON`,
-  `emitEvent`). `gocritic` flags a range of Go micro-smells (**lint**).
-- *Interface pollution* — an interface with one implementation, or defined on
-  the producer side → declare it at the *consumer*, only once a second impl
-  or a fake earns it; a one-method seam is a func var, not an interface
-  (*see Design principles*).
-- *Ignored error* — dropping a real error → handle or return it (*see
-  Error handling*). errcheck catches the bare unassigned call (**lint**);
-  the blank-assign `_ = f()` form passes lint (check-blank is off because
-  this codebase uses it as the deliberate-drop idiom) — so a blank assign
-  IS the claim "dropping this is safe", and review holds it to that.
-- *Sentinel zero-value as "no result"* — `""`/`0`/`nil` meaning absence → a
-  typed result or an explicit error (*see Error handling*).
-- *Naked return* in more than a couple of lines → explicit values (**lint**
-  nakedret).
-- *Stutter* — `match.MatchRecord`, `db.DBHealth` → drop the package prefix:
-  `match.Record`, `db.Health`. Review-caught, NOT lint-caught here:
-  revive's `exported` rule carries the stutter check, and it is
-  deliberately disabled for the no-mandatory-doc-comments policy.
-- *Premature goroutines/channels* — concurrency with no measured need →
-  simple synchronous code first (*see YAGNI*).
-
-**Vue-specific:**
-
-- *`watch`/`watchEffect` as derived state* — writing a ref a `computed`
-  could express declaratively → derive during render; an effect is for real
-  external side effects.
-- *Side effects in a `computed`* — a getter that writes state, fires
-  requests, or touches the DOM → move the effect out; getters stay pure.
-- *Shadow state* — copying a prop/store value into a local `ref` "for
-  editing" with no explicit sync contract → `computed` get/set or an
-  explicit draft+commit.
-- *Prop mutation* — assigning to a prop or mutating a prop-passed object
-  (**lint** vue/no-mutating-props). Data flows down; store actions flow up.
-- *Giant SFC* — markup + business logic + styles past ~500 lines → pure
-  logic to `@/match/`, stateful logic to a composable, style bulk to a
-  scoped sibling stylesheet (`<style scoped src="./x.css">` keeps hash
-  scoping and chunk placement).
-- *Fetch outside the query layer* — a component or watcher fetching server
-  state directly → `src/queries/` owns server state (see
-  `frontend/CLAUDE.md`).
-- *Prop drilling / emit relay chains* — threading values through layers that
-  don't read them → components read the Pinia stores directly (this repo's
-  documented inversion of the generic advice).
-- *Un-`markRaw`'d composable bundle on a store* — Pinia's `reactive()`
-  deep-unwraps the bundle's inner refs and silently breaks them
-  (load-bearing gotcha in `frontend/CLAUDE.md`).
-- *`v-if` with `v-for` on one node* (**lint** vue flat/recommended);
-  *array index as `:key`* on reorderable lists — review-caught: the
-  preset only checks that a `:key` exists, and an index satisfies it.
-- *Manual DOM access* — `document.querySelector` in a component → template
-  refs (destructured to top-level consts — dotted `ref="obj.prop"` silently
-  registers nothing).
-
-**TypeScript-specific:**
-
-- `any` → a real type, or `unknown` narrowed at the boundary (**lint**
-  `no-explicit-any`).
-- *Assertion over narrowing* — `x as T` / non-null `x!` to silence the
-  checker → a type guard or an honest check (`noUncheckedIndexedAccess`
-  index access in numeric kernels is the accepted exception).
-- `enum` → a union of string literals, which needs no runtime shape.
-- *Over-wide boundary type* — forcing callers to satisfy fields you never
-  read → narrow with `Pick<>` or a permissive local interface (*see
-  TypeScript / Vue*).
+**Language-specific smells live with the language.** The Go cluster (`any` as a
+shortcut, interface pollution, ignored errors, sentinel zero-values, naked
+returns, stutter) is in `pkg/CLAUDE.md`; the Vue and TypeScript clusters
+(`watch`-as-derived-state, prop mutation, giant SFCs, assertion-over-narrowing,
+`enum`, over-wide boundary types) are in `frontend/CLAUDE.md`. They were listed
+here when this file was the only one; splitting them put each beside the linter
+that catches it.
 
 ### TDD process
 
@@ -408,49 +305,20 @@ valuable artifact in the commit — it documents both the bug and the contract
 that prevents its return. Do **not** write the fix first and add a test "to
 cover it"; ordering matters.
 
-**Test public interfaces, not internals — black-box only.** Go tests declare
-`package <pkg>_test` (the external test package), so only exported identifiers
-are even reachable; unexported access goes through one `export_test.go` shim
-per package that re-exports what the external tests need (exemplars:
-`pkg/cmd/export_test.go`, `pkg/parser/export_test.go`). Frontend unit tests
-drive components through Testing Library queries — role, then label, then
-visible text; a structural selector (`data-*`, class) is an escape hatch that
-carries a justified lint-disable — and stores through their public actions +
-the `setApiBacking` seam. Assert on user-facing semantics (visible text, ARIA
-state, behavior), never on styling classes. Tests coupled to internal data
-structures are brittle, resist refactoring, and should be rewritten or
-deleted. If something seems untestable black-box, that is a design smell —
-fix the API, don't white-box the test.
+**Test public interfaces, not internals — black-box only.** Assert on
+user-facing semantics (visible text, ARIA state, behavior), never on styling
+classes or internal data structures — tests coupled to those are brittle, resist
+refactoring, and should be rewritten or deleted. If something seems untestable
+black-box, that is a design smell: fix the API, don't white-box the test.
 
-**The unit ban list is mechanical.** `no-restricted-syntax` in
-`frontend/eslint.config.js` fails the build on `toHaveClass`, `toHaveStyle`,
-a `.style`/`.className`/`.classList` read inside `expect()`, and
-`toHaveAttribute`/`getAttribute` on a `data-*` name — because each of those
-asserts the paint or the wiring instead of the contract. The escape is an
-annotated `// eslint-disable-next-line no-restricted-syntax -- <reason>`, kept
-honest by `reportUnusedDisableDirectives`. Legitimate reasons are narrow:
-aria-hidden decoration, a visual tint encoding a threshold, and a `data-*`
-attribute **production code reads back** (`data-widget-id` for the drag
-engine, `data-combo-id` for click-outside). When a test wants a value the
-markup only paints, give the markup the semantics instead: a meter carries
-`role="progressbar"` + `aria-valuenow` on its FILL element (never the track,
-whose visible text must stay in the a11y tree), and the test reads
-`getByRole('progressbar', { name: 'lijiang tower share' })`.
+How each language enforces that — Go's external test package and its one
+`export_test.go` shim, the frontend's Testing Library query ladder and the
+`setApiBacking` seam — is in `pkg/CLAUDE.md` and `frontend/CLAUDE.md`.
 
-**Playwright e2e has its own ladder**, and it is not the unit ban list.
-Native queries first — `getByRole` / `getByLabel` / `getByText` /
-`getByTestId` — enforced by `playwright/prefer-native-locators`, which
-forbids spelling an already-accessible query as a CSS selector
-(`locator('[role=tab]')`, `locator('[data-testid=x]')`). Below that,
-`data-*` and class-state pins ARE sanctioned: the built page is the public
-surface here, and a compact structural hook beats a brittle text match for
-rows, chips, and panels that carry no accessible handle. Two harnesses are
-named exemptions that must not be "fixed": `elo/elo-scenarios.spec.ts` sweeps 21
-attributes whose NAMES are the snapshot schema, and
-`a11y/a11y-theme-snapshot.spec.ts` probes `[class*=…]` families by documented
-design. Tabs whose accessible name
-grows a suffix (Matches' filters dot, Unknown's badge count) are queried with
-an anchored regex — `{ name: /^Matches/ }` — never an exact string.
+**The frontend's two test ladders** — the mechanical unit ban list
+(`no-restricted-syntax`) and the Playwright locator ladder, which are
+deliberately different from each other — are in `frontend/CLAUDE.md`, along with
+the rule that a user-visible affordance starts with a failing e2e.
 
 **Coverage floors live in the gates, not this file:** Go = `GO_COVERAGE_MIN`
 in `Taskfile.yml`; frontend = `coverage.thresholds` in
@@ -465,17 +333,6 @@ without explicit justification should not merge.
 passes, dependency bumps, configuration-only changes. Use judgment for
 refactors — extracting a helper rarely needs a new test, but changing observable
 behavior does.
-
-**UI features need a failing Playwright e2e first.** Any feature that adds or
-changes a user-visible affordance (button, filter, card state, modal, view)
-starts with a RED `frontend/tests/e2e/<feature>/*.spec.ts` — the specs live in
-feature folders, helpers stay at the `tests/e2e/` root — driving it through a
-real browser via `page.route()` mocks. Unit tests cover render branches and
-composable contracts, but only the e2e proves the full transport chain
-(api.ts ↔ /api/* ↔ Go handler ↔ Store ↔ aggregator ↔ Vue render). "Stitching a
-known pattern across layers" is NOT an exemption — the match-deletion feature
-shipped with a latent `r.json()`-on-204 bug because no e2e exercised the
-POST → reload round-trip.
 
 **Before declaring any task done**, run `task lint` and `task test`. If UI was
 touched, also run `task test-e2e`. Never present work as complete while the
@@ -511,24 +368,14 @@ data structures rather than observable, public behavior.
   releases, not *published* security fixes. npm: `--min-release-age=0` +
   name the CVE in the commit body; Go: just `go get` the fixed version.
 
-- **Deliberate version holds — behind latest for a reason, not neglect.** Do
-  not bump these without clearing the stated blocker: **typescript** `~6.0.x`
-  (tilde-pinned — typescript-eslint peers `typescript <6.1.0`; revisit when
-  `npm view typescript-eslint peerDependencies` admits ≥6.1);
-  **@playwright/test** exact pin (bumps are deliberate, never a silent range
-  resolve — 1.61's Linux WebKit crashed two e2e specs on CI; verify both
-  WebKit specs per bump); **@hey-api/openapi-ts** exact pin (ships hundreds
-  of 0.x versions — pick a new one deliberately, ≥7 days old, regenerate +
-  diff `src/client`); **wails/v3 + wails3 CLI + @wailsio/runtime** move in
-  lockstep (the CLI generates bindings the module must understand — bump all
-  three in one commit); the **13 `@tiptap/*` packages** are exact-pinned and
-  move in lockstep too — `@tiptap/pm` is a single ProseMirror bundle every
-  extension resolves its `prosemirror-*` peers through, so a split version set
-  loads two copies of `prosemirror-model` and every `instanceof Node` check
-  quietly starts answering false (bump all 13 in one commit, then run the
-  34-case fixture suites in `note-tiptap.test.ts`); the **npm `overrides`
-  block** pins transitive-CVE fixes (drop an entry once the direct dep ships a
-  fixed tree).
+- **Deliberate version holds — behind latest for a reason, not neglect.** Some
+  pins are load-bearing and must not be bumped without clearing a stated
+  blocker. The npm inventory (typescript's ceiling, @playwright/test,
+  @hey-api/openapi-ts, the 13 lockstep `@tiptap/*` packages, the `overrides`
+  block) lives in `frontend/CLAUDE.md` beside the `package.json` it governs.
+  The one that spans both ecosystems stays here: **wails/v3 + the wails3 CLI +
+  @wailsio/runtime move in lockstep**, because the CLI generates bindings the
+  Go module must understand — bump all three in one commit.
 
 - **Use `tmp/` under the repo root for ad-hoc scratch files — never `/tmp/...`
   or any path outside the repo root.** PR-body drafts, intermediate `jq` output,
@@ -590,12 +437,18 @@ data structures rather than observable, public behavior.
   the earliest screenshot's filename timestamp and survives re-parses. (URL-safe
   format + migration details in `.claude/rules/api-design.md`.)
 
-- **`ls <dir>/*.go` is the source of truth** for file-per-concern packages — do
-  not maintain literal file lists in any CLAUDE.md or rule.
-
 ## Where the rest lives (index)
 
-These load automatically when you open a matching file:
+This file holds what is true everywhere. The two languages own their own
+standards, in tracked files that load when you open their code:
+
+| Language | File | Loads for |
+|---|---|---|
+| **Go** | `pkg/CLAUDE.md` | everything under `pkg/` — plus `.claude/rules/go-style.md`, a pointer with no content of its own, for the six Go files outside it |
+| **Vue / TypeScript** | `frontend/CLAUDE.md` | everything under `frontend/` |
+
+Domain rules load on their own globs, and are complementary — the files above
+are about the language, these are about the subject:
 
 | Area | Rule file | Triggers on |
 |---|---|---|
@@ -603,15 +456,13 @@ These load automatically when you open a matching file:
 | Database, schema, migrations | `.claude/rules/database.md` | `pkg/db/**` |
 | OCR parsers | `.claude/rules/parser.md` | `pkg/parser/**` |
 | App shell | `.claude/rules/app-shell.md` | `pkg/app/**` |
-| Frontend (Vue) | `frontend/CLAUDE.md` (nested; auto-loads when you read files in `frontend/`) | `frontend/**` |
 | Accessibility | `.claude/rules/a11y.md` | `frontend/src/App.vue`, `frontend/src/components/**`, `frontend/src/styles/**`, `frontend/tests/**` |
 | CI/CD workflows | `.claude/rules/ci-cd.md` | `.github/**` |
 | Build / tooling / scripts | `.claude/rules/build-tooling.md` | `Taskfile.yml`, `mise.toml`, `Dockerfile*`, `scripts/**`, `lefthook.yml` |
 | Documentation site | `.claude/rules/docs-site.md` | `docs/**`, `book/**`, root `*.md` |
 
-Read on demand (never auto-loaded): **`docs/dev-reference.md`** — full make-target
-catalog, env-var table, package layout, helper scripts, test
-fixtures.
+Read on demand (never auto-loaded): **`docs/dev-reference.md`** — the full task
+catalog, env-var table, package layout, helper scripts, and test fixtures.
 
 > Auto memory is on by default (Claude Code ≥ v2.1.59). New debugging insights
 > get recorded automatically — you don't need to hand-append "conventions" here
