@@ -1,5 +1,235 @@
 # Changelog
 
+## [0.31.0](https://github.com/sound-barrier/recall/compare/v0.30.2...v0.31.0) (2026-08-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **bundle:** data.json accepts only "recall-export/v1", and its shape is this build's. Bundles written by earlier builds are refused on import rather than misread.
+* **db:** received_focus_items replaces coach_name / session_date with return_id. Pre-1.0 the schema is applied verbatim on open, so an existing database is wiped and relaunched.
+* **db:** summary_screenshots renames perf_{elim,assists,deaths}_total to eliminations / assists / deaths. Pre-1.0 the schema is applied verbatim on open, so an existing database is wiped and relaunched (CONTRIBUTING.md has the per-platform path). Bundles are NOT affected — v1 through v3 still import, with their E/A/D carried across.
+* **reviews:** sending matches to a coach gets its own dialog
+* **reviews:** what to work on becomes a list you can act on
+* **api:** focus items replace every summary on the wire
+* **coach:** carry focus items through every hop that carried a summary
+* **db:** "what to work on" becomes focus items
+* **reviews:** the note is prose with a toolbar, and it renders everywhere
+* **styles:** the paper plate follows the theme
+* **matches:** a share with a coach requires a replay code on every match
+* **profiles:** the tour's sample profile is a writable sandbox
+* **reviews:** give the coach a roster
+* **reviews:** record every share — the sent ledger
+* **reviews:** restructure the index around starting a review
+* **reviews:** review your own matches in the film room, as a saved sitting
+* **review:** a player's saved review of their own matches, on disk and on the wire
+* **reviews:** a seventh tab, and the film room moves inside it
+* **coach:** one notes schema, not two
+* **coach:** let a review point at several moments in one match
+* **db:** SQLite cannot drop a NOT NULL in place, CREATE TABLE IF NOT EXISTS never alters, and ensureAdditiveColumns is deliberately limited to ADDING nullable columns, so an existing database keeps the old constraint forever. Because UpsertRank writes a parent and its children in one transaction, a rejected NULL would roll back the whole rank row — losing most rank rows on an upgraded install, silently, while the app still looked healthy. ensureNoStaleNotNull therefore refuses to open such a database and says what to do: clear it and Re-parse All. The screenshots are the source of truth, and re-parsing is what populates the new values anyway — a bundle restore would only carry the old zeros forward.
+* **coach:** POST /api/v1/imports answers with a discriminated outcome — {kind, imported, skipped, return?} — instead of bare counts, so one affordance can accept either a player's bundle or a coach's notes archive. Per-match writes (annotation, data, pin, play-mode, queue, review, visibility, and the two bulk routes) return 404 for a match key that does not exist, where they previously wrote a sidecar row for it. MatchRecord gained coach_notes.
+
+### Features
+
+* **aggregate:** attach the coach layer to match records ([dbd9211](https://github.com/sound-barrier/recall/commit/dbd921115bfe54c22de8c187ad8435a41ddc7dd5))
+* **api:** coaching routes and the import outcome union ([798f5dd](https://github.com/sound-barrier/recall/commit/798f5ddfaafe4c9c7b17d9bd0e7a1e81406171a6))
+* **api:** focus items replace every summary on the wire ([e58e6bb](https://github.com/sound-barrier/recall/commit/e58e6bbe0c1a3cd90a6621a1156e50551ef22976))
+* **app:** add a command palette on the mod+K chord ([df0688f](https://github.com/sound-barrier/recall/commit/df0688f502e76b027b14e96134075e687974bdb5))
+* **app:** announce the Reviews tab to installs that predate it ([5ae597d](https://github.com/sound-barrier/recall/commit/5ae597df6c15dad2e6d4e01547cf82391c86cc8d))
+* **app:** coaching session lifecycle and the write gate ([5e66c28](https://github.com/sound-barrier/recall/commit/5e66c280ee8aebcb34e5f6e824dd07cb94c7e0c1))
+* **bundle:** player identity, an exported reader, and the received coach layer ([74d5f73](https://github.com/sound-barrier/recall/commit/74d5f730600f1722ae476deaa2ee3d2fedab1fb4))
+* capture the rank percentile from the season-4 rank screen ([44a2125](https://github.com/sound-barrier/recall/commit/44a21250ea46a5948e478e9d560087a81c597272))
+* **coach:** carry focus items through every hop that carried a summary ([b924f57](https://github.com/sound-barrier/recall/commit/b924f57e4164fd48cc54ff154b52e254a95b1957))
+* **coach:** carry the moments home, and say when a file needs a newer build ([f1e8d52](https://github.com/sound-barrier/recall/commit/f1e8d52d53b3f43a6a929ce33cd99ff3fb366efc))
+* **coach:** finish the flow fixes the plan listed for phase 4 ([59060bb](https://github.com/sound-barrier/recall/commit/59060bbd79d8829e33d6a41904146f1489aa6fda))
+* **coach:** let a review point at several moments in one match ([efc3283](https://github.com/sound-barrier/recall/commit/efc3283531d9ab28ab95a527c8c7ca7ea5e9d683))
+* **coach:** make coaching findable, and stop it succeeding in silence ([ac76790](https://github.com/sound-barrier/recall/commit/ac76790da26fda574b5ac1f9b428744d1527a0ba))
+* **coach:** preserve imported instants, and fix every CI job ([1d0307c](https://github.com/sound-barrier/recall/commit/1d0307cad49709d1ee27a5fed87f55a1b25c1bc8))
+* **coach:** the coaching session domain ([d96700e](https://github.com/sound-barrier/recall/commit/d96700e814f0f75f631b7351db1f116494b9e216))
+* **coach:** the cue strip — mark what happened, and when ([a6602da](https://github.com/sound-barrier/recall/commit/a6602da568e4fe9919a43c07a24995bd641972a7))
+* **db:** "what to work on" becomes focus items ([2e6d267](https://github.com/sound-barrier/recall/commit/2e6d267a4f5d8ba5cb584b39c0d8a4ac59cd20ee))
+* **db:** coach note tables and store surface ([1346192](https://github.com/sound-barrier/recall/commit/134619269e22f0103a9b75b78ac2b0db8380c10c))
+* **db:** tell an unread rank movement apart from a real zero ([cc8b1fa](https://github.com/sound-barrier/recall/commit/cc8b1fab7c5ad36698697ae9968df84cfe2b903d))
+* **dossier:** ship Play-vs-rank by default, keep its siblings in the gallery ([86aa75a](https://github.com/sound-barrier/recall/commit/86aa75ada5ef117996f97ae1c2ec7ad425abd002))
+* **dossier:** three climb insights over one trailing-window kernel ([c4d733f](https://github.com/sound-barrier/recall/commit/c4d733f80a89184dbab187844594117882aa0f69))
+* **elo:** answer "where do I stand?" from the player's own screenshots ([10426ba](https://github.com/sound-barrier/recall/commit/10426ba662acea7165464dd9e1b8f3258733664c))
+* **fixtures:** give seeded rank cards a population percentile ([2c406f1](https://github.com/sound-barrier/recall/commit/2c406f1e2c63f5e4368d6a9931a97ad2564548d7))
+* **frontend:** coaching pure helpers and the paper surface ([f64a09c](https://github.com/sound-barrier/recall/commit/f64a09c918e58b52c9e3c837e1587418a986efa1))
+* **frontend:** wire the coaching session through the app ([ce72a4a](https://github.com/sound-barrier/recall/commit/ce72a4a0783872162b0651e1d243578f33a5a9ba))
+* **ingest:** tell the user when an older parser read their matches ([6fdb9fd](https://github.com/sound-barrier/recall/commit/6fdb9fd2f3225317af322c70e5e25a0e05dc5570))
+* **keyboard:** Ctrl+F opens the palette, because nothing else does ([b71d46f](https://github.com/sound-barrier/recall/commit/b71d46fab8eda110006b0e3144116eda395f9269))
+* **matches:** a share with a coach requires a replay code on every match ([edd2f07](https://github.com/sound-barrier/recall/commit/edd2f07361d71c5c2ef12b18c16313151861ecb1))
+* **matches:** four front doors for sending matches to a coach ([798ce66](https://github.com/sound-barrier/recall/commit/798ce663a1750569c6678cc81e515361ceadbac9))
+* **matches:** keep the session readout up while the session is still on ([2d1d4bb](https://github.com/sound-barrier/recall/commit/2d1d4bb8c83d59755ed2efce7ae7869073e836dd))
+* **matches:** let a player mark their own moments ([d91ac98](https://github.com/sound-barrier/recall/commit/d91ac9817fc4b1fbd65b9741cbed530470e18649))
+* **matches:** say what to work on while there is still a game left ([833d8e6](https://github.com/sound-barrier/recall/commit/833d8e621e492f63ef409f5e4886f615a8fd33d2))
+* **matches:** show a partly-read rank screen, and let the user fill it ([b731f16](https://github.com/sound-barrier/recall/commit/b731f166318bd7af94c4934d569a35d9e743e6e9))
+* **matches:** the player's own cue strip, in the journal ([403f384](https://github.com/sound-barrier/recall/commit/403f38438377a07acda72f9c121b0bbf18895720))
+* **matches:** the plumbing for sending matches to a coach ([7c67550](https://github.com/sound-barrier/recall/commit/7c6755057227fc82c323502bf8b096c024f2c2b7))
+* **narrow:** describe a date range in words, or be told it was not understood ([20fce39](https://github.com/sound-barrier/recall/commit/20fce3942a02863105616d7f104295a85c4e8c95))
+* **notes:** a hand-entered match writes its note like every other ([cb7f36e](https://github.com/sound-barrier/recall/commit/cb7f36e07c0de89295e8e018ae2ce5750f4ee946))
+* **notes:** the editor's schema is the note grammar, and nothing else ([5ab9f34](https://github.com/sound-barrier/recall/commit/5ab9f349873d9bda0392b90ef790179911040dc8))
+* **notes:** the match journal renders the grammar it always stored ([29fe901](https://github.com/sound-barrier/recall/commit/29fe901d3b467e5adb13078ab6d4f25372c814ab))
+* **notes:** the review note is a WYSIWYG, with the markdown one click away ([2285800](https://github.com/sound-barrier/recall/commit/22858002441d60ad4bd34cf5d66a610d38ebee10))
+* **notes:** the surfaces that read a note stop showing its markers ([d79717a](https://github.com/sound-barrier/recall/commit/d79717a3423a21cdbd8bb27bada10d322eb9fb79))
+* **notes:** the TipTap host, and one sheet for note prose ([834e45f](https://github.com/sound-barrier/recall/commit/834e45f7e9b5ebd4016ef18b28e0c3c1b2ad972d))
+* **parser:** keep the modifier text the vocabulary cannot explain ([2eb3c6d](https://github.com/sound-barrier/recall/commit/2eb3c6d97196f79da94acf32e605e3050a74d5fe))
+* **parser:** log a rank modifier chip the vocabulary cannot place ([d312e19](https://github.com/sound-barrier/recall/commit/d312e19aea6004e21bb95a84ae7c0e462e26aa7f))
+* **parser:** recognize the VARIANCE rank modifier ([333135d](https://github.com/sound-barrier/recall/commit/333135d4b8f0ce05198498d280456447936d643e))
+* **parser:** stamp a parser generation so staleness is countable ([2f6dd73](https://github.com/sound-barrier/recall/commit/2f6dd7323e529b702c798175c14617ebfe54a881))
+* **profiles:** the tour's sample profile is a writable sandbox ([161e2de](https://github.com/sound-barrier/recall/commit/161e2de417a109a2779ebed27c9a85c8967b8751))
+* **review:** a player's saved review of their own matches, on disk and on the wire ([c04402f](https://github.com/sound-barrier/recall/commit/c04402f002fbe50e470aa6ea613db57c619dee26))
+* **reviews:** a seventh tab, and the film room moves inside it ([59fca5e](https://github.com/sound-barrier/recall/commit/59fca5e8db827a884807baab27aaa505c6be3097))
+* **reviews:** close the loop's holes — remove a match, read again, chrome, a landing ([610f4cd](https://github.com/sound-barrier/recall/commit/610f4cd29499b162b7255811cdaf8831a61196d0))
+* **reviews:** give the coach a roster ([a5dbed4](https://github.com/sound-barrier/recall/commit/a5dbed42d4ac0e39fb0fe6a834f97d7d82c579cd))
+* **reviews:** make starting a review one press from anywhere ([5db6dad](https://github.com/sound-barrier/recall/commit/5db6dad56db4d94afd4de6a134ba4024507c1575))
+* **reviews:** record every share — the sent ledger ([c08ef00](https://github.com/sound-barrier/recall/commit/c08ef00b031ebbe1d46d91a68352133d8ee4f08f))
+* **reviews:** review your own matches in the film room, as a saved sitting ([75b4374](https://github.com/sound-barrier/recall/commit/75b437416d27b06f80011de6b422c49e90b057f5))
+* **reviews:** sending matches to a coach gets its own dialog ([b112855](https://github.com/sound-barrier/recall/commit/b1128554ed2ac0091d57ab759d41bfa3d5cb0395))
+* **reviews:** the note is prose with a toolbar, and it renders everywhere ([04c7620](https://github.com/sound-barrier/recall/commit/04c7620565fdecbf3ad2b1c963c4df3c75c0002c))
+* **reviews:** what to work on becomes a list you can act on ([7f1e333](https://github.com/sound-barrier/recall/commit/7f1e33319ddf2524ad70f849d3f263352a767ef4))
+* **search:** find the words coaching put on a match ([46a47c9](https://github.com/sound-barrier/recall/commit/46a47c9076efa56032dd82202b25c759fe3f38c5))
+* surface the rank percentile in the dossier, Elo and Compare ([de6d4ab](https://github.com/sound-barrier/recall/commit/de6d4ab4eea83b3b085b9a3715b57e74d7aeaf07))
+* **trends:** band the Ranked-above axis around the player's own readings ([8e03a1c](https://github.com/sound-barrier/recall/commit/8e03a1ce318a2a594f26ecb8f5758e90d37580ee))
+* **trends:** chart the percentile, and stop the ladder printing "null%" ([69e39e8](https://github.com/sound-barrier/recall/commit/69e39e805ffe8eae77e981428c449aeef2f493a0))
+
+
+### Bug Fixes
+
+* a modifier the schema refuses must not cost the rank row ([20a696d](https://github.com/sound-barrier/recall/commit/20a696d9a11ab5c5a720716c2234baa0462251bf))
+* **a11y:** a modal's focus ring has to include its note editor ([aaf98f4](https://github.com/sound-barrier/recall/commit/aaf98f4f99b928b8b0719a777252ba728ad31b95))
+* **a11y:** name the app chrome's live regions ([3dd056b](https://github.com/sound-barrier/recall/commit/3dd056bb41f5d7b8d13e71639417006c8e923bd9))
+* **api:** a share with no handle is a 409, not a 400 ([09f9726](https://github.com/sound-barrier/recall/commit/09f97267524ee4d0497c501cf8c5d0dbb6b716e3))
+* **api:** declare the constraints the focus-items route enforces ([4698b93](https://github.com/sound-barrier/recall/commit/4698b93a6e99fbb45368750c97fb8add7cebd713))
+* **app:** a missing match key is a 400, and the SSE hub survives its own zero value ([7cf6269](https://github.com/sound-barrier/recall/commit/7cf62696aa00cc38c112875dad3d0e3d5b270f13))
+* **ci:** close a fail-open in the size gate and tighten its metric ([3ce095e](https://github.com/sound-barrier/recall/commit/3ce095e956cd8f6e24e2b36cf06bb548121f54f6))
+* **ci:** point the dead-code allowance at the carved package ([4d40f88](https://github.com/sound-barrier/recall/commit/4d40f8814e15d08c2b34f23c261171bf6c2544b1))
+* **ci:** un-export a type nothing imports, bump the total-JS budget ([c5b9908](https://github.com/sound-barrier/recall/commit/c5b9908aa9ee9b70fd876c7a55af36182b33bc4c))
+* close eight defects the Phase 1 adversarial review confirmed ([dd287cc](https://github.com/sound-barrier/recall/commit/dd287ccb3b8e2076b8016639136be4bc173507a9))
+* close eight defects the Phase 2 adversarial review confirmed ([8c00230](https://github.com/sound-barrier/recall/commit/8c00230d9a51df6a9edb87c4404729e02ee863bb))
+* close what the Phase 3 adversarial review confirmed ([9a8383f](https://github.com/sound-barrier/recall/commit/9a8383f5c3823fd7755ffffa6dd7d04f4e0dc0b4))
+* close what the Phase 4 adversarial review confirmed ([97d9567](https://github.com/sound-barrier/recall/commit/97d9567f06b679906fc71fe0056baec4dbf7db6d))
+* **coach:** a cancelled save dialog is not an export ([45a7d53](https://github.com/sound-barrier/recall/commit/45a7d535b04eb86884fe374c313565cd3584cfdb))
+* **coach:** block the summary too, and stop the clock leaking into copies ([c04c51f](https://github.com/sound-barrier/recall/commit/c04c51fedcb6dbb0d1238477c84a72e76afe9459))
+* **coach:** close the identity loop and stop losing the coach's words ([4283514](https://github.com/sound-barrier/recall/commit/4283514f1a8aec39d0926709d48ab9ee74e730e1))
+* **coach:** close what the Phase 1 adversarial review confirmed ([587f373](https://github.com/sound-barrier/recall/commit/587f373da3b2ae434cc7f3aae2923f4c9815c3ee))
+* **coach:** close what the Phase 2 adversarial review confirmed ([2e98277](https://github.com/sound-barrier/recall/commit/2e98277b020124a67ed24c97d59b3b5fe325eafd))
+* **coach:** close what the phase-4 adversarial review found ([e9d613e](https://github.com/sound-barrier/recall/commit/e9d613ea0487455c9d6ebc7c26988b33801b1648))
+* **coach:** make one grammar of two markdown renderers ([3c00cf8](https://github.com/sound-barrier/recall/commit/3c00cf8181368731b8d5ac1cc980b590f244a720))
+* **db:** a match rename moves the whole match, not just its screenshots ([05b3249](https://github.com/sound-barrier/recall/commit/05b324989dbcb7d85fa8f39b2a57294ebce2b93c))
+* **db:** a screenshot is identified by its folder AND its name ([15af523](https://github.com/sound-barrier/recall/commit/15af523cfd47cbf0f4e8a4eaf54513ee7a5782be))
+* **db:** close four vocabularies that shipped without a CHECK ([41784f5](https://github.com/sound-barrier/recall/commit/41784f5a24c757d26b7541be8bf7fb144a4acba7))
+* **db:** correcting a match's wall clock moves its instant too ([65f31ea](https://github.com/sound-barrier/recall/commit/65f31eaf5fecac7d5bed9932acd04be20ab3d698))
+* **db:** give the dedup registry a lifecycle, and declare duplicate_of ([f67f791](https://github.com/sound-barrier/recall/commit/f67f791ef80cd88f19010b27862f8498ba2073c1))
+* **db:** give the player's E/A/D one home, under one name ([b8be6f0](https://github.com/sound-barrier/recall/commit/b8be6f062fb207d36385caecde9d814a432fdcfb))
+* **db:** keep the match_key registry accessor out of the public surface ([ebf5ff8](https://github.com/sound-barrier/recall/commit/ebf5ff81d07a63f61771bc394dd63d26483c80e6))
+* **db:** key the roster in both directions, so position is an order ([aad4531](https://github.com/sound-barrier/recall/commit/aad4531c12fe29ca169d0e66f6733aadffa06d82))
+* **db:** refuse to guess which player a shared handle means ([4bf383b](https://github.com/sound-barrier/recall/commit/4bf383bdffff5ad66224e6f64dcd1718ca374ff7))
+* **db:** stop discarding rank rows a trend modifier lands on ([8f4c1cd](https://github.com/sound-barrier/recall/commit/8f4c1cd0fbfcdf762c0246ee11f0f8c77302aa2f))
+* **db:** tie a coach's focus items to the return that carried them ([d9a2735](https://github.com/sound-barrier/recall/commit/d9a273547877d4370dfd3286a3f017084cb151f8))
+* **desktop:** answer a failed startup instead of segfaulting on it ([d3dba41](https://github.com/sound-barrier/recall/commit/d3dba413406c9b5c6af7bc0b39e58f1bc8096715))
+* **dossier:** say what the net-rank total was built from ([9526947](https://github.com/sound-barrier/recall/commit/952694798b49e62b689772bdeba4b8bc2e015586))
+* **e2e:** clear the disposable e2e database before each run ([b5ff18c](https://github.com/sound-barrier/recall/commit/b5ff18c16138984f56d6a018acba46a2dfbcf685))
+* **e2e:** stamp the current layout version when seeding a dossier ([7d93214](https://github.com/sound-barrier/recall/commit/7d932147acb87aeee1a99e2141631ae9ed9b1692))
+* **fixtures:** fit the seed percentile to the season-4 survey ([9c03c27](https://github.com/sound-barrier/recall/commit/9c03c27462fdad84bf8df1ebf60e59cf78a74662))
+* four pre-existing bugs the carve made visible ([0018be2](https://github.com/sound-barrier/recall/commit/0018be27021ad4af599592bf72a416a2fab1ca4e))
+* **matches:** close what the adversarial review of the frontend found ([ae429da](https://github.com/sound-barrier/recall/commit/ae429da002e6ea2fa5c40b3fd90e198d6af3360a))
+* **matches:** declare the row menu's clamp before the watcher that reads it ([d415594](https://github.com/sound-barrier/recall/commit/d415594ab54a4469d65395126ebd44fe4b4cbc16))
+* **matches:** float the bulk bar — ticking a row must not move the rows ([9803ddd](https://github.com/sound-barrier/recall/commit/9803ddd54dac4bc0202225272fe9b0ad9970a0dc))
+* **matches:** show the rank movement's real sign, and keep a true zero ([83c7d52](https://github.com/sound-barrier/recall/commit/83c7d5235d65ee2973e9fe79d93517970c0d5f3b))
+* **matches:** stop one stat edit from destroying a hand-entered match ([7f4f0e5](https://github.com/sound-barrier/recall/commit/7f4f0e5bc7b79e335f4461f21a371b86282f58b5))
+* **matches:** the export dialog fits the window, and scrolls ([509e92a](https://github.com/sound-barrier/recall/commit/509e92abc2e112396a26a305ed189fe27181004e))
+* **matches:** underline what looks wrong instead of rewriting it ([203a241](https://github.com/sound-barrier/recall/commit/203a241eca24e3f36b8c846372be2ec11ec5c00a))
+* **moments:** close the thirteen holes the phase-3 review found ([bef2210](https://github.com/sound-barrier/recall/commit/bef2210a1ecd7c60d325c534b6450660ce095a50))
+* **notes:** the toolbar's chips ask for a radius that exists ([f425e0e](https://github.com/sound-barrier/recall/commit/f425e0e0684f435ac5124dedd673aac041ae9179))
+* **parser:** detect the placement rank screen ([807742a](https://github.com/sound-barrier/recall/commit/807742a48e2d724fbf43161baea56bbbd2195c3c))
+* **parser:** read rank screens occluded by a hero model ([52f97ad](https://github.com/sound-barrier/recall/commit/52f97ad922eb3df592cecd778ce9c45f1660d2f5))
+* **parser:** read the rank movement as signed, so a loss reads negative ([f2b57d3](https://github.com/sound-barrier/recall/commit/f2b57d3b088f5979d8b11b2c3d379efc59e80dbb))
+* **parser:** stop reporting the endorsement toast as an unknown modifier ([f79a171](https://github.com/sound-barrier/recall/commit/f79a17120b7e2b35aac4aac3ac2a501679025f03))
+* **review:** close what the Phase 2 review found in the sitting's persistence ([5e81c6a](https://github.com/sound-barrier/recall/commit/5e81c6a98959978f32aa2e8fd3b59675be6729e4))
+* **reviews:** close what the adversarial re-review found ([2ff7fe8](https://github.com/sound-barrier/recall/commit/2ff7fe83c9d374e25d4a976021cb88150df09026))
+* **reviews:** close what the adversarial reads of phases 3 and 4 found ([0c87ac1](https://github.com/sound-barrier/recall/commit/0c87ac17fc61472bbda99232f71656d1ed01ad3a))
+* **reviews:** close what the Phase 1 review found in the room-in-tab ([a7c41db](https://github.com/sound-barrier/recall/commit/a7c41dbfd70513e13183de92b7b73b9a3b1325f5))
+* **reviews:** close what the Phase 3 review found in the sitting's room ([1cb8ce2](https://github.com/sound-barrier/recall/commit/1cb8ce2a230de63ae844761539a0405e4e7c9e4f))
+* **reviews:** drop the exports nothing reads ([1877ccf](https://github.com/sound-barrier/recall/commit/1877ccf7007b9fbee9d83227c752c0d539d06690))
+* **reviews:** give the band the paper card's head, and re-record the snapshot ([45e6211](https://github.com/sound-barrier/recall/commit/45e62111b82596eaf3ac4d626ee1810fbc175396))
+* **reviews:** make the shelf card and the journal block first-class ([df6980a](https://github.com/sound-barrier/recall/commit/df6980a26c18113cf45709c32e9f034b79aed6bb))
+* **reviews:** restructure the index around starting a review ([40dc460](https://github.com/sound-barrier/recall/commit/40dc46039ac7c1f4779e99a1bfd28e605762306c))
+* **reviews:** speak in the player's voice everywhere in a sitting ([0edcee8](https://github.com/sound-barrier/recall/commit/0edcee89cafc1421245c5e55bfa16ed15895338a))
+* **seed:** stop the tour claiming its own matches need re-parsing ([573951c](https://github.com/sound-barrier/recall/commit/573951cae4fc2a6855916ff70e6e24dd231d3b8b))
+* **styles:** close what the dark-paper review found ([086fcd7](https://github.com/sound-barrier/recall/commit/086fcd70975cf8879bf57370ede569e55ecf579c))
+* **styles:** the paper plate follows the theme ([397b1ef](https://github.com/sound-barrier/recall/commit/397b1ef4450c09b4a1a6a397905c970f191d9eb0))
+* the review's UI findings — a default nobody got, two wrong numbers ([06e4b80](https://github.com/sound-barrier/recall/commit/06e4b808a59b603e66507b96d3b3064738c7d4db))
+
+
+### Refactors
+
+* **app:** carve the backup engine into pkg/snapshot ([6ba502f](https://github.com/sound-barrier/recall/commit/6ba502f3f65b9de80972054bdd54b7a8a717b89d))
+* **app:** carve the dev-corpus seeder into pkg/seed ([1368565](https://github.com/sound-barrier/recall/commit/1368565de59d7533bf0a6f69a97145cb312dea35))
+* **app:** carve the per-match writes into pkg/matchedit ([0dff498](https://github.com/sound-barrier/recall/commit/0dff4989a8b2ce11265d3a4b4370f5b22aeb00e0))
+* **app:** carve the release check into pkg/release ([b9d279d](https://github.com/sound-barrier/recall/commit/b9d279db63696276c8b2a6c97eb1e81a37047f52))
+* **app:** carve the screenshot file surface into pkg/screenshot ([933893a](https://github.com/sound-barrier/recall/commit/933893a9a032ebfff3518aaf23bb3ab946d1334f))
+* **app:** carve the SSE fan-out into pkg/sse ([454095f](https://github.com/sound-barrier/recall/commit/454095f762a65159c45c0c9ed26b32ca3cb221ab))
+* **bundle:** one data.json schema, not a ladder of four ([79cd4ed](https://github.com/sound-barrier/recall/commit/79cd4edbaa0b55a645769688168f5379a0dd2b13))
+* **coach:** finish scrubbing the premise the schema collapse killed ([463ad51](https://github.com/sound-barrier/recall/commit/463ad511a8b539dc3d7fc27f69ccb124ba201fe5))
+* **coach:** one notes schema, not two ([187cb49](https://github.com/sound-barrier/recall/commit/187cb493fb048e94f8a577963de8926addf999ec))
+* **css:** one capped-dialog shape instead of two copies of it ([6ef48fb](https://github.com/sound-barrier/recall/commit/6ef48fbdfbd93573c7f9b655b88c8aa5ef60e069))
+* **frontend:** mirror components in composables, and dissolve the shared drawers ([9b1de3d](https://github.com/sound-barrier/recall/commit/9b1de3d83e1c77ed8e541a90ee04a1881018a021))
+* **frontend:** split the coach, list and settings folders, and give parse and database their own stores ([ff61628](https://github.com/sound-barrier/recall/commit/ff616285c1d124a339c7e20e8b748258234ddcac))
+* **match:** delete the unreachable month/week/day grouping tree ([2b84cf9](https://github.com/sound-barrier/recall/commit/2b84cf9c0d44c23f86af36d0ce9e2f613da3bcf8))
+* **match:** group the helper layer into sub-domain folders ([e1d8e55](https://github.com/sound-barrier/recall/commit/e1d8e5518d2ec949764883105cf5d326f672bfb5))
+* **notes:** split the note grammar's parser from its HTML emitter ([44ff6e1](https://github.com/sound-barrier/recall/commit/44ff6e11c6330bbfad3491d14d08739b429ae777))
+* **parser:** extract the non-modifier validation ([2078e5c](https://github.com/sound-barrier/recall/commit/2078e5c62438da882119b18970878d98040f7c08))
+* **parser:** split the rank reader, and carve out the Tesseract exec ([713f4fa](https://github.com/sound-barrier/recall/commit/713f4fa30c7166277e90a4781c1ee447eef50837))
+* take MatchesView to a shell, and answer the widget-taxonomy question ([8d6a5ec](https://github.com/sound-barrier/recall/commit/8d6a5ec9ac5abce936e4bb394fa38eacf4968e7c))
+
+
+### Documentation
+
+* **coach:** the banner is app-wide, and a sheet can be discarded ([c9d698c](https://github.com/sound-barrier/recall/commit/c9d698c9a2992f2e303483519bf6707d81e4c8c4))
+* cover the three Phase 1 surfaces the chapters had missed ([4e6a0ba](https://github.com/sound-barrier/recall/commit/4e6a0ba76215593d1d5e18db9b5bd8747519da82))
+* **debt:** record what stays in pkg/app and why ([2d6e564](https://github.com/sound-barrier/recall/commit/2d6e56454ace12a46e030e5f9974525a155c3b02))
+* explain the climb numbers, and what a blank one means ([3c26ca4](https://github.com/sound-barrier/recall/commit/3c26ca4a3a11b1158511973a5c9932b05f5e476f))
+* **notes:** record what the editor costs and what holds it still ([5aa1aa3](https://github.com/sound-barrier/recall/commit/5aa1aa3ad00c79967ed89994af891022a3ca6ff4))
+* record the coaching package and the frontend concepts it adds ([7191576](https://github.com/sound-barrier/recall/commit/71915766fc11b77640c767659037a6cfe470ef9d))
+* **reviews:** describe the list, not the paragraph ([5d288f3](https://github.com/sound-barrier/recall/commit/5d288f34745d27b1bec7883605900b24f6e262a4))
+* **reviews:** sweep the vocabulary the tab actually wears ([a02359d](https://github.com/sound-barrier/recall/commit/a02359dd0048b06f083bf0490a7804edabe350dd))
+* **reviews:** the Coaching chapter becomes Reviews, and opens with reviewing yourself ([e53eb3f](https://github.com/sound-barrier/recall/commit/e53eb3f708710ff9a0f1b52db35031326192b9e0))
+* state what earns a generation bump, and what earns a child table ([dae4902](https://github.com/sound-barrier/recall/commit/dae4902cc1409a08323101540bd0c7e3585a0ee5))
+
+
+### Build & Packaging
+
+* **ci:** budget every package and directory, and measure real branch coverage ([b178546](https://github.com/sound-barrier/recall/commit/b178546fd25951bd9bf80c5cf9cb119cfbbacc36))
+* **deps:** move the Wails trio to v3.0.0-beta.9 ([fd2edd2](https://github.com/sound-barrier/recall/commit/fd2edd26bcdeaea5160d5aff9ecffd333c726a34))
+* raise the initial-JS budget for the nudge's eager wiring ([170b9cd](https://github.com/sound-barrier/recall/commit/170b9cd3d276db5d30880fda95af6155c08fbccf))
+* **reviews:** lazy-load the what's-new strip; ratchet the budgets ([8d94102](https://github.com/sound-barrier/recall/commit/8d941024e4a80873788dcfd376e5d8caff54e142))
+
+
+### CI
+
+* force the jsonschema-rs inject, which pipx declined ([ba1c783](https://github.com/sound-barrier/recall/commit/ba1c7837d8b925a6369d0140cba5d47c3289d51f))
+* pin jsonschema-rs, the transitive that took every branch red ([29c7537](https://github.com/sound-barrier/recall/commit/29c7537f0f5a8071766892e7cde8fe99fa6e95ba))
+
+
+### Tests
+
+* **cmd:** guard the sentinel identity table against its own gaps ([122da3d](https://github.com/sound-barrier/recall/commit/122da3de4483bf894deb653f2496161f350a96d6))
+* **cmd:** pin every app sentinel before the carve moves one ([235259a](https://github.com/sound-barrier/recall/commit/235259a3f161eeb2d24b1c656f02afb63fe2fb10))
+* **coach:** the whole loop, on real bytes, in one test ([1744b4e](https://github.com/sound-barrier/recall/commit/1744b4e270c2f164e8ab55b5270e993cfcc71435))
+* **coach:** walk a sitting to a coach and back, reading both archives ([7e4a95d](https://github.com/sound-barrier/recall/commit/7e4a95d97bde706d911f88b9914fe9d0b44d6fdf))
+* **e2e:** follow the layout version to 3 in the packing spec ([75571e7](https://github.com/sound-barrier/recall/commit/75571e7ec993ae92e3d24c8d6fb4e1e58573af90))
+* **e2e:** pin the coaching session contract, red ([6a485fd](https://github.com/sound-barrier/recall/commit/6a485fd5df3e58ddaa9f9376f4cedc7ea96e11e5))
+* **e2e:** regroup the 173 specs into sixteen feature folders ([3e03ac5](https://github.com/sound-barrier/recall/commit/3e03ac57011d556bde7c059b62935cc4eb596e2c))
+* **frontend:** the film room's presentational layer ([6188952](https://github.com/sound-barrier/recall/commit/618895268e393f5e0597a979950a516bb5feebe5))
+* **matchedit:** pin the disruption-side dedupe and the all-blank list ([e1aa6f6](https://github.com/sound-barrier/recall/commit/e1aa6f677639e7b66be0db671900fff39bf388c6))
+* **notes:** a failing spec for a note you can actually see ([e4a6cfe](https://github.com/sound-barrier/recall/commit/e4a6cfe03bce7f187c2babba7b84fa29b62b37c2))
+* **notes:** stop hand-rolling an HTML unescape, and a self-replacement ([c8c5f03](https://github.com/sound-barrier/recall/commit/c8c5f03cbf23c0aead78d97ef11a182d7076ee17))
+* **notes:** wait for the editor instead of sleeping and hoping ([854112a](https://github.com/sound-barrier/recall/commit/854112ac2004d39e6b55a89ab8f7c645adb8a43c))
+* **parser:** add the season-4 fixtures and their goldens ([7c1bf16](https://github.com/sound-barrier/recall/commit/7c1bf16ec213ad5493a708191cd924c5b60ba11c))
+* **reviews:** answer the coverage question — measure, then close the gaps ([af84b03](https://github.com/sound-barrier/recall/commit/af84b038038fe76287ef3afbbdc24ae64e9b8642))
+* **reviews:** drive the send-to-coach dialog through the real transport ([cbcff00](https://github.com/sound-barrier/recall/commit/cbcff00f8f59bf1013a578add52adfc06b3240e7))
+* **stores:** cover the database store's wiring, narrow the parse surface ([ba158ce](https://github.com/sound-barrier/recall/commit/ba158ce81f3d3c3bd13a8b2c5c2a375da8132f3b))
+
 ## [0.30.2](https://github.com/sound-barrier/recall/compare/v0.30.1...v0.30.2) (2026-08-16)
 
 
