@@ -16,7 +16,7 @@
 // with no attributes except an `<ol start>` — there is nothing for a
 // sanitizer to do afterwards.
 
-import { openAt, blocksOf, type Block } from '@/match/markdown/note-blocks'
+import { openAt, blocksOf, topHeadingLevel, type Block } from '@/match/markdown/note-blocks'
 
 // The PARSER lives in note-blocks.ts; this file is the HTML emitter over what
 // it returns. The split is not cosmetic: `topHeadingLevel` below is lossy on
@@ -67,27 +67,6 @@ function inline(escaped: string): string {
     i = close + marker.open.length
   }
   return out
-}
-
-/**
- * The note's shallowest heading, which becomes its h3.
- *
- * Notes render INSIDE a card that already owns the page's h2, so the top
- * heading is an h3 — and a note that only ever uses `##` must still start at
- * h3 rather than skipping a level, which is precisely what axe's
- * heading-order rule reports. The toolbar offers Subheading on its own, so
- * that note is one click away.
- *
- * This is the lossy step, and the reason the parser is a separate module: `#`
- * alone and `##` alone both land here as h3, so HTML cannot be round-tripped
- * back to source. Block.level survives it untouched.
- */
-function topHeadingLevel(blocks: Block[]): number {
-  let top = 2
-  for (const block of blocks) {
-    if (block.kind === 'h' && block.level < top) top = block.level
-  }
-  return top
 }
 
 function renderBlock(block: Block, topLevel: number): string {

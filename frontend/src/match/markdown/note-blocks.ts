@@ -156,6 +156,29 @@ function absorb(open: Block, line: string): void {
   }
 }
 
+/**
+ * The note's shallowest heading, which becomes its h3.
+ *
+ * Notes render INSIDE a card that already owns the page's h2, so the top
+ * heading is an h3 — and a note that only ever uses `##` must still start at
+ * h3 rather than skipping a level, which is precisely what axe's
+ * heading-order rule reports. The toolbar offers Subheading on its own, so
+ * that note is one click away.
+ *
+ * Lives here rather than with the HTML emitter because BOTH emitters need the
+ * answer: the editor paints the same h3/h4 the ledger does, or axe fires
+ * inside the contenteditable for the same reason it would anywhere else. The
+ * function is not the lossy part — mapping its answer onto a tag is, and each
+ * emitter does that for itself. `Block.level` is never touched.
+ */
+export function topHeadingLevel(blocks: readonly Block[]): number {
+  let top = 2
+  for (const block of blocks) {
+    if (block.kind === 'h' && block.level < top) top = block.level
+  }
+  return top
+}
+
 /** The three marks a span can carry, as a set rather than a nesting. */
 export type SpanMark = 'strong' | 'em' | 'del'
 
