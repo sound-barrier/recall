@@ -14,6 +14,7 @@ import { momentSaveKey } from '@/match/coach/coach-moments'
 import { savableItems } from '@/match/reviews/focus-items'
 import { getQueryClient } from '@/queries/client'
 import { invalidateFocus } from '@/queries/focus'
+import { FOCUS_SAVE_KEY } from '@/match/coach/coach-notes'
 import { qk } from '@/queries/keys'
 import { invalidateSelfReviews, upsertSelfReview, useSelfReviewsQuery } from '@/queries/selfReview'
 import { useAppStore } from '@/stores/app'
@@ -35,11 +36,25 @@ import { useMatchesStore } from '@/stores/matches'
 export const HEADER_SAVE_KEY = 'header'
 
 /**
- * The autosave key the focus list saves under. Separate from the header:
- * they are separate PUTs, so sharing a queue slot would let a title
- * keystroke displace a list edit that had not gone out yet.
+ * The autosave key the focus list saves under — ONE declaration, in
+ * `@/match/coach/coach-notes`, re-exported here.
+ *
+ * Both rooms show a focus list and both ask for its save state by key, so a
+ * second literal spelled at this end is a silent mismatch rather than a compile
+ * error — which is exactly what it was: the same string declared twice, read by
+ * `CoachRoomView` from one home and by `ReviewsView` from the other. Equal, so
+ * nothing was broken; independent, so moving either one would have stopped a
+ * save indicator resolving on exactly one of the two surfaces, with no type
+ * error and no failing test to say so.
+ *
+ * Re-exported rather than re-pointed at the call sites because the store is
+ * where `ReviewsView` and the tests already look for it, and the value — not
+ * the import path — is the thing that had to stop being duplicated.
+ *
+ * Separate from HEADER_SAVE_KEY: they are separate PUTs, so sharing a queue
+ * slot would let a title keystroke displace a list edit that had not gone out.
  */
-export const FOCUS_SAVE_KEY = 'focus-items'
+export { FOCUS_SAVE_KEY }
 
 export const useSelfReviewStore = defineStore('selfReview', () => {
   const appStore = useAppStore()
