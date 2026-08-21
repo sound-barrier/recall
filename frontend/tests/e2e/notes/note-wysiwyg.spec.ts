@@ -51,7 +51,7 @@ async function openRoomOnAMatch(page: Page, opts: CoachSessionMockOptions = {}) 
 test.describe('a note you can see', () => {
   // TYPED, not filled. `fill()` sets a contenteditable's content wholesale and
   // never fires an input rule, so it would leave the markers sitting there as
-  // text — which is precisely the old behaviour this feature replaces. Only
+  // text — which is precisely the old behavior this feature replaces. Only
   // real keystrokes exercise what a person actually does.
   test('emphasis renders as you type, and the asterisks are gone', async ({ page }) => {
     await openRoomOnAMatch(page)
