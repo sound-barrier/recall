@@ -10,6 +10,10 @@
 @import url('./states.css');
 @import url('./badges.css');
 @import url('./paper.css');
+
+/* After paper: a note renders ON the paper surface in the film room, so the
+   prose rhythm has to be able to sit over paper's token remapping. */
+@import url('./note-prose.css');
 @import url('./nav.css');
 @import url('./settings.css');
 @import url('./system-alert.css');
