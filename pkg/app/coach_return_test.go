@@ -6,7 +6,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/bundle"
-	"recall/pkg/coach"
+	"recall/pkg/coachreturn"
 	"recall/pkg/db"
 )
 
@@ -15,7 +15,7 @@ import (
 
 // stagedReturn imports a coach's notes into a player's App and returns the
 // sheet, the App, and their store.
-func stagedReturn(t *testing.T) (*app.App, *db.CoachReturn, coach.ReturnSheet) {
+func stagedReturn(t *testing.T) (*app.App, *db.CoachReturn, coachreturn.Sheet) {
 	t.Helper()
 	payload := notesArchive(t)
 	a, store := playerApp(t)
@@ -39,8 +39,8 @@ func TestImportMatches_StagesACoachNotesArchive(t *testing.T) {
 	if len(sheet.Notes) != 1 || sheet.Pending != 1 {
 		t.Fatalf("sheet notes = %+v (pending %d), want one pending note", sheet.Notes, sheet.Pending)
 	}
-	if sheet.Notes[0].Status != coach.StatusPending {
-		t.Errorf("note status = %q, want %q", sheet.Notes[0].Status, coach.StatusPending)
+	if sheet.Notes[0].Status != coachreturn.StatusPending {
+		t.Errorf("note status = %q, want %q", sheet.Notes[0].Status, coachreturn.StatusPending)
 	}
 }
 
@@ -75,9 +75,9 @@ func TestDecideCoachReturn_AcceptThenSkip(t *testing.T) {
 	a, staged, sheet := stagedReturn(t)
 	noteID := sheet.Notes[0].NoteID
 
-	accepted, err := a.DecideCoachReturn(staged.ID, []coach.Decision{{NoteID: noteID, Decision: coach.DecisionAccepted}})
+	accepted, err := a.DecideCoachReturn(staged.ID, []coachreturn.Verdict{{NoteID: noteID, Decision: coachreturn.DecisionAccepted}})
 	mustNoErr(t, err)
-	if accepted.Pending != 0 || accepted.Notes[0].Status != coach.StatusAccepted {
+	if accepted.Pending != 0 || accepted.Notes[0].Status != coachreturn.StatusAccepted {
 		t.Fatalf("after accept: pending %d, status %q", accepted.Pending, accepted.Notes[0].Status)
 	}
 	blocks, err := app.Store(a).LoadMatchCoachNotes()
@@ -91,10 +91,10 @@ func TestDecideCoachReturn_AcceptThenSkip(t *testing.T) {
 		t.Errorf("reviewed_by = %q, want coach", reviews[playerMatchRialto].ReviewedBy)
 	}
 
-	skipped, err := a.DecideCoachReturn(staged.ID, []coach.Decision{{NoteID: noteID, Decision: coach.DecisionSkipped}})
+	skipped, err := a.DecideCoachReturn(staged.ID, []coachreturn.Verdict{{NoteID: noteID, Decision: coachreturn.DecisionSkipped}})
 	mustNoErr(t, err)
-	if skipped.Notes[0].Status != coach.StatusSkipped {
-		t.Errorf("after skip: status %q, want %q", skipped.Notes[0].Status, coach.StatusSkipped)
+	if skipped.Notes[0].Status != coachreturn.StatusSkipped {
+		t.Errorf("after skip: status %q, want %q", skipped.Notes[0].Status, coachreturn.StatusSkipped)
 	}
 	blocks, err = app.Store(a).LoadMatchCoachNotes()
 	mustNoErr(t, err)
@@ -132,7 +132,7 @@ func TestCoachReturns_ListGetAndDelete(t *testing.T) {
 func TestDeleteMatchCoachNote_ChecksTheNoteIsOnThatMatch(t *testing.T) {
 	a, staged, sheet := stagedReturn(t)
 	if _, err := a.DecideCoachReturn(staged.ID,
-		[]coach.Decision{{NoteID: sheet.Notes[0].NoteID, Decision: coach.DecisionAccepted}}); err != nil {
+		[]coachreturn.Verdict{{NoteID: sheet.Notes[0].NoteID, Decision: coachreturn.DecisionAccepted}}); err != nil {
 		t.Fatalf("DecideCoachReturn: %v", err)
 	}
 	blocks, err := app.Store(a).LoadMatchCoachNotes()

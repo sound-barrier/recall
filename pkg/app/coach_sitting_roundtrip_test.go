@@ -179,7 +179,7 @@ func assertNotesZipCarriesTheCoachsWork(t *testing.T, payload []byte) coach.Note
 		t.Fatal("the archive does not sniff as a notes file; the player's import would treat it as a bundle")
 	}
 
-	f, err := coach.ReadNotesArchive(payload)
+	f, _, err := coach.ReadNotesArchive(payload)
 	mustNoErr(t, err)
 	assertNotesJSONHolds(t, f)
 

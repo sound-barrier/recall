@@ -1,4 +1,4 @@
-package coach_test
+package coachreturn_test
 
 import (
 	"encoding/json"
@@ -8,11 +8,12 @@ import (
 	"testing"
 
 	"recall/pkg/coach"
+	"recall/pkg/coachreturn"
 	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
 )
 
-var _ coach.ReturnStore = (*dbtest.Fake)(nil)
+var _ coachreturn.Store = (*dbtest.Fake)(nil)
 
 func TestStage_BuildsTheSheet(t *testing.T) {
 	st := seededStore(t)
@@ -69,7 +70,7 @@ func TestStage_PlayerMismatch(t *testing.T) {
 			if sheet.PlayerMismatch != tc.want {
 				t.Errorf("localHandle %q: PlayerMismatch = %v, want %v", tc.local, sheet.PlayerMismatch, tc.want)
 			}
-			got, err := coach.Sheet(st, sheet.ID, tc.local)
+			got, err := coachreturn.Get(st, sheet.ID, tc.local)
 			if err != nil || got.PlayerMismatch != tc.want {
 				t.Errorf("Sheet(%q): mismatch=%v err=%v", tc.local, got.PlayerMismatch, err)
 			}
@@ -81,8 +82,8 @@ func TestStage_SameFileTwiceIsTheSameSheet(t *testing.T) {
 	st := seededStore(t)
 	payload := returnedNotes(t)
 	first := stageReturn(t, st, payload, "Sable")
-	decide(t, st, first.ID, coach.Decision{NoteID: noteIDOne, Decision: coach.DecisionAccepted})
-	again, already, err := coach.Stage(st, payload, "Sable")
+	decide(t, st, first.ID, coachreturn.Verdict{NoteID: noteIDOne, Decision: coachreturn.DecisionAccepted})
+	again, already, err := coachreturn.Stage(st, payload, "Sable")
 	if err != nil {
 		t.Fatalf("Stage again: %v", err)
 	}
@@ -130,9 +131,9 @@ func TestStage_RefusesAFileWithNothingToShow(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			st := dbtest.New()
-			_, _, err := coach.Stage(st, tc.payload, "Sable")
-			if !errors.Is(err, coach.ErrReturnNoMatches) {
-				t.Fatalf("err = %v, want ErrReturnNoMatches", err)
+			_, _, err := coachreturn.Stage(st, tc.payload, "Sable")
+			if !errors.Is(err, coachreturn.ErrNoMatches) {
+				t.Fatalf("err = %v, want ErrNoMatches", err)
 			}
 			if !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("refusal = %q, want it to name %q", err, tc.want)
@@ -147,26 +148,29 @@ func TestStage_RefusesAFileWithNothingToShow(t *testing.T) {
 func TestStage_RefusesWhatItCannotRead(t *testing.T) {
 	st := seededStore(t)
 	for name, payload := range map[string][]byte{
-		"a bundle": exportBundle(t, seededStore(t), nil),
-		"garbage":  []byte("nope"),
+		"a share bundle": zipWithEntries(t, map[string][]byte{
+			"manifest.json": []byte(`{"schema":"recall-export/v4"}`),
+			"data.json":     []byte(`{}`),
+		}),
+		"garbage": []byte("nope"),
 	} {
-		if _, _, err := coach.Stage(st, payload, ""); !errors.Is(err, coach.ErrNotesMalformed) {
+		if _, _, err := coachreturn.Stage(st, payload, ""); !errors.Is(err, coach.ErrNotesMalformed) {
 			t.Errorf("%s: err = %v, want ErrNotesMalformed", name, err)
 		}
 	}
 	unsupported := validNotesFile()
 	unsupported.Schema = "recall-coach-notes/v9"
 	body, _ := json.Marshal(unsupported)
-	if _, _, err := coach.Stage(st, zipWithEntries(t, map[string][]byte{"notes.json": body}), ""); !errors.Is(err, coach.ErrNotesUnsupportedSchema) {
+	if _, _, err := coachreturn.Stage(st, zipWithEntries(t, map[string][]byte{"notes.json": body}), ""); !errors.Is(err, coach.ErrNotesUnsupportedSchema) {
 		t.Errorf("unsupported schema: err = %v", err)
 	}
 }
 
 func TestSheet_UnknownReturn(t *testing.T) {
-	if _, err := coach.Sheet(dbtest.New(), 99, ""); !errors.Is(err, db.ErrCoachReturnUnknown) {
+	if _, err := coachreturn.Get(dbtest.New(), 99, ""); !errors.Is(err, db.ErrCoachReturnUnknown) {
 		t.Errorf("Sheet(99) err = %v, want db.ErrCoachReturnUnknown", err)
 	}
-	if _, err := coach.Decide(dbtest.New(), 99, nil, "Sable"); !errors.Is(err, db.ErrCoachReturnUnknown) {
+	if _, err := coachreturn.Decide(dbtest.New(), 99, nil, "Sable"); !errors.Is(err, db.ErrCoachReturnUnknown) {
 		t.Errorf("Decide(99) err = %v, want db.ErrCoachReturnUnknown", err)
 	}
 }
@@ -184,7 +188,7 @@ func TestSheets_ListsEveryStagedReturn(t *testing.T) {
 	}
 	stageReturn(t, st, payload, "Sable")
 
-	sheets, err := coach.Sheets(st, "Sable")
+	sheets, err := coachreturn.Sheets(st, "Sable")
 	if err != nil {
 		t.Fatalf("Sheets: %v", err)
 	}
@@ -202,7 +206,7 @@ func TestSheets_ListsEveryStagedReturn(t *testing.T) {
 }
 
 func TestSheets_EmptyStoreIsAnEmptySlice(t *testing.T) {
-	got, err := coach.Sheets(dbtest.New(), "")
+	got, err := coachreturn.Sheets(dbtest.New(), "")
 	if err != nil {
 		t.Fatalf("Sheets: %v", err)
 	}
@@ -217,7 +221,7 @@ func TestDecide_AcceptANoteWritesTheBlockAndReviews(t *testing.T) {
 	if st.Reviews[keyIlios].ReviewedBy != "self" {
 		t.Fatal("fixture: Ilios should start reviewed by self")
 	}
-	got := decide(t, st, sheet.ID, coach.Decision{NoteID: noteIDOne, Decision: coach.DecisionAccepted})
+	got := decide(t, st, sheet.ID, coachreturn.Verdict{NoteID: noteIDOne, Decision: coachreturn.DecisionAccepted})
 
 	block := blockWithNoteID(t, st, keyIlios, noteIDOne)
 	if block.AcceptedAt == "" {
@@ -232,8 +236,8 @@ func TestDecide_AcceptANoteWritesTheBlockAndReviews(t *testing.T) {
 		t.Errorf("reviewed_by = %q, want coach to overwrite self", st.Reviews[keyIlios].ReviewedBy)
 	}
 	wantState := decisionState{
-		Statuses:  map[string]string{noteIDOne: coach.StatusAccepted, noteIDTwo: coach.StatusPending, orphanNoteID: coach.StatusOrphan},
-		Decisions: map[string]string{noteIDOne: coach.DecisionAccepted},
+		Statuses:  map[string]string{noteIDOne: coachreturn.StatusAccepted, noteIDTwo: coachreturn.StatusPending, orphanNoteID: coachreturn.StatusOrphan},
+		Decisions: map[string]string{noteIDOne: coachreturn.DecisionAccepted},
 		Pending:   1,
 	}
 	if state := stateOf(got); !reflect.DeepEqual(state, wantState) {
@@ -244,7 +248,7 @@ func TestDecide_AcceptANoteWritesTheBlockAndReviews(t *testing.T) {
 func TestDecide_AcceptReviewedOnlySetsOnlyTheFlag(t *testing.T) {
 	st := seededStore(t)
 	sheet := stageReturn(t, st, returnedNotes(t), "Sable")
-	got := decide(t, st, sheet.ID, coach.Decision{NoteID: noteIDTwo, Decision: coach.DecisionAccepted})
+	got := decide(t, st, sheet.ID, coachreturn.Verdict{NoteID: noteIDTwo, Decision: coachreturn.DecisionAccepted})
 	if st.Reviews[keyRank].ReviewedBy != "coach" {
 		t.Errorf("reviewed_by = %q, want coach", st.Reviews[keyRank].ReviewedBy)
 	}
@@ -260,15 +264,15 @@ func TestDecide_AcceptReviewedOnlySetsOnlyTheFlag(t *testing.T) {
 func TestDecide_SkipAfterAcceptDeletesTheBlock(t *testing.T) {
 	st := seededStore(t)
 	sheet := stageReturn(t, st, returnedNotes(t), "Sable")
-	decide(t, st, sheet.ID, coach.Decision{NoteID: noteIDOne, Decision: coach.DecisionAccepted})
-	got := decide(t, st, sheet.ID, coach.Decision{NoteID: noteIDOne, Decision: coach.DecisionSkipped})
+	decide(t, st, sheet.ID, coachreturn.Verdict{NoteID: noteIDOne, Decision: coachreturn.DecisionAccepted})
+	got := decide(t, st, sheet.ID, coachreturn.Verdict{NoteID: noteIDOne, Decision: coachreturn.DecisionSkipped})
 
 	if ids := noteIDsOf(blocksOn(t, st, keyIlios)); !reflect.DeepEqual(ids, []string{receivedNoteID}) {
 		t.Errorf("blocks on Ilios = %v, want only the earlier coach's %s", ids, receivedNoteID)
 	}
 	wantSkipped := decisionState{
-		Statuses:  map[string]string{noteIDOne: coach.StatusSkipped, noteIDTwo: coach.StatusPending, orphanNoteID: coach.StatusOrphan},
-		Decisions: map[string]string{noteIDOne: coach.DecisionSkipped},
+		Statuses:  map[string]string{noteIDOne: coachreturn.StatusSkipped, noteIDTwo: coachreturn.StatusPending, orphanNoteID: coachreturn.StatusOrphan},
+		Decisions: map[string]string{noteIDOne: coachreturn.DecisionSkipped},
 		Pending:   1,
 	}
 	if state := stateOf(got); !reflect.DeepEqual(state, wantSkipped) {
@@ -276,10 +280,10 @@ func TestDecide_SkipAfterAcceptDeletesTheBlock(t *testing.T) {
 	}
 
 	// Skipping a note that was never accepted is a plain decision.
-	got = decide(t, st, sheet.ID, coach.Decision{NoteID: noteIDTwo, Decision: coach.DecisionSkipped})
+	got = decide(t, st, sheet.ID, coachreturn.Verdict{NoteID: noteIDTwo, Decision: coachreturn.DecisionSkipped})
 	wantBothSkipped := decisionState{
-		Statuses:  map[string]string{noteIDOne: coach.StatusSkipped, noteIDTwo: coach.StatusSkipped, orphanNoteID: coach.StatusOrphan},
-		Decisions: map[string]string{noteIDOne: coach.DecisionSkipped, noteIDTwo: coach.DecisionSkipped},
+		Statuses:  map[string]string{noteIDOne: coachreturn.StatusSkipped, noteIDTwo: coachreturn.StatusSkipped, orphanNoteID: coachreturn.StatusOrphan},
+		Decisions: map[string]string{noteIDOne: coachreturn.DecisionSkipped, noteIDTwo: coachreturn.DecisionSkipped},
 		Pending:   0,
 	}
 	if state := stateOf(got); !reflect.DeepEqual(state, wantBothSkipped) {
@@ -294,16 +298,16 @@ func TestDecide_SkipsAnOrphanWithTheRestOfTheBatch(t *testing.T) {
 	st := seededStore(t)
 	sheet := stageReturn(t, st, returnedNotes(t), "Sable")
 	got := decide(t, st, sheet.ID,
-		coach.Decision{NoteID: noteIDOne, Decision: coach.DecisionAccepted},
-		coach.Decision{NoteID: noteIDTwo, Decision: coach.DecisionSkipped},
-		coach.Decision{NoteID: orphanNoteID, Decision: coach.DecisionSkipped},
+		coachreturn.Verdict{NoteID: noteIDOne, Decision: coachreturn.DecisionAccepted},
+		coachreturn.Verdict{NoteID: noteIDTwo, Decision: coachreturn.DecisionSkipped},
+		coachreturn.Verdict{NoteID: orphanNoteID, Decision: coachreturn.DecisionSkipped},
 	)
 	want := decisionState{
 		Statuses: map[string]string{
-			noteIDOne: coach.StatusAccepted, noteIDTwo: coach.StatusSkipped, orphanNoteID: coach.StatusOrphan,
+			noteIDOne: coachreturn.StatusAccepted, noteIDTwo: coachreturn.StatusSkipped, orphanNoteID: coachreturn.StatusOrphan,
 		},
 		Decisions: map[string]string{
-			noteIDOne: coach.DecisionAccepted, noteIDTwo: coach.DecisionSkipped, orphanNoteID: coach.DecisionSkipped,
+			noteIDOne: coachreturn.DecisionAccepted, noteIDTwo: coachreturn.DecisionSkipped, orphanNoteID: coachreturn.DecisionSkipped,
 		},
 		Pending: 0,
 	}
@@ -317,9 +321,9 @@ func TestDecide_SkipsAnOrphanWithTheRestOfTheBatch(t *testing.T) {
 func TestDecide_StillRefusesToAcceptAnOrphan(t *testing.T) {
 	st := seededStore(t)
 	sheet := stageReturn(t, st, returnedNotes(t), "Sable")
-	_, err := coach.Decide(st, sheet.ID, []coach.Decision{{NoteID: orphanNoteID, Decision: coach.DecisionAccepted}}, "Sable")
-	if !errors.Is(err, coach.ErrReturnOrphan) {
-		t.Fatalf("err = %v, want ErrReturnOrphan", err)
+	_, err := coachreturn.Decide(st, sheet.ID, []coachreturn.Verdict{{NoteID: orphanNoteID, Decision: coachreturn.DecisionAccepted}}, "Sable")
+	if !errors.Is(err, coachreturn.ErrOrphan) {
+		t.Fatalf("err = %v, want ErrOrphan", err)
 	}
 	if blocks, _ := st.LoadMatchCoachNotes(); len(blocks[orphanKey]) != 0 {
 		t.Errorf("a refused accept wrote a block on %s: %+v", orphanKey, blocks[orphanKey])
@@ -330,8 +334,8 @@ func TestDecide_IsPartialAndRepeatable(t *testing.T) {
 	st := seededStore(t)
 	sheet := stageReturn(t, st, returnedNotes(t), "Sable")
 	for range 3 {
-		got := decide(t, st, sheet.ID, coach.Decision{NoteID: noteIDOne, Decision: coach.DecisionAccepted})
-		if statusesOf(got)[noteIDTwo] != coach.StatusPending || got.Pending != 1 {
+		got := decide(t, st, sheet.ID, coachreturn.Verdict{NoteID: noteIDOne, Decision: coachreturn.DecisionAccepted})
+		if statusesOf(got)[noteIDTwo] != coachreturn.StatusPending || got.Pending != 1 {
 			t.Errorf("an undecided note changed state: %v", statusesOf(got))
 		}
 	}
@@ -347,23 +351,23 @@ func TestDecide_IsPartialAndRepeatable(t *testing.T) {
 func TestDecide_RejectsBeforeWritingAnything(t *testing.T) {
 	tests := []struct {
 		name string
-		bad  coach.Decision
+		bad  coachreturn.Verdict
 		want error
 	}{
-		{"orphan", coach.Decision{NoteID: orphanNoteID, Decision: "accepted"}, coach.ErrReturnOrphan},
-		{"unknown note", coach.Decision{NoteID: coach.NewID(), Decision: "accepted"}, coach.ErrNoteInvalid},
-		{"unknown decision", coach.Decision{NoteID: noteIDOne, Decision: "maybe"}, coach.ErrNoteInvalid},
-		{"empty decision", coach.Decision{NoteID: noteIDOne}, coach.ErrNoteInvalid},
+		{"orphan", coachreturn.Verdict{NoteID: orphanNoteID, Decision: "accepted"}, coachreturn.ErrOrphan},
+		{"unknown note", coachreturn.Verdict{NoteID: coach.NewID(), Decision: "accepted"}, coach.ErrNoteInvalid},
+		{"unknown decision", coachreturn.Verdict{NoteID: noteIDOne, Decision: "maybe"}, coach.ErrNoteInvalid},
+		{"empty decision", coachreturn.Verdict{NoteID: noteIDOne}, coach.ErrNoteInvalid},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			st := seededStore(t)
 			sheet := stageReturn(t, st, returnedNotes(t), "Sable")
-			_, err := coach.Decide(st, sheet.ID, []coach.Decision{{NoteID: noteIDTwo, Decision: "accepted"}, tc.bad}, "Sable")
+			_, err := coachreturn.Decide(st, sheet.ID, []coachreturn.Verdict{{NoteID: noteIDTwo, Decision: "accepted"}, tc.bad}, "Sable")
 			if !errors.Is(err, tc.want) {
 				t.Fatalf("err = %v, want %v", err, tc.want)
 			}
-			after, _ := coach.Sheet(st, sheet.ID, "Sable")
+			after, _ := coachreturn.Get(st, sheet.ID, "Sable")
 			if after.Pending != 2 || st.Reviews[keyRank].ReviewedBy != "" {
 				t.Errorf("a rejected batch was partly applied: pending=%d review=%q", after.Pending, st.Reviews[keyRank].ReviewedBy)
 			}
@@ -377,12 +381,12 @@ func TestDecide_RejectsBeforeWritingAnything(t *testing.T) {
 func TestSheet_StatusPrecedence(t *testing.T) {
 	st := seededStore(t)
 	sheet := stageReturn(t, st, returnedNotes(t), "Sable")
-	decide(t, st, sheet.ID, coach.Decision{NoteID: noteIDOne, Decision: coach.DecisionAccepted})
+	decide(t, st, sheet.ID, coachreturn.Verdict{NoteID: noteIDOne, Decision: coachreturn.DecisionAccepted})
 	// The player hard-deletes Ilios: its key is gone from history.
 	if err := st.HardDeleteMatch(keyIlios); err != nil {
 		t.Fatal(err)
 	}
-	got, err := coach.Sheet(st, sheet.ID, "Sable")
+	got, err := coachreturn.Get(st, sheet.ID, "Sable")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -426,8 +430,8 @@ func TestDecide_TwoCoachesAccumulateOnOneMatch(t *testing.T) {
 	}
 	wren := stageReturn(t, st, payload, "Sable")
 
-	decide(t, st, ordo.ID, coach.Decision{NoteID: noteIDOne, Decision: coach.DecisionAccepted})
-	decide(t, st, wren.ID, coach.Decision{NoteID: wrenFile.Notes[0].NoteID, Decision: coach.DecisionAccepted})
+	decide(t, st, ordo.ID, coachreturn.Verdict{NoteID: noteIDOne, Decision: coachreturn.DecisionAccepted})
+	decide(t, st, wren.ID, coachreturn.Verdict{NoteID: wrenFile.Notes[0].NoteID, Decision: coachreturn.DecisionAccepted})
 
 	blocks := blocksOn(t, st, keyIlios)
 	if want := []string{receivedNoteID, noteIDOne, wrenFile.Notes[0].NoteID}; !reflect.DeepEqual(noteIDsOf(blocks), want) {
@@ -469,12 +473,34 @@ func TestStage_ReimportKeepsAStatusThePlayerMoved(t *testing.T) {
 		t.Fatalf("SetFocusItemStatus: %v", err)
 	}
 
-	if _, already, err := coach.Stage(st, returnedNotes(t), "Sable"); err != nil || !already {
+	if _, already, err := coachreturn.Stage(st, returnedNotes(t), "Sable"); err != nil || !already {
 		t.Fatalf("second Stage = (already %v, %v), want (true, nil)", already, err)
 	}
 
 	again, _ := st.LoadReceivedFocusItems()
 	if len(again) != 1 || again[0].Status != db.FocusDone {
 		t.Errorf("items after re-import = %+v, want the one item still done", again)
+	}
+}
+
+func TestDecide_AcceptKeepsAReviewedOnlyNotesMoments(t *testing.T) {
+	st := seededStore(t)
+	// The shape a moments-only review produces: reviewed_only, no text, every
+	// observation hanging off it as a moment.
+	f := validNotesFile()
+	f.Notes[1].Moments = []coach.Moment{
+		{MomentID: "m1", MatchClock: "03:23", Text: "no off-angle"},
+		{MomentID: "m2", MatchClock: "04:45", Text: "flanking Cassidy"},
+	}
+	sheet := stageReturn(t, st, writeNotes(t, f), "Sable")
+
+	decide(t, st, sheet.ID, coachreturn.Verdict{NoteID: noteIDTwo, Decision: coachreturn.DecisionAccepted})
+
+	block := blockWithNoteID(t, st, f.Notes[1].MatchKey, noteIDTwo)
+	if len(block.Moments) != 2 {
+		t.Fatalf("a moments-only review lost its moments on accept: %+v", block)
+	}
+	if block.Moments[0].MatchClock != "03:23" {
+		t.Errorf("moments should land in reading order, got %q first", block.Moments[0].MatchClock)
 	}
 }

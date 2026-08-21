@@ -9,6 +9,7 @@ import (
 	"recall/pkg/applog"
 	"recall/pkg/bundle"
 	"recall/pkg/coach"
+	"recall/pkg/coachreturn"
 	"recall/pkg/db"
 	"recall/pkg/match"
 	"recall/pkg/review"
@@ -175,8 +176,8 @@ var defaultProblems = []errStatus{
 	{bundle.ErrCoachBundle, probConflict},
 	{coach.ErrNotABundle, probConflict},
 	{coach.ErrNotesUnsupportedSchema, probConflict},
-	{coach.ErrReturnNoMatches, probConflict},
-	{coach.ErrReturnOrphan, probConflict},
+	{coachreturn.ErrNoMatches, probConflict},
+	{coachreturn.ErrOrphan, probConflict},
 	{coach.ErrHandleRequired, probConflict},
 	{coach.ErrCoachNameRequired, probConflict},
 	{coach.ErrNothingToExport, probConflict},

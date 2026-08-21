@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"recall/pkg/coach"
+	"recall/pkg/coachreturn"
 )
 
 // The vocabulary is the contract the schema CHECK, the frontend chips, and
@@ -75,8 +76,8 @@ func TestSentinels_AreDistinct(t *testing.T) {
 	sentinels := []error{
 		coach.ErrNoSession, coach.ErrSessionActive, coach.ErrNotABundle, coach.ErrNoteInvalid,
 		coach.ErrHandleInvalid, coach.ErrHandleRequired, coach.ErrMatchNotInSession,
-		coach.ErrNotesMalformed, coach.ErrNotesUnsupportedSchema, coach.ErrReturnOrphan,
-		coach.ErrReturnNoMatches, coach.ErrCoachNameRequired, coach.ErrNothingToExport,
+		coach.ErrNotesMalformed, coach.ErrNotesUnsupportedSchema, coachreturn.ErrOrphan,
+		coachreturn.ErrNoMatches, coach.ErrCoachNameRequired, coach.ErrNothingToExport,
 	}
 	seen := map[string]bool{}
 	for _, err := range sentinels {

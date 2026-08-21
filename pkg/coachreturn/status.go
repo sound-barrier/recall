@@ -1,8 +1,9 @@
-package coach
+package coachreturn
 
 import (
 	"fmt"
 
+	"recall/pkg/coach"
 	"recall/pkg/db"
 )
 
@@ -15,7 +16,7 @@ type sheetState struct {
 	blockByNoteID map[string]db.MatchCoachNote
 }
 
-func loadSheetState(st ReturnStore) (sheetState, error) {
+func loadSheetState(st Store) (sheetState, error) {
 	keys, err := st.LoadMatchKeys()
 	if err != nil {
 		return sheetState{}, fmt.Errorf("coach: load match keys: %w", err)
@@ -31,7 +32,7 @@ func loadSheetState(st ReturnStore) (sheetState, error) {
 	return sheetState{keys: keys, reviews: reviews, blockByNoteID: blocks}, nil
 }
 
-func loadBlocksByNoteID(st ReturnStore) (map[string]db.MatchCoachNote, error) {
+func loadBlocksByNoteID(st Store) (map[string]db.MatchCoachNote, error) {
 	byKey, err := st.LoadMatchCoachNotes()
 	if err != nil {
 		return nil, fmt.Errorf("coach: load coach notes: %w", err)
@@ -49,7 +50,7 @@ func loadBlocksByNoteID(st ReturnStore) (map[string]db.MatchCoachNote, error) {
 // recorded decision › accepted when the accept's effect is already visible
 // (a block with this note_id, or a coach review for a reviewed_only mark)
 // › pending.
-func (s sheetState) statusOf(n Note, decisions map[string]db.CoachDecision) string {
+func (s sheetState) statusOf(n coach.Note, decisions map[string]db.CoachDecision) string {
 	if !s.keys[n.MatchKey] {
 		return StatusOrphan
 	}
@@ -62,8 +63,8 @@ func (s sheetState) statusOf(n Note, decisions map[string]db.CoachDecision) stri
 	return StatusPending
 }
 
-func (s sheetState) accepted(n Note) bool {
-	if n.Kind == KindReviewedOnly {
+func (s sheetState) accepted(n coach.Note) bool {
+	if n.Kind == coach.KindReviewedOnly {
 		return s.reviews[n.MatchKey].ReviewedBy == reviewedByCoach
 	}
 	_, ok := s.blockByNoteID[n.NoteID]

@@ -25,7 +25,7 @@ func TestExportCoachNotes_PacksTheSessionsWork(t *testing.T) {
 	if coach.SniffArchive(payload) != coach.ArchiveCoachNotes {
 		t.Fatalf("the export does not sniff as a coach notes archive")
 	}
-	file, err := coach.ReadNotesArchive(payload)
+	file, _, err := coach.ReadNotesArchive(payload)
 	mustNoErr(t, err)
 	assertExportedNotesFile(t, file)
 }

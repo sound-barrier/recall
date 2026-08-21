@@ -62,14 +62,6 @@ App\.ParseScreenshots
 # build, so the function looks unreachable.
 NewWithStore
 
-# coach.ReadNotesArchive: the exported archive decoder. Production staging
-# calls the unexported form (it also returns the raw bytes Stage hashes),
-# so the only callers of THIS one are pkg/coach's and pkg/app's external
-# tests — which read back an archive ExportCoachNotes just produced. Same
-# case as NewWithStore: test code isn't in deadcode's call graph. Deleting
-# it and re-exporting through export_test.go does not work, because that
-# shim is only compiled into pkg/coach's own test binary.
-ReadNotesArchive
 
 # parser.ToGolden: per-screenshot-type projection used only by
 # TestParseScreenshot_GoldenFiles to serialize the golden fixtures.

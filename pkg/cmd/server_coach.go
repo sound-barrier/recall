@@ -12,6 +12,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/coach"
+	"recall/pkg/coachreturn"
 	"recall/pkg/match"
 )
 
@@ -399,7 +400,7 @@ func idFromPath(w http.ResponseWriter, r *http.Request, label string) (int64, bo
 // body into the app layer's slice. `*string` values so a JSON `null`
 // verdict is rejected rather than silently decoding to "", and the keys are
 // sorted so a batch applies in a stable order.
-func decodeDecisions(r *http.Request) ([]coach.Decision, error) {
+func decodeDecisions(r *http.Request) ([]coachreturn.Verdict, error) {
 	var body struct {
 		Decisions map[string]*string `json:"decisions"`
 	}
@@ -409,13 +410,13 @@ func decodeDecisions(r *http.Request) ([]coach.Decision, error) {
 	if body.Decisions == nil {
 		return nil, errors.New(`body must be {"decisions":{"<note_id>":"accepted"|"skipped"}}`)
 	}
-	out := make([]coach.Decision, 0, len(body.Decisions))
+	out := make([]coachreturn.Verdict, 0, len(body.Decisions))
 	for _, noteID := range slices.Sorted(maps.Keys(body.Decisions)) {
 		verdict := body.Decisions[noteID]
 		if verdict == nil {
 			return nil, fmt.Errorf("decisions[%q] must be a string, not null", noteID)
 		}
-		out = append(out, coach.Decision{NoteID: noteID, Decision: *verdict})
+		out = append(out, coachreturn.Verdict{NoteID: noteID, Decision: *verdict})
 	}
 	return out, nil
 }

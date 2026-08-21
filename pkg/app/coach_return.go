@@ -5,6 +5,7 @@ import (
 
 	"recall/pkg/bundle"
 	"recall/pkg/coach"
+	"recall/pkg/coachreturn"
 	"recall/pkg/db"
 )
 
@@ -31,7 +32,7 @@ type ImportOutcome struct {
 	Kind     string             `json:"kind"`
 	Imported int                `json:"imported"`
 	Skipped  int                `json:"skipped"`
-	Return   *coach.ReturnSheet `json:"return,omitempty"`
+	Return   *coachreturn.Sheet `json:"return,omitempty"`
 }
 
 // ImportMatches accepts either archive a user can hand Recall, telling
@@ -59,7 +60,7 @@ func (a *App) ImportMatches(payload []byte) (ImportOutcome, error) {
 // same file imported twice stages once — the second import re-opens the
 // sheet it already has, decisions intact.
 func (a *App) stageCoachNotes(payload []byte) (ImportOutcome, error) {
-	sheet, _, err := coach.Stage(a.store, payload, a.settingsSnapshot().PlayerHandle)
+	sheet, _, err := coachreturn.Stage(a.store, payload, a.settingsSnapshot().PlayerHandle)
 	if err != nil {
 		return ImportOutcome{}, err
 	}
@@ -68,25 +69,25 @@ func (a *App) stageCoachNotes(payload []byte) (ImportOutcome, error) {
 
 // ListCoachReturns renders every staged return, newest first — the
 // player's inbox. Undecided notes are what the Matches banner counts.
-func (a *App) ListCoachReturns() ([]coach.ReturnSheet, error) {
-	return coach.Sheets(a.store, a.settingsSnapshot().PlayerHandle)
+func (a *App) ListCoachReturns() ([]coachreturn.Sheet, error) {
+	return coachreturn.Sheets(a.store, a.settingsSnapshot().PlayerHandle)
 }
 
 // GetCoachReturn renders one staged return. db.ErrCoachReturnUnknown when
 // id names none.
-func (a *App) GetCoachReturn(id int64) (coach.ReturnSheet, error) {
-	return coach.Sheet(a.store, id, a.settingsSnapshot().PlayerHandle)
+func (a *App) GetCoachReturn(id int64) (coachreturn.Sheet, error) {
+	return coachreturn.Get(a.store, id, a.settingsSnapshot().PlayerHandle)
 }
 
 // DecideCoachReturn applies the player's verdicts and returns the
 // recomputed sheet. An accept writes the coach's block onto the match and
 // marks it reviewed by coach; a skip removes a block an earlier accept
 // wrote. The batch is validated whole before anything is written.
-func (a *App) DecideCoachReturn(id int64, decisions []coach.Decision) (coach.ReturnSheet, error) {
+func (a *App) DecideCoachReturn(id int64, decisions []coachreturn.Verdict) (coachreturn.Sheet, error) {
 	if err := a.assertNoCoachSession(); err != nil {
-		return coach.ReturnSheet{}, err
+		return coachreturn.Sheet{}, err
 	}
-	return coach.Decide(a.store, id, decisions, a.settingsSnapshot().PlayerHandle)
+	return coachreturn.Decide(a.store, id, decisions, a.settingsSnapshot().PlayerHandle)
 }
 
 // DeleteCoachReturn drops a staged return, its decisions, and the focus

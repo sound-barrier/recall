@@ -60,7 +60,7 @@ func TestNotesArchive_RoundTrip(t *testing.T) {
 		t.Error("SniffArchive(notes archive) != ArchiveCoachNotes")
 	}
 
-	got, err := coach.ReadNotesArchive(payload)
+	got, _, err := coach.ReadNotesArchive(payload)
 	if err != nil {
 		t.Fatalf("ReadNotesArchive: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestReadNotesArchive_Rejects(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := coach.ReadNotesArchive(tc.payload)
+			_, _, err := coach.ReadNotesArchive(tc.payload)
 			if !errors.Is(err, tc.want) {
 				t.Fatalf("err = %v, want %v", err, tc.want)
 			}
@@ -153,7 +153,7 @@ func TestReadNotesArchive_Rejects(t *testing.T) {
 	forward["future_field"] = true
 	forwardJSON, _ := json.Marshal(forward)
 	payload := append([]byte("\xef\xbb\xbf"), zipWithEntries(t, map[string][]byte{"notes.json": forwardJSON})...)
-	got, err := coach.ReadNotesArchive(payload)
+	got, _, err := coach.ReadNotesArchive(payload)
 	if err != nil {
 		t.Fatalf("ReadNotesArchive(bom + unknown field) = %v", err)
 	}
@@ -168,7 +168,7 @@ func TestReadNotesArchive_NeverReadsTheLedger(t *testing.T) {
 		"notes.json":  validJSON,
 		"ledger.html": bytes.Repeat([]byte("<script>"), 1<<20),
 	})
-	if _, err := coach.ReadNotesArchive(hostile); err != nil {
+	if _, _, err := coach.ReadNotesArchive(hostile); err != nil {
 		t.Fatalf("a hostile ledger.html must not affect the read: %v", err)
 	}
 }
