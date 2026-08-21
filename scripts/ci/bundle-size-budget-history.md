@@ -298,3 +298,37 @@ Vue can no longer emit it once per scope hash. The same bookkeeping the
 2026-08 "404000 → 402000, DOWN" row records, run in the other direction.
 
 Measured 80213B initial / 415228B total.
+
+## 2026-08 — the note editor
+
+`MAX_TOTAL_JS_BYTES` 1768000 → 2124000. Nothing else moved.
+
+The largest single dependency this app has taken: +350782B raw, of which
+345591B is one chunk — ProseMirror plus `@tiptap/core` and eleven extensions.
+Gzipped, the number a reader waits for, that chunk is 102KB.
+
+What it buys is that a note stops lying about itself. Notes have always been
+markdown written into a bare `<textarea>`: you typed `**hold the angle**`, you
+looked at asterisks, and the only way to learn what your coach actually
+received was to leave the room and open the note block. The toolbar made it
+worse — pressing **Title** inserted a `#` and nothing on screen changed. The
+editor renders as you type now, against the *same* grammar the exported ledger
+renders, pinned case-for-case by the fixture both markdown implementations
+already answer to.
+
+**`MAX_INITIAL_JS_BYTES` did not move, and that is the load-bearing part.**
+The editor is behind a dynamic import in `NoteWriter`, which sits behind two
+already-lazy views, so it never enters `index.html`'s modulepreload graph —
+measured 347482B initial against the 348000 ceiling.
+
+That boundary is more fragile than a byte budget can express. In the first
+draft of this work `NoteWriter` imported a length constant from
+`note-tiptap.ts`, and that one static import dragged every `@tiptap` package
+into `NoteWriter`'s own chunk — the `defineAsyncComponent` still present, still
+doing nothing, total JS at 2.12MB with none of the laziness. The constant moved
+to `note-doc.ts` (where it belongs anyway: the cap is on the serialized
+markdown), and `App.lazy-views.test.ts` now asserts the module graph directly —
+exactly two files may statically import `@tiptap`. Proven by mutation: put the
+import back and that test fails.
+
+Measured 2117506B initial / total; cap set ~6.5KB above per the convention.

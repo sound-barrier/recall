@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest'
 
 import CoachNoteEditor from '@/components/coach/notes/CoachNoteEditor.vue'
 import { emptyDraft, type CoachNoteDraft } from '@/match/coach/coach-notes'
+import { markdownField } from '@/test-utils'
 
 const MATCH_KEY = 'match-2026-08-08T21-14-00'
 
@@ -67,7 +68,7 @@ describe('CoachNoteEditor — focus chips', () => {
 describe('CoachNoteEditor — the note', () => {
   it('shows the draft text and reports what the coach types', async () => {
     const view = renderEditor({ text: 'Late peel on B.' })
-    const note = screen.getByRole('textbox', { name: 'Note' })
+    const note = await markdownField()
     expect(note).toHaveValue('Late peel on B.')
     await fireEvent.update(note, 'Hold high ground until the second bubble.')
     expect(lastUpdate(view).text).toBe('Hold high ground until the second bubble.')
@@ -194,9 +195,9 @@ describe('CoachNoteEditor — moving and saving', () => {
 describe('CoachNoteEditor — blocked from saving', () => {
   const REASON = 'Say who this bundle is about before writing notes.'
 
-  it('refuses the typing and gives the reason', () => {
+  it('refuses the typing and gives the reason', async () => {
     renderEditor({}, { blockedReason: REASON })
-    expect(screen.getByRole('textbox', { name: 'Note' })).toBeDisabled()
+    expect(await markdownField()).toBeDisabled()
     expect(screen.getByRole('textbox', { name: 'In-match clock' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'positioning' })).toBeDisabled()
     expect(screen.getByRole('switch', { name: 'Reviewed' })).toBeDisabled()
@@ -206,7 +207,7 @@ describe('CoachNoteEditor — blocked from saving', () => {
   it('takes the typing again once the block lifts', async () => {
     const view = renderEditor({}, { blockedReason: REASON })
     await view.rerender({ blockedReason: '' })
-    expect(screen.getByRole('textbox', { name: 'Note' })).toBeEnabled()
+    expect(await markdownField()).toBeEnabled()
     expect(screen.getByRole('status')).toHaveTextContent('Autosaves as you write')
   })
 })
@@ -216,13 +217,13 @@ describe('CoachNoteEditor — blocked from saving', () => {
 // to the coach filing notes about someone else, and duplicated what the
 // Moments strip already owns per match.
 describe('CoachNoteEditor — the self voice is prose', () => {
-  it('drops the clock and the tag chips when the matches are your own', () => {
+  it('drops the clock and the tag chips when the matches are your own', async () => {
     renderEditor({}, { voice: 'your' })
     expect(screen.queryByLabelText('In-match clock')).not.toBeInTheDocument()
     expect(screen.queryByRole('group', { name: 'Focus tags' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'positioning' })).not.toBeInTheDocument()
     // What stays: the prose, its toolbar, and the nothing-to-add switch.
-    expect(screen.getByRole('textbox', { name: 'Note' })).toBeInTheDocument()
+    expect(await markdownField()).toBeInTheDocument()
     expect(screen.getByRole('toolbar', { name: 'Formatting' })).toBeInTheDocument()
     expect(screen.getByRole('switch', { name: 'Nothing to add' })).toBeInTheDocument()
   })
@@ -235,88 +236,9 @@ describe('CoachNoteEditor — the self voice is prose', () => {
   })
 })
 
-describe('CoachNoteEditor — the formatting toolbar', () => {
-  // The editor is CONTROLLED — it renders from the draft prop and never
-  // holds one — so a toolbar test seeds the text through the prop, the way
-  // the room's store feeds it back, and only the SELECTION comes from the
-  // field.
-  function seeded(text: string) {
-    const view = renderEditor({ text }, { voice: 'your' })
-    const box = screen.getByRole('textbox', { name: 'Note' }) as HTMLTextAreaElement
-    return { view, box }
-  }
-
-  it('wraps the selection in bold', async () => {
-    const { view, box } = seeded('hold the angle')
-    box.setSelectionRange(5, 8) // "the"
-    await fireEvent.click(screen.getByRole('button', { name: 'Bold' }))
-    expect(lastUpdate(view).text).toBe('hold **the** angle')
-  })
-
-  it('wraps the selection in italic', async () => {
-    const { view, box } = seeded('hold the angle')
-    box.setSelectionRange(0, 4)
-    await fireEvent.click(screen.getByRole('button', { name: 'Italic' }))
-    expect(lastUpdate(view).text).toBe('*hold* the angle')
-  })
-
-  it('wraps the selection in strikethrough', async () => {
-    const { view, box } = seeded('chase')
-    box.setSelectionRange(0, 5)
-    await fireEvent.click(screen.getByRole('button', { name: 'Strikethrough' }))
-    expect(lastUpdate(view).text).toBe('~~chase~~')
-  })
-
-  it('unwraps a mark that is already there', async () => {
-    const { view, box } = seeded('hold **the** angle')
-    box.setSelectionRange(5, 12) // "**the**"
-    await fireEvent.click(screen.getByRole('button', { name: 'Bold' }))
-    expect(lastUpdate(view).text).toBe('hold the angle')
-  })
-
-  it('prefixes the line for a title', async () => {
-    const { view, box } = seeded('Ult timing')
-    box.setSelectionRange(0, 0)
-    await fireEvent.click(screen.getByRole('button', { name: 'Title' }))
-    expect(lastUpdate(view).text).toBe('# Ult timing')
-  })
-
-  it('a second press on a title takes it off', async () => {
-    const { view, box } = seeded('# Ult timing')
-    box.setSelectionRange(0, 0)
-    await fireEvent.click(screen.getByRole('button', { name: 'Title' }))
-    expect(lastUpdate(view).text).toBe('Ult timing')
-  })
-
-  it('replaces one line mark with another rather than stacking them', async () => {
-    const { view, box } = seeded('- angle')
-    box.setSelectionRange(0, 0)
-    await fireEvent.click(screen.getByRole('button', { name: 'Title' }))
-    expect(lastUpdate(view).text).toBe('# angle')
-  })
-
-  it('prefixes every selected line for a bulleted list', async () => {
-    const { view, box } = seeded('angle\nult\ncomms')
-    box.setSelectionRange(0, 15)
-    await fireEvent.click(screen.getByRole('button', { name: 'Bulleted list' }))
-    expect(lastUpdate(view).text).toBe('- angle\n- ult\n- comms')
-  })
-
-  it('numbers an ordered list down the selection', async () => {
-    const { view, box } = seeded('angle\nult')
-    box.setSelectionRange(0, 9)
-    await fireEvent.click(screen.getByRole('button', { name: 'Numbered list' }))
-    expect(lastUpdate(view).text).toBe('1. angle\n2. ult')
-  })
-
-  it('is disabled with the reason while writes are blocked', () => {
-    renderEditor({}, { voice: 'your', blockedReason: 'Writes are locked.' })
-    const bold = screen.getByRole('button', { name: 'Bold' })
-    expect(bold).toBeDisabled()
-    expect(bold).toHaveAccessibleDescription('Writes are locked.')
-  })
-})
-
+// The toolbar's own behavior moved to NoteWriter.test.ts with the toolbar.
+// What stays here is this editor's WIRING of it: the "Nothing to add" switch
+// turning the tools off is a fact about the note, not about the writer.
 describe('CoachNoteEditor — the switch and the toolbar', () => {
   it('turns the toolbar off while "Nothing to add" is on', () => {
     renderEditor({ kind: 'reviewed_only' }, { voice: 'your' })
@@ -324,24 +246,9 @@ describe('CoachNoteEditor — the switch and the toolbar', () => {
     expect(screen.getByRole('button', { name: 'Bulleted list' })).toBeDisabled()
   })
 
-  it('does not let a formatting press convert a "Nothing to add" note', async () => {
-    // Bold on an empty reviewed_only note wrote `****`, which reads as a
-    // written note — the switch then disabled itself with "clear it first"
-    // and there was no way back.
-    const view = renderEditor({ kind: 'reviewed_only' }, { voice: 'your' })
-    await fireEvent.click(screen.getByRole('button', { name: 'Bold' }))
-    expect(view.emitted('update')).toBeUndefined()
-  })
-
-  it('caps the field at what the server accepts', () => {
-    renderEditor({}, { voice: 'your' })
-    expect(screen.getByRole('textbox', { name: /note/i })).toHaveAttribute('maxlength', '4000')
-  })
-
-  it('refuses a formatting press that would push the note past the cap', async () => {
-    const view = renderEditor({ text: 'x'.repeat(4000) }, { voice: 'your' })
-    await fireEvent.click(screen.getByRole('button', { name: 'Bulleted list' }))
-    expect(view.emitted('update')).toBeUndefined()
+  it('leaves the tools on for an ordinary note', () => {
+    renderEditor({ text: 'something' }, { voice: 'your' })
+    expect(screen.getByRole('button', { name: 'Bold' })).toBeEnabled()
   })
 })
 
@@ -357,7 +264,7 @@ describe('CoachNoteEditor — your own voice', () => {
     // to clear them — and a leftover clock on a reviewed_only kind is a
     // shape the server refuses, which would fail every autosave forever.
     const view = renderEditor({ text: 'peel', focusTags: ['positioning'], matchClock: '04:12' }, { voice: 'your' })
-    await fireEvent.update(screen.getByRole('textbox', { name: /note/i }), 'peel earlier')
+    await fireEvent.update(await markdownField(), 'peel earlier')
     expect(lastUpdate(view).focusTags).toEqual([])
     expect(lastUpdate(view).matchClock).toBe('')
   })
@@ -368,13 +275,6 @@ describe('CoachNoteEditor — the typing itself', () => {
   // A note is prose, so the useful behavior is the opposite: underline what
   // looks wrong, offer alternatives on right-click, and never rewrite what
   // someone actually typed.
-  it('asks to be underlined, not corrected', () => {
-    renderEditor({}, { voice: 'your' })
-    const field = screen.getByRole('textbox', { name: /note/i })
-    expect(field).toHaveAttribute('spellcheck', 'true')
-    expect(field).toHaveAttribute('autocorrect', 'off')
-  })
-
   // A focus tag is a filing label from a small vocabulary, not a sentence.
   // Underlining "ult_economy" is noise and correcting it is damage.
   it('leaves the tag field out of it', async () => {

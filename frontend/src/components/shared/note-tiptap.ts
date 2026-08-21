@@ -29,10 +29,7 @@ import { BulletList, ListItem, OrderedList } from '@tiptap/extension-list'
 import { Placeholder, UndoRedo } from '@tiptap/extensions'
 
 import { SPACE, topHeadingLevel, type Block } from '@/match/markdown/note-blocks'
-import { docToMarkdown, textToDoc, type NoteDoc } from '@/match/markdown/note-doc'
-
-/** Runes, not UTF-16 units — pkg/coach/note.go counts the same way. */
-export const MAX_NOTE_TEXT = 4000
+import { docToMarkdown, textToDoc, MAX_NOTE_TEXT, type NoteDoc } from '@/match/markdown/note-doc'
 
 /** A doc as our plain-JSON shape. PM's toJSON is structurally the same. */
 function asNoteDoc(doc: PMNode): NoteDoc {
@@ -93,7 +90,7 @@ const NoteStrike = Strike.extend({
  * `  - deep` is a sibling bullet to renderMarkdown, and a document that nested
  * would serialize to something that reads back flat.
  *
- * The paragraph is not decorative and must not be optimised away. `inline*`
+ * The paragraph is not decorative and must not be optimized away. `inline*`
  * looks tempting, because it would emit `<li>text` exactly as the ledger does
  * instead of `<li><p>text</p>` — but prosemirror-schema-list's commands split
  * and toggle a BLOCK inside the item, so with inline content splitListItem and
@@ -111,7 +108,13 @@ const NoteStrike = Strike.extend({
 const NoteListItem = ListItem.extend({
   content: 'paragraph',
   addKeyboardShortcuts() {
-    return {}
+    // Drop Tab and Shift-Tab, KEEP everything else. Returning `{}` here is the
+    // obvious-looking move and it is wrong: the parent also binds Enter to
+    // splitListItem, so an empty map takes Enter with it and a list can never
+    // grow a second item. Found by pressing Enter in a browser — a unit test
+    // calling commands.splitListItem() directly still passed.
+    const { Tab: _tab, 'Shift-Tab': _shiftTab, ...rest } = this.parent?.() ?? {}
+    return rest
   },
 })
 
@@ -275,6 +278,23 @@ const PlainTextOnly = Extension.create({
     })]
   },
 })
+
+/**
+ * The tools whose pressed state the editor reports, and how to ask about each.
+ *
+ * One list so the toolbar and the editor cannot disagree about what "Title is
+ * on" means — the toolbar renders from these keys and the editor answers from
+ * the same ones.
+ */
+export const TOOL_STATE: readonly { key: string; name: string; attrs?: Record<string, unknown> }[] = [
+  { key: 'bold', name: 'bold' },
+  { key: 'italic', name: 'italic' },
+  { key: 'strike', name: 'strike' },
+  { key: 'title', name: 'heading', attrs: { level: 1 } },
+  { key: 'subtitle', name: 'heading', attrs: { level: 2 } },
+  { key: 'bullet', name: 'bulletList' },
+  { key: 'number', name: 'orderedList' },
+]
 
 /** The whole schema, in one place, for the editor and its tests. */
 export function noteExtensions(placeholder: string) {

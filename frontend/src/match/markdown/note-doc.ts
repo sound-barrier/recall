@@ -9,7 +9,7 @@
  * does not hold, we find out before adding ~400 KB of it.
  *
  * The load side makes NO lexical decisions. It consumes what note-blocks.ts
- * parsed, so the editor cannot recognise a heading the ledger would not.
+ * parsed, so the editor cannot recognize a heading the ledger would not.
  *
  * The save side is the only new opinion in the feature, and it is small: three
  * marks in a canonical order, `- ` for bullets, `N. ` for numbers, `#`/`##`
@@ -22,6 +22,17 @@ import {
   blocksOf, inlineSpans, topHeadingLevel,
   type Block, type Span, type SpanMark,
 } from '@/match/markdown/note-blocks'
+
+/**
+ * The longest note the server will take, in RUNES — pkg/coach/note.go counts
+ * the same way, over the same serialized markdown.
+ *
+ * It lives here rather than beside the editor because the editor is behind a
+ * dynamic import: a component reaching into note-tiptap.ts for this constant
+ * pulls every @tiptap package into its own static chunk, and the async
+ * boundary stops meaning anything.
+ */
+export const MAX_NOTE_TEXT = 4000
 
 /** The editor's mark names. ProseMirror's, not the HTML tag names. */
 export type DocMark = 'bold' | 'italic' | 'strike'

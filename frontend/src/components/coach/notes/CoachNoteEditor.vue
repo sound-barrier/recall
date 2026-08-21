@@ -3,9 +3,7 @@ import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 
 import { SAVE_LABEL, type CoachSaveState } from '@/components/coach/room/coach-room-props'
 import type { RoomVoice } from '@/components/coach/room/coach-room-props'
-import {
-  applyInlineMark, applyLineMark, type InlineMark, type LineMark,
-} from '@/match/markdown/note-toolbar'
+import NoteWriter from '@/components/shared/NoteWriter.vue'
 import {
   FOCUS_TAGS, focusTagLabel, noteMark, parseMatchClock, type CoachNoteDraft,
 } from '@/match/coach/coach-notes'
@@ -45,7 +43,6 @@ const emit = defineEmits<{
 
 const CLOCK_HINT_ID = 'coach-note-clock-hint'
 
-const noteField = useTemplateRef<HTMLTextAreaElement>('noteField')
 const clockRaw = ref(props.draft.matchClock)
 const addingTag = ref(false)
 const newTag = ref('')
@@ -77,7 +74,6 @@ const blocked = computed(() => props.blockedReason !== '')
 // carries it so typing stops at the cap, and the toolbar checks it so a Bold
 // press at exactly 4000 cannot push the note into a state where every
 // autosave fails with nothing on screen to explain it.
-const MAX_NOTE_TEXT = 4000
 
 // Formatting is off while the switch says there is nothing to add. Pressing
 // Bold on an empty reviewed_only note used to write `****`, which reads as a
@@ -135,60 +131,6 @@ function startAddingTag(): void {
   addingTag.value = true
   void nextTick(() => newTagField.value?.focus())
 }
-
-function onNoteInput(e: Event): void {
-  if (!(e.target instanceof HTMLTextAreaElement)) return
-  emitDraft({ kind: 'note', text: e.target.value })
-}
-
-// The toolbar reads the live selection off the field, asks the pure helper
-// for the next (text, selection), emits the draft, and puts the caret back
-// where the helper said — the editor is controlled, so the value only
-// returns through the prop and the selection would otherwise collapse.
-function applyEdit(next: { text: string; start: number; end: number }): void {
-  if (next.text.length > MAX_NOTE_TEXT) return
-  emitDraft({ kind: 'note', text: next.text })
-  void nextTick(() => {
-    const field = noteField.value
-    if (!field) return
-    field.focus()
-    field.setSelectionRange(next.start, next.end)
-  })
-}
-
-function markInline(mark: InlineMark): void {
-  const field = noteField.value
-  if (!field || toolsDisabled.value) return
-  applyEdit(applyInlineMark(props.draft.text, field.selectionStart, field.selectionEnd, mark))
-}
-
-function markLine(mark: LineMark): void {
-  const field = noteField.value
-  if (!field || toolsDisabled.value) return
-  applyEdit(applyLineMark(props.draft.text, field.selectionStart, field.selectionEnd, mark))
-}
-
-// ⌘/Ctrl+B and +I, the two every text field on every platform answers.
-function onNoteKeydown(e: KeyboardEvent): void {
-  if (!(e.metaKey || e.ctrlKey) || e.altKey || toolsDisabled.value) return
-  const key = e.key.toLowerCase()
-  if (key !== 'b' && key !== 'i') return
-  e.preventDefault()
-  markInline(key === 'b' ? 'bold' : 'italic')
-}
-
-const TOOLBAR_INLINE: readonly { mark: InlineMark; label: string; glyph: string }[] = [
-  { mark: 'bold', label: 'Bold', glyph: 'B' },
-  { mark: 'italic', label: 'Italic', glyph: 'I' },
-  { mark: 'strike', label: 'Strikethrough', glyph: 'S' },
-]
-
-const TOOLBAR_LINE: readonly { mark: LineMark; label: string; glyph: string }[] = [
-  { mark: 'title', label: 'Title', glyph: 'H1' },
-  { mark: 'subtitle', label: 'Subheading', glyph: 'H2' },
-  { mark: 'bullet', label: 'Bulleted list', glyph: '•' },
-  { mark: 'number', label: 'Numbered list', glyph: '1.' },
-]
 
 function onClockInput(e: Event): void {
   if (!(e.target instanceof HTMLInputElement)) return
@@ -271,52 +213,31 @@ function toggleReviewed(): void {
       >
     </div>
 
-    <label class="eyebrow ink note-label" for="coach-note-text">Note</label>
-    <!-- Markdown, written by buttons. The value stays the plain string the
+    <!-- Visual furniture, not a <label>: NoteWriter names its own field, and
+         a second name (or a `for` pointing at a contenteditable) would be
+         announced twice or not at all. -->
+    <p class="eyebrow ink note-label">
+      Note
+    </p>
+    <!-- Markdown, and now visibly so. The value stays the plain string the
          wire already carries; every surface that reads it renders the same
-         grammar (NoteProse / RenderMarkdown). -->
-    <div class="note-toolbar" role="toolbar" aria-label="Formatting">
-      <button
-        v-for="b in TOOLBAR_INLINE"
-        :key="b.mark"
-        type="button"
-        class="paper-chip note-tool"
-        :class="{ 'note-tool-em': b.mark === 'italic', 'note-tool-del': b.mark === 'strike' }"
-        :aria-label="b.label"
-        :disabled="toolsDisabled"
-        :title="toolsDisabledReason ?? b.label"
-        @click="markInline(b.mark)"
-      >
-        {{ b.glyph }}
-      </button>
-      <span class="note-tool-sep" aria-hidden="true" />
-      <button
-        v-for="b in TOOLBAR_LINE"
-        :key="b.mark"
-        type="button"
-        class="paper-chip note-tool"
-        :aria-label="b.label"
-        :disabled="toolsDisabled"
-        :title="toolsDisabledReason ?? b.label"
-        @click="markLine(b.mark)"
-      >
-        {{ b.glyph }}
-      </button>
-    </div>
-    <textarea
-      id="coach-note-text"
-      ref="noteField"
-      class="note-text"
-      rows="5"
-      spellcheck="true"
-      autocorrect="off"
-      :maxlength="MAX_NOTE_TEXT"
-      :value="draft.text"
-      :disabled="blocked"
-      :title="blocked ? blockedReason : undefined"
+         grammar (NoteProse / RenderMarkdown), and so does the editor. -->
+    <!-- :key is load-bearing. Moving down the reel changes props on the SAME
+         instance (which is why the matchKey watchers above exist), so without
+         a key the writer would keep the previous note's Markdown/Formatted
+         choice — and, worse for a document model, keep its undo history and
+         its editor state across two different players' notes. -->
+    <NoteWriter
+      :key="matchKey"
+      :text="draft.text"
+      label="Note"
       :placeholder="notePlaceholder"
-      @input="onNoteInput"
-      @keydown="onNoteKeydown"
+      :disabled="blocked"
+      :tools-disabled="toolsDisabled"
+      :disabled-reason="toolsDisabledReason ?? undefined"
+      :blocked-reason="blocked ? blockedReason : undefined"
+      surface="paper"
+      @update:text="emitDraft({ kind: 'note', text: $event })"
     />
 
     <div class="note-row">
@@ -412,32 +333,7 @@ function toggleReviewed(): void {
 
 /* The formatting row. Chips, not buttons with chrome — the note is a sheet
    of paper and the tools sit on it like a stamp set. */
-.note-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.note-tool {
-  min-width: 1.9rem;
-  justify-content: center;
-  font-family: var(--mono);
-  font-size: var(--type-3xs);
-  font-weight: 700;
-}
-
-.note-tool-em { font-style: italic; }
-.note-tool-del { text-decoration: line-through; }
-
-.note-tool-sep {
-  width: 1px;
-  height: 1.1rem;
-  margin: 0 0.15rem;
-  background: var(--paper-rule);
-}
-
-.note-new-tag, .note-text, .note-clock {
+.note-new-tag, .note-clock {
   font-family: var(--body);
   font-size: var(--type-lg);
   color: var(--ink);
@@ -453,11 +349,6 @@ function toggleReviewed(): void {
   font-size: var(--type-xs);
 }
 
-.note-text {
-  padding: 0.5rem 0.6rem;
-  line-height: 1.5;
-  resize: vertical;
-}
 
 .note-row {
   display: flex;
