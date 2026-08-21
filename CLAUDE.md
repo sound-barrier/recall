@@ -521,8 +521,14 @@ data structures rather than observable, public behavior.
   of 0.x versions — pick a new one deliberately, ≥7 days old, regenerate +
   diff `src/client`); **wails/v3 + wails3 CLI + @wailsio/runtime** move in
   lockstep (the CLI generates bindings the module must understand — bump all
-  three in one commit); the **npm `overrides` block** pins transitive-CVE
-  fixes (drop an entry once the direct dep ships a fixed tree).
+  three in one commit); the **13 `@tiptap/*` packages** are exact-pinned and
+  move in lockstep too — `@tiptap/pm` is a single ProseMirror bundle every
+  extension resolves its `prosemirror-*` peers through, so a split version set
+  loads two copies of `prosemirror-model` and every `instanceof Node` check
+  quietly starts answering false (bump all 13 in one commit, then run the
+  34-case fixture suites in `note-tiptap.test.ts`); the **npm `overrides`
+  block** pins transitive-CVE fixes (drop an entry once the direct dep ships a
+  fixed tree).
 
 - **Use `tmp/` under the repo root for ad-hoc scratch files — never `/tmp/...`
   or any path outside the repo root.** PR-body drafts, intermediate `jq` output,
