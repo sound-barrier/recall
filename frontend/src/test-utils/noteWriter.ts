@@ -26,9 +26,19 @@ export async function markdownField(name = 'Note'): Promise<HTMLTextAreaElement>
  * A dynamic import is a real module load, so a microtask flush is not enough —
  * without this the field is simply absent and the failure reads as a missing
  * element rather than a slow one.
+ *
+ * WAITING for the field, not sleeping a fixed budget: the old version burned
+ * 100ms and hoped, which held locally and then lost the race the first time
+ * the suite ran under coverage instrumentation. How long a module takes to
+ * load is not something a test gets to assume.
  */
-export async function editorReady(): Promise<void> {
-  for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 5))
+export async function editorReady(name = 'Note'): Promise<void> {
+  await screen.findByRole('textbox', { name })
+  // The field existing is not the whole of "ready": the editor PUSHES its
+  // active-tool state on create, and the toolbar renders that a tick later —
+  // so a test that mounts and immediately asks which block it is in would see
+  // every tool dark.
+  await new Promise((r) => setTimeout(r, 0))
 }
 
 /**
