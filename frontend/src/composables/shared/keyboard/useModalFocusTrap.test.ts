@@ -86,6 +86,30 @@ describe('useModalFocusTrap', () => {
     expect(focusSpy).toHaveBeenCalled()
   })
 
+  // A note editor is a contenteditable with no tabindex. The browser will
+  // happily Tab out of one, so if the ring does not contain it, focus leaves
+  // the modal — the exact failure the trap exists to prevent, and one no axe
+  // rule catches. Three modals hold a note editor now.
+  it('counts a contenteditable as part of the ring', async () => {
+    const open = ref(false)
+    const { cancel, box } = buildModalDOM()
+    const editor = document.createElement('div')
+    editor.setAttribute('contenteditable', 'true')
+    box.appendChild(editor)
+    useModalFocusTrap(open, { containerSelector: '.modal-box' })
+    open.value = true
+    await nextTick()
+
+    // The editor is now LAST in the box, so Tab from it must wrap to the first.
+    editor.focus()
+    const focusSpy = vi.spyOn(cancel, 'focus')
+    const ev = new KeyboardEvent('keydown', { key: 'Tab', cancelable: true })
+    const prevented = vi.spyOn(ev, 'preventDefault')
+    document.dispatchEvent(ev)
+    expect(prevented).toHaveBeenCalled()
+    expect(focusSpy).toHaveBeenCalled()
+  })
+
   it('Shift+Tab from the first focusable wraps to the last', async () => {
     const open = ref(false)
     const { cancel, confirm } = buildModalDOM()
