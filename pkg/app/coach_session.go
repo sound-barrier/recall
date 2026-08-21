@@ -172,7 +172,7 @@ func (a *App) PutCoachNote(matchKey string, in coach.NoteInput) (coach.Note, err
 	if err != nil {
 		return coach.Note{}, err
 	}
-	saved, err := a.store.UpsertCoachNote(coach.CoachNoteFromInput(playerRef, matchKey, normalized))
+	saved, err := a.store.UpsertCoachNote(coach.NoteToRow(playerRef, matchKey, normalized))
 	if err != nil {
 		return coach.Note{}, fmt.Errorf("coach: save note: %w", err)
 	}

@@ -350,7 +350,40 @@ func (s *SQLStore) DeleteCoachNoteMoment(playerRef int64, momentID string) error
 // LoadCoachNoteMoments reads every moment for one player, keyed by the PUBLIC
 // note id its parent carries — the same id the API path uses, so a caller
 // never has to know a row id.
+// scannedMoment pairs a moment with its row id, which the tag join needs and
+// the caller never sees.
+type scannedMoment struct {
+	rowID  int64
+	moment CoachNoteMoment
+}
+
+// LoadCoachNoteMoments reads every moment on a player's coach notes, keyed by
+// note id. Three steps, one each: read the moments, read their tags, put them
+// together.
 func (s *SQLStore) LoadCoachNoteMoments(playerRef int64) (map[string][]CoachNoteMoment, error) {
+	all, err := s.scanCoachNoteMoments(playerRef)
+	if err != nil {
+		return nil, err
+	}
+	tagByRowID, err := s.loadCoachMomentTags(playerRef)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string][]CoachNoteMoment{}
+	for _, row := range all {
+		row.moment.FocusTag = tagByRowID[row.rowID]
+		out[row.moment.NoteID] = append(out[row.moment.NoteID], row.moment)
+	}
+	return out, nil
+}
+
+// scanCoachNoteMoments reads the moments flat.
+//
+// Flat, and assembled by the caller — NOT appended into the output map while
+// holding pointers into it. append reallocates, and a pointer taken before a
+// regrow then decorates a copy nobody reads: the tags would silently vanish
+// for every moment but the last.
+func (s *SQLStore) scanCoachNoteMoments(playerRef int64) ([]scannedMoment, error) {
 	rows, err := s.db.Query(
 		`SELECT m.id, m.moment_id, n.note_id, m.match_clock, m.text, m.sort_order,
 		        m.created_at, m.updated_at
@@ -363,17 +396,9 @@ func (s *SQLStore) LoadCoachNoteMoments(playerRef int64) (map[string][]CoachNote
 	}
 	defer func() { _ = rows.Close() }()
 
-	// Scanned flat and assembled at the end, NOT appended into the output map
-	// while holding pointers into it: append reallocates, and a pointer taken
-	// before a regrow then decorates a copy nobody reads. The tags loaded
-	// below would silently vanish for every moment but the last.
-	type scanned struct {
-		rowID  int64
-		moment CoachNoteMoment
-	}
-	all := []scanned{}
+	all := []scannedMoment{}
 	for rows.Next() {
-		var row scanned
+		var row scannedMoment
 		m := &row.moment
 		if err := rows.Scan(&row.rowID, &m.MomentID, &m.NoteID, &m.MatchClock, &m.Text,
 			&m.SortOrder, &m.CreatedAt, &m.UpdatedAt); err != nil {
@@ -384,27 +409,24 @@ func (s *SQLStore) LoadCoachNoteMoments(playerRef int64) (map[string][]CoachNote
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("load coach note moments: %w", err)
 	}
+	return all, nil
+}
 
+// loadCoachMomentTags reads each moment's focus tag, keyed by moment row id.
+func (s *SQLStore) loadCoachMomentTags(playerRef int64) (map[int64]string, error) {
 	tagByRowID := map[int64]string{}
-
 	// #nosec G202 -- table name is the constant above.
 	query := `SELECT t.coach_note_moment_id, t.tag FROM ` + coachMomentFocusTagsTable + ` t
 	          JOIN coach_note_moments m ON m.id = t.coach_note_moment_id
 	          JOIN coach_notes n ON n.id = m.coach_note_id
 	          WHERE n.player_ref = ?`
-	err = loadChildValuesByID(s.db, query, []any{playerRef}, func(id int64, tag string) {
+	err := loadChildValuesByID(s.db, query, []any{playerRef}, func(id int64, tag string) {
 		tagByRowID[id] = tag
 	})
 	if err != nil {
 		return nil, fmt.Errorf("load %s: %w", coachMomentFocusTagsTable, err)
 	}
-
-	out := map[string][]CoachNoteMoment{}
-	for _, row := range all {
-		row.moment.FocusTag = tagByRowID[row.rowID]
-		out[row.moment.NoteID] = append(out[row.moment.NoteID], row.moment)
-	}
-	return out, nil
+	return tagByRowID, nil
 }
 
 // LoadCoachPlayers is the roster — every coached player, most recently

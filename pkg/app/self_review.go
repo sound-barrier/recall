@@ -141,7 +141,8 @@ func (a *App) PutSelfReviewMoment(reviewID, matchKey, momentID string, in matche
 	if err := a.assertSelfReviewWritable(); err != nil {
 		return review.Moment{}, err
 	}
-	m, err := review.PutMoment(a.store, reviewID, matchKey, momentID, in)
+	m, err := review.PutMoment(a.store,
+		review.MomentRef{ReviewID: reviewID, MatchKey: matchKey, MomentID: momentID}, in)
 	if err != nil {
 		return review.Moment{}, err
 	}
@@ -154,7 +155,8 @@ func (a *App) DeleteSelfReviewMoment(reviewID, matchKey, momentID string) error 
 	if err := a.assertSelfReviewWritable(); err != nil {
 		return err
 	}
-	if err := review.DeleteMoment(a.store, reviewID, matchKey, momentID); err != nil {
+	if err := review.DeleteMoment(a.store,
+		review.MomentRef{ReviewID: reviewID, MatchKey: matchKey, MomentID: momentID}); err != nil {
 		return err
 	}
 	a.emitMatchByKey(matchKey)

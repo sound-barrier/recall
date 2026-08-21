@@ -138,9 +138,9 @@ func TestMatchCoachNoteFromNote_CarriesCoachAndSession(t *testing.T) {
 	}
 }
 
-func TestCoachNoteFromInput_KeysOnPlayerAndMatch(t *testing.T) {
+func TestNoteToRow_KeysOnPlayerAndMatch(t *testing.T) {
 	in := coach.NoteInput{Kind: "note", Text: "t", FocusTags: []string{"comms"}, ExtraTags: []string{"tempo"}, MatchClock: "01:02"}
-	got := coach.CoachNoteFromInput(7, "match-2026-08-01T18-30-00", in)
+	got := coach.NoteToRow(7, "match-2026-08-01T18-30-00", in)
 	want := db.CoachNote{PlayerRef: 7, MatchKey: "match-2026-08-01T18-30-00", Kind: "note", Text: "t", MatchClock: "01:02", FocusTags: []string{"comms"}, ExtraTags: []string{"tempo"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v, want %+v", got, want)

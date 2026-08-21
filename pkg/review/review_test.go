@@ -56,7 +56,7 @@ func mustGet(t *testing.T, s review.Store, reviewID string) review.Session {
 
 func mustPutMoment(t *testing.T, s review.Store, reviewID, momentID string, in matchedit.MomentInput) review.Moment {
 	t.Helper()
-	m, err := review.PutMoment(s, reviewID, keyA, momentID, in)
+	m, err := review.PutMoment(s, review.MomentRef{ReviewID: reviewID, MatchKey: keyA, MomentID: momentID}, in)
 	mustNoErr(t, err)
 	return m
 }
@@ -188,14 +188,17 @@ func TestPutMoment_OpensAReviewedOnlyNoteAndKeepsReadingOrder(t *testing.T) {
 		t.Errorf("edit = %+v; want order 0 kept", edited)
 	}
 	putMoment := func(key, momentID string, in matchedit.MomentInput) func() error {
-		return func() error { _, err := review.PutMoment(s, r.ReviewID, key, momentID, in); return err }
+		return func() error {
+			_, err := review.PutMoment(s, review.MomentRef{ReviewID: r.ReviewID, MatchKey: key, MomentID: momentID}, in)
+			return err
+		}
 	}
 	assertRefused(t, []refusal{
 		{"non-member", putMoment(keyB, "m-9", matchedit.MomentInput{MatchClock: "01:00", Text: "x"}), review.ErrMatchNotInReview},
 		{"no id", putMoment(keyA, "", matchedit.MomentInput{MatchClock: "01:00", Text: "x"}), matchedit.ErrInvalidMoment},
 		{"empty text", putMoment(keyA, "m-3", matchedit.MomentInput{MatchClock: "1:00", Text: " "}), matchedit.ErrMomentEmpty},
 	})
-	mustNoErr(t, review.DeleteMoment(s, r.ReviewID, keyA, "m-1"))
+	mustNoErr(t, review.DeleteMoment(s, review.MomentRef{ReviewID: r.ReviewID, MatchKey: keyA, MomentID: "m-1"}))
 	if got := mustGet(t, s, r.ReviewID); len(got.Notes[keyA].Moments) != 1 {
 		t.Errorf("moment survived delete: %+v", got.Notes[keyA].Moments)
 	}
@@ -207,7 +210,7 @@ func TestPutMoment_Ceiling(t *testing.T) {
 	for i := range matchedit.MaxMomentsPerMatch {
 		mustPutMoment(t, s, r.ReviewID, "m-"+string(rune('a'+i%26))+string(rune('a'+i/26)), matchedit.MomentInput{MatchClock: "01:00", Text: "x"})
 	}
-	if _, err := review.PutMoment(s, r.ReviewID, keyA, "one-too-many", matchedit.MomentInput{MatchClock: "01:00", Text: "x"}); !errors.Is(err, matchedit.ErrInvalidMoment) {
+	if _, err := review.PutMoment(s, review.MomentRef{ReviewID: r.ReviewID, MatchKey: keyA, MomentID: "one-too-many"}, matchedit.MomentInput{MatchClock: "01:00", Text: "x"}); !errors.Is(err, matchedit.ErrInvalidMoment) {
 		t.Errorf("past the ceiling = %v, want ErrInvalidMoment", err)
 	}
 }

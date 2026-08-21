@@ -226,10 +226,10 @@ func acceptedMoments(moments []Moment) []db.MatchCoachNoteMoment {
 	return out
 }
 
-// CoachNoteFromInput builds the store row for a validated note write on
+// NoteToRow builds the store row for a validated note write on
 // one of the player's matches. NoteID is left empty so the store keeps
 // the id minted on the first save.
-func CoachNoteFromInput(playerRef int64, matchKey string, in NoteInput) db.CoachNote {
+func NoteToRow(playerRef int64, matchKey string, in NoteInput) db.CoachNote {
 	return db.CoachNote{
 		PlayerRef:  playerRef,
 		MatchKey:   matchKey,
