@@ -93,6 +93,9 @@ function paragraphOf(lines: readonly string[]): DocParagraph {
 }
 
 function itemsOf(items: readonly string[]): DocListItem[] {
+  // The paragraph wrapper is required by the editor's schema, not by the
+  // grammar: prosemirror-schema-list splits a BLOCK inside the item, so an
+  // inline-only item breaks Enter and the list buttons. See note-tiptap.ts.
   return items.map((text) => ({ type: 'listItem', content: [paragraphOf([text])] }))
 }
 
