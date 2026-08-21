@@ -243,6 +243,23 @@ fi
 # DELETE methods are no longer excluded — the test server runs in an
 # isolated HOME so a DB-wiping DELETE only resets the scratch state.
 # OpenAPI 3.1 is first-class in v4 — no more --experimental flag.
+# Preflight: schemathesis calls CanonicalSchema.is_satisfiable(), which
+# jsonschema-rs 0.50.0 removed. pipx/mise resolve that transitive fresh, so a
+# machine can end up with a combination that dies 58 times over with a Python
+# AttributeError and no hint that a dependency, not the API, is at fault. Say
+# so up front instead. The pinned-good version is in mise.toml.
+if ! python3 -c 'import jsonschema_rs,sys; sys.exit(0 if hasattr(jsonschema_rs.CanonicalSchema,"is_satisfiable") else 1)' 2>/dev/null; then
+  if command -v schemathesis >/dev/null 2>&1; then
+    st_python="$(dirname "$(dirname "$(readlink -f "$(command -v schemathesis)")")")/bin/python"
+    if [[ -x "$st_python" ]] && ! "$st_python" -c 'import jsonschema_rs,sys; sys.exit(0 if hasattr(jsonschema_rs.CanonicalSchema,"is_satisfiable") else 1)' 2>/dev/null; then
+      echo "ERROR: schemathesis's jsonschema-rs is too new — CanonicalSchema.is_satisfiable is gone." >&2
+      echo "       Every operation will report a Runtime Error that has nothing to do with the API." >&2
+      echo "       Fix: pipx inject schemathesis \"jsonschema-rs==<JSONSCHEMA_RS_VERSION from mise.toml>\"" >&2
+      exit 1
+    fi
+  fi
+fi
+
 echo "==> running schemathesis…"
 # --seed pins Hypothesis's randomness: a red run reproduces locally with
 # the same inputs instead of being re-run roulette. Bump the seed
