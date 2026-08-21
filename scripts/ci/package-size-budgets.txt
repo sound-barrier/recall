@@ -354,7 +354,16 @@ frontend/src/components/elo                   20
 # and the component/badge/paper families. Not components, so the
 # feature-subfolder remedy does not apply; the grouping is by stylesheet role.
 # Growth here means a new theme or a new surface, both worth a history row.
-frontend/src/styles                           18
+#
+# 18 -> 19 for note-prose.css: the note's block rhythm, which the READ surface
+# (NoteProse) and the WRITING surface (the WYSIWYG editor) now share. It could
+# not stay a scoped block — Vue rewrites :deep() per component hash, so the
+# editor would have carried its own copy of every rule, which is the
+# duplication the .eyebrow collapse existed to end. A shared sheet is also the
+# only version that stays true on its own: an editor styled separately from the
+# card its note lands on drifts into looking different from what it promises,
+# one rule at a time.
+frontend/src/styles                           19
 
 # frontend/src/components/settings — one component per Settings tab section.
 # Ratcheted from 18 after three residents were evicted to the features that own

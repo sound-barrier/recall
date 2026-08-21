@@ -71,3 +71,5 @@ a folder silently regrows what it just shed.
 | 2026-08-20 | review-surfaces | `frontend/src/components/dashboard/widgets` | 44 → 45 | `FocusNowWidget.vue`: one more tile; the first here that reads server state rather than the dossier, because the focus list is about the player, not the narrowed set. |
 | 2026-08-20 | review-surfaces | `frontend/tests/e2e` | 12 → 13 | `_session-sse.ts`: the faked parse event stream + local-date stamps, extracted once a second spec (the focus nudge) needed what the session tally already had. |
 | 2026-08-20 | review-surfaces | `frontend/tests/e2e/matches` | 26 → 27 | `focus-nudge.spec.ts`: the third parse-driven toast, beside the session tally and the tilt nudge. |
+
+| 2026-08 | frontend/src/styles | 18 → 19 | `note-prose.css`. The note's block rhythm became the shared contract between the read surface and the WYSIWYG editor. Scoped was not an option: Vue rewrites `:deep()` per component hash, so the editor would have needed its own copy of every rule — and two copies of "how a note looks" drift apart one rule at a time, which is exactly what a shared sheet prevents by construction. |

@@ -49,9 +49,14 @@ async function openRoomOnAMatch(page: Page, opts: CoachSessionMockOptions = {}) 
 }
 
 test.describe('a note you can see', () => {
+  // TYPED, not filled. `fill()` sets a contenteditable's content wholesale and
+  // never fires an input rule, so it would leave the markers sitting there as
+  // text — which is precisely the old behaviour this feature replaces. Only
+  // real keystrokes exercise what a person actually does.
   test('emphasis renders as you type, and the asterisks are gone', async ({ page }) => {
     await openRoomOnAMatch(page)
-    await note(page).fill('Hold **the high ground** first.')
+    await note(page).click()
+    await page.keyboard.type('Hold **the high ground** first.')
 
     // The point of the whole feature: the markers did their job and left.
     await expect(note(page).getByText('the high ground')).toHaveRole('strong')
@@ -60,7 +65,12 @@ test.describe('a note you can see', () => {
 
   test('a heading is a heading, and a bullet is a bullet', async ({ page }) => {
     await openRoomOnAMatch(page)
-    await note(page).fill('# Ult economy\n\n- hold it for the dive\n- count their suzu')
+    await note(page).click()
+    await page.keyboard.type('# Ult economy')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('- hold it for the dive')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('count their suzu')
 
     await expect(note(page).getByRole('heading', { name: 'Ult economy' })).toBeVisible()
     await expect(note(page).getByRole('listitem')).toHaveCount(2)

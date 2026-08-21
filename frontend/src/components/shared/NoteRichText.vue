@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { onBeforeUnmount, watch } from 'vue'
+import type { Editor as EditorLike } from '@tiptap/core'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 
-import { markdownOf, noteExtensions } from '@/components/shared/note-tiptap'
+import { markdownOf, noteExtensions, TOOL_STATE } from '@/components/shared/note-tiptap'
 import { textToDoc } from '@/match/markdown/note-doc'
 
 // The TipTap host, and the only file in the app that imports @tiptap.
@@ -27,11 +28,30 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:text': [text: string]
+  /**
+   * Which tools are live at the cursor. PUSHED rather than pulled: a parent
+   * calling editor.isActive() during render gets an answer Vue has no reason
+   * to re-evaluate, so the toolbar would light up once and then lie.
+   */
+  'update:active': [active: Record<string, boolean>]
   blur: []
 }>()
 
+let lastActive = ''
+
+function publishActive(e: EditorLike): void {
+  const active: Record<string, boolean> = {}
+  for (const t of TOOL_STATE) active[t.key] = e.isActive(t.name, t.attrs)
+  // Only on a real change: onTransaction fires for every keystroke and every
+  // cursor move, and re-rendering the toolbar on each would be wasteful.
+  const signature = JSON.stringify(active)
+  if (signature === lastActive) return
+  lastActive = signature
+  emit('update:active', active)
+}
+
 // What we last sent up. The autosave echo returns this exact string, and
-// recognising it is what stops the round trip from touching the document.
+// recognizing it is what stops the round trip from touching the document.
 let lastEmitted = props.text
 
 const editor = useEditor({
@@ -41,7 +61,7 @@ const editor = useEditor({
   editorProps: {
     attributes: {
       // contenteditable maps to a textbox implicitly, but the accessible NAME
-      // has to be given — without it the field is unlabelled to a screen
+      // has to be given — without it the field is unlabeled to a screen
       // reader and unfindable by getByRole(name).
       role: 'textbox',
       'aria-multiline': 'true',
@@ -50,6 +70,12 @@ const editor = useEditor({
       'data-note-surface': 'rich',
     },
   },
+  // onTransaction rather than onSelectionUpdate: pressing Bold with nothing
+  // selected sets a STORED mark, which changes neither the document nor the
+  // selection — so the toolbar would stay dark while the next character came
+  // out bold.
+  onCreate: ({ editor: e }) => publishActive(e),
+  onTransaction: ({ editor: e }) => publishActive(e),
   onUpdate: ({ editor: e }) => {
     lastEmitted = markdownOf(e.state.doc)
     emit('update:text', lastEmitted)
@@ -78,8 +104,6 @@ watch(() => props.disabled, (off) => editor.value?.setEditable(!off))
 
 defineExpose({
   focus: () => editor.value?.commands.focus(),
-  /** Whether a mark is live at the cursor — the toolbar's pressed state. */
-  isActive: (name: string) => editor.value?.isActive(name) ?? false,
   chain: () => editor.value?.chain().focus(),
 })
 
@@ -104,9 +128,11 @@ onBeforeUnmount(() => editor.value?.destroy())
   outline: none;
 }
 
+/* --accent-text, not --accent: `.paper` remaps the former to --paper-accent
+   and leaves the latter alone, so --accent reads wrong inside the film room. */
 .note-rich-host :deep(.note-rich:focus-visible) {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+  border-color: var(--accent-text);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-text) 30%, transparent);
 }
 
 /* The placeholder the Placeholder extension paints on the first empty block. */

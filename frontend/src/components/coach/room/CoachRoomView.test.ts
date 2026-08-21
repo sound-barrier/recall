@@ -5,6 +5,7 @@ import { h } from 'vue'
 import type { MatchRecord, MatchResult } from '@/api-client'
 import CoachRoomView from '@/components/coach/room/CoachRoomView.vue'
 import { emptyDraft } from '@/match/coach/coach-notes'
+import { markdownField } from '@/test-utils'
 
 function rec(key: string, data: MatchResult): MatchRecord {
   return { match_key: key, source_files: [], data }
@@ -27,7 +28,7 @@ describe('CoachRoomView — the three regions', () => {
   // the panel, and goToView focuses #panel-<view>.
   it('is the film-room region the Reviews tab hosts', () => {
     const view = renderRoom()
-    // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container -- #film-room is the room's element id; the e2e addresses it, and no TL query expresses an id
+    // eslint-disable-next-line testing-library/no-node-access -- #film-room is the room's element id; the e2e addresses it, and no TL query expresses an id
     expect(view.container.querySelector('#film-room')).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Film room' })).toBeInTheDocument()
   })
@@ -142,9 +143,9 @@ describe('CoachRoomView — who is this?', () => {
     expect(view.emitted('confirm-player')).toEqual([['Wren']])
   })
 
-  it('will not take a note that has nowhere to be saved', () => {
+  it('will not take a note that has nowhere to be saved', async () => {
     renderRoom({ player: ANONYMOUS })
-    expect(screen.getByRole('textbox', { name: 'Note' })).toBeDisabled()
+    expect(await markdownField()).toBeDisabled()
     expect(screen.getByRole('status', { name: 'Note save state' }))
       .toHaveTextContent(/before writing notes/)
   })
@@ -172,7 +173,10 @@ describe('CoachRoomView — who is this?', () => {
   it('keeps the editor writable while a confirmed handle is corrected', async () => {
     renderRoom()
     await fireEvent.click(screen.getByRole('button', { name: /Change player/ }))
-    expect(screen.getByRole('textbox', { name: 'Note' })).toBeEnabled()
+    // markdownField, not the formatted div: toBeEnabled passes vacuously on a
+    // contenteditable, so this assertion would keep passing while meaning
+    // nothing at all.
+    expect(await markdownField()).toBeEnabled()
   })
 
   it('shows the save state of the frame on the desk', () => {

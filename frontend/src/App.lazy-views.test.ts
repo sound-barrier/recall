@@ -12,8 +12,8 @@
 // runtime, which is fragile across happy-dom versions.
 
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { readFileSync, readdirSync } from 'node:fs'
+import { relative, resolve } from 'node:path'
 
 describe('App.vue lazy-loaded components', () => {
   // The views stay in App.vue; the overlay/modal chunks live in
@@ -27,6 +27,9 @@ describe('App.vue lazy-loaded components', () => {
     // The film room is hosted by the Reviews view now, and stays its own
     // chunk inside that one — the tab is visited by people who will never
     // open a bundle.
+    // The note editor is lazy INSIDE NoteWriter, which is itself reached from
+    // two already-lazy parents. It is the largest single chunk in the app.
+    readFileSync(resolve(__dirname, 'components/shared/NoteWriter.vue'), 'utf-8') +
     readFileSync(resolve(__dirname, 'components/reviews/ReviewsView.vue'), 'utf-8')
 
   const views: Array<{ name: string; path: string }> = [
@@ -72,6 +75,11 @@ describe('App.vue lazy-loaded components', () => {
     { name: 'CoachRoomView',          path: '@/components/coach/room/CoachRoomView.vue' },
     { name: 'CoachLoanSlip',          path: '@/components/coach/room/CoachLoanSlip.vue' },
     { name: 'CoachNavStrip',          path: '@/components/coach/room/CoachNavStrip.vue' },
+    // The note editor — ~345 KB raw, ~102 KB gzipped, the largest chunk in
+    // the app by a distance. Everything else here is lazy to keep the first
+    // paint small; this one is lazy because most sessions never write a note
+    // at all, and the ones that do can afford to fetch it when they start.
+    { name: 'NoteRichText',           path: '@/components/shared/NoteRichText.vue' },
   ]
 
   for (const { name, path } of views) {
@@ -102,6 +110,42 @@ describe('App.vue lazy-loaded components', () => {
       expect(source).not.toMatch(staticImport)
     })
   }
+})
+
+// The async boundary above is only worth as much as the module graph behind
+// it. NoteWriter reached into note-tiptap.ts for a length constant once, and
+// that one static import pulled every @tiptap package into NoteWriter's own
+// chunk — the defineAsyncComponent still there, still doing nothing. Measured
+// at the time: total JS went from 1.77 MB to 2.12 MB with the editor sitting
+// in a chunk that was no longer lazy.
+describe('the editor stays behind its dynamic import', () => {
+  const SRC = resolve(__dirname)
+
+  function tiptapImporters(dir: string, found: string[] = []): string[] {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = resolve(dir, entry.name)
+      if (entry.isDirectory()) {
+        tiptapImporters(full, found)
+        continue
+      }
+      if (!/\.(ts|vue)$/.test(entry.name) || entry.name.endsWith('.test.ts')) continue
+      const text = readFileSync(full, 'utf-8')
+      if (/^import[^\n]*from\s*['"]@tiptap\//m.test(text)) found.push(relative(SRC, full))
+    }
+    return found
+  }
+
+  it('is imported statically by note-tiptap.ts and NoteRichText.vue, and nothing else', () => {
+    expect(tiptapImporters(SRC).sort()).toEqual([
+      'components/shared/NoteRichText.vue',
+      'components/shared/note-tiptap.ts',
+    ])
+  })
+
+  it('is not reachable statically from NoteWriter', () => {
+    const writer = readFileSync(resolve(SRC, 'components/shared/NoteWriter.vue'), 'utf-8')
+    expect(writer).not.toMatch(/^import[^\n]*from\s*['"]@\/components\/shared\/note-tiptap['"]/m)
+  })
 })
 
 function escapeRegex(s: string): string {

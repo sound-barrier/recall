@@ -4,7 +4,8 @@ import { resolve } from 'node:path'
 import { Editor } from '@tiptap/core'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { markdownOf, noteExtensions, MAX_NOTE_TEXT } from '@/components/shared/note-tiptap'
+import { markdownOf, noteExtensions } from '@/components/shared/note-tiptap'
+import { MAX_NOTE_TEXT } from '@/match/markdown/note-doc'
 import { textToDoc } from '@/match/markdown/note-doc'
 import { renderMarkdown } from '@/match/markdown/render-markdown'
 
@@ -105,12 +106,25 @@ describe('the schema refuses what the grammar cannot say', () => {
 // schema decides whether they work at all: an inline-only list item silently
 // turns every one of these into a no-op.
 describe('list editing still works', () => {
-  it('splits a list item into the next bullet', () => {
+  // Presses the KEY, not the command behind it. Unbinding Tab by returning an
+  // empty shortcut map also unbinds Enter, and a test that calls
+  // commands.splitListItem() directly sails straight past that.
+  it('splits a list item into the next bullet when Enter is pressed', () => {
     const e = open('- one')
     e.commands.setTextSelection(6)
-    expect(e.commands.splitListItem('listItem')).toBe(true)
+    const enter = e.view.someProp('handleKeyDown', (f) => f(
+      e.view, new KeyboardEvent('keydown', { key: 'Enter' })))
+    expect(enter).toBe(true)
     e.commands.insertContent('two')
     expect(markdownOf(e.state.doc)).toBe('- one\n- two')
+  })
+
+  it('leaves Tab unbound so focus can escape the field', () => {
+    const e = open('- one')
+    e.commands.setTextSelection(6)
+    const tab = e.view.someProp('handleKeyDown', (f) => f(
+      e.view, new KeyboardEvent('keydown', { key: 'Tab' })))
+    expect(tab).toBeFalsy()
   })
 
   it('turns a paragraph into a bullet and back', () => {
@@ -185,7 +199,7 @@ describe('the length cap counts what the server counts', () => {
   })
 
   // The cap is on the markdown, not the visible text: `**bold**` costs four
-  // characters more than the word it emphasises, and the server counts those.
+  // characters more than the word it emphasizes, and the server counts those.
   it('counts the markers, not just the words', () => {
     const e = open()
     e.commands.insertContent(textToDoc('**bold**').content)

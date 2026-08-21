@@ -4,6 +4,7 @@ import { describe, it, expect } from 'vitest'
 import type { MatchRecord } from '@/api-client'
 import CoachDesk from '@/components/coach/room/CoachDesk.vue'
 import { emptyDraft } from '@/match/coach/coach-notes'
+import { markdownField } from '@/test-utils'
 
 const RECORD: MatchRecord = {
   match_key: 'match-2026-08-08T21-14-00',
@@ -18,11 +19,11 @@ function renderDesk(props: Record<string, unknown> = {}) {
 }
 
 describe('CoachDesk', () => {
-  it('puts the match on the desk with its note editor', () => {
+  it('puts the match on the desk with its note editor', async () => {
     renderDesk()
     expect(screen.getByRole('article')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: "King's Row" })).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'Note' })).toBeInTheDocument()
+    expect(await markdownField()).toBeInTheDocument()
   })
 
   // Two empties, and they read differently. The desk used to show one line

@@ -241,7 +241,32 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # the widget's failed-read state, the session-expiry timer on the nudge
 # (measured 1759793B). Set at 1768000 rather than to the byte — landing on
 # a razor-thin margin just fails the gate on the next one-line change.
-: "${MAX_TOTAL_JS_BYTES:=1768000}"
+# 2026-08: 1768000 -> 2124000 -- the note editor. This is the largest single
+# dependency the app has ever taken and it deserves the arithmetic written out:
+# +350782B raw over the previous measurement, of which 345591B is ONE chunk,
+# NoteRichText-*.js — ProseMirror (view/model/transform/state/commands/history/
+# inputrules/keymap/schema-list), @tiptap/core and the eleven extensions.
+# Gzipped, which is what a reader actually waits for, that chunk is 102KB.
+#
+# What it buys: notes have always been markdown typed into a bare textarea, so
+# you wrote **hold the angle** and looked at asterisks, and the only way to
+# find out what your coach received was to leave the room and open the note
+# block. The editor renders as you type now, against the same grammar the
+# exported ledger renders, pinned case-for-case by the shared fixture.
+#
+# Note what did NOT move: MAX_INITIAL_JS_BYTES. The editor is behind a dynamic
+# import inside NoteWriter, which sits behind two already-lazy views, so it
+# never enters index.html's modulepreload graph — measured 347482B initial,
+# still inside the 348000 ceiling. That boundary is fragile in a way a budget
+# cannot see: a single static import of note-tiptap.ts from NoteWriter (for a
+# length constant, in the first draft of this work) pulled the whole editor
+# into a chunk that was no longer lazy, with the defineAsyncComponent still
+# sitting there doing nothing. App.lazy-views.test.ts now asserts the module
+# graph directly — exactly two files may import @tiptap — so that mistake
+# fails a test rather than a budget.
+#
+# Measured 2117506B; set ~6.5KB above it per the sizing convention.
+: "${MAX_TOTAL_JS_BYTES:=2124000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
