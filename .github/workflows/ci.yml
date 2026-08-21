@@ -606,7 +606,11 @@ jobs:
         # breaking release that made this necessary.
         run: |
           pipx install "schemathesis==${SCHEMATHESIS_VERSION}"
-          pipx inject schemathesis "jsonschema-rs==${JSONSCHEMA_RS_VERSION}"
+          # --force because pipx declines to touch a package the venv already
+          # has as a dependency, which this always is — the point is to
+          # DOWNGRADE the one pip just resolved.
+          pipx inject --force schemathesis "jsonschema-rs==${JSONSCHEMA_RS_VERSION}"
+          pipx runpip schemathesis show jsonschema-rs | head -2
 
       - name: Prepare frontend/dist (real Vite build)
         uses: ./.github/actions/prepare-frontend-dist
