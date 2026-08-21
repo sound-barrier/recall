@@ -1,0 +1,141 @@
+/* The desk's match card. Scoped sibling rather than an inline block:
+   `<style scoped src>` keeps the hash scoping and the chunk placement
+   identical, and the SFC is left holding markup and logic. Same shape as
+   coach-room.css and coach-cue-row.css. */
+
+.coach-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem 1.1rem 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.card-map {
+  margin: 0;
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 1.9rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--identity-accent);
+  text-transform: uppercase;
+}
+
+.card-result {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.card-result-word {
+  font-family: var(--mono);
+  font-size: var(--type-sm);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.card-result.win  .card-result-word { color: var(--win); }
+.card-result.loss .card-result-word { color: var(--loss); }
+.card-result.draw .card-result-word { color: var(--draw); }
+
+.card-score {
+  font-family: var(--mono);
+  font-size: var(--type-2xl);
+  color: var(--text);
+  font-feature-settings: "tnum";
+}
+
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem 1.6rem;
+}
+
+.meta-cell, .stat-cell, .card-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.meta-value {
+  font-size: var(--type-lg);
+  color: var(--text);
+}
+
+.meta-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.card-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  list-style: none;
+}
+
+.stat-value {
+  font-family: var(--mono);
+  font-size: var(--type-4xl);
+  color: var(--text);
+  font-feature-settings: "tnum";
+}
+
+/* The kicker is the shared .eyebrow; this class is layout only. */
+.card-quote-who {
+  display: block;
+  margin-bottom: 0.15rem;
+}
+
+.card-quote {
+  margin: 0;
+  padding: 0.5rem 0.8rem;
+  font-size: var(--type-lg);
+  line-height: 1.5;
+  color: var(--text-dim);
+  background: var(--surface-2);
+  border-left: 2px solid var(--border-strong);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.7rem;
+}
+
+.card-replay {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.card-replay-code {
+  font-family: var(--mono);
+  font-size: var(--type-sm);
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+}
