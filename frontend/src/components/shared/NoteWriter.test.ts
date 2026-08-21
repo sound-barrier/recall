@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/vue'
 
 import NoteWriter from '@/components/shared/NoteWriter.vue'
+import { editorReady } from '@/test-utils'
 
 // The note writing surface: two modes over one value, and one toolbar that
 // serves both. The toolbar cases moved here from CoachNoteEditor's suite when
@@ -14,7 +15,9 @@ import NoteWriter from '@/components/shared/NoteWriter.vue'
  * NoteRichText is behind defineAsyncComponent so ProseMirror stays out of the
  * initial bundle, and a real module import needs more than a microtask flush —
  * a plain `await nextTick()` here finds nothing rendered and reads as a
- * mysteriously empty editor.
+ * mysteriously empty editor. `editorReady` waits for the field rather than
+ * sleeping a fixed span, because how long a module load takes depends on the
+ * machine and on whether the run is instrumented.
  */
 async function writer(over: Partial<{
   text: string; disabled: boolean; toolsDisabled: boolean; disabledReason: string
@@ -22,7 +25,7 @@ async function writer(over: Partial<{
   const view = render(NoteWriter, {
     props: { text: '', label: 'Note', placeholder: 'What did you see?', ...over },
   })
-  for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 5))
+  await editorReady()
   return view
 }
 
