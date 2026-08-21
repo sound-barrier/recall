@@ -1,6 +1,6 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import type { MatchRecord, MatchAnnotationInput } from '@/api-client'
-import { highlightSubstrings } from '@/match/match-helpers'
+import { notePlainText } from '@/match/markdown/note-blocks'
 import { highlightTermsFor, type SearchClause } from '@/match/search-query'
 
 // The expanded match card's annotation editor: the free-text drafts
@@ -67,12 +67,34 @@ const hasAnyNote = computed(
 // stays mounted so the user can type their first character without
 // an extra click.
 const isEditingNote   = ref(false)
-const noteTextareaRef = ref<HTMLTextAreaElement | null>(null)
+/**
+ * The note field, whatever it currently is. A WYSIWYG in Formatted mode, a
+ * textarea in Markdown mode — both answer focus(offset), which is all this
+ * needs and all it should know.
+ */
+const noteFieldRef = ref<{ focus: (offset?: number) => void } | null>(null)
 let pendingCaretPos: number | null = null
 
-const noteHighlightSegments = computed(() =>
-  highlightSubstrings(noteDraft.value, highlightTermsFor('note', searchClauses())),
-)
+// The TERMS, not pre-split segments. The note is rendered markdown on both
+// sides now — a read view and a live editor — and neither can take a flat list
+// of text runs: the read view has to weave <mark> through the markup, and the
+// editor draws its hits as decorations over a document it must not touch.
+const noteHighlightTerms = computed(() => highlightTermsFor('note', searchClauses()))
+
+/**
+ * Whether the active search landed inside this note — the ⌕ the preview pins
+ * to its top right.
+ *
+ * Asked of the note's TEXT, not its source: a word wrapped in emphasis was
+ * unfindable while the highlighter walked the raw markdown, so a note whose
+ * only hit was `**the high ground**` said it had none.
+ */
+const noteHasHits = computed(() => {
+  const terms = noteHighlightTerms.value.filter((t) => t !== '')
+  if (terms.length === 0) return false
+  const text = notePlainText(noteDraft.value).toLowerCase()
+  return terms.some((t) => text.includes(t.toLowerCase()))
+})
 
 // Compute a 0-based offset into `text` from a click DOM position
 // (node + offset-inside-node) inside a preview container whose
@@ -138,12 +160,10 @@ function enterEditMode(e: MouseEvent | KeyboardEvent) {
 
   isEditingNote.value = true
   void nextTick(() => {
-    const ta = noteTextareaRef.value
-    if (!ta) return
-    ta.focus()
-    const len = ta.value.length
-    const pos = pendingCaretPos === null ? len : Math.max(0, Math.min(pendingCaretPos, len))
-    ta.setSelectionRange(pos, pos)
+    // The field clamps the offset itself — it is the only one that knows how
+    // long its own content is, and in Formatted mode the answer is a document
+    // position rather than a character count.
+    noteFieldRef.value?.focus(pendingCaretPos ?? undefined)
     pendingCaretPos = null
   })
 }
@@ -403,8 +423,9 @@ function onTagKeydown(e: KeyboardEvent) {
     NAMED_TAGS,
     hasAnyNote,
     isEditingNote,
-    noteTextareaRef,
-    noteHighlightSegments,
+    noteFieldRef,
+    noteHighlightTerms,
+    noteHasHits,
     enterEditMode,
     exitNoteEditMode,
     commitAnnotation,

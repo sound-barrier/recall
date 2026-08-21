@@ -152,7 +152,13 @@ test.describe('coaching session — write gate', () => {
     // to write about this match is the Film Room.
     await row.click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
-    await expect(page.locator(`#note-${KINGS_ROW_MATCH.match_key}`)).toBeDisabled()
+    // The note is a document editor now. A contenteditable cannot be
+    // `disabled` and `toBeEnabled` passes VACUOUSLY on a div, so the refusal is
+    // announced with aria-readonly — and asserting it is the only way this line
+    // means anything. The toolbar's buttons are real buttons and stay disabled.
+    await expect(page.locator(`#note-${KINGS_ROW_MATCH.match_key}`))
+      .toHaveAttribute('aria-readonly', 'true')
+    await expect(page.getByRole('button', { name: 'Bold' })).toBeDisabled()
     const reviewRadios = page.getByRole('radiogroup', { name: 'Match review status' }).getByRole('radio')
     await expect(reviewRadios).toHaveCount(3)
     for (let i = 0; i < 3; i++) await expect(reviewRadios.nth(i)).toBeDisabled()

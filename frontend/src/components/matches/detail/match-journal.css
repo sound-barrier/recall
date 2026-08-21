@@ -234,7 +234,6 @@
 /* The note + replay + members fields all share the same control
    chrome — borderless inputs that sit flush inside their journal
    cell. The cell IS the visual frame; the input is just text. */
-.match-notes-textarea,
 .match-notes-input,
 .match-notes-preview {
   width: 100%;
@@ -247,15 +246,13 @@
   line-height: 1.45;
 }
 
-.match-notes-textarea,
-.match-notes-preview {
-  min-height: 2.2rem;
+/* The swap is meant to be invisible, and type is the half of that the shared
+   sheet cannot give: note-prose.css makes both surfaces paint the same MARKUP,
+   but the size it paints at is inherited, and the preview sets its own. Without
+   this the words change size the moment you click into them. */
+.journal-cell-note :deep(.note-writer) {
   font-family: var(--body);
-}
-
-.match-notes-textarea {
-  resize: vertical;
-  outline: none;
+  font-size: var(--type-lg);
 }
 
 .match-notes-input { outline: none; }
@@ -266,7 +263,9 @@
    hit inside this note. */
 .match-notes-preview {
   position: relative;
+  min-height: 2.2rem;
   padding-right: 1.6rem;
+  font-family: var(--body);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   cursor: text;
@@ -284,29 +283,6 @@
   color: var(--accent-text);
   opacity: 0.9;
   pointer-events: none;
-}
-
-/* "Target acquired" mark: accent-soft fill + 2px accent under-rule,
-   sharp corners (OW HUD, not notion soft-pill). decoration-break
-   makes wrap-to-next-line marks get the under-rule too. */
-.match-notes-preview :deep(mark.note-hit) {
-  background: var(--accent-soft);
-  color: var(--text);
-  border-radius: 0;
-  padding: 0 2px;
-  margin: 0 1px;
-  box-shadow: inset 0 -2px 0 0 var(--accent);
-  box-decoration-break: clone;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .match-notes-preview :deep(mark.note-hit) {
-    animation: note-hit-acquire 220ms var(--easing-out) both;
-  }
-}
-
-@keyframes note-hit-acquire {
-  from { background: transparent; box-shadow: inset 0 -2px 0 0 transparent; }
 }
 
 .match-notes-input.mono {

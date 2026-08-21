@@ -8,13 +8,16 @@
  * links, tables, code blocks, blockquotes, rules and nested lists, which is
  * precisely the grammar the ledger cannot render.
  *
- * Four plugins enforce the rules a schema cannot express. Three of them exist
- * because the grammar has no escape syntax, so a document the serializer
- * cannot spell must be prevented rather than repaired.
+ * Five plugins carry what a schema cannot express. Three exist because the
+ * grammar has no escape syntax, so a document the serializer cannot spell must
+ * be prevented rather than repaired; one keeps headings painted as the ledger
+ * paints them; and one draws search hits over the text without the document
+ * ever learning they were there.
  */
 
 import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
+import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { Node as PMNode } from '@tiptap/pm/model'
 
 import Document from '@tiptap/extension-document'
@@ -279,6 +282,54 @@ const PlainTextOnly = Extension.create({
   },
 })
 
+export const searchHitsKey = new PluginKey<string[]>('noteSearchHits')
+
+/**
+ * Search hits, drawn OVER the text.
+ *
+ * Decorations, not marks: a decoration is presentation the view adds on top
+ * and the document never learns about, so searching for a word can never
+ * alter the note you are searching. A `<mark>` mark would be a real node in
+ * the document, and it would serialize — a search would silently rewrite what
+ * you wrote, on a field that autosaves.
+ *
+ * The terms arrive through a transaction meta, which is how state reaches a
+ * ProseMirror plugin from the outside.
+ */
+const SearchHits = Extension.create({
+  name: 'noteSearchHits',
+  addProseMirrorPlugins() {
+    return [new Plugin<string[]>({
+      key: searchHitsKey,
+      state: {
+        init: () => [],
+        apply: (tr, prev) => (tr.getMeta(searchHitsKey) as string[] | undefined) ?? prev,
+      },
+      props: {
+        decorations(state) {
+          const terms = (searchHitsKey.getState(state) ?? [])
+            .map((t) => t.toLowerCase()).filter((t) => t !== '')
+          if (terms.length === 0) return DecorationSet.empty
+          const found: Decoration[] = []
+          state.doc.descendants((node, pos) => {
+            if (!node.isText) return
+            const lower = (node.text ?? '').toLowerCase()
+            for (const term of terms) {
+              let at = lower.indexOf(term)
+              while (at !== -1) {
+                found.push(Decoration.inline(
+                  pos + at, pos + at + term.length, { class: 'note-hit' }))
+                at = lower.indexOf(term, at + term.length)
+              }
+            }
+          })
+          return DecorationSet.create(state.doc, found)
+        },
+      },
+    })]
+  },
+})
+
 /**
  * The tools whose pressed state the editor reports, and how to ask about each.
  *
@@ -305,6 +356,6 @@ export function noteExtensions(placeholder: string) {
     Bold, Italic, NoteStrike,
     UndoRedo,
     Placeholder.configure({ placeholder }),
-    HeadingDisplayLevel, MarksHugTheirContent, NoteLengthCap, PlainTextOnly,
+    HeadingDisplayLevel, MarksHugTheirContent, NoteLengthCap, PlainTextOnly, SearchHits,
   ]
 }

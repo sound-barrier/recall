@@ -9,6 +9,7 @@ import { useUiStore } from '@/stores/ui'
 import { useMatchesStore } from '@/stores/matches'
 import { SetMatchAnnotation, DeleteMatchAnnotation, SetMatchVisibility, ResetMatchData } from '@/api'
 import type { MatchRecord } from '@/api'
+import { leaveWriter, markdownField } from '@/test-utils'
 
 // Unit tests for MatchDetailPanel's rendered body — the same surfaces that used
 // to live inline inside MatchCard (annotation journal, leaver chooser, stats
@@ -379,20 +380,23 @@ describe('MatchDetailPanel — match notes / journal block', () => {
     } as unknown as Partial<MatchRecord>)
     renderPanel({ record: rec })
     expect(screen.getByText('huge clutch')).toBeInTheDocument()
-    // The read-only preview replaces the textarea until clicked.
-    expect(screen.queryByPlaceholderText(/What happened this match/)).not.toBeInTheDocument()
+    // The read-only preview replaces the editor until clicked.
+    expect(screen.queryByRole('group', { name: 'Note format' })).not.toBeInTheDocument()
     expect(screen.getByLabelText('Replay code')).toHaveValue('A7B2C9')
     expect(memberChips()).toEqual(['Apollo#1', 'Cheese#5'])
   })
 
   it('writes the annotation on note blur with the trimmed value', async () => {
     const { key } = renderPanel()
-    const ta = screen.getByPlaceholderText(/What happened this match/)
+    // Markdown mode: this is the panel's commit-on-blur wiring, and the raw
+    // field answers fireEvent.update where a document editor does not.
+    const ta = await markdownField()
+    await fireEvent.focus(ta)
     // fireEvent.update (v-model-aware) rather than per-keystroke typing:
     // the panel's store-reload microtasks can reset the draft between
     // awaited keystrokes, which no real user's blur would interleave with.
     await fireEvent.update(ta, '  draft text  ')
-    await fireEvent.blur(ta)
+    await leaveWriter(ta)
     expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leavers: [], throwers: [], note: 'draft text', replay_code: '', members: [], tags: [] })
   })
 

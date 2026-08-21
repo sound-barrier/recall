@@ -52,3 +52,39 @@
 /* The editor's list item wraps its text in a paragraph the ledger has no need
    of. Trimmed to nothing so the two surfaces read the same. */
 .note-prose li > p { margin: 0; }
+
+/* A search hit, on whichever surface is showing the note.
+ *
+ * Element-agnostic on purpose: the ledger's renderer emits a real <mark>, and
+ * the editor draws a ProseMirror DECORATION — a <span> the document never
+ * learns about, which is what keeps a search from rewriting a note that
+ * autosaves. Pinning the paint to `mark.note-hit` (which it was, scoped to the
+ * journal's preview) meant the editor's hit existed in the DOM and lit nothing,
+ * so the highlight vanished the moment you clicked in to type.
+ *
+ * Accent-soft fill + a 2px accent under-rule, square (OW HUD, not a soft pill).
+ * box-decoration-break makes a hit that wraps carry the rule on both lines.
+ */
+.note-prose .note-hit {
+  background: var(--accent-soft);
+  color: var(--text);
+  border-radius: 0;
+  padding: 0 2px;
+  margin: 0 1px;
+  box-shadow: inset 0 -2px 0 0 var(--accent);
+  box-decoration-break: clone;
+}
+
+/* The "target acquired" flourish belongs to READING a note: a hit appears once,
+   when the search lands. In the editor the decorations are rebuilt on every
+   transaction, so the same rule would re-fire the animation on every keystroke
+   — a highlight that flashes at you while you type. */
+@media (prefers-reduced-motion: no-preference) {
+  .note-prose:not(.note-rich) .note-hit {
+    animation: note-hit-acquire 220ms var(--easing-out) both;
+  }
+}
+
+@keyframes note-hit-acquire {
+  from { background: transparent; box-shadow: inset 0 -2px 0 0 transparent; }
+}

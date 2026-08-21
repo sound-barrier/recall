@@ -10,6 +10,8 @@ import { useCoachAutosave } from '@/composables/coach/useCoachAutosave'
 import { useMatchAnnotationEditor } from '@/composables/matches/detail/useMatchAnnotationEditor'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
+import NoteProse from '@/components/coach/notes/NoteProse.vue'
+import NoteWriter from '@/components/shared/NoteWriter.vue'
 
 // The expanded match card's MATCH JOURNAL — note / replay / squad / tags
 // editor. Owns useMatchAnnotationEditor (the draft state + commit logic)
@@ -150,8 +152,9 @@ const {
   NAMED_TAGS,
   hasAnyNote,
   isEditingNote,
-  noteTextareaRef,
-  noteHighlightSegments,
+  noteFieldRef,
+  noteHighlightTerms,
+  noteHasHits,
   enterEditMode,
   exitNoteEditMode,
   commitAnnotation,
@@ -190,10 +193,16 @@ onMounted(() => {
   // worth editing used to focus nothing. Promote to the editor first.
   if (target === 'note') isEditingNote.value = true
   void nextTick().then(() => {
-    const id = target === 'note'
-      ? `note-${props.record.match_key}`
-      : `tags-${props.record.match_key}`
-    document.getElementById(id)?.focus()
+    if (target === 'note') {
+      // Through the field, not getElementById: the editor arrives with a
+      // dynamic import, so on a first open there is nothing in the document
+      // to look up yet. The field holds the request and answers it when it
+      // is ready — which is the difference between landing in the note and
+      // typing into nothing.
+      noteFieldRef.value?.focus()
+    } else {
+      document.getElementById(`tags-${props.record.match_key}`)?.focus()
+    }
     emit('focus-consumed')
   })
 })
@@ -254,11 +263,19 @@ onMounted(() => {
         class="journal-cell journal-cell-note"
         :class="{ saved: savedFlash === 'note', filled: !!noteDraft.trim() }"
       >
-        <label class="eyebrow journal-eyebrow" :for="`note-${record.match_key}`">Note</label>
+        <!-- Visual furniture, not a <label>: `for` cannot associate with a
+             contenteditable, and the field carries its own accessible name. -->
+        <p class="eyebrow journal-eyebrow">
+          Note
+        </p>
+        <!-- Click-to-edit stays. The panel can hold many journals at once,
+             and mounting a document editor in each would be a real cost for a
+             field most of them never touch — the preview now renders the same
+             markup the editor would, so the swap is invisible. -->
         <div
           v-if="!isEditingNote && noteDraft"
           class="match-notes-preview"
-          :class="{ 'has-hits': noteHighlightSegments.some(s => s.hit) }"
+          :class="{ 'has-hits': noteHasHits }"
           role="textbox"
           aria-readonly="true"
           tabindex="0"
@@ -267,25 +284,23 @@ onMounted(() => {
           @keydown.enter.prevent="enterEditModeIfWritable"
           @keydown.space.prevent="enterEditModeIfWritable"
         >
-          <template v-for="(seg, i) in noteHighlightSegments" :key="i">
-            <mark v-if="seg.hit" class="note-hit">{{ seg.text }}</mark>
-            <template v-else>
-              {{ seg.text }}
-            </template>
-          </template>
+          <NoteProse :text="noteDraft" :highlight="noteHighlightTerms" />
         </div>
-        <textarea
+        <NoteWriter
           v-else
-          :id="`note-${record.match_key}`"
-          ref="noteTextareaRef"
-          v-model="noteDraft"
-          class="match-notes-textarea"
-          rows="2"
-          spellcheck="true"
-          autocorrect="off"
-          :disabled="writesLocked"
-          :title="lockReason || undefined"
+          ref="noteFieldRef"
+          :text="noteDraft"
+          label="Note"
+          :field-id="`note-${record.match_key}`"
           placeholder="What happened this match? Mistakes, wins, who was carrying…"
+          :disabled="writesLocked"
+          :tools-disabled="writesLocked"
+          :disabled-reason="lockReason || undefined"
+          :blocked-reason="lockReason || undefined"
+          :highlight="noteHighlightTerms"
+          surface="plain"
+          @update:text="noteDraft = $event"
+          @focus="isEditingNote = true"
           @blur="exitNoteEditMode"
         />
       </div>

@@ -426,10 +426,13 @@ describe('click-to-edit note', () => {
     container.append(mark, ' two')
     document.body.appendChild(container)
 
-    const textarea = document.createElement('textarea')
-    textarea.value = NOTE
-    document.body.appendChild(textarea)
-    return { container, mark, textarea }
+    // A stand-in for whichever field is showing. What this composable owes
+    // the field is an OFFSET into the text a reader saw; how that becomes a
+    // caret is the field's own business, and differs between a textarea and a
+    // document editor. Asserting the offset is asserting the contract.
+    const focused: (number | undefined)[] = []
+    const field = { focus: (at?: number) => focused.push(at) }
+    return { container, mark, field, focused }
   }
 
   afterEach(() => {
@@ -438,9 +441,9 @@ describe('click-to-edit note', () => {
   })
 
   it('lands the caret at the clicked character offset, past a highlight wrapper', async () => {
-    const { container, mark, textarea } = buildPreview()
+    const { container, mark, field, focused } = buildPreview()
     const { editor } = editorOver(() => recWith({ note: NOTE }))
-    editor.noteTextareaRef.value = textarea
+    editor.noteFieldRef.value = field
 
     // Two characters into the <mark> — 7 ('clutch ') + 2.
     Object.defineProperty(document, 'caretPositionFromPoint', {
@@ -452,14 +455,14 @@ describe('click-to-edit note', () => {
 
     expect(editor.isEditingNote.value).toBe(true)
     await nextTick()
-    expect(textarea.selectionStart).toBe(9)
+    expect(focused).toEqual([9])
   })
 
   it('falls back to the WebKit-only caret API when the standard one is missing', async () => {
     // macOS dev runs in WKWebView, which only ships caretRangeFromPoint.
-    const { container, mark, textarea } = buildPreview()
+    const { container, mark, field, focused } = buildPreview()
     const { editor } = editorOver(() => recWith({ note: NOTE }))
-    editor.noteTextareaRef.value = textarea
+    editor.noteFieldRef.value = field
 
     Object.defineProperty(document, 'caretPositionFromPoint', { value: undefined, configurable: true })
     Object.defineProperty(document, 'caretRangeFromPoint', {
@@ -470,19 +473,21 @@ describe('click-to-edit note', () => {
     container.dispatchEvent(new MouseEvent('click', { clientX: 40, clientY: 12 }))
 
     await nextTick()
-    expect(textarea.selectionStart).toBe(12) // 'clutch ' + all of 'round'
+    expect(focused).toEqual([12]) // 'clutch ' + all of 'round'
   })
 
   it('drops the caret at the end when the editor is opened from the keyboard', async () => {
-    const { container, textarea } = buildPreview()
+    const { container, field, focused } = buildPreview()
     const { editor } = editorOver(() => recWith({ note: NOTE }))
-    editor.noteTextareaRef.value = textarea
+    editor.noteFieldRef.value = field
 
     container.addEventListener('keydown', editor.enterEditMode as (e: Event) => void)
     container.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
 
     await nextTick()
-    expect(textarea.selectionStart).toBe(NOTE.length)
+    // No offset at all: a keyboard activation has no point to land on, and
+    // the field puts the caret wherever it lands by default.
+    expect(focused).toEqual([undefined])
   })
 
   it('blurring the editor persists the trimmed note and returns to the preview', async () => {
@@ -507,9 +512,10 @@ describe('note highlighting', () => {
     )
 
     // 'round' belongs to the tag clause — it must not light up in the note.
-    expect(editor.noteHighlightSegments.value).toEqual([
-      { text: 'clutch', hit: true },
-      { text: ' round', hit: false },
-    ])
+    // The composable hands out the TERMS now: the note is rendered markdown on
+    // both sides, so the read view weaves <mark> through the markup and the
+    // editor draws decorations over a document it must not touch. Neither can
+    // use a flat list of text runs.
+    expect(editor.noteHighlightTerms.value).toEqual(['clutch'])
   })
 })

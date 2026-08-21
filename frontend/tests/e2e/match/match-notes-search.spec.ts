@@ -1,17 +1,16 @@
 /**
- * Match-notes E2E — preview / textarea swap inside the detail panel.
+ * Match-notes E2E — the click-to-edit swap inside the detail panel.
  *
- * The matches detail panel renders the note as a click-to-edit
- * preview: a `<div class="match-notes-preview">` when a note exists,
- * a `<textarea class="match-notes-textarea">` once the user clicks
- * into it. Empty-note records skip the preview swap and surface the
- * textarea directly so the user can type their first character.
+ * The panel renders the note as a preview — a `<div class="match-notes-preview">`
+ * — when one exists, and swaps in the note WRITER (a rendering editor, with the
+ * markdown a click away) once the user clicks into it. Empty-note records skip
+ * the preview entirely and surface the writer, so the first character needs no
+ * click.
  *
- * Includes hit-highlighting (`<mark class="note-hit">`) for the
- * active narrow-panel search query — App.vue wires
- * `matchesNarrowState.searchText` → `filters.matchQuery` so
- * `searchClauses` lights up and MatchCardExpanded renders `<mark>`
- * around matching note segments.
+ * Includes hit-highlighting (`<mark class="note-hit">`) for the active
+ * narrow-panel search query — App.vue wires `matchesNarrowState.searchText` →
+ * `filters.matchQuery` so `searchClauses` lights up and the preview marks every
+ * hit inside the rendered note.
  */
 import type { Route } from '@playwright/test'
 
@@ -42,7 +41,7 @@ function record(matchKey: string, note?: string) {
   }
 }
 
-test.describe('match notes — preview / textarea swap', () => {
+test.describe('match notes — the click-to-edit swap', () => {
   test('non-empty note renders as a preview that promotes to a textarea on click', async ({ page }) => {
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
@@ -62,11 +61,13 @@ test.describe('match notes — preview / textarea swap', () => {
     await expect(preview).toBeVisible()
     await expect(preview).toContainText('huge clutch on the second point')
 
-    // Click → promotes to textarea, focused.
+    // Click → promotes to the editor, focused. The editor arrives with a
+    // dynamic import, so this also covers the case where the focus is asked
+    // for before there is anything to focus.
     await preview.click()
-    const textarea = page.locator('textarea.match-notes-textarea')
-    await expect(textarea).toBeVisible()
-    await expect(textarea).toBeFocused()
+    const field = page.getByRole('textbox', { name: 'Note' })
+    await expect(field).toBeVisible()
+    await expect(field).toBeFocused()
     await expect(page.locator('.match-notes-preview')).toHaveCount(0)
   })
 
@@ -95,9 +96,9 @@ test.describe('match notes — preview / textarea swap', () => {
     await page.locator('.leaf-row').first().click()
 
     await page.locator('.match-notes-preview').click()
-    const textarea = page.locator('textarea.match-notes-textarea')
-    await textarea.fill('absolute clutch finish, MVP nano')
-    await textarea.blur()
+    const field = page.getByRole('textbox', { name: 'Note' })
+    await field.fill('absolute clutch finish, MVP nano')
+    await field.blur()
 
     // PUT carried the new note via the unified annotation setter.
     await expect.poll(() => lastBody.seen()).toBe(true)
@@ -148,7 +149,7 @@ test.describe('match notes — preview / textarea swap', () => {
     await expect(hit).toHaveText('clutch')
   })
 
-  test('record with no note skips the preview swap — textarea renders directly', async ({ page }) => {
+  test('record with no note skips the preview swap — the editor renders directly', async ({ page }) => {
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
         status: 200,
@@ -163,7 +164,7 @@ test.describe('match notes — preview / textarea swap', () => {
 
     // No preview at all — the editor is ready to receive the user's
     // first character without a click-to-edit indirection.
-    await expect(page.locator('textarea.match-notes-textarea')).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Note' })).toBeVisible()
     await expect(page.locator('.match-notes-preview')).toHaveCount(0)
   })
 })

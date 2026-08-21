@@ -35,7 +35,7 @@ import {
 export const MAX_NOTE_TEXT = 4000
 
 /** The editor's mark names. ProseMirror's, not the HTML tag names. */
-export type DocMark = 'bold' | 'italic' | 'strike'
+type DocMark = 'bold' | 'italic' | 'strike'
 
 const MARK_OF: Record<SpanMark, DocMark> = { strong: 'bold', em: 'italic', del: 'strike' }
 
@@ -53,32 +53,32 @@ const MARK_ORDER: readonly DocMark[] = ['bold', 'italic', 'strike']
 
 const MARKER_OF: Record<DocMark, string> = { bold: '**', italic: '*', strike: '~~' }
 
-export interface DocText {
+interface DocText {
   type: 'text'
   text: string
   marks?: { type: DocMark }[]
 }
 
-export interface DocBreak { type: 'hardBreak' }
+interface DocBreak { type: 'hardBreak' }
 
-export type DocInline = DocText | DocBreak
+type DocInline = DocText | DocBreak
 
-export interface DocParagraph { type: 'paragraph'; content?: DocInline[] }
-export interface DocHeading {
+interface DocParagraph { type: 'paragraph'; content?: DocInline[] }
+interface DocHeading {
   type: 'heading'
   /** What the author wrote — `#` or `##`. The serializer reads this. */
   attrs: { level: 1 | 2; displayLevel: 3 | 4 }
   content?: DocInline[]
 }
-export interface DocListItem { type: 'listItem'; content: DocParagraph[] }
-export interface DocBulletList { type: 'bulletList'; content: DocListItem[] }
-export interface DocOrderedList {
+interface DocListItem { type: 'listItem'; content: DocParagraph[] }
+interface DocBulletList { type: 'bulletList'; content: DocListItem[] }
+interface DocOrderedList {
   type: 'orderedList'
   attrs: { start: number }
   content: DocListItem[]
 }
 
-export type DocBlock = DocParagraph | DocHeading | DocBulletList | DocOrderedList
+type DocBlock = DocParagraph | DocHeading | DocBulletList | DocOrderedList
 
 export interface NoteDoc { type: 'doc'; content: DocBlock[] }
 

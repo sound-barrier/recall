@@ -19,3 +19,29 @@ export async function markdownField(name = 'Note'): Promise<HTMLTextAreaElement>
   await fireEvent.click(screen.getByRole('button', { name: 'Markdown' }))
   return screen.getByRole('textbox', { name }) as HTMLTextAreaElement
 }
+
+/**
+ * Let a mounted NoteWriter's editor chunk resolve.
+ *
+ * A dynamic import is a real module load, so a microtask flush is not enough —
+ * without this the field is simply absent and the failure reads as a missing
+ * element rather than a slow one.
+ */
+export async function editorReady(): Promise<void> {
+  for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 5))
+}
+
+/**
+ * Leave the writer, the way a user does.
+ *
+ * A note commits when focus leaves the WRITER, not when it leaves the field —
+ * the toolbar and the mode toggle are the writer's own chrome, and reaching for
+ * Bold used to close the journal's editor before the press landed. So the event
+ * that means "done" is `focusout`, which bubbles, and the check is deferred a
+ * macrotask because a mousedown on a button does not focus it in every browser.
+ * `fireEvent.blur` alone fires neither of those and commits nothing.
+ */
+export async function leaveWriter(field: HTMLElement): Promise<void> {
+  await fireEvent.focusOut(field)
+  await new Promise((r) => setTimeout(r, 0))
+}
