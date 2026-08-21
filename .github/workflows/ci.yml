@@ -601,7 +601,12 @@ jobs:
       - name: Load tool versions from mise.toml
         run: grep -E '^[A-Z_]+_VERSION *= *"' mise.toml | tr -d ' "' >> "$GITHUB_ENV"
       - name: Install schemathesis (pipx)
-        run: pipx install "schemathesis==${SCHEMATHESIS_VERSION}"
+        # jsonschema-rs is injected at its pinned version because pipx
+        # resolves schemathesis's transitives fresh — see mise.toml for the
+        # breaking release that made this necessary.
+        run: |
+          pipx install "schemathesis==${SCHEMATHESIS_VERSION}"
+          pipx inject schemathesis "jsonschema-rs==${JSONSCHEMA_RS_VERSION}"
 
       - name: Prepare frontend/dist (real Vite build)
         uses: ./.github/actions/prepare-frontend-dist

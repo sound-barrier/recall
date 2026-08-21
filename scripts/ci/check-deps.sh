@@ -153,6 +153,13 @@ check "Honkit" "$HONKIT_VERSION" "$HONKIT_LATEST" "mise.toml [env]"
 SCHEMATHESIS_LATEST=$(curl -fsSL https://pypi.org/pypi/schemathesis/json | jq -r .info.version)
 check "schemathesis" "$SCHEMATHESIS_VERSION" "$SCHEMATHESIS_LATEST" "mise.toml [env]/[tools]"
 
+# jsonschema-rs — schemathesis's transitive, pinned by us because pipx does
+# not pin it. Reported like any other dep so a held-back pin is visible rather
+# than silently permanent; upgrading it means checking that schemathesis's
+# CanonicalSchema calls still resolve.
+JSONSCHEMA_RS_LATEST=$(curl -fsSL https://pypi.org/pypi/jsonschema-rs/json | jq -r .info.version)
+check "jsonschema-rs" "$JSONSCHEMA_RS_VERSION" "$JSONSCHEMA_RS_LATEST" "mise.toml [env]"
+
 # ruff — Python lint + format; PyPI is the source of truth.
 RUFF_LATEST=$(curl -fsSL https://pypi.org/pypi/ruff/json | jq -r .info.version)
 check "ruff" "$RUFF_VERSION" "$RUFF_LATEST" "mise.toml [env]/[tools]"
