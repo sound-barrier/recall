@@ -95,7 +95,10 @@ test('Add match → fill → save → the match appears with the Manual badge', 
   // Optional annotation fields — replay code, a note, a tag chip, and a group
   // member chip (type + Enter adds each chip).
   await page.locator('#mm-replay').fill('A1B2C3')
-  await page.locator('#mm-note').fill('great comeback')
+  // The note is a document editor: typed, not filled — `fill` on a
+  // contenteditable sets its text wholesale and never runs an input rule.
+  await page.getByRole('textbox', { name: 'Notes' }).click()
+  await page.keyboard.type('great comeback')
   await page.locator('[data-mm-tag-input]').fill('clutch')
   await page.locator('[data-mm-tag-input]').press('Enter')
   await expect(page.locator('[data-mm-tag]')).toContainText('clutch')

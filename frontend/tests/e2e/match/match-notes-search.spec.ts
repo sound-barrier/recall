@@ -96,8 +96,13 @@ test.describe('match notes — the click-to-edit swap', () => {
     await page.locator('.leaf-row').first().click()
 
     await page.locator('.match-notes-preview').click()
+    // Select-all then type, never `fill`: on a contenteditable Playwright's
+    // fill inserts rather than replaces, so the note came out as the old text
+    // with the new one welded onto the end.
     const field = page.getByRole('textbox', { name: 'Note' })
-    await field.fill('absolute clutch finish, MVP nano')
+    await field.click()
+    await page.keyboard.press('ControlOrMeta+a')
+    await page.keyboard.type('absolute clutch finish, MVP nano')
     await field.blur()
 
     // PUT carried the new note via the unified annotation setter.
