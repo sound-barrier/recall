@@ -4,6 +4,7 @@ import {
   formatQueueTypeLabel,
   formatUnknownHeroLabel,
   formatUnknownMapLabel,
+  pluralize,
 } from '@/match/match-label-helpers'
 import { isHeroUnknown, isMapUnknown } from '@/match/match-helpers'
 
@@ -90,5 +91,22 @@ describe('isMapUnknown / formatUnknownMapLabel', () => {
   // than deleted.
   it('map empty AND map_raw empty → bare label', () => {
     expect(formatUnknownMapLabel({ data: {} })).toBe('Unknown map')
+  })
+})
+
+describe('pluralize — one decision, spelled once', () => {
+  it.each([
+    [0, 'match', 'matches', '0 matches'],
+    [1, 'match', 'matches', '1 match'],
+    [2, 'match', 'matches', '2 matches'],
+  ])('%i → %s', (n, one, many, want) => {
+    expect(pluralize(n, one, many)).toBe(want)
+  })
+
+  // The default is the +s case, which is the shape six of the seven call sites
+  // wanted and the one the old inline ternaries got wrong most often.
+  it('defaults the plural to a trailing s', () => {
+    expect(pluralize(1, 'note')).toBe('1 note')
+    expect(pluralize(3, 'note')).toBe('3 notes')
   })
 })

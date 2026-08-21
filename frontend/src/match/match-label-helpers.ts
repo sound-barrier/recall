@@ -6,6 +6,19 @@
 
 import type { MatchRecord } from '@/api-client'
 
+/**
+ * `n` with the right noun for it.
+ *
+ * Here rather than beside the review labels that mostly use it, because this
+ * module imports nothing at runtime and the reviews one imports date
+ * formatting. `CoachInboxBanner` is in App.vue's static graph, so pulling
+ * `pluralize` from a module that reaches match-time-helpers put 2.5 KB of date
+ * code into the entry chunk — for a nine-line string helper.
+ */
+export function pluralize(n: number, singular: string, plural = `${singular}s`): string {
+  return `${n} ${n === 1 ? singular : plural}`
+}
+
 // Leaf-row chip label for the play-mode pivot. Prefers the user
 // override (`record.play_mode` — set via the right-panel chooser)
 // and falls back to the OCR-derived `data.playlist` so a freshly-parsed

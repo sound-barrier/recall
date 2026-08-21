@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import { useCoachReturnsStore } from '@/stores/coachReturns'
-import { pluralize } from '@/match/reviews/reviews-helpers'
+import { pluralize } from '@/match/match-label-helpers'
 
 // "3 notes from Ordo waiting · Read the notes" — the nag that sits above the
 // dossier until every returned note is decided.

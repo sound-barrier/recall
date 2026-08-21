@@ -76,7 +76,21 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # and the focus-list helpers; the rest (the band, the item editor, the
 # widget) rides lazy chunks. Plus api.ts's facades for four new routes,
 # api.ts being one eager module. ~2.7KB headroom.
-: "${MAX_INITIAL_JS_BYTES:=348000}"
+# 2026-08-21 — 348000 → 348500. The coach room's corpus became one RoomApi
+# bundle instead of six props and four emits spelled at two call sites, and the
+# bundle is built where the data lives: in useCoachStore and useSelfReviewStore,
+# both of which App.vue reaches statically. So ~400B of genuinely new code lands
+# in the entry graph while the savings land in the lazy views that no longer
+# spell the clump out. A real trade, made deliberately.
+#
+# The other 2.5KB this work first added was NOT a trade, and is worth recording
+# because the mistake is easy: a nine-line `pluralize` helper was put beside the
+# review labels that mostly use it, and CoachInboxBanner — which App.vue imports
+# statically — pulled it from there, dragging reviews-helpers → coach-time →
+# match-time-helpers into the entry chunk. The helper now lives in
+# match-label-helpers.ts, which imports nothing at runtime. A leaf that costs
+# nothing to import is worth more than a leaf that sits beside its callers.
+: "${MAX_INITIAL_JS_BYTES:=348500}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
