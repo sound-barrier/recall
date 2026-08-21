@@ -40,7 +40,7 @@ func stampFocus(items, born []db.FocusItem) []db.FocusItem {
 	return out
 }
 
-func focusStatusOr(status, fallback string) string {
+func focusStatusOr(status, fallback db.FocusStatus) db.FocusStatus {
 	switch status {
 	case db.FocusNew, db.FocusWorking, db.FocusDone:
 		return status
@@ -162,7 +162,7 @@ func (f *Fake) LoadReceivedFocusItems() ([]db.ReceivedFocusItem, error) {
 	return out, nil
 }
 
-func (f *Fake) SetFocusItemStatus(itemID, status string) error {
+func (f *Fake) SetFocusItemStatus(itemID string, status db.FocusStatus) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if focusStatusOr(status, "") == "" {

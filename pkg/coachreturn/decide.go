@@ -47,7 +47,7 @@ func Decide(st Store, id int64, decisions []Verdict, localHandle string) (Sheet,
 // decisionTarget is one validated decision paired with the note it names.
 type decisionTarget struct {
 	note     coach.Note
-	decision string
+	decision Decision
 }
 
 // resolveDecisions checks every decision against the file and the local
@@ -86,7 +86,7 @@ func applyDecision(st Store, returnID int64, f coach.NotesFile, t decisionTarget
 	if err != nil {
 		return err
 	}
-	if err := st.SetCoachReturnDecision(returnID, t.note.NoteID, t.decision); err != nil {
+	if err := st.SetCoachReturnDecision(returnID, t.note.NoteID, string(t.decision)); err != nil {
 		return fmt.Errorf("coach: record decision: %w", err)
 	}
 	return nil

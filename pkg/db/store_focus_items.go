@@ -31,12 +31,21 @@ var (
 // lands, accepting it acknowledges rather than admits it, and 'done' retires
 // it from the live readout without deleting what was said.
 
+// FocusStatus is where one focus item stands.
+//
+// A defined type rather than a bare string: the vocabulary was validated three
+// different hand-rolled ways, and a `status string` parameter accepts anything
+// the caller happens to be holding. Verified that modernc.org/sqlite carries a
+// named string type across the database/sql boundary on both Exec and Scan
+// before making the change — it does.
+type FocusStatus string
+
 // Focus-item statuses. A coach's item starts New; your own starts Working
 // (you wrote it, you are on it); either ends Done.
 const (
-	FocusNew     = "new"
-	FocusWorking = "working"
-	FocusDone    = "done"
+	FocusNew     FocusStatus = "new"
+	FocusWorking FocusStatus = "working"
+	FocusDone    FocusStatus = "done"
 )
 
 // FocusItem is one line of "what to work on". ItemID is a UUID minted
@@ -45,7 +54,7 @@ const (
 type FocusItem struct {
 	ItemID    string
 	Text      string
-	Status    string
+	Status    FocusStatus
 	SortOrder int
 	CreatedAt string
 	UpdatedAt string
@@ -96,7 +105,7 @@ type FocusItemStore interface {
 	// There is no delete beside it: discarding the staged return is the ONE
 	// way a coach's item leaves the player's list, and DeleteCoachReturn's
 	// cascade is how that happens.
-	SetFocusItemStatus(itemID, status string) error
+	SetFocusItemStatus(itemID string, status FocusStatus) error
 }
 
 func (s *SQLStore) SetCoachFocusItems(playerRef int64, items []FocusItem) error {
@@ -191,7 +200,7 @@ func (s *SQLStore) replaceFocusItems(fam focusReplace, items []FocusItem) error 
 // trick even when it works: SetFocusItemStatus used to probe with
 // `statusOrDefault(status, "") == ""`, a sentinel empty string standing in for
 // false. CLAUDE.md names that one — a zero value carrying "no result".
-func isFocusStatus(status string) bool {
+func isFocusStatus(status FocusStatus) bool {
 	switch status {
 	case FocusNew, FocusWorking, FocusDone:
 		return true
@@ -202,7 +211,7 @@ func isFocusStatus(status string) bool {
 
 // statusOrDefault normalizes an incoming status, substituting fallback for
 // anything this store does not recognize.
-func statusOrDefault(status, fallback string) string {
+func statusOrDefault(status, fallback FocusStatus) FocusStatus {
 	if isFocusStatus(status) {
 		return status
 	}
@@ -325,7 +334,7 @@ func (s *SQLStore) LoadReceivedFocusItems() ([]ReceivedFocusItem, error) {
 // rather than two because the caller has an item id and nothing else — the
 // UI's "Accept" and "Got this" know which row they are looking at, not which
 // table it came from.
-func (s *SQLStore) SetFocusItemStatus(itemID, status string) error {
+func (s *SQLStore) SetFocusItemStatus(itemID string, status FocusStatus) error {
 	if !isFocusStatus(status) {
 		return fmt.Errorf("%w: %q", ErrFocusItemStatusInvalid, status)
 	}

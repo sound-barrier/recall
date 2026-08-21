@@ -317,7 +317,7 @@ func assertFocusListReads(t *testing.T, list []app.FocusEntry) {
 		t.Errorf("first coach item = %q, want the coach's order kept", fromCoach[0].Text)
 	}
 	for _, e := range fromCoach {
-		if e.Status != db.FocusNew {
+		if e.Status != string(db.FocusNew) {
 			t.Errorf("item %q landed as %q, want %q", e.Text, e.Status, db.FocusNew)
 		}
 		if e.CoachName != sittingCoach {

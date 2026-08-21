@@ -17,13 +17,21 @@ import (
 // what "coach is priority" means for the live-session readout, and the list
 // and the readout must agree or the readout is arbitrary.
 
+// Where a focus item came from. Named because these two strings are the whole
+// vocabulary of the `source` field, and the frontend switches on them.
+const (
+	SourceCoach = "coach"
+	SourceSelf  = "self"
+)
+
 // FocusEntry is one line of the player's list, with enough provenance for
 // the UI to say where it came from and to sort it.
 type FocusEntry struct {
 	ItemID string `json:"item_id"`
 	Text   string `json:"text"`
 	Status string `json:"status"`
-	// Source is "coach" or "self"; coach entries carry the name that sent it.
+	// Source says who wrote it — SourceCoach or SourceSelf. Coach entries carry
+	// the name that sent it.
 	Source    string `json:"source"`
 	CoachName string `json:"coach_name,omitempty"`
 	// From is the session date (coach) or the sitting's creation day (self),
@@ -42,8 +50,8 @@ func (a *App) FocusList() ([]FocusEntry, error) {
 	out := make([]FocusEntry, 0, len(received))
 	for _, it := range received {
 		out = append(out, FocusEntry{
-			ItemID: it.ItemID, Text: it.Text, Status: it.Status,
-			Source: "coach", CoachName: it.CoachName, From: it.SessionDate,
+			ItemID: it.ItemID, Text: it.Text, Status: string(it.Status),
+			Source: SourceCoach, CoachName: it.CoachName, From: it.SessionDate,
 		})
 	}
 
@@ -61,8 +69,8 @@ func (a *App) FocusList() ([]FocusEntry, error) {
 	for _, s := range sittings {
 		for _, it := range byReview[s.ReviewID] {
 			out = append(out, FocusEntry{
-				ItemID: it.ItemID, Text: it.Text, Status: it.Status,
-				Source: "self", From: day(s.CreatedAt),
+				ItemID: it.ItemID, Text: it.Text, Status: string(it.Status),
+				Source: SourceSelf, From: day(s.CreatedAt),
 			})
 		}
 	}
@@ -97,5 +105,6 @@ func (a *App) SetFocusItemStatus(itemID, status string) error {
 	if strings.TrimSpace(itemID) == "" {
 		return fmt.Errorf("%w: no item id", db.ErrFocusItemUnknown)
 	}
-	return a.store.SetFocusItemStatus(itemID, status)
+	// The wire carries a string; this is the one place it becomes a status.
+	return a.store.SetFocusItemStatus(itemID, db.FocusStatus(status))
 }
