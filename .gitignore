@@ -37,10 +37,18 @@ frontend/package.json.md5
 /Recall-server.exe
 /recall-server
 
-.claude/
+# .claude/ holds two different things. `settings.local.json` and the session
+# scratch (RESUME.md, SPLIT-NOTES.md, worktrees/) are personal and stay out.
+# `rules/` is the opposite: 1000+ lines of standards that every contributor and
+# every review needs, and that were invisible to all of them while this line
+# read `.claude/`. Excluding the ENTRIES rather than the directory is what lets
+# the re-include work — git never descends into an excluded directory, so
+# `.claude/` + `!.claude/rules/` would silently do nothing.
+.claude/*
+!.claude/rules/
 data/
 # Ad-hoc scratch space (PR bodies, intermediate jq output, scratch
-# scripts). See CLAUDE.md → "Conventions worth knowing" for the
+# scripts). See CLAUDE.md → "Cross-cutting conventions" for the
 # rule: Claude writes ephemeral files here, not /tmp.
 /tmp/
 # Go test artifacts
