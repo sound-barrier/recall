@@ -1,0 +1,54 @@
+/* The note prose family.
+ *
+ * Promoted out of NoteProse.vue's scoped block so the READ surface and the
+ * WRITING surface paint from one sheet. That is the point: a WYSIWYG editor
+ * whose prose is styled separately from the card the note lands on will drift
+ * into looking different from what it promises, one rule at a time. Sharing
+ * the sheet makes the two identical by construction rather than by discipline.
+ *
+ * Scoped styles were the wrong home for a second reason: Vue rewrites `:deep()`
+ * per component hash, so the editor would have needed its own copy of every
+ * rule below, which is exactly the duplication the .eyebrow collapse existed
+ * to end.
+ *
+ * The list item's paragraph is the one rule here that the ledger does not
+ * need: the editor's schema wraps a list item's text in a <p> because
+ * prosemirror-schema-list splits a BLOCK inside the item, so removing the
+ * wrapper breaks Enter and the list buttons. Trimming its margins is what
+ * makes the wrapper invisible to a reader.
+ */
+
+/* The blocks carry their own rhythm; the container only trims the ends so a
+   note sits flush in whatever card holds it. */
+.note-prose {
+  font-size: inherit;
+  line-height: 1.5;
+}
+
+.note-prose > :first-child { margin-top: 0; }
+.note-prose > :last-child { margin-bottom: 0; }
+.note-prose p { margin: 0 0 0.5rem; }
+
+/* A note's "title" is an h3/h4 inside a card that owns the page's h2 — sized
+   as emphasis, not as page furniture. */
+.note-prose h3,
+.note-prose h4 {
+  margin: 0.55rem 0 0.25rem;
+  font-family: inherit;
+  font-size: var(--type-lg);
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.note-prose ul,
+.note-prose ol {
+  margin: 0 0 0.5rem;
+  padding-left: 1.15rem;
+}
+
+.note-prose li { margin: 0.1rem 0; }
+
+/* The editor's list item wraps its text in a paragraph the ledger has no need
+   of. Trimmed to nothing so the two surfaces read the same. */
+.note-prose li > p { margin: 0; }
