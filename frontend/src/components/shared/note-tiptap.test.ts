@@ -167,7 +167,7 @@ describe('marks hug their content', () => {
     e.commands.setBold()
     // `**a***` would read back as bold-a plus a stray star, so the star is
     // left outside the mark and the note still says what it looks like.
-    expect(markdownOf(e.state.doc)).toBe('**a*** b'.replace('**a***', '**a***'))
+    expect(markdownOf(e.state.doc)).toBe('**a*** b')
   })
 })
 

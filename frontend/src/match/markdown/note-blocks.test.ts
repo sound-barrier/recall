@@ -82,6 +82,22 @@ describe('inlineSpans — marks as sets, over raw text', () => {
   // The two emitters share a lexer, so they must agree on which characters are
   // text and which were markers. Strip the tags off the HTML and the two have
   // to say the same thing — this is what keeps them from drifting apart.
+  /**
+   * The text a reader would see, read out of the emitter's own HTML.
+   *
+   * Parsed rather than regex-stripped: tag-stripping with `/<[^>]*>/` is an
+   * incomplete sanitizer, and unescaping entities by hand in sequence
+   * double-unescapes (`&amp;lt;` becomes `<`), so both spellings answer a
+   * different question than the one being asked. Assignment to innerHTML never
+   * runs a script, and the emitter escapes anyway — the whole point of the
+   * `<script>` case below is that it arrives as text.
+   */
+  function textOfHTML(src: string): string {
+    const host = document.createElement('div')
+    host.innerHTML = renderMarkdown(src)
+    return host.textContent ?? ''
+  }
+
   it.each([
     'Hold **the *high* ground** first.',
     '***hold the angle***',
@@ -91,11 +107,7 @@ describe('inlineSpans — marks as sets, over raw text', () => {
     '** hold **',
     '<script>alert(1)</script>',
   ])('agrees with the HTML emitter about %j', (src) => {
-    const textOfHTML = renderMarkdown(src)
-      .replace(/<[^>]*>/g, '')
-      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-      .replace(/&#34;/g, '"').replace(/&#39;/g, "'")
-    expect(inlineSpans(src).map((s) => s.text).join('')).toBe(textOfHTML)
+    expect(inlineSpans(src).map((s) => s.text).join('')).toBe(textOfHTML(src))
   })
 })
 
