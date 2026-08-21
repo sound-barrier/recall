@@ -118,7 +118,7 @@ func gatedSelfReviewWrites(a *app.App) map[string]func() error {
 		},
 		// The player's own list — a coach's items land in it, but moving one
 		// is the player acting on their data, so the gate covers it.
-		"SetFocusItemStatus": func() error { return a.SetFocusItemStatus("i", db.FocusWorking) },
+		"SetFocusItemStatus": func() error { return a.SetFocusItemStatus("i", string(db.FocusWorking)) },
 		"FinishSelfReview": func() error {
 			_, err := a.FinishSelfReview("r")
 			return err

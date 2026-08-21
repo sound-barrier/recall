@@ -79,8 +79,8 @@ func stageReturn(t *testing.T, st coachreturn.Store, payload []byte, localHandle
 	return sheet
 }
 
-func statusesOf(sheet coachreturn.Sheet) map[string]string {
-	out := map[string]string{}
+func statusesOf(sheet coachreturn.Sheet) map[string]coachreturn.Status {
+	out := map[string]coachreturn.Status{}
 	for _, item := range sheet.Notes {
 		out[item.NoteID] = item.Status
 	}
@@ -91,7 +91,7 @@ func statusesOf(sheet coachreturn.Sheet) map[string]string {
 // status, the decisions recorded so far, and the pending count. Comparing
 // the whole shape at once keeps a decision test one assertion long.
 type decisionState struct {
-	Statuses  map[string]string
+	Statuses  map[string]coachreturn.Status
 	Decisions map[string]string
 	Pending   int
 }

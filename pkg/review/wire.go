@@ -102,7 +102,7 @@ func emptyIfNil(s []string) []string {
 func focusItemsFromRows(rows []db.FocusItem) []FocusItem {
 	out := make([]FocusItem, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, FocusItem{ItemID: r.ItemID, Text: r.Text, Status: r.Status})
+		out = append(out, FocusItem{ItemID: r.ItemID, Text: r.Text, Status: string(r.Status)})
 	}
 	return out
 }

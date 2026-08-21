@@ -416,7 +416,10 @@ func decodeDecisions(r *http.Request) ([]coachreturn.Verdict, error) {
 		if verdict == nil {
 			return nil, fmt.Errorf("decisions[%q] must be a string, not null", noteID)
 		}
-		out = append(out, coachreturn.Verdict{NoteID: noteID, Decision: *verdict})
+		// The HTTP boundary: JSON carries a bare string, and this is where it
+		// becomes a Decision. coachreturn.Decide still refuses anything outside
+		// the vocabulary — a type is not a substitute for validating input.
+		out = append(out, coachreturn.Verdict{NoteID: noteID, Decision: coachreturn.Decision(*verdict)})
 	}
 	return out, nil
 }

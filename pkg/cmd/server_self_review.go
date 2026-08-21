@@ -173,10 +173,16 @@ func handleSetSelfReviewFocusItems(a *app.App) http.HandlerFunc {
 	}
 }
 
+// focusRowsFromWire is the inbound boundary: JSON carries a bare string, and
+// this is where it becomes a FocusStatus. The store still validates — an
+// unrecognized value normalizes to the family default rather than being
+// trusted for having a type.
 func focusRowsFromWire(items []review.FocusItem) []db.FocusItem {
 	out := make([]db.FocusItem, 0, len(items))
 	for _, it := range items {
-		out = append(out, db.FocusItem{ItemID: it.ItemID, Text: it.Text, Status: it.Status})
+		out = append(out, db.FocusItem{
+			ItemID: it.ItemID, Text: it.Text, Status: db.FocusStatus(it.Status),
+		})
 	}
 	return out
 }

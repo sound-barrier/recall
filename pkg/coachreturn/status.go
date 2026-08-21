@@ -50,12 +50,13 @@ func loadBlocksByNoteID(st Store) (map[string]db.MatchCoachNote, error) {
 // recorded decision › accepted when the accept's effect is already visible
 // (a block with this note_id, or a coach review for a reviewed_only mark)
 // › pending.
-func (s sheetState) statusOf(n coach.Note, decisions map[string]db.CoachDecision) string {
+func (s sheetState) statusOf(n coach.Note, decisions map[string]db.CoachDecision) Status {
 	if !s.keys[n.MatchKey] {
 		return StatusOrphan
 	}
 	if d, ok := decisions[n.NoteID]; ok {
-		return d.Decision
+		// The store speaks strings; the vocabulary is this package's.
+		return Status(d.Decision)
 	}
 	if s.accepted(n) {
 		return StatusAccepted

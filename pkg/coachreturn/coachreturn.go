@@ -57,18 +57,30 @@ var (
 	ErrNoMatches = errors.New("coach: nothing in this notes file applies to your history")
 )
 
+// Decision is the verdict a player can give one returned note. Two arms, and
+// no 'denied': a coach's note is theirs to have written, so skipping removes it
+// from your matches rather than rejecting that it was said.
+type Decision string
+
 const (
-	DecisionAccepted = "accepted"
-	DecisionSkipped  = "skipped"
+	DecisionAccepted Decision = "accepted"
+	DecisionSkipped  Decision = "skipped"
 )
 
-// Statuses a note on the return sheet can be in. Pending is derived, never
-// stored: undecided and decidable.
+// Status is where a note on the return sheet stands — a superset of Decision,
+// because two of the four are not choices. Pending is derived and never stored
+// (undecided and decidable); Orphan means the note is about a match this
+// history no longer has, so it cannot be accepted at all.
+//
+// Defined types rather than bare strings: these two vocabularies overlap by two
+// members, and untyped they were interchangeable at every call site.
+type Status string
+
 const (
-	StatusPending  = "pending"
-	StatusAccepted = "accepted"
-	StatusSkipped  = "skipped"
-	StatusOrphan   = "orphan"
+	StatusPending  Status = "pending"
+	StatusAccepted Status = "accepted"
+	StatusSkipped  Status = "skipped"
+	StatusOrphan   Status = "orphan"
 )
 
 // reviewedByCoach is the match_reviews value an accept writes — the coach
@@ -103,13 +115,13 @@ type Sheet struct {
 // its derived status.
 type Item struct {
 	coach.Note
-	Status string `json:"status"`
+	Status Status `json:"status"`
 }
 
 // Verdict is one entry of the PUT /coach/returns/{id}/decisions body.
 type Verdict struct {
-	NoteID   string `json:"note_id"`
-	Decision string `json:"decision"`
+	NoteID   string   `json:"note_id"`
+	Decision Decision `json:"decision"`
 }
 
 // Stage imports a notes archive on the player's side: reads and validates

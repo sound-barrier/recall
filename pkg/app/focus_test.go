@@ -49,7 +49,8 @@ func seedFocusList(t *testing.T, store *dbtest.Fake) {
 	// A coach item's coach and date are its RETURN's, so each one needs the
 	// archive it arrived in — two here, because the two are months apart.
 	for _, r := range []struct {
-		hash, date, itemID, text, status string
+		hash, date, itemID, text string
+		status                   db.FocusStatus
 	}{
 		{"hash-march", "2026-03-01", itemCoachOld, "an older lesson", db.FocusWorking},
 		{"hash-august", "2026-08-18", itemCoachNew, "the latest lesson", db.FocusNew},
@@ -105,7 +106,7 @@ func TestFocusList_SaysWhereEachItemCameFrom(t *testing.T) {
 		t.Errorf("own entry = %+v, want the sitting's day", own)
 	}
 	// Retired items stay in the list — the caller decides what to show.
-	if got[3].Status != db.FocusDone {
+	if got[3].Status != string(db.FocusDone) {
 		t.Errorf("entry 3 = %+v, want the retired item still listed", got[3])
 	}
 }
@@ -126,8 +127,8 @@ func TestSetFocusItemStatus_MovesEitherFamilyAndRefusesTheRest(t *testing.T) {
 	a, store := playerApp(t)
 	seedFocusList(t, store)
 
-	mustNoErr(t, a.SetFocusItemStatus(itemCoachNew, db.FocusWorking))
-	mustNoErr(t, a.SetFocusItemStatus(itemSelfNew, db.FocusDone))
+	mustNoErr(t, a.SetFocusItemStatus(itemCoachNew, string(db.FocusWorking)))
+	mustNoErr(t, a.SetFocusItemStatus(itemSelfNew, string(db.FocusDone)))
 
 	got, err := a.FocusList()
 	mustNoErr(t, err)
@@ -135,14 +136,14 @@ func TestSetFocusItemStatus_MovesEitherFamilyAndRefusesTheRest(t *testing.T) {
 	for _, e := range got {
 		byID[e.ItemID] = e.Status
 	}
-	if byID[itemCoachNew] != db.FocusWorking || byID[itemSelfNew] != db.FocusDone {
+	if byID[itemCoachNew] != string(db.FocusWorking) || byID[itemSelfNew] != string(db.FocusDone) {
 		t.Errorf("statuses = %v, want the coach item accepted and the own item retired", byID)
 	}
 
-	if err := a.SetFocusItemStatus("no-such-item", db.FocusWorking); !errors.Is(err, db.ErrFocusItemUnknown) {
+	if err := a.SetFocusItemStatus("no-such-item", string(db.FocusWorking)); !errors.Is(err, db.ErrFocusItemUnknown) {
 		t.Errorf("unknown item = %v, want ErrFocusItemUnknown", err)
 	}
-	if err := a.SetFocusItemStatus("", db.FocusWorking); !errors.Is(err, db.ErrFocusItemUnknown) {
+	if err := a.SetFocusItemStatus("", string(db.FocusWorking)); !errors.Is(err, db.ErrFocusItemUnknown) {
 		t.Errorf("empty id = %v, want ErrFocusItemUnknown", err)
 	}
 	if err := a.SetFocusItemStatus(itemCoachNew, "denied"); !errors.Is(err, db.ErrFocusItemStatusInvalid) {
