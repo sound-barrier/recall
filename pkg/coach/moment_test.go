@@ -235,24 +235,3 @@ func TestNotesFile_RefusesHostileMoments(t *testing.T) {
 // which is the shape a review made entirely of timestamps takes. Skipping the
 // block for it threw the whole payload away on accept, silently, and then
 // reported the note accepted.
-func TestDecide_AcceptKeepsAReviewedOnlyNotesMoments(t *testing.T) {
-	st := seededStore(t)
-	// The shape a moments-only review produces: reviewed_only, no text, every
-	// observation hanging off it as a moment.
-	f := validNotesFile()
-	f.Notes[1].Moments = []coach.Moment{
-		{MomentID: "m1", MatchClock: "03:23", Text: "no off-angle"},
-		{MomentID: "m2", MatchClock: "04:45", Text: "flanking Cassidy"},
-	}
-	sheet := stageReturn(t, st, writeNotes(t, f), "Sable")
-
-	decide(t, st, sheet.ID, coach.Decision{NoteID: noteIDTwo, Decision: coach.DecisionAccepted})
-
-	block := blockWithNoteID(t, st, f.Notes[1].MatchKey, noteIDTwo)
-	if len(block.Moments) != 2 {
-		t.Fatalf("a moments-only review lost its moments on accept: %+v", block)
-	}
-	if block.Moments[0].MatchClock != "03:23" {
-		t.Errorf("moments should land in reading order, got %q first", block.Moments[0].MatchClock)
-	}
-}

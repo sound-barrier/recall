@@ -111,22 +111,17 @@ func writeZipEntry(zw *zip.Writer, name string, body []byte, mt time.Time) error
 	return nil
 }
 
-// ReadNotesArchive decodes and validates the notes archive a player
-// imports. Only notes.json is ever read — ledger.html is an untrusted
-// document the app never opens. Unknown JSON fields are tolerated so a
-// newer minor build's file still stages here.
+// ReadNotesArchive decodes and validates the notes archive a player imports,
+// returning the file and the verbatim notes.json bytes the staging path hashes
+// and keeps as the uploaded document. Only notes.json is ever read —
+// ledger.html is an untrusted document the app never opens. Unknown JSON fields
+// are tolerated so a newer minor build's file still stages here.
 //
-// Production staging uses the unexported form below, which also hands back
-// the raw bytes it hashes; this is the decoder other packages read an
-// exported archive with.
-func ReadNotesArchive(payload []byte) (NotesFile, error) {
-	f, _, err := readNotesArchive(payload)
-	return f, err
-}
-
-// readNotesArchive is ReadNotesArchive plus the verbatim notes.json bytes,
-// which the staging path hashes and keeps as the uploaded document.
-func readNotesArchive(payload []byte) (NotesFile, []byte, error) {
+// One function rather than an exported wrapper over an unexported twin: the
+// wrapper existed because staging was in this package and wanted the bytes,
+// while everyone else wanted only the file. Staging lives in pkg/coachreturn
+// now and reads this directly, so the split had nothing left to hide.
+func ReadNotesArchive(payload []byte) (NotesFile, []byte, error) {
 	payload = stripBOM(payload)
 	if len(payload) > MaxNotesArchiveBytes {
 		return NotesFile{}, nil, fmt.Errorf("%w: archive exceeds 4 MiB", ErrNotesMalformed)
@@ -142,7 +137,7 @@ func readNotesArchive(payload []byte) (NotesFile, []byte, error) {
 	if err != nil {
 		return NotesFile{}, nil, fmt.Errorf("%w: %s: %w", ErrNotesMalformed, notesEntryName, err)
 	}
-	f, err := decodeNotesFile(raw)
+	f, err := DecodeNotesFile(raw)
 	if err != nil {
 		return NotesFile{}, nil, err
 	}
@@ -152,9 +147,10 @@ func readNotesArchive(payload []byte) (NotesFile, []byte, error) {
 	return f, raw, nil
 }
 
-// decodeNotesFile decodes notes.json bytes and normalizes tag slices to
-// non-nil so every downstream marshal carries [] rather than null.
-func decodeNotesFile(raw []byte) (NotesFile, error) {
+// DecodeNotesFile decodes notes.json bytes and normalizes tag slices to
+// non-nil so every downstream marshal carries [] rather than null. Exported for
+// pkg/coachreturn, which decodes a staged archive straight from the store.
+func DecodeNotesFile(raw []byte) (NotesFile, error) {
 	var f NotesFile
 	if err := json.Unmarshal(raw, &f); err != nil {
 		return NotesFile{}, fmt.Errorf("%w: decode %s: %w", ErrNotesMalformed, notesEntryName, err)

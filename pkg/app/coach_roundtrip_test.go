@@ -6,6 +6,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/coach"
+	"recall/pkg/coachreturn"
 	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
 )
@@ -56,7 +57,7 @@ func acceptWholeArchive(t *testing.T, player *app.App, store *dbtest.Fake, archi
 			"archive and the sheet", got, wantMoments)
 	}
 	decided, err := player.DecideCoachReturn(store.CoachReturns[0].ID,
-		[]coach.Decision{{NoteID: sheet.Notes[0].NoteID, Decision: coach.DecisionAccepted}})
+		[]coachreturn.Verdict{{NoteID: sheet.Notes[0].NoteID, Decision: coachreturn.DecisionAccepted}})
 	mustNoErr(t, err)
 	if decided.Pending != 0 {
 		t.Errorf("pending after accept = %d, want 0", decided.Pending)

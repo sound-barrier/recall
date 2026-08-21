@@ -191,7 +191,7 @@ test.describe('return of notes — moments', () => {
   // the transport. This suite serves matches from a route mock, so the Go
   // accept path, the store and the aggregator are never in the loop: mutating
   // all three to drop moments entirely left this test green. Those links are
-  // held by pkg/coach (accept keeps a moments-only review), pkg/db (the
+  // held by pkg/coachreturn (accept keeps a moments-only review), pkg/db (the
   // contract suite, both implementations) and pkg/aggregate (the conversion
   // onto the wire).
   test('renders the moments on the match once accepted', async ({ page }) => {

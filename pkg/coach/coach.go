@@ -78,13 +78,6 @@ var (
 	// ErrNotesUnsupportedSchema — the notes file declares a schema this
 	// build does not speak (409).
 	ErrNotesUnsupportedSchema = errors.New("coach: unsupported notes schema")
-	// ErrReturnOrphan — a decision targets a note whose match is not in the
-	// player's history (409).
-	ErrReturnOrphan = errors.New("coach: note is not about a match in your history")
-	// ErrReturnNoMatches — the archive has nothing to show: no focus items,
-	// and no note about a match in this history (409). The wrapped message
-	// says which of the two cases it is.
-	ErrReturnNoMatches = errors.New("coach: nothing in this notes file applies to your history")
 	// ErrCoachNameRequired — export needs the coach's name set (409).
 	ErrCoachNameRequired = errors.New("coach: coach name is required")
 	// ErrNothingToExport — no notes and no focus items to export (409).

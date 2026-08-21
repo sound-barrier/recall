@@ -1,10 +1,11 @@
-package coach_test
+package coachreturn_test
 
 import (
 	"encoding/json"
 	"testing"
 
 	"recall/pkg/coach"
+	"recall/pkg/coachreturn"
 	"recall/pkg/db"
 )
 
@@ -66,9 +67,9 @@ func writeNotes(t *testing.T, f coach.NotesFile) []byte {
 	return payload
 }
 
-func stageReturn(t *testing.T, st coach.ReturnStore, payload []byte, localHandle string) coach.ReturnSheet {
+func stageReturn(t *testing.T, st coachreturn.Store, payload []byte, localHandle string) coachreturn.Sheet {
 	t.Helper()
-	sheet, already, err := coach.Stage(st, payload, localHandle)
+	sheet, already, err := coachreturn.Stage(st, payload, localHandle)
 	if err != nil {
 		t.Fatalf("Stage: %v", err)
 	}
@@ -78,7 +79,7 @@ func stageReturn(t *testing.T, st coach.ReturnStore, payload []byte, localHandle
 	return sheet
 }
 
-func statusesOf(sheet coach.ReturnSheet) map[string]string {
+func statusesOf(sheet coachreturn.Sheet) map[string]string {
 	out := map[string]string{}
 	for _, item := range sheet.Notes {
 		out[item.NoteID] = item.Status
@@ -95,15 +96,15 @@ type decisionState struct {
 	Pending   int
 }
 
-func stateOf(sheet coach.ReturnSheet) decisionState {
+func stateOf(sheet coachreturn.Sheet) decisionState {
 	return decisionState{Statuses: statusesOf(sheet), Decisions: sheet.Decisions, Pending: sheet.Pending}
 }
 
 // decide records decisions for the local player "Sable" — the handle every
 // return test stages under — and fails the test if the store refuses them.
-func decide(t *testing.T, st coach.ReturnStore, returnID int64, decisions ...coach.Decision) coach.ReturnSheet {
+func decide(t *testing.T, st coachreturn.Store, returnID int64, decisions ...coachreturn.Verdict) coachreturn.Sheet {
 	t.Helper()
-	sheet, err := coach.Decide(st, returnID, decisions, "Sable")
+	sheet, err := coachreturn.Decide(st, returnID, decisions, "Sable")
 	if err != nil {
 		t.Fatalf("Decide(%+v): %v", decisions, err)
 	}
@@ -112,7 +113,7 @@ func decide(t *testing.T, st coach.ReturnStore, returnID int64, decisions ...coa
 
 // blocksOn is the coach-received blocks stored on one match, in the order
 // the store hands them back.
-func blocksOn(t *testing.T, st coach.ReturnStore, matchKey string) []db.MatchCoachNote {
+func blocksOn(t *testing.T, st coachreturn.Store, matchKey string) []db.MatchCoachNote {
 	t.Helper()
 	blocks, err := st.LoadMatchCoachNotes()
 	if err != nil {
@@ -137,7 +138,7 @@ func coachNamesOf(blocks []db.MatchCoachNote) []string {
 	return names
 }
 
-func blockWithNoteID(t *testing.T, st coach.ReturnStore, matchKey, noteID string) db.MatchCoachNote {
+func blockWithNoteID(t *testing.T, st coachreturn.Store, matchKey, noteID string) db.MatchCoachNote {
 	t.Helper()
 	for _, b := range blocksOn(t, st, matchKey) {
 		if b.NoteID == noteID {
@@ -161,24 +162,24 @@ func asJSON(t *testing.T, v any) string {
 // file, every note verbatim (a missing match snapshot normalized to an
 // empty one), orphan for the match the player no longer has, pending for
 // the rest, and no decisions yet. id and importedAt are the store's.
-func wantStagedSheet(id int64, importedAt string) coach.ReturnSheet {
-	return coach.ReturnSheet{
+func wantStagedSheet(id int64, importedAt string) coachreturn.Sheet {
+	return coachreturn.Sheet{
 		ID: id, CoachName: "Ordo", PlayerHandle: "Sable", SessionDate: "2026-08-15",
 		ImportedAt: importedAt,
 		FocusItems: []coach.FocusItem{{ItemID: focusIDOne, Text: "Work on ult timing."}},
-		Notes: []coach.ReturnItem{
+		Notes: []coachreturn.Item{
 			{
 				NoteID: noteIDOne, MatchKey: keyIlios, Kind: "note", Text: "hold high ground",
 				FocusTags: []string{"positioning"}, ExtraTags: []string{}, MatchClock: "06:40", UpdatedAt: "2026-08-15T09:00:00Z",
-				Match: &coach.MatchContext{Map: "ilios", Hero: "ana", Result: "victory", Date: "2026-08-01", FinishedAt: "18:30"}, Status: coach.StatusPending},
+				Match: &coach.MatchContext{Map: "ilios", Hero: "ana", Result: "victory", Date: "2026-08-01", FinishedAt: "18:30"}, Status: coachreturn.StatusPending},
 			{
 				NoteID: noteIDTwo, MatchKey: keyRank, Kind: "reviewed_only",
 				FocusTags: []string{}, ExtraTags: []string{}, UpdatedAt: "2026-08-15T09:01:00Z",
-				Match: &coach.MatchContext{}, Status: coach.StatusPending},
+				Match: &coach.MatchContext{}, Status: coachreturn.StatusPending},
 			{
 				NoteID: orphanNoteID, MatchKey: orphanKey, Kind: "note", Text: "gone",
 				FocusTags: []string{"comms"}, ExtraTags: []string{},
-				Match: &coach.MatchContext{Map: "busan", Hero: "ana", Result: "defeat", Date: "2030-01-01", FinishedAt: "00:00"}, Status: coach.StatusOrphan},
+				Match: &coach.MatchContext{Map: "busan", Hero: "ana", Result: "defeat", Date: "2030-01-01", FinishedAt: "00:00"}, Status: coachreturn.StatusOrphan},
 		},
 		Decisions: map[string]string{},
 		Pending:   2,
