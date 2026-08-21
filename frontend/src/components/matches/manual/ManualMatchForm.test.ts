@@ -5,6 +5,7 @@ import ManualMatchModal from '@/components/matches/manual/ManualMatchModal.vue'
 import { ApiError, setApiBacking, type ManualMatchInput, type MatchRecord, type OWData } from '@/api-client'
 import type { ManualMatchMode } from '@/composables/matches/manual/useManualMatchForm'
 import { qk } from '@/queries/keys'
+import { markdownField } from '@/test-utils'
 import { seedQuery } from '@/test-utils/queryTestUtils'
 
 // The write gate reads the profiles query + the coaching-session store;
@@ -375,7 +376,9 @@ describe('ManualMatchForm — annotations', () => {
     renderModal()
     await fillMinimalFullForm()
     await fireEvent.update(screen.getByLabelText(/^Replay code/), 'A1B2C3')
-    await fireEvent.update(screen.getByLabelText(/^Notes/), '  fed early  ')
+    // Markdown mode: this is about what the FORM sends, and the raw field
+    // answers fireEvent.update where a document editor does not.
+    await fireEvent.update(await markdownField('Notes'), '  fed early  ')
     await fireEvent.click(chip('Ally left'))
     await fireEvent.click(chip('Enemy threw'))
     expect(chip('Ally left')).toHaveAttribute('aria-pressed', 'true')

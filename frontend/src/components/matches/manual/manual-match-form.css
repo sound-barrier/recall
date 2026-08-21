@@ -54,11 +54,12 @@
 .mm-input:focus-visible { outline: 0; border-color: var(--accent); }
 .mm-input-short { width: max-content; }
 
-.mm-textarea {
-  width: 100%;
-  resize: vertical;
-  min-height: 2.4rem;
-  line-height: 1.4;
+/* The note is the shared writer, which paints its own box — it only needs the
+   type scale its sibling fields use, so the section reads as one form. Body
+   font, not the fields' mono: a note is prose, and every other surface that
+   shows this exact text sets it that way. */
+.mm-section :deep(.note-writer) {
+  font-size: var(--type-lg);
 }
 
 /* Tag / teammate chip-input: type + Enter adds a token; click a token to

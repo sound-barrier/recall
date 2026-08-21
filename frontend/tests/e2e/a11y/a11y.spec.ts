@@ -62,4 +62,19 @@ for (const theme of THEMES) {
       expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([])
     })
   }
+
+  // The hand-entry form, which the matrix above never reaches: it is a modal,
+  // so every one of its controls is behind a click no view sweep performs. It
+  // holds a note EDITOR now — a contenteditable that has to carry its own
+  // accessible name, because `for` cannot point at one.
+  test(`a11y: manual-entry modal (${theme} theme) has no axe violations`, async ({ page }) => {
+    await openView(page, 'tab-matches', theme)
+    await page.locator('[data-add-match]').click()
+    await page.locator('[data-add-match-full]').click()
+    await expect(page.locator('.mm-modal')).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Notes' })).toBeVisible()
+
+    const results = await runAx(page)
+    expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([])
+  })
 }

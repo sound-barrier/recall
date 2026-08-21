@@ -5,6 +5,7 @@ import { useOWData } from '@/composables/shared/useOWData'
 import { manualMatchFormKey } from '@/composables/matches/manual/useManualMatchForm'
 import { TIER_ORDER } from '@/match/trends/match-trends-helpers'
 import FilterCombobox from '@/components/shared/FilterCombobox.vue'
+import NoteWriter from '@/components/shared/NoteWriter.vue'
 
 // The hand-enter match form body — the map/hero FilterCombobox pickers, the chip
 // toggles (mode / queue / role / result / leaver), and the optional fields
@@ -282,15 +283,18 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 
     <!-- Notes (optional) -->
     <section v-if="!quick" class="mm-section">
-      <label class="eyebrow mm-eyebrow-label" for="mm-note">Notes <span class="mm-optional">(optional)</span></label>
-      <textarea
-        id="mm-note"
-        v-model="f.note.value"
-        class="mm-input mm-textarea"
-        rows="2"
-        spellcheck="true"
-        autocorrect="off"
+      <!-- Visual furniture, not a <label>: `for` cannot associate with a
+           contenteditable, and the writer names its own field. -->
+      <p class="eyebrow mm-eyebrow-label">
+        Notes <span class="mm-optional">(optional)</span>
+      </p>
+      <NoteWriter
+        :text="f.note.value"
+        label="Notes"
+        field-id="mm-note"
         placeholder="What happened? Anything to review later?"
+        surface="plain"
+        @update:text="f.note.value = $event"
       />
     </section>
 
