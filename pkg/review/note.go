@@ -40,6 +40,18 @@ func DeleteNote(s Store, reviewID, matchKey string) error {
 	return s.DeleteSelfReviewNote(reviewID, matchKey)
 }
 
+// MomentRef says which moment, in which match, in which sitting.
+//
+// A struct rather than three positional strings: PutMoment and DeleteMoment
+// both took (reviewID, matchKey, momentID) adjacent and same-typed, so a caller
+// transposing two of them compiled cleanly and wrote to the wrong place. Field
+// names make that mistake visible at the call site.
+type MomentRef struct {
+	ReviewID string
+	MatchKey string
+	MomentID string
+}
+
 // PutMoment saves one timestamped moment on the sitting's note about a
 // match. A match with no note yet gets a reviewed_only one — a moment IS a
 // review of the match, the same rule the coach's room applies — opened by
@@ -48,7 +60,8 @@ func DeleteNote(s Store, reviewID, matchKey string) error {
 // check-then-open here. The rules are the player's own moment rules; the id
 // is the client's to mint. An edit keeps its place in the reading order; a
 // new one goes after every place taken.
-func PutMoment(s Store, reviewID, matchKey, momentID string, in matchedit.MomentInput) (Moment, error) {
+func PutMoment(s Store, ref MomentRef, in matchedit.MomentInput) (Moment, error) {
+	reviewID, matchKey, momentID := ref.ReviewID, ref.MatchKey, ref.MomentID
 	if momentID == "" {
 		return Moment{}, fmt.Errorf("%w: a moment needs an id", matchedit.ErrInvalidMoment)
 	}
@@ -77,8 +90,8 @@ func PutMoment(s Store, reviewID, matchKey, momentID string, in matchedit.Moment
 }
 
 // DeleteMoment removes one moment; absent is a no-op.
-func DeleteMoment(s Store, reviewID, matchKey, momentID string) error {
-	return s.DeleteSelfReviewMoment(reviewID, matchKey, momentID)
+func DeleteMoment(s Store, ref MomentRef) error {
+	return s.DeleteSelfReviewMoment(ref.ReviewID, ref.MatchKey, ref.MomentID)
 }
 
 // momentsOnMatch reads the moments the sitting already holds on the match —

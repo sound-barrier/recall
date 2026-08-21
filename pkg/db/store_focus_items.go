@@ -184,13 +184,29 @@ func (s *SQLStore) replaceFocusItems(fam focusReplace, items []FocusItem) error 
 	return commitFocus(tx, "set focus items")
 }
 
-func statusOrDefault(status, fallback string) string {
+// isFocusStatus reports whether status is one this store will accept.
+//
+// Separate from statusOrDefault because the two questions are different, and
+// answering "is this valid?" by asking "does defaulting change it?" reads as a
+// trick even when it works: SetFocusItemStatus used to probe with
+// `statusOrDefault(status, "") == ""`, a sentinel empty string standing in for
+// false. CLAUDE.md names that one — a zero value carrying "no result".
+func isFocusStatus(status string) bool {
 	switch status {
 	case FocusNew, FocusWorking, FocusDone:
-		return status
+		return true
 	default:
-		return fallback
+		return false
 	}
+}
+
+// statusOrDefault normalizes an incoming status, substituting fallback for
+// anything this store does not recognize.
+func statusOrDefault(status, fallback string) string {
+	if isFocusStatus(status) {
+		return status
+	}
+	return fallback
 }
 
 func commitFocus(tx *sql.Tx, what string) error {
@@ -310,7 +326,7 @@ func (s *SQLStore) LoadReceivedFocusItems() ([]ReceivedFocusItem, error) {
 // UI's "Accept" and "Got this" know which row they are looking at, not which
 // table it came from.
 func (s *SQLStore) SetFocusItemStatus(itemID, status string) error {
-	if statusOrDefault(status, "") == "" {
+	if !isFocusStatus(status) {
 		return fmt.Errorf("%w: %q", ErrFocusItemStatusInvalid, status)
 	}
 	for _, table := range []string{"self_review_focus_items", "received_focus_items"} {
