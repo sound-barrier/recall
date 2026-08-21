@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 
 import {
   DecideCoachReturn, DeleteCoachReturn, DeleteMatchCoachNote, GetCoachReturn,
-  type CoachDecisionEnum, type CoachReturnSheet,
+  type CoachDecisionEnum, type CoachReturnSheet, type CoachReturnStatus,
 } from '@/api-client'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { getQueryClient } from '@/queries/client'
@@ -40,8 +40,8 @@ function undecidedCount(sheet: CoachReturnSheet): number {
   // never land. Anything else, INCLUDING a status the server did not send,
   // still waits: under-counting hides the banner and the player never
   // learns notes are here, while over-counting is visible and recoverable.
-  const settled = new Set(['accepted', 'skipped', 'orphan'])
-  return (sheet.notes ?? []).filter(n => !settled.has(n.status ?? '') && !decisions[n.note_id]).length
+  const settled = new Set<CoachReturnStatus>(['accepted', 'skipped', 'orphan'])
+  return (sheet.notes ?? []).filter(n => !settled.has(n.status) && !decisions[n.note_id]).length
 }
 
 function withPending(sheet: CoachReturnSheet): CoachReturnSheet {

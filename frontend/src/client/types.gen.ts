@@ -991,6 +991,15 @@ export type CoachSessionView = {
 };
 
 /**
+ * Where one returned note stands. `pending` is derived, never stored —
+ * undecided and decidable. `orphan` means the note is about a match this
+ * history no longer has, so it cannot be accepted at all. The two a player
+ * can actually choose are the CoachDecisionEnum pair below.
+ *
+ */
+export type CoachReturnStatus = 'pending' | 'accepted' | 'skipped' | 'orphan';
+
+/**
  * The player's verdict on one returned note: `accepted` writes the
  * coach's block onto the match, `skipped` removes a block an earlier
  * accept wrote.
@@ -1021,13 +1030,7 @@ export type CoachReturnItem = {
     moments?: Array<CoachMoment>;
     updated_at: string;
     match?: CoachMatchContext;
-    /**
-     * `pending` is derived, never stored — undecided and decidable.
-     * `orphan` means the note is about a match this history no longer
-     * has, so it cannot be accepted at all.
-     *
-     */
-    status: 'pending' | 'accepted' | 'skipped' | 'orphan';
+    status: CoachReturnStatus;
 };
 
 /**
