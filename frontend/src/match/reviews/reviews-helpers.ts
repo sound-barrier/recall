@@ -1,5 +1,6 @@
 import type { CoachReturnSheet, MatchRecord, ShareExport } from '@/api'
 import { formatPlayerDay, localDay } from '@/match/coach/coach-time'
+import { pluralize } from '@/match/match-label-helpers'
 
 /**
  * One coach's one sitting, reassembled from the blocks that landed on
@@ -33,18 +34,6 @@ export function groupReceivedReviews(records: readonly MatchRecord[]): ReceivedR
   for (const g of out) g.matchKeys.sort()
   return out.sort((a, b) =>
     b.sessionDate.localeCompare(a.sessionDate) || a.coachName.localeCompare(b.coachName))
-}
-
-/**
- * `n` with the right noun for it.
- *
- * The index counted matches, notes and sessions in seven places and spelled the
- * choice inline every time, in two different shapes — `n === 1 ? 'match' :
- * 'matches'` and `` `note${n === 1 ? '' : 's'}` ``. Two shapes for one decision
- * is how the seventh one ends up saying "1 notes".
- */
-export function pluralize(n: number, singular: string, plural = `${singular}s`): string {
-  return `${n} ${n === 1 ? singular : plural}`
 }
 
 /** The return sheet a received review came from, when it is still around. */

@@ -1,6 +1,6 @@
 import type { MatchRecord, SelfReview } from '@/api'
 import { tallyWLD, type WLDTally } from '@/match/match-stats-helpers'
-import { pluralize } from '@/match/reviews/reviews-helpers'
+import { pluralize } from '@/match/match-label-helpers'
 
 // What a shelf card says about a sitting, derived once from the sitting and
 // the player's records. The mini sprocket rail is the reel's own rail at

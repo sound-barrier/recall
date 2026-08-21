@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest'
 import type { MatchRecord } from '@/api'
 import type { CoachReturnSheet, ShareExport } from '@/api'
 import {
-  answeringCoach, focusLine, groupReceivedReviews, notesFromLine, pluralize,
+  answeringCoach, focusLine, groupReceivedReviews, notesFromLine,
   received02Label, rosterLine, sentLine, sheetFor,
 } from '@/match/reviews/reviews-helpers'
 
@@ -83,23 +83,6 @@ function sheet(over: Partial<CoachReturnSheet> = {}): CoachReturnSheet {
     pending: 0, player_mismatch: false, ...over,
   } as unknown as CoachReturnSheet
 }
-
-describe('pluralize — one decision, spelled once', () => {
-  it.each([
-    [0, 'match', 'matches', '0 matches'],
-    [1, 'match', 'matches', '1 match'],
-    [2, 'match', 'matches', '2 matches'],
-  ])('%i → %s', (n, one, many, want) => {
-    expect(pluralize(n, one, many)).toBe(want)
-  })
-
-  // The default is the +s case, which is the shape six of the seven call sites
-  // wanted and the one the old inline ternaries got wrong most often.
-  it('defaults the plural to a trailing s', () => {
-    expect(pluralize(1, 'note')).toBe('1 note')
-    expect(pluralize(3, 'note')).toBe('3 notes')
-  })
-})
 
 describe('the index label lines', () => {
   it('names how much came back and from whom', () => {

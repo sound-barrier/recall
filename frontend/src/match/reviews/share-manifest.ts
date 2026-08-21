@@ -7,7 +7,7 @@
 // between a refusal and an instruction.
 
 import type { MatchRecord } from '@/api'
-import { pluralize } from '@/match/reviews/reviews-helpers'
+import { pluralize } from '@/match/match-label-helpers'
 
 export interface ShareManifestRow {
   matchKey: string
