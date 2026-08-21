@@ -370,7 +370,7 @@ defineExpose({
   color: var(--text-dim);
   background: var(--surface-2);
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
 }
 
 .note-tool-plain[aria-pressed='true'] {
@@ -401,11 +401,11 @@ defineExpose({
 }
 
 .note-mode-btn:first-child {
-  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  border-radius: var(--radius) 0 0 var(--radius);
 }
 
 .note-mode-btn:last-child {
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  border-radius: 0 var(--radius) var(--radius) 0;
 }
 
 .note-mode-on {
