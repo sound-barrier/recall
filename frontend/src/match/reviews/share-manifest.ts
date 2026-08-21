@@ -7,6 +7,7 @@
 // between a refusal and an instruction.
 
 import type { MatchRecord } from '@/api'
+import { pluralize } from '@/match/reviews/reviews-helpers'
 
 export interface ShareManifestRow {
   matchKey: string
@@ -51,7 +52,7 @@ export function missingReplayRows(rows: readonly ShareManifestRow[]): ShareManif
 
 /** "12 matches · 3 need a replay code" — the line above the list. */
 export function shareSummaryLine(rows: readonly ShareManifestRow[]): string {
-  const total = `${rows.length} match${rows.length === 1 ? '' : 'es'}`
+  const total = pluralize(rows.length, 'match', 'matches')
   const missing = missingReplayRows(rows).length
   if (missing === 0) return total
   return `${total} · ${missing} need${missing === 1 ? 's' : ''} a replay code`

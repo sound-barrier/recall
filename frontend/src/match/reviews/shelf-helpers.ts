@@ -1,5 +1,6 @@
 import type { MatchRecord, SelfReview } from '@/api'
 import { tallyWLD, type WLDTally } from '@/match/match-stats-helpers'
+import { pluralize } from '@/match/reviews/reviews-helpers'
 
 // What a shelf card says about a sitting, derived once from the sitting and
 // the player's records. The mini sprocket rail is the reel's own rail at
@@ -67,7 +68,7 @@ function excerpt(text: string): string {
  * as a lie ("3 matches · 0–0").
  */
 export function shelfCardSpokenState(card: ShelfCard): string {
-  const matches = `${card.matchCount} ${card.matchCount === 1 ? 'match' : 'matches'}`
+  const matches = pluralize(card.matchCount, 'match', 'matches')
   const noted = `${card.writtenCount} with notes`
   const record = `${card.wld.w}–${card.wld.l}${card.wld.d ? `–${card.wld.d}` : ''}`
   const gone = card.missingCount > 0

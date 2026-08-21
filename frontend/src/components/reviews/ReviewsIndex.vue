@@ -3,12 +3,15 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import FocusBand from '@/components/reviews/FocusBand.vue'
+import ReviewLedgerRow from '@/components/reviews/ReviewLedgerRow.vue'
 import SelfReviewCard from '@/components/reviews/SelfReviewCard.vue'
-import type { CoachReturnSheet, ShareExport } from '@/api-client'
-import { formatPlayerDay } from '@/match/coach/coach-time'
+import { formatPlayerDay, localDay } from '@/match/coach/coach-time'
 import { latestSessionKeys } from '@/match/dossier/match-momentum-helpers'
 import { matchTime } from '@/match/match-time-helpers'
-import { groupReceivedReviews } from '@/match/reviews/reviews-helpers'
+import {
+  answeringCoach, focusLine, groupReceivedReviews, notesFromLine,
+  received02Label, rosterLine, sentLine,
+} from '@/match/reviews/reviews-helpers'
 import { shelfCard } from '@/match/reviews/shelf-helpers'
 import { useFocusQuery } from '@/queries/focus'
 import { useCoachPlayersQuery, useShareExportsQuery } from '@/queries/selfReview'
@@ -98,16 +101,19 @@ function pickMatches(): void {
 const waiting = computed(() => inbox.value.filter((s) => s.pending > 0))
 const received = computed(() => groupReceivedReviews(records.value))
 
-// The return sheet a received review came from, when it is still around —
-// it carries the coach's summary (the one thing they wrote about the SET,
-// which no block carries) and the way to read the notes again.
-function sheetFor(r: { coachName: string; sessionDate: string }) {
-  return inbox.value.find((s) => s.coach_name === r.coachName && s.session_date === r.sessionDate)
+// Memoized: the received list renders a card per sitting and each card asked
+// for its sheet three times, so this was an O(n) find per lookup. The Map also
+// makes the template's narrowing real — `sheetOf(r)` short-circuits where the
+// old code needed a non-null assertion the checker could not verify.
+const sheetBySitting = computed(() =>
+  new Map(inbox.value.map(s => [`${s.coach_name}|${s.session_date}`, s])))
+function sheetOf(r: { coachName: string; sessionDate: string }) {
+  return sheetBySitting.value.get(`${r.coachName}|${r.sessionDate}`)
 }
 
-/** What that coach said to work on, as one line for the card. */
-function focusLine(r: { coachName: string; sessionDate: string }): string {
-  return (sheetFor(r)?.focus_items ?? []).map((i) => i.text).join(' · ')
+function openSheet(r: { coachName: string; sessionDate: string }): void {
+  const sheet = sheetOf(r)
+  if (sheet) void returns.openReturnSheet(sheet.id)
 }
 
 // The sent ledger: the receipt that a set left. A row pairs with the return
@@ -119,34 +125,8 @@ const focusQuery = useFocusQuery(() => appStore.view === 'reviews')
 const focusEntries = computed(() => focusQuery.data.value ?? [])
 const sentRows = computed(() => (sharesQuery.data.value ?? []).map((e) => ({
   ...e,
-  answeredBy: answeringCoach(e),
+  answeredBy: answeringCoach(inbox.value, received.value, e),
 })))
-
-function answeringCoach(e: ShareExport): string {
-  const sent = new Set(e.match_keys)
-  const answer = inbox.value.find((sheet: CoachReturnSheet) =>
-    sheet.imported_at > e.exported_at && sheet.notes.some((n) => sent.has(n.match_key)))
-  if (answer) return answer.coach_name
-  // A sheet can be discarded after its notes were accepted; the blocks on
-  // the matches are then the only record the answer arrived.
-  const block = received.value.find((r) =>
-    r.sessionDate >= e.exported_at.slice(0, 10) && r.matchKeys.some((k) => sent.has(k)))
-  return block?.coachName ?? ''
-}
-
-// exported_at is a UTC instant; render the VIEWER's day, not UTC's — a
-// share made at 19:00 in UTC-8 is "today", not tomorrow.
-function localDay(rfc3339: string): string {
-  const d = new Date(rfc3339)
-  if (Number.isNaN(d.getTime())) return rfc3339.slice(0, 10)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return formatPlayerDay(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`)
-}
-
-function sentLine(e: { match_keys: string[]; exported_at: string }): string {
-  const n = e.match_keys.length
-  return `Sent ${n} ${n === 1 ? 'match' : 'matches'} · ${localDay(e.exported_at)}`
-}
 
 // Decided sheets none of whose notes landed — skipped, or removed since.
 // They still happened; "No coach has looked yet" would be a lie.
@@ -164,10 +144,6 @@ const narrowedKeys = computed(() =>
   matches.matchesNarrow.narrowedRecords.value.map((r) => r.match_key))
 const showingCount = computed(() => narrowedKeys.value.length)
 
-function notesFromLine(count: number, coachName: string): string {
-  return `${count} note${count === 1 ? '' : 's'} from ${coachName}`
-}
-
 function sendToCoach(): void {
   if (sessionActive.value) return
   matches.requestShare(narrowedKeys.value, 'narrow')
@@ -183,23 +159,11 @@ function showReviewMatches(r: { coachName: string; matchKeys: readonly string[] 
   void matches.showOnlyMatches(r.matchKeys, `notes from ${r.coachName}`)
 }
 
-function received02Label(r: { sessionDate: string; noteCount: number; matchKeys: readonly string[] }): string {
-  const notes = `${r.noteCount} ${r.noteCount === 1 ? 'note' : 'notes'}`
-  const matchCount = `${r.matchKeys.length} ${r.matchKeys.length === 1 ? 'match' : 'matches'}`
-  return `${formatPlayerDay(r.sessionDate)} · ${notes} · ${matchCount}`
-}
-
 // ── 03 For someone else ────────────────────────────────────────────────
 // The roster: notes persist between sessions keyed by player, and until
 // this list the tab had no way to show that work ever happened.
 const rosterQuery = useCoachPlayersQuery(() => appStore.view === 'reviews')
 const roster = computed(() => rosterQuery.data.value ?? [])
-
-function rosterLine(p: { handle: string; note_count: number; last_note_at?: string }): string {
-  const notes = `${p.note_count} ${p.note_count === 1 ? 'note' : 'notes'}`
-  const last = p.last_note_at ? ` · last session ${localDay(p.last_note_at)}` : ''
-  return `${p.handle} · ${notes}${last}`
-}
 
 function openBundle(): void {
   void coach.openBundle()
@@ -223,13 +187,17 @@ function openBundle(): void {
          inbox banner steps aside on this tab (App.vue) — these rows ARE
          the banner here, in its shape, per coach instead of summed. -->
     <ul v-if="waiting.length" class="reviews-waiting" aria-label="Notes waiting on a decision">
-      <li v-for="sheet in waiting" :key="sheet.id" class="reviews-waiting-row">
-        <span class="eyebrow accent">Waiting</span>
-        <span class="reviews-waiting-line">{{ notesFromLine(sheet.pending, sheet.coach_name) }}</span>
-        <button type="button" class="btn ghost" @click="returns.openReturnSheet(sheet.id)">
-          Read the notes
-        </button>
-      </li>
+      <ReviewLedgerRow v-for="sheet in waiting" :key="sheet.id">
+        <template #eyebrow>
+          <span class="eyebrow accent">Waiting</span>
+        </template>
+        {{ notesFromLine(sheet.pending, sheet.coach_name) }}
+        <template #action>
+          <button type="button" class="btn ghost" @click="returns.openReturnSheet(sheet.id)">
+            Read the notes
+          </button>
+        </template>
+      </ReviewLedgerRow>
     </ul>
 
     <!-- What you're working on, above the arc: the whole point of the
@@ -365,16 +333,20 @@ function openBundle(): void {
       <!-- The sent ledger: what left, when, and whether anything came back.
            Quiet rows — a receipt, not a task. -->
       <ul v-if="sentRows.length" class="reviews-waiting" aria-label="Matches you have sent out">
-        <li v-for="e in sentRows" :key="e.id" class="reviews-waiting-row reviews-skipped-row">
-          <span class="reviews-waiting-line">
-            {{ sentLine(e) }} —
-            <template v-if="e.answeredBy">answered by {{ e.answeredBy }}.</template>
-            <template v-else>nothing back yet.</template>
-          </span>
-          <button type="button" class="btn ghost" @click="matches.showOnlyMatches(e.match_keys, `matches you sent ${localDay(e.exported_at)}`)">
-            Show these matches →
-          </button>
-        </li>
+        <ReviewLedgerRow v-for="e in sentRows" :key="e.id" quiet>
+          {{ sentLine(e) }} —
+          <template v-if="e.answeredBy">
+            answered by {{ e.answeredBy }}.
+          </template>
+          <template v-else>
+            nothing back yet.
+          </template>
+          <template #action>
+            <button type="button" class="btn ghost" @click="matches.showOnlyMatches(e.match_keys, `matches you sent ${localDay(e.exported_at)}`)">
+              Show these matches →
+            </button>
+          </template>
+        </ReviewLedgerRow>
       </ul>
 
       <!-- Received: on paper, because a review is written on paper. -->
@@ -387,8 +359,8 @@ function openBundle(): void {
             <p class="eyebrow ink review-card-line">
               {{ received02Label(r) }}
             </p>
-            <p v-if="focusLine(r)" class="review-card-summary">
-              {{ focusLine(r) }}
+            <p v-if="focusLine(inbox, r)" class="review-card-summary">
+              {{ focusLine(inbox, r) }}
             </p>
             <div class="review-card-actions">
               <button
@@ -399,10 +371,10 @@ function openBundle(): void {
                 Show these matches →
               </button>
               <button
-                v-if="sheetFor(r)"
+                v-if="sheetOf(r)"
                 type="button"
                 class="paper-btn review-card-open"
-                @click="returns.openReturnSheet(sheetFor(r)!.id)"
+                @click="openSheet(r)"
               >
                 Read the notes again
               </button>
@@ -415,15 +387,15 @@ function openBundle(): void {
            since. Quiet rows, not cards: there is nothing on any match to
            show, but the review still happened. -->
       <ul v-if="readOnlySheets.length" class="reviews-waiting" aria-label="Reviews with nothing kept">
-        <li v-for="sheet in readOnlySheets" :key="sheet.id" class="reviews-waiting-row reviews-skipped-row">
-          <span class="reviews-waiting-line">
-            {{ sheet.coach_name }} · {{ formatPlayerDay(sheet.session_date) }} — None of these
-            notes are on your matches; you skipped or removed them.
-          </span>
-          <button type="button" class="btn ghost" @click="returns.openReturnSheet(sheet.id)">
-            Read again
-          </button>
-        </li>
+        <ReviewLedgerRow v-for="sheet in readOnlySheets" :key="sheet.id" quiet>
+          {{ sheet.coach_name }} · {{ formatPlayerDay(sheet.session_date) }} — None of these
+          notes are on your matches; you skipped or removed them.
+          <template #action>
+            <button type="button" class="btn ghost" @click="returns.openReturnSheet(sheet.id)">
+              Read again
+            </button>
+          </template>
+        </ReviewLedgerRow>
       </ul>
 
       <!-- The actions are the rows above; this only says what the
@@ -471,11 +443,11 @@ function openBundle(): void {
         </div>
       </div>
       <ul v-if="roster.length" class="reviews-waiting" aria-label="Players you have coached">
-        <li v-for="p in roster" :key="p.id" class="reviews-waiting-row reviews-skipped-row">
-          <span class="reviews-waiting-line">
-            {{ rosterLine(p) }}<template v-if="p.focus_items?.length"> — {{ p.focus_items.join(' · ') }}</template>
-          </span>
-        </li>
+        <ReviewLedgerRow v-for="p in roster" :key="p.id" quiet>
+          {{ rosterLine(p) }}<template v-if="p.focus_items?.length">
+            — {{ p.focus_items.join(' · ') }}
+          </template>
+        </ReviewLedgerRow>
       </ul>
       <p v-if="roster.length" class="reviews-empty">
         Your notes stay with you, filed by player. Open their next bundle
@@ -489,134 +461,4 @@ function openBundle(): void {
   </div>
 </template>
 
-<style scoped>
-/* The description under the heading. --text-dim rather than --text-mute:
-   this is the paragraph that says what the tab is for, and --text-mute
-   drops below AA on Day's darker surfaces. */
-.reviews-desc {
-  max-width: 62ch;
-  margin: 0;
-  font-size: var(--type-lg);
-  line-height: 1.55;
-  color: var(--text-dim);
-}
-
-.reviews-waiting {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin: 1.2rem 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* The house banner shape — surface fill, an accent stripe down the left —
-   token for token the one the app-chrome inbox banner wears
-   (CoachInboxBanner.vue), so a player recognizes the row here as the
-   banner they saw on the other tabs. */
-.reviews-waiting-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0.5rem 0.75rem;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--radius);
-}
-
-.reviews-waiting-line {
-  flex: 1 1 auto;
-  font-size: var(--type-lg);
-  color: var(--text);
-}
-
-/* The start block: 01's call to action, not a preference row — the page's
-   primary verb lives here, so it reads as a block with its buttons under
-   the sentence, not a label with a control across the page. */
-.reviews-start {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  max-width: 62ch;
-}
-
-.reviews-start .setting-desc {
-  margin: 0;
-}
-
-.reviews-start-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.35rem;
-}
-
-/* The shelf: reviews as paper cards in a responsive row. */
-.reviews-shelf {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
-  gap: 0.9rem;
-  margin: 1.2rem 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.review-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  padding: 0;
-  overflow: hidden;
-}
-
-/* The card is named by the coach, in the display voice — the tallies are
-   the label line under it, not the title. The hatch strip stays: one
-   strip, one meaning, "this is a sitting". */
-.review-card-coach {
-  margin: 0;
-  padding: 0.5rem 0.75rem;
-  font-family: var(--display);
-  font-size: var(--type-3xl);
-  font-style: italic;
-  font-weight: 800;
-  line-height: 1.1;
-  text-transform: uppercase;
-  border-bottom: 1px solid var(--paper-edge);
-}
-
-.review-card-line {
-  margin: 0 0.75rem;
-}
-
-.review-card-summary {
-  margin: 0 0.75rem;
-  font-size: var(--type-lg);
-  line-height: 1.45;
-  color: var(--ink);
-}
-
-.review-card-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin: 0 0.75rem 0.75rem;
-}
-
-.review-card-open {
-  align-self: flex-start;
-}
-
-/* A review with nothing kept is history, not a task — no accent stripe. */
-.reviews-skipped-row {
-  border-left-color: var(--border);
-}
-
-.reviews-empty {
-  margin: 1rem 0 0;
-  font-size: var(--type-lg);
-  line-height: 1.5;
-  color: var(--text-faint);
-}
-</style>
+<style scoped src="./reviews-index.css"></style>
