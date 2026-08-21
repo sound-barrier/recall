@@ -1,10 +1,12 @@
 import { render, screen, fireEvent } from '@testing-library/vue'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { h } from 'vue'
 
-import type { MatchRecord, MatchResult } from '@/api-client'
+import type { FocusItem, MatchRecord, MatchResult } from '@/api-client'
 import CoachRoomView from '@/components/coach/room/CoachRoomView.vue'
-import { emptyDraft } from '@/match/coach/coach-notes'
+import type { CoachSaveState, RoomApi } from '@/components/coach/room/coach-room-props'
+import type { CoachMoment } from '@/match/coach/coach-moments'
+import { emptyDraft, type CoachNoteDraft } from '@/match/coach/coach-notes'
 import { markdownField } from '@/test-utils'
 
 function rec(key: string, data: MatchResult): MatchRecord {
@@ -16,9 +18,47 @@ const EARLY = rec('match-2026-08-08T21-14-00', { date: '2026-08-08', finished_at
 
 const PLAYER = { handle: 'Sable', message: 'Watch my ult timing on control.' }
 
-function renderRoom(props: Record<string, unknown> = {}, options: Record<string, unknown> = {}) {
+// The room takes its corpus as one RoomApi bundle, so the harness builds one.
+// Overrides name a single member — `renderRoom({ selectedKey: k })` — because
+// a test that had to restate all ten to change one would stop saying which one
+// it cared about.
+type ApiOver = Partial<{
+  records: MatchRecord[]
+  notes: Record<string, CoachNoteDraft>
+  moments: Record<string, CoachMoment[]>
+  selectedKey: string
+  focusItems: FocusItem[]
+  saveStateFor: (key: string) => CoachSaveState
+}>
+
+function roomApi(over: ApiOver = {}, spies: Partial<RoomApi> = {}): RoomApi {
+  return {
+    records: () => over.records ?? [EARLY, LATE],
+    notes: () => over.notes ?? {},
+    moments: () => over.moments ?? {},
+    selectedKey: () => over.selectedKey ?? '',
+    focusItems: () => over.focusItems ?? [{ item_id: 'f-1', text: '' }],
+    saveStateFor: over.saveStateFor ?? (() => 'idle'),
+    selectKey: () => {},
+    updateNote: () => {},
+    updateMoment: () => {},
+    removeMoment: () => {},
+    ...spies,
+  }
+}
+
+function renderRoom(
+  over: ApiOver & { api?: RoomApi } & Record<string, unknown> = {},
+  options: Record<string, unknown> = {},
+) {
+  const { records, notes, moments, selectedKey, focusItems, saveStateFor, api, ...rest } = over
   return render(CoachRoomView, {
-    props: { player: PLAYER, records: [EARLY, LATE], notes: {}, selectedKey: '', focusItems: [{ item_id: 'f-1', text: '' }], coachName: 'Ordo', ...props },
+    props: {
+      player: PLAYER,
+      coachName: 'Ordo',
+      api: api ?? roomApi({ records, notes, moments, selectedKey, focusItems, saveStateFor }),
+      ...rest,
+    },
     ...options,
   })
 }
@@ -57,30 +97,43 @@ describe('CoachRoomView — the three regions', () => {
   })
 })
 
-describe('CoachRoomView — what it reports upward', () => {
-  it('reports the frame the coach clicked', async () => {
-    const view = renderRoom()
+// The four writers reach the store through the RoomApi bundle rather than an
+// emit the parent re-wires, so these assert the call the room actually makes.
+// Closer to the truth than the old emit assertions were: an emitted event only
+// became a store write if some parent remembered to bind it, and both parents
+// bound all four identically.
+describe('CoachRoomView — what it writes back', () => {
+  it('selects the frame the coach clicked', async () => {
+    const selectKey = vi.fn()
+    renderRoom({ api: roomApi({}, { selectKey }) })
     await fireEvent.click(screen.getByRole('button', { name: /King's Row/ }))
-    expect(view.emitted('select')).toEqual([[EARLY.match_key]])
+    expect(selectKey).toHaveBeenCalledWith(EARLY.match_key)
   })
 
   it('walks the reel with the bracket keys', () => {
-    const view = renderRoom()
+    const selectKey = vi.fn()
+    renderRoom({ api: roomApi({}, { selectKey }) })
     document.dispatchEvent(new KeyboardEvent('keydown', { key: ']', bubbles: true, cancelable: true }))
-    expect(view.emitted('select')).toEqual([[EARLY.match_key]])
+    expect(selectKey).toHaveBeenCalledWith(EARLY.match_key)
   })
 
   it('steps with the desk buttons too', async () => {
-    const view = renderRoom({ selectedKey: EARLY.match_key })
+    const selectKey = vi.fn()
+    renderRoom({ api: roomApi({ selectedKey: EARLY.match_key }, { selectKey }) })
     await fireEvent.click(screen.getByRole('button', { name: 'Previous match' }))
-    expect(view.emitted('select')).toEqual([[LATE.match_key]])
+    expect(selectKey).toHaveBeenCalledWith(LATE.match_key)
   })
 
-  it("reports a note edit against the frame it was written on", async () => {
-    const view = renderRoom({ selectedKey: EARLY.match_key })
+  it('writes a note edit against the frame it was written on', async () => {
+    const updateNote = vi.fn()
+    renderRoom({ api: roomApi({ selectedKey: EARLY.match_key }, { updateNote }) })
     await fireEvent.click(screen.getByRole('button', { name: 'positioning' }))
-    expect(view.emitted('update-note')).toEqual([[EARLY.match_key, { ...emptyDraft(), focusTags: ['positioning'] }]])
+    expect(updateNote).toHaveBeenCalledWith(
+      EARLY.match_key, { ...emptyDraft(), focusTags: ['positioning'] })
   })
+})
+
+describe('CoachRoomView — what it still reports upward', () => {
 
   it('reports the focus list', async () => {
     const view = renderRoom()
