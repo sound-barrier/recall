@@ -163,6 +163,13 @@ jobs:
       - name: Lint Markdown (markdownlint-cli2)
         run: npx --yes markdownlint-cli2
 
+      # markdownlint checks how the prose is formatted; this checks whether what
+      # the prose NAMES exists. The rules files spent months citing a Makefile,
+      # a tool-versions.env and five scripts/*.sh paths that had all been
+      # deleted or moved — invisible because prose has no test suite.
+      - name: Check standards-file references
+        run: bash scripts/ci/check-doc-paths.sh
+
       # GitHub Actions workflow lint — catches deprecated inputs,
       # syntax errors, and shellcheck issues in `run:` blocks. The
       # action ships the actionlint binary so no install step.
