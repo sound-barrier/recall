@@ -84,3 +84,17 @@ export function formatPlayerDay(dayKey: string): string {
   if (!parsed) return ''
   return `${WEEKDAYS_SHORT[parsed.weekday]!} · ${naiveDateLabel(parsed)}`
 }
+
+/**
+ * The VIEWER's calendar day for a UTC instant.
+ *
+ * `exported_at` and `last_note_at` are instants; rendering their UTC date would
+ * put a share made at 19:00 in UTC-8 on tomorrow's row. Reading the local
+ * components first is what keeps "today" meaning today.
+ */
+export function localDay(rfc3339: string): string {
+  const d = new Date(rfc3339)
+  if (Number.isNaN(d.getTime())) return rfc3339.slice(0, 10)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return formatPlayerDay(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`)
+}

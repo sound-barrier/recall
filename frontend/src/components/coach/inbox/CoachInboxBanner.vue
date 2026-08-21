@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import { useCoachReturnsStore } from '@/stores/coachReturns'
+import { pluralize } from '@/match/reviews/reviews-helpers'
 
 // "3 notes from Ordo waiting · Read the notes" — the nag that sits above the
 // dossier until every returned note is decided.
@@ -22,7 +23,7 @@ const from = computed(() => {
   return coaches > 1 ? `${coaches} coaches` : returns.firstPendingCoach
 })
 const line = computed(() =>
-  `${pending.value} note${pending.value === 1 ? '' : 's'} from ${from.value} waiting`)
+  `${pluralize(pending.value, 'note')} from ${from.value} waiting`)
 
 // The sheet the Read-the-notes button opens: the first one still holding an
 // undecided note — the same one the copy names.

@@ -1,0 +1,134 @@
+/* The 07 Reviews index. Scoped sibling rather than an inline block: the file
+   was past the 500-line ceiling with markup, logic and 130 lines of styling in
+   it, and `<style scoped src>` keeps the hash scoping and the chunk placement
+   exactly as they were. Same shape as coach-room.css and coach-cue-row.css. */
+
+/* The description under the heading. --text-dim rather than --text-mute:
+   this is the paragraph that says what the tab is for, and --text-mute
+   drops below AA on Day's darker surfaces. */
+.reviews-desc {
+  max-width: 62ch;
+  margin: 0;
+  font-size: var(--type-lg);
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+
+.reviews-waiting {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 1.2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The house banner shape — surface fill, an accent stripe down the left —
+   token for token the one the app-chrome inbox banner wears
+   (CoachInboxBanner.vue), so a player recognizes the row here as the
+   banner they saw on the other tabs. */
+.reviews-waiting-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+}
+
+.reviews-waiting-line {
+  flex: 1 1 auto;
+  font-size: var(--type-lg);
+  color: var(--text);
+}
+
+/* The start block: 01's call to action, not a preference row — the page's
+   primary verb lives here, so it reads as a block with its buttons under
+   the sentence, not a label with a control across the page. */
+.reviews-start {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 62ch;
+}
+
+.reviews-start .setting-desc {
+  margin: 0;
+}
+
+.reviews-start-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+/* The shelf: reviews as paper cards in a responsive row. */
+.reviews-shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: 0.9rem;
+  margin: 1.2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.review-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* The card is named by the coach, in the display voice — the tallies are
+   the label line under it, not the title. The hatch strip stays: one
+   strip, one meaning, "this is a sitting". */
+.review-card-coach {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  font-family: var(--display);
+  font-size: var(--type-3xl);
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1.1;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--paper-edge);
+}
+
+.review-card-line {
+  margin: 0 0.75rem;
+}
+
+.review-card-summary {
+  margin: 0 0.75rem;
+  font-size: var(--type-lg);
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.review-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0.75rem 0.75rem;
+}
+
+.review-card-open {
+  align-self: flex-start;
+}
+
+/* A review with nothing kept is history, not a task — no accent stripe. */
+.reviews-skipped-row {
+  border-left-color: var(--border);
+}
+
+.reviews-empty {
+  margin: 1rem 0 0;
+  font-size: var(--type-lg);
+  line-height: 1.5;
+  color: var(--text-faint);
+}
