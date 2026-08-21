@@ -72,8 +72,21 @@ done <<<"${make_hits}"
 # ── 2. `task <name>` resolves against the real catalog ────────────────────────
 echo "==> checking every documented task exists"
 if command -v task >/dev/null 2>&1; then
-  # `task --list` prints "* name:   description"; take the name, drop the colon.
-  catalog="$(task --list 2>/dev/null | awk '{print $2}' | tr -d ':' | sort -u)"
+  # --list --json, not the human table: CI runs with color on, and the ANSI
+  # escapes wrapped around each name turn a column parse into "every task is
+  # missing" — which is exactly how this check first failed, loudly and wrongly.
+  catalog="$(task --list --json 2>/dev/null \
+    | sed -n 's/.*"name": "\([^"]*\)".*/\1/p' | sort -u)"
+
+  # An unreadable catalog is not the same as a repo with no tasks. Printing
+  # "no such task" forty times because the LISTING broke would train a reader
+  # to ignore this gate, so it refuses to guess.
+  if [[ -z "${catalog}" ]]; then
+    echo "::error::check-doc-paths: could not read the task catalog" >&2
+    echo "  'task --list --json' returned nothing. Not reporting that as 40" >&2
+    echo "  missing tasks — fix the catalog, then re-run." >&2
+    exit 2
+  fi
   # shellcheck disable=SC2016  # literal backticks, as above.
   task_hits="$(grep -rhoE '`task [a-z][a-z0-9-]*`' "${DOC_FILES[@]}" | sort -u || true)"
   while IFS= read -r hit; do
