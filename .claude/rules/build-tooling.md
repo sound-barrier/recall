@@ -1,9 +1,9 @@
 ---
 paths:
-  - "Makefile"
+  - "Taskfile.yml"
+  - "mise.toml"
   - "Dockerfile*"
   - "scripts/**"
-  - "tool-versions.env"
   - "lefthook.yml"
   - "*.nsi"
   - "initialize.sh"
@@ -14,37 +14,41 @@ paths:
 
 ## Pinned tool versions
 
-Live in `tool-versions.env`. Keys: `SPECTRAL_VERSION`, `TYPOS_VERSION`,
-`SEMGREP_VERSION`, `HONKIT_VERSION`, `TESSERACT_VERSION`
-(informational major.minor — mismatch = re-baseline `testdata/*.golden.json` and
-bump). Consumers:
+Live in `mise.toml` — `[tools]` for anything mise installs, `[env]` for the
+versions the tasks and hooks read themselves (`SPECTRAL_VERSION`,
+`TYPOS_VERSION`, `SEMGREP_VERSION`, `HONKIT_VERSION`, `SCHEMATHESIS_VERSION`,
+`JSONSCHEMA_RS_VERSION`, `GOBCO_VERSION`, `RUFF_VERSION`, `SQLFLUFF_VERSION`,
+`BIOME_VERSION`, and `TESSERACT_VERSION` — that last one informational
+major.minor, so a mismatch means re-baseline `testdata/*.golden.json` and bump).
 
-- `Makefile` — `include tool-versions.env`
-- `lefthook.yml` — `. ./tool-versions.env`
-- `ci.yml` + `pages.yml` — `grep -E '^[A-Z_][A-Z0-9_]*=' tool-versions.env >> "$GITHUB_ENV"` (grep filter required — Actions' env validator rejects comments)
-- `initialize.sh` + `.devcontainer/postCreate.sh` — `. tool-versions.env`
+Consumers no longer read a file; they read the environment mise puts them in:
 
-`make check-deps` validates all four upstream + the `crate-ci/typos@SHA  #
-vX.Y.Z` comment in `ci.yml`. Wails CLI / hadolint / lefthook / trivy still
-duplicated between `initialize.sh` and `postCreate.sh`; `make check-deps` parses
-both. **Swagger UI image** (`SWAGGER_IMAGE`) is the only unchecked pin.
+- **Locally** — `mise activate` exports `[env]`, so `Taskfile.yml` and
+  `lefthook.yml` reference `$SPECTRAL_VERSION` and friends directly.
+- **CI** — `jdx/mise-action` loads `mise.toml [env]` into `$GITHUB_ENV` for every
+  job regardless of `install_args`. That is also why `DEFAULT_MAX_FILES` must
+  never be added to `[env]`: it would silently override the package-size gate.
+
+`task check-deps` validates the upstream pins plus the `crate-ci/typos@SHA  #
+vX.Y.Z` comment in `ci.yml`. **Swagger UI image** (`SWAGGER_IMAGE`) is the only
+unchecked pin.
 
 ## Linting & dead code
 
-- **deadcode allow-list is `scripts/deadcode-allow.txt`.** `Makefile`
-  `dead-code-go`, `lefthook.yml` `pre-push.deadcode`, and `ci.yml` "Dead Go code"
-  all shell out to `scripts/deadcode-check.sh` which reads one regex per line and
+- **deadcode allow-list is `scripts/ci/deadcode-allow.txt`.** `task
+  dead-code-go`, `lefthook.yml` `pre-push.deadcode`, and `ci.yml` "Dead Go code"
+  all shell out to `scripts/ci/deadcode-check.sh` which reads one regex per line and
   fails on non-empty residual. New intentional unreachable: append a line to the
   allow-list, don't touch the three callers.
 - **`deadcode` always exits 0** — findings print to stdout but the exit code is
   never non-zero. To gate, capture stdout and assert it's empty (or grep-filter
-  expected stubs). See `make dead-code-go`.
+  expected stubs). See `task dead-code-go`.
 - **`typos --force-exclude` required when filenames are passed explicitly.**
   `_typos.toml`'s `extend-exclude` only applies during dir walks. Lefthook passes
   `{staged_files}` as positional args → bypasses extend-exclude unless
   `--force-exclude` is set. Keep the flag whenever handing typos explicit paths
   (else binary `testdata/*.png` get scanned as text).
-- **Pre-push hook runs `make cover`** — every `git push` reproduces Go + Vitest
+- **Pre-push hook runs `task cover`** — every `git push` reproduces Go + Vitest
   coverage (~3-5 s). Gates on `GO_COVERAGE_MIN` + `vitest.config.ts`
   `coverage.thresholds`. Skip with `LEFTHOOK_EXCLUDE=coverage git push` only if
   you trust CI to catch it.
@@ -58,8 +62,10 @@ both. **Swagger UI image** (`SWAGGER_IMAGE`) is the only unchecked pin.
   `frontend/scripts/seed-go-sentinel.cjs` (npm `postinstall`) drops a stub
   `frontend/node_modules/go.mod` so the walker stops there; `frontend/dist` stays
   in the recall module for `//go:embed`. Belt-and-suspenders:
-  `scripts/deadcode-check.sh` filters `node_modules`, `make lint-gosec` passes
-  `-exclude-dir=frontend`. New whole-program Go tools should keep the filter.
+  `scripts/ci/deadcode-check.sh` filters `node_modules` out of `go list`, and
+  golangci-lint excludes `frontend/node_modules` via `.golangci.yml`'s
+  `issues.exclude-dirs` (gosec is rolled into `task lint-go` — the standalone
+  gosec job and its `-exclude-dir` flag are both gone). New whole-program Go tools should keep the filter.
 - **`Dockerfile.build` frontend-builder runs `npm ci` BEFORE copying full
   `frontend/` source** — only `package.json`, `package-lock.json`, and
   `frontend/scripts/seed-go-sentinel.cjs` are in the layer. The sentinel is
@@ -70,17 +76,19 @@ both. **Swagger UI image** (`SWAGGER_IMAGE`) is the only unchecked pin.
 
 ## Shell scripts
 
-- **Bundle-size budget lives in `scripts/check-bundle-size.sh`** — the single
+- **Bundle-size budget lives in `scripts/ci/check-bundle-size.sh`** — the single
   source of truth for the initial/total JS+CSS KB thresholds, run by the `ci.yml`
   "Enforce bundle-size budget" step. Edit thresholds here, not in any CLAUDE.md or
   rule (those only point at it).
 - **`set -u` not `-e`** in shell scripts that should keep going after an
   individual failure (`verify-stack.sh` is the canonical example).
 - **Release-time shell lives in `scripts/release/`** (not inline in
-  `release.yml`): `package-linux.sh`, `make-dmg.sh`, `sign-image.sh`,
-  `flip-package-public.sh`, `compute-sha256.sh`. Each reads inputs from env vars
-  set in the workflow step. Add new release-time logic as a `scripts/release/*.sh`
-  (covered by `make lint-shell` via the `SHELL_SCRIPTS` glob).
+  `release.yml`): `package-wails-windows.sh`, `compute-sha256.sh`,
+  `push-release-tag.sh`, plus `smoke/`. Each reads inputs from env vars set in the
+  workflow step. Add new release-time logic as a `scripts/release/*.sh` (covered
+  by `task lint-shell` via the `SHELL_SCRIPTS` glob). The Linux/macOS packagers
+  went with the Windows-only pivot — there is no `package-linux.sh`,
+  `make-dmg.sh` or `sign-image.sh`.
 
 ## Installers & dev-server timing
 
@@ -90,10 +98,6 @@ both. **Swagger UI image** (`SWAGGER_IMAGE`) is the only unchecked pin.
   (`0.0.10-beta.0` → `0.0.10` via `grep -oE '^[0-9]+\.[0-9]+\.[0-9]+'`, fallback
   `0.0.0` for `dev`). Output: `build/bin/${INFO_PROJECTNAME}-${ARCH}-installer.exe`.
   Install path: `$PROGRAMFILES64\${INFO_PRODUCTNAME}` (no company subfolder).
-- **macOS in-DMG `README.txt` lives at `docs/dmg/README.txt`** — single source
-  for drag-install + Gatekeeper steps; `scripts/release/make-dmg.sh` copies it
-  into the DMG. `docs/install-macos.md` sections 2-3 mirror it. Synced pair
-  flagged by an HTML comment at the top of the install-macos.md region.
 - **`wails dev` takes ~12-14 s** before its AssetServer (`:34115`) responds. When
   probing routes via `curl` from a script, sleep at least 14 s after starting the
   dev server. Vite (`:5173`) is up faster but doesn't see custom handlers.

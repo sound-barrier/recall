@@ -163,10 +163,10 @@ way — in `NewMux` only — and document the payload schema in
 
 | Command | Purpose |
 |---|---|
-| `make gen-types` | Regenerate `api.gen.d.ts` from the spec. Runs on every commit via lefthook; CI fails if out of sync. |
-| `make lint-openapi` | Spectral lint (`spectral:oas` + `.spectral.yaml`, `--fail-severity=warn`). In `make lint` + a pre-commit hook. |
-| `make swagger` | Browse the spec locally — Swagger UI v5 in a container (`:8080` default; `SWAGGER_PORT` to override). |
-| `make check-api-drift` | Fuzzes a built `recall-server` against `api/openapi.yaml` via schemathesis to catch shape drift. Logic in `scripts/check-api-drift.sh` (same as CI's `schemathesis` job + the pre-push hook, glob-scoped to API + server code). Requires `pipx install 'schemathesis>=3.36,<4'`. Skip the hook with `LEFTHOOK_EXCLUDE=schemathesis git push`. |
+| `task gen-types` | Regenerate `api.gen.d.ts` from the spec. Runs on every commit via lefthook; CI fails if out of sync. |
+| `task lint-openapi` | Spectral lint (`spectral:oas` + `.spectral.yaml`, `--fail-severity=warn`). In `task lint` + a pre-commit hook. |
+| `task swagger` | Browse the spec locally — Swagger UI v5 in a container (`:8080` default; `SWAGGER_PORT` to override). |
+| `task check-api-drift` | Fuzzes a built `recall-server` against `api/openapi.yaml` via schemathesis to catch shape drift. Logic in `scripts/ci/check-api-drift.sh` (same as CI's `schemathesis` job + the pre-push hook, glob-scoped to API + server code). Requires schemathesis 4.x, pinned as `SCHEMATHESIS_VERSION` in `mise.toml` and provided by `mise install` — note the transitive `jsonschema-rs` is pinned there too, because an unpinned one took CI red on every branch. Skip the hook with `LEFTHOOK_EXCLUDE=schemathesis git push`. |
 
 Public Swagger UI auto-deploys from `main` on every spec change to
 <https://sound-barrier.github.io/recall/api/>.
@@ -221,7 +221,7 @@ Public Swagger UI auto-deploys from `main` on every spec change to
 
 `httptest.NewRequest` + `NewRecorder` is the HTTP-handler test pattern. Used by
 `pkg/cmd/server_test.go` (mux via `get`/`put`/`del`/`fire` helpers — `fire` is
-the generic-method primitive the others wrap), `pkg/metrics/metrics_test.go`,
+the generic-method primitive the others wrap) and
 `pkg/app/screenshot_handler_test.go`. For App handlers, mutate `a.settings.X`
 directly (not via `SetX`, which writes to real `settings.json`). **Gotcha**:
 `httptest.NewRequest` panics on malformed escapes (`%ZZ`). To test

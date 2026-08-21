@@ -32,9 +32,8 @@ SQLite per-type tables:
 **SQLite is the source of truth.** Raw per-screenshot rows are preserved
 verbatim — aggregation (folding multiple screenshots into one match) happens at
 read time, so a wrong scalar from one screenshot can be corrected later by adding
-another screenshot to the match. (A former `pkg/metrics` Prometheus/Grafana
-boundary no longer exists in the tree — the aggregator's only consumers are the
-Wails bindings and the HTTP API.)
+another screenshot to the match. The aggregator's only consumers are the Wails
+bindings and the HTTP API.
 
 ## Schema (3NF, 10 tables)
 
@@ -162,8 +161,7 @@ re-clicking Parse replaces rows in place, no duplicates.
 ## Read path (`pkg/app/aggregate.go::aggregateAll`)
 
 One bulk SELECT per parent + one per child table — every table hit exactly once
-per call (called from `GetMatchResults` and every Prometheus scrape, so no N+1
-risk). Child rows attach to parents by id, parents re-key by `match_key`, each
+per call (called from `GetMatchResults`, so no N+1 risk). Child rows attach to parents by id, parents re-key by `match_key`, each
 group sorts by `(filename-timestamp asc, parsed_at asc)`, and `mergeMatchResult`
 folds via "first non-empty wins". `role` and `type` are resolved on the fly via
 `parser.HeroRole` / `parser.MapType`, never stored.

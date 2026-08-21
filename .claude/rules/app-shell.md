@@ -55,7 +55,7 @@ paths:
 **Wails-bound methods**: every exported `*app.App` method is auto-bound —
 `grep -rE '^func \(a \*App\) [A-Z]' pkg/app/*.go` lists the surface. Same methods
 exposed under `/api/v1/...` via `pkg/cmd/server.go`. `api/openapi.yaml` is the
-contract for both transports; `make gen-types` regenerates `api.gen.d.ts`. (Full
+contract for both transports; `task gen-types` regenerates `api.gen.d.ts`. (Full
 endpoint rules: `.claude/rules/api-design.md`.)
 
 **Constructor**: `app.New()` in `pkg/app`.

@@ -11,13 +11,16 @@ paths:
 
 | File(s) | Audience | Notes |
 |---|---|---|
-| `README.md`, `docs/install-{macos,linux,windows}.md` | Gamers | Quick start + per-platform install. Keep jargon out. |
+| `README.md`, `docs/install-windows.md` | Gamers | Quick start + install. Keep jargon out. |
 | `docs/how-it-works.md` | Gamers | Pipeline overview + workflow + the four screenshot types. Anchors the book's "Using Recall" section. |
 | `docs/settings-reference.md` | Gamers | Every Settings + Parse tab field. Source of truth for "what does this knob do?". |
 | `docs/filtering.md` | Gamers | Matches tab filter rail end-to-end. |
 | `docs/unknown-screenshots.md` | Gamers | Unknown tab triage: 4 causes + diagnostic strip + recovery paths. |
 | `docs/feedback.md` | Gamers | Bug/feature pointer to `.github/ISSUE_TEMPLATE/*.yml` + security-advisory channel. |
-| `docs/server.md`, `docs/docker.md`, `docs/grafana.md` | IT-savvy users | README's "Advanced" gates entry. |
+| `docs/faq.md` | Gamers | Standing questions that keep arriving through feedback. |
+| `docs/reading-your-climb.md` | Gamers | How to read the Elo/standing surfaces without over-reading them. |
+| `docs/reviews.md` | Gamers + coaches | The 07 Reviews cycle: sittings, the film room, sending to a coach. |
+| `docs/seasons-comparison-design.md` | Developers | Why the Compare tab computes seasons the way it does. |
 | `CONTRIBUTING.md`, `RELEASES.md` | Developers | Build, lint, release, commit-message rules. |
 | `CODE_OF_CONDUCT.md` | Repo participants | Two rules: be respectful, project is free with no SLAs. ~50 lines. |
 | `SECURITY.md` | Security reporters | Latest-release-only support; file via GitHub Security Advisories (private), no SLA. |
@@ -26,18 +29,18 @@ paths:
 | `.github/labels.yml` | Triagers | Declarative label defs synced by `labels.yml` workflow. |
 
 Load-bearing cross-doc anchors:
-`docs/install-{macos,linux,windows}.md#verifying-your-download`,
+`docs/install-windows.md#verifying-your-download`,
 `CONTRIBUTING.md#building`, `CONTRIBUTING.md#pre-commit-hooks-lefthook`. Rename a
 heading and you'll silently break the inbound link.
 
 ## `docs/` is the source of truth; `book/` is metadata only
 
 The Honkit-built site at <https://sound-barrier.github.io/recall/> renders
-`docs/*.md` chapters. The Pages workflow + `make pages-build` stage `book/` +
+`docs/*.md` chapters. The Pages workflow + `task pages-build` stage `book/` +
 chapter copies into `_stage/book/` (CI) or `dist/pages-stage/` (local) and run
 Honkit there. `book/` keeps only `book.json`, `SUMMARY.md`, `README.md`,
 `.gitignore`. **New chapter**: drop `.md` into `docs/`, add to `book/SUMMARY.md`,
-extend the `cp` step in both `pages.yml` and the `pages-build` Makefile target.
+extend the `cp` step in both `pages.yml` and the `pages-build` task.
 
 ## Honkit failure modes
 
@@ -52,7 +55,7 @@ extend the `cp` step in both `pages.yml` and the `pages-build` Makefile target.
   dir — `pages-build` + `pages.yml` already do `mkdir -p _stage/book/testdata && cp
   testdata/*.png _stage/book/testdata/`. Reference as `testdata/foo.png` — same
   path works in GitHub-rendered markdown. New asset-bearing chapter: add `mkdir
-  -p` + `cp` to both `pages.yml` and Makefile, plus the `paths:` trigger if
+  -p` + `cp` to both `pages.yml` and `Taskfile.yml`, plus the `paths:` trigger if
   outside `docs/`/`book/`.
 
 ## Markdown authoring (markdownlint)
