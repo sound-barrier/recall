@@ -19,7 +19,7 @@ import { test, expect } from '../_fixtures'
 const KEY = 'match-2026-05-10T22-00-00'
 const REPLAY = 'X1Y2Z3'
 
-function record(matchKey: string) {
+function record(matchKey: string, note?: string) {
   return {
     match_key: matchKey,
     source_files: [`${matchKey}.png`],
@@ -39,7 +39,7 @@ function record(matchKey: string) {
       heroes_played: [{ hero: 'lucio', percent_played: 100, play_time: '11:25' }],
     },
     parsed_at: '2026-05-10T22:30:00Z',
-    annotation: { replay_code: REPLAY },
+    annotation: { replay_code: REPLAY, ...(note ? { note } : {}) },
   }
 }
 
@@ -64,7 +64,7 @@ test.describe('match row context menu — extended actions', () => {
     await expect(page.locator(`#tags-${KEY}`)).toBeFocused()
   })
 
-  test('Edit annotation opens detail panel with the note textarea focused', async ({ page }) => {
+  test('Edit annotation opens detail panel with the note field focused', async ({ page }) => {
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
         status: 200,
@@ -80,6 +80,28 @@ test.describe('match row context menu — extended actions', () => {
 
     await expect(page.locator('aside.detail-panel')).toBeVisible()
     await expect(page.locator(`#note-${KEY}`)).toBeFocused()
+  })
+
+  // Focused is half the ask — "Edit annotation" means keep writing, so the
+  // caret belongs after what is already there. Parked at character zero, the
+  // next sentence lands in front of the last one.
+  test('Edit annotation puts the caret at the end of an existing note', async ({ page }) => {
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([record(KEY, 'Hold the high ground')]),
+      })
+    })
+
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Matches/ }).click()
+    await page.locator('.leaf-row').first().click({ button: 'right' })
+    await page.locator('[data-row-ctx-edit-annotation]').click()
+
+    await expect(page.locator(`#note-${KEY}`)).toBeFocused()
+    await page.keyboard.type(' and rotate')
+    await expect(page.locator(`#note-${KEY}`)).toHaveText('Hold the high ground and rotate')
   })
 
   test('Copy match link writes the match_key to the clipboard', async ({ page, context }) => {

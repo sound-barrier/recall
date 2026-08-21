@@ -195,3 +195,27 @@ describe('NoteWriter — the typing itself', () => {
     expect(box).toHaveAttribute('autocorrect', 'off')
   })
 })
+
+describe('NoteWriter — what counts as leaving', () => {
+  // The journal swaps the writer away for a preview when editing ends, so what
+  // "ends" means decides whether the toolbar is reachable at all: the field's
+  // own blur fires the moment you press Bold, and forwarding it closed the
+  // editor before the press landed.
+  async function leave(view: Awaited<ReturnType<typeof writer>>) {
+    await fireEvent.focusOut(field())
+    await new Promise((r) => setTimeout(r, 0))
+    return view.emitted('blur')
+  }
+
+  it('stays put when focus moves to its own toolbar', async () => {
+    const view = await writer({ text: 'a' })
+    tool('Bold').focus()
+    expect(await leave(view)).toBeUndefined()
+  })
+
+  it('reports a blur when focus leaves the writer entirely', async () => {
+    const view = await writer({ text: 'a' })
+    document.body.focus()
+    expect(await leave(view)).toHaveLength(1)
+  })
+})

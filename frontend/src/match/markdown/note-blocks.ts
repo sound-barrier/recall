@@ -25,7 +25,7 @@
 // space is.
 export const SPACE = ' \t\r\n'
 
-export function isSpace(ch: string | undefined): boolean {
+function isSpace(ch: string | undefined): boolean {
   return ch !== undefined && SPACE.includes(ch)
 }
 
@@ -36,7 +36,7 @@ export interface Marker {
 
 // Longest run first: `***bold italic***` must not match as `**` plus a stray
 // `*`, which is exactly what the toolbar produces when you bold an italic run.
-export const MARKERS: readonly Marker[] = [
+const MARKERS: readonly Marker[] = [
   { open: '***', tags: ['strong', 'em'] },
   { open: '**', tags: ['strong'] },
   { open: '~~', tags: ['del'] },
@@ -44,7 +44,7 @@ export const MARKERS: readonly Marker[] = [
 ]
 
 /** Index of the marker that closes one opened at `from`, or -1. */
-export function closeOf(text: string, from: number, marker: string): number {
+function closeOf(text: string, from: number, marker: string): number {
   for (let k = from + 1; k + marker.length <= text.length; k++) {
     if (!text.startsWith(marker, k)) continue
     // A marker must hug its content: the close cannot follow a space, which
@@ -69,13 +69,13 @@ export function openAt(text: string, i: number): { marker: Marker; close: number
   return null
 }
 
-export const HEADING = /^(#{1,2})[ \t]+(.*)$/
-export const BULLET = /^[-*][ \t]+(.*)$/
-export const NUMBERED = /^(\d{1,9})[.)][ \t]+(.*)$/
+const HEADING = /^(#{1,2})[ \t]+(.*)$/
+const BULLET = /^[-*][ \t]+(.*)$/
+const NUMBERED = /^(\d{1,9})[.)][ \t]+(.*)$/
 // Trimmed explicitly for the same reason `SPACE` is spelled out: JS `trim()`
 // strips a byte-order mark and Go's `TrimSpace` does not, and Go trims U+0085
 // where JS does not.
-export const EDGE_SPACE = /^[ \t\r]+|[ \t\r]+$/g
+const EDGE_SPACE = /^[ \t\r]+|[ \t\r]+$/g
 
 export type Block =
   | { kind: 'p'; lines: string[] }

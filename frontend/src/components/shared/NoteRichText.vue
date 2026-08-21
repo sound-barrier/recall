@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { onBeforeUnmount, watch } from 'vue'
 import type { Editor as EditorLike } from '@tiptap/core'
+import type { Node as PMNode } from '@tiptap/pm/model'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 
-import { markdownOf, noteExtensions, TOOL_STATE } from '@/components/shared/note-tiptap'
+import {
+  markdownOf, noteExtensions, searchHitsKey, TOOL_STATE,
+} from '@/components/shared/note-tiptap'
 import { textToDoc } from '@/match/markdown/note-doc'
 
 // The TipTap host, and the only file in the app that imports @tiptap.
@@ -23,11 +26,16 @@ const props = defineProps<{
   /** Announced as the field's name; the e2e and unit suites query by it. */
   label: string
   placeholder: string
+  /** An id for the editable element, for callers that must point at it. */
+  fieldId?: string
   disabled?: boolean
+  /** Search terms to light. Drawn over the text; never part of the note. */
+  highlight?: readonly string[]
 }>()
 
 const emit = defineEmits<{
   'update:text': [text: string]
+  focus: []
   /**
    * Which tools are live at the cursor. PUSHED rather than pulled: a parent
    * calling editor.isActive() during render gets an answer Vue has no reason
@@ -64,6 +72,7 @@ function publishActive(e: EditorLike): void {
  */
 function fieldAttributes(): Record<string, string> {
   return {
+    ...(props.fieldId ? { id: props.fieldId } : {}),
     role: 'textbox',
     'aria-multiline': 'true',
     'aria-label': props.label,
@@ -87,12 +96,21 @@ const editor = useEditor({
   // selected sets a STORED mark, which changes neither the document nor the
   // selection — so the toolbar would stay dark while the next character came
   // out bold.
-  onCreate: ({ editor: e }) => publishActive(e),
+  onCreate: ({ editor: e }) => {
+    publishActive(e)
+    // Seed the terms here, not only from the watcher: `useEditor` builds the
+    // editor on MOUNT, so the immediate watch below runs while the ref is still
+    // undefined and drops its dispatch. A search armed before the note opened
+    // would then never light, and nothing would ever fire again — the terms do
+    // not change just because a different note was opened.
+    sendHighlight(e)
+  },
   onTransaction: ({ editor: e }) => publishActive(e),
   onUpdate: ({ editor: e }) => {
     lastEmitted = markdownOf(e.state.doc)
     emit('update:text', lastEmitted)
   },
+  onFocus: () => emit('focus'),
   onBlur: () => emit('blur'),
 })
 
@@ -113,6 +131,15 @@ watch(() => props.text, (next) => {
   lastEmitted = next
 })
 
+function sendHighlight(e: EditorLike): void {
+  e.view.dispatch(e.state.tr.setMeta(searchHitsKey, [...(props.highlight ?? [])]))
+}
+
+watch(() => props.highlight, () => {
+  const e = editor.value
+  if (e) sendHighlight(e)
+}, { deep: true })
+
 watch(() => props.disabled, (off) => {
   const e = editor.value
   if (!e) return
@@ -122,8 +149,39 @@ watch(() => props.disabled, (off) => {
   e.setOptions({ editorProps: { attributes: fieldAttributes() } })
 })
 
+/**
+ * Where a plain-text offset lands in the document.
+ *
+ * A caret-at-click gives an offset into the TEXT a reader sees, and a document
+ * position counts node boundaries too, so the two diverge the moment a note
+ * has more than one block. Walking the text nodes converts one to the other.
+ */
+function posOfTextOffset(doc: PMNode, offset: number): number {
+  let seen = 0
+  let found: number | null = null
+  doc.descendants((node, pos) => {
+    if (found !== null) return false
+    if (!node.isText) return true
+    const len = node.text?.length ?? 0
+    if (seen + len >= offset) {
+      found = pos + (offset - seen)
+      return false
+    }
+    seen += len
+    return true
+  })
+  return found ?? doc.content.size
+}
+
 defineExpose({
-  focus: () => editor.value?.commands.focus(),
+  focus: (offset?: number) => {
+    const e = editor.value
+    if (!e) return
+    // 'end', not the editor's remembered selection: no offset is a request to
+    // keep writing, which starts after what is already there.
+    if (offset === undefined) e.commands.focus('end')
+    else e.commands.focus(posOfTextOffset(e.state.doc, offset))
+  },
   chain: () => editor.value?.chain().focus(),
 })
 

@@ -11,6 +11,7 @@ import type { SearchClause } from '@/match/search-query'
 // these cases pin this component's own contract, so stub it open.
 vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/writeGateStub'))
 import { resetWriteGate, setWritesLocked } from '@/test-utils/writeGateStub'
+import { editorReady, leaveWriter, markdownField } from '@/test-utils'
 
 type MatchAnnotation = NonNullable<MatchRecord['annotation']>
 
@@ -76,6 +77,7 @@ describe('MatchJournal — one-shot focus from the row context menu', () => {
   it('focuses the tag input when the menu asked for Tag', async () => {
     const { emitted } = renderJournal({ pendingFocus: 'tag' })
     await new Promise(resolve => setTimeout(resolve, 0))
+    await editorReady()
     expect(focusedId()).toBe(`tags-${KEY}`)
     // Consumed, so a re-render can't steal focus back off the user.
     expect(emitted('focus-consumed')).toHaveLength(1)
@@ -84,6 +86,7 @@ describe('MatchJournal — one-shot focus from the row context menu', () => {
   it('focuses the note textarea when the menu asked for Edit annotation', async () => {
     renderJournal({ pendingFocus: 'note' })
     await new Promise(resolve => setTimeout(resolve, 0))
+    await editorReady()
     expect(focusedId()).toBe(`note-${KEY}`)
   })
 
@@ -94,22 +97,25 @@ describe('MatchJournal — one-shot focus from the row context menu', () => {
     // with the caret nowhere.
     renderJournal({ record: makeRecord({ note: 'fed early, recovered' }), pendingFocus: 'note' })
     await new Promise(resolve => setTimeout(resolve, 0))
+    await editorReady()
     expect(focusedId()).toBe(`note-${KEY}`)
   })
 
   it('leaves focus alone when the panel was opened normally', async () => {
     renderJournal({ pendingFocus: '' })
     await new Promise(resolve => setTimeout(resolve, 0))
+    await editorReady()
     expect(focusedId()).toBe('')
   })
 })
 
 describe('MatchJournal — note cell', () => {
-  it('starts in the textarea when there is nothing written yet', () => {
+  it('starts in the editor when there is nothing written yet', async () => {
     // An empty note skips the preview so the first character costs no
     // extra click.
     renderJournal()
-    expect(screen.getByLabelText('Note')).toHaveValue('')
+    await editorReady()
+    expect(screen.getByLabelText('Note')).toHaveTextContent('')
     expect(screen.queryByRole('textbox', { name: 'Click to edit' })).not.toBeInTheDocument()
   })
 
@@ -118,19 +124,27 @@ describe('MatchJournal — note cell', () => {
     const preview = screen.getByRole('textbox', { name: 'Click to edit' })
     expect(preview).toHaveAttribute('aria-readonly', 'true')
 
+    // The preview renders the note as markup, not as its source — the same
+    // markup the editor shows, which is what makes the swap invisible.
+    expect(preview).toHaveTextContent('fed early, recovered')
+
     await fireEvent.keyDown(preview, { key: 'Enter' })
     // Enter promotes the preview to the real editor — keyboard users get
     // the same click-to-edit affordance the mouse does.
-    expect(screen.getByLabelText('Note')).toHaveValue('fed early, recovered')
+    await editorReady()
+    expect(screen.getByLabelText('Note')).toHaveTextContent('fed early, recovered')
   })
 
   it('persists the whole annotation set on blur, not just the note', async () => {
     // Every commit writes all five fields so a single-field setter can
     // never drop what the user typed in a sibling cell.
     renderJournal({ record: makeRecord({ tags: ['stack'], members: ['ana#1234'] }) })
-    const note = screen.getByLabelText('Note')
+    // Markdown mode: this is about the journal's commit-on-blur wiring, and
+    // the raw field answers fireEvent.update where a document editor does not.
+    const note = await markdownField()
+    await fireEvent.focus(note)
     await fireEvent.update(note, 'threw it away')
-    await fireEvent.blur(note)
+    await leaveWriter(note)
 
     expect(onSetMatchAnnotation).toHaveBeenCalledWith(KEY, expect.objectContaining({
       note: 'threw it away',
@@ -354,13 +368,15 @@ describe('MatchJournal — note preview activation', () => {
   it('Space opens the editor the same way Enter does', async () => {
     renderJournal({ record: makeRecord({ note: 'fed early' }) })
     await fireEvent.keyDown(screen.getByRole('textbox', { name: 'Click to edit' }), { key: ' ' })
-    expect(screen.getByLabelText('Note')).toHaveValue('fed early')
+    await editorReady()
+    expect(screen.getByLabelText('Note')).toHaveTextContent('fed early')
   })
 
   it('a click on the preview opens the editor', async () => {
     renderJournal({ record: makeRecord({ note: 'fed early' }) })
     await fireEvent.click(screen.getByRole('textbox', { name: 'Click to edit' }))
-    expect(screen.getByLabelText('Note')).toHaveValue('fed early')
+    await editorReady()
+    expect(screen.getByLabelText('Note')).toHaveTextContent('fed early')
   })
 })
 
@@ -444,13 +460,26 @@ describe('MatchJournal — the write gate', () => {
     }],
   } as MatchRecord)
 
-  it('disables every control on the surface while writes are locked', () => {
+  it('disables every control on the surface while writes are locked', async () => {
     setWritesLocked(true, { session: true })
     renderJournal({ record: withCoachBlock() })
-    expect(screen.getByLabelText('Note')).toBeDisabled()
+    await editorReady()
+    // aria-readonly, not toBeDisabled: a contenteditable is not "disabled" to
+    // any matcher, and toBeEnabled would pass on one vacuously.
+    expect(screen.getByLabelText('Note')).toHaveAttribute('aria-readonly', 'true')
     expect(screen.getByLabelText('Replay code')).toBeDisabled()
     expect(tagInput()).toBeDisabled()
-    for (const t of screen.getAllByRole('button', { pressed: false })) expect(t).toBeDisabled()
+    // Every pressable EXCEPT the note's format toggle. Switching between
+    // Formatted and Markdown is a read: looking at the source of a note you
+    // are not allowed to change is still looking, and the two buttons stay
+    // live on purpose.
+    const formatToggle = within(screen.getByRole('group', { name: 'Note format' }))
+      .getAllByRole('button')
+    for (const t of screen.getAllByRole('button', { pressed: false })) {
+      if (formatToggle.includes(t)) continue
+      expect(t).toBeDisabled()
+    }
+    for (const t of formatToggle) expect(t).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Remove this note' })).toBeDisabled()
   })
 
@@ -560,5 +589,21 @@ describe('the moments strip', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('MatchJournal — writing into an empty note', () => {
+  // The preview shows when a note has text AND is not being edited. Typing the
+  // first character into an empty note satisfies the first half, so without
+  // marking the note as being edited the field swapped itself out for the
+  // read-only preview mid-word — you would type one letter and lose the box.
+  it('does not swap itself out for the preview on the first character', async () => {
+    renderJournal()
+    const note = await markdownField()
+    await fireEvent.focus(note)
+    await fireEvent.update(note, 't')
+
+    expect(screen.queryByRole('textbox', { name: 'Click to edit' })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Note')).toBeInTheDocument()
   })
 })

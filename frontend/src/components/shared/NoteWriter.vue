@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, useTemplateRef, nextTick } from 'vue'
+import { computed, defineAsyncComponent, nextTick, ref, useTemplateRef, watch } from 'vue'
 
 import { applyInlineMark, applyLineMark, type InlineMark, type LineMark } from '@/match/markdown/note-toolbar'
 import { MAX_NOTE_TEXT } from '@/match/markdown/note-doc'
@@ -25,6 +25,8 @@ const props = defineProps<{
   text: string
   /** The field's accessible name. */
   label: string
+  /** An id for the field itself, when a caller needs to point at it. */
+  fieldId?: string
   placeholder: string
   disabled?: boolean
   /**
@@ -44,10 +46,17 @@ const props = defineProps<{
   blockedReason?: string
   /** Paper surface (the film room) vs the ordinary card surface (a journal). */
   surface?: 'paper' | 'plain'
+  /**
+   * Search terms to light while writing. Formatted draws them as decorations
+   * over the text; Markdown mode shows the source, where a hit would have to
+   * be markup a textarea cannot hold, so it shows none.
+   */
+  highlight?: readonly string[]
 }>()
 
 const emit = defineEmits<{
   'update:text': [text: string]
+  focus: []
   blur: []
 }>()
 
@@ -56,8 +65,30 @@ type Mode = 'rich' | 'raw'
 // are looking at, not to the app.
 const mode = ref<Mode>('rich')
 
+const root = useTemplateRef<HTMLElement>('root')
 const rich = useTemplateRef<InstanceType<typeof NoteRichText>>('rich')
 const rawField = useTemplateRef<HTMLTextAreaElement>('rawField')
+
+/**
+ * Blur means focus left the WRITER, not the field.
+ *
+ * The journal treats a blur as "done editing" and swaps the whole writer back
+ * to a read-only preview — so forwarding the field's own blur would make the
+ * editor vanish the moment you reached for Bold. The field is one control among
+ * several here; the toolbar and the mode toggle are the writer's own chrome, and
+ * moving between them is not leaving.
+ *
+ * Deferred rather than read from `relatedTarget`: a mousedown on a button does
+ * not focus it in every browser, so relatedTarget can be null while focus is
+ * about to come straight back — which the toolbar handlers do explicitly.
+ * Asking after the dust settles is the answer that holds everywhere.
+ */
+function onFocusOut(): void {
+  setTimeout(() => {
+    if (root.value?.contains(document.activeElement)) return
+    emit('blur')
+  }, 0)
+}
 
 const chipClass = computed(() => (props.surface === 'plain' ? 'note-tool-plain' : 'paper-chip'))
 
@@ -154,11 +185,49 @@ function onRawKeydown(e: KeyboardEvent): void {
   markInline(key === 'b' ? 'bold' : 'italic')
 }
 
-defineExpose({ focus: () => (mode.value === 'rich' ? rich.value?.focus() : rawField.value?.focus()) })
+/**
+ * A focus asked for before the editor existed.
+ *
+ * The rich field is behind a dynamic import, so on a first open the chunk may
+ * still be in flight when someone clicks the note — and a focus dropped on the
+ * floor there is not a test artifact, it is a user clicking their note and
+ * typing into nothing. Held and applied the moment the editor arrives.
+ */
+let pendingFocus: number | null | undefined
+watch(rich, (r) => {
+  if (!r || pendingFocus === undefined) return
+  r.focus(pendingFocus ?? undefined)
+  pendingFocus = undefined
+})
+
+defineExpose({
+  /**
+   * Focus the field, optionally at a plain-text offset — the currency a
+   * caret-at-click produces. Formatted maps it to a document position;
+   * Markdown mode is already counting characters, so it uses it directly.
+   */
+  focus: (offset?: number) => {
+    if (mode.value === 'rich') {
+      if (rich.value) rich.value.focus(offset)
+      else pendingFocus = offset ?? null
+      return
+    }
+    const field = rawField.value
+    if (!field) return
+    field.focus()
+    // No offset means the END — "Edit annotation" from the row menu is a
+    // request to keep writing, and a caret parked at character zero would put
+    // the next sentence in front of the last one.
+    const at = offset === undefined
+      ? field.value.length
+      : Math.max(0, Math.min(offset, field.value.length))
+    field.setSelectionRange(at, at)
+  },
+})
 </script>
 
 <template>
-  <div class="note-writer">
+  <div ref="root" class="note-writer" @focusout="onFocusOut">
     <div class="note-writer-tools">
       <div class="note-toolbar" role="toolbar" aria-label="Formatting">
         <button
@@ -224,14 +293,17 @@ defineExpose({ focus: () => (mode.value === 'rich' ? rich.value?.focus() : rawFi
       ref="rich"
       :text="text"
       :label="label"
+      :field-id="fieldId"
       :placeholder="placeholder"
       :disabled="disabled"
+      :highlight="highlight"
       @update:text="emit('update:text', $event)"
       @update:active="active = $event"
-      @blur="emit('blur')"
+      @focus="emit('focus')"
     />
     <textarea
       v-else
+      :id="fieldId"
       ref="rawField"
       class="note-raw note-text"
       rows="5"
@@ -246,7 +318,7 @@ defineExpose({ focus: () => (mode.value === 'rich' ? rich.value?.focus() : rawFi
       data-note-surface="raw"
       @input="onRawInput"
       @keydown="onRawKeydown"
-      @blur="emit('blur')"
+      @focus="emit('focus')"
     />
   </div>
 </template>
