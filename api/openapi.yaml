@@ -4779,6 +4779,15 @@ components:
             True when the bundle named the player, so the handle is
             pre-filled rather than waiting on the coach to confirm one.
 
+    CoachReturnStatus:
+      type: string
+      enum: [pending, accepted, skipped, orphan]
+      description: |
+        Where one returned note stands. `pending` is derived, never stored —
+        undecided and decidable. `orphan` means the note is about a match this
+        history no longer has, so it cannot be accepted at all. The two a player
+        can actually choose are the CoachDecisionEnum pair below.
+
     CoachDecisionEnum:
       type: string
       enum: [accepted, skipped]
@@ -4826,12 +4835,7 @@ components:
         match:
           $ref: "#/components/schemas/CoachMatchContext"
         status:
-          type: string
-          enum: [pending, accepted, skipped, orphan]
-          description: |
-            `pending` is derived, never stored — undecided and decidable.
-            `orphan` means the note is about a match this history no longer
-            has, so it cannot be accepted at all.
+          $ref: "#/components/schemas/CoachReturnStatus"
 
     CoachReturnSheet:
       type: object

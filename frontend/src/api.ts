@@ -73,6 +73,7 @@ export type {
   CoachPlayer,
   CoachReturnItem,
   CoachReturnSheet,
+  CoachReturnStatus,
   CoachSessionChangedEvent,
   CoachSessionView,
   MatchCoachNote,
