@@ -65,7 +65,8 @@ unchecked pin.
   `scripts/ci/deadcode-check.sh` filters `node_modules` out of `go list`, and
   golangci-lint excludes `frontend/node_modules` via `.golangci.yml`'s
   `issues.exclude-dirs` (gosec is rolled into `task lint-go` — the standalone
-  gosec job and its `-exclude-dir` flag are both gone). New whole-program Go tools should keep the filter.
+  gosec job and its `-exclude-dir` flag are both gone). New whole-program Go
+  tools should keep the filter.
 - **`Dockerfile.build` frontend-builder runs `npm ci` BEFORE copying full
   `frontend/` source** — only `package.json`, `package-lock.json`, and
   `frontend/scripts/seed-go-sentinel.cjs` are in the layer. The sentinel is
@@ -76,6 +77,13 @@ unchecked pin.
 
 ## Shell scripts
 
+- **Standards-file references are gated by `scripts/ci/check-doc-paths.sh`**
+  (`task check-doc-paths`, in the `lint` aggregate and CI). It asserts that every
+  `` `task X` ``, `scripts/…` path and `docs/*.md` chapter named in the root
+  CLAUDE.md, `frontend/CLAUDE.md`, `pkg/CLAUDE.md` and `.claude/rules/*.md`
+  actually exists, and that nothing tells the reader to run `make`. Matching is
+  backtick-anchored so English prose ("before declaring any task done") is not a
+  hit. A new nested CLAUDE.md goes on that script's `DOC_FILES` list.
 - **Bundle-size budget lives in `scripts/ci/check-bundle-size.sh`** — the single
   source of truth for the initial/total JS+CSS KB thresholds, run by the `ci.yml`
   "Enforce bundle-size budget" step. Edit thresholds here, not in any CLAUDE.md or

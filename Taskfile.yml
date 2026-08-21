@@ -148,6 +148,7 @@ tasks:
       - task: lint-openapi
       - task: lint-typos
       - task: lint-md
+      - task: check-doc-paths
       - task: lint-actions
       - task: lint-semgrep
 
@@ -280,6 +281,10 @@ tasks:
   check-css-tokens:
     desc: Assert every var(--token) resolves and no fallback hides an always-defined token
     cmds: [bash scripts/ci/check-css-tokens.sh]
+
+  check-doc-paths:
+    desc: Assert every task, script and chapter named in the standards files exists
+    cmds: [bash scripts/ci/check-doc-paths.sh]
 
   check-package-size:
     desc: Assert no Go package / frontend dir exceeds its declared file budget
@@ -434,6 +439,8 @@ tasks:
       - bash scripts/ci/check-css-theme-leak.sh --build
       - echo "[ recall ] verify — CSS token integrity…"
       - bash scripts/ci/check-css-tokens.sh
+      - echo "[ recall ] verify — standards-file references…"
+      - bash scripts/ci/check-doc-paths.sh
       - echo "[ recall ] verify — package + directory size budgets…"
       - bash scripts/ci/check-package-size.sh
       - echo "[ recall ] verify — dead code…"
