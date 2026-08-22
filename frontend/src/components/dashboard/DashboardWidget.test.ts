@@ -3,9 +3,9 @@ import { render, screen, fireEvent } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import DashboardWidget from '@/components/dashboard/DashboardWidget.vue'
 
-// The widget shell's data-* attributes (data-widget-id, data-kpi,
-// data-breakdown, draggable) ARE the contract under test — the drag
-// engine and the e2e specs select on them — so the structural
+// The widget shell's data-* attributes (data-widget-id, draggable) ARE
+// the contract under test — the drag engine and the e2e specs select on
+// them — so the structural
 // assertions below reach for baseElement.querySelector deliberately.
 // Same for the shape/drag-state classes: the CSS family a widget lands
 // in and its mid-drag visual state have no ARIA expression at all.
@@ -36,26 +36,11 @@ describe('DashboardWidget', () => {
     expect(root).toHaveClass('breakdown')
   })
 
-  it('emits the legacy data-kpi attr when legacyDataKpi is set', () => {
+  it('carries its widget id, which is what the drag engine and the specs select on', () => {
     const { baseElement } = render(DashboardWidget, {
-      props: { id: 'reviewed-count', shape: 'kpi', legacyDataKpi: 'reviewed-count' },
+      props: { id: 'reviewed-count', shape: 'kpi' },
     })
-    expect(baseElement.querySelector('[data-kpi="reviewed-count"]')).not.toBeNull()
     expect(baseElement.querySelector('[data-widget-id="reviewed-count"]')).not.toBeNull()
-  })
-
-  it('omits data-kpi when legacyDataKpi is unset', () => {
-    const { baseElement } = render(DashboardWidget, {
-      props: { id: 'winrate', shape: 'kpi' },
-    })
-    expect(baseElement.querySelector('[data-kpi]')).toBeNull()
-  })
-
-  it('emits the legacy data-breakdown attr when legacyDataBreakdown is set', () => {
-    const { baseElement } = render(DashboardWidget, {
-      props: { id: 'top-roles', shape: 'breakdown', legacyDataBreakdown: 'roles' },
-    })
-    expect(baseElement.querySelector('[data-breakdown="roles"]')).not.toBeNull()
   })
 
   // No edit mode: the drag handle + trash are ALWAYS in the DOM (CSS

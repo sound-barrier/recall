@@ -18,9 +18,6 @@ import type { WidgetShape } from '@/dashboard/widgets'
 // border / background change on hover; the controls appearing IS the
 // affordance (matching the Campaign Log / Geography section chrome).
 //
-// `legacyDataKpi` / `legacyDataBreakdown` keep the pre-refactor e2e
-// selectors (`[data-kpi="reviewed-count"]`, `[data-breakdown="roles"]`)
-// matching.
 
 const props = defineProps<{
   id: string
@@ -39,8 +36,6 @@ const props = defineProps<{
   // schema. Gates the gear-icon affordance — knob-less widgets stay
   // gear-less.
   hasConfig?: boolean
-  legacyDataKpi?: string
-  legacyDataBreakdown?: string
 }>()
 
 const emit = defineEmits<{
@@ -72,8 +67,6 @@ function idxOr(): number { return props.idx ?? 0 }
       },
     ]"
     :data-widget-id="id"
-    :data-kpi="legacyDataKpi || undefined"
-    :data-breakdown="legacyDataBreakdown || undefined"
     draggable="true"
     @dragstart="emit('drag-start', id, rowOr(), idxOr(), $event)"
     @dragend="emit('drag-end')"

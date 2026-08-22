@@ -158,18 +158,6 @@ export function useDashboardGrid() {
     }
   }
 
-  // Three review-widget e2e specs key on data-kpi="..."; the roles breakdown spec
-  // keys on data-breakdown="roles". Keep the legacy attrs on the wrapper during
-  // Phase 1; a follow-up re-points the specs to [data-widget-id="..."].
-  const LEGACY_DATA_KPI: Record<string, string> = {
-    'reviewed-count': 'reviewed-count',
-    'days-since-review': 'days-since-review',
-    'wld-since-review': 'wld-since-review',
-  }
-  const LEGACY_DATA_BREAKDOWN: Record<string, string> = {
-    'top-roles': 'roles',
-  }
-
   return {
     dashboardRows,
     dragReorder,
@@ -183,7 +171,5 @@ export function useDashboardGrid() {
     onWidgetRemove,
     onUndoRemove,
     onDismissUndo,
-    LEGACY_DATA_KPI,
-    LEGACY_DATA_BREAKDOWN,
   }
 }
