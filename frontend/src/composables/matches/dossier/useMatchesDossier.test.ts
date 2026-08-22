@@ -112,6 +112,29 @@ describe('useMatchesDossier', () => {
       expect(wld.value.total).toBe(1)
     })
 
+    // A match a coach's review created is real — the player played it — but
+    // the RESULT is what the coach typed while watching a replay, not what
+    // the player recorded. Counting it would let a coaching session move a
+    // win rate, which is the one thing a coaching session must not do.
+    it('leaves a coach-created replay match out of the tally', () => {
+      const records = ref([
+        rec({ result: 'victory' }),
+        { ...rec({ result: 'defeat' }), source: 'replay' } as MatchRecord,
+      ])
+      const { wld, winrate } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include')))
+      expect(wld.value).toEqual({ w: 1, l: 0, d: 0, total: 1 })
+      expect(winrate.value).toBe(100)
+    })
+
+    it('still counts a match the player entered by hand', () => {
+      const records = ref([
+        rec({ result: 'victory' }),
+        { ...rec({ result: 'defeat' }), source: 'manual' } as MatchRecord,
+      ])
+      const { wld } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include')))
+      expect(wld.value).toEqual({ w: 1, l: 1, d: 0, total: 2 })
+    })
+
     it('returns zeros for an empty corpus', () => {
       const records = ref<MatchRecord[]>([])
       const { wld } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include')))

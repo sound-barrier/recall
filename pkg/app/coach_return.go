@@ -7,6 +7,8 @@ import (
 	"recall/pkg/coach"
 	"recall/pkg/coachreturn"
 	"recall/pkg/db"
+	"recall/pkg/match"
+	"recall/pkg/matchedit"
 )
 
 // The player's side of the loop: a coach's notes archive comes back
@@ -60,7 +62,7 @@ func (a *App) ImportMatches(payload []byte) (ImportOutcome, error) {
 // same file imported twice stages once — the second import re-opens the
 // sheet it already has, decisions intact.
 func (a *App) stageCoachNotes(payload []byte) (ImportOutcome, error) {
-	sheet, _, err := coachreturn.Stage(a.store, payload, a.settingsSnapshot().PlayerHandle)
+	sheet, _, err := coachreturn.Stage(a.store, payload, a.settingsSnapshot().PlayerHandle, a.makeReplayMatch)
 	if err != nil {
 		return ImportOutcome{}, err
 	}
@@ -87,7 +89,32 @@ func (a *App) DecideCoachReturn(id int64, decisions []coachreturn.Verdict) (coac
 	if err := a.assertNoCoachSession(); err != nil {
 		return coachreturn.Sheet{}, err
 	}
-	return coachreturn.Decide(a.store, id, decisions, a.settingsSnapshot().PlayerHandle)
+	return coachreturn.Decide(a.store, id, decisions, a.settingsSnapshot().PlayerHandle, a.makeReplayMatch)
+}
+
+// makeReplayMatch is the seam coachreturn calls when an accepted note is
+// about a replay this history does not have. It lives here rather than in
+// that package because "an import may create matches" is a decision about
+// WRITES, and writes are the shell's business — assertNoCoachSession has
+// already run by the time anything reaches it.
+//
+// The match is built from the context the coach recorded while watching,
+// which is the only description of it that exists on this machine.
+func (a *App) makeReplayMatch(n coach.Note) (string, error) {
+	return matchedit.CreateFromReplay(a.store, replayInputFromNote(n))
+}
+
+// replayInputFromNote projects a note's observed context onto the create.
+func replayInputFromNote(n coach.Note) match.ReplayMatchInput {
+	in := match.ReplayMatchInput{}
+	if k, err := match.ParseKey(n.MatchKey); err == nil {
+		in.Code = k.ReplayCode()
+	}
+	if n.Match != nil {
+		in.Map, in.Hero, in.Result = n.Match.Map, n.Match.Hero, n.Match.Result
+		in.Date, in.FinishedAt = n.Match.Date, n.Match.FinishedAt
+	}
+	return in
 }
 
 // DeleteCoachReturn drops a staged return, its decisions, and the focus

@@ -83,7 +83,7 @@ func TestStage_SameFileTwiceIsTheSameSheet(t *testing.T) {
 	payload := returnedNotes(t)
 	first := stageReturn(t, st, payload, "Sable")
 	decide(t, st, first.ID, coachreturn.Verdict{NoteID: noteIDOne, Decision: coachreturn.DecisionAccepted})
-	again, already, err := coachreturn.Stage(st, payload, "Sable")
+	again, already, err := coachreturn.Stage(st, payload, "Sable", noMatchMaker)
 	if err != nil {
 		t.Fatalf("Stage again: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestStage_RefusesAFileWithNothingToShow(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			st := dbtest.New()
-			_, _, err := coachreturn.Stage(st, tc.payload, "Sable")
+			_, _, err := coachreturn.Stage(st, tc.payload, "Sable", noMatchMaker)
 			if !errors.Is(err, coachreturn.ErrNoMatches) {
 				t.Fatalf("err = %v, want ErrNoMatches", err)
 			}
@@ -154,14 +154,14 @@ func TestStage_RefusesWhatItCannotRead(t *testing.T) {
 		}),
 		"garbage": []byte("nope"),
 	} {
-		if _, _, err := coachreturn.Stage(st, payload, ""); !errors.Is(err, coach.ErrNotesMalformed) {
+		if _, _, err := coachreturn.Stage(st, payload, "", noMatchMaker); !errors.Is(err, coach.ErrNotesMalformed) {
 			t.Errorf("%s: err = %v, want ErrNotesMalformed", name, err)
 		}
 	}
 	unsupported := validNotesFile()
 	unsupported.Schema = "recall-coach-notes/v9"
 	body, _ := json.Marshal(unsupported)
-	if _, _, err := coachreturn.Stage(st, zipWithEntries(t, map[string][]byte{"notes.json": body}), ""); !errors.Is(err, coach.ErrNotesUnsupportedSchema) {
+	if _, _, err := coachreturn.Stage(st, zipWithEntries(t, map[string][]byte{"notes.json": body}), "", noMatchMaker); !errors.Is(err, coach.ErrNotesUnsupportedSchema) {
 		t.Errorf("unsupported schema: err = %v", err)
 	}
 }
@@ -170,7 +170,7 @@ func TestSheet_UnknownReturn(t *testing.T) {
 	if _, err := coachreturn.Get(dbtest.New(), 99, ""); !errors.Is(err, db.ErrCoachReturnUnknown) {
 		t.Errorf("Sheet(99) err = %v, want db.ErrCoachReturnUnknown", err)
 	}
-	if _, err := coachreturn.Decide(dbtest.New(), 99, nil, "Sable"); !errors.Is(err, db.ErrCoachReturnUnknown) {
+	if _, err := coachreturn.Decide(dbtest.New(), 99, nil, "Sable", noMatchMaker); !errors.Is(err, db.ErrCoachReturnUnknown) {
 		t.Errorf("Decide(99) err = %v, want db.ErrCoachReturnUnknown", err)
 	}
 }
@@ -325,7 +325,7 @@ func TestDecide_SkipsAnOrphanWithTheRestOfTheBatch(t *testing.T) {
 func TestDecide_StillRefusesToAcceptAnOrphan(t *testing.T) {
 	st := seededStore(t)
 	sheet := stageReturn(t, st, returnedNotes(t), "Sable")
-	_, err := coachreturn.Decide(st, sheet.ID, []coachreturn.Verdict{{NoteID: orphanNoteID, Decision: coachreturn.DecisionAccepted}}, "Sable")
+	_, err := coachreturn.Decide(st, sheet.ID, []coachreturn.Verdict{{NoteID: orphanNoteID, Decision: coachreturn.DecisionAccepted}}, "Sable", noMatchMaker)
 	if !errors.Is(err, coachreturn.ErrOrphan) {
 		t.Fatalf("err = %v, want ErrOrphan", err)
 	}
@@ -367,7 +367,7 @@ func TestDecide_RejectsBeforeWritingAnything(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			st := seededStore(t)
 			sheet := stageReturn(t, st, returnedNotes(t), "Sable")
-			_, err := coachreturn.Decide(st, sheet.ID, []coachreturn.Verdict{{NoteID: noteIDTwo, Decision: "accepted"}, tc.bad}, "Sable")
+			_, err := coachreturn.Decide(st, sheet.ID, []coachreturn.Verdict{{NoteID: noteIDTwo, Decision: "accepted"}, tc.bad}, "Sable", noMatchMaker)
 			if !errors.Is(err, tc.want) {
 				t.Fatalf("err = %v, want %v", err, tc.want)
 			}
@@ -480,7 +480,7 @@ func TestStage_ReimportKeepsAStatusThePlayerMoved(t *testing.T) {
 		t.Fatalf("SetFocusItemStatus: %v", err)
 	}
 
-	if _, already, err := coachreturn.Stage(st, returnedNotes(t), "Sable"); err != nil || !already {
+	if _, already, err := coachreturn.Stage(st, returnedNotes(t), "Sable", noMatchMaker); err != nil || !already {
 		t.Fatalf("second Stage = (already %v, %v), want (true, nil)", already, err)
 	}
 

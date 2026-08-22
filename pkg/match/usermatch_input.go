@@ -86,6 +86,29 @@ type ManualMatchInput struct {
 	Members    []string `json:"members,omitempty"` // the squad / group the user played with
 }
 
+// ReplayMatchInput is what a coach's review knows about a match the player
+// does not have: a replay code, and whatever the coach wrote down while
+// watching it.
+//
+// A sibling of ManualMatchInput rather than a reuse, because the two differ
+// in every field that matters. A manual match is minted from a wall clock
+// the PLAYER supplies and refuses a key that already exists; this one is
+// minted from the code, so the key is deterministic and a second import of
+// the same archive has to be a quiet no-op. And a manual match requires a
+// map and a result — the player was there — where a coach may legitimately
+// have observed only that the match happened.
+type ReplayMatchInput struct {
+	// Code is the replay the review is about, and the only required field.
+	Code string `json:"replay_code"`
+	// What the coach observed. Each optional; each still validated when
+	// present, so a context that reaches here is one the roster knows.
+	Map        string `json:"map,omitempty"`
+	Hero       string `json:"hero,omitempty"`
+	Result     string `json:"result,omitempty"`
+	Date       string `json:"date,omitempty"`
+	FinishedAt string `json:"finished_at,omitempty"`
+}
+
 // ManualRankInput captures the competitive rank a manual match ended on.
 type ManualRankInput struct {
 	Tier               string `json:"tier"`     // "platinum", "gold", …

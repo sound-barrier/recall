@@ -32,6 +32,10 @@ import (
 // their decisions. db.Store satisfies it; dbtest.Fake mirrors it.
 type Store interface {
 	LoadMatchKeys() (map[string]bool, error)
+	// LoadAnnotations is what binds a coach's replay key to the player's own
+	// match: the replay code lives on the annotation, and it is the only
+	// token both machines can arrive at independently.
+	LoadAnnotations() (map[string]db.Annotation, error)
 	LoadReviews() (map[string]db.ReviewState, error)
 	SetReview(matchKey, reviewedBy string) error
 	UpsertMatchCoachNote(n db.MatchCoachNote) (int64, error)
@@ -130,7 +134,13 @@ type Verdict struct {
 // summary, and no note about a match in this history — is
 // ErrNoMatches and is not staged; a summary alone is enough, because
 // a coach may end a session having written only that.
-func Stage(st Store, payload []byte, localHandle string) (sheet Sheet, alreadyStaged bool, err error) {
+// The MatchMaker seam is taken but deliberately NOT called here. Staging is a
+// preview: the player has not decided anything yet, and a preview that
+// changed their history would be the wrong shape twice over — it would break
+// the promise that an import changes no match until a note is accepted, and
+// it would leave matches stranded when they discarded the return, because
+// DeleteCoachReturn can drop an archive but cannot un-make a match.
+func Stage(st Store, payload []byte, localHandle string, _ MatchMaker) (sheet Sheet, alreadyStaged bool, err error) {
 	f, raw, err := coach.ReadNotesArchive(payload)
 	if err != nil {
 		return Sheet{}, false, err
@@ -149,14 +159,8 @@ func Stage(st Store, payload []byte, localHandle string) (sheet Sheet, alreadySt
 		sheet, err := buildSheet(st, existing, localHandle)
 		return sheet, true, err
 	}
-	keys, err := st.LoadMatchKeys()
-	if err != nil {
-		return Sheet{}, false, fmt.Errorf("coach: load match keys: %w", err)
-	}
-	// A coach may end a session having written only the focus list, so items
-	// alone are enough to stage.
-	if len(f.FocusItems) == 0 && !anyLocalNote(f.Notes, keys) {
-		return Sheet{}, false, nothingToStage(f.Notes)
+	if err := assertWorthStaging(st, f); err != nil {
+		return Sheet{}, false, err
 	}
 	id, err := st.InsertCoachReturn(db.CoachReturn{
 		ContentHash: hash, CoachName: f.CoachName, PlayerHandle: f.Player.Handle,
@@ -170,6 +174,29 @@ func Stage(st Store, payload []byte, localHandle string) (sheet Sheet, alreadySt
 	}
 	sheet, err = Get(st, id, localHandle)
 	return sheet, false, err
+}
+
+// assertWorthStaging refuses a file with nothing to show: no focus list, and
+// no note this history can do anything with. "Can do anything with" is the
+// widened part — a note that binds to a local match by its replay code
+// counts, and so does one about a replay that accepting could still create.
+func assertWorthStaging(st Store, f coach.NotesFile) error {
+	if len(f.FocusItems) > 0 {
+		// A coach may end a session having written only the focus list.
+		return nil
+	}
+	keys, err := st.LoadMatchKeys()
+	if err != nil {
+		return fmt.Errorf("coach: load match keys: %w", err)
+	}
+	resolver, err := loadResolver(st)
+	if err != nil {
+		return err
+	}
+	if !anyLocalNote(f.Notes, keys, resolver) {
+		return nothingToStage(f.Notes)
+	}
+	return nil
 }
 
 // landFocusItems puts a coach's list into the player's own list the moment
@@ -214,9 +241,12 @@ func nothingToStage(notes []coach.Note) error {
 	return fmt.Errorf("%w: none of its %d notes name a match you have, and nothing to work on", ErrNoMatches, len(notes))
 }
 
-func anyLocalNote(notes []coach.Note, keys map[string]bool) bool {
+func anyLocalNote(notes []coach.Note, keys map[string]bool, resolver keyResolver) bool {
 	for _, n := range notes {
-		if keys[n.MatchKey] {
+		// Either it binds to a match here, or it is about a replay and can
+		// still become one. Both are worth showing the player; neither is
+		// the "nothing to show" case this guards.
+		if keys[resolver.resolve(n.MatchKey)] || resolver.creatable(n.MatchKey) {
 			return true
 		}
 	}
@@ -281,6 +311,12 @@ func buildSheet(st Store, r db.CoachReturn, localHandle string) (Sheet, error) {
 		if status == StatusPending {
 			sheet.Pending++
 		}
+		// The item names the match on THIS machine. A coach's replay key is
+		// meaningless here — the player has never minted one — so a sheet
+		// that showed it would be telling them about a match they cannot
+		// find. Resolved rather than rewritten in the archive, so the
+		// binding re-derives every read and heals when a code arrives late.
+		n.MatchKey = state.localKeyFor(n)
 		sheet.Notes = append(sheet.Notes, Item{Note: n, Status: status})
 	}
 	return sheet, nil

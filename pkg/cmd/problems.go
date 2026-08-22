@@ -170,6 +170,10 @@ var defaultProblems = []errStatus{
 	{app.ErrCoachNameInvalid, probInvalidBody},
 	{review.ErrTitleInvalid, probInvalidBody},
 	{review.ErrTooManyMatches, probInvalidBody},
+	// A batch that would create more matches than a coaching session
+	// plausibly reviews. 400 rather than 409 because the refusal is about
+	// the SIZE of what was asked for, not about the state it was asked in.
+	{coachreturn.ErrTooManyCreated, probInvalidBody},
 
 	// 409 — the body parses, the state or its semantics refuse the action.
 	{coach.ErrSessionActive, probConflict},

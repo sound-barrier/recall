@@ -3,6 +3,8 @@ package coachreturn_test
 import (
 	"archive/zip"
 	"bytes"
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -119,4 +121,61 @@ func zipWithEntries(t *testing.T, entries map[string][]byte) []byte {
 		t.Fatalf("close zip: %v", err)
 	}
 	return buf.Bytes()
+}
+
+// noMatchMaker is the seam refused: a test that hands this in is asserting
+// that nothing was supposed to be created.
+func noMatchMaker(coach.Note) (string, error) {
+	return "", errors.New("no match should have been created")
+}
+
+// replayNotesFile is what a coach hands back after reviewing a replay code
+// and nothing else: a note whose key was minted from the code, carrying the
+// context that is the only thing identifying the match on the far side.
+func replayNotesFile() coach.NotesFile {
+	const code = "A1B2C3"
+	f := validNotesFile()
+	f.Notes = []coach.Note{{
+		NoteID: noteIDOne, MatchKey: "replay-" + code, Kind: "note",
+		Text: "held the choke too long", FocusTags: []string{"positioning"},
+		ExtraTags: []string{}, MatchClock: "04:12",
+		UpdatedAt: "2026-08-15T09:00:00Z",
+		Match: &coach.MatchContext{
+			Map: "ilios", Hero: "ana", Result: "defeat", ReplayCode: code,
+		},
+	}}
+	return f
+}
+
+// notesArchive packs a notes file the way a coach's export does.
+func notesArchive(t *testing.T, f coach.NotesFile) []byte {
+	t.Helper()
+	payload, err := coach.WriteNotesArchive(f, testSheet, fixedNow)
+	if err != nil {
+		t.Fatalf("WriteNotesArchive: %v", err)
+	}
+	return payload
+}
+
+// replayCodeForIndex mints distinct six-character codes for bulk fixtures.
+func replayCodeForIndex(i int) string {
+	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	out := make([]byte, 6)
+	for pos := range out {
+		out[pos] = alphabet[(i/pow36(pos))%len(alphabet)]
+	}
+	return string(out)
+}
+
+func pow36(n int) int {
+	out := 1
+	for range n {
+		out *= 36
+	}
+	return out
+}
+
+// noteIDForIndex mints distinct UUIDs for bulk fixtures.
+func noteIDForIndex(i int) string {
+	return fmt.Sprintf("%08d-1111-4111-8111-111111111111", i)
 }
