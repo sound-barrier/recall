@@ -24,7 +24,7 @@ import (
 // The sentinel ladder — the regression net for carving pkg/app apart.
 //
 // Every write handler funnels a failure through writeError, which picks an
-// HTTP status by errors.Is against a sentinel. 42 app.Err* values reach that
+// HTTP status by errors.Is against a sentinel. 43 app.Err* values reach that
 // ladder from pkg/cmd today, and a decomposition moves many of them into leaf
 // packages behind `var ErrX = leaf.ErrX` re-exports.
 //
@@ -65,6 +65,7 @@ var sentinels = []sentinel{
 	{"ErrInvalidBackupInterval", app.ErrInvalidBackupInterval, "invalid auto-backup interval"},
 	{"ErrInvalidLeaver", app.ErrInvalidLeaver, "invalid leaver: each side must be 'self', 'team', or 'enemy'"},
 	{"ErrInvalidReplayCode", app.ErrInvalidReplayCode, "invalid replay_code: must be six letters or digits"},
+	{"ErrReplayCodeTaken", app.ErrReplayCodeTaken, "that replay code is already on another match"},
 	{"ErrInvalidMaintenanceOp", app.ErrInvalidMaintenanceOp, "unknown maintenance operation"},
 	{"ErrInvalidMoment", app.ErrInvalidMoment, "invalid moment"},
 	{"ErrMomentEmpty", app.ErrMomentEmpty, "a moment needs text"},
@@ -232,6 +233,7 @@ func carvedSentinels() []carvedSentinel {
 	return []carvedSentinel{
 		{"ErrInvalidLeaver", app.ErrInvalidLeaver, matchedit.ErrInvalidLeaver},
 		{"ErrInvalidReplayCode", app.ErrInvalidReplayCode, matchedit.ErrInvalidReplayCode},
+		{"ErrReplayCodeTaken", app.ErrReplayCodeTaken, matchedit.ErrReplayCodeTaken},
 		{"ErrInvalidMoment", app.ErrInvalidMoment, matchedit.ErrInvalidMoment},
 		{"ErrMomentEmpty", app.ErrMomentEmpty, matchedit.ErrMomentEmpty},
 		{"ErrInvalidThrower", app.ErrInvalidThrower, matchedit.ErrInvalidThrower},

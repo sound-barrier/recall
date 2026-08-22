@@ -278,3 +278,34 @@ func TestSetAnnotation_EmptyReplayCodeStillAllowed(t *testing.T) {
 		t.Errorf("stored replay code = %q, want empty", got)
 	}
 }
+
+// A replay code names exactly one Overwatch match, and a match key is minted
+// from it — so the schema makes it unique. Without a check in front of that
+// constraint the user gets a raw SQLite error as a 500, which tells them
+// nothing about what they did or how to fix it.
+func TestSetAnnotation_RefusesACodeAnotherMatchAlreadyHas(t *testing.T) {
+	fake := seeded("k1")
+	fake.Annotations = map[string]db.Annotation{}
+	fake.Annotations["k2"] = db.Annotation{MatchKey: "k2", ReplayCode: "A1B2C3"}
+
+	err := matchedit.SetAnnotation(fake, matchedit.AnnotationInput{
+		MatchKey: "k1", ReplayCode: "a1b2c3",
+	})
+	if !errors.Is(err, matchedit.ErrReplayCodeTaken) {
+		t.Fatalf("err = %v, want ErrReplayCodeTaken", err)
+	}
+}
+
+// Re-saving the SAME match's own code is not a collision — it is the
+// ordinary case of editing an annotation that already has one.
+func TestSetAnnotation_KeepingItsOwnCodeIsNotACollision(t *testing.T) {
+	fake := seeded("k1")
+	fake.Annotations = map[string]db.Annotation{}
+	fake.Annotations["k1"] = db.Annotation{MatchKey: "k1", ReplayCode: "A1B2C3"}
+
+	if err := matchedit.SetAnnotation(fake, matchedit.AnnotationInput{
+		MatchKey: "k1", ReplayCode: "A1B2C3", Note: "still mine",
+	}); err != nil {
+		t.Fatalf("re-saving a match's own code: %v", err)
+	}
+}

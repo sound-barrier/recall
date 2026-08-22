@@ -2,6 +2,7 @@ package matchedit
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"recall/pkg/db"
@@ -38,6 +39,14 @@ var ErrEmptyAnnotation = errors.New("annotation has no content; use DELETE to cl
 // ErrInvalidReplayCode re-exports the sentinel from the package that owns
 // the rule, so every refusal of a malformed code is the same error value.
 var ErrInvalidReplayCode = match.ErrInvalidReplayCode
+
+// ErrReplayCodeTaken rejects a code another match already carries.
+//
+// The schema enforces uniqueness, so without this the user meets the
+// constraint as a raw SQLite error rendered as a 500 — which says nothing
+// about what they did or how to undo it. A code identifies one Overwatch
+// match; two matches claiming one is a typo, and it deserves a sentence.
+var ErrReplayCodeTaken = errors.New("that replay code is already on another match")
 
 // AnnotationInput is the caller-facing DTO for SetAnnotation. Each
 // field is optional, but at least one must carry content: an all-empty
@@ -84,6 +93,9 @@ func SetAnnotation(s db.Store, in AnnotationInput) error {
 	}
 	anno, err := normalizeAnnotation(in)
 	if err != nil {
+		return err
+	}
+	if err := assertReplayCodeFree(s, in.MatchKey, anno.ReplayCode); err != nil {
 		return err
 	}
 	// All-empty input is rejected — clearing an annotation is the explicit
@@ -157,6 +169,28 @@ func normalizeReplayCode(raw string) (string, error) {
 		return "", match.ErrInvalidReplayCode
 	}
 	return code, nil
+}
+
+// assertReplayCodeFree refuses a code another match already carries.
+//
+// Checked in front of the unique index rather than relying on it: a
+// constraint violation surfaces as a 500 with SQLite's own words in it, and
+// the user cannot act on that. Keeping a match's OWN code is not a
+// collision — that is just editing an annotation that already has one.
+func assertReplayCodeFree(s db.Store, matchKey, code string) error {
+	if code == "" {
+		return nil
+	}
+	annotations, err := s.LoadAnnotations()
+	if err != nil {
+		return fmt.Errorf("load annotations: %w", err)
+	}
+	for key, a := range annotations {
+		if key != matchKey && a.ReplayCode == code {
+			return fmt.Errorf("%w: %s", ErrReplayCodeTaken, key)
+		}
+	}
+	return nil
 }
 
 // annotationIsEmpty reports whether a normalized annotation carries no

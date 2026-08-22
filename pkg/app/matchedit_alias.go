@@ -25,6 +25,7 @@ var (
 	ErrMomentEmpty       = matchedit.ErrMomentEmpty
 	ErrInvalidLeaver     = matchedit.ErrInvalidLeaver
 	ErrInvalidReplayCode = matchedit.ErrInvalidReplayCode
+	ErrReplayCodeTaken   = matchedit.ErrReplayCodeTaken
 	ErrInvalidThrower    = matchedit.ErrInvalidThrower
 	ErrEmptyAnnotation   = matchedit.ErrEmptyAnnotation
 	ErrInvalidPlayMode   = matchedit.ErrInvalidPlayMode

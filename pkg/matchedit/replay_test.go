@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"recall/pkg/db"
 	"recall/pkg/match"
 	"recall/pkg/matchedit"
 )
@@ -105,5 +106,26 @@ func TestCreateFromReplay_LeavesAnExistingMatchAlone(t *testing.T) {
 	}
 	if got := fake.UserMatchData[first].Map; got == nil || *got != "ilios" {
 		t.Errorf("Map = %v, want the first write to stand", got)
+	}
+}
+
+// The code already belongs to a match the player has. Creating would collide
+// with the unique index, and the right answer is not an error at all — that
+// match IS the one the review is about, so hand back its key.
+func TestCreateFromReplay_YieldsToAMatchThatAlreadyCarriesTheCode(t *testing.T) {
+	fake := seeded()
+	fake.Annotations = map[string]db.Annotation{
+		"match-2026-08-01T18-30-00": {MatchKey: "match-2026-08-01T18-30-00", ReplayCode: "A1B2C3"},
+	}
+
+	key, err := matchedit.CreateFromReplay(fake, replayInput("A1B2C3"))
+	if err != nil {
+		t.Fatalf("CreateFromReplay: %v", err)
+	}
+	if key != "match-2026-08-01T18-30-00" {
+		t.Errorf("key = %q, want the match that already carries the code", key)
+	}
+	if _, made := fake.UserMatchData["replay-A1B2C3"]; made {
+		t.Error("a second match was created for a code the player already had")
 	}
 }

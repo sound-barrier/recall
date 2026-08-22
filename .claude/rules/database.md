@@ -238,16 +238,19 @@ the store holds it to that:
   Partial because most matches have no code, and SQLite lets NULLs coexist
   under a unique index but not empty strings.
 
-Both are applied by `normalizeReplayCodes` in `pkg/db/schema_replay_code.go`,
-run at store open beside `backfillLegacyNulls`. It is **not** in `schema.sql`,
-and the ordering is the reason: a database written by an older build may hold
-two matches claiming one code, and `CREATE UNIQUE INDEX` fails while that
-stands — so the tie is broken first (earliest match keeps the code) and the
-index built after. An index that fails at open is an app that will not start.
+The index is declared in `schema.sql` with the table, like everything else
+here. There is no open-time repair pass and no migration: **pre-1.0 this
+project is version-free and migration-free**, and a schema change that an
+existing database cannot satisfy is answered by wiping the dev DB, not by
+carrying machinery to reshape it (see *Adding a field* below).
 
-A legacy code of the wrong LENGTH is re-cased and otherwise left alone. It
-still renders, still searches, and simply never mints a key — which is what
-it already did. Deleting user data to satisfy a new rule is the worse trade.
+**The uniqueness is checked in Go before it is enforced in SQL.** A
+constraint violation surfaces as a 500 carrying SQLite's own words, which a
+user can do nothing with; `matchedit.assertReplayCodeFree` refuses first with
+`ErrReplayCodeTaken` (409). Keeping a match's OWN code is not a collision.
+`CreateFromReplay` goes further and YIELDS: if the player already annotated a
+match with that code, that match is the one the review is about, so it hands
+back their key instead of making a second row.
 
 ## Adding a field
 

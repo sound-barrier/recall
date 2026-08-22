@@ -231,6 +231,22 @@ fi
 #                                     player's exported ZIP. Same binary-body
 #                                     limitation as /imports. Covered by
 #                                     pkg/cmd/server_coach_test.go.
+#   --exclude-path /api/v1/coach/session/replay
+#                                   — POST opens a coaching session from
+#                                     replay codes. Same reason as
+#                                     /coach/session above, but it bites
+#                                     HARDER: that one is unreachable here
+#                                     because it needs a ZIP, while this one
+#                                     takes plain JSON the fuzzer generates
+#                                     happily. Opening a session freezes
+#                                     every write in the app, so one
+#                                     successful call turns the rest of the
+#                                     run into a wall of 409s on unrelated
+#                                     paths — an operation that changes
+#                                     GLOBAL state cannot be fuzzed beside
+#                                     the operations it changes it for.
+#                                     Covered by pkg/cmd/server_coach_test.go
+#                                     and coach-from-replay-codes.spec.ts.
 #   --exclude-path '/api/v1/coach/session/notes/{match_key}'
 #                                   — PUT validates the note before it
 #                                     checks for an open session, so a
@@ -278,6 +294,7 @@ schemathesis run \
   --exclude-path /api/v1/database \
   --exclude-path /api/v1/imports \
   --exclude-path /api/v1/coach/session \
+  --exclude-path /api/v1/coach/session/replay \
   --exclude-path '/api/v1/coach/session/notes/{match_key}' \
   api/openapi.yaml
 

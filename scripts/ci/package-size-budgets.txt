@@ -106,15 +106,7 @@ pkg/app                                       50
 # every other concern here is, and the three tables belong together
 # precisely because a status change has to find a row in either
 # player-side family from an item id alone.
-# 34 as of the replay-code identity: schema_replay_code.go, the store-open
-# pass that canonicalizes replay codes and puts the unique index over them.
-# It sits beside backfillLegacyNulls and ensureAdditiveColumns as a third
-# open-time repair — the same responsibility (get the on-disk shape to match
-# what today's code believes) spelled one concern wider. It is NOT in
-# schema.sql on purpose: the index cannot be created until the duplicates it
-# finds have been resolved, and that ordering is the file's whole reason to
-# exist.
-pkg/db                                        34
+pkg/db                                        33
 
 # pkg/parser — the OCR pipeline: Tesseract invocation, per-screenshot-type field
 # extraction, the embedded owdata YAML set, golden-file projection. One
