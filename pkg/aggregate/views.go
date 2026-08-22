@@ -19,7 +19,7 @@ func derefString(s *string) string {
 // below.
 type ScreenshotView struct {
 	filename string
-	typeName string
+	typeName parser.ScreenshotType
 	matchKey string
 	parsedAt string
 	dirID    int64 // 0 = unset; resolved against snap.ScreenshotsDirs in FoldGroup
@@ -40,14 +40,14 @@ type ScreenshotView struct {
 // inline literal doesn't get duplicated across the aggregators.
 func unknownToView(r db.UnknownRow) ScreenshotView {
 	return ScreenshotView{
-		filename: r.Filename, typeName: "unknown",
+		filename: r.Filename, typeName: parser.TypeUnknown,
 		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 	}
 }
 
 func summaryToView(r db.SummaryRow) ScreenshotView {
 	view := ScreenshotView{
-		filename: r.Filename, typeName: "summary",
+		filename: r.Filename, typeName: parser.TypeSummary,
 		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 		data: parser.MatchResult{
 			Map: r.Map, MapRaw: r.MapRaw, Playlist: r.Playlist, Hero: r.Hero, HeroRaw: r.HeroRaw,
@@ -79,7 +79,7 @@ func summaryToView(r db.SummaryRow) ScreenshotView {
 
 func teamsToView(r db.TeamsRow) ScreenshotView {
 	view := ScreenshotView{
-		filename: r.Filename, typeName: "teams",
+		filename: r.Filename, typeName: parser.TypeTeams,
 		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 		data: parser.MatchResult{
 			Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
@@ -93,7 +93,7 @@ func teamsToView(r db.TeamsRow) ScreenshotView {
 
 func personalToView(r db.PersonalRow) ScreenshotView {
 	view := ScreenshotView{
-		filename: r.Filename, typeName: "personal",
+		filename: r.Filename, typeName: parser.TypePersonal,
 		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 		data: parser.MatchResult{Hero: r.Hero, HeroRaw: r.HeroRaw},
 	}
@@ -103,7 +103,7 @@ func personalToView(r db.PersonalRow) ScreenshotView {
 
 func rankToView(r db.RankRow) ScreenshotView {
 	view := ScreenshotView{
-		filename: r.Filename, typeName: "rank",
+		filename: r.Filename, typeName: parser.TypeRank,
 		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 		data: parser.MatchResult{
 			Playlist: "competitive", // rank screens are always competitive

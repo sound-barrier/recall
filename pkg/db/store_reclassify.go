@@ -1,18 +1,22 @@
 package db
 
-import "database/sql"
+import (
+	"database/sql"
+
+	"recall/pkg/parser"
+)
 
 // screenshotTypeTables maps the storage-side screenshot type to the table
 // its rows live in. The all_heroes registry rides along: a stale row there
 // makes future parse runs skip the file's re-OCR entirely, so a
 // reclassified screenshot must leave it too.
-var screenshotTypeTables = map[string]string{
-	"summary":    "summary_screenshots",
-	"teams":      "teams_screenshots",
-	"personal":   "personal_screenshots",
-	"rank":       "rank_screenshots",
-	"unknown":    "unknown_screenshots",
-	"all_heroes": "all_heroes_screenshots",
+var screenshotTypeTables = map[parser.ScreenshotType]string{
+	parser.TypeSummary:   "summary_screenshots",
+	parser.TypeTeams:     "teams_screenshots",
+	parser.TypePersonal:  "personal_screenshots",
+	parser.TypeRank:      "rank_screenshots",
+	parser.TypeUnknown:   "unknown_screenshots",
+	parser.TypeAllHeroes: "all_heroes_screenshots",
 }
 
 // DeleteScreenshotSiblings removes filename's rows from every screenshot
@@ -24,7 +28,7 @@ var screenshotTypeTables = map[string]string{
 // invariant: resolving a pending screenshot onto a dead key would
 // resurrect its identity). Idempotent; a filename absent everywhere is a
 // no-op.
-func (s *SQLStore) DeleteScreenshotSiblings(filename, keepType string) error {
+func (s *SQLStore) DeleteScreenshotSiblings(filename string, keepType parser.ScreenshotType) error {
 	keep := screenshotTypeTables[keepType]
 	tx, err := s.db.Begin()
 	if err != nil {

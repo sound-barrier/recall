@@ -127,8 +127,8 @@ func ToGolden(r *MatchResult) any {
 	if r == nil {
 		return &MatchResult{}
 	}
-	switch ScreenshotType(r) {
-	case "summary":
+	switch Classify(r) {
+	case TypeSummary:
 		return &SummaryGolden{
 			Map:          r.Map,
 			GameMode:     r.GameMode,
@@ -145,7 +145,7 @@ func ToGolden(r *MatchResult) any {
 			HeroesPlayed: r.HeroesPlayed,
 			Performance:  r.Performance,
 		}
-	case "teams":
+	case TypeTeams:
 		return &TeamsGolden{
 			Eliminations: r.Eliminations,
 			Assists:      r.Assists,
@@ -155,15 +155,15 @@ func ToGolden(r *MatchResult) any {
 			Mitigation:   r.Mitigation,
 			QueueType:    r.QueueType,
 		}
-	case "personal":
+	case TypePersonal:
 		return &PersonalGolden{
 			Role:         r.Role,
 			Hero:         r.Hero,
 			HeroesPlayed: r.HeroesPlayed,
 		}
-	case "all_heroes":
+	case TypeAllHeroes:
 		return &AllHeroesGolden{AllHeroes: true}
-	case "rank":
+	case TypeRank:
 		return &RankGolden{
 			Playlist:       r.Playlist,
 			Result:         r.Result,
@@ -178,7 +178,8 @@ func ToGolden(r *MatchResult) any {
 			RankPercentile: r.RankPercentile,
 			ModifiersRaw:   r.ModifiersRaw,
 		}
-	default:
+	case TypeUnknown:
 		return r
 	}
+	return r
 }

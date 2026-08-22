@@ -8,6 +8,7 @@ import (
 	"recall/pkg/app"
 	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
+	"recall/pkg/parser"
 )
 
 // fakeStore is the shared in-memory db.Store from pkg/db/dbtest.
@@ -220,7 +221,7 @@ func TestApp_RoundTripViaSQLStore(t *testing.T) {
 	if len(rec.Data.HeroesPlayed) != 1 || rec.Data.HeroesPlayed[0].PercentPlayed != 100 {
 		t.Errorf("HeroesPlayed round-trip broken: %+v", rec.Data.HeroesPlayed)
 	}
-	wantSourceTypes := map[string]string{"s.png": "summary", "sb.png": "teams"}
+	wantSourceTypes := map[string]parser.ScreenshotType{"s.png": "summary", "sb.png": "teams"}
 	if !reflect.DeepEqual(rec.SourceTypes, wantSourceTypes) {
 		t.Errorf("SourceTypes derivation broken:\n  got=%+v\n want=%+v", rec.SourceTypes, wantSourceTypes)
 	}

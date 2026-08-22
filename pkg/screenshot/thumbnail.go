@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"recall/pkg/match"
+	"recall/pkg/parser"
 )
 
 // AttachThumbnails resolves each record's ThumbnailFile — the best on-disk
@@ -79,7 +80,7 @@ func pickThumbnail(rec match.Record, onDisk func(dirID int64, filename string) b
 // filename and therefore the earliest capture. Deterministic across runs.
 func thumbnailCandidates(rec match.Record) []string {
 	candidates := make([]string, 0, len(rec.SourceFiles)*2)
-	for _, want := range [...]string{"summary", "teams"} {
+	for _, want := range [...]parser.ScreenshotType{parser.TypeSummary, parser.TypeTeams} {
 		for _, f := range rec.SourceFiles {
 			if rec.SourceTypes[f] == want {
 				candidates = append(candidates, f)

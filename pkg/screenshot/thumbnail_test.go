@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"recall/pkg/match"
+	"recall/pkg/parser"
 	"recall/pkg/screenshot"
 )
 
@@ -22,7 +23,7 @@ func dirWithFiles(t *testing.T, names ...string) string {
 }
 
 // recordWith builds a record whose source files all live in dirID.
-func recordWith(key string, dirID int64, typesByFile map[string]string, files ...string) match.Record {
+func recordWith(key string, dirID int64, typesByFile map[string]parser.ScreenshotType, files ...string) match.Record {
 	rec := match.Record{
 		MatchKey:     key,
 		SourceFiles:  files,
@@ -39,13 +40,13 @@ func TestAttachThumbnails_PrefersSummaryThenTeamsThenAnything(t *testing.T) {
 	dir := dirWithFiles(t, "rank.png", "teams.png", "summary.png")
 	recs := []match.Record{
 		recordWith("all-three", 1,
-			map[string]string{"rank.png": "rank", "teams.png": "teams", "summary.png": "summary"},
+			map[string]parser.ScreenshotType{"rank.png": "rank", "teams.png": "teams", "summary.png": "summary"},
 			"rank.png", "teams.png", "summary.png"),
 		recordWith("no-summary", 1,
-			map[string]string{"rank.png": "rank", "teams.png": "teams"},
+			map[string]parser.ScreenshotType{"rank.png": "rank", "teams.png": "teams"},
 			"rank.png", "teams.png"),
 		recordWith("neither", 1,
-			map[string]string{"rank.png": "rank"},
+			map[string]parser.ScreenshotType{"rank.png": "rank"},
 			"rank.png"),
 	}
 
@@ -63,7 +64,7 @@ func TestAttachThumbnails_EmptyWhenNoSourceFileIsOnDisk(t *testing.T) {
 	// The data-only import / deleted-screenshot case: rows exist, bytes
 	// do not, and the UI must not request a URL it knows will 404.
 	recs := []match.Record{
-		recordWith("gone", 1, map[string]string{"summary.png": "summary"}, "summary.png"),
+		recordWith("gone", 1, map[string]parser.ScreenshotType{"summary.png": "summary"}, "summary.png"),
 	}
 
 	screenshot.AttachThumbnails(recs, fixedDir(t.TempDir()))
@@ -76,7 +77,7 @@ func TestAttachThumbnails_EmptyWhenNoSourceFileIsOnDisk(t *testing.T) {
 func TestAttachThumbnails_UnresolvedDirYieldsNoThumbnail(t *testing.T) {
 	// "" is the resolver's "no directory" answer; there is nothing to list.
 	recs := []match.Record{
-		recordWith("nowhere", 3, map[string]string{"summary.png": "summary"}, "summary.png"),
+		recordWith("nowhere", 3, map[string]parser.ScreenshotType{"summary.png": "summary"}, "summary.png"),
 	}
 
 	screenshot.AttachThumbnails(recs, fixedDir(""))
@@ -99,7 +100,7 @@ func TestAttachThumbnails_ResolvesEachDirIDExactlyOnce(t *testing.T) {
 		return dir
 	}
 
-	summaryOnly := map[string]string{"summary.png": "summary"}
+	summaryOnly := map[string]parser.ScreenshotType{"summary.png": "summary"}
 	recs := []match.Record{
 		recordWith("a", 1, summaryOnly, "summary.png"),
 		recordWith("b", 1, summaryOnly, "summary.png"),
@@ -129,7 +130,7 @@ func TestAttachThumbnails_RemembersThatADirIDResolvesToNothing(t *testing.T) {
 		calls++
 		return ""
 	}
-	summaryOnly := map[string]string{"summary.png": "summary"}
+	summaryOnly := map[string]parser.ScreenshotType{"summary.png": "summary"}
 	recs := []match.Record{
 		recordWith("a", 9, summaryOnly, "summary.png"),
 		recordWith("b", 9, summaryOnly, "summary.png"),
@@ -158,7 +159,7 @@ func TestAttachThumbnails_PrefersASurvivingSummaryOverTeams(t *testing.T) {
 	dir := dirWithFiles(t, "b-teams.png", "c-summary.png")
 	recs := []match.Record{
 		recordWith("summary-deleted", 1,
-			map[string]string{
+			map[string]parser.ScreenshotType{
 				"a-summary.png": "summary",
 				"b-teams.png":   "teams",
 				"c-summary.png": "summary",

@@ -31,13 +31,13 @@ var ParseScreenshotsDirFunc = parser.ParseScreenshotsDir
 // re-aggregate completes with a changed hero/map field; the UI
 // reads the latest value, not per-file deltas.
 type ParseProgressEvent struct {
-	Done     int                 `json:"done"`
-	Total    int                 `json:"total"`
-	Filename string              `json:"filename"`
-	Type     string              `json:"screenshot_type"`
-	MatchKey string              `json:"match_key,omitempty"`
-	Data     *parser.MatchResult `json:"data,omitempty"`
-	Error    string              `json:"error,omitempty"`
+	Done     int                   `json:"done"`
+	Total    int                   `json:"total"`
+	Filename string                `json:"filename"`
+	Type     parser.ScreenshotType `json:"screenshot_type"`
+	MatchKey string                `json:"match_key,omitempty"`
+	Data     *parser.MatchResult   `json:"data,omitempty"`
+	Error    string                `json:"error,omitempty"`
 	// Cumulative counters since the run started — useful for the
 	// re-parse-all surface in Settings → Advanced ("X of Y matches
 	// updated · N hero / M map corrected"). Always zero on a
@@ -229,7 +229,7 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 		Done:     done,
 		Total:    total,
 		Filename: filename,
-		Type:     parser.ScreenshotType(result),
+		Type:     parser.Classify(result),
 		Data:     result,
 	}
 	if parseErr != nil {
@@ -451,7 +451,7 @@ func buildUnknownRow(filename, key string, dirID int64) db.UnknownRow {
 	}
 }
 
-func (a *App) insertParsed(filename, key, t string, dirID int64, r *parser.MatchResult) error {
+func (a *App) insertParsed(filename, key string, t parser.ScreenshotType, dirID int64, r *parser.MatchResult) error {
 	// A re-parse can reclassify a file (a parser fix reading a screen that
 	// once stored as another type); wipe its rows from the sibling type
 	// tables first or the stale row aggregates beside the new one forever.
@@ -459,29 +459,30 @@ func (a *App) insertParsed(filename, key, t string, dirID int64, r *parser.Match
 	// filename, so evicting a real typed row in its favor converts a probe
 	// false-positive into silent permanent loss (rowless, skip-listed, no
 	// ledger entry, and the deterministic misread repeats every re-parse).
-	if t != "all_heroes" {
+	if t != parser.TypeAllHeroes {
 		if err := a.store.DeleteScreenshotSiblings(filename, t); err != nil {
 			return err
 		}
 	}
 	switch t {
-	case "summary":
+	case parser.TypeSummary:
 		return a.store.UpsertSummary(buildSummaryRow(filename, key, dirID, r))
-	case "teams":
+	case parser.TypeTeams:
 		return a.store.UpsertTeams(buildTeamsRow(filename, key, dirID, r))
-	case "personal":
+	case parser.TypePersonal:
 		return a.store.UpsertPersonal(buildPersonalRow(filename, key, dirID, r))
-	case "rank":
+	case parser.TypeRank:
 		return a.store.UpsertRank(buildRankRow(filename, key, dirID, r))
-	case "all_heroes":
+	case parser.TypeAllHeroes:
 		// Recognized but intentionally not stored as match data: its combat
 		// totals duplicate the TEAMS screen and its card icons defeat the OCR.
 		// Record only the filename so the next parse run skips it (no re-OCR),
 		// without a garbage match row or an Unknown-tab entry.
 		return a.store.UpsertAllHeroesScreenshot(filename)
-	default: // unknown
+	case parser.TypeUnknown:
 		return a.store.UpsertUnknown(buildUnknownRow(filename, key, dirID))
 	}
+	panic("unhandled parser.ScreenshotType")
 }
 
 // flattenHeroStats converts HeroesPlayed[*].Stats (map per hero) into

@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	_ "modernc.org/sqlite"
+
+	"recall/pkg/parser"
 )
 
 // Store is the persistence boundary the app interacts with. Five typed
@@ -23,7 +25,7 @@ type Store interface {
 	// the all_heroes skip registry. The write path calls it on every
 	// insert so a re-parse that reclassifies a screenshot doesn't strand
 	// the old-type row beside the new one. Idempotent.
-	DeleteScreenshotSiblings(filename, keepType string) error
+	DeleteScreenshotSiblings(filename string, keepType parser.ScreenshotType) error
 
 	// EnsureScreenshotsDir inserts a screenshots_dirs row for path if
 	// one doesn't exist and returns its id. Idempotent — repeated calls

@@ -46,44 +46,44 @@ func upsertRowInSnapshot[T any](
 // applyToSnapshot mirrors insertParsed's store write onto the carried
 // snapshot. all_heroes records only a skip-list filename — no match row
 // to mirror.
-func (st *parseRunState) applyToSnapshot(filename, key, t string, r *parser.MatchResult) {
+func (st *parseRunState) applyToSnapshot(filename, key string, t parser.ScreenshotType, r *parser.MatchResult) {
 	// Mirror the store's sibling wipe first: a reclassified file must
 	// vanish from the old type's slice, or every match-updated event and
 	// every later file's correlation in this run folds the purged row
 	// (first-non-empty prefers it — it has the older parsed_at). Skipped
 	// for all_heroes, matching insertParsed: a data-less registry entry
 	// never evicts a typed row.
-	if t != "all_heroes" {
+	if t != parser.TypeAllHeroes {
 		st.dropSiblingRowsFromSnapshot(filename, t)
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	switch t {
-	case "summary":
+	case parser.TypeSummary:
 		st.snap.Summaries = upsertRowInSnapshot(st.snap.Summaries,
 			buildSummaryRow(filename, key, st.dirID, r), now,
 			func(x db.SummaryRow) string { return x.Filename },
 			func(x db.SummaryRow) string { return x.ParsedAt },
 			func(x *db.SummaryRow, ts string) { x.ParsedAt = ts })
-	case "teams":
+	case parser.TypeTeams:
 		st.snap.Teams = upsertRowInSnapshot(st.snap.Teams,
 			buildTeamsRow(filename, key, st.dirID, r), now,
 			func(x db.TeamsRow) string { return x.Filename },
 			func(x db.TeamsRow) string { return x.ParsedAt },
 			func(x *db.TeamsRow, ts string) { x.ParsedAt = ts })
-	case "personal":
+	case parser.TypePersonal:
 		st.snap.Personals = upsertRowInSnapshot(st.snap.Personals,
 			buildPersonalRow(filename, key, st.dirID, r), now,
 			func(x db.PersonalRow) string { return x.Filename },
 			func(x db.PersonalRow) string { return x.ParsedAt },
 			func(x *db.PersonalRow, ts string) { x.ParsedAt = ts })
-	case "rank":
+	case parser.TypeRank:
 		st.snap.Ranks = upsertRowInSnapshot(st.snap.Ranks,
 			buildRankRow(filename, key, st.dirID, r), now,
 			func(x db.RankRow) string { return x.Filename },
 			func(x db.RankRow) string { return x.ParsedAt },
 			func(x *db.RankRow, ts string) { x.ParsedAt = ts })
-	case "all_heroes":
-	default: // unknown
+	case parser.TypeAllHeroes:
+	case parser.TypeUnknown:
 		st.snap.Unknowns = upsertRowInSnapshot(st.snap.Unknowns,
 			buildUnknownRow(filename, key, st.dirID), now,
 			func(x db.UnknownRow) string { return x.Filename },
@@ -95,20 +95,20 @@ func (st *parseRunState) applyToSnapshot(filename, key, t string, r *parser.Matc
 // dropSiblingRowsFromSnapshot removes filename's row from every snapshot
 // slice except keepType's — the in-memory analog of
 // Store.DeleteScreenshotSiblings.
-func (st *parseRunState) dropSiblingRowsFromSnapshot(filename, keepType string) {
-	if keepType != "summary" {
+func (st *parseRunState) dropSiblingRowsFromSnapshot(filename string, keepType parser.ScreenshotType) {
+	if keepType != parser.TypeSummary {
 		st.snap.Summaries = dropRowByFilename(st.snap.Summaries, filename, func(x db.SummaryRow) string { return x.Filename })
 	}
-	if keepType != "teams" {
+	if keepType != parser.TypeTeams {
 		st.snap.Teams = dropRowByFilename(st.snap.Teams, filename, func(x db.TeamsRow) string { return x.Filename })
 	}
-	if keepType != "personal" {
+	if keepType != parser.TypePersonal {
 		st.snap.Personals = dropRowByFilename(st.snap.Personals, filename, func(x db.PersonalRow) string { return x.Filename })
 	}
-	if keepType != "rank" {
+	if keepType != parser.TypeRank {
 		st.snap.Ranks = dropRowByFilename(st.snap.Ranks, filename, func(x db.RankRow) string { return x.Filename })
 	}
-	if keepType != "unknown" {
+	if keepType != parser.TypeUnknown {
 		st.snap.Unknowns = dropRowByFilename(st.snap.Unknowns, filename, func(x db.UnknownRow) string { return x.Filename })
 	}
 }
