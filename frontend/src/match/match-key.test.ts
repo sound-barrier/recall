@@ -1,13 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import {
-  InvalidMatchKeyError,
-  isAmbiguousMatchKey,
-  isTrackedMatchKey,
-  isUnmatchedMatchKey,
-  parseMatchKey,
-  tryParseMatchKey,
-} from '@/match/match-key'
+import { InvalidMatchKeyError, isAmbiguousMatchKey, isReplayMatchKey, isReviewableMatchKey, isTrackedMatchKey, isUnmatchedMatchKey, parseMatchKey, tryParseMatchKey } from '@/match/match-key'
 
 describe('parseMatchKey', () => {
   it.each([
@@ -49,5 +42,44 @@ describe('kind predicates', () => {
     expect(isUnmatchedMatchKey('ambiguous-x.png')).toBe(false)
     expect(isTrackedMatchKey('match-2026-01-01T00-00-00')).toBe(true)
     expect(isTrackedMatchKey('unmatched-x.png')).toBe(false)
+  })
+})
+
+describe('the replay kind', () => {
+  it('parses a replay key and keeps the code as the body', () => {
+    const k = parseMatchKey('replay-A1B2C3')
+    expect(k.kind).toBe('replay')
+    expect(k.body).toBe('A1B2C3')
+    expect(k.raw).toBe('replay-A1B2C3')
+  })
+
+  it('classifies each kind as exactly one thing', () => {
+    const probes = {
+      tracked: isTrackedMatchKey,
+      unmatched: isUnmatchedMatchKey,
+      ambiguous: isAmbiguousMatchKey,
+      replay: isReplayMatchKey,
+    } as const
+    const samples = {
+      tracked: 'match-2026-01-01T00-00-00',
+      unmatched: 'unmatched-abc',
+      ambiguous: 'ambiguous-abc',
+      replay: 'replay-A1B2C3',
+    } as const
+    for (const [kind, key] of Object.entries(samples)) {
+      for (const [probeName, probe] of Object.entries(probes)) {
+        expect(probe(key)).toBe(probeName === kind)
+      }
+    }
+  })
+
+  // A note can be written about a tracked match or a replay match, and about
+  // nothing else. The reel and the hand-off button both gate on this: get it
+  // wrong and a code-only session renders an empty desk.
+  it('admits tracked and replay keys as reviewable, and no others', () => {
+    expect(isReviewableMatchKey('match-2026-01-01T00-00-00')).toBe(true)
+    expect(isReviewableMatchKey('replay-A1B2C3')).toBe(true)
+    expect(isReviewableMatchKey('unmatched-abc')).toBe(false)
+    expect(isReviewableMatchKey('ambiguous-abc')).toBe(false)
   })
 })

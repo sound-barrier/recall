@@ -108,10 +108,19 @@ type Record struct {
 }
 
 // Match provenance values for Record.Source.
+//
+// SourceReplay is deliberately distinct from SourceManual even though both
+// live entirely in the override layer with no screenshot rows. A manual match
+// is one the PLAYER entered about a game they played; a replay match was
+// created by a COACH's review from a replay code, and its result is what the
+// coach typed while watching. It appears in the match list and carries the
+// notes, but it is not counted into the player's own record — a coaching
+// session must not move a win rate.
 const (
 	SourceOCR       = "ocr"        // parsed from screenshots, unedited
 	SourceOCREdited = "ocr_edited" // parsed, then user-corrected
 	SourceManual    = "manual"     // hand-entered; no screenshot rows
+	SourceReplay    = "replay"     // created by a coach's review of a replay code
 )
 
 // AmbiguousAttribution is one candidate match the user can pick to

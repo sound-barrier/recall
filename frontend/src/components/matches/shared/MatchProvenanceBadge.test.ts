@@ -37,4 +37,15 @@ describe('MatchProvenanceBadge', () => {
     expect(screen.queryByText('User entered')).not.toBeInTheDocument()
     expect(screen.getByRole('img', { name: /User entered/ })).toBeInTheDocument()
   })
+
+  // The badge collapsed anything it did not recognize to 'ocr', so a match a
+  // coach's review created would have announced itself as "Parsed from
+  // screenshots" — a straight lie about where the numbers came from, on the one
+  // match kind whose numbers somebody else typed.
+  it('names a coach-created match as reviewed from a replay, not parsed', () => {
+    render(MatchProvenanceBadge, { props: { source: 'replay' } })
+    const badge = screen.getByRole('img')
+    expect(badge).toHaveAccessibleName(/replay/i)
+    expect(badge).not.toHaveAccessibleName(/parsed from screenshots/i)
+  })
 })
