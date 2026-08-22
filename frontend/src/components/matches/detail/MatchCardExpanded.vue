@@ -13,7 +13,7 @@ import MatchRankBlock from '@/components/matches/detail/MatchRankBlock.vue'
 import MatchStatusChoosers from '@/components/matches/detail/MatchStatusChoosers.vue'
 import EditableStat from '@/components/matches/detail/EditableStat.vue'
 import { withScalarEdit, withoutField, isEmptyOverrideSet, isFieldEdited, scalarPath, type ScalarField } from '@/match/match-overrides'
-import { useMatchClock } from '@/composables/shared/useMatchClock'
+import { useMatchClock } from '@/composables/matches/useMatchClock'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // Expanded match-card body: leaver chooser → free-text annotation
