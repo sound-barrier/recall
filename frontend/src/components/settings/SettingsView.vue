@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAppStore } from '@/stores/app'
 import { useParseStore } from '@/stores/parse'
 import { useSettingsStore } from '@/stores/settings'
+import ProbeChip from '@/components/settings/ProbeChip.vue'
 import SettingsSections from '@/components/settings/SettingsSections.vue'
 import ScreenshotSourcePicker from '@/components/settings/ScreenshotSourcePicker.vue'
 
@@ -51,10 +52,6 @@ const platform = computed(() => tesseractStatus.value?.platform ?? '')
 // Probe-chip dismissal — local-only transient UI noise. Reset whenever a fresh
 // probeMessage lands so a second Detect click re-opens the chip.
 const probeDismissed = ref(false)
-watch(probeMessage, (next) => {
-  if (next) probeDismissed.value = false
-})
-const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.value)
 
 </script>
 
@@ -107,21 +104,12 @@ const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.val
         @pick="(_name: string, path: string) => pickDetectedSource(path)"
         @pick-custom="pickDir"
       />
-      <div v-if="showProbeChip" class="probe-chip" :class="probeStatus" role="status">
-        <span class="probe-chip-bar" aria-hidden="true" />
-        <span class="probe-chip-mark" aria-hidden="true">
-          {{ probeStatus === 'success' ? '✓' : '⚠' }}
-        </span>
-        <span class="probe-chip-text">{{ probeMessage }}</span>
-        <button
-          type="button"
-          class="probe-chip-close"
-          aria-label="Dismiss detection result"
-          @click="probeDismissed = true"
-        >
-          ×
-        </button>
-      </div>
+      <ProbeChip
+        v-model:dismissed="probeDismissed"
+        :message="probeMessage"
+        :status="probeStatus"
+        dismiss-label="Dismiss detection result"
+      />
       <details v-if="probeStatus === 'blocked' && !probeDismissed && (probeTried?.length ?? 0) > 0" class="probe-tried">
         <summary>Looked in</summary>
         <ol class="probe-tried-list">

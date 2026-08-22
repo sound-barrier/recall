@@ -386,15 +386,20 @@ frontend/src/components/elo                   20
 # already here, which is the entire reason it is this short.
 frontend/src/styles                           20
 
-# frontend/src/components/settings — one component per Settings tab section.
-# Ratcheted from 18 after three residents were evicted to the features that own
-# them: ExportBundleModal drives composables/matches/useExportBundle and is
-# opened from the Matches bulk bar, and the ignored-files pair is backed by
+# frontend/src/components/settings — one component per Settings tab section,
+# plus the small widgets those sections share between them. Ratcheted down from
+# 18 after three residents were evicted to the features that own them:
+# ExportBundleModal drives composables/matches/useExportBundle and is opened
+# from the Matches bulk bar, and the ignored-files pair is backed by
 # composables/ingest/useIgnoredScreenshots. Settings only RENDERED all three,
 # through the overlay stack, which is a mounting point rather than an ownership
-# claim. Registered because the count is close enough to the ceiling that silent
+# claim. Back up by one for ProbeChip: the shared-widget half of that sentence
+# is new, and it is what the entry is really about now — ScreenshotSourcePicker
+# and SupportedSourcesRow were already sub-widgets rather than tab sections, so
+# the old wording described the folder less accurately every time one landed.
+# Registered because the count sits close enough to the ceiling that silent
 # growth would put it over.
-frontend/src/components/settings              15
+frontend/src/components/settings              16
 
 # frontend/src/components/matches/detail — the match detail panel's sections
 # (header, expanded card, journal, status choosers, lightbox). Under the
