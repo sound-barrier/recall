@@ -192,7 +192,7 @@ func exerciseSessionSurface(t *testing.T, a *app.App) {
 	}
 	mustNoErr(t, a.DeleteCoachNote(playerMatchIlios))
 	mustNoErr(t, a.PutCoachFocusItems([]coach.FocusItem{{ItemID: sessionFocusID, Text: sessionFocus}}))
-	if _, _, err := a.ExportCoachNotes(); err != nil {
+	if _, _, err := a.ExportCoachNotes(testSheet); err != nil {
 		t.Fatalf("ExportCoachNotes: %v", err)
 	}
 }

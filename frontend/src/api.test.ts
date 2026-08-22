@@ -503,11 +503,14 @@ describe('binary downloads (browser mode)', () => {
     const spy = stubFetch(blobReply('attachment; filename="recall-coach-notes-sable-2026-08-15.zip"'))
     stubDownloadDom()
 
-    const name = await ExportCoachNotes()
+    const name = await ExportCoachNotes('<!doctype html><html></html>')
     const req = lastRequest(spy)
     expect(req.method).toBe('POST')
     expect(new URL(req.url).pathname).toBe('/api/v1/coach/session/export')
     expect(name).toBe('recall-coach-notes-sable-2026-08-15.zip')
+    // The human copy travels UP with the request — it is rendered here,
+    // where the app's real stylesheets are, not on the far side.
+    expect(JSON.parse(await req.text())).toEqual({ sheet_html: '<!doctype html><html></html>' })
   })
 
   it('ExportDiagnosticBundle POSTs and saves the returned zip', async () => {

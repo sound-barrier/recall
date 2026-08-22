@@ -169,6 +169,21 @@ export async function ExportMatchesCSV(csv: string, defaultName: string): Promis
   return defaultName
 }
 
+// ExportCoachSheet saves the standalone page a coach hands a player — one
+// self-contained HTML file, built client-side by buildCoachSheet, that opens
+// in any browser with the network off. Same two paths as the CSV above: a
+// native save dialog under Wails, a transient <a download> in the browser.
+// Resolves with the saved filename ("" on a Wails cancel).
+//
+// A separate Wails method rather than reusing SaveTextToFile: that dialog is
+// labeled "Save match data (CSV)" and filters for .csv, which would be the
+// wrong dialog in front of the wrong file.
+export async function ExportCoachSheet(html: string, defaultName: string): Promise<string> {
+  if (IS_WAILS) return wailsCall<string>('SaveCoachSheetToFile', defaultName, html)
+  triggerBlobDownload(new Blob([html], { type: 'text/html;charset=utf-8' }), defaultName)
+  return defaultName
+}
+
 // ExportBundle is the selection-aware export. The caller passes the explicit
 // match_keys the user ticked plus optional `includeUnknown` / `includeHidden`
 // toggles that UNION extra records onto the selection. Wails delegates to a
@@ -304,9 +319,17 @@ export async function OpenCoachBundle(): Promise<CoachSessionView | null> {
 // native save dialog (SaveCoachNotesToFile, "" on cancel); server mode
 // streams the ZIP into a browser download. Rejects with ApiError when the
 // coach has no name set (409) or there is nothing to export.
-export function ExportCoachNotes(): Promise<string> {
-  if (IS_WAILS) return wailsCall<string>('SaveCoachNotesToFile')
-  return saveBlobResponse(sdk.exportCoachNotes(), `recall-coach-notes-${tsFilenameStamp()}.zip`)
+//
+// The human copy goes UP with the request rather than being rendered on the
+// far side. It is built here, where the app's real stylesheets are, so the
+// page inside this archive and the page ExportCoachSheet writes on its own
+// are the same bytes — two renderers of one document is how they drift.
+export function ExportCoachNotes(sheetHTML: string): Promise<string> {
+  if (IS_WAILS) return wailsCall<string>('SaveCoachNotesToFile', sheetHTML)
+  return saveBlobResponse(
+    sdk.exportCoachNotes({ body: { sheet_html: sheetHTML } }),
+    `recall-coach-notes-${tsFilenameStamp()}.zip`,
+  )
 }
 
 // ─── Events ────────────────────────────────────────────────────────────────

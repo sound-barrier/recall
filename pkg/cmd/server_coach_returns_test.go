@@ -62,7 +62,7 @@ func notesArchive(t *testing.T, writtenKey, reviewedKey string) []byte {
 			},
 		},
 	}
-	payload, err := coach.WriteNotesArchive(file, now)
+	payload, err := coach.WriteNotesArchive(file, testSheet, now)
 	if err != nil {
 		t.Fatalf("write notes archive: %v", err)
 	}

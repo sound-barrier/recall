@@ -8,7 +8,7 @@ import { renderMarkdown, renderMarkdownWithHits } from '@/match/markdown/render-
 // implementations of one grammar only stay honest if a single fixture pins
 // them — so this suite and pkg/coach's TestRenderMarkdown execute the same
 // pairs, and a case added to the file fails whichever side has not caught up.
-const FIXTURE = resolve(__dirname, '../../../../pkg/coach/testdata/markdown_cases.json')
+const FIXTURE = resolve(__dirname, './testdata/markdown_cases.json')
 const cases = (JSON.parse(readFileSync(FIXTURE, 'utf8')) as {
   cases: { name: string; in: string; out: string }[]
 }).cases

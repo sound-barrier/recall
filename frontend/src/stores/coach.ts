@@ -4,6 +4,7 @@ import { defineStore } from 'pinia'
 import {
   AddCoachSessionReplayCode,
   CloseCoachSession, DeleteCoachMoment, DeleteCoachNote, ExportCoachNotes,
+  ExportCoachSheet,
   OpenCoachBundle, OpenCoachReplaySession, PutCoachFocusItems, PutCoachMoment,
   PutCoachNote, SetCoachSessionMatchContext, SetCoachSessionPlayer,
   type CoachSessionView, type FocusItem, type ObservedContext,
@@ -407,6 +408,54 @@ export const useCoachStore = defineStore('coach', () => {
   // An archive missing a note is worse than a refused export: it also clears
   // `dirtySinceExport`, so the "not exported yet" warning goes with the note.
   // The flush is the retry — only a failure that survives it refuses.
+  // Assembles the page a coach hands over, from what the session already
+  // holds. Lazily imported: the sheet drags in the app's whole token +
+  // theme CSS as strings, which has no business in the entry chunk for a
+  // button most sessions press once.
+  async function renderSheet(): Promise<string> {
+    const { renderCoachSheet } = await import('@/match/coach/coach-sheet-export')
+    const view = session.value
+    return renderCoachSheet({
+      coachName: view?.coach_name ?? '',
+      playerHandle: view?.player?.handle ?? '',
+      sessionDate: view?.session_date ?? '',
+      focusItems: focusItems.value,
+      // The DRAFTS, not view.notes: what the room is showing is what the
+      // coach means to hand over, and the session view is not re-read after
+      // an autosave lands. A note written just before Export was missing
+      // from the file when this read the server's copy.
+      notes: Object.entries(notes.value)
+        .filter(([, d]) => d.text.trim() !== '' || d.kind === 'reviewed_only')
+        .map(([matchKey, d]) => ({
+          matchKey,
+          kind: d.kind,
+          text: d.text,
+          focusTags: d.focusTags,
+          extraTags: d.extraTags,
+          matchClock: d.matchClock,
+        })),
+      records: loanedRecords.value,
+      momentsByKey: Object.fromEntries(
+        Object.entries(moments.value).map(([key, list]) => [
+          key, list.map((m) => ({ matchClock: m.matchClock, text: m.text })),
+        ]),
+      ),
+    })
+  }
+
+  // The page on its own, for a player who will not import anything — or who
+  // does not run Recall at all. Same document as the one inside the archive.
+  async function exportSheet(): Promise<void> {
+    await flushSaves()
+    try {
+      const handle = session.value?.player?.handle || 'player'
+      const name = `recall-review-${handle}-${session.value?.session_date ?? ''}.html`
+      await ExportCoachSheet(await renderSheet(), name)
+    } catch (e) {
+      useAppStore().setErrorFromRaw(String(e))
+    }
+  }
+
   async function exportNotes(): Promise<void> {
     await flushSaves()
     if (hasFailedSaves.value) {
@@ -414,7 +463,7 @@ export const useCoachStore = defineStore('coach', () => {
       return
     }
     try {
-      const saved = await ExportCoachNotes()
+      const saved = await ExportCoachNotes(await renderSheet())
       // Wails' native save dialog answers "" when the coach cancels it — no
       // error, just no file. Nothing was written, so nothing here may change:
       // clearing the flag would stop End asking about work that has not been
@@ -495,6 +544,7 @@ export const useCoachStore = defineStore('coach', () => {
     endSession,
     setPlayerHandle,
     exportNotes,
+    exportSheet,
     onSessionChangedElsewhere,
   }
 })

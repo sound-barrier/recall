@@ -60,19 +60,28 @@ describe('native dialog dispatch (Wails mode)', () => {
 
   const FQN = 'recall/pkg/app.App.'
 
+  // The third element is what the call carries. Most of these are pure
+  // dialogs with nothing to hand over; the two coaching exports send the
+  // review page, which is rendered in the frontend where the app's real
+  // stylesheets are, so the ARGUMENTS are part of the contract too.
+  const SHEET = '<!doctype html><html></html>'
   it.each([
-    ['BackupDatabase', 'SaveBackupToFile'],
-    ['ExportDiagnosticBundle', 'SaveDiagnosticBundleToFile'],
-    ['RestoreDatabase', 'LoadRestoreFromFile'],
-    ['ImportMatches', 'LoadMatchImportFromFile'],
-    ['OpenCoachBundle', 'LoadCoachBundleFromFile'],
-    ['ExportCoachNotes', 'SaveCoachNotesToFile'],
-    ['PickScreenshotsDir', 'PickScreenshotsDir'],
-    ['PickTesseractBinary', 'PickTesseractBinary'],
-  ] as const)('%s dispatches Call.ByName(%s)', async (fn, goMethod) => {
+    ['BackupDatabase', 'SaveBackupToFile', []],
+    ['ExportDiagnosticBundle', 'SaveDiagnosticBundleToFile', []],
+    ['RestoreDatabase', 'LoadRestoreFromFile', []],
+    ['ImportMatches', 'LoadMatchImportFromFile', []],
+    ['OpenCoachBundle', 'LoadCoachBundleFromFile', []],
+    ['ExportCoachNotes', 'SaveCoachNotesToFile', [SHEET]],
+    ['ExportCoachSheet', 'SaveCoachSheetToFile', [SHEET, 'review.html']],
+    ['PickScreenshotsDir', 'PickScreenshotsDir', []],
+    ['PickTesseractBinary', 'PickTesseractBinary', []],
+  ] as const)('%s dispatches Call.ByName(%s)', async (fn, goMethod, args) => {
     const api = await import('@/api')
-    await (api[fn] as () => Promise<unknown>)()
-    expect(callByName).toHaveBeenCalledWith(FQN + goMethod)
+    await (api[fn] as (...a: readonly unknown[]) => Promise<unknown>)(...args)
+    // ExportCoachSheet takes (html, name) and dispatches (name, html) — the
+    // Go dialog wants its default filename first.
+    const expected = fn === 'ExportCoachSheet' ? ['review.html', SHEET] : [...args]
+    expect(callByName).toHaveBeenCalledWith(FQN + goMethod, ...expected)
   })
 
   it('ExportMatchesCSV passes (name, csv) to SaveTextToFile', async () => {

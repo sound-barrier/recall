@@ -361,7 +361,10 @@ func TestCoachSessionExport_StreamsZipWithDisposition(t *testing.T) {
 	_ = put(t, mux, coachingSettingsPath, map[string]any{"coach_name": "Ordo", "player_handle": ""})
 	_ = put(t, mux, notePath(sessionMatch1), map[string]any{"kind": "note", "text": "Late peel on B"})
 
-	rec := fire(t, mux, http.MethodPost, sessionPath+"/export", nil)
+	// The human copy rides in from the frontend, which is where the app's
+	// real stylesheets are; the server puts the bytes in the zip.
+	rec := fire(t, mux, http.MethodPost, sessionPath+"/export",
+		map[string]any{"sheet_html": string(testSheet)})
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200; body=%q", rec.Code, rec.Body.String())
 	}
@@ -436,3 +439,9 @@ func TestListCoachPlayers_EmptyIsAnArray(t *testing.T) {
 		t.Fatalf("empty roster body = %q, want []", body)
 	}
 }
+
+// testSheet stands in for the human copy the frontend builds. It lives in
+// this untagged file rather than a `//go:build !serveronly` one because
+// `task lint-go` compiles the package under four tag combinations, and a
+// fixture only half of them can see is a build failure in the other two.
+var testSheet = []byte("<!doctype html><html><body>review</body></html>")
