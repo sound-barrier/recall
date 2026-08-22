@@ -120,6 +120,14 @@ export default tseslint.config(
       '@typescript-eslint/prefer-promise-reject-errors': 'error',
       '@typescript-eslint/restrict-plus-operands': 'error',
       '@typescript-eslint/restrict-template-expressions': 'error',
+      // A switch over a union must handle every member or say `default` out
+      // loud. TECHNICAL_DEBT.md section 11: AggFn was dispatched by five
+      // switches, four of which absorbed an unhandled case into `default` and
+      // painted an empty column instead of failing. Where a registry fits, use
+      // one; where a switch is the honest shape, this keeps it complete.
+      '@typescript-eslint/switch-exhaustiveness-check': ['error', {
+        considerDefaultExhaustiveForUnions: false,
+      }],
       '@typescript-eslint/unbound-method': 'error',
     },
   },

@@ -26,7 +26,12 @@ const progressLabel = computed(() => {
     case 'verifying':   return 'Verifying…'
     case 'installing':  return 'Installing…'
     case 'restarting':  return 'Restarting…'
-    default:            return 'Starting…'
+    // The CTA only renders while `busy`, so these never reach the screen —
+    // named rather than defaulted so a NEW phase has to be placed on purpose.
+    case 'starting':
+    case 'idle':
+    case 'ready':
+    case 'error':       return 'Starting…'
   }
 })
 </script>

@@ -119,7 +119,7 @@ function deltaText(outcome: RowOutcome, magnitude: string, signed: string): stri
     case 'regressed': return `▼ ${magnitude}`
     case 'even': return 'even'
     case 'neutral': return signed
-    default: return null
+    case null: return null
   }
 }
 
