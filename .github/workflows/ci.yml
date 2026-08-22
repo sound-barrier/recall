@@ -173,6 +173,9 @@ jobs:
       # the prose NAMES exists. The rules files spent months citing a Makefile,
       # a tool-versions.env and five scripts/*.sh paths that had all been
       # deleted or moved — invisible because prose has no test suite.
+      - name: Check for dead export_test.go entries
+        run: task check-test-exports
+
       - name: Check standards-file references
         run: bash scripts/ci/check-doc-paths.sh
 

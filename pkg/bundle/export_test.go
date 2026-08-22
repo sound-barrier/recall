@@ -7,7 +7,3 @@ package bundle
 // var-not-const test seam import_archive.go documents. Compiled only under
 // test; widens no real API.
 var MaxZipEntryBytes = &maxZipEntryBytes
-
-// The data.json schema string, so the external test can spell it without
-// re-deriving it. There is exactly one, by policy — see export_bundle.go.
-var ExportSchema = exportSchema
