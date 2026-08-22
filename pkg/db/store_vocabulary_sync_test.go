@@ -1,6 +1,7 @@
 package db_test
 
 import (
+	"errors"
 	"os"
 	"regexp"
 	"slices"
@@ -9,6 +10,7 @@ import (
 
 	"recall/pkg/coach"
 	"recall/pkg/db"
+	"recall/pkg/db/dbtest"
 	"recall/pkg/matchedit"
 )
 
@@ -138,5 +140,28 @@ func TestFocusTagVocabulary_SchemaAndGoAgree(t *testing.T) {
 			t.Errorf("focus-tag CHECK block %d = [%s], want [%s]",
 				i+1, strings.Join(got, ", "), strings.Join(want, ", "))
 		}
+	}
+}
+
+// The Fake stands in for the store in every pkg/app test, so it has to accept
+// exactly what production accepts. It used to carry its OWN copy of the focus
+// vocabulary — a third list, compared against nothing. Dropping a tag from it
+// failed no test in the whole suite, and a Fake that refuses a tag production
+// writes happily fails every caller with an error pointing at the wrong layer.
+// It now asks coach.IsFocusTag; this is the test that says it must keep asking.
+func TestFocusTagVocabulary_FakeAcceptsWhatProductionAccepts(t *testing.T) {
+	// The tag check runs before the player lookup, so a tag the Fake accepts
+	// falls through to the unknown-player refusal instead.
+	for _, tag := range coach.FocusTags {
+		_, err := dbtest.New().UpsertCoachNote(db.CoachNote{Kind: "note", FocusTags: []string{tag}})
+		if !errors.Is(err, db.ErrCoachPlayerUnknown) {
+			t.Errorf("focus tag %q: got %v, want it past the vocabulary check — the Fake "+
+				"must accept every tag coach.FocusTags does", tag, err)
+		}
+	}
+
+	_, err := dbtest.New().UpsertCoachNote(db.CoachNote{Kind: "note", FocusTags: []string{"not_a_tag"}})
+	if err == nil || errors.Is(err, db.ErrCoachPlayerUnknown) {
+		t.Errorf("the Fake let a tag outside the vocabulary through: %v", err)
 	}
 }
