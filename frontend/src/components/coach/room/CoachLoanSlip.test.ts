@@ -24,6 +24,7 @@ function view(over: Record<string, unknown> = {}) {
     summary: '',
     notes: [],
     handle_from_bundle: true,
+    source: 'bundle' as const,
     ...over,
   }
 }

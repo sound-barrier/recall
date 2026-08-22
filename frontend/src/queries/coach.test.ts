@@ -28,6 +28,7 @@ const VIEW = {
   summary: '',
   notes: [],
   handle_from_bundle: true,
+  source: 'bundle' as const,
 }
 
 const scopes: ReturnType<typeof effectScope>[] = []

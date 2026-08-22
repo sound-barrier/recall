@@ -197,6 +197,38 @@ export type PlayModeEnum = 'quickplay' | 'competitive';
 export type PlayModeBulkEnum = 'quickplay' | 'competitive' | '';
 
 /**
+ * What a coach saw while watching a replay. Every field optional —
+ * a coach who noticed the map and nothing else says only that, because
+ * inventing the rest would be fabricating data. A value that IS given
+ * must be one the player's own import accepts, so map and hero are
+ * held to the Overwatch roster.
+ *
+ */
+export type ObservedContext = {
+    /**
+     * Map name, from the Overwatch roster.
+     */
+    map?: string;
+    /**
+     * The hero the player was on, from the Overwatch roster.
+     */
+    hero?: string;
+    result?: ResultEnum;
+    /**
+     * The match's naive local date (YYYY-MM-DD). Defaulted by the
+     * client to the session date so a coach-created match is not
+     * dateless — a match with no time at all passes every date
+     * filter, which is not what anyone means by "last 30 days".
+     *
+     */
+    date?: string;
+    /**
+     * The scoreboard's naive local wall clock (HH:MM).
+     */
+    finished_at?: string;
+};
+
+/**
  * Provenance of a match record.
  * - `ocr`: parsed from screenshots, unedited.
  * - `ocr_edited`: parsed, then user-corrected via the override
@@ -813,6 +845,15 @@ export type CoachMatchContext = {
      * The player's naive local finish time (HH:MM).
      */
     finished_at: string;
+    /**
+     * The replay this note is about. A convenience for a note about a
+     * match the player already has; load-bearing for a note about a
+     * REPLAY match, where it is the only thing identifying the match —
+     * the player may not have it, and this context is what it gets
+     * created from.
+     *
+     */
+    replay_code?: string;
 };
 
 /**
@@ -994,6 +1035,16 @@ export type CoachSessionView = {
      *
      */
     handle_from_bundle: boolean;
+    /**
+     * Where the session's matches came from. `bundle` is a corpus the
+     * player exported and loaned; `replay` is one the coach typed as
+     * replay codes. It decides two things the room needs to know:
+     * whether the coach may add matches (only a replay session grows)
+     * and whether to offer the observed-context editor (only a replay
+     * match has nothing parsed to show).
+     *
+     */
+    source: 'bundle' | 'replay';
 };
 
 /**
@@ -4660,6 +4711,138 @@ export type SetCoachSessionPlayerResponses = {
 };
 
 export type SetCoachSessionPlayerResponse = SetCoachSessionPlayerResponses[keyof SetCoachSessionPlayerResponses];
+
+export type OpenCoachReplaySessionData = {
+    body: {
+        /**
+         * The replay codes to review. Accepted in either case and
+         * stored uppercased; duplicates collapse to one frame,
+         * because one code is one match.
+         *
+         */
+        codes: Array<string>;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/coach/session/replay';
+};
+
+export type OpenCoachReplaySessionErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * A session is already open.
+     */
+    409: unknown;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type OpenCoachReplaySessionError = OpenCoachReplaySessionErrors[keyof OpenCoachReplaySessionErrors];
+
+export type OpenCoachReplaySessionResponses = {
+    /**
+     * The newly opened session.
+     */
+    200: CoachSessionView;
+};
+
+export type OpenCoachReplaySessionResponse = OpenCoachReplaySessionResponses[keyof OpenCoachReplaySessionResponses];
+
+export type AddCoachSessionReplayCodeData = {
+    body: {
+        /**
+         * The replay code to add.
+         */
+        code: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/coach/session/replay/codes';
+};
+
+export type AddCoachSessionReplayCodeErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * This session's matches came from a bundle.
+     */
+    409: unknown;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type AddCoachSessionReplayCodeError = AddCoachSessionReplayCodeErrors[keyof AddCoachSessionReplayCodeErrors];
+
+export type AddCoachSessionReplayCodeResponses = {
+    /**
+     * The session, with the code in its reel.
+     */
+    200: CoachSessionView;
+};
+
+export type AddCoachSessionReplayCodeResponse = AddCoachSessionReplayCodeResponses[keyof AddCoachSessionReplayCodeResponses];
+
+export type SetCoachSessionMatchContextData = {
+    body: ObservedContext;
+    path: {
+        /**
+         * Match identity — same `match_key` value exposed in
+         * `MatchRecord`. URL-safe: the canonical form replaces every
+         * legacy colon separator with a dash, so no percent-encoding
+         * is required for paste-in-URL use
+         * (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+         * and `ambiguous-<filename>` variants the embedded filename
+         * still needs the usual encoding for spaces / unicode.
+         *
+         */
+        match_key: string;
+    };
+    query?: never;
+    url: '/api/v1/coach/session/matches/{match_key}/context';
+};
+
+export type SetCoachSessionMatchContextErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * No session is open, or that match is not in it.
+     */
+    404: unknown;
+    /**
+     * A supplied field is not in the Overwatch vocabulary.
+     */
+    409: unknown;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type SetCoachSessionMatchContextError = SetCoachSessionMatchContextErrors[keyof SetCoachSessionMatchContextErrors];
+
+export type SetCoachSessionMatchContextResponses = {
+    /**
+     * The session, with the observed context on that match.
+     */
+    200: CoachSessionView;
+};
+
+export type SetCoachSessionMatchContextResponse = SetCoachSessionMatchContextResponses[keyof SetCoachSessionMatchContextResponses];
 
 export type GetCoachSessionMatchesData = {
     body?: never;

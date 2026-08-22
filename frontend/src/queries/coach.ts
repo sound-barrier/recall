@@ -77,6 +77,16 @@ export function setCoachSessionData(view: CoachSessionView | null): void {
   getQueryClient().setQueryData(qk.coach.session, view)
 }
 
+// The loaned corpus is a SEPARATE query from the session view, cached with
+// staleTime: Infinity because a bundle's matches never change while it is
+// open. A replay session's do: the coach adds codes and describes what they
+// saw, and both rewrite the records the reel and the card render. So the two
+// mutations that touch the corpus refetch it, narrowly — the session view
+// they already hold is seeded, only this needs re-reading.
+export async function refreshCoachSessionMatches(): Promise<void> {
+  await getQueryClient().invalidateQueries({ queryKey: qk.coach.matches })
+}
+
 // Ending a session writes the "no session" answer into the cache rather
 // than removing the entry: null is the value every consumer already reads
 // as closed, and it lands on the observers immediately — a removal leaves

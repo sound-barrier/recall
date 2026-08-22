@@ -77,7 +77,15 @@
 # first, each source newest-first) is a product decision two UI surfaces
 # must agree on, which is exactly why it lives on the server side of the
 # seam rather than being re-derived twice in Vue.
-pkg/app                                       49
+# 50 as of coaching from replay codes: coach_replay.go, the second door onto
+# the SAME session — open from typed codes rather than a loaned bundle, grow
+# the reel mid-session, record what the coach observed. It is a sibling of
+# coach_session.go rather than part of it because coach_session.go is already
+# at the file-length ceiling, and because the two doors differ in exactly one
+# thing (where the corpus comes from) which is now the parameter
+# claimCoachSessionWith takes. Splitting the shell instead would mean two
+# places racing for the one session slot.
+pkg/app                                       50
 
 # pkg/db — the SQLite store: schema + additive-column registry, the migration
 # engine, per-screenshot-type CRUD, the Store interface and its *SQLStore

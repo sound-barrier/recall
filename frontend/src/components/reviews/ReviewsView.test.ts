@@ -19,6 +19,7 @@ const SESSION: CoachSessionView = {
   player: { id: 'sable-id', handle: 'Sable', message: '' },
   exported_at: '2026-08-14T18:30:00Z', session_date: '2026-08-15', match_count: 1,
   coach_name: 'Ordo', focus_items: [], notes: [], handle_from_bundle: true,
+  source: 'bundle' as const,
 }
 
 const SITTING: SelfReview = {

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
-import type { MatchRecord } from '@/api-client'
+import type { MatchRecord, ObservedContext } from '@/api-client'
 import CoachCueStrip from '@/components/coach/notes/CoachCueStrip.vue'
 import CoachMatchCard from '@/components/coach/room/CoachMatchCard.vue'
+import CoachObservedContext from '@/components/coach/room/CoachObservedContext.vue'
 import CoachNoteEditor from '@/components/coach/notes/CoachNoteEditor.vue'
 import { DEFAULT_COACH_LABELS, type CoachLabels, type CoachSaveState, type RoomVoice } from '@/components/coach/room/coach-room-props'
 import type { CoachMoment } from '@/match/coach/coach-moments'
@@ -18,6 +19,12 @@ const props = withDefaults(defineProps<{
   record: MatchRecord | null
   /** True when the reel has no frames at all — a different kind of empty. */
   reelEmpty?: boolean
+  /**
+   * Today, as the session reckons it. Present only for a session whose
+   * matches the coach typed — it is the date a blank observed date falls
+   * back to, and its absence is what keeps the editor off a bundle's frames.
+   */
+  sessionDate?: string
   handle: string
   draft: CoachNoteDraft
   /** This match's moments — several per match, unlike the note. */
@@ -51,6 +58,9 @@ const props = withDefaults(defineProps<{
   voice: 'their',
   omitReviewId: '',
   removable: 'none',
+  // Empty means "this corpus was parsed, not typed" — which is what keeps
+  // the observed-context editor off a bundle's frames.
+  sessionDate: '',
 })
 
 // What the desk says when there is nothing on it: an empty reel is a
@@ -65,6 +75,7 @@ const emptyLine = computed(() => {
 
 const emit = defineEmits<{
   'update-note': [draft: CoachNoteDraft]
+  'update-context': [context: ObservedContext]
   'update-moment': [moment: CoachMoment]
   'remove-moment': [momentId: string]
   'copy-replay': []
@@ -95,6 +106,18 @@ function onRemoveFrame(): void {
   <div class="coach-desk">
     <template v-if="record">
       <CoachMatchCard :record="record" :handle="handle" :labels="labels" :voice="voice" :omit-review-id="omitReviewId" />
+      <!--
+        Only for a frame the app has never seen. A bundle's match arrives
+        parsed, so there is nothing for the coach to tell us about it; a
+        replay's arrives blank, and the card above would read "No result ·
+        Not dated · —" until somebody says otherwise.
+      -->
+      <CoachObservedContext
+        v-if="sessionDate && !record.data?.map && record.annotation?.replay_code"
+        :record="record"
+        :session-date="sessionDate"
+        @update="(ctx: ObservedContext) => emit('update-context', ctx)"
+      />
       <!--
         The strip sits between the match and the note on purpose: the coach
         watches, marks what they see, and only then writes the overall read.

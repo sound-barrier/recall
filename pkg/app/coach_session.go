@@ -59,12 +59,23 @@ func (a *App) OpenCoachSession(payload []byte) (coach.SessionView, error) {
 // a parse. A view that fails to assemble releases the slot again rather
 // than leaving a session nobody can see.
 func (a *App) claimCoachSession(payload []byte, now time.Time) (coach.SessionView, error) {
+	return a.claimCoachSessionWith(func(n time.Time) (*coach.Session, error) {
+		return coach.OpenSession(payload, n)
+	}, now)
+}
+
+// claimCoachSessionWith is the critical section itself, parameterized by how
+// the session gets built — a bundle to read, or replay codes to mint frames
+// from. Extracted rather than copied: there is exactly ONE session slot, and
+// two places racing to take it is the bug this shape prevents by
+// construction.
+func (a *App) claimCoachSessionWith(open func(time.Time) (*coach.Session, error), now time.Time) (coach.SessionView, error) {
 	a.coachMu.Lock()
 	defer a.coachMu.Unlock()
 	if a.coachSession != nil {
 		return coach.SessionView{}, coach.ErrSessionActive
 	}
-	s, err := coach.OpenSession(payload, now)
+	s, err := open(now)
 	if err != nil {
 		return coach.SessionView{}, err
 	}

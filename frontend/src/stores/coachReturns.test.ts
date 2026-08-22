@@ -63,6 +63,7 @@ function sessionView() {
     focus_items: [],
     notes: [],
     handle_from_bundle: true,
+    source: 'bundle' as const,
   }
 }
 

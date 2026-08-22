@@ -25,6 +25,11 @@ type Player struct {
 // corpus — they never reach a store, and the App discards the whole
 // Session on End.
 type Session struct {
+	// Source is where the corpus came from, and it decides two things the
+	// room needs to know: whether the coach may add matches (only a replay
+	// session grows) and whether to offer the observed-context editor (only
+	// a replay match has nothing parsed to show).
+	Source SessionSource
 	// Player is the identity the bundle suggested; the coach may correct
 	// Handle before writing notes.
 	Player Player
@@ -42,16 +47,29 @@ type Session struct {
 	playerRef  int64
 }
 
+// SessionSource distinguishes the two ways a session's corpus arrives.
+type SessionSource string
+
+const (
+	// SessionFromBundle is the original: the player exported their matches
+	// and the coach opened the file.
+	SessionFromBundle SessionSource = "bundle"
+	// SessionFromReplay is a corpus the coach typed: replay codes and
+	// nothing else, with no screenshots and no parsed data behind them.
+	SessionFromReplay SessionSource = "replay"
+)
+
 // SessionView is the session as GET/POST /coach/session return it.
 type SessionView struct {
-	Player           Player      `json:"player"`
-	ExportedAt       string      `json:"exported_at"`
-	SessionDate      string      `json:"session_date"`
-	MatchCount       int         `json:"match_count"`
-	CoachName        string      `json:"coach_name"`
-	FocusItems       []FocusItem `json:"focus_items"`
-	Notes            []Note      `json:"notes"`
-	HandleFromBundle bool        `json:"handle_from_bundle"`
+	Player           Player        `json:"player"`
+	ExportedAt       string        `json:"exported_at"`
+	SessionDate      string        `json:"session_date"`
+	MatchCount       int           `json:"match_count"`
+	CoachName        string        `json:"coach_name"`
+	FocusItems       []FocusItem   `json:"focus_items"`
+	Notes            []Note        `json:"notes"`
+	HandleFromBundle bool          `json:"handle_from_bundle"`
+	Source           SessionSource `json:"source"`
 }
 
 // OpenSession renders a player's bundle into a Session. A coach notes
@@ -70,6 +88,7 @@ func OpenSession(payload []byte, now time.Time) (*Session, error) {
 		OpenedAt:      now.UTC().Format(time.RFC3339),
 		ExportedAt:    contents.Manifest.ExportedAt,
 		RecallVersion: contents.Manifest.RecallVersion,
+		Source:        SessionFromBundle,
 	}
 	if p := contents.Manifest.Player; p != nil {
 		s.Player = Player{ID: p.ID, Handle: p.Handle, Message: p.Message}
@@ -114,8 +133,16 @@ func (s *Session) MatchContextFor(key string) *MatchContext {
 	if !ok {
 		return nil
 	}
-	d := s.records[i].Data
-	return &MatchContext{Map: d.Map, Hero: d.Hero, Result: d.Result, Date: d.Date, FinishedAt: d.FinishedAt}
+	rec := s.records[i]
+	d := rec.Data
+	ctx := &MatchContext{Map: d.Map, Hero: d.Hero, Result: d.Result, Date: d.Date, FinishedAt: d.FinishedAt}
+	// The code rides along because for a replay match it is the ONLY thing
+	// identifying what the note is about: the player may not have the match,
+	// and this context is what it gets created from.
+	if rec.Annotation != nil {
+		ctx.ReplayCode = rec.Annotation.ReplayCode
+	}
+	return ctx
 }
 
 // View assembles the wire view of the session. session_date is the UTC
@@ -136,6 +163,7 @@ func (s *Session) View(notes []Note, focus []FocusItem, coachName string, now ti
 		FocusItems:       focus,
 		Notes:            notes,
 		HandleFromBundle: s.HandleFromBundle,
+		Source:           s.Source,
 	}
 }
 

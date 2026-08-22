@@ -30,6 +30,7 @@ import type {
   CoachNoteInput,
   CoachReturnSheet,
   CoachSessionView,
+  ObservedContext,
   CoachPlayerSummary,
   FocusEntry,
   FocusItem,
@@ -76,6 +77,7 @@ export type {
   CoachReturnStatus,
   CoachSessionChangedEvent,
   CoachSessionView,
+  ObservedContext,
   MatchCoachNote,
   MatchSelfReviewNote,
   CoachPlayerSummary,
@@ -599,6 +601,29 @@ export function GetCoachSessionMatches(): Promise<MatchRecord[]> {
 // earlier session resurfaces.
 export function SetCoachSessionPlayer(handle: string): Promise<CoachSessionView> {
   return unwrap(sdk.setCoachSessionPlayer({ body: { handle } }))
+}
+
+// The second door onto a session: replay codes rather than a bundle. Each
+// code becomes one empty frame the coach fills in as they watch. Rejects
+// with 409 while another session is open, exactly as opening a bundle does.
+export function OpenCoachReplaySession(codes: string[]): Promise<CoachSessionView> {
+  return unwrap(sdk.openCoachReplaySession({ body: { codes } }))
+}
+
+// Grow an open replay session's reel. Codes arrive one at a time over voice
+// chat, so this is a POST per code; re-adding one already in the reel is a
+// no-op returning the unchanged view.
+export function AddCoachSessionReplayCode(code: string): Promise<CoachSessionView> {
+  return unwrap(sdk.addCoachSessionReplayCode({ body: { code } }))
+}
+
+// What the coach observed while watching one replay. Nothing is persisted —
+// it rides to the player inside the notes archive.
+export function SetCoachSessionMatchContext(
+  matchKey: string,
+  context: ObservedContext,
+): Promise<CoachSessionView> {
+  return unwrap(sdk.setCoachSessionMatchContext({ path: { match_key: matchKey }, body: context }))
 }
 
 // The note body as the editor holds it. Deliberately looser than the

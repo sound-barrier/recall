@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 
+import CoachFromCodesModal from '@/components/reviews/CoachFromCodesModal.vue'
 import FocusBand from '@/components/reviews/FocusBand.vue'
 import ReviewLedgerRow from '@/components/reviews/ReviewLedgerRow.vue'
 import SelfReviewCard from '@/components/reviews/SelfReviewCard.vue'
@@ -168,6 +169,10 @@ const roster = computed(() => rosterQuery.data.value ?? [])
 function openBundle(): void {
   void coach.openBundle()
 }
+
+// Most reviews start with a code in chat, not a zip in an email, so the
+// two doors sit side by side rather than one being buried.
+const codesOpen = ref(false)
 </script>
 
 <template>
@@ -439,6 +444,15 @@ function openBundle(): void {
             >
               Open a player's bundle…
             </button>
+            <button
+              type="button"
+              class="btn ghost"
+              :disabled="coach.tourOpen"
+              :title="coach.tourOpen ? 'Finish the walkthrough before starting a review.' : undefined"
+              @click="codesOpen = true"
+            >
+              Use a replay code…
+            </button>
           </div>
         </div>
       </div>
@@ -459,6 +473,8 @@ function openBundle(): void {
       </p>
     </div>
   </div>
+
+  <CoachFromCodesModal v-model="codesOpen" />
 </template>
 
 <style scoped src="./reviews-index.css"></style>
