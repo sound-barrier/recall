@@ -68,7 +68,7 @@ func (p playerProfile) pickRoleForMatch(rng *rand.Rand, playMode string) string 
 			return others[rng.Intn(len(others))]
 		}
 		return p.mainRole
-	default: // styleFlex
+	case styleFlex:
 		// Quickplay is the practice space — the player queues off-role
 		// freely there. Competitive follows the DPS-main split.
 		if playMode == "quickplay" {
@@ -80,6 +80,7 @@ func (p playerProfile) pickRoleForMatch(rng *rand.Rand, playMode string) string 
 		}
 		return pickCompRole(rng, p.mainRole)
 	}
+	panic("unhandled playStyle")
 }
 
 // pickCompRole is the competitive role split: 85% the main role, 10% the
@@ -192,10 +193,11 @@ func constrainedFavoriteProb(style playStyle, playMode string, isMainRole bool) 
 		// 100% from favorites both in QP and comp (off-mains-in-role
 		// will be empty, making this a no-op anyway).
 		return 1.0
-	default: // flex
+	case styleFlex:
 		if playMode == "quickplay" {
 			return 0.30
 		}
 		return 0.80
 	}
+	panic("unhandled playStyle")
 }

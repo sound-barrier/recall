@@ -52,7 +52,13 @@ linters:
         - "(*database/sql.Rows).Close"
         - "os.RemoveAll"
     exhaustive:
-      default-signifies-exhaustive: true
+      # A `default` arm must NOT satisfy the check. With this true, naming an
+      # enum type buys nothing — every switch that absorbs the unknown case
+      # into `default` reads as exhaustive and a new constant slips through
+      # silently (TECHNICAL_DEBT.md §11 is exactly that bug class). Flipping it
+      # cost 3 switches in pkg/fixtures, all of which already named the missing
+      # case in a `default: // styleFlex` comment.
+      default-signifies-exhaustive: false
     gosec:
       excludes:
         - G104  # "unhandled errors" — same check as errcheck; double-reports now both run
