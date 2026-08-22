@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
-import { heroDisciplineSchema, type HeroDisciplineConfig } from '@/dashboard/widgets'
+import { heroDisciplineSchema, type HeroDisciplineConfig } from '@/dashboard/widget-schemas'
 
 // Hero pool size — the DERIVED pool's member count (heroes with at least
 // max(5, 10% of decisive games) meaningful decisive games), not a raw count

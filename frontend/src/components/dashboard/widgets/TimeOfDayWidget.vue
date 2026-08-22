@@ -6,7 +6,7 @@
 // NAME, in the vocabulary every judged surface shares.
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
-import { timeOfDaySchema, type TimeOfDayConfig } from '@/dashboard/widgets'
+import { timeOfDaySchema, type TimeOfDayConfig } from '@/dashboard/widget-schemas'
 import { bucketCellClass, bucketCellJudgment } from '@/match/trends/match-heatmap-helpers'
 
 const dossier = useDossier()

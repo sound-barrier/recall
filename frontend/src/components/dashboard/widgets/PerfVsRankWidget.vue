@@ -9,7 +9,7 @@
 import { computed } from 'vue'
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
-import { perfVsRankSchema, type PerfVsRankConfig } from '@/dashboard/widgets'
+import { perfVsRankSchema, type PerfVsRankConfig } from '@/dashboard/widget-schemas'
 
 const dossier = useDossier()
 const { config } = useWidgetConfig<PerfVsRankConfig>('perf-vs-rank', perfVsRankSchema)

@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
-import { totalTimeSchema, type TotalTimeConfig } from '@/dashboard/widgets'
+import { totalTimeSchema, type TotalTimeConfig } from '@/dashboard/widget-schemas'
 import { formatPlayMinutes } from '@/match/match-time-helpers'
 
 const { totalTimePlayed } = useDossier()

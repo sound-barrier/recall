@@ -7,7 +7,7 @@
 import { computed } from 'vue'
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
-import { climbVelocitySchema, type ClimbVelocityConfig } from '@/dashboard/widgets'
+import { climbVelocitySchema, type ClimbVelocityConfig } from '@/dashboard/widget-schemas'
 import { signJudgment } from '@/match/trends/match-heatmap-helpers'
 
 const dossier = useDossier()

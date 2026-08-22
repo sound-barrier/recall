@@ -10,7 +10,7 @@ import { heatmapCellClass, heatmapCellJudgment, heatmapCellOpacity } from '@/mat
 import HeroModeHeatmap from '@/components/matches/dossier/HeroModeHeatmap.vue'
 import HeroModeMatches from '@/components/matches/dossier/HeroModeMatches.vue'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
-import { heroGameModeHeatmapSchema, type HeroGameModeHeatmapConfig } from '@/dashboard/widgets'
+import { heroGameModeHeatmapSchema, type HeroGameModeHeatmapConfig } from '@/dashboard/widget-schemas'
 import WidgetConfigPopover from '@/components/dashboard/WidgetConfigPopover.vue'
 
 // HERO × GAME-MODE — a drill-down winrate explorer.

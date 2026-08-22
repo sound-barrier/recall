@@ -7,7 +7,7 @@
 // add it from the dossier customize gallery.
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
-import { withWhomSchema, type TopByCountConfig } from '@/dashboard/widgets'
+import { withWhomSchema, type TopByCountConfig } from '@/dashboard/widget-schemas'
 
 const dossier = useDossier()
 const { config } = useWidgetConfig<TopByCountConfig>('with-whom', withWhomSchema)
