@@ -14,6 +14,14 @@ type sheetState struct {
 	keys          map[string]bool
 	reviews       map[string]db.ReviewState
 	blockByNoteID map[string]db.MatchCoachNote
+	// resolver binds a coach's replay key to whichever local match carries
+	// that code. Every other key resolves to itself.
+	resolver keyResolver
+}
+
+// localKeyFor is the key a note actually concerns on THIS machine.
+func (s sheetState) localKeyFor(n coach.Note) string {
+	return s.resolver.resolve(n.MatchKey)
 }
 
 func loadSheetState(st Store) (sheetState, error) {
@@ -29,7 +37,11 @@ func loadSheetState(st Store) (sheetState, error) {
 	if err != nil {
 		return sheetState{}, err
 	}
-	return sheetState{keys: keys, reviews: reviews, blockByNoteID: blocks}, nil
+	resolver, err := loadResolver(st)
+	if err != nil {
+		return sheetState{}, err
+	}
+	return sheetState{keys: keys, reviews: reviews, blockByNoteID: blocks, resolver: resolver}, nil
 }
 
 func loadBlocksByNoteID(st Store) (map[string]db.MatchCoachNote, error) {
@@ -51,7 +63,12 @@ func loadBlocksByNoteID(st Store) (map[string]db.MatchCoachNote, error) {
 // (a block with this note_id, or a coach review for a reviewed_only mark)
 // › pending.
 func (s sheetState) statusOf(n coach.Note, decisions map[string]db.CoachDecision) Status {
-	if !s.keys[n.MatchKey] {
+	// A replay note that binds to nothing is NOT an orphan. An orphan is a
+	// note about a match that cannot be recovered; this one can, by making
+	// it from the context the coach recorded, which is what accepting does.
+	// Calling it an orphan would tell a player their coach's work is
+	// unusable when it is one click from landing.
+	if !s.keys[s.localKeyFor(n)] && !s.resolver.creatable(n.MatchKey) {
 		return StatusOrphan
 	}
 	if d, ok := decisions[n.NoteID]; ok {
@@ -66,7 +83,7 @@ func (s sheetState) statusOf(n coach.Note, decisions map[string]db.CoachDecision
 
 func (s sheetState) accepted(n coach.Note) bool {
 	if n.Kind == coach.KindReviewedOnly {
-		return s.reviews[n.MatchKey].ReviewedBy == reviewedByCoach
+		return s.reviews[s.localKeyFor(n)].ReviewedBy == reviewedByCoach
 	}
 	_, ok := s.blockByNoteID[n.NoteID]
 	return ok

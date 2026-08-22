@@ -84,6 +84,23 @@ export function useMatchesDossier(
   heroRole?: HeroRoleResolver,
   weekStart?: Readonly<Ref<WeekStart>>,
 ) {
+  // A match a coach's review created is REAL — the player played it — but
+  // its result is what the coach typed while watching a replay, not what the
+  // player recorded. So it stays in the Matches list, where it carries the
+  // notes and says where it came from, and stays out of everything derived
+  // here: the tally, the streaks, the hero and map splits, the time-of-day
+  // buckets. A coaching session must not be able to move a win rate.
+  //
+  // Filtered ONCE, at the mouth of the dossier, because this is the single
+  // aggregation every widget reads — the alternative is remembering the rule
+  // in each of them, which is how it stops being true.
+  const countedRecords = computed(() =>
+    records.value.filter((r) => r.source !== 'replay'))
+
+  // Everything below reads countedRecords, never `records` — including the
+  // review-coverage and role splits, which are about the player's OWN
+  // history. `records` is used exactly once, on the line above.
+
   // 'exclude-tally' drops leaver-annotated records from the KPIs
   // (W/L/D + winrate) only. The leaves list still shows them — the
   // user explicitly asked for "drop from tally" not "hide". 'hide'
@@ -91,9 +108,9 @@ export function useMatchesDossier(
   // already filtered those rows out of `records`.
   const tallyRecords = computed(() => {
     if (leaverHandling.value === 'exclude-tally') {
-      return records.value.filter((r) => !r.annotation?.leavers?.length)
+      return countedRecords.value.filter((r) => !r.annotation?.leavers?.length)
     }
-    return records.value
+    return countedRecords.value
   })
 
   const wld = computed<WinLossDraw>(() => {
@@ -126,7 +143,7 @@ export function useMatchesDossier(
       competitive: { total: 0, w: 0, l: 0 },
       '—':         { total: 0, w: 0, l: 0 },
     }
-    for (const r of records.value) {
+    for (const r of countedRecords.value) {
       const mode = r.play_mode === 'quickplay' || r.play_mode === 'competitive'
         ? r.play_mode
         : '—'
@@ -214,10 +231,10 @@ export function useMatchesDossier(
   // coverage is a workflow metric, not a tally metric.
   const reviewedCount = computed<ReviewedCount>(() => {
     let reviewed = 0
-    for (const r of records.value) {
+    for (const r of countedRecords.value) {
       if (r.reviewed_by) reviewed++
     }
-    const total = records.value.length
+    const total = countedRecords.value.length
     const percent = total === 0 ? 0 : Math.round((reviewed / total) * 100)
     return { reviewed, total, percent }
   })
@@ -234,7 +251,7 @@ export function useMatchesDossier(
   const daysSinceLastReview = computed<DaysSinceLastReview>(() => {
     let latestMs: number | null = null
     let latestIso: string | null = null
-    for (const r of records.value) {
+    for (const r of countedRecords.value) {
       if (!r.reviewed_at) continue
       const ms = Date.parse(r.reviewed_at)
       if (Number.isNaN(ms)) continue
@@ -298,13 +315,13 @@ export function useMatchesDossier(
   // the desired open-queue signal. Sorted descending by count so the
   // dominant role surfaces first.
   const topRoles = computed<RoleBreakdownEntry[]>(() => {
-    const totalMatches = records.value.length
+    const totalMatches = countedRecords.value.length
     const counts: Record<Role, { total: number; w: number; l: number }> = {
       tank: { total: 0, w: 0, l: 0 },
       dps: { total: 0, w: 0, l: 0 },
       support: { total: 0, w: 0, l: 0 },
     }
-    for (const r of records.value) {
+    for (const r of countedRecords.value) {
       for (const role of matchRoleSet(r, heroRole)) {
         counts[role].total++
         if (r.data?.result === 'victory') counts[role].w++

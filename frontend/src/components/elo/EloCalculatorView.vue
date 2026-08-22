@@ -29,7 +29,13 @@ import EloHeroPicker from '@/components/elo/EloHeroPicker.vue'
 const matchesStore = useMatchesStore()
 const ow = useOWData()
 
-const records = computed(() => matchesStore.records.filter((r) => !r.hidden))
+// Hidden matches are out because the player put them out. Replay matches are
+// out for a different reason worth stating: a coach's review created them
+// from a code, and their result is what the COACH saw. Everything on this
+// tab reads a win rate as evidence about the player's own play, so a
+// coaching session must not be able to move any of it.
+const records = computed(() =>
+  matchesStore.records.filter((r) => !r.hidden && r.source !== 'replay'))
 const calc = useEloCalculator({ records, heroRole: ow.heroRole, mapGameMode: ow.mapGameMode, seasons: ow.seasons })
 provideEloCalculator(calc)
 

@@ -69,7 +69,7 @@ func writeNotes(t *testing.T, f coach.NotesFile) []byte {
 
 func stageReturn(t *testing.T, st coachreturn.Store, payload []byte, localHandle string) coachreturn.Sheet {
 	t.Helper()
-	sheet, already, err := coachreturn.Stage(st, payload, localHandle)
+	sheet, already, err := coachreturn.Stage(st, payload, localHandle, noMatchMaker)
 	if err != nil {
 		t.Fatalf("Stage: %v", err)
 	}
@@ -104,7 +104,7 @@ func stateOf(sheet coachreturn.Sheet) decisionState {
 // return test stages under — and fails the test if the store refuses them.
 func decide(t *testing.T, st coachreturn.Store, returnID int64, decisions ...coachreturn.Verdict) coachreturn.Sheet {
 	t.Helper()
-	sheet, err := coachreturn.Decide(st, returnID, decisions, "Sable")
+	sheet, err := coachreturn.Decide(st, returnID, decisions, "Sable", noMatchMaker)
 	if err != nil {
 		t.Fatalf("Decide(%+v): %v", decisions, err)
 	}
