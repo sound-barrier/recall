@@ -1,7 +1,24 @@
 import { QueryCache, QueryClient } from '@tanstack/vue-query'
 
 import { plainLanguageError } from '@/error-helpers'
-import { useAppStore } from '@/stores/app'
+
+// Where a banner-carrying query reports failure. `queries/` is the cache
+// layer: it knows a request failed and which Retry would heal it, but not
+// what a banner is or who renders one. Importing the app store to call
+// setError() inverted that — the cache reached up into the shell — and put
+// this module inside a 17-cycle knot (client -> app -> queries/system ->
+// client). The shell registers itself here instead; nothing is reported
+// until it does, which is what SHOULD happen when there is no UI to report to.
+export type QueryBannerSink = {
+  raise(message: string, retry: () => Promise<void>): void
+  clearIfArmedBy(retry: (() => Promise<void>) | undefined): void
+}
+
+let bannerSink: QueryBannerSink | null = null
+
+export function setQueryBannerSink(sink: QueryBannerSink | null): void {
+  bannerSink = sink
+}
 
 // Retry handlers keyed by query-key hash, created once per key so the
 // banner's function-identity contract keeps working: the store clears the
@@ -56,15 +73,14 @@ function makeQueryClient(): QueryClient {
       onError: (error, query) => {
         const banner = query.meta?.banner
         if (typeof banner !== 'string') return
-        useAppStore().setError(
+        bannerSink?.raise(
           `${banner}: ${plainLanguageError(String(error))}`,
           stableRetryFor(query.queryKey, query.meta?.retryKeys),
         )
       },
       onSuccess: (_data, query) => {
         if (typeof query.meta?.banner !== 'string') return
-        const app = useAppStore()
-        if (app.errorRetry === retryFns.get(JSON.stringify(query.queryKey))) app.clearError()
+        bannerSink?.clearIfArmedBy(retryFns.get(JSON.stringify(query.queryKey)))
       },
     }),
     defaultOptions: {

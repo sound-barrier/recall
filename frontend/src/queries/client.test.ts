@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { qk, matchesCluster } from '@/queries/keys'
-import { getQueryClient } from '@/queries/client'
+import { getQueryClient, setQueryBannerSink } from '@/queries/client'
 import { useAppStore } from '@/stores/app'
 
 // The defaults ARE the e2e request-count parity mechanism: retries off
@@ -94,6 +94,30 @@ describe('QueryCache banner integration', () => {
     })
     expect(app.error).toBe('')
     expect(app.errorRetry).toBeNull()
+  })
+
+  // Nobody registers a sink until the shell's store is first used, so
+  // "a banner query failed and there is no sink yet" is a reachable state.
+  // It did not used to be: the cache called useAppStore() directly and Pinia
+  // would conjure a store on demand. Inverting that — so `queries/` stops
+  // importing the shell — made the state real, and this is its contract:
+  // the failure still propagates to the caller, it just is not painted.
+  it('degrades quietly when no banner sink is registered', async () => {
+    setQueryBannerSink(null)
+    await expect(getQueryClient().fetchQuery({
+      queryKey: ['no-sink'],
+      queryFn: () => Promise.reject(new Error('boom')),
+      meta: { banner: 'Could not load matches' },
+    })).rejects.toThrow('boom')
+
+    // And the shell that registers later still works.
+    const app = useAppStore()
+    await getQueryClient().fetchQuery({
+      queryKey: ['no-sink-2'],
+      queryFn: () => Promise.reject(new Error('later')),
+      meta: { banner: 'Could not load matches' },
+    }).catch(() => undefined)
+    expect(app.error).toContain('Could not load matches')
   })
 
   it('leaves the banner alone for queries without meta.banner', async () => {
