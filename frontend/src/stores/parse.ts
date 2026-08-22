@@ -4,9 +4,7 @@ import { defineStore } from 'pinia'
 import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshots'
 import { useParseRunLifecycle } from '@/composables/ingest/useParseRunLifecycle'
 import { useParseStalenessQuery } from '@/queries/system'
-import { getQueryClient } from '@/queries/client'
-import { qk } from '@/queries/keys'
-import { useFailedFilesQuery, usePendingCountQuery } from '@/queries/matches'
+import { refetchPendingCount, useFailedFilesQuery, usePendingCountQuery } from '@/queries/matches'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 
@@ -30,6 +28,8 @@ export const useParseStore = defineStore('parse', () => {
   // lives in useParseRunLifecycle; the store spreads it into its public
   // surface under the same names.
   const parseRun = useParseRunLifecycle({ load: () => useMatchesStore().load() })
+
+  watch(() => useMatchesStore().recordsArrivals, () => { flashRecordsPulse() })
 
   // Entering Parse re-reads the pending-screenshot count so "Run Parse · N"
   // reflects the folder now, not the initial-load batch. Fire-and-forget.
@@ -86,14 +86,15 @@ export const useParseStore = defineStore('parse', () => {
   const parserGeneration = computed(() => stalenessQuery.data.value?.parser_generation ?? 0)
 
   async function refreshNewCount() {
-    await getQueryClient().refetchQueries({ queryKey: qk.pendingCount })
+    await refetchPendingCount()
   }
 
   // ── Scoreboard pulse ──────────────────────────────────────────────
   // Brief masthead pulse when the watcher / a manual parse brings in
-  // additional records — otherwise the auto-refresh is silent. Fired by the
-  // matches store's load(), which is the only place that can tell a reload
-  // that grew the set from one that didn't.
+  // additional records — otherwise the auto-refresh is silent. The matches
+  // store counts arrivals (it is the only place that can tell a reload which
+  // grew the set from one that didn't); deciding that an arrival looks like a
+  // pulse is this store's business, so it watches rather than being called.
   const recordsPulse = ref(false)
   let recordsPulseTimer: ReturnType<typeof setTimeout> | null = null
   function flashRecordsPulse() {

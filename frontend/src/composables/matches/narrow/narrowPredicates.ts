@@ -5,7 +5,7 @@ import { matchTime } from '@/match/match-time-helpers'
 import { matchStartUTC, inSeasonWindow } from '@/match/match-season-helpers'
 import { classifyPoolMembership } from '@/match/dossier/match-hero-pool-helpers'
 import type { SearchClause, SearchField } from '@/match/search-query'
-import type { PlayModePick, QueuePick, ReviewedByPick, SourcePick } from '@/composables/matches/narrow/useMatchesNarrow'
+import type { PlayModePick, QueuePick, ReviewedByPick, SourcePick } from '@/composables/matches/narrow/matchesNarrow.types'
 import type { PoolFilter } from '@/composables/matches/narrow/matchesNarrow.types'
 
 // Per-dimension narrow predicates. Each function is ≤ 15 lines,
