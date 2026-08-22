@@ -185,7 +185,7 @@ func FoldGroup(key string, vs []ScreenshotView, dirs map[int64]string) match.Rec
 
 	var data parser.MatchResult
 	sources := make([]string, 0, len(vs))
-	types := make(map[string]string, len(vs))
+	types := make(map[string]parser.ScreenshotType, len(vs))
 	parsedAtPerFile := make(map[string]string, len(vs))
 	// dirIDsPerFile maps each source filename to the screenshots_dirs
 	// row id it was ingested from. Frontends build

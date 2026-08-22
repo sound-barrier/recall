@@ -12,8 +12,8 @@ import (
 // (which -short-skips the image golden test) still guards the behavior.
 
 func TestScreenshotType_AllHeroesMarkerClassifies(t *testing.T) {
-	if got := parser.ScreenshotType(&parser.MatchResult{AllHeroes: true}); got != "all_heroes" {
-		t.Errorf("ScreenshotType(AllHeroes) = %q, want all_heroes", got)
+	if got := parser.Classify(&parser.MatchResult{AllHeroes: true}); got != parser.TypeAllHeroes {
+		t.Errorf("Classify(AllHeroes) = %q, want %q", got, parser.TypeAllHeroes)
 	}
 }
 
@@ -26,18 +26,18 @@ func TestScreenshotType_RankScreenMarkerClassifies(t *testing.T) {
 	cases := []struct {
 		name string
 		in   parser.MatchResult
-		want string
+		want parser.ScreenshotType
 	}{
-		{"marker with result but no tier", parser.MatchResult{RankScreen: true, Result: "defeat"}, "rank"},
-		{"marker with nothing else readable", parser.MatchResult{RankScreen: true}, "rank"},
-		{"marker with tier (normal path)", parser.MatchResult{RankScreen: true, Rank: "gold"}, "rank"},
-		{"no marker: summary unchanged", parser.MatchResult{Result: "defeat"}, "summary"},
-		{"all_heroes outranks the marker", parser.MatchResult{AllHeroes: true, RankScreen: true}, "all_heroes"},
+		{"marker with result but no tier", parser.MatchResult{RankScreen: true, Result: "defeat"}, parser.TypeRank},
+		{"marker with nothing else readable", parser.MatchResult{RankScreen: true}, parser.TypeRank},
+		{"marker with tier (normal path)", parser.MatchResult{RankScreen: true, Rank: "gold"}, parser.TypeRank},
+		{"no marker: summary unchanged", parser.MatchResult{Result: "defeat"}, parser.TypeSummary},
+		{"all_heroes outranks the marker", parser.MatchResult{AllHeroes: true, RankScreen: true}, parser.TypeAllHeroes},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := parser.ScreenshotType(&c.in); got != c.want {
-				t.Errorf("ScreenshotType(%+v) = %q, want %q", c.in, got, c.want)
+			if got := parser.Classify(&c.in); got != c.want {
+				t.Errorf("Classify(%+v) = %q, want %q", c.in, got, c.want)
 			}
 		})
 	}

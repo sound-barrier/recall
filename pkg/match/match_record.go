@@ -11,10 +11,10 @@ import (
 // per-type screenshot row that shares a match_key. No `id` field —
 // the previous single-table primary key is gone; match_key is identity.
 type Record struct {
-	MatchKey       string            `json:"match_key"`
-	SourceFiles    []string          `json:"source_files"`
-	SourceTypes    map[string]string `json:"source_types,omitempty"`
-	SourceParsedAt map[string]string `json:"source_parsed_at,omitempty"`
+	MatchKey       string                           `json:"match_key"`
+	SourceFiles    []string                         `json:"source_files"`
+	SourceTypes    map[string]parser.ScreenshotType `json:"source_types,omitempty"`
+	SourceParsedAt map[string]string                `json:"source_parsed_at,omitempty"`
 	// SourceDirIDs maps a source filename to the screenshots_dirs row
 	// id it was ingested from. The frontend builds
 	// `/_screenshot/<id>/<filename>` URLs from this map so the

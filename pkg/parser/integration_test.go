@@ -34,9 +34,9 @@ import (
 //	  other.png
 //
 // Each golden captures TWO things:
-//   - `screenshot_type` — the classification ScreenshotType(result)
+//   - `screenshot_type` — the classification Classify(result)
 //     returns. A drift here means either the parser stopped populating
-//     a field the classifier keys off, OR ScreenshotType's thresholds
+//     a field the classifier keys off, OR Classify's thresholds
 //     moved. Either is worth catching.
 //   - `result` — the full parser.MatchResult struct.
 //
@@ -136,7 +136,7 @@ func assertGoldenFixture(t *testing.T, imgPath, goldenPath string, update bool) 
 		t.Fatalf("ParseScreenshot(%s): %v", imgPath, err)
 	}
 	gotJSON, err := json.MarshalIndent(goldenSnapshot{
-		ScreenshotType: parser.ScreenshotType(got),
+		ScreenshotType: parser.Classify(got),
 		Result:         parser.ToGolden(got),
 	}, "", "  ")
 	if err != nil {
@@ -178,6 +178,6 @@ func assertGoldenFixture(t *testing.T, imgPath, goldenPath string, update bool) 
 // *TeamsGolden / *PersonalGolden / *RankGolden (or *MatchResult
 // for the unknown fallback) — see ToGolden in pkg/parser/golden.go.
 type goldenSnapshot struct {
-	ScreenshotType string `json:"screenshot_type"`
-	Result         any    `json:"result"`
+	ScreenshotType parser.ScreenshotType `json:"screenshot_type"`
+	Result         any                   `json:"result"`
 }

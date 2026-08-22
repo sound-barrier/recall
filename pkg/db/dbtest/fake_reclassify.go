@@ -8,9 +8,10 @@ import (
 	"slices"
 
 	"recall/pkg/db"
+	"recall/pkg/parser"
 )
 
-func (f *Fake) DeleteScreenshotSiblings(filename, keepType string) error {
+func (f *Fake) DeleteScreenshotSiblings(filename string, keepType parser.ScreenshotType) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	oldKeys := map[string]bool{}

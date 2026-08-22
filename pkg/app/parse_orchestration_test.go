@@ -101,18 +101,38 @@ func TestApp_ClaimParse_SingleFlight(t *testing.T) {
 }
 
 func TestApp_ParseScreenshots_DispatchesEachScreenshotType(t *testing.T) {
-	cases := []struct {
-		name  string
+	// Keyed by type and checked against parser.ScreenshotTypes below, because
+	// this table used to cover FOUR of the six while its name promised all of
+	// them — summary and all_heroes were simply absent, and nothing said so.
+	cases := map[parser.ScreenshotType]struct {
 		res   *parser.MatchResult
 		count func(*dbtest.Fake) int
 	}{
-		{"teams", &parser.MatchResult{Eliminations: 12}, func(f *dbtest.Fake) int { return len(f.Teams) }},
-		{"personal", &parser.MatchResult{HeroesPlayed: []parser.HeroPlay{{Hero: "lucio", Stats: map[string]int{"weapon_accuracy": 35}}}}, func(f *dbtest.Fake) int { return len(f.Personals) }},
-		{"rank", &parser.MatchResult{Rank: "platinum"}, func(f *dbtest.Fake) int { return len(f.Ranks) }},
-		{"unknown", &parser.MatchResult{}, func(f *dbtest.Fake) int { return len(f.Unknowns) }},
+		parser.TypeSummary:  {&parser.MatchResult{Result: "victory"}, func(f *dbtest.Fake) int { return len(f.Summaries) }},
+		parser.TypeTeams:    {&parser.MatchResult{Eliminations: 12}, func(f *dbtest.Fake) int { return len(f.Teams) }},
+		parser.TypePersonal: {&parser.MatchResult{HeroesPlayed: []parser.HeroPlay{{Hero: "lucio", Stats: map[string]int{"weapon_accuracy": 35}}}}, func(f *dbtest.Fake) int { return len(f.Personals) }},
+		parser.TypeRank:     {&parser.MatchResult{Rank: "platinum"}, func(f *dbtest.Fake) int { return len(f.Ranks) }},
+		// all_heroes is recognized but deliberately stores no match row — only
+		// the skip-registry filename, so a re-parse does not re-OCR it.
+		parser.TypeAllHeroes: {&parser.MatchResult{AllHeroes: true}, func(f *dbtest.Fake) int { return len(f.AllHeroes) }},
+		parser.TypeUnknown:   {&parser.MatchResult{}, func(f *dbtest.Fake) int { return len(f.Unknowns) }},
 	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
+
+	// The vocabulary is the checklist: a seventh screenshot type fails here
+	// until it is dispatched AND covered, rather than falling through to
+	// unknown and writing a garbage row in silence.
+	for _, typ := range parser.ScreenshotTypes {
+		if _, ok := cases[typ]; !ok {
+			t.Errorf("no dispatch case for screenshot type %q — this test must learn about a "+
+				"new type rather than silently cover less", typ)
+		}
+	}
+
+	for typ, c := range cases {
+		t.Run(string(typ), func(t *testing.T) {
+			if got := parser.Classify(c.res); got != typ {
+				t.Fatalf("fixture for %q classifies as %q — the case no longer exercises the arm it names", typ, got)
+			}
 			a, fake := newParseReadyApp(t)
 			res := c.res
 			stubParse(t, func(progress parser.ProgressFunc) error {
@@ -123,7 +143,7 @@ func TestApp_ParseScreenshots_DispatchesEachScreenshotType(t *testing.T) {
 				t.Fatalf("ParseScreenshots: %v", err)
 			}
 			if got := c.count(fake); got != 1 {
-				t.Errorf("%s: stored %d rows, want 1", c.name, got)
+				t.Errorf("%s: stored %d rows, want 1", typ, got)
 			}
 		})
 	}

@@ -139,7 +139,7 @@ func TestAggregate_SourceFilesUnion_AndTypesMap(t *testing.T) {
 	if !reflect.DeepEqual(rec.SourceFiles, wantFiles) {
 		t.Errorf("source files union broken: %v", rec.SourceFiles)
 	}
-	wantTypes := map[string]string{
+	wantTypes := map[string]parser.ScreenshotType{
 		"s.png": "summary", "sb.png": "teams",
 		"p.png": "personal", "r.png": "rank",
 	}

@@ -198,7 +198,7 @@ func TestAttachPlayModes_NoFallbackFromRankPresence(t *testing.T) {
 	recs := []match.Record{{
 		MatchKey:    "k1",
 		Data:        parser.MatchResult{Playlist: "competitive"},
-		SourceTypes: map[string]string{"r.png": "rank"},
+		SourceTypes: map[string]parser.ScreenshotType{"r.png": "rank"},
 	}}
 	aggregate.AttachPlayModes(recs, nil)
 	if recs[0].PlayMode != "" {
@@ -210,7 +210,7 @@ func TestAttachPlayModes_NoSignalLeavesEmpty(t *testing.T) {
 	recs := []match.Record{{
 		MatchKey:    "k1",
 		Data:        parser.MatchResult{Playlist: ""},
-		SourceTypes: map[string]string{"s.png": "summary"},
+		SourceTypes: map[string]parser.ScreenshotType{"s.png": "summary"},
 	}}
 	aggregate.AttachPlayModes(recs, nil)
 	if recs[0].PlayMode != "" {
