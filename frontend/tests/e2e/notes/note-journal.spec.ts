@@ -145,6 +145,15 @@ test.describe('a search keeps its hits lit', () => {
 
     // Lit while the field is live and editable…
     await expect(note(page).locator('mark.note-hit, .note-hit')).toHaveCount(1)
+
+    // Gate on the editor being HYDRATED and focused before typing. Clicking
+    // the preview swaps in the WYSIWYG field, which seeds itself from the
+    // draft; a keystroke that lands mid-seed is overwritten by it, and the
+    // note comes back empty or a character short. The highlight above proves
+    // the field exists, not that it has finished taking its content.
+    await expect(note(page)).toContainText('Hold the high ground')
+    await expect(note(page)).toBeFocused()
+
     await page.keyboard.type(' first')
     await note(page).blur()
 
