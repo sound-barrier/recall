@@ -22,6 +22,13 @@ function onInput(): void {
 function submit(): void {
   if (!ready.value) return
   props.add(draft.value)
+  close()
+}
+
+// Cancelling DISCARDS. Leaving a half-typed code behind means the next code
+// the coach adds could quietly be the one they abandoned — and a wrong code
+// mints a match key, so that is not a cosmetic mistake.
+function close(): void {
   draft.value = ''
   open.value = false
 }
@@ -50,13 +57,13 @@ function submit(): void {
         spellcheck="false"
         placeholder="e.g. D4E5F6"
         @input="onInput"
-        @keydown.escape="open = false"
+        @keydown.escape="close"
       >
       <div class="coach-add-code-actions">
         <button type="submit" class="btn ghost" :disabled="!ready">
           Add
         </button>
-        <button type="button" class="btn ghost" @click="open = false">
+        <button type="button" class="btn ghost" @click="close">
           Cancel
         </button>
       </div>

@@ -81,6 +81,7 @@ function commit(): void {
           list="observed-maps"
           autocomplete="off"
           placeholder="e.g. Ilios"
+          @input="commit"
           @change="commit"
           @blur="commit"
         >
@@ -98,6 +99,7 @@ function commit(): void {
           list="observed-heroes"
           autocomplete="off"
           placeholder="e.g. Ana"
+          @input="commit"
           @change="commit"
           @blur="commit"
         >
@@ -136,6 +138,7 @@ function commit(): void {
           v-model="draft.date"
           class="mm-input"
           type="date"
+          @input="commit"
           @change="commit"
           @blur="commit"
         >

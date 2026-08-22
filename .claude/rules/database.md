@@ -223,6 +223,32 @@ Resolved by `App.dataDir()` (returns `a.profiles.ActiveDir()`) in
 parent table the row lives in; `MatchRecord.SourceTypes` is built at aggregate
 time from each row's parent table name.
 
+## Replay codes are an identity, and the store enforces it
+
+`match_annotations.replay_code` was a display string: nullable, unvalidated,
+no index. It is now the token a coach and a player independently derive the
+same `match_key` from (`replay-<CODE>`, see `pkg/match/replay_code.go`), so
+the store holds it to that:
+
+- **Canonical form** — six uppercase ASCII alphanumerics. Writes go through
+  `matchedit.normalizeAnnotation`; `bundle.Import` deliberately does NOT
+  reject, only normalizes, because failing a whole restore over one stale
+  code would cost a user their history to enforce a format.
+- **Unique** — a partial index (`WHERE replay_code IS NOT NULL AND <> ''`).
+  Partial because most matches have no code, and SQLite lets NULLs coexist
+  under a unique index but not empty strings.
+
+Both are applied by `normalizeReplayCodes` in `pkg/db/schema_replay_code.go`,
+run at store open beside `backfillLegacyNulls`. It is **not** in `schema.sql`,
+and the ordering is the reason: a database written by an older build may hold
+two matches claiming one code, and `CREATE UNIQUE INDEX` fails while that
+stands — so the tie is broken first (earliest match keeps the code) and the
+index built after. An index that fails at open is an app that will not start.
+
+A legacy code of the wrong LENGTH is re-cased and otherwise left alone. It
+still renders, still searches, and simply never mints a key — which is what
+it already did. Deleting user data to satisfy a new rule is the worse trade.
+
 ## Adding a field
 
 Pre-1.0 the schema lives entirely in `pkg/db/schema.sql`, applied verbatim on
