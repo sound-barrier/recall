@@ -35,7 +35,6 @@ var (
 	ParseTesseractVersion    = parseTesseractVersion
 	CheckTesseract           = checkTesseract
 	RunWatchEvents           = runWatchEvents
-	PathIsMissingOrNotADir   = pathIsMissingOrNotADir
 )
 
 // ── Backup / snapshot seams ───────────────────────────────────────────────
@@ -78,9 +77,8 @@ var (
 // IO-performing public setters).
 func SettingsOf(a *App) *Settings { return &a.settings }
 
-// Store / SetStore bridge the persistence handle.
-func Store(a *App) db.Store       { return a.store }
-func SetStore(a *App, s db.Store) { a.store = s }
+// Store bridges the persistence handle.
+func Store(a *App) db.Store { return a.store }
 
 // TessStatus exposes the cached Tesseract status so a parse test can mark
 // the engine "found" without shelling out to a real binary.

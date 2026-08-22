@@ -151,6 +151,7 @@ tasks:
       - task: lint-typos
       - task: lint-md
       - task: check-doc-paths
+      - task: check-test-exports
       - task: lint-actions
       - task: lint-semgrep
 
@@ -173,6 +174,11 @@ tasks:
       - echo "[ recall ] Linting JavaScript/Vue (eslint)…"
       - cd frontend && npm run lint:js
       - echo "[ recall ] ✓  JS/Vue lint clean"
+
+  check-test-exports:
+    desc: Fail on export_test.go entries no test uses
+    cmds:
+      - bash scripts/ci/check-test-exports.sh
 
   lint-arch:
     desc: Lint the frontend module graph (dependency-cruiser)

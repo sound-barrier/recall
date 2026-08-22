@@ -53,7 +53,6 @@ var (
 	FindStatColumns       = findStatColumns
 	FindHighlightedRowY   = findHighlightedRowY
 	FindRowXExtent        = findRowXExtent
-	Crop                  = crop
 	IsSummaryScreenshot   = isSummaryScreenshot
 	IsRankScreenshot      = isRankScreenshot
 	IsPersonalScreenshot  = isPersonalScreenshot

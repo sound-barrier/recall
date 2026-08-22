@@ -6,7 +6,6 @@ package cmd
 // (cursor decoding, limit clamping, strict query validation). Compiled only
 // under test, so they widen no real API.
 var (
-	ValidateMatchesQueryParams   = validateMatchesQueryParams
 	ParseMatchesPaginationStrict = parseMatchesPaginationStrict
 	ParseMatchesPagination       = parseMatchesPagination
 	ApplyMatchesPagination       = applyMatchesPagination
@@ -32,8 +31,6 @@ var (
 var (
 	WriteError      = writeError
 	DefaultProblems = defaultProblems
-	ProblemStatus   = func(pt problemType) int { return pt.status }
-	ProblemSlug     = func(pt problemType) string { return pt.slug }
 )
 
 // ErrStatusIs exposes the sentinel half of an errStatus rung so the ladder
