@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import type { FilterableField } from '@/composables/matches/useNarrowCellFilter'
-import { useMatchClock } from '@/composables/shared/useMatchClock'
+import { useMatchClock } from '@/composables/matches/useMatchClock'
 import { useOWData } from '@/composables/shared/useOWData'
 import {
   formatRowDate,

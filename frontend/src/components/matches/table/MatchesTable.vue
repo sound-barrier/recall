@@ -6,7 +6,7 @@ import { useTableSort, type TableSortCol, TABLE_SORT_COLUMNS } from '@/composabl
 import { useTableMode } from '@/composables/matches/table/useTableMode'
 import { useNarrowCellFilter } from '@/composables/matches/useNarrowCellFilter'
 import { useColumnResize } from '@/composables/matches/table/useColumnResize'
-import { useMatchClock } from '@/composables/shared/useMatchClock'
+import { useMatchClock } from '@/composables/matches/useMatchClock'
 import { useCellDragSelect } from '@/composables/matches/table/useCellDragSelect'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useAppStore } from '@/stores/app'

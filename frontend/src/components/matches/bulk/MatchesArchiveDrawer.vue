@@ -9,7 +9,7 @@
 // `useMatchesBulkActions` — which composes both, and is where a bug in either
 // is. The drawer signals intent (begin-move / move-to-profile / cancel-move,
 // per-row unhide / hard-delete) and holds no state of its own.
-import { useMatchClock } from '@/composables/shared/useMatchClock'
+import { useMatchClock } from '@/composables/matches/useMatchClock'
 import { useOWData } from '@/composables/shared/useOWData'
 import type { UseArchiveSelectionApi } from '@/composables/matches/list/useArchiveSelection'
 import { formatHeroes, formatRoles, formatRowDate, formatFinishedAt } from '@/match/match-helpers'
