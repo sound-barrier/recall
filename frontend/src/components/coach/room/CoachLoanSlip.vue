@@ -88,6 +88,21 @@ const requestEnd = () => coach.requestEndSession()
         1 · Export notes
       </button>
       <!--
+        The other way to hand it over. The archive is for a player who runs
+        Recall and will import it; this is one page they can open in any
+        browser, offline — for the player who will not, or does not have it.
+        Same document either way: the archive's human copy IS this page.
+      -->
+      <button
+        type="button"
+        class="paper-btn coach-slip-btn"
+        :disabled="!canExport"
+        :title="exportTitle"
+        @click="coach.exportSheet()"
+      >
+        …or save it as one page
+      </button>
+      <!--
         The receipt: the export used to succeed in silence, on the one action
         in the room whose whole point is producing a file for someone else.
       -->

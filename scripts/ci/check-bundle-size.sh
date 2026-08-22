@@ -62,6 +62,23 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # bindings only while the room is open, and the room opens for a sitting as
 # well as a session. Measured 338381B — the store, its query module and the
 # SDK surface the Phase 3 bump already noted as the first-paint cost.
+# 2026-08: 348500 -> 352500 -- coaching from replay codes, in two parts, and
+# worth recording that the FIRST part shipped over this line unnoticed. The
+# bundle gate is not in `task lint`, only in CI, so the replay-session commit
+# landed at 350174B against a 348500B cap. The cost is the coach store, which
+# is eager by construction (the app must know whether a session is open before
+# any view renders): four new session methods, the observed-context writer,
+# and the api.ts facades for three new routes -- api.ts being one eager
+# module. The second part adds ~1.4KB more: the store's fold from session refs
+# into the sheet's input shape. Measured 351570B.
+#
+# What is NOT here, and was nearly: the sheet BUILDER and the app's inlined
+# stylesheets. `await import()` is not by itself a promise a module stays out
+# of the entry -- Rollup hoists a dynamically-imported module whose deps are
+# already in the main graph, and it did exactly that to the builder because it
+# shares render-markdown with eager code. Routing both through one module
+# (coach-sheet-export.ts) gave the bundler a single unit to move, and it moved
+# it: a 15KB lazy chunk nobody who never exports a review will fetch.
 # 2026-08: 340000 -> 344000 -- the reviews-UX pass's eager tail (measured
 # 340821B): the palette's "Review my last session" action + runner (the
 # palette is eager chrome), the masthead's what's-new gate (the strip itself
@@ -90,7 +107,7 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # match-time-helpers into the entry chunk. The helper now lives in
 # match-label-helpers.ts, which imports nothing at runtime. A leaf that costs
 # nothing to import is worth more than a leaf that sits beside its callers.
-: "${MAX_INITIAL_JS_BYTES:=348500}"
+: "${MAX_INITIAL_JS_BYTES:=352500}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
@@ -280,7 +297,7 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # fails a test rather than a budget.
 #
 # Measured 2117506B; set ~6.5KB above it per the sizing convention.
-: "${MAX_TOTAL_JS_BYTES:=2124000}"
+: "${MAX_TOTAL_JS_BYTES:=2152000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
@@ -318,7 +335,7 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # because extracting the shared .sheet-* family took 1165B of duplicate back
 # out at the same time (416393B before the extraction, 415228B after). New
 # surface; ~2.8KB headroom.
-: "${MAX_TOTAL_CSS_BYTES:=418000}"
+: "${MAX_TOTAL_CSS_BYTES:=419000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never

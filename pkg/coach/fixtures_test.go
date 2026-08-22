@@ -128,3 +128,8 @@ func zipWithEntries(t *testing.T, entries map[string][]byte) []byte {
 }
 
 var fixedNow = time.Date(2026, 8, 15, 9, 12, 0, 0, time.UTC)
+
+// testSheet stands in for the human copy the frontend builds. Go no longer
+// renders it — it puts the bytes in the zip — so the tests need only
+// something non-empty that looks like the document it declines to parse.
+var testSheet = []byte("<!doctype html><html><body>review</body></html>")

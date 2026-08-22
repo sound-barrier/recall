@@ -1,0 +1,143 @@
+/* The coach's sheet — geometry only.
+ *
+ * This file is inlined into a standalone HTML file a coach emails to a
+ * player, alongside the app's REAL tokens.css, themes.css, paper.css and
+ * note-prose.css. That is the whole point: the sheet renders from the same
+ * bytes the app does, so the two cannot drift the way a hand-copied subset
+ * would.
+ *
+ * So there is nothing here about ink, paper, type scale or the note's block
+ * rhythm — those already exist and are imported. What lives here is only
+ * what the app has no equivalent of: a printed page. */
+
+.sheet {
+  margin: 0;
+  padding: var(--space-5) var(--space-3);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.sheet-page {
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+.sheet-head {
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: var(--space-4);
+}
+
+.sheet-h1 {
+  margin: var(--space-1) 0 var(--space-1);
+  font-size: 1.9rem;
+  line-height: 1.1;
+}
+
+.sheet-h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--type-lg);
+}
+
+.sheet-by {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--type-sm);
+}
+
+.sheet-dot {
+  padding: 0 0.4em;
+  color: var(--text-faint);
+}
+
+.sheet-focus {
+  margin-bottom: var(--space-5);
+}
+
+.sheet-focus-list {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.sheet-focus-list li {
+  margin-bottom: var(--space-2);
+}
+
+.sheet-note {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--hairline);
+  margin-bottom: var(--space-4);
+}
+
+.sheet-match {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-2);
+  font-size: var(--type-sm);
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.sheet-key {
+  font-family: var(--mono);
+  font-size: var(--type-xs);
+  text-transform: none;
+}
+
+.sheet-clock {
+  font-family: var(--mono);
+  font-size: var(--type-xs);
+  color: var(--text-dim);
+  text-transform: none;
+}
+
+.sheet-reviewed {
+  margin: 0;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.sheet-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+}
+
+.sheet-tag {
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  font-size: var(--type-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.sheet-moments {
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sheet-moments li {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.sheet-moment-text {
+  flex: 1;
+}
+
+/* A sheet is read on screen and then, often, printed and scribbled on. */
+@media print {
+  .sheet {
+    padding: 0;
+  }
+
+  .sheet-note {
+    break-inside: avoid;
+  }
+}

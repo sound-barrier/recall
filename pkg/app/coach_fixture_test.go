@@ -205,7 +205,7 @@ func notesArchive(t *testing.T) []byte {
 	if _, err := a.PutCoachNote(playerMatchRialto, writtenNote()); err != nil {
 		t.Fatalf("PutCoachNote: %v", err)
 	}
-	_, payload, err := a.ExportCoachNotes()
+	_, payload, err := a.ExportCoachNotes(testSheet)
 	mustNoErr(t, err)
 	return payload
 }
@@ -236,3 +236,7 @@ func seedPlayerAnnotations(store db.Store) error {
 	}
 	return nil
 }
+
+// testSheet stands in for the human copy the frontend builds — see the note
+// on coach.WriteNotesArchive for why Go stopped rendering it.
+var testSheet = []byte("<!doctype html><html><body>review</body></html>")

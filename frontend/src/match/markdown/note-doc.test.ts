@@ -10,7 +10,7 @@ import { renderMarkdown } from '@/match/markdown/render-markdown'
 // The same table both grammar implementations are pinned to, reached across
 // the repo rather than copied — see render-markdown.test.ts.
 const cases = JSON.parse(readFileSync(
-  resolve(__dirname, '../../../../pkg/coach/testdata/markdown_cases.json'), 'utf8',
+  resolve(__dirname, './testdata/markdown_cases.json'), 'utf8',
 )).cases as { name: string; in: string; out: string }[]
 
 const roundTrip = (src: string): string => docToMarkdown(textToDoc(src))

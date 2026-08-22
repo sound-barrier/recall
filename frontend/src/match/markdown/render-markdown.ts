@@ -6,10 +6,16 @@
 // links, no images, no tables, no raw HTML — a dependency would bring all
 // of that plus a sanitizer to take it back out again.
 //
-// This is one of TWO implementations (the other is pkg/coach/markdown.go,
-// for the exported ledger.html). They are pinned to identical output by one
-// shared table, pkg/coach/testdata/markdown_cases.json, which both test
-// suites read. Add a case there first, then make both sides pass it.
+// This is the ONE implementation of the note grammar, and it was not always.
+// A second lived in pkg/coach/markdown.go, rendering the ledger.html a coach
+// exported, and the two were pinned to identical output by the shared table
+// in ./testdata/markdown_cases.json. When the coach's page moved here — to
+// where the app's real stylesheets are — that renderer lost its only caller
+// and went with it, and the table came along.
+//
+// The table is still the spec rather than a regression net: its expected
+// outputs are hand-authored, so a case is added THERE first and this file is
+// then made to pass it.
 //
 // Everything is escaped BEFORE any markup is produced, so a `<script>` in a
 // note is text on every surface. The output is a fixed vocabulary of tags
@@ -33,7 +39,15 @@ const ESCAPES: Record<string, string> = {
   "'": '&#39;',
 }
 
-function escapeHTML(raw: string): string {
+/**
+ * Escape text for HTML.
+ *
+ * Exported because the coach's sheet builds a whole document by string
+ * concatenation and every interpolation has to go through exactly one
+ * escaper. Two copies of "what needs escaping" is how one of them ends up
+ * missing an apostrophe.
+ */
+export function escapeHTML(raw: string): string {
   return raw.replace(/[&<>"']/g, (ch) => ESCAPES[ch] ?? ch)
 }
 

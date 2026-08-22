@@ -185,6 +185,35 @@ func (a *App) SaveTextToFile(defaultName, contents string) (string, error) {
 	return path, nil
 }
 
+// SaveCoachSheetToFile writes the standalone review page a coach hands over.
+//
+// A sibling of SaveTextToFile rather than a reuse of it: that dialog says
+// "Save match data (CSV)" and filters for *.csv, and putting it in front of
+// an HTML review would be the wrong dialog on the wrong file. The page
+// itself is built in the frontend, where the real stylesheets are; Go never
+// parses it, exactly as it never parses the ledger inside the archive.
+func (a *App) SaveCoachSheetToFile(defaultName, contents string) (string, error) {
+	if defaultName == "" {
+		defaultName = "recall-coaching-review-" + time.Now().UTC().Format("20060102-150405") + ".html"
+	}
+	path, err := application.Get().Dialog.SaveFile().
+		SetMessage("Save coaching review (web page)").
+		SetFilename(defaultName).
+		AddFilter("Web page", "*.html").
+		AddFilter("All files", "*").
+		PromptForSingleSelection()
+	if err != nil {
+		return "", err
+	}
+	if path == "" {
+		return "", nil
+	}
+	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
+		return "", fmt.Errorf("write coach sheet: %w", err)
+	}
+	return path, nil
+}
+
 // SaveBundleToFile is the bundle-export sibling of SaveTextToFile. Pops a
 // native save dialog defaulting to filename, then writes the ExportBundle
 // payload to the chosen path. Returns the path on success, "" + nil on user
@@ -373,8 +402,13 @@ func (a *App) LoadCoachBundleFromFile() (CoachSessionResult, error) {
 // archive's own name — and so a missing coach name or an empty session is
 // reported before the user picks a destination. Returns the path on
 // success, "" + nil on cancel.
-func (a *App) SaveCoachNotesToFile() (string, error) {
-	defaultName, payload, err := a.ExportCoachNotes()
+//
+// sheetHTML is the human copy, built in the frontend where the app's real
+// stylesheets are. It rides in rather than being rendered here so that the
+// page a player opens standalone and the page inside the archive are the
+// same bytes — two renderers of one document is how they drift.
+func (a *App) SaveCoachNotesToFile(sheetHTML string) (string, error) {
+	defaultName, payload, err := a.ExportCoachNotes([]byte(sheetHTML))
 	if err != nil {
 		return "", err
 	}

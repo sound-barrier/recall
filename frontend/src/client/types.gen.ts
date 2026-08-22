@@ -5133,13 +5133,24 @@ export type PutCoachFocusItemsResponses = {
 export type PutCoachFocusItemsResponse = PutCoachFocusItemsResponses[keyof PutCoachFocusItemsResponses];
 
 export type ExportCoachNotesData = {
-    body?: never;
+    body: {
+        /**
+         * The self-contained review page, as HTML. Becomes
+         * `ledger.html` inside the archive, verbatim.
+         *
+         */
+        sheet_html: string;
+    };
     path?: never;
     query?: never;
     url: '/api/v1/coach/session/export';
 };
 
 export type ExportCoachNotesErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
     /**
      * The requested resource was not found.
      */

@@ -384,7 +384,15 @@ frontend/src/components/elo                   20
 # only version that stays true on its own: an editor styled separately from the
 # card its note lands on drifts into looking different from what it promises,
 # one rule at a time.
-frontend/src/styles                           19
+# 19 -> 20 for coach-sheet.css: the geometry of a PRINTED PAGE, which the app
+# has no equivalent of. The coach's review is now built here and handed over
+# as one standalone HTML file, inlining this sheet alongside the app's real
+# tokens/themes/paper/note-prose — so the page a player opens and the app they
+# would open it beside are painted from the same bytes. It holds only what has
+# no app counterpart (page frame, per-note article, print rules); everything
+# about ink, type scale and the note's block rhythm comes from the four files
+# already here, which is the entire reason it is this short.
+frontend/src/styles                           20
 
 # frontend/src/components/settings — one component per Settings tab section.
 # Ratcheted from 18 after three residents were evicted to the features that own

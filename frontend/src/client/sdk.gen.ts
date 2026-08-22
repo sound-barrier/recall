@@ -1663,8 +1663,21 @@ export const putCoachFocusItems = <ThrowOnError extends boolean = false>(options
  * player's handle is confirmed, or when nothing has been written —
  * no note and no focus item.
  *
+ * The human copy arrives in the request body. It is rendered by the
+ * client, where the app's real stylesheets are, so that the page inside
+ * this archive and the standalone page a coach can download separately
+ * are the same bytes. The server never parses it — it puts it in the
+ * zip — and bounds it at 8 MiB like every other entry.
+ *
  */
-export const exportCoachNotes = <ThrowOnError extends boolean = false>(options?: Options<ExportCoachNotesData, ThrowOnError>): RequestResult<ExportCoachNotesResponses, ExportCoachNotesErrors, ThrowOnError> => (options?.client ?? client).post<ExportCoachNotesResponses, ExportCoachNotesErrors, ThrowOnError>({ url: '/api/v1/coach/session/export', ...options });
+export const exportCoachNotes = <ThrowOnError extends boolean = false>(options: Options<ExportCoachNotesData, ThrowOnError>): RequestResult<ExportCoachNotesResponses, ExportCoachNotesErrors, ThrowOnError> => (options.client ?? client).post<ExportCoachNotesResponses, ExportCoachNotesErrors, ThrowOnError>({
+    url: '/api/v1/coach/session/export',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * The player's inbox of returned notes

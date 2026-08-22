@@ -215,7 +215,7 @@ func TestExportCoachNotes_CarriesTheMoments(t *testing.T) {
 	_, err := a.PutCoachMoment(playerMatchRialto, "", stamp("4:45", "flanking Cassidy"))
 	mustNoErr(t, err)
 
-	_, payload, err := a.ExportCoachNotes()
+	_, payload, err := a.ExportCoachNotes(testSheet)
 	mustNoErr(t, err)
 	file := notesFileFromArchive(t, payload)
 	if len(file.Notes) != 1 || len(file.Notes[0].Moments) != 1 {

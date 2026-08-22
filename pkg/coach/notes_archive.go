@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -69,18 +70,18 @@ func SniffArchive(payload []byte) ArchiveKind {
 // (indented, the machine copy) plus ledger.html (the human copy), every
 // entry stamped with now. The file is validated first so an archive this
 // build writes is one it can read back.
-func WriteNotesArchive(f NotesFile, now time.Time) ([]byte, error) {
+func WriteNotesArchive(f NotesFile, sheetHTML []byte, now time.Time) ([]byte, error) {
 	if err := ValidateNotesFile(f); err != nil {
+		return nil, err
+	}
+	if err := validateSheetHTML(sheetHTML); err != nil {
 		return nil, err
 	}
 	notesJSON, err := json.MarshalIndent(f, "", "  ")
 	if err != nil {
 		return nil, fmt.Errorf("coach: encode notes.json: %w", err)
 	}
-	ledger, err := RenderLedger(f)
-	if err != nil {
-		return nil, err
-	}
+	ledger := sheetHTML
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 	for _, entry := range []struct {
@@ -95,6 +96,31 @@ func WriteNotesArchive(f NotesFile, now time.Time) ([]byte, error) {
 		return nil, fmt.Errorf("coach: close archive: %w", err)
 	}
 	return buf.Bytes(), nil
+}
+
+// ErrSheetMissing rejects an archive with no human copy in it.
+var ErrSheetMissing = errors.New("the review page is required")
+
+// ErrSheetTooLarge rejects a human copy larger than the archive allows.
+var ErrSheetTooLarge = errors.New("the review page is too large")
+
+// validateSheetHTML holds the incoming page to the two things Go can check
+// about it: that it exists, and that it is not enormous.
+//
+// Deliberately nothing else. The page is BUILT IN THE FRONTEND now, where
+// the real stylesheets live, and Go's role is to put the bytes in a zip.
+// This package has never parsed the human copy — the doc below already
+// promises the app does not read it back — and taking it from the frontend
+// rather than rendering it here does not change that promise, only who
+// wrote the bytes it declines to parse.
+func validateSheetHTML(sheetHTML []byte) error {
+	if len(sheetHTML) == 0 {
+		return ErrSheetMissing
+	}
+	if int64(len(sheetHTML)) > maxNotesEntryBytes {
+		return fmt.Errorf("%w: %d bytes", ErrSheetTooLarge, len(sheetHTML))
+	}
+	return nil
 }
 
 // writeZipEntry adds one deflated entry with an explicit mtime — without

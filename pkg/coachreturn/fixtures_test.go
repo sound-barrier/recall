@@ -24,7 +24,7 @@ func returnedNotes(t *testing.T) []byte {
 		NoteID: orphanNoteID, MatchKey: orphanKey, Kind: "note", Text: "gone", FocusTags: []string{"comms"}, ExtraTags: []string{},
 		Match: &coach.MatchContext{Map: "busan", Hero: "ana", Result: "defeat", Date: "2030-01-01", FinishedAt: "00:00"},
 	})
-	payload, err := coach.WriteNotesArchive(f, fixedNow)
+	payload, err := coach.WriteNotesArchive(f, testSheet, fixedNow)
 	if err != nil {
 		t.Fatalf("WriteNotesArchive: %v", err)
 	}
@@ -60,7 +60,7 @@ func emptyNotes(t *testing.T) []byte {
 
 func writeNotes(t *testing.T, f coach.NotesFile) []byte {
 	t.Helper()
-	payload, err := coach.WriteNotesArchive(f, fixedNow)
+	payload, err := coach.WriteNotesArchive(f, testSheet, fixedNow)
 	if err != nil {
 		t.Fatalf("WriteNotesArchive: %v", err)
 	}
@@ -185,3 +185,7 @@ func wantStagedSheet(id int64, importedAt string) coachreturn.Sheet {
 		Pending:   2,
 	}
 }
+
+// testSheet stands in for the human copy the frontend builds — see the
+// note on coach.WriteNotesArchive for why Go stopped rendering it.
+var testSheet = []byte("<!doctype html><html><body>review</body></html>")

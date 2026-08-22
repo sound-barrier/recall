@@ -151,22 +151,23 @@ Also: `task test-go`, `task cover-go`, `task dead-code-go` (allow-list at
 
 ## A tripwire worth knowing
 
-**Frontend test files read Go testdata by relative path.** Two fixtures are
-shared across the language boundary today, each pinning a rule that has one
-definition and two implementations:
+**A frontend test file reads Go testdata by relative path.**
+`pkg/match/testdata/replay_code_cases.json` pins the replay-code format and is
+read by `frontend/src/match/replay-code.test.ts`. Moving the fixture, or
+`pkg/match/replay_code.go` beside it, breaks Vitest with a file-not-found and
+**no Go gate will warn you**.
 
-- `pkg/coach/testdata/markdown_cases.json` — the note grammar, read by four
-  frontend test files.
-- `pkg/match/testdata/replay_code_cases.json` — the replay-code format, read
-  by `frontend/src/match/replay-code.test.ts`.
-
-Moving either fixture, or the Go file beside it, breaks Vitest with a
-file-not-found, and **no Go gate will warn you**.
-
-The replay-code pair is the one with teeth: a match key is minted from the
-code, so if Go and TypeScript disagree about a single character, a coach's
-note lands on a key that does not exist on the player's machine and nothing
-reports an error. That is why neither side uses its own language's `trim` or
+It is worth the coupling. A match key is minted from a replay code, so if Go
+and TypeScript disagree about a single character, a coach's note lands on a
+key that does not exist on the player's machine and nothing anywhere reports
+an error. That is why neither side uses its own language's `trim` or
 `toUpperCase` — Go's are Unicode-aware and JavaScript's are Unicode-aware
 differently, in both directions. Spell character sets out in ASCII when two
-renderers of one grammar have to agree.
+implementations of one rule have to agree.
+
+The note grammar used to be a second such pair (`pkg/coach/markdown.go` and
+its TypeScript twin, pinned by `markdown_cases.json`). When the coach's
+exported page moved to the frontend — to where the app's real stylesheets
+are — the Go renderer lost its only caller, and keeping it would have meant
+ten allow-list entries for a file nobody called. Both it and the fixture now
+live in `frontend/src/match/markdown/`.

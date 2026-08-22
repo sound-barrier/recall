@@ -130,6 +130,7 @@ export {
   EventsOn,
   ExportBundle,
   ExportCoachNotes,
+  ExportCoachSheet,
   ExportDiagnosticBundle,
   ExportMatchesCSV,
   ImportMatches,

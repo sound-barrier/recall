@@ -10,7 +10,7 @@ import { textToDoc } from '@/match/markdown/note-doc'
 import { renderMarkdown } from '@/match/markdown/render-markdown'
 
 const cases = JSON.parse(readFileSync(
-  resolve(__dirname, '../../../../pkg/coach/testdata/markdown_cases.json'), 'utf8',
+  resolve(__dirname, '../../match/markdown/testdata/markdown_cases.json'), 'utf8',
 )).cases as { name: string; in: string; out: string }[]
 
 let editor: Editor | undefined

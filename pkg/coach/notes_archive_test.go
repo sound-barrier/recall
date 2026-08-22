@@ -42,7 +42,7 @@ func readArchiveEntries(t *testing.T, payload []byte) map[string][]byte {
 
 func TestNotesArchive_RoundTrip(t *testing.T) {
 	f := validNotesFile()
-	payload, err := coach.WriteNotesArchive(f, fixedNow)
+	payload, err := coach.WriteNotesArchive(f, testSheet, fixedNow)
 	if err != nil {
 		t.Fatalf("WriteNotesArchive: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestNotesArchive_RoundTrip(t *testing.T) {
 func TestWriteNotesArchive_RefusesAnInvalidFile(t *testing.T) {
 	f := validNotesFile()
 	f.CoachName = ""
-	if _, err := coach.WriteNotesArchive(f, fixedNow); !errors.Is(err, coach.ErrNotesMalformed) {
+	if _, err := coach.WriteNotesArchive(f, testSheet, fixedNow); !errors.Is(err, coach.ErrNotesMalformed) {
 		t.Fatalf("err = %v, want ErrNotesMalformed", err)
 	}
 }
@@ -200,5 +200,45 @@ func TestContentHash_IsSHA256Hex(t *testing.T) {
 	}
 	if coach.ContentHash([]byte("abc")) == coach.ContentHash([]byte("zzz")) {
 		t.Error("distinct inputs hashed equal")
+	}
+}
+
+// The human copy is the reason the archive has two entries. Go stopped
+// RENDERING it — the frontend builds it, where the app's real stylesheets
+// are — but it did not stop requiring it: an archive with only notes.json in
+// it is unreadable by the player it was made for.
+func TestWriteNotesArchive_RequiresTheHumanCopy(t *testing.T) {
+	if _, err := coach.WriteNotesArchive(validNotesFile(), nil, fixedNow); !errors.Is(err, coach.ErrSheetMissing) {
+		t.Fatalf("err = %v, want ErrSheetMissing", err)
+	}
+	if _, err := coach.WriteNotesArchive(validNotesFile(), []byte{}, fixedNow); !errors.Is(err, coach.ErrSheetMissing) {
+		t.Fatalf("empty sheet: err = %v, want ErrSheetMissing", err)
+	}
+}
+
+// Bounded like every other entry. The page arrives over the wire from a
+// process this one does not control, so "however big it is" is not an answer.
+func TestWriteNotesArchive_BoundsTheHumanCopy(t *testing.T) {
+	huge := make([]byte, (8<<20)+1)
+	for i := range huge {
+		huge[i] = 'x'
+	}
+	if _, err := coach.WriteNotesArchive(validNotesFile(), huge, fixedNow); !errors.Is(err, coach.ErrSheetTooLarge) {
+		t.Fatalf("err = %v, want ErrSheetTooLarge", err)
+	}
+}
+
+// Verbatim: Go's contract is that the bytes handed in are the bytes that
+// come out. It has never parsed this entry and still does not — the change
+// is only who authored what it declines to read.
+func TestWriteNotesArchive_CarriesTheHumanCopyVerbatim(t *testing.T) {
+	page := []byte("<!doctype html><html><body>the coach's own words</body></html>")
+	payload, err := coach.WriteNotesArchive(validNotesFile(), page, fixedNow)
+	if err != nil {
+		t.Fatalf("WriteNotesArchive: %v", err)
+	}
+	got := readArchiveEntries(t, payload)["ledger.html"]
+	if !bytes.Equal(got, page) {
+		t.Errorf("ledger.html = %q, want the exact bytes handed in", got)
 	}
 }

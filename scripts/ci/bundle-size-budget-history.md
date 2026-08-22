@@ -332,3 +332,6 @@ exactly two files may statically import `@tiptap`. Proven by mutation: put the
 import back and that test fails.
 
 Measured 2117506B initial / total; cap set ~6.5KB above per the convention.
+| 2026-08-21 | coach-replay-code | initial JS | 348500 → 352500 | The coach store's eager surface: four replay-session methods, the observed-context writer, three new api.ts facades, and the fold from session refs into the sheet's input shape. Measured 351570B. Records that the replay-session commit shipped over the old cap unnoticed — the bundle gate runs in CI, not in `task lint`. |
+| 2026-08-21 | coach-replay-code | total JS | 2124000 → 2152000 | Mostly the review sheet's lazy chunk (15KB): the builder plus the app's real `tokens`/`themes`/`paper`/`note-prose` inlined as strings, so the standalone page paints from the same bytes the app does. Fetched only by a coach who exports. |
+| 2026-08-21 | coach-replay-code | total CSS | 418000 → 419000 | Scoped styles for the three new coaching surfaces (entry modal, in-room add-a-code, observed-context editor). `coach-sheet.css` does NOT appear here — it is inlined as a string, so it counts against total JS. |

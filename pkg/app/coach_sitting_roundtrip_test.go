@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"slices"
-	"strings"
 	"testing"
 
 	"recall/pkg/app"
@@ -185,12 +184,19 @@ func assertNotesZipCarriesTheCoachsWork(t *testing.T, payload []byte) coach.Note
 
 	// The human copy is the reason a second entry exists at all — a coach can
 	// send this to a player who is not running Recall.
+	//
+	// What this asserts changed with the renderer. The page is built in the
+	// FRONTEND now, where the app's real stylesheets live, so Go's contract
+	// is no longer "the ledger says X" but "the bytes handed in are the bytes
+	// that come out". That is the stronger claim of the two, and the only one
+	// this side can honestly make; what the page CONTAINS is asserted by
+	// coach-sheet.test.ts, against a builder that actually renders it.
 	zr, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
 	mustNoErr(t, err)
 	ledger, err := bundle.ReadZipEntry(zr, "ledger.html", 1<<20)
 	mustNoErr(t, err)
-	if !strings.Contains(string(ledger), "nade the dive, not the wall") {
-		t.Error("ledger.html does not carry the focus list a reader without Recall would come for")
+	if !bytes.Equal(ledger, testSheet) {
+		t.Errorf("ledger.html = %q, want the exact bytes handed to ExportCoachNotes", ledger)
 	}
 	return f
 }
@@ -230,7 +236,7 @@ func TestCoachingLoop_ASittingGoesToACoachAndComesBack(t *testing.T) {
 		{ItemID: coachItemDive, Text: "nade the dive, not the wall"},
 		{ItemID: coachItemSuzu, Text: "count their Kiriko suzu"},
 	}))
-	_, inbound, err := coachSide.ExportCoachNotes()
+	_, inbound, err := coachSide.ExportCoachNotes(testSheet)
 	mustNoErr(t, err)
 	assertNotesZipCarriesTheCoachsWork(t, inbound)
 

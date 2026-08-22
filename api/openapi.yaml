@@ -3008,6 +3008,26 @@ paths:
         no session open, `409` without a coach name in Settings, before the
         player's handle is confirmed, or when nothing has been written —
         no note and no focus item.
+
+        The human copy arrives in the request body. It is rendered by the
+        client, where the app's real stylesheets are, so that the page inside
+        this archive and the standalone page a coach can download separately
+        are the same bytes. The server never parses it — it puts it in the
+        zip — and bounds it at 8 MiB like every other entry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sheet_html]
+              properties:
+                sheet_html:
+                  type: string
+                  minLength: 1
+                  description: |
+                    The self-contained review page, as HTML. Becomes
+                    `ledger.html` inside the archive, verbatim.
       responses:
         "200":
           description: |
@@ -3018,6 +3038,8 @@ paths:
               schema:
                 type: string
                 format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
         "409":

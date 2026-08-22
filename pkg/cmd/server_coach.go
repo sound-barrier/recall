@@ -322,10 +322,28 @@ func handlePutCoachFocusItems(a *app.App) http.HandlerFunc {
 // notes.json (the machine copy) plus ledger.html (the human copy). POST
 // because it assembles a document rather than reading a resource; a session
 // with no name set, no confirmed player, or nothing written is a 409.
+//
+// The human copy arrives in the BODY rather than being rendered here. It is
+// built in the frontend, where the app's real stylesheets are, so that the
+// page a coach can also download on its own and the page inside this archive
+// are the same bytes.
 func handleExportCoachNotes(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		name, payload, err := a.ExportCoachNotes()
-		if writeError(w, r, err) {
+		var body struct {
+			SheetHTML string `json:"sheet_html"`
+		}
+		// An EMPTY body is not a malformed one, and the difference matters:
+		// with no session open the honest answer is 404, and decoding first
+		// would answer 400 for a request whose real problem is that there is
+		// nothing to export. Let it through and let the session check speak.
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil && !errors.Is(err, io.EOF) {
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
+			return
+		}
+		name, payload, err := a.ExportCoachNotes([]byte(body.SheetHTML))
+		if writeError(w, r, err,
+			errStatus{coach.ErrSheetMissing, probInvalidBody},
+			errStatus{coach.ErrSheetTooLarge, probInvalidBody}) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/zip")

@@ -17,7 +17,7 @@ func TestExportCoachNotes_PacksTheSessionsWork(t *testing.T) {
 	}
 	mustNoErr(t, a.PutCoachFocusItems([]coach.FocusItem{{ItemID: sessionFocusID, Text: sessionFocus}}))
 
-	name, payload, err := a.ExportCoachNotes()
+	name, payload, err := a.ExportCoachNotes(testSheet)
 	mustNoErr(t, err)
 	if !strings.HasPrefix(name, "recall-coach-notes-sable-") || !strings.HasSuffix(name, ".zip") {
 		t.Errorf("archive name = %q, want recall-coach-notes-sable-<date>.zip", name)
@@ -55,7 +55,7 @@ func TestExportCoachNotes_CarriesTheHumanCopy(t *testing.T) {
 	if _, err := a.PutCoachNote(playerMatchRialto, writtenNote()); err != nil {
 		t.Fatalf("PutCoachNote: %v", err)
 	}
-	_, payload, err := a.ExportCoachNotes()
+	_, payload, err := a.ExportCoachNotes(testSheet)
 	mustNoErr(t, err)
 	if !strings.Contains(string(payload), "ledger.html") {
 		t.Error("the archive carries no ledger.html")
@@ -70,13 +70,13 @@ func TestExportCoachNotes_RefusesTheUnusableCases(t *testing.T) {
 		if _, err := a.SetCoachingSettings("", ""); err != nil {
 			t.Fatalf("SetCoachingSettings: %v", err)
 		}
-		if _, _, err := a.ExportCoachNotes(); !errors.Is(err, coach.ErrCoachNameRequired) {
+		if _, _, err := a.ExportCoachNotes(testSheet); !errors.Is(err, coach.ErrCoachNameRequired) {
 			t.Errorf("export without a coach name = %v, want coach.ErrCoachNameRequired", err)
 		}
 	})
 	t.Run("nothing written yet", func(t *testing.T) {
 		a, _ := openSession(t)
-		if _, _, err := a.ExportCoachNotes(); !errors.Is(err, coach.ErrNothingToExport) {
+		if _, _, err := a.ExportCoachNotes(testSheet); !errors.Is(err, coach.ErrNothingToExport) {
 			t.Errorf("export of an untouched session = %v, want coach.ErrNothingToExport", err)
 		}
 	})
@@ -85,7 +85,7 @@ func TestExportCoachNotes_RefusesTheUnusableCases(t *testing.T) {
 		if _, err := a.OpenCoachSession(plainBundle(t)); err != nil {
 			t.Fatalf("OpenCoachSession: %v", err)
 		}
-		if _, _, err := a.ExportCoachNotes(); !errors.Is(err, coach.ErrHandleRequired) {
+		if _, _, err := a.ExportCoachNotes(testSheet); !errors.Is(err, coach.ErrHandleRequired) {
 			t.Errorf("export before confirming the player = %v, want coach.ErrHandleRequired", err)
 		}
 	})

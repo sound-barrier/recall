@@ -17,7 +17,7 @@ import (
 // name in Settings, coach.ErrHandleRequired before the player is
 // confirmed, and coach.ErrNothingToExport when there is nothing written —
 // no note and no focus item.
-func (a *App) ExportCoachNotes() (name string, payload []byte, err error) {
+func (a *App) ExportCoachNotes(sheetHTML []byte) (name string, payload []byte, err error) {
 	a.coachMu.RLock()
 	defer a.coachMu.RUnlock()
 	s := a.coachSession
@@ -32,7 +32,7 @@ func (a *App) ExportCoachNotes() (name string, payload []byte, err error) {
 	if err != nil {
 		return "", nil, err
 	}
-	payload, err = coach.WriteNotesArchive(file, time.Now())
+	payload, err = coach.WriteNotesArchive(file, sheetHTML, time.Now())
 	if err != nil {
 		return "", nil, err
 	}

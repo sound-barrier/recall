@@ -82,7 +82,7 @@ func TestCoachingLoop_MomentsSurviveTheWholeRoundTrip(t *testing.T) {
 		{MatchClock: "3:23", Text: "no off-angle, the tank ate it alone", FocusTag: "positioning"},
 		{MatchClock: "4:13", Text: "no ult tracking", FocusTag: "ult_economy"},
 	})
-	_, archive, err := coachApp.ExportCoachNotes()
+	_, archive, err := coachApp.ExportCoachNotes(testSheet)
 	mustNoErr(t, err)
 
 	player, store := playerApp(t)

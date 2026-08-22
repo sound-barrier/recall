@@ -184,7 +184,7 @@ func TestCoachSession_NoteSurfaceNeedsASession(t *testing.T) {
 	_, noteErr := a.PutCoachNote(playerMatchRialto, writtenNote())
 	_, playerErr := a.SetCoachSessionPlayer("Sable")
 	_, matchesErr := a.GetCoachSessionMatches()
-	_, _, exportErr := a.ExportCoachNotes()
+	_, _, exportErr := a.ExportCoachNotes(testSheet)
 	for name, err := range map[string]error{
 		"PutCoachNote":           noteErr,
 		"DeleteCoachNote":        a.DeleteCoachNote(playerMatchRialto),
