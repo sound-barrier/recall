@@ -116,6 +116,12 @@ jobs:
       - name: Lint JavaScript/Vue (ESLint)
         run: cd frontend && npm run lint:js
 
+      - name: Lint module graph (dependency-cruiser)
+        run: cd frontend && npm run lint:arch
+
+      - name: Check duplication ratchet (jscpd)
+        run: cd frontend && npm run lint:dupes
+
       - name: Lint CSS (Stylelint)
         run: cd frontend && npm run lint:css
 
