@@ -70,15 +70,21 @@ func matchCarryingCode(s db.Store, code string) (string, error) {
 }
 
 // validateReplayInput holds each supplied field to the vocabulary the rest
-// of the app answers to. Only omission is free — the same doctrine the
+// of the app answers to.
+//
+// The offending value is quoted with %q, not %s, and that is not cosmetic:
+// these strings come off the wire, the errors they build get logged, and a
+// value carrying a newline would forge a log line. %q escapes control
+// characters — the same fix the watcher's slog.String attributes are, and
+// the same one the five earlier go/log-injection findings took. Only omission is free — the same doctrine the
 // manual form states, and the reason a coach's observed context is checked
 // on THEIR side too: a context that passes there passes here.
 func validateReplayInput(in match.ReplayMatchInput) error {
 	if in.Map != "" && !parser.IsKnownMap(in.Map) {
-		return fmt.Errorf("%w: %s", ErrUnknownMap, in.Map)
+		return fmt.Errorf("%w: %q", ErrUnknownMap, in.Map)
 	}
 	if in.Hero != "" && !parser.IsKnownHero(in.Hero) {
-		return fmt.Errorf("%w: %s", ErrUnknownHero, in.Hero)
+		return fmt.Errorf("%w: %q", ErrUnknownHero, in.Hero)
 	}
 	if in.Result != "" && !validResults[in.Result] {
 		return ErrInvalidResult

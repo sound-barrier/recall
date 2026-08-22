@@ -187,7 +187,7 @@ func assertReplayCodeFree(s db.Store, matchKey, code string) error {
 	}
 	for key, a := range annotations {
 		if key != matchKey && a.ReplayCode == code {
-			return fmt.Errorf("%w: %s", ErrReplayCodeTaken, key)
+			return fmt.Errorf("%w: %q", ErrReplayCodeTaken, key)
 		}
 	}
 	return nil
