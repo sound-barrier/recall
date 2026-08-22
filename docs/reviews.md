@@ -157,6 +157,28 @@ Accepted notes appear on the match in the detail panel, under your own
 journal entry, in the coach's own block. You can remove one at any time
 — it is your history.
 
+#### If they reviewed a replay code
+
+A coach can review a replay without ever seeing your bundle, so a note
+may come back about a match your Recall has never heard of. It is
+matched by the **replay code**: if one of your matches carries that
+code, the note lands there like any other.
+
+If none does, accepting the note **creates** the match, from what the
+coach wrote down while watching. That match is real — you played it —
+but it does not count toward your record:
+
+- it appears in **Matches**, carrying the notes and a **Replay review**
+  badge, and you can filter for it under *Provenance*;
+- it is left out of the dossier and the **Elo Calculator** entirely.
+
+The reason is that its result is what your *coach* typed off a replay,
+not what you recorded. A coaching session should not be able to move
+your win rate.
+
+If you later add that replay code to a match you already had, the note
+binds to it the next time you open the sheet. Nothing to re-import.
+
 ### 4. Mark your own moments
 
 You do not need a coach to point at a moment. The match journal has its
@@ -167,7 +189,12 @@ coach's does, and sits above their notes because they are your words.
 
 ## Coaching someone
 
-### 1. Open their bundle
+There are two ways in, and they land in the same room. Take a **bundle**
+when the player has exported their history for you; take a **replay
+code** when all you were given is six characters in chat, which is how
+most reviews actually start.
+
+### 1a. Open their bundle
 
 Open the **Reviews** tab (`g r`), then **Open a player's bundle…** under
 *For someone else*, and pick the file they sent. (The command palette,
@@ -181,6 +208,33 @@ disabled, and says so.
 Set your name first if you have not: **Settings → Coaching → Your coach
 name**. It signs everything you write, and notes cannot be exported
 without it.
+
+### 1b. Or just a replay code
+
+**Use a replay code…**, in the same place. Type the code, press **Add**,
+and start the review. You can add more codes as they arrive — the reel
+grows while you work, which is what you want when they are being read
+out to you over voice.
+
+The code is echoed back before you start. Check it: it is now the
+player's *identity* for that match, so a mistyped code produces a review
+they can never be matched to.
+
+You will be asked who you are coaching, exactly as you are for a bundle
+that did not name anyone. Nothing you write is saved until you answer.
+
+Two things are different in this room, both because Recall has never
+seen these matches:
+
+- Each frame starts blank, and a **What you saw** panel appears on the
+  desk. Fill in as much as you noticed — the map, the hero, how it went.
+  Whatever you leave blank stays blank; nothing is invented. The date is
+  filled in with today's, which you can change.
+- Their Matches, Trends, Compare and Elo tabs are not there to step
+  into. There is no history to step into.
+
+Everything else — notes, moments, the focus list, sending it back — is
+the same, because it is the same coaching.
 
 ### 2. The film room
 
@@ -224,10 +278,16 @@ what the match was about — and the moments carry the specifics.
 
 ### 4. Send it back
 
-**1 · Export notes** writes a `.zip` holding `notes.json` (what their Recall
-reads) and `ledger.html` (a page you can open in a browser, or send to
-someone who does not use Recall). Send it back the same way the bundle
+**1 · Export notes** writes a `.zip` holding `notes.json` (what their
+Recall reads) and the review page. Send it back the same way the bundle
 came.
+
+**…or save it as one page** writes just the page: one self-contained
+HTML file that opens in any browser, offline, with nothing to install.
+It is the same document that rides inside the `.zip` — use it for a
+player who does not run Recall, or does not want to import anything.
+
+If you reviewed replay codes, this is usually the one you want.
 
 **2 · End session** hands their records back and lands you on the
 Reviews tab with a notice naming what ended (and where the notes file
