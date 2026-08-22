@@ -330,6 +330,48 @@ var _ Store = (*SQLStore)(nil)
 // NewSQLStore opens the SQLite database at path, applies the schema, and
 // enables foreign-key enforcement so ON DELETE CASCADE fires for child
 // rows. path may be ":memory:" for tests.
+// prepareDatabase brings an opened handle up to what this build believes:
+// the schema it expects, and the data shapes today's loaders can read.
+//
+// The ORDER is the substance. Each step assumes the ones above it have run,
+// and two of them assume it in a way that decides whether the app opens at
+// all — see the replay-code step.
+func prepareDatabase(d *sql.DB) error {
+	if err := applySchema(d); err != nil {
+		return fmt.Errorf("schema: %w", err)
+	}
+	// Add nullable columns introduced after the DB was first created (the one
+	// case CREATE TABLE IF NOT EXISTS can't cover) so an upgraded DB keeps its
+	// history instead of 500ing every insert. Additive-only; see schema.go.
+	if err := ensureAdditiveColumns(d); err != nil {
+		return fmt.Errorf("ensure additive columns: %w", err)
+	}
+	// Heal rows written before a now-NOT-NULL column existed (legacy
+	// nullable shapes keep their NULLs; the loaders scan plain strings).
+	if err := backfillLegacyNulls(d); err != nil {
+		return fmt.Errorf("backfill legacy nulls: %w", err)
+	}
+	// Canonicalize and de-duplicate replay codes, then put the unique index
+	// over them. Deliberately here and not in schema.sql: the index cannot be
+	// created while a legacy database still holds two matches claiming one
+	// code, so the de-duplication has to run first or the app fails to open.
+	if err := normalizeReplayCodes(d); err != nil {
+		return fmt.Errorf("normalize replay codes: %w", err)
+	}
+	// The opposite direction, and it cannot be healed: a column that has SHED
+	// its NOT NULL can't be altered in place by SQLite. Refuse to open rather
+	// than let every NULL write roll a whole rank row back — see schema.go.
+	if err := ensureNoStaleNotNull(d); err != nil {
+		return err
+	}
+	// No-op until the first migration file lands post-1.0; the
+	// framework is wired in so adding one is a drop-in addition.
+	if err := applyMigrations(d); err != nil {
+		return fmt.Errorf("migrate: %w", err)
+	}
+	return nil
+}
+
 func NewSQLStore(path string) (*SQLStore, error) {
 	// Pragmas ride the DSN so modernc applies them to EVERY pooled
 	// connection — a one-off d.Exec only configures whichever single
@@ -366,35 +408,9 @@ func NewSQLStore(path string) (*SQLStore, error) {
 		_ = d.Close()
 		return nil, err
 	}
-	if err := applySchema(d); err != nil {
-		_ = d.Close()
-		return nil, fmt.Errorf("schema: %w", err)
-	}
-	// Add nullable columns introduced after the DB was first created (the one
-	// case CREATE TABLE IF NOT EXISTS can't cover) so an upgraded DB keeps its
-	// history instead of 500ing every insert. Additive-only; see schema.go.
-	if err := ensureAdditiveColumns(d); err != nil {
-		_ = d.Close()
-		return nil, fmt.Errorf("ensure additive columns: %w", err)
-	}
-	// Heal rows written before a now-NOT-NULL column existed (legacy
-	// nullable shapes keep their NULLs; the loaders scan plain strings).
-	if err := backfillLegacyNulls(d); err != nil {
-		_ = d.Close()
-		return nil, fmt.Errorf("backfill legacy nulls: %w", err)
-	}
-	// The opposite direction, and it cannot be healed: a column that has SHED
-	// its NOT NULL can't be altered in place by SQLite. Refuse to open rather
-	// than let every NULL write roll a whole rank row back — see schema.go.
-	if err := ensureNoStaleNotNull(d); err != nil {
+	if err := prepareDatabase(d); err != nil {
 		_ = d.Close()
 		return nil, err
-	}
-	// No-op until the first migration file lands post-1.0; the
-	// framework is wired in so adding one is a drop-in addition.
-	if err := applyMigrations(d); err != nil {
-		_ = d.Close()
-		return nil, fmt.Errorf("migrate: %w", err)
 	}
 	store := &SQLStore{db: d, path: path}
 	// Reclaim screenshots_dirs rows orphaned by deleted matches / changed watch

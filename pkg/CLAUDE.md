@@ -151,7 +151,22 @@ Also: `task test-go`, `task cover-go`, `task dead-code-go` (allow-list at
 
 ## A tripwire worth knowing
 
-Four **frontend** test files read `pkg/coach/testdata/markdown_cases.json` by
-relative path — the shared fixture that pins Go's markdown renderer and the
-TypeScript one to identical output. Moving `pkg/coach/markdown.go` or its
-testdata breaks Vitest with a file-not-found, and no Go gate will warn you.
+**Frontend test files read Go testdata by relative path.** Two fixtures are
+shared across the language boundary today, each pinning a rule that has one
+definition and two implementations:
+
+- `pkg/coach/testdata/markdown_cases.json` — the note grammar, read by four
+  frontend test files.
+- `pkg/match/testdata/replay_code_cases.json` — the replay-code format, read
+  by `frontend/src/match/replay-code.test.ts`.
+
+Moving either fixture, or the Go file beside it, breaks Vitest with a
+file-not-found, and **no Go gate will warn you**.
+
+The replay-code pair is the one with teeth: a match key is minted from the
+code, so if Go and TypeScript disagree about a single character, a coach's
+note lands on a key that does not exist on the player's machine and nothing
+reports an error. That is why neither side uses its own language's `trim` or
+`toUpperCase` — Go's are Unicode-aware and JavaScript's are Unicode-aware
+differently, in both directions. Spell character sets out in ASCII when two
+renderers of one grammar have to agree.

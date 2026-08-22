@@ -1,0 +1,144 @@
+{
+  "_comment": [
+    "Shared fixture: the ONE definition of a canonical Overwatch replay code,",
+    "read by pkg/match/replay_code_test.go and by",
+    "frontend/src/match/replay-code.test.ts.",
+    "",
+    "A replay code is the only token from which a coach and a player, on two",
+    "installs and in two languages, independently derive the SAME match key.",
+    "If Go and TypeScript disagree about one character, a coach's note lands",
+    "nowhere and nothing reports an error. So neither language is allowed to",
+    "delegate to its own built-in trim or upcase -- their Unicode notions",
+    "differ, in both directions -- and this file is what holds them together.",
+    "",
+    "Adding a case here obliges BOTH implementations to satisfy it."
+  ],
+  "cases": [
+    {
+      "name": "already canonical",
+      "in": "A1B2C3",
+      "want": "A1B2C3",
+      "ok": true
+    },
+    {
+      "name": "lowercased",
+      "in": "a1b2c3",
+      "want": "A1B2C3",
+      "ok": true
+    },
+    {
+      "name": "mixed case",
+      "in": "a1B2c3",
+      "want": "A1B2C3",
+      "ok": true
+    },
+    {
+      "name": "surrounding spaces",
+      "in": "  A1B2C3  ",
+      "want": "A1B2C3",
+      "ok": true
+    },
+    {
+      "name": "tabs and newlines",
+      "in": "\tA1B2C3\r\n",
+      "want": "A1B2C3",
+      "ok": true
+    },
+    {
+      "name": "all letters",
+      "in": "ABCDEF",
+      "want": "ABCDEF",
+      "ok": true
+    },
+    {
+      "name": "all digits",
+      "in": "123456",
+      "want": "123456",
+      "ok": true
+    },
+    {
+      "name": "empty is not a code",
+      "in": "",
+      "want": "",
+      "ok": false
+    },
+    {
+      "name": "blank is not a code",
+      "in": "   ",
+      "want": "",
+      "ok": false
+    },
+    {
+      "name": "too short",
+      "in": "A1B2C",
+      "want": "",
+      "ok": false
+    },
+    {
+      "name": "too long",
+      "in": "A1B2C34",
+      "want": "",
+      "ok": false
+    },
+    {
+      "name": "punctuation",
+      "in": "A1B2C!",
+      "want": "",
+      "ok": false
+    },
+    {
+      "name": "inner dash",
+      "in": "A1B-C3",
+      "want": "",
+      "ok": false
+    },
+    {
+      "name": "inner space",
+      "in": "A1B C3",
+      "want": "",
+      "ok": false
+    },
+    {
+      "name": "non-breaking space is not trimmed away",
+      "in": " A1B2C3",
+      "want": "",
+      "ok": false
+    },
+    {
+      "name": "greek capital alpha is not an A",
+      "in": "Α1B2C3",
+      "want": "",
+      "ok": false
+    },
+    {
+      "name": "cyrillic capital a is not an A",
+      "in": "А1B2C3",
+      "want": "",
+      "ok": false
+    },
+    {
+      "name": "fullwidth digit is not a digit",
+      "in": "１A1B2C",
+      "want": "",
+      "ok": false
+    },
+    {
+      "name": "kelvin sign is not a K",
+      "in": "K1B2C3",
+      "want": "",
+      "ok": false
+    },
+    {
+      "name": "three long s are six bytes, not six characters",
+      "in": "ſſſ",
+      "want": "",
+      "ok": false
+    },
+    {
+      "name": "two ff ligatures are six bytes, not six characters",
+      "in": "ﬀﬀ",
+      "want": "",
+      "ok": false
+    }
+  ]
+}

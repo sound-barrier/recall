@@ -254,7 +254,9 @@ export const deleteMatchAnnotation = <ThrowOnError extends boolean = false>(opti
  * tally: a thrown match still counts.
  * - **note** — free-text per-match commentary.
  * - **replay_code** — Overwatch's six-character replay ID so
- * the match can be re-watched in the in-game viewer.
+ * the match can be re-watched in the in-game viewer. Accepted in
+ * either case and stored uppercased; a value that is not six
+ * letters or digits is rejected with 400.
  * - **members** — BattleTags of group members; verbatim, no
  * canonicalisation.
  *

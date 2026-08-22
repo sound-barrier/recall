@@ -159,77 +159,90 @@ func handleResolveMatch(a *app.App) http.HandlerFunc {
 // handleSetMatchAnnotation upserts (or clears) the per-match user
 // annotation. When every field is empty the row is deleted entirely —
 // idempotent.
+// decodeAnnotationInput reads the annotation PUT body into the input the app
+// takes, writing the problem response itself and reporting false when it
+// cannot. Split out of the handler so the handler reads as decode → apply →
+// 204; every early return here has already answered the request.
+func decodeAnnotationInput(w http.ResponseWriter, r *http.Request, matchKey string) (app.AnnotationInput, bool) {
+	// `[]*string` so `members: [null]` and `tags: [null]` decode
+	// to a pointer slice with nil entries — distinguishable from
+	// the empty-string "" the plain `[]string` form yields. The
+	// OpenAPI spec declares items: { type: string }; null isn't
+	// a string and must be rejected. Pinned by
+	// TestMatchAnnotations_RejectsNullInTags +
+	// TestMatchAnnotations_RejectsNullInMembers.
+	//
+	// Read the raw body first so we can reject `null` (which Go's
+	// json silently decodes into the zero-value struct, then the
+	// SetMatchAnnotation "all-empty → delete" rule kicks in and
+	// the server returns 204 — schema-violating behavior
+	// schemathesis v4's negative_data_rejection catches).
+	raw, rErr := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+	if rErr != nil {
+		writeProblem(w, r, probInvalidBody, "read body: "+rErr.Error())
+		return app.AnnotationInput{}, false
+	}
+	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+		writeProblem(w, r, probInvalidBody, "body must be a JSON object, not null")
+		return app.AnnotationInput{}, false
+	}
+	var body struct {
+		Leavers    []*string `json:"leavers"`
+		Throwers   []*string `json:"throwers"`
+		Note       string    `json:"note"`
+		ReplayCode string    `json:"replay_code"`
+		Members    []*string `json:"members"`
+		Tags       []*string `json:"tags"`
+	}
+	if err := json.Unmarshal(raw, &body); err != nil {
+		writeProblem(w, r, probInvalidBody, "invalid JSON body")
+		return app.AnnotationInput{}, false
+	}
+	// Every list field rejects a null MEMBER (`["team", null]`) with a
+	// per-field error rather than silently dropping it to "".
+	var leavers, throwers, members, tags []string
+	for _, f := range []struct {
+		name string
+		in   []*string
+		out  *[]string
+	}{
+		{"leavers", body.Leavers, &leavers},
+		{"throwers", body.Throwers, &throwers},
+		{"members", body.Members, &members},
+		{"tags", body.Tags, &tags},
+	} {
+		v, err := derefStringArray(f.name, f.in)
+		if err != nil {
+			writeProblem(w, r, probInvalidBody, err.Error(), withFieldErrors(fieldError{f.name, err.Error()}))
+			return app.AnnotationInput{}, false
+		}
+		*f.out = v
+	}
+	return app.AnnotationInput{
+		MatchKey:   matchKey,
+		Leavers:    leavers,
+		Throwers:   throwers,
+		Note:       body.Note,
+		ReplayCode: body.ReplayCode,
+		Members:    members,
+		Tags:       tags,
+	}, true
+}
+
 func handleSetMatchAnnotation(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		matchKey, ok := matchKeyFromPath(w, r)
 		if !ok {
 			return
 		}
-		// `[]*string` so `members: [null]` and `tags: [null]` decode
-		// to a pointer slice with nil entries — distinguishable from
-		// the empty-string "" the plain `[]string` form yields. The
-		// OpenAPI spec declares items: { type: string }; null isn't
-		// a string and must be rejected. Pinned by
-		// TestMatchAnnotations_RejectsNullInTags +
-		// TestMatchAnnotations_RejectsNullInMembers.
-		//
-		// Read the raw body first so we can reject `null` (which Go's
-		// json silently decodes into the zero-value struct, then the
-		// SetMatchAnnotation "all-empty → delete" rule kicks in and
-		// the server returns 204 — schema-violating behavior
-		// schemathesis v4's negative_data_rejection catches).
-		raw, rErr := io.ReadAll(io.LimitReader(r.Body, 1<<20))
-		if rErr != nil {
-			writeProblem(w, r, probInvalidBody, "read body: "+rErr.Error())
+		in, ok := decodeAnnotationInput(w, r, matchKey)
+		if !ok {
 			return
 		}
-		if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
-			writeProblem(w, r, probInvalidBody, "body must be a JSON object, not null")
-			return
-		}
-		var body struct {
-			Leavers    []*string `json:"leavers"`
-			Throwers   []*string `json:"throwers"`
-			Note       string    `json:"note"`
-			ReplayCode string    `json:"replay_code"`
-			Members    []*string `json:"members"`
-			Tags       []*string `json:"tags"`
-		}
-		if err := json.Unmarshal(raw, &body); err != nil {
-			writeProblem(w, r, probInvalidBody, "invalid JSON body")
-			return
-		}
-		// Every list field rejects a null MEMBER (`["team", null]`) with a
-		// per-field error rather than silently dropping it to "".
-		var leavers, throwers, members, tags []string
-		for _, f := range []struct {
-			name string
-			in   []*string
-			out  *[]string
-		}{
-			{"leavers", body.Leavers, &leavers},
-			{"throwers", body.Throwers, &throwers},
-			{"members", body.Members, &members},
-			{"tags", body.Tags, &tags},
-		} {
-			v, err := derefStringArray(f.name, f.in)
-			if err != nil {
-				writeProblem(w, r, probInvalidBody, err.Error(), withFieldErrors(fieldError{f.name, err.Error()}))
-				return
-			}
-			*f.out = v
-		}
-		if writeError(w, r, a.SetMatchAnnotation(app.AnnotationInput{
-			MatchKey:   matchKey,
-			Leavers:    leavers,
-			Throwers:   throwers,
-			Note:       body.Note,
-			ReplayCode: body.ReplayCode,
-			Members:    members,
-			Tags:       tags,
-		}),
+		if writeError(w, r, a.SetMatchAnnotation(in),
 			errStatus{app.ErrInvalidLeaver, probInvalidBody},
 			errStatus{app.ErrInvalidThrower, probInvalidBody},
+			errStatus{app.ErrInvalidReplayCode, probInvalidBody},
 			// Spec-valid body (parses fine) but no content to upsert → 409, the
 			// codebase's "semantic validation" code. 400 would trip schemathesis's
 			// positive_data_acceptance ("spec-valid input → no 400").

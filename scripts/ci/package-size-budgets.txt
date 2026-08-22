@@ -98,7 +98,15 @@ pkg/app                                       49
 # every other concern here is, and the three tables belong together
 # precisely because a status change has to find a row in either
 # player-side family from an item id alone.
-pkg/db                                        33
+# 34 as of the replay-code identity: schema_replay_code.go, the store-open
+# pass that canonicalizes replay codes and puts the unique index over them.
+# It sits beside backfillLegacyNulls and ensureAdditiveColumns as a third
+# open-time repair — the same responsibility (get the on-disk shape to match
+# what today's code believes) spelled one concern wider. It is NOT in
+# schema.sql on purpose: the index cannot be created until the duplicates it
+# finds have been resolved, and that ordering is the file's whole reason to
+# exist.
+pkg/db                                        34
 
 # pkg/parser — the OCR pipeline: Tesseract invocation, per-screenshot-type field
 # extraction, the embedded owdata YAML set, golden-file projection. One
@@ -234,7 +242,12 @@ frontend/tests/e2e/dossier                    24
 # because that is the surface it lives on — the journal in the detail panel —
 # not with the coaching ones, even though it reuses their component. The write
 # it exercises is the player's own route, table and gate.
-frontend/tests/e2e/match                      22
+# 22 -> 23: replay-code-canonical.spec.ts. The journal's replay cell stopped
+# being free text when a match key started being minted from it, and the
+# transport chain from keystroke to PUT body is the part no unit test reaches:
+# a field that shows one code while the database stores another is exactly the
+# bug this proves absent.
+frontend/tests/e2e/match                      23
 
 # frontend/tests/e2e/matches — the Matches view around the list: grouping and
 # sorting, collapse/expand, infinite scroll and scroll affordances, bulk mode

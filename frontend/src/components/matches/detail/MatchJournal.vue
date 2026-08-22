@@ -2,6 +2,7 @@
 import { computed, onMounted, nextTick, ref } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { type SearchClause } from '@/match/search-query'
+import { REPLAY_CODE_LENGTH, toReplayCodeDraft } from '@/match/replay-code'
 import CoachCueStrip from '@/components/coach/notes/CoachCueStrip.vue'
 import CoachNoteBlock from '@/components/coach/notes/CoachNoteBlock.vue'
 import { coachBlockView, selfBlockView } from '@/match/coach/note-block-view'
@@ -323,7 +324,9 @@ onMounted(() => {
             placeholder="e.g. 7H1K9P"
             spellcheck="false"
             autocomplete="off"
-            maxlength="32"
+            :maxlength="REPLAY_CODE_LENGTH"
+            autocapitalize="characters"
+            @input="replayDraft = toReplayCodeDraft(replayDraft)"
             @blur="commitAnnotation('replay')"
             @keydown.enter.prevent="commitAnnotation('replay')"
           >
