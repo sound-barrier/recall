@@ -17,6 +17,7 @@ import {
 } from '@/api-client'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
+import { refetchPendingCount } from '@/queries/matches'
 import {
   useAutoBackupQuery, useCandidatesQuery, useExitOnCloseQuery,
   useScreenshotsDirQuery, useTesseractQuery, useWatchEnabledQuery,
@@ -27,7 +28,6 @@ import { useScreenshotsDir } from '@/composables/settings/useScreenshotsDir'
 import { useTheme } from '@/composables/settings/useTheme'
 import { useWeekStart } from '@/composables/shared/useWeekStart'
 import { useAppStore } from '@/stores/app'
-import { useParseStore } from '@/stores/parse'
 
 // Settings domain: the OCR-engine (Tesseract) configuration + status. Migrated
 // out of App.vue's <script setup>; the composable's deps are wired to the
@@ -145,7 +145,7 @@ export const useSettingsStore = defineStore('settings', () => {
     setScreenshotsDir: SetScreenshotsDir,
     revealScreenshotsDir: RevealScreenshotsDir,
     resetScreenshotsDir: ResetScreenshotsDir,
-    refreshNewCount: () => useParseStore().refreshNewCount(),
+    refreshNewCount: refetchPendingCount,
     shouldConfirmPickWhile: () => watchEnabled.value,
     onError: (m) => { appStore.setErrorFromRaw(m) },
   })
@@ -162,7 +162,7 @@ export const useSettingsStore = defineStore('settings', () => {
     try {
       await SetScreenshotsDir(path)
       setScreenshotsDir(path)
-      await useParseStore().refreshNewCount()
+      await refetchPendingCount()
     } catch (e) {
       appStore.setErrorFromRaw(String(e))
     }

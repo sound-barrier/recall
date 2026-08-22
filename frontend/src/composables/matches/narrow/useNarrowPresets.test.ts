@@ -16,7 +16,7 @@ vi.stubGlobal('localStorage', {
   get length() { return memStore.size },
 })
 import { useNarrowPresets } from '@/composables/matches/narrow/useNarrowPresets'
-import type { MatchesNarrowState, ReviewedByPick, QueuePick, PlayModePick, SourcePick, LeaverPick, ThrowerPick, PresetRange } from '@/composables/matches/narrow/useMatchesNarrow'
+import type { MatchesNarrowState, ReviewedByPick, QueuePick, PlayModePick, SourcePick, LeaverPick, ThrowerPick, PresetRange } from '@/composables/matches/narrow/matchesNarrow.types'
 import type { LeaverHandling } from '@/composables/matches/dossier/useMatchesDossier'
 
 function buildState(): MatchesNarrowState {

@@ -50,6 +50,11 @@ const NO_SKIP: ReadonlySet<ClauseId> = new Set()
 // The narrow filter-dimension types + the state factory live in sibling modules
 // (matchesNarrow.types / matchesNarrow.state); re-export them so existing
 // `from './useMatchesNarrow'` imports stay stable.
+//
+// This re-export is for CONSUMERS outside the folder. A sibling that reads a
+// type through it imports the module that imports it back — narrowPredicates
+// did, which closed a three-module cycle. Siblings import matchesNarrow.types
+// directly.
 export type {
   PresetRange,
   ReviewedByPick,

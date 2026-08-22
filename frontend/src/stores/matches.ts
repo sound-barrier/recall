@@ -18,7 +18,6 @@ import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
 import { useExportBundle } from '@/composables/matches/useExportBundle'
 import { useShareWithCoach } from '@/composables/matches/useShareWithCoach'
-import { useParseStore } from '@/stores/parse'
 import { useSettingsStore } from '@/stores/settings'
 
 // The matches domain: the parsed-match records (source of truth for the
@@ -130,14 +129,19 @@ export const useMatchesStore = defineStore('matches', () => {
   // the matches query carries the banner meta, the siblings are silent
   // keep-last, and per-subsystem isolation falls out of one query per
   // endpoint. This is also the only place that can tell a reload which grew
-  // the set from one that didn't, so it fires the parse store's scoreboard
-  // pulse (the watcher-parse "new matches arrived" signal) — never the
-  // per-file match-updated upserts.
+  // the set from one that didn't, so it counts those — the watcher-parse
+  // "new matches arrived" signal, never the per-file match-updated upserts.
+  //
+  // It counts rather than acting: what an arrival should LOOK like (the
+  // masthead pulse) belongs to the parse store, which watches this. Calling
+  // into that store from here made the records own the pipeline's chrome and
+  // closed a store-to-store import cycle.
+  const recordsArrivals = ref(0)
   async function load() {
     const before = (getQueryClient().getQueryData<MatchRecord[]>(qk.matches) ?? []).length
     await refetchMatchesCluster()
     const after = (getQueryClient().getQueryData<MatchRecord[]>(qk.matches) ?? []).length
-    if (before > 0 && after > before) useParseStore().flashRecordsPulse()
+    if (before > 0 && after > before) recordsArrivals.value++
   }
 
   // ── Narrow filter + anchor cluster ────────────────────────────────
@@ -270,6 +274,7 @@ export const useMatchesStore = defineStore('matches', () => {
   })
 
   return {
+    recordsArrivals,
     // markRaw the composable bundles: Pinia's reactive() store deep-unwraps
     // nested refs, which would turn matchesNarrow.narrowedRecords (a Ref) into
     // a bare value and break every `.value` consumer. markRaw keeps the bundle

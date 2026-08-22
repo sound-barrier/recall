@@ -19,6 +19,14 @@ export function useMatchesQuery() {
   }, getQueryClient())
 }
 
+// Re-read the pending-screenshot count. Refetching a query is query-layer
+// work, so it lives here rather than on a store: the settings store needs it
+// the moment the watched folder changes, and reaching through the parse store
+// to get it was one half of a store<->store import cycle.
+export async function refetchPendingCount(): Promise<void> {
+  await getQueryClient().refetchQueries({ queryKey: qk.pendingCount })
+}
+
 export function usePendingCountQuery() {
   return useQuery({ queryKey: qk.pendingCount, queryFn: GetNewScreenshotCount }, getQueryClient())
 }

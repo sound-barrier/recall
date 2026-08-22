@@ -202,6 +202,37 @@ describe('matches store — load() boot coordinator', () => {
 // is only visible there, and the dialog says "N matches"), then open the
 // export dialog over the NARROWED keys — the set on screen, not the whole
 // history — with the share intent set so the dialog opens in share mode.
+// The masthead pulse is the only thing that says a watcher-driven parse
+// brought records in while the user was looking at another tab — and it had
+// no test at all. Pinned here so the store-to-store wiring that fires it has
+// something to be checked against.
+describe('matches store — the records pulse', () => {
+  it('flashes when a reload brings in records the user has not seen', async () => {
+    const matches = useMatchesStore()
+    const parse = useParseStore()
+
+    // Filling an empty cache is boot, not a delivery — no pulse.
+    await matches.load()
+    await new Promise(r => setTimeout(r, 0))
+    expect(parse.recordsPulse).toBe(false)
+
+    api.GetMatchResults.mockResolvedValue([rec('m-1'), rec('m-2'), rec('m-3')])
+    await matches.load()
+    expect(parse.recordsPulse).toBe(true)
+  })
+
+  it('stays quiet when a reload returns the same records', async () => {
+    const matches = useMatchesStore()
+    const parse = useParseStore()
+
+    await matches.load()
+    await new Promise(r => setTimeout(r, 0))
+    await matches.load()
+
+    expect(parse.recordsPulse).toBe(false)
+  })
+})
+
 describe('matches store — sending matches to a coach', () => {
   it('lands on Matches and opens the dialog over the narrowed set, meaning share', async () => {
     api.GetMatchResults.mockResolvedValue([
