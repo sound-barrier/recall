@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 
 import { StartSelfUpdate, RestartToApply, EventsOn } from '@/api-client'
 import { plainLanguageError } from '@/error-helpers'
+import { setQueryBannerSink } from '@/queries/client'
 import {
   runUpdateCheck, useDataLocationQuery, useUpdateCheckQuery, useVersionQuery,
 } from '@/queries/system'
@@ -11,7 +12,6 @@ import {
   type SelfUpdateProgress, type SelfUpdateError, type SelfUpdateState,
 } from '@/self-update-events'
 import type { ViewId } from '@/composables/shared/keyboard/useTabKeyboardNav'
-import { useParseStore } from '@/stores/parse'
 
 // The error banner's Retry handler. May be async (the matches store passes its
 // async load()); the banner fires it and ignores the result.
@@ -32,9 +32,6 @@ export const useAppStore = defineStore('app', () => {
   const view = ref<ViewId>('matches')
   async function goToView(next: string) {
     view.value = next as ViewId
-    // Entering Parse: re-read the pending-screenshot count so "Run Parse · N"
-    // reflects the folder now, not the initial-load batch. Fire-and-forget.
-    if (next === 'ingest') void useParseStore().refreshNewCount()
     await refocusPanel()
   }
 
@@ -73,6 +70,16 @@ export const useAppStore = defineStore('app', () => {
     error.value = ''
     errorRetry.value = null
   }
+
+  // The shell is the thing that can show a banner, so the shell is what the
+  // query cache reports to. Registering here rather than being imported by
+  // `queries/client` keeps the dependency pointing one way: app -> queries.
+  setQueryBannerSink({
+    raise: setError,
+    clearIfArmedBy: (retry) => {
+      if (retry !== undefined && errorRetry.value === retry) clearError()
+    },
+  })
 
   // ── Receipts ──────────────────────────────────────────────────────
   // The counterpart to the error banner: an action that PRODUCED SOMETHING

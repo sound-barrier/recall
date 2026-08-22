@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 
 import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshots'
@@ -30,6 +30,19 @@ export const useParseStore = defineStore('parse', () => {
   // lives in useParseRunLifecycle; the store spreads it into its public
   // surface under the same names.
   const parseRun = useParseRunLifecycle({ load: () => useMatchesStore().load() })
+
+  // Entering Parse re-reads the pending-screenshot count so "Run Parse · N"
+  // reflects the folder now, not the initial-load batch. Fire-and-forget.
+  //
+  // The app store used to push this by calling into here on every tab change,
+  // which made the shell import the pipeline it knows nothing about — a
+  // backwards edge, and one end of a 21-cycle knot in the module graph. Parse
+  // already depends on the shell, so it watches instead of being told.
+  // Routed through the store rather than the local closure so the internal
+  // trigger and any external caller go through the same door.
+  watch(() => useAppStore().view, (next) => {
+    if (next === 'ingest') void useParseStore().refreshNewCount()
+  })
   // The one member the rest of this setup wires directly: `parse` feeds
   // the ignored-screenshots panel's "Run Parse now".
   const { parse } = parseRun
