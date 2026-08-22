@@ -136,6 +136,7 @@ function onOverlayClick() {
 // module; this SFC only gates groups by the current context.
 const visibleGroups = computed(() =>
   SHORTCUT_GROUPS.filter((g) => {
+    // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check -- the default IS the rule here: every remaining context is a view id, shown when that view is current
     switch (g.context) {
       case 'always':
         return true

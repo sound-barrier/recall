@@ -170,33 +170,93 @@ function measureSamples(
   return nums
 }
 
-// sum/avg/min/max over the named measure, skipping null/non-finite
-// samples; null when the field isn't a measure or nothing qualified.
-function foldMeasure(records: readonly MatchRecord[], spec: ValueSpec, byId: Map<string, PivotField>): number | null {
-  const field = byId.get(spec.field)
-  if (field?.kind !== 'measure') return null
-  const nums = measureSamples(records, field)
-  if (nums.length === 0) return null
-  const sum = nums.reduce((a, b) => a + b, 0)
-  switch (spec.agg) {
-    case 'sum': return sum
-    case 'avg': return sum / nums.length
-    case 'min': return Math.min(...nums)
-    case 'max': return Math.max(...nums)
-  }
-  return null
+// What an aggregation is, in one place.
+//
+// This used to be five switches over AggFn plus two hand-kept lists, and
+// only ONE of the switches had no `default` arm. Adding an eighth
+// aggregation compiled clean, fell through to the measure fold, returned
+// null, and painted an empty column — nothing failed, the user just saw
+// nothing (TECHNICAL_DEBT.md section 11). A Record over the union does not
+// typecheck until every member has an entry, so the same addition is now a
+// compile error until it is finished.
+interface AggContext {
+  records: readonly MatchRecord[]
+  /**
+   * The measure field's numeric samples, or null when the spec's field is
+   * not a measure or nothing qualified. Lazy on purpose: the field-agnostic
+   * aggregations must not need a resolvable field.
+   */
+  samples: () => number[] | null
 }
 
-// Aggregate one value spec over a bucket of records. count / winRate / kd
-// are field-agnostic (kd is always elims/deaths); the rest fold the
-// named measure.
+interface AggSpec {
+  /** Short, human label — value-shelf chips and crosstab sub-headers. */
+  label: string
+  /** Fold a bucket of records into the aggregated number. */
+  fold: (ctx: AggContext) => number | null
+  /** Render the folded number for display. */
+  format: (value: number) => string
+  /** The column header this aggregation earns over a given field. */
+  valueLabel: (fieldLabel: string, spec: ValueSpec) => string
+}
+
+const plainNumber = (value: number): string =>
+  Number.isInteger(value) ? String(value) : formatToHundredths(value)
+
+const overField = (agg: AggFn) => (fieldLabel: string): string => `${fieldLabel} (${agg})`
+
+const foldSamples = (reduce: (nums: number[]) => number) => (ctx: AggContext): number | null => {
+  const nums = ctx.samples()
+  return nums === null || nums.length === 0 ? null : reduce(nums)
+}
+
+const sumOf = (nums: number[]): number => nums.reduce((a, b) => a + b, 0)
+
+const AGG_SPECS: Record<AggFn, AggSpec> = {
+  count: {
+    label: 'Count',
+    fold: (ctx) => ctx.records.length,
+    format: plainNumber,
+    valueLabel: (fieldLabel, spec) => (spec.field === 'matches' ? 'Matches' : `${fieldLabel} (count)`),
+  },
+  winRate: {
+    label: 'Win rate',
+    fold: (ctx) => winRateOf(ctx.records),
+    format: (value) => `${Math.round(value)}%`,
+    valueLabel: () => 'Win rate',
+  },
+  kd: {
+    label: 'K/D',
+    fold: (ctx) => kdOf(ctx.records),
+    format: formatToHundredths,
+    valueLabel: () => 'K/D',
+  },
+  sum: { label: 'Sum', fold: foldSamples(sumOf), format: plainNumber, valueLabel: overField('sum') },
+  avg: {
+    label: 'Average',
+    fold: foldSamples((nums) => sumOf(nums) / nums.length),
+    format: formatToHundredths,
+    valueLabel: overField('avg'),
+  },
+  min: { label: 'Min', fold: foldSamples((nums) => Math.min(...nums)), format: plainNumber, valueLabel: overField('min') },
+  max: { label: 'Max', fold: foldSamples((nums) => Math.max(...nums)), format: plainNumber, valueLabel: overField('max') },
+}
+
+/** Every aggregation the pivot engine knows, derived from the registry. */
+export const AGG_FNS = Object.keys(AGG_SPECS) as AggFn[]
+
+/** The aggregations that ignore the measure field, so "Matches" can offer them. */
+export const FIELD_AGNOSTIC_AGGS: AggFn[] = ['count', 'winRate', 'kd']
+
+// Aggregate one value spec over a bucket of records.
 function aggregate(records: readonly MatchRecord[], spec: ValueSpec, byId: Map<string, PivotField>): number | null {
-  switch (spec.agg) {
-    case 'count':   return records.length
-    case 'winRate': return winRateOf(records)
-    case 'kd':      return kdOf(records)
-    default:        return foldMeasure(records, spec, byId)
-  }
+  return AGG_SPECS[spec.agg].fold({
+    records,
+    samples: () => {
+      const field = byId.get(spec.field)
+      return field?.kind === 'measure' ? measureSamples(records, field) : null
+    },
+  })
 }
 
 function compareTuples(a: string[], b: string[]): number {
@@ -210,28 +270,12 @@ function compareTuples(a: string[], b: string[]): number {
 // Short, human label for an aggregation — used by the value-shelf chips
 // and the crosstab sub-headers.
 export function aggLabelOf(agg: AggFn): string {
-  switch (agg) {
-    case 'count':   return 'Count'
-    case 'winRate': return 'Win rate'
-    case 'sum':     return 'Sum'
-    case 'avg':     return 'Average'
-    case 'min':     return 'Min'
-    case 'max':     return 'Max'
-    case 'kd':      return 'K/D'
-  }
+  return AGG_SPECS[agg].label
 }
 
 function valueLabel(spec: ValueSpec, byId: Map<string, PivotField>): string {
   const field = byId.get(spec.field)
-  const fieldLabel = field?.label ?? spec.field
-  switch (spec.agg) {
-    case 'count':   return spec.field === 'matches' ? 'Matches' : `${fieldLabel} (count)`
-    case 'winRate': return 'Win rate'
-    case 'kd':      return 'K/D'
-    // sum/avg/min/max label as "<field> (<agg>)" — the agg id doubles
-    // as its display suffix.
-    default:        return `${fieldLabel} (${spec.agg})`
-  }
+  return AGG_SPECS[spec.agg].valueLabel(field?.label ?? spec.field, spec)
 }
 
 // pivot folds the records into the crosstab described by `config`,
@@ -322,10 +366,5 @@ export function pivot(records: readonly MatchRecord[], config: PivotConfig, fiel
 // counts/sums as plain integers. null → the em-dash placeholder.
 export function formatPivotCell(value: number | null, agg: AggFn): string {
   if (value === null || !Number.isFinite(value)) return '—'
-  switch (agg) {
-    case 'winRate': return `${Math.round(value)}%`
-    case 'avg':
-    case 'kd':      return formatToHundredths(value)
-    default:        return Number.isInteger(value) ? String(value) : formatToHundredths(value)
-  }
+  return AGG_SPECS[agg].format(value)
 }

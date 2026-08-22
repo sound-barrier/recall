@@ -7,7 +7,7 @@ import {
   usePersistedRef,
 } from '@/composables/shared/usePersistedRef'
 import { makePivotFields, type PivotField } from '@/match/pivot/pivot-fields'
-import { pivot, type AggFn, type PivotConfig } from '@/match/pivot/pivot-aggregate'
+import { pivot, AGG_FNS, FIELD_AGNOSTIC_AGGS, type AggFn, type PivotConfig } from '@/match/pivot/pivot-aggregate'
 
 // Stateful wrapper around the pure pivot engine: owns the persisted pivot
 // configuration (which fields sit on which shelf, which aggregations the
@@ -35,12 +35,19 @@ const STORAGE_KEY = 'recall.matchesPivotConfig'
 const CATALOG = makePivotFields(() => '')
 const DIMENSION_IDS = new Set(CATALOG.filter((f) => f.kind === 'dimension').map((f) => f.id))
 const MEASURE_IDS = new Set(CATALOG.filter((f) => f.kind === 'measure').map((f) => f.id))
-const AGGS = new Set<AggFn>(['count', 'winRate', 'sum', 'avg', 'min', 'max', 'kd'])
+// Derived from the registry, not re-listed: a hand-kept copy of the union is
+// how a persisted config with a stale agg used to survive validation.
+const AGGS = new Set<AggFn>(AGG_FNS)
 
-// The aggregations offered for a value field. The synthetic `matches`
-// field counts/rates the rows; real measures sum/average their samples.
+// The aggregations offered for a value field. The synthetic `matches` field
+// counts/rates the rows; real measures fold their samples. Which is which
+// comes from the registry, so a new aggregation lands in the right menu by
+// saying what it is rather than by being added to a second list here.
 export function aggOptionsFor(fieldId: string): AggFn[] {
-  return fieldId === 'matches' ? ['count', 'winRate', 'kd'] : ['sum', 'avg', 'min', 'max']
+  const agnostic = new Set<AggFn>(FIELD_AGNOSTIC_AGGS)
+  return fieldId === 'matches'
+    ? AGG_FNS.filter((agg) => agnostic.has(agg))
+    : AGG_FNS.filter((agg) => !agnostic.has(agg))
 }
 
 function defaultAggFor(fieldId: string): AggFn {
