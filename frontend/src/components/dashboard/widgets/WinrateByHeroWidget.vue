@@ -5,7 +5,7 @@
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { wilsonMargin } from '@/match/dossier/match-sample-helpers'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
-import { winrateBySchema, type WinrateByConfig } from '@/dashboard/widgets'
+import { winrateBySchema, type WinrateByConfig } from '@/dashboard/widget-schemas'
 
 const dossier = useDossier()
 const { config } = useWidgetConfig<WinrateByConfig>('winrate-by-hero', winrateBySchema)

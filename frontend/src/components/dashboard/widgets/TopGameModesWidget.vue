@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useDossier, useFullDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
-import { topGameModesSchema, type TopByCountConfig } from '@/dashboard/widgets'
+import { topGameModesSchema, type TopByCountConfig } from '@/dashboard/widget-schemas'
 
 const dossier = useDossier()
 const fullDossier = useFullDossier()

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
-import { recentMatchesSchema, type RecentMatchesConfig } from '@/dashboard/widgets'
+import { recentMatchesSchema, type RecentMatchesConfig } from '@/dashboard/widget-schemas'
 import { resultJudgment } from '@/match/trends/match-heatmap-helpers'
 
 const dossier = useDossier()

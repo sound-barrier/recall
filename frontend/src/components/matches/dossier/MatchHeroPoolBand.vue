@@ -4,7 +4,7 @@ import { useFullDossier } from '@/composables/dashboard/useDossier'
 import { useNarrow } from '@/composables/matches/narrow/useNarrow'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
-import { heroDisciplineSchema, type HeroDisciplineConfig } from '@/dashboard/widgets'
+import { heroDisciplineSchema, type HeroDisciplineConfig } from '@/dashboard/widget-schemas'
 import {
   analyzeHeroPool, matchesPoolMode, rankPoolHeroes, roleWinrates,
   type HeroPoolAnalysis, type PoolMode,

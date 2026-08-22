@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
-import { heroDisciplineSchema, type HeroDisciplineConfig } from '@/dashboard/widgets'
+import { heroDisciplineSchema, type HeroDisciplineConfig } from '@/dashboard/widget-schemas'
 
 // Heroes per match — how many games were played on 1 / 2 / 3 / 4+ heroes and
 // how each bucket converts. A hero under the threshold percent of the match

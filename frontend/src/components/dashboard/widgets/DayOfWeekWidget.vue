@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
-import { dayOfWeekSchema, type DayOfWeekConfig } from '@/dashboard/widgets'
+import { dayOfWeekSchema, type DayOfWeekConfig } from '@/dashboard/widget-schemas'
 import { bucketCellClass, bucketCellJudgment } from '@/match/trends/match-heatmap-helpers'
 import type { WeekStart } from '@/match/match-time-helpers'
 

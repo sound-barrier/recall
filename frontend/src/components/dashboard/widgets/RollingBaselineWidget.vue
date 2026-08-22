@@ -8,7 +8,7 @@
 import { computed } from 'vue'
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
-import { rollingBaselineSchema, type RollingBaselineConfig } from '@/dashboard/widgets'
+import { rollingBaselineSchema, type RollingBaselineConfig } from '@/dashboard/widget-schemas'
 import { signJudgment } from '@/match/trends/match-heatmap-helpers'
 
 const dossier = useDossier()

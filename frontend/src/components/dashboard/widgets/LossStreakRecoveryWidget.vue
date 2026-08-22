@@ -5,7 +5,7 @@
 // rank leaks. Sharper than the single-loss tilt check. Gallery opt-in.
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
-import { lossStreakRecoverySchema, type LossStreakRecoveryConfig } from '@/dashboard/widgets'
+import { lossStreakRecoverySchema, type LossStreakRecoveryConfig } from '@/dashboard/widget-schemas'
 
 const dossier = useDossier()
 const { config } = useWidgetConfig<LossStreakRecoveryConfig>('loss-streak-recovery', lossStreakRecoverySchema)
