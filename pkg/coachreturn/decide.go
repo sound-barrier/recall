@@ -188,7 +188,7 @@ func landingKeyFor(st Store, n coach.Note, create MatchMaker) (string, error) {
 	}
 	created, err := create(n)
 	if err != nil {
-		return "", fmt.Errorf("coach: create match for note %s: %w", n.NoteID, err)
+		return "", fmt.Errorf("coach: create match for note %q: %w", n.NoteID, err)
 	}
 	return created, nil
 }
