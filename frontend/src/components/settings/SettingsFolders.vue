@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref } from 'vue'
+import ProbeChip from '@/components/settings/ProbeChip.vue'
 import type { DataLocation } from '@/api-client'
 
 // Folders panel (steady-state section 01) — Screenshots Folder row
@@ -34,10 +35,6 @@ const emit = defineEmits<{
 // whenever a fresh probeMessage lands so a second Detect click
 // re-opens the chip without forcing the user to scroll for it.
 const probeDismissed = ref(false)
-watch(() => props.probeMessage, (next) => {
-  if (next) probeDismissed.value = false
-})
-const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.value)
 
 // Track which path was last copied so the per-path Copy button can
 // flash "✓" on the right one. Empty string = nothing recently copied.
@@ -94,21 +91,12 @@ async function copyPath(path: string, which: 'db' | 'settings') {
             <strong>Reset</strong> clears the configured folder so
             <strong>Detect</strong> becomes available again.
           </p>
-          <div v-if="showProbeChip" class="probe-chip" :class="probeStatus" role="status">
-            <span class="probe-chip-bar" aria-hidden="true" />
-            <span class="probe-chip-mark" aria-hidden="true">
-              {{ probeStatus === 'success' ? '✓' : '⚠' }}
-            </span>
-            <span class="probe-chip-text">{{ probeMessage }}</span>
-            <button
-              type="button"
-              class="probe-chip-close"
-              aria-label="Dismiss detection result"
-              @click="probeDismissed = true"
-            >
-              ×
-            </button>
-          </div>
+          <ProbeChip
+            v-model:dismissed="probeDismissed"
+            :message="probeMessage"
+            :status="probeStatus"
+            dismiss-label="Dismiss detection result"
+          />
           <details v-if="probeStatus === 'blocked' && !probeDismissed && (probeTried?.length ?? 0) > 0" class="probe-tried">
             <summary>Looked in</summary>
             <ol class="probe-tried-list">

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
+import ProbeChip from '@/components/settings/ProbeChip.vue'
 import type { TesseractStatus } from '@/api-client'
 
 // Engine panel — Tesseract status display + Detect / Change / Reset
@@ -41,12 +42,6 @@ const hasOverride = computed(() =>
 // time a fresh probeMessage lands so a second Detect click re-opens
 // the chip rather than leaving the stale "dismissed" state.
 const probeDismissed = ref(false)
-watch(() => props.tesseractProbeMessage, (next) => {
-  if (next) probeDismissed.value = false
-})
-const showProbeChip = computed(
-  () => !!props.tesseractProbeMessage && !probeDismissed.value,
-)
 </script>
 
 <template>
@@ -109,21 +104,12 @@ const showProbeChip = computed(
           >
             Default for this platform · <code>{{ tesseractStatus.default }}</code>
           </p>
-          <div v-if="showProbeChip" class="probe-chip" :class="tesseractProbeStatus" role="status">
-            <span class="probe-chip-bar" aria-hidden="true" />
-            <span class="probe-chip-mark" aria-hidden="true">
-              {{ tesseractProbeStatus === 'success' ? '✓' : '⚠' }}
-            </span>
-            <span class="probe-chip-text">{{ tesseractProbeMessage }}</span>
-            <button
-              type="button"
-              class="probe-chip-close"
-              aria-label="Dismiss Tesseract detection result"
-              @click="probeDismissed = true"
-            >
-              ×
-            </button>
-          </div>
+          <ProbeChip
+            v-model:dismissed="probeDismissed"
+            :message="tesseractProbeMessage"
+            :status="tesseractProbeStatus"
+            dismiss-label="Dismiss Tesseract detection result"
+          />
           <details
             v-if="tesseractProbeStatus === 'blocked' && !probeDismissed && (tesseractProbeTried?.length ?? 0) > 0"
             class="probe-tried"
