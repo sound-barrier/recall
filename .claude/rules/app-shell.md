@@ -48,7 +48,7 @@ paths:
   connected browser tabs.
 
 **File layout**: `ls pkg/app/*.go` — file-per-concern (`tesseract.go`,
-`watcher.go`, `correlation.go`, `aggregate.go`, …); production + test files are
+`watcher.go`, `aggregate.go`, `coach_session.go`, …); production + test files are
 1:1 (`watcher.go` ↔ `watch_events_test.go`). Build-tag pairs: `app_wails.go` /
 `app_server.go` (dialog + event-emit shims).
 
