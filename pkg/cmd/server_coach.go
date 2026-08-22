@@ -42,6 +42,9 @@ func registerCoachRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/coach/session", handleGetCoachSession(a))
 	apiMux.HandleFunc("DELETE /api/v1/coach/session", handleCloseCoachSession(a))
 	apiMux.HandleFunc("PUT /api/v1/coach/session/player", handleSetCoachSessionPlayer(a))
+	apiMux.HandleFunc("POST /api/v1/coach/session/replay", handleOpenCoachReplaySession(a))
+	apiMux.HandleFunc("POST /api/v1/coach/session/replay/codes", handleAddCoachSessionReplayCode(a))
+	apiMux.HandleFunc("PUT /api/v1/coach/session/matches/{match_key}/context", handleSetCoachSessionMatchContext(a))
 	apiMux.HandleFunc("GET /api/v1/coach/session/matches", handleGetCoachSessionMatches(a))
 	apiMux.HandleFunc("GET /api/v1/coach/players", handleListCoachPlayers(a))
 	apiMux.HandleFunc("PUT /api/v1/coach/session/notes/{match_key}", handlePutCoachNote(a))
@@ -118,6 +121,77 @@ func handleSetCoachSessionPlayer(a *app.App) http.HandlerFunc {
 		}
 		view, err := a.SetCoachSessionPlayer(handle)
 		if writeError(w, r, err) {
+			return
+		}
+		writeJSON(w, r, view, nil)
+	}
+}
+
+// handleOpenCoachReplaySession opens a session from replay codes alone — the
+// door for a coach who was handed six characters rather than a bundle.
+func handleOpenCoachReplaySession(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Codes json.RawMessage `json:"codes"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
+			return
+		}
+		codes, err := decodeRequiredStringArray("codes", body.Codes)
+		if err != nil {
+			writeProblem(w, r, probInvalidBody, err.Error())
+			return
+		}
+		view, err := a.OpenCoachReplaySession(codes)
+		if writeError(w, r, err,
+			errStatus{match.ErrInvalidReplayCode, probInvalidBody},
+			errStatus{coach.ErrNoReplayCodes, probInvalidBody}) {
+			return
+		}
+		writeJSON(w, r, view, nil)
+	}
+}
+
+// handleAddCoachSessionReplayCode grows an open replay session's reel. A POST
+// rather than a PUT: each call adds one code, and re-adding one already there
+// is a no-op rather than a replacement.
+func handleAddCoachSessionReplayCode(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		code, err := decodeRequiredString(r, "code")
+		if err != nil {
+			writeProblem(w, r, probInvalidBody, err.Error())
+			return
+		}
+		view, aErr := a.AddCoachSessionReplayCode(code)
+		if writeError(w, r, aErr,
+			errStatus{match.ErrInvalidReplayCode, probInvalidBody},
+			errStatus{coach.ErrNotAReplaySession, probConflict}) {
+			return
+		}
+		writeJSON(w, r, view, nil)
+	}
+}
+
+// handleSetCoachSessionMatchContext records what the coach observed while
+// watching one replay.
+func handleSetCoachSessionMatchContext(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		matchKey, ok := matchKeyFromPath(w, r)
+		if !ok {
+			return
+		}
+		var ctx coach.ObservedContext
+		if err := json.NewDecoder(r.Body).Decode(&ctx); err != nil {
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
+			return
+		}
+		view, err := a.SetCoachSessionMatchContext(matchKey, ctx)
+		if writeError(w, r, err,
+			// A field the coach supplied is not in the roster: spec-valid
+			// body, semantic refusal — the same 409 UnknownMap takes.
+			errStatus{coach.ErrObservedContextInvalid, probConflict},
+			errStatus{coach.ErrMatchNotInThisSession, probNotFound}) {
 			return
 		}
 		writeJSON(w, r, view, nil)

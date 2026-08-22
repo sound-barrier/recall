@@ -1,4 +1,4 @@
-import type { FocusItem, MatchRecord } from '@/api-client'
+import type { FocusItem, MatchRecord, ObservedContext } from '@/api-client'
 import type { CoachMoment } from '@/match/coach/coach-moments'
 import type { CoachNoteDraft } from '@/match/coach/coach-notes'
 
@@ -91,4 +91,19 @@ export interface RoomApi {
   updateNote: (matchKey: string, draft: CoachNoteDraft) => void
   updateMoment: (matchKey: string, moment: CoachMoment) => void
   removeMoment: (matchKey: string, momentId: string) => void
+  /**
+   * Which door this session came through, and how to widen it.
+   *
+   * Both OPTIONAL, and deliberately: a self-review has no replay codes to
+   * add and no bundle to have come from, so requiring these would force the
+   * other implementation of this interface to satisfy members it can never
+   * mean. Depend only on what you use — the room asks, and a room whose api
+   * does not answer simply does not offer the affordance.
+   */
+  sessionSource?: () => 'bundle' | 'replay'
+  addReplayCode?: (code: string) => void
+  /** Record what the coach observed while watching one replay. */
+  setMatchContext?: (matchKey: string, context: ObservedContext) => void
+  /** Today, as the session reckons it — a blank observed date falls back to it. */
+  sessionDate?: () => string
 }

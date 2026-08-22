@@ -101,6 +101,8 @@ export interface CoachSessionView {
   notes: CoachSessionNote[]
   /** True when the bundle named the player, so the handle arrives pre-filled. */
   handle_from_bundle: boolean
+  /** Where the corpus came from: a loaned bundle, or replay codes the coach typed. */
+  source: 'bundle' | 'replay'
 }
 
 /** A match as the loaned corpus (`/coach/session/matches`) and `/matches` carry it. */
@@ -538,6 +540,7 @@ function viewOf(state: SessionState): CoachSessionView {
     focus_items: state.focusItems,
     notes: [...state.notes.values()],
     handle_from_bundle: state.handleFromBundle,
+    source: 'bundle' as const,
   }
 }
 

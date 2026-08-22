@@ -200,11 +200,18 @@ var ungatedByDesign = map[string]string{
 	"DeleteCoachNote":       "the session's own surface — coach-authored, by design",
 	"PutCoachMoment":        "the session's own surface — coach-authored, by design",
 	"DeleteCoachMoment":     "the session's own surface — coach-authored, by design",
-	"CreateProfile":         "ends the session instead (design rule 4)",
-	"SwitchProfile":         "ends the session instead (design rule 4)",
-	"RenameProfile":         "ends the session instead (design rule 4)",
-	"DeleteProfile":         "does not touch the active store",
-	"ResetForTest":          "ends the session first (design rule 12)",
+	// Both write to the in-memory session and nothing else. The reel a coach
+	// TYPED is theirs to grow, and what they observed while watching is
+	// theirs to record; neither reaches a store, so there is no coach's own
+	// history for the gate to protect. The session slot itself is still
+	// exclusive — these refuse with ErrNoSession when none is open.
+	"AddCoachSessionReplayCode":   "the session's own surface — the coach typed this corpus",
+	"SetCoachSessionMatchContext": "the session's own surface — what the coach observed, never persisted",
+	"CreateProfile":               "ends the session instead (design rule 4)",
+	"SwitchProfile":               "ends the session instead (design rule 4)",
+	"RenameProfile":               "ends the session instead (design rule 4)",
+	"DeleteProfile":               "does not touch the active store",
+	"ResetForTest":                "ends the session first (design rule 12)",
 }
 
 // The gate list is COMPLETE: every exported *App method that reads as a

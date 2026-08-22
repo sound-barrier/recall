@@ -31,6 +31,7 @@ function bind<K extends keyof Api>(name: K): Api[K] {
     (backing[name] as (...a: unknown[]) => unknown)(...args)) as Api[K]
 }
 
+export const AddCoachSessionReplayCode = bind('AddCoachSessionReplayCode')
 export const ApplyGameDataUpdate = bind('ApplyGameDataUpdate')
 export const StartSelfUpdate = bind('StartSelfUpdate')
 export const RestartToApply = bind('RestartToApply')
@@ -89,6 +90,7 @@ export const ImportMatches = bind('ImportMatches')
 export const ListCoachReturns = bind('ListCoachReturns')
 export const MoveMatches = bind('MoveMatches')
 export const OpenCoachBundle = bind('OpenCoachBundle')
+export const OpenCoachReplaySession = bind('OpenCoachReplaySession')
 export const OpenURL = bind('OpenURL')
 export const ParseScreenshots = bind('ParseScreenshots')
 export const PutCoachMoment = bind('PutCoachMoment')
@@ -125,6 +127,7 @@ export const RevealScreenshotsDir = bind('RevealScreenshotsDir')
 export const SeedTestProfile = bind('SeedTestProfile')
 export const setEventStreamStatusHandler = bind('setEventStreamStatusHandler')
 export const SetCoachingSettings = bind('SetCoachingSettings')
+export const SetCoachSessionMatchContext = bind('SetCoachSessionMatchContext')
 export const SetCoachSessionPlayer = bind('SetCoachSessionPlayer')
 export const SetExitOnClose = bind('SetExitOnClose')
 export const SetMatchAnnotation = bind('SetMatchAnnotation')

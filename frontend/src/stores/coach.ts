@@ -2,10 +2,11 @@ import { computed, markRaw, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 
 import {
+  AddCoachSessionReplayCode,
   CloseCoachSession, DeleteCoachMoment, DeleteCoachNote, ExportCoachNotes,
-  OpenCoachBundle, PutCoachFocusItems, PutCoachMoment, PutCoachNote,
-  SetCoachSessionPlayer,
-  type CoachSessionView, type FocusItem,
+  OpenCoachBundle, OpenCoachReplaySession, PutCoachFocusItems, PutCoachMoment,
+  PutCoachNote, SetCoachSessionMatchContext, SetCoachSessionPlayer,
+  type CoachSessionView, type FocusItem, type ObservedContext,
 } from '@/api-client'
 import type { RoomApi } from '@/components/coach/room/coach-room-props'
 import { useCoachAutosave } from '@/composables/coach/useCoachAutosave'
@@ -13,8 +14,8 @@ import { useReviewDrafts } from '@/composables/coach/useReviewDrafts'
 import { FOCUS_SAVE_KEY } from '@/match/coach/coach-notes'
 import { savableItems } from '@/match/reviews/focus-items'
 import {
-  clearCoachSessionData, setCoachSessionData, setCoachSessionResume,
-  useCoachSessionMatchesQuery, useCoachSessionQuery,
+  clearCoachSessionData, refreshCoachSessionMatches, setCoachSessionData,
+  setCoachSessionResume, useCoachSessionMatchesQuery, useCoachSessionQuery,
 } from '@/queries/coach'
 import { useAppStore } from '@/stores/app'
 
@@ -70,6 +71,11 @@ export const useCoachStore = defineStore('coach', () => {
   // ── The open session ──────────────────────────────────────────────
   const sessionQuery = useCoachSessionQuery()
   const session = computed(() => sessionQuery.data.value ?? null)
+  // Which door this session came through. The room reads it to decide
+  // whether the coach may add matches and whether to offer the
+  // observed-context editor — both of which are true only for a corpus the
+  // coach typed rather than one the player loaned.
+  const sessionSource = computed(() => session.value?.source ?? 'bundle')
   const sessionActive = computed(() => session.value !== null)
   const player = computed(() => session.value?.player ?? null)
   const coachName = computed(() => session.value?.coach_name ?? '')
@@ -262,6 +268,46 @@ export const useCoachStore = defineStore('coach', () => {
     }
   }
 
+  // The second door onto the SAME session. A code-only session is a coach
+  // session in every respect that matters — same notes, same moments, same
+  // focus list, same autosave, same export — so it reuses this whole store
+  // rather than getting one of its own. The only differences are where the
+  // corpus comes from and that it can grow, which is these three functions.
+  async function openFromReplayCodes(codes: string[]): Promise<void> {
+    if (tourOpen.value) {
+      useAppStore().setError(TOUR_CONFLICT_REASON)
+      return
+    }
+    try {
+      setCoachSessionData(await OpenCoachReplaySession(codes))
+      setCoachSessionResume(true)
+      suspendCoachNarrow()
+      await useAppStore().goToView('reviews')
+    } catch (e) {
+      useAppStore().setErrorFromRaw(String(e))
+    }
+  }
+
+  // Codes arrive one at a time over voice chat, so the reel grows mid-session.
+  async function addReplayCode(code: string): Promise<void> {
+    try {
+      setCoachSessionData(await AddCoachSessionReplayCode(code))
+      await refreshCoachSessionMatches()
+    } catch (e) {
+      useAppStore().setErrorFromRaw(String(e))
+    }
+  }
+
+  // What the coach saw. Queued through the SAME save machinery the notes
+  // use, under a per-match key, so the desk shows one Saved/Not-saved line
+  // for everything on the frame rather than two that can disagree.
+  function setMatchContext(matchKey: string, context: ObservedContext): void {
+    queueSave(`context:${matchKey}`, async () => {
+      setCoachSessionData(await SetCoachSessionMatchContext(matchKey, context))
+      await refreshCoachSessionMatches()
+    })
+  }
+
   // End the loan. Queued autosaves are FLUSHED first: notes and the list
   // are keyed by player, not by session — they are re-hydrated the next time
   // this bundle is opened — so a draft caught inside the debounce would
@@ -404,6 +450,10 @@ export const useCoachStore = defineStore('coach', () => {
     updateNote,
     updateMoment,
     removeMoment,
+    sessionSource: () => sessionSource.value,
+    addReplayCode: (code: string) => { void addReplayCode(code) },
+    setMatchContext,
+    sessionDate: () => session.value?.session_date ?? '',
   })
 
   return {
@@ -437,6 +487,10 @@ export const useCoachStore = defineStore('coach', () => {
     setTourOpen,
     setNarrowSuspender,
     openBundle,
+    openFromReplayCodes,
+    addReplayCode,
+    setMatchContext,
+    sessionSource,
     tourOpen,
     endSession,
     setPlayerHandle,

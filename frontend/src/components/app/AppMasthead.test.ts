@@ -20,6 +20,7 @@ const SESSION = {
   summary: '',
   notes: [],
   handle_from_bundle: true,
+  source: 'bundle' as const,
 }
 
 // renderApp installs a fresh QueryClient, so the session is seeded AFTER

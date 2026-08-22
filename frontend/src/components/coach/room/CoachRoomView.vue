@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from 'vue'
 
+import type { ObservedContext } from '@/api-client'
 import CoachDesk from '@/components/coach/room/CoachDesk.vue'
 import CoachIdentityPrompt from '@/components/coach/room/CoachIdentityPrompt.vue'
+import CoachAddCode from '@/components/coach/reel/CoachAddCode.vue'
 import CoachReel from '@/components/coach/reel/CoachReel.vue'
 import CoachSessionSheet from '@/components/coach/notes/CoachSessionSheet.vue'
 import {
@@ -88,6 +90,21 @@ const room = useCoachRoom({
   selectedKey: props.api.selectedKey,
 })
 
+// Only a corpus the coach typed can grow; a loaned bundle's matches are the
+// player's. The api answering neither question is a room that has no codes
+// at all (a self-review), which is why both members are optional.
+const canAddCodes = computed(() =>
+  props.api.sessionSource?.() === 'replay' && props.api.addReplayCode !== undefined)
+
+function addCode(code: string): void {
+  props.api.addReplayCode?.(code)
+}
+
+// Present only where the coach types the corpus; its absence is what keeps
+// the observed-context editor off a bundle's already-parsed frames.
+const observedDate = computed(() =>
+  props.api.sessionSource?.() === 'replay' ? (props.api.sessionDate?.() ?? '') : '')
+
 const reelColumn = useTemplateRef<HTMLElement>('reelColumn')
 const select = (matchKey: string) => props.api.selectKey(matchKey)
 
@@ -153,6 +170,7 @@ function step(key: string | null): void {
           @select="select"
         />
       </slot>
+      <CoachAddCode v-if="canAddCodes" :add="addCode" />
     </div>
 
     <div class="coach-room-desk">
@@ -166,6 +184,7 @@ function step(key: string | null): void {
       />
       <slot name="desk">
         <CoachDesk
+          :session-date="observedDate"
           :record="room.selectedRecord.value"
           :reel-empty="room.frames.value.length === 0"
           :handle="player.handle"
@@ -180,6 +199,7 @@ function step(key: string | null): void {
           :voice="voice"
           :omit-review-id="omitReviewId"
           :removable="removableFrames ? (room.frames.value.length > 1 ? 'yes' : 'last') : 'none'"
+          @update-context="(ctx: ObservedContext) => api.setMatchContext?.(room.activeKey.value, ctx)"
           @update-note="(draft: CoachNoteDraft) => api.updateNote(room.activeKey.value, draft)"
           @update-moment="(m: CoachMoment) => api.updateMoment(room.activeKey.value, m)"
           @remove-moment="(id: string) => api.removeMoment(room.activeKey.value, id)"

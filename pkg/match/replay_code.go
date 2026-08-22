@@ -1,6 +1,19 @@
 package match
 
-import "strings"
+import (
+	"errors"
+	"strings"
+)
+
+// ErrInvalidReplayCode rejects a replay code that is not six ASCII
+// alphanumerics.
+//
+// It lives here, beside the rule it names, because three packages refuse the
+// same thing for the same reason — the annotation write, the manual-match
+// form, and a coach opening a session from codes. Two sentinels carrying one
+// meaning is how a problem+json `detail` starts drifting from the check that
+// produced it.
+var ErrInvalidReplayCode = errors.New("invalid replay_code: must be six letters or digits")
 
 // replayCodeLen is the length of an Overwatch replay code: six characters,
 // drawn from the digits and the unaccented capitals.

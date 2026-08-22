@@ -313,7 +313,7 @@ func TestSession_View_WireShape(t *testing.T) {
 	got := fieldsOf(t, s.View(notes, focus, "Ordo", fixedNow))
 
 	names := slices.Sorted(maps.Keys(got))
-	wantNames := []string{"coach_name", "exported_at", "focus_items", "handle_from_bundle", "match_count", "notes", "player", "session_date"}
+	wantNames := []string{"coach_name", "exported_at", "focus_items", "handle_from_bundle", "match_count", "notes", "player", "session_date", "source"}
 	if !reflect.DeepEqual(names, wantNames) {
 		t.Errorf("view fields = %v, want %v", names, wantNames)
 	}

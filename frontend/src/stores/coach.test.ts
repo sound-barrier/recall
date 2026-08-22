@@ -34,6 +34,7 @@ function sessionView(over: Record<string, unknown> = {}) {
     focus_items: [],
     notes: [],
     handle_from_bundle: true,
+    source: 'bundle' as const,
     ...over,
   }
 }
@@ -88,6 +89,9 @@ beforeEach(() => {
     DeleteCoachNote: vi.fn(async () => undefined),
     PutCoachFocusItems: vi.fn(async () => undefined),
     ExportCoachNotes: vi.fn(async () => 'recall-coach-notes-sable.zip'),
+    OpenCoachReplaySession: vi.fn(async () => replaySessionView()),
+    AddCoachSessionReplayCode: vi.fn(async () => replaySessionView({ match_count: 2 })),
+    SetCoachSessionMatchContext: vi.fn(async () => replaySessionView()),
   }
   setApiBacking(api)
   setCoachSessionResume(false)
@@ -104,6 +108,85 @@ async function settle(): Promise<void> {
   await vi.advanceTimersByTimeAsync(0)
   await nextTick()
 }
+
+// A code-only session: no bundle, no player, one frame per code.
+function replaySessionView(over: Record<string, unknown> = {}) {
+  return sessionView({
+    player: { id: '', handle: '', message: '' },
+    exported_at: '',
+    match_count: 1,
+    handle_from_bundle: false,
+    source: 'replay' as const,
+    ...over,
+  })
+}
+
+describe('coach store — opening from replay codes', () => {
+  it('opens the same room a bundle does, from six characters', async () => {
+    const coach = useCoachStore()
+    const app = useAppStore()
+
+    await coach.openFromReplayCodes(['a1b2c3'])
+    await settle()
+
+    expect(api.OpenCoachReplaySession).toHaveBeenCalledWith(['a1b2c3'])
+    expect(coach.sessionActive).toBe(true)
+    expect(coach.sessionSource).toBe('replay')
+    // Same destination, same resume arming — it IS a coaching session.
+    expect(app.view).toBe('reviews')
+    expect(localStorage.getItem(COACH_SESSION_RESUME_KEY)).toBe('true')
+  })
+
+  // Nobody has said who this is about, so the room's existing prompt has to
+  // fire. handle_from_bundle is what it reads, and a replay session has no
+  // bundle to have carried one.
+  it('arrives with no player, so the room still asks', async () => {
+    const coach = useCoachStore()
+    await coach.openFromReplayCodes(['A1B2C3'])
+    await settle()
+    expect(coach.player?.handle ?? '').toBe('')
+    expect(coach.session?.handle_from_bundle).toBe(false)
+  })
+
+  it('grows the reel when another code arrives mid-session', async () => {
+    const coach = useCoachStore()
+    await coach.openFromReplayCodes(['A1B2C3'])
+    await settle()
+
+    await coach.addReplayCode('d4e5f6')
+    await settle()
+
+    expect(api.AddCoachSessionReplayCode).toHaveBeenCalledWith('d4e5f6')
+    expect(coach.session?.match_count).toBe(2)
+  })
+
+  // The context rides the SAME save queue the notes use, so the desk shows
+  // one Saved line for the frame rather than two that can disagree.
+  it('queues the observed context through the note autosave', async () => {
+    const coach = useCoachStore()
+    await coach.openFromReplayCodes(['A1B2C3'])
+    await settle()
+
+    coach.setMatchContext('replay-A1B2C3', { map: 'ilios', hero: 'ana', result: 'defeat' })
+    expect(api.SetCoachSessionMatchContext).not.toHaveBeenCalled()
+
+    await vi.runAllTimersAsync()
+    await settle()
+
+    expect(api.SetCoachSessionMatchContext).toHaveBeenCalledWith(
+      'replay-A1B2C3', { map: 'ilios', hero: 'ana', result: 'defeat' },
+    )
+  })
+
+  // A bundle session reports its own door, so the room does not offer the
+  // add-a-code affordance where it would 409.
+  it('reports the bundle door for a bundle session', async () => {
+    const coach = useCoachStore()
+    await coach.openBundle()
+    await settle()
+    expect(coach.sessionSource).toBe('bundle')
+  })
+})
 
 describe('coach store — opening a bundle', () => {
   it('loans the app to the player: session, records, room', async () => {

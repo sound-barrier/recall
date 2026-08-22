@@ -35,10 +35,9 @@ var ErrInvalidThrower = errors.New("invalid thrower: each side must be 'self', '
 // rather than an all-empty PUT meaning "delete." HTTP handlers map this to 400.
 var ErrEmptyAnnotation = errors.New("annotation has no content; use DELETE to clear it")
 
-// ErrInvalidReplayCode rejects a replay code that is not six ASCII
-// alphanumerics. See match.NormalizeReplayCode for why the vocabulary is
-// spelled out rather than delegated to a Unicode-aware helper.
-var ErrInvalidReplayCode = errors.New("invalid replay_code: must be six letters or digits")
+// ErrInvalidReplayCode re-exports the sentinel from the package that owns
+// the rule, so every refusal of a malformed code is the same error value.
+var ErrInvalidReplayCode = match.ErrInvalidReplayCode
 
 // AnnotationInput is the caller-facing DTO for SetAnnotation. Each
 // field is optional, but at least one must carry content: an all-empty
@@ -155,7 +154,7 @@ func normalizeReplayCode(raw string) (string, error) {
 	}
 	code, ok := match.NormalizeReplayCode(raw)
 	if !ok {
-		return "", ErrInvalidReplayCode
+		return "", match.ErrInvalidReplayCode
 	}
 	return code, nil
 }
