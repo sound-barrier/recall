@@ -137,6 +137,8 @@ tasks:
     cmds:
       - task: lint-go
       - task: lint-js
+      - task: lint-arch
+      - task: lint-dupes
       - task: lint-css
       - task: lint-html
       - task: lint-py
@@ -171,6 +173,20 @@ tasks:
       - echo "[ recall ] Linting JavaScript/Vue (eslint)…"
       - cd frontend && npm run lint:js
       - echo "[ recall ] ✓  JS/Vue lint clean"
+
+  lint-arch:
+    desc: Lint the frontend module graph (dependency-cruiser)
+    cmds:
+      - echo "[ recall ] Linting module graph (dependency-cruiser)…"
+      - cd frontend && npm run lint:arch
+      - echo "[ recall ] ✓  No forbidden edges (warnings above are tracked debt)"
+
+  lint-dupes:
+    desc: Ratchet frontend copy-paste duplication (jscpd)
+    cmds:
+      - echo "[ recall ] Checking duplication (jscpd)…"
+      - cd frontend && npm run lint:dupes
+      - echo "[ recall ] ✓  Duplication under budget"
 
   lint-css:
     desc: Lint CSS (stylelint)
