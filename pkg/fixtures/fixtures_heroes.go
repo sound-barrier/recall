@@ -143,9 +143,10 @@ func (p playerProfile) pickHero(rng *rand.Rand, prevHero, playMode, roleConstrai
 		return p.pickHeroOneTrick(rng, playMode)
 	case styleOneRole:
 		return p.pickHeroOneRole(rng, prevHero, playMode)
-	default: // styleFlex
+	case styleFlex:
 		return p.pickHeroFlex(rng, prevHero, playMode)
 	}
+	panic("unhandled playStyle")
 }
 
 // pickHeroOneTrick: competitive locks the favorite (95%, 5% same-role
@@ -259,9 +260,10 @@ func (p playerProfile) isPoolHero(h string) bool {
 		return h == p.favoriteHero
 	case styleOneRole:
 		return containsHero(p.mainPool, h)
-	default:
+	case styleFlex:
 		return containsHero(p.flexHeroes, h)
 	}
+	panic("unhandled playStyle")
 }
 
 // heroPlay names one hero played in a single match, with the player's
