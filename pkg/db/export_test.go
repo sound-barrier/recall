@@ -11,11 +11,6 @@ import (
 // compiled only under test, so it is not part of the package's real API.
 func RawDB(s *SQLStore) *sql.DB { return s.db }
 
-// NormalizeReplayCodes bridges the store-open pass that canonicalizes and
-// de-duplicates replay codes, so the black-box tests can run it against a
-// hand-built legacy table. Compiled only under test.
-var NormalizeReplayCodes = normalizeReplayCodes
-
 // Migration-engine bridges. The framework is inert pre-1.0 (no shipped
 // migration files), so it has no public driver — these re-exports let the
 // black-box migrate tests exercise the apply/revert/version primitives.

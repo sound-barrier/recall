@@ -35,6 +35,15 @@ func CreateFromReplay(s db.Store, in match.ReplayMatchInput) (string, error) {
 	if exists {
 		return key.String(), nil
 	}
+	// The player may already hold this replay under their OWN key — they
+	// screenshotted the match and annotated it with the code. That match is
+	// the one the review is about, so yield to it: creating a second would
+	// collide with the unique index, and would be wrong even if it did not.
+	if owner, err := matchCarryingCode(s, key.ReplayCode()); err != nil {
+		return "", err
+	} else if owner != "" {
+		return owner, nil
+	}
 	if err := s.UpsertUserMatchData(replayUserData(key.String(), in)); err != nil {
 		return "", err
 	}
@@ -44,6 +53,20 @@ func CreateFromReplay(s db.Store, in match.ReplayMatchInput) (string, error) {
 		return "", err
 	}
 	return key.String(), nil
+}
+
+// matchCarryingCode finds the match already annotated with this code, if any.
+func matchCarryingCode(s db.Store, code string) (string, error) {
+	annotations, err := s.LoadAnnotations()
+	if err != nil {
+		return "", fmt.Errorf("load annotations: %w", err)
+	}
+	for key, a := range annotations {
+		if a.ReplayCode == code {
+			return key, nil
+		}
+	}
+	return "", nil
 }
 
 // validateReplayInput holds each supplied field to the vocabulary the rest

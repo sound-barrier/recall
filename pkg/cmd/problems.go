@@ -182,6 +182,10 @@ var defaultProblems = []errStatus{
 	{coach.ErrNotesUnsupportedSchema, probConflict},
 	{coachreturn.ErrNoMatches, probConflict},
 	{coachreturn.ErrOrphan, probConflict},
+	// A replay code names one match, and the schema enforces it. Without
+	// this the constraint surfaces as a 500 carrying SQLite's own words,
+	// which the user cannot act on.
+	{app.ErrReplayCodeTaken, probConflict},
 	{coach.ErrHandleRequired, probConflict},
 	{coach.ErrCoachNameRequired, probConflict},
 	{coach.ErrNothingToExport, probConflict},

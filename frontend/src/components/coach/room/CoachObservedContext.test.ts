@@ -21,6 +21,13 @@ function renderContext(record = recordOf(), sessionDate = '2026-08-15') {
   return render(CoachObservedContext, { props: { record, sessionDate } })
 }
 
+/** The most recent context the editor reported. `emitted()` is `unknown[][]`. */
+function lastContext(view: ReturnType<typeof renderContext>): Record<string, unknown> {
+  const emitted = view.emitted('update') as unknown[][] | undefined
+  expect(emitted, 'the editor reported nothing').toBeTruthy()
+  return emitted!.at(-1)![0] as Record<string, unknown>
+}
+
 describe('CoachObservedContext', () => {
   it('names the replay it is asking about', () => {
     renderContext()
@@ -46,9 +53,7 @@ describe('CoachObservedContext', () => {
   it('reports what the coach observed', async () => {
     const view = renderContext()
     await fireEvent.update(screen.getByLabelText('Map'), 'Ilios')
-    const emitted = view.emitted('update')
-    expect(emitted).toBeTruthy()
-    expect((emitted!.at(-1)![0] as Record<string, string>).map).toBe('Ilios')
+    expect(lastContext(view).map).toBe('Ilios')
   })
 
   // "Not sure" is absence, not an empty result — the wire has no empty
@@ -56,8 +61,7 @@ describe('CoachObservedContext', () => {
   it('omits the result entirely when the coach did not see one', async () => {
     const view = renderContext(recordOf({ result: 'victory' }))
     await fireEvent.update(screen.getByLabelText('Result'), '')
-    const last = view.emitted('update')!.at(-1)![0] as Record<string, unknown>
-    expect('result' in last).toBe(false)
+    expect('result' in lastContext(view)).toBe(false)
   })
 
   it('re-reads itself when the coach moves to another frame', async () => {

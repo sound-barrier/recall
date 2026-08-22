@@ -351,13 +351,6 @@ func prepareDatabase(d *sql.DB) error {
 	if err := backfillLegacyNulls(d); err != nil {
 		return fmt.Errorf("backfill legacy nulls: %w", err)
 	}
-	// Canonicalize and de-duplicate replay codes, then put the unique index
-	// over them. Deliberately here and not in schema.sql: the index cannot be
-	// created while a legacy database still holds two matches claiming one
-	// code, so the de-duplication has to run first or the app fails to open.
-	if err := normalizeReplayCodes(d); err != nil {
-		return fmt.Errorf("normalize replay codes: %w", err)
-	}
 	// The opposite direction, and it cannot be healed: a column that has SHED
 	// its NOT NULL can't be altered in place by SQLite. Refuse to open rather
 	// than let every NULL write roll a whole rank row back — see schema.go.

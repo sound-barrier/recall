@@ -303,16 +303,24 @@ CREATE TABLE IF NOT EXISTS rank_sr (
 ) STRICT;
 -- statement-end
 
--- replay_code carries a UNIQUE index, but it is created by
--- normalizeReplayCodes at store open rather than declared here: a database
--- written by an older build may still hold two matches claiming one code, and
--- the index has to be built AFTER that tie is broken or the app cannot open.
 CREATE TABLE IF NOT EXISTS match_annotations (
   match_key TEXT PRIMARY KEY,
   note TEXT,
   replay_code TEXT,
   annotated_at TEXT DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
 ) STRICT;
+-- statement-end
+
+-- A replay code names exactly one Overwatch match, and a match key is minted
+-- from it, so two matches claiming one code is not a state to model.
+--
+-- PARTIAL on purpose: most matches have no code, and the column represents
+-- that as both NULL and ''. SQLite lets NULLs coexist under a unique index
+-- but not empty strings, so an unqualified UNIQUE would refuse to be created
+-- the moment two matches had no code — which is to say immediately.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_match_annotations_replay_code
+  ON match_annotations (replay_code)
+  WHERE replay_code IS NOT NULL AND replay_code <> '';
 -- statement-end
 
 -- The PLAYER's own timestamped moments — a self-review that can point at

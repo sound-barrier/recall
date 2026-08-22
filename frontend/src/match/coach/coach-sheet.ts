@@ -26,13 +26,13 @@ import { escapeHTML, renderMarkdown } from '@/match/markdown/render-markdown'
  */
 
 /** One timestamped thing the coach marked inside a match. */
-export interface SheetMoment {
+interface SheetMoment {
   matchClock: string
   text: string
 }
 
 /** What the coach knew about the match a note is about. */
-export interface SheetMatch {
+interface SheetMatch {
   map: string
   hero: string
   result: string
@@ -41,7 +41,7 @@ export interface SheetMatch {
   replayCode: string
 }
 
-export interface SheetNote {
+interface SheetNote {
   matchKey: string
   kind: string
   text: string
