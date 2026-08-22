@@ -268,6 +268,16 @@ func applyDerivedFields(data *parser.MatchResult) {
 	}
 }
 
+// provenanceForSynthesized reads a shell's provenance off its own key. A
+// replay key can only have come from a coach's review, so nothing needs to be
+// stored to tell the two apart — the key already says it.
+func provenanceForSynthesized(key string) string {
+	if k, err := match.ParseKey(key); err == nil && k.IsReplay() {
+		return match.SourceReplay
+	}
+	return match.SourceManual
+}
+
 // SynthesizeManualMatches appends an empty match.Record for every user-data key
 // with no screenshot-backed record — a hand-entered match, which lives entirely
 // in the override layer. AttachUserData fills each shell's Data from the row.
@@ -288,7 +298,7 @@ func SynthesizeManualMatches(recs []match.Record, userData map[string]db.UserMat
 		}
 		recs = append(recs, match.Record{
 			MatchKey:    k,
-			Source:      match.SourceManual,
+			Source:      provenanceForSynthesized(k),
 			SourceFiles: []string{},
 		})
 		added = true

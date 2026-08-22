@@ -7,18 +7,30 @@ import (
 )
 
 // Key is the typed form of the stringly-typed `match_key`
-// identity used across the codebase. A match key is one of three
+// identity used across the codebase. A match key is one of four
 // shapes:
 //
 //   - `match-<YYYY-MM-DDTHH-MM-SS>`     → KindTracked   (real match)
 //   - `unmatched-<base64url(filename)>` → KindUnmatched (timestamp absent)
 //   - `ambiguous-<base64url(filename)>` → KindAmbiguous (pending resolution)
+//   - `replay-<AAAAAA>`                 → KindReplay    (a coach's six characters)
 //
 // The two sentinel bodies base64url-encode the filename so the whole key
 // is URL-safe (alphanumerics + `-` `_`) and needs no path escaping;
-// Filename() decodes it back.
+// Filename() decodes it back. A replay body is the canonical code, which is
+// already URL-safe by construction.
 //
-// The dash form is the only shape the parser has ever written to disk.
+// KindReplay is the odd one and worth understanding before you touch it:
+// every other kind is derived from something on the PLAYER's disk — a
+// filename, or the clock reading inside one. That makes them underivable by
+// anyone else, which is exactly why a coach reviewing a replay code needs a
+// kind of their own. Two people on two machines, given the same six
+// characters, mint the same replay key; that correspondence is the only
+// reason the coaching handoff works without a bundle.
+//
+// The dash form is the only shape the parser has ever written to disk, and
+// the parser never writes a replay key at all — it has no screenshot to
+// write one from.
 // (An earlier doc here claimed a one-time colon→dash migration in
 // pkg/db.SQLStore; no such migration ever existed — only a test fixture
 // string referenced the colon form.)
@@ -36,6 +48,7 @@ const (
 	KindTracked
 	KindUnmatched
 	KindAmbiguous
+	KindReplay
 )
 
 type Key struct {
@@ -53,12 +66,12 @@ type Key struct {
 }
 
 // ErrInvalidKey is returned by ParseKey for any input that
-// doesn't carry one of the three known prefixes. The caller can
+// doesn't carry one of the four known prefixes. The caller can
 // errors.Is against this sentinel for graceful handling.
 var ErrInvalidKey = errors.New("invalid match key")
 
 // ParseKey returns the typed form of `s`, or ErrInvalidKey
-// if `s` doesn't carry one of the three known prefixes.
+// if `s` doesn't carry one of the four known prefixes.
 func ParseKey(s string) (Key, error) {
 	switch {
 	case strings.HasPrefix(s, "match-"):
@@ -67,6 +80,8 @@ func ParseKey(s string) (Key, error) {
 		return Key{Kind: KindUnmatched, Raw: s, Body: s[len("unmatched-"):]}, nil
 	case strings.HasPrefix(s, "ambiguous-"):
 		return Key{Kind: KindAmbiguous, Raw: s, Body: s[len("ambiguous-"):]}, nil
+	case strings.HasPrefix(s, "replay-"):
+		return Key{Kind: KindReplay, Raw: s, Body: s[len("replay-"):]}, nil
 	}
 	return Key{}, ErrInvalidKey
 }
@@ -86,11 +101,14 @@ func (k Key) IsUnmatched() bool { return k.Kind == KindUnmatched }
 // IsTracked mirrors IsAmbiguous for normal tracked keys.
 func (k Key) IsTracked() bool { return k.Kind == KindTracked }
 
+// IsReplay mirrors IsAmbiguous for replay keys.
+func (k Key) IsReplay() bool { return k.Kind == KindReplay }
+
 // Filename returns the body of an unmatched or ambiguous key.
-// For tracked keys (where Body is the timestamp) the result is
-// the empty string — tracked keys are minted from a timestamp,
-// not a filename. Callers branch on .Kind / .IsX() first when
-// the semantic matters.
+// For tracked keys (where Body is the timestamp) and replay keys
+// (where Body is the code) the result is the empty string — neither
+// is minted from a filename. Callers branch on .Kind / .IsX() first
+// when the semantic matters.
 func (k Key) Filename() string {
 	if k.Kind != KindUnmatched && k.Kind != KindAmbiguous {
 		return ""
@@ -121,6 +139,31 @@ func NewAmbiguousMatchKey(filename string) Key {
 func NewUnmatchedMatchKey(filename string) Key {
 	enc := base64.RawURLEncoding.EncodeToString([]byte(filename))
 	return Key{Kind: KindUnmatched, Raw: "unmatched-" + enc, Body: enc}
+}
+
+// NewReplayMatchKey builds a `replay-<CODE>` key from a replay code,
+// reporting false if the code is not one.
+//
+// The validation is not optional politeness: this is the ONE door onto the
+// kind, and a key minted from a typo is a match that exists on nobody's
+// machine and can never be found again. Callers hand in whatever the user
+// typed; only a canonical code gets through.
+func NewReplayMatchKey(code string) (Key, bool) {
+	canonical, ok := NormalizeReplayCode(code)
+	if !ok {
+		return Key{}, false
+	}
+	return Key{Kind: KindReplay, Raw: "replay-" + canonical, Body: canonical}, true
+}
+
+// ReplayCode returns the code behind a replay key, and the empty string for
+// every other kind — the Filename() convention, so a caller that forgets to
+// branch gets nothing rather than a timestamp read as a code.
+func (k Key) ReplayCode() string {
+	if k.Kind != KindReplay {
+		return ""
+	}
+	return k.Body
 }
 
 // NewTrackedMatchKey builds a `match-<timestamp>` key. The caller

@@ -194,6 +194,31 @@ func TestSynthesizeManualMatches_AppendsShellForKeylessUserData(t *testing.T) {
 	}
 }
 
+// A match a coach's review created is not a match the player hand-entered,
+// and the difference is not cosmetic: the coach typed the result from a
+// replay, so it must not be counted into the player's own record the way a
+// manual entry is. The provenance is derived from the key rather than stored,
+// because the key already says it.
+func TestSynthesizeManualMatches_ReplayKeysCarryTheirOwnProvenance(t *testing.T) {
+	ud := map[string]db.UserMatchData{
+		"replay-A1B2C3":             {MatchKey: "replay-A1B2C3"},
+		"match-2026-01-01T00-00-00": {MatchKey: "match-2026-01-01T00-00-00"},
+	}
+
+	out := aggregate.SynthesizeManualMatches(nil, ud)
+
+	got := map[string]string{}
+	for _, r := range out {
+		got[r.MatchKey] = r.Source
+	}
+	if got["replay-A1B2C3"] != match.SourceReplay {
+		t.Errorf("replay key Source = %q, want %q", got["replay-A1B2C3"], match.SourceReplay)
+	}
+	if got["match-2026-01-01T00-00-00"] != match.SourceManual {
+		t.Errorf("hand-entered key Source = %q, want %q", got["match-2026-01-01T00-00-00"], match.SourceManual)
+	}
+}
+
 // A percentile is a reading taken against a SPECIFIC rank, so correcting that
 // rank invalidates it — the same rule that clears MapRaw when the map is
 // corrected. Not clearing it produces a plausible lie: "diamond 5 · higher

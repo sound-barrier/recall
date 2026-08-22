@@ -165,3 +165,26 @@ func TestInference_Idempotent(t *testing.T) {
 			firstPct, hp.HeroesPlayed[0].PercentPlayed)
 	}
 }
+
+// A replay match is the first record in the app with no date, no time and no
+// screenshot behind it — a coach may have observed only the map. All three
+// read-time inferences reason about heroes, SR and performance totals, never
+// about when a match happened, so a dateless record has to pass through them
+// untouched rather than acquire a fabricated instant.
+//
+// Pinned rather than assumed: this property is what lets a replay match exist
+// at all, and it would break silently the day an inference started reading a
+// timestamp to decide something.
+func TestApplyReadTimeInference_LeavesADatelessRecordAlone(t *testing.T) {
+	dateless := &parser.MatchResult{Map: "ilios", Hero: "ana", Result: "victory"}
+	before := *dateless
+
+	aggregate.ApplyReadTimeInference(dateless)
+
+	if dateless.Date != "" || dateless.FinishedAt != "" {
+		t.Errorf("inference invented a time: Date=%q FinishedAt=%q", dateless.Date, dateless.FinishedAt)
+	}
+	if dateless.Map != before.Map || dateless.Hero != before.Hero || dateless.Result != before.Result {
+		t.Errorf("inference altered observed fields: %+v → %+v", before, *dateless)
+	}
+}

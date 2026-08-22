@@ -203,9 +203,15 @@ export type PlayModeBulkEnum = 'quickplay' | 'competitive' | '';
  * layer (`PUT /matches/{match_key}/data`). `edited_fields` lists
  * the overridden paths.
  * - `manual`: hand-entered (`POST /matches`); no screenshot rows.
+ * - `replay`: created by a coach's review of a replay code; no
+ * screenshot rows, and the result is what the coach saw rather
+ * than what the player recorded. Present in the match list and
+ * carries the coaching notes, but deliberately NOT counted into
+ * the player's own record — a coaching session must not move a
+ * win rate. Derived from the `replay-` match key, not stored.
  *
  */
-export type MatchSourceEnum = 'ocr' | 'ocr_edited' | 'manual';
+export type MatchSourceEnum = 'ocr' | 'ocr_edited' | 'manual' | 'replay';
 
 /**
  * Match outcome.

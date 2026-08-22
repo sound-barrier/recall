@@ -3,9 +3,15 @@ import { computed } from 'vue'
 import type { MatchRecord } from '@/api-client'
 
 // Small provenance chip shown on match cards + the detail-panel header.
-// Three states: OCR (parsed from screenshots), Edited (parsed then
-// user-corrected), Manual (hand-entered). `compact` renders the icon only
-// (dense rows); the full form adds the text label.
+// Four states: OCR (parsed from screenshots), Edited (parsed then
+// user-corrected), Manual (hand-entered), Replay (created by a coach's
+// review of a replay code). `compact` renders the icon only (dense rows);
+// the full form adds the text label.
+//
+// The unknown-source fallback below is why Replay had to be added here
+// rather than left to default: an unrecognized source collapses to 'ocr',
+// and a coach-created match announcing "Parsed from screenshots" would be a
+// lie about the one match kind whose numbers somebody else typed.
 const props = withDefaults(
   defineProps<{
     source?: MatchRecord['source']
@@ -15,10 +21,11 @@ const props = withDefaults(
   { source: 'ocr', editedFields: () => [], compact: false },
 )
 
-type Variant = 'ocr' | 'ocr_edited' | 'manual'
+type Variant = 'ocr' | 'ocr_edited' | 'manual' | 'replay'
 
+const KNOWN_VARIANTS = new Set<string>(['manual', 'ocr_edited', 'replay'])
 const variant = computed<Variant>(() =>
-  props.source === 'manual' || props.source === 'ocr_edited' ? props.source : 'ocr',
+  KNOWN_VARIANTS.has(props.source ?? '') ? (props.source as Variant) : 'ocr',
 )
 
 // Kebab class (stylelint rejects the enum's `ocr_edited` underscore).
@@ -26,10 +33,18 @@ const badgeClass = computed(() =>
   variant.value === 'ocr_edited' ? 'prov-edited' : `prov-${variant.value}`,
 )
 
-const VARIANT_LABELS: Record<Variant, string> = { ocr: 'OCR', ocr_edited: 'Edited', manual: 'User entered' }
+const VARIANT_LABELS: Record<Variant, string> = {
+  ocr: 'OCR',
+  ocr_edited: 'Edited',
+  manual: 'User entered',
+  replay: 'Replay review',
+}
 const label = computed(() => VARIANT_LABELS[variant.value])
 
 const tip = computed(() => {
+  if (variant.value === 'replay') {
+    return 'Created from a coach\'s replay review. Not counted in your record.'
+  }
   if (variant.value === 'manual') return 'Hand-entered match (no screenshots).'
   if (variant.value === 'ocr_edited') {
     const n = props.editedFields?.length ?? 0
@@ -50,7 +65,7 @@ const tip = computed(() => {
   >
     <svg class="prov-ico" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
       <!-- Viewfinder frame + scanline = machine-read (OCR / Edited). -->
-      <g v-if="variant !== 'manual'" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+      <g v-if="variant !== 'manual' && variant !== 'replay'" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
         <path d="M2 5.5V3.5A1.5 1.5 0 0 1 3.5 2H5.5" />
         <path d="M10.5 2H12.5A1.5 1.5 0 0 1 14 3.5V5.5" />
         <path d="M14 10.5V12.5A1.5 1.5 0 0 1 12.5 14H10.5" />
@@ -58,9 +73,14 @@ const tip = computed(() => {
         <path v-if="variant === 'ocr'" d="M4.8 8H11.2" />
       </g>
       <!-- Pencil = a human touched it (Edited overlay + Manual). -->
-      <g v-if="variant !== 'ocr'" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <g v-if="variant !== 'ocr' && variant !== 'replay'" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M5 11L10.5 5.5L12 7L6.5 12.5H5Z" />
         <path d="M9.5 6.5L11 8" />
+      </g>
+      <!-- Play triangle in a circle = watched, not read or typed. -->
+      <g v-if="variant === 'replay'" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round">
+        <circle cx="8" cy="8" r="6" />
+        <path d="M6.6 5.5L11 8L6.6 10.5Z" fill="currentColor" stroke="none" />
       </g>
     </svg>
     <span v-if="!compact" class="prov-label">{{ label }}</span>
@@ -108,6 +128,15 @@ const tip = computed(() => {
   color: var(--accent-text);
   border-color: var(--accent-soft);
   background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+/* Replay — somebody else's reading of a match you did not screenshot. Kept
+   deliberately quiet: it is not part of your record, so it should not draw
+   the eye the way an edit you made does. */
+.prov-replay {
+  color: var(--text-dim);
+  border-color: var(--border);
+  background: var(--surface-3);
 }
 
 /* Manual — hand-entered: a filled accent wash distinguishes it from Edited
