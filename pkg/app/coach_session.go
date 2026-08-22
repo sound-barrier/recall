@@ -424,7 +424,7 @@ func (a *App) noteTargetLocked(matchKey string) (*coach.Session, int64, error) {
 		return nil, 0, err
 	}
 	s := a.coachSession
-	if !coach.IsTrackedMatchKey(matchKey) || !s.HasMatch(matchKey) {
+	if !coach.IsReviewableMatchKey(matchKey) || !s.HasMatch(matchKey) {
 		return nil, 0, fmt.Errorf("%w: %q", coach.ErrMatchNotInSession, matchKey)
 	}
 	return s, playerRef, nil

@@ -132,14 +132,41 @@ func validateFileNote(n Note) error {
 	if !IsUUID(n.NoteID) {
 		return fmt.Errorf("%w: note_id %q is not a UUID", ErrNotesMalformed, n.NoteID)
 	}
-	if !IsTrackedMatchKey(n.MatchKey) {
-		return fmt.Errorf("%w: match_key %q is not a tracked match", ErrNotesMalformed, n.MatchKey)
+	if !IsReviewableMatchKey(n.MatchKey) {
+		return fmt.Errorf("%w: match_key %q is not a reviewable match", ErrNotesMalformed, n.MatchKey)
+	}
+	if err := validateReplayNoteContext(n); err != nil {
+		return err
 	}
 	in := NoteInput{Kind: n.Kind, Text: n.Text, FocusTags: n.FocusTags, ExtraTags: n.ExtraTags, MatchClock: n.MatchClock}
 	if _, err := ValidateNoteInput(in); err != nil {
 		return fmt.Errorf("%w: %w", ErrNotesMalformed, err)
 	}
 	return validateFileMoments(n.Moments)
+}
+
+// validateReplayNoteContext holds a note about a replay match to the extra
+// rule that makes the archive self-sufficient: it must carry the context the
+// coach observed, including the code, and that code must be the one its own
+// key was minted from.
+//
+// The player's side may have no such match. When it does not, this context is
+// the ONLY thing the match gets created from — so a note without it, or one
+// whose code disagrees with its key, is refused here rather than half-applied
+// on the far side of a handoff where nobody is watching.
+func validateReplayNoteContext(n Note) error {
+	k, isReplay := replayKey(n.MatchKey)
+	if !isReplay {
+		return nil
+	}
+	if n.Match == nil {
+		return fmt.Errorf("%w: note %q about a replay match carries no match context", ErrNotesMalformed, n.NoteID)
+	}
+	if n.Match.ReplayCode != k.ReplayCode() {
+		return fmt.Errorf("%w: note %q claims replay code %q but its key names %q",
+			ErrNotesMalformed, n.NoteID, n.Match.ReplayCode, k.ReplayCode())
+	}
+	return nil
 }
 
 // validateFileMoments holds the moments to the same rules a live write
@@ -174,12 +201,30 @@ func validateFileMoments(moments []Moment) error {
 	return nil
 }
 
-// IsTrackedMatchKey reports whether key is a real match's key (match-…),
-// never an ambiguous-/unmatched- sentinel — the only keys a note may
-// target.
-func IsTrackedMatchKey(key string) bool {
+// replayKey parses key and reports whether it names a replay match.
+//
+// The comma-ok shape rather than returning the parse error: every caller
+// here has already established the key is reviewable, so a parse failure is
+// unreachable — and a helper that returns an error nobody can act on invites
+// exactly the "err != nil, return nil" swallow that nilerr exists to catch.
+func replayKey(key string) (match.Key, bool) {
 	k, err := match.ParseKey(key)
-	return err == nil && k.IsTracked()
+	return k, err == nil && k.IsReplay()
+}
+
+// IsReviewableMatchKey reports whether a note may be written about key: a
+// real match (match-…) or a replay a coach was handed (replay-…), never an
+// ambiguous-/unmatched- sentinel.
+//
+// Renamed rather than widened in place. `IsTrackedMatchKey` had one meaning
+// and every caller of it wanted that meaning; a replay match is emphatically
+// not tracked — no screenshot, no timestamp, minted on a machine that has
+// neither. Reviewability is a second question that happens to have a wider
+// answer, and a predicate whose name says "tracked" while admitting keys
+// that are not is the kind of quiet lie that outlives whoever wrote it.
+func IsReviewableMatchKey(key string) bool {
+	k, err := match.ParseKey(key)
+	return err == nil && (k.IsTracked() || k.IsReplay())
 }
 
 // FocusItem is one line of "what to work on" as it travels. ItemID is the

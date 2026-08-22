@@ -1,6 +1,6 @@
 import type { MatchRecord } from '@/api-client'
 import type { SearchClause } from '@/match/search-query'
-import type { LeaverPick, MatchesNarrowState, ThrowerPick } from '@/composables/matches/narrow/matchesNarrow.types'
+import type { LeaverPick, MatchesNarrowState, SourcePick, ThrowerPick } from '@/composables/matches/narrow/matchesNarrow.types'
 import {
   matchesDateRange,
   matchesHero,
@@ -77,6 +77,18 @@ function pickedLabel(picked: Set<string>, one: (v: string) => string, many: stri
 
 // Ordered as the old passesNarrow chain evaluated (cheap gates first);
 // the order is also the tiebreak-stable base for suggestion sorting.
+// How each provenance bucket reads when it is the only one picked. A lookup
+// rather than a ternary: this was `x === 'manual' ? 'user-entered' : 'edited'`,
+// which meant the third bucket ('replay') silently described itself as
+// "edited only" — a chip lying about what it filtered. A registry keyed by the
+// discriminant is the shape that makes a new bucket a new ROW rather than a
+// new branch somebody has to remember to add.
+const SOURCE_PICK_LABELS: Partial<Record<SourcePick, string>> = {
+  manual: 'user-entered',
+  ocr_edited: 'edited',
+  replay: 'replay-review',
+}
+
 export const NARROW_CLAUSES: readonly ClauseSpec[] = [
   {
     id: 'includeUnknown',
@@ -227,7 +239,7 @@ export const NARROW_CLAUSES: readonly ClauseSpec[] = [
     restricts: (s) => s.pickedSources.value.size > 0,
     passes: (r, s) => matchesSource(r, s.pickedSources.value),
     label: (s) => s.pickedSources.value.size === 1
-      ? `${[...s.pickedSources.value][0] === 'manual' ? 'user-entered' : 'edited'} only`
+      ? `${SOURCE_PICK_LABELS[[...s.pickedSources.value][0]!] ?? 'provenance'} only`
       : 'provenance filter',
     clear: (s) => { s.pickedSources.value = new Set() },
     chips: (s) => s.pickedSources.value.size,

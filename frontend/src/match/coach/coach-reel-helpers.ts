@@ -5,7 +5,7 @@
 
 import type { MatchRecord } from '@/api-client'
 import { formatPlayerDay, playerClockDayKey, playerClockTime } from '@/match/coach/coach-time'
-import { isTrackedMatchKey } from '@/match/match-key'
+import { isReviewableMatchKey } from '@/match/match-key'
 import { tallyWLD, type WLDTally } from '@/match/match-stats-helpers'
 
 /** The record fields the reel reads — a narrower shape than MatchRecord so tests can feed minimal rows. */
@@ -47,13 +47,18 @@ function toReelDay<T extends ReelRecord>(dayKey: string, frames: T[]): ReelDay<T
 }
 
 // A frame is an invitation to write a note, and design rule 6 allows a note
-// only on a TRACKED key — the server 404s the `unmatched-` / `ambiguous-`
-// sentinels, permanently. An "include unknown" export carries those records,
-// so without this the reel would hand the coach an editor that accepts a
-// paragraph and then loses it. A screenshot with no match is not a match to
-// review; it never reaches the reel.
+// only on a REVIEWABLE key — a real match, or a replay a coach was handed.
+// The server 404s the `unmatched-` / `ambiguous-` sentinels, permanently. An
+// "include unknown" export carries those records, so without this the reel
+// would hand the coach an editor that accepts a paragraph and then loses it.
+// A screenshot with no match is not a match to review; it never reaches the
+// reel.
+//
+// This gate is the reason a code-only session works at all: left keyed on
+// `isTrackedMatchKey`, every frame of one would be filtered out and the desk
+// would tell the coach their session holds no matches to review.
 function isReelable(rec: ReelRecord): boolean {
-  return !rec.hidden && isTrackedMatchKey(rec.match_key ?? '')
+  return !rec.hidden && isReviewableMatchKey(rec.match_key ?? '')
 }
 
 /** Group reviewable records by the player's day: newest day first, undated last, frames newest first within a day. */
