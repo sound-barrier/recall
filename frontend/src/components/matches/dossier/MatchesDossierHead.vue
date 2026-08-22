@@ -79,8 +79,6 @@ const {
   onWidgetRemove,
   onUndoRemove,
   onDismissUndo,
-  LEGACY_DATA_KPI,
-  LEGACY_DATA_BREAKDOWN,
 } = useDashboardGrid()
 
 // ─── Set summary headline / subline / anchor chip ──────────────
@@ -192,8 +190,6 @@ function toggleNarrow() {
           :drop-target="dragReorder.dropHint.value !== null &&
             dragReorder.dropHint.value.row === row.index &&
             dragReorder.dropHint.value.idx === idx"
-          :legacy-data-kpi="LEGACY_DATA_KPI[def.id]"
-          :legacy-data-breakdown="LEGACY_DATA_BREAKDOWN[def.id]"
           @drag-start="dragReorder.onDragStart"
           @drag-end="dragReorder.onDragEnd"
           @drag-over="dragReorder.onDragOver"

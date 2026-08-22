@@ -75,7 +75,7 @@ test.describe('dossier — Most played roles breakdown', () => {
     await page.goto('/')
     await page.getByRole('tab', { name: /^Matches/ }).click()
 
-    const article = page.locator('[data-breakdown="roles"]')
+    const article = page.locator('[data-widget-id="top-roles"]')
     await expect(article).toBeVisible()
     await expect(article.locator('.breakdown-eyebrow')).toHaveText('Most played roles')
 
@@ -104,7 +104,7 @@ test.describe('dossier — Most played roles breakdown', () => {
     await page.goto('/')
     await page.getByRole('tab', { name: /^Matches/ }).click()
 
-    const article = page.locator('[data-breakdown="roles"]')
+    const article = page.locator('[data-widget-id="top-roles"]')
     await expect(article).toBeVisible()
     // The role→percent mapping depends on useOWData's reference-data fetch
     // resolving (heroes map to roles only once it lands). A one-shot read can
@@ -130,7 +130,7 @@ test.describe('dossier — Most played roles breakdown', () => {
     })
     await page.goto('/')
     await page.getByRole('tab', { name: /^Matches/ }).click()
-    const article = page.locator('[data-breakdown="roles"]')
+    const article = page.locator('[data-widget-id="top-roles"]')
     await expect(article.getByRole('listitem')).toHaveCount(3)
     for (const txt of await article.locator('.bd-stats').allTextContents()) {
       expect(txt).toBe('0%')
