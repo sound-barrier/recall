@@ -482,7 +482,9 @@ paths:
             tally: a thrown match still counts.
           - **note** — free-text per-match commentary.
           - **replay_code** — Overwatch's six-character replay ID so
-            the match can be re-watched in the in-game viewer.
+            the match can be re-watched in the in-game viewer. Accepted in
+            either case and stored uppercased; a value that is not six
+            letters or digits is rejected with 400.
           - **members** — BattleTags of group members; verbatim, no
             canonicalisation.
 
@@ -522,7 +524,16 @@ paths:
                   description: Free-text per-match commentary. `null` = empty.
                 replay_code:
                   type: string
-                  description: Overwatch six-character replay ID. No format validation server-side. `null` = empty.
+                  # Deliberately NOT \s around the code: ECMA-262 \s is Unicode and
+                  # the server's trim is ASCII-only, so a non-breaking space
+                  # would be spec-valid and server-rejected. Clients send the
+                  # code already trimmed.
+                  pattern: "^$|^[A-Za-z0-9]{6}$"
+                  description: >-
+                    Overwatch six-character replay ID, stored uppercased. Accepted in
+                    either case; normalized to uppercase before it is written, because
+                    a replay code identifies one match and needs one spelling.
+                    `null` or `""` = empty.
                 members:
                   type: array
                   description: |
@@ -4057,7 +4068,11 @@ components:
           $ref: "#/components/schemas/DisruptionSides"
         replay_code:
           type: string
-          description: Optional Overwatch replay code; written to the match annotation.
+          pattern: "^$|^[A-Za-z0-9]{6}$"
+          description: >-
+            Optional Overwatch replay code; written to the match annotation,
+            normalized to uppercase. Rejected before the match row is written,
+            so a malformed code never leaves a half-created match behind.
           example: A1B2C3
         note:
           type: string
@@ -5562,7 +5577,12 @@ components:
           description: Free-text per-match commentary.
         replay_code:
           type: string
-          description: Overwatch six-character replay ID. Stored verbatim.
+          # No `pattern` here on purpose. Codes stored before the format was
+          # pinned are preserved as-is rather than destroyed, so a response
+          # may legitimately carry one that no longer validates on input.
+          description: >-
+            Overwatch six-character replay ID, uppercased. May carry a
+            legacy value that predates the format rule.
         members:
           type: array
           description: BattleTags of group members for this match.

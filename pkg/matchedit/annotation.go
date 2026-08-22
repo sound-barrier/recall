@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"recall/pkg/db"
+	"recall/pkg/match"
 )
 
 // validDisruptionSides enumerates who a leaver / thrower annotation can name:
@@ -33,6 +34,11 @@ var ErrInvalidThrower = errors.New("invalid thrower: each side must be 'self', '
 // is the explicit DeleteAnnotation (DELETE) so the verb states the intent
 // rather than an all-empty PUT meaning "delete." HTTP handlers map this to 400.
 var ErrEmptyAnnotation = errors.New("annotation has no content; use DELETE to clear it")
+
+// ErrInvalidReplayCode rejects a replay code that is not six ASCII
+// alphanumerics. See match.NormalizeReplayCode for why the vocabulary is
+// spelled out rather than delegated to a Unicode-aware helper.
+var ErrInvalidReplayCode = errors.New("invalid replay_code: must be six letters or digits")
 
 // AnnotationInput is the caller-facing DTO for SetAnnotation. Each
 // field is optional, but at least one must carry content: an all-empty
@@ -67,8 +73,12 @@ type AnnotationInput struct {
 //     SQL; the composite-PK on the child table also guards duplicates.
 //   - tags are lowercased + trimmed + deduped (case-insensitive
 //     equivalence — `Stack` and `stack` collapse to one).
-//   - replay_code is left as-is — Overwatch's format isn't pinned
-//     strongly enough to validate client-side.
+//   - replay_code is normalized to its canonical six-character uppercase
+//     form, or rejected with ErrInvalidReplayCode. It used to be stored
+//     verbatim on the grounds that the format wasn't pinned strongly
+//     enough to check; it is now an identity a match key is minted from,
+//     so one code has to have exactly one spelling. Empty stays legal —
+//     most matches have no code.
 func SetAnnotation(s db.Store, in AnnotationInput) error {
 	if in.MatchKey == "" {
 		return ErrMatchKeyRequired
@@ -121,15 +131,33 @@ func normalizeAnnotation(in AnnotationInput) (db.Annotation, error) {
 	if err != nil {
 		return db.Annotation{}, err
 	}
+	code, err := normalizeReplayCode(in.ReplayCode)
+	if err != nil {
+		return db.Annotation{}, err
+	}
 	return db.Annotation{
 		MatchKey:   in.MatchKey,
 		Leavers:    leavers,
 		Throwers:   throwers,
 		Note:       strings.TrimSpace(in.Note),
-		ReplayCode: strings.TrimSpace(in.ReplayCode),
+		ReplayCode: code,
 		Members:    normalizeMembers(in.Members),
 		Tags:       normalizeTags(in.Tags),
 	}, nil
+}
+
+// normalizeReplayCode canonicalizes a replay code, treating blank as
+// absence. Shared by SetAnnotation and the manual-match path so the two
+// doors onto the same column cannot drift.
+func normalizeReplayCode(raw string) (string, error) {
+	if strings.Trim(raw, " \t\n\r\v\f") == "" {
+		return "", nil
+	}
+	code, ok := match.NormalizeReplayCode(raw)
+	if !ok {
+		return "", ErrInvalidReplayCode
+	}
+	return code, nil
 }
 
 // annotationIsEmpty reports whether a normalized annotation carries no

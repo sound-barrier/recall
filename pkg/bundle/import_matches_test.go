@@ -400,3 +400,27 @@ func TestImport_AcceptsSchemaV1BundleWithNoUserLayer(t *testing.T) {
 		t.Error("a v1 bundle has no user layer to write")
 	}
 }
+
+// An import is not a form. A bundle exported by an older build can carry a
+// replay code that today's rule would refuse, and refusing the whole restore
+// over one stale six characters would be a dreadful trade — the user came here
+// to get their history back. So the import normalizes what it can and keeps
+// what it cannot, and never fails on a code.
+func TestImport_NormalizesReplayCodesAndRefusesNone(t *testing.T) {
+	data := allTablesData()
+	data["annotations"] = []map[string]any{
+		{"MatchKey": "m1", "ReplayCode": "  a1b2c3 "},
+		{"MatchKey": "m2", "ReplayCode": "ABC"},
+	}
+	dst := dbtest.New()
+
+	if _, err := bundle.Import(dst, payloadWithData(t, data)); err != nil {
+		t.Fatalf("Import must not fail on a legacy replay code: %v", err)
+	}
+	if got := dst.Annotations["m1"].ReplayCode; got != "A1B2C3" {
+		t.Errorf("repairable code = %q, want A1B2C3", got)
+	}
+	if got := dst.Annotations["m2"].ReplayCode; got != "ABC" {
+		t.Errorf("unrepairable code = %q, want it preserved", got)
+	}
+}

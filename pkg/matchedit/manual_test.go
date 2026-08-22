@@ -260,3 +260,25 @@ func TestCreateManual_AcceptsAnOmittedHeroModeAndQueue(t *testing.T) {
 		return err
 	}())
 }
+
+// A refused replay code must be refused BEFORE anything is written. The
+// match row goes in ahead of the annotation, so validating the code down in
+// the annotation write would leave a manual match half-created — present in
+// the list, missing the code the user typed, and impossible to retry because
+// the key is now taken.
+func TestCreateManual_BadReplayCodeWritesNothing(t *testing.T) {
+	fake := seeded()
+	in := manualInput("ilios", "victory")
+	in.ReplayCode = "NOPE"
+
+	key, err := matchedit.CreateManual(fake, in)
+	if !errors.Is(err, matchedit.ErrInvalidReplayCode) {
+		t.Fatalf("CreateManual error = %v, want ErrInvalidReplayCode", err)
+	}
+	if key != "" {
+		t.Errorf("CreateManual returned key %q on failure", key)
+	}
+	if len(fake.UserMatchData) != 0 {
+		t.Errorf("a refused manual match left %d row(s) behind", len(fake.UserMatchData))
+	}
+}

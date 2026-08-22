@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"recall/pkg/db"
+	"recall/pkg/match"
 )
 
 // ErrImportMalformed wraps payload-level parse failures (not a ZIP, zip-open
@@ -281,6 +282,14 @@ func importAnnotations(store db.Store, annotations []db.Annotation, existing map
 	for _, ann := range annotations {
 		if existing[ann.MatchKey] {
 			continue
+		}
+		// Canonicalize, never refuse. A bundle from an older build can carry
+		// a code today's rule would reject, and failing a whole restore over
+		// stale six characters would cost the user their history to enforce a
+		// format. An unrepairable code rides through unchanged, exactly as
+		// the store's own startup pass leaves it.
+		if code, ok := match.NormalizeReplayCode(ann.ReplayCode); ok {
+			ann.ReplayCode = code
 		}
 		if err := store.SetAnnotationAt(ann); err != nil {
 			return fmt.Errorf("import: annotation for %q: %w", ann.MatchKey, err)

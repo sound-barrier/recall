@@ -170,6 +170,7 @@ func handleCreateManualMatch(a *app.App) http.HandlerFunc {
 			errStatus{app.ErrInvalidPlayedAt, probInvalidBody},
 			errStatus{app.ErrInvalidLeaver, probInvalidBody},
 			errStatus{app.ErrInvalidThrower, probInvalidBody},
+			errStatus{app.ErrInvalidReplayCode, probInvalidBody},
 			errStatus{app.ErrInvalidRank, probInvalidBody},
 			errStatus{app.ErrUnknownMap, probConflict},
 			errStatus{app.ErrUnknownHero, probConflict},

@@ -4,6 +4,7 @@ import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useOWData } from '@/composables/shared/useOWData'
 import { manualMatchFormKey } from '@/composables/matches/manual/useManualMatchForm'
 import { TIER_ORDER } from '@/match/trends/match-trends-helpers'
+import { REPLAY_CODE_LENGTH, toReplayCodeDraft } from '@/match/replay-code'
 import FilterCombobox from '@/components/shared/FilterCombobox.vue'
 import NoteWriter from '@/components/shared/NoteWriter.vue'
 
@@ -273,11 +274,12 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
         v-model="f.replayCode.value"
         class="mm-input mm-input-short"
         type="text"
-        maxlength="12"
+        :maxlength="REPLAY_CODE_LENGTH"
         autocapitalize="characters"
         autocomplete="off"
         spellcheck="false"
         placeholder="e.g. A1B2C3"
+        @input="f.replayCode.value = toReplayCodeDraft(f.replayCode.value)"
       >
     </section>
 

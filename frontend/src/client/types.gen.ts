@@ -327,7 +327,7 @@ export type ManualMatchInput = {
     leavers?: DisruptionSides;
     throwers?: DisruptionSides;
     /**
-     * Optional Overwatch replay code; written to the match annotation.
+     * Optional Overwatch replay code; written to the match annotation, normalized to uppercase. Rejected before the match row is written, so a malformed code never leaves a half-created match behind.
      */
     replay_code?: string;
     /**
@@ -1659,7 +1659,7 @@ export type MatchAnnotation = {
      */
     note?: string;
     /**
-     * Overwatch six-character replay ID. Stored verbatim.
+     * Overwatch six-character replay ID, uppercased. May carry a legacy value that predates the format rule.
      */
     replay_code?: string;
     /**
@@ -2455,7 +2455,7 @@ export type SetMatchAnnotationData = {
          */
         note?: string;
         /**
-         * Overwatch six-character replay ID. No format validation server-side. `null` = empty.
+         * Overwatch six-character replay ID, stored uppercased. Accepted in either case; normalized to uppercase before it is written, because a replay code identifies one match and needs one spelling. `null` or `""` = empty.
          */
         replay_code?: string;
         /**

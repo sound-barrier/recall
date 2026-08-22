@@ -194,18 +194,18 @@ func TestSetAnnotation_EmptyLeaverPreservesOtherFields(t *testing.T) {
 	fake := seeded("k")
 	mustNoErr(t, matchedit.SetAnnotation(fake, matchedit.AnnotationInput{
 		MatchKey: "k", Leavers: []string{"team"}, Note: "important",
-		ReplayCode: "ABC", Members: []string{"Apollo#1"},
+		ReplayCode: "ABC123", Members: []string{"Apollo#1"},
 	}))
 	mustNoErr(t, matchedit.SetAnnotation(fake, matchedit.AnnotationInput{
 		MatchKey: "k", Leavers: nil, Note: "important",
-		ReplayCode: "ABC", Members: []string{"Apollo#1"},
+		ReplayCode: "ABC123", Members: []string{"Apollo#1"},
 	}))
 	got, _ := fake.LoadAnnotations()
 	out := got["k"]
 	if len(out.Leavers) != 0 {
 		t.Errorf("leaver sides should be cleared, got %v", out.Leavers)
 	}
-	if out.Note != "important" || out.ReplayCode != "ABC" || len(out.Members) != 1 {
+	if out.Note != "important" || out.ReplayCode != "ABC123" || len(out.Members) != 1 {
 		t.Errorf("other fields lost: %+v", out)
 	}
 }
@@ -229,5 +229,52 @@ func TestAnnotationWrites_RequireAMatchKey(t *testing.T) {
 	}
 	if err := matchedit.DeleteAnnotation(fake, ""); err == nil {
 		t.Error("DeleteAnnotation with no match_key succeeded")
+	}
+}
+
+// The replay code stopped being a free-text field the moment a match key
+// could be minted from it: a coach and a player have to type the same six
+// characters and land on the same match, so the store keeps exactly one
+// spelling of each code.
+func TestSetAnnotation_ReplayCodeIsCanonicalized(t *testing.T) {
+	fake := seeded("k1")
+	if err := matchedit.SetAnnotation(fake, matchedit.AnnotationInput{
+		MatchKey: "k1", ReplayCode: "  7h1k9p  ",
+	}); err != nil {
+		t.Fatalf("SetAnnotation: %v", err)
+	}
+	if got := fake.Annotations["k1"].ReplayCode; got != "7H1K9P" {
+		t.Errorf("stored replay code = %q, want %q", got, "7H1K9P")
+	}
+}
+
+func TestSetAnnotation_RejectsMalformedReplayCode(t *testing.T) {
+	for _, code := range []string{"ABC", "TOOLONG7", "7H1K9!", "7H1 K9"} {
+		t.Run(code, func(t *testing.T) {
+			fake := seeded("k1")
+			err := matchedit.SetAnnotation(fake, matchedit.AnnotationInput{
+				MatchKey: "k1", ReplayCode: code,
+			})
+			if !errors.Is(err, matchedit.ErrInvalidReplayCode) {
+				t.Fatalf("SetAnnotation(%q) error = %v, want ErrInvalidReplayCode", code, err)
+			}
+			if _, ok := fake.Annotations["k1"]; ok {
+				t.Error("a refused annotation was written anyway")
+			}
+		})
+	}
+}
+
+// Absence is still legal — most matches have no code, and asking for one
+// would make every existing annotation unwritable.
+func TestSetAnnotation_EmptyReplayCodeStillAllowed(t *testing.T) {
+	fake := seeded("k1")
+	if err := matchedit.SetAnnotation(fake, matchedit.AnnotationInput{
+		MatchKey: "k1", Note: "no code here", ReplayCode: "   ",
+	}); err != nil {
+		t.Fatalf("SetAnnotation: %v", err)
+	}
+	if got := fake.Annotations["k1"].ReplayCode; got != "" {
+		t.Errorf("stored replay code = %q, want empty", got)
 	}
 }

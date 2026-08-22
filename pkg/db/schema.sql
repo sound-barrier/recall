@@ -303,6 +303,10 @@ CREATE TABLE IF NOT EXISTS rank_sr (
 ) STRICT;
 -- statement-end
 
+-- replay_code carries a UNIQUE index, but it is created by
+-- normalizeReplayCodes at store open rather than declared here: a database
+-- written by an older build may still hold two matches claiming one code, and
+-- the index has to be built AFTER that tie is broken or the app cannot open.
 CREATE TABLE IF NOT EXISTS match_annotations (
   match_key TEXT PRIMARY KEY,
   note TEXT,

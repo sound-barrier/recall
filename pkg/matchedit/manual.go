@@ -125,6 +125,12 @@ func validateManualMatchInput(in match.ManualMatchInput) error {
 	if err := ValidateDisruptionSides(in.Leavers, in.Throwers); err != nil {
 		return err
 	}
+	// Checked here rather than where it is written: the match row goes in
+	// before the annotation does, so a code refused downstream would leave a
+	// half-created match holding the key the user would need to retry with.
+	if _, err := normalizeReplayCode(in.ReplayCode); err != nil {
+		return err
+	}
 	if in.Rank != nil {
 		if err := validateManualRank(*in.Rank); err != nil {
 			return err
