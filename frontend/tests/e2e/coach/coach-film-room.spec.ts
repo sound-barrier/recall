@@ -147,7 +147,8 @@ test.describe('film room — desk notes', () => {
     await focusChip(page, 'positioning').click()
     await expect(focusChip(page, 'positioning', true)).toBeVisible()
     await noteEditor(page).fill('Held the high ground on A — do that on B too.')
-    await clockInput(page).fill('04:12')
+    // Digits only: the field is always MM:SS, so there is no colon to type.
+    await clockInput(page).pressSequentially('0412')
 
     await expect.poll(() => session.notePut.seen() && session.notePut.get().match_clock === '04:12').toBe(true)
     expect(session.notePutKey.get()).toBe(KINGS_ROW_MATCH.match_key)
@@ -176,17 +177,23 @@ test.describe('film room — desk notes', () => {
     expect(session.notePut.get().focus_tags).toEqual([])
   })
 
-  test('an invalid in-match clock is explained through aria-describedby', async ({ page }) => {
+  // 09:59 is typed as 0,9,5,9 and passes through 00:95 on the way, which is
+  // not a clock. The field shows the half-typed value rather than correcting
+  // it — a correction mid-keystroke would make the next digit land somewhere
+  // the coach did not ask for — and says so while it stands.
+  test('an in-progress clock is explained through aria-describedby', async ({ page }) => {
     await openRoom(page)
     await frames(page).filter({ hasText: KINGS_ROW_DISPLAY }).click()
 
     const clock = clockInput(page)
-    await clock.fill('9:99')
+    await clock.pressSequentially('095')
+    await expect(clock).toHaveValue('00:95')
     await expect(clock).toHaveAttribute('aria-invalid', 'true')
     const hintId = must(await clock.getAttribute('aria-describedby'), 'aria-describedby on the clock input')
-    await expect(page.locator(`#${hintId}`)).toContainText(/MM:SS/)
+    await expect(page.locator(`#${hintId}`)).toContainText(/when in the match/i)
 
-    await clock.fill('09:59')
+    await clock.press('9')
+    await expect(clock).toHaveValue('09:59')
     await expect(clock).not.toHaveAttribute('aria-invalid', 'true')
   })
 

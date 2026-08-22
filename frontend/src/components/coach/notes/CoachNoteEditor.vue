@@ -4,6 +4,7 @@ import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { SAVE_LABEL, type CoachSaveState } from '@/components/coach/room/coach-room-props'
 import type { RoomVoice } from '@/components/coach/room/coach-room-props'
 import NoteWriter from '@/components/shared/NoteWriter.vue'
+import { useMatchClockField } from '@/composables/coach/useMatchClockField'
 import {
   FOCUS_TAGS, focusTagLabel, noteMark, parseMatchClock, type CoachNoteDraft,
 } from '@/match/coach/coach-notes'
@@ -127,16 +128,21 @@ function startAddingTag(): void {
   void nextTick(() => newTagField.value?.focus())
 }
 
-function onClockInput(e: Event): void {
-  if (!(e.target instanceof HTMLInputElement)) return
-  clockRaw.value = e.target.value
-  if (clockRaw.value.trim() === '') {
-    emitDraft({ matchClock: '' })
-    return
-  }
-  const parsed = parseMatchClock(clockRaw.value)
-  if (parsed !== null) emitDraft({ matchClock: parsed })
-}
+const { onKeydown: onClockKeydown } = useMatchClockField(
+  () => clockRaw.value,
+  (next) => {
+    clockRaw.value = next
+    if (next === '') {
+      emitDraft({ matchClock: '' })
+      return
+    }
+    const parsed = parseMatchClock(next)
+    if (parsed !== null) emitDraft({ matchClock: parsed })
+  },
+  // The note's clock is optional — "somewhere in this game" is a real thing
+  // for a coach to mean — so backspacing off 00:00 gives back no clock.
+  { clearable: true },
+)
 
 function toggleReviewed(): void {
   emitDraft({ kind: reviewed.value ? 'note' : 'reviewed_only' })
@@ -251,10 +257,10 @@ function toggleReviewed(): void {
           :aria-invalid="clockInvalid ? 'true' : undefined"
           :disabled="blocked"
           placeholder="MM:SS"
-          @input="onClockInput"
+          @keydown="onClockKeydown"
         >
         <p :id="CLOCK_HINT_ID" class="note-hint">
-          MM:SS — when in the match it happened.
+          Type the digits — when in the match it happened. Optional.
         </p>
       </div>
 

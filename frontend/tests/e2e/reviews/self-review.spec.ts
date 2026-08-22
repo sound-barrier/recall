@@ -96,7 +96,7 @@ test.describe('self review', () => {
 
     await filmRoom(page).getByRole('button', { name: 'Mark a moment' }).click()
     const draft = () => filmRoom(page).getByRole('group', { name: /^New moment/ })
-    await draft().getByLabel('Clock').fill('4:45')
+    await draft().getByLabel('Clock').pressSequentially('0445')
     await draft().getByLabel('What happened').fill('peeled late')
     await expect.poll(() => mock.momentPut.seen()).toBe(true)
     expect(mock.momentPut.get().text).toBe('peeled late')

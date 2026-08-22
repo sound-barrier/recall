@@ -42,7 +42,8 @@ async function markMoment(
 ) {
   await strip(page).getByRole('button', { name: 'Mark a moment' }).click()
   const draft = () => strip(page).getByRole('group', { name: /^New moment/ })
-  await draft().getByLabel('Clock').fill(clock)
+  // Digits only — the field is always MM:SS, so there is no colon to type.
+  await draft().getByLabel('Clock').pressSequentially(clock.replace(/\D/g, '').padStart(4, '0'))
   await draft().getByLabel('What happened').fill(text)
 }
 
@@ -59,7 +60,9 @@ test.describe('cue strip', () => {
 
     await markMoment(page, '4:45', 'Cassidy flanked behind you.')
 
-    await expect(strip(page)).toContainText('04:45')
+    // In the FIELD, not printed beside it — a moment used to show its time
+    // twice, side by side.
+    await expect(strip(page).getByLabel('Clock').first()).toHaveValue('04:45')
     // The text lives in the row's editable field — the strip is written in, not
     // just read — so this reads its value rather than the region's text.
     await expect(
@@ -82,7 +85,11 @@ test.describe('cue strip', () => {
     await markMoment(page, '3:23', 'No off-angle — the tank ate the pressure.')
     await markMoment(page, '10:02', 'Held the last point well.')
 
-    await expect(strip(page).getByTestId('moment-clock')).toHaveText(['03:23', '04:45', '10:02'])
+    // The clock lives in its FIELD now — a moment used to print it a second
+    // time immediately beside it. Read the values in DOM order.
+    const clocks = await strip(page).getByLabel('Clock')
+      .evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value))
+    expect(clocks).toEqual(['03:23', '04:45', '10:02'])
   })
 
   // NOT tested here: that ordering is by seconds rather than by the clock's
@@ -114,20 +121,29 @@ test.describe('cue strip', () => {
     await markMoment(page, '45:12', 'Well past the end.')
 
     await expect(strip(page)).toContainText(/longer than this match/i)
-    await expect(strip(page)).toContainText('45:12')
+    await expect(strip(page).getByLabel('Clock').first()).toHaveValue('45:12')
   })
 
   test('refuses a clock it cannot read, and says so', async ({ page }) => {
-    await openDeskOn(page, "king's row")
+    const mock = await openDeskOn(page, "king's row")
 
     await strip(page).getByRole('button', { name: 'Mark a moment' }).click()
-    const draft = strip(page).getByRole('group', { name: /^New moment/ })
-    await draft.getByLabel('Clock').fill('4:75')
-    await draft.getByLabel('What happened').fill('Seconds past 59.')
-    await draft.getByLabel('What happened').blur()
+    // 0475 is what a coach types on the way to 04:75 — seconds past 59, which
+    // is not a clock. The field shows it (correcting mid-keystroke would make
+    // the NEXT digit land somewhere they did not ask for) and refuses to save
+    // it.
+    // Type on past a legal clock into an illegal one. The field is addressed
+    // directly rather than through its row, because the row is renamed the
+    // moment it holds something savable — which, with digits shifting in from
+    // the right, happens before the coach has finished typing.
+    const clock = strip(page).getByLabel('Clock').first()
+    await clock.pressSequentially('0475')
 
-    await expect(draft.getByLabel('Clock')).toHaveAttribute('aria-invalid', 'true')
-    await expect(strip(page).getByTestId('moment-clock')).toHaveCount(0)
+    await expect(clock).toHaveValue('04:75')
+    await expect(clock).toHaveAttribute('aria-invalid', 'true')
+    // And nothing was saved: a moment needs both a readable clock and
+    // something to say, and this has neither.
+    expect(mock.momentPut.seen()).toBe(false)
   })
 
   test('drops a moment the coach takes back', async ({ page }) => {

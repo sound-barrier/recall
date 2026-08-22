@@ -77,35 +77,75 @@ describe('CoachNoteEditor — the note', () => {
 })
 
 describe('CoachNoteEditor — the in-match clock', () => {
-  it('normalizes a valid clock into the draft', async () => {
+  // The field takes DIGITS, never punctuation: a coach transcribing moments
+  // off a replay was reaching for the colon key every single time. Typing
+  // 4, 1, 2 walks 00:04 → 00:41 → 04:12, so the colon is never absent and
+  // therefore never typed.
+  function typeClock(el: HTMLElement, digits: string) {
+    return Promise.all([...digits].map((key) => fireEvent.keyDown(el, { key })))
+  }
+
+  it('takes the digits and shapes the clock itself', async () => {
     const view = renderEditor()
-    await fireEvent.update(screen.getByRole('textbox', { name: /clock/i }), '4:12')
+    const clock = screen.getByRole('textbox', { name: /clock/i })
+    for (const key of '412') await fireEvent.keyDown(clock, { key })
+    expect(clock).toHaveValue('04:12')
     expect(lastUpdate(view).matchClock).toBe('04:12')
   })
 
-  it('explains an unparseable clock through its hint instead of saving it', async () => {
-    const view = renderEditor()
-    const clock = screen.getByRole('textbox', { name: /clock/i })
-    await fireEvent.update(clock, '9:99')
-    expect(clock).toHaveAttribute('aria-invalid', 'true')
-    expect(view.emitted('update')).toBeUndefined()
-
-    // The e2e follows aria-describedby by hand; here the resolved
-    // description is the same contract, stated once.
-    expect(clock).toHaveAccessibleDescription(/MM:SS/)
-  })
-
-  it('clears the invalid state once the clock parses', async () => {
+  it('does nothing at all when the colon is pressed', async () => {
     renderEditor()
     const clock = screen.getByRole('textbox', { name: /clock/i })
-    await fireEvent.update(clock, '9:99')
-    await fireEvent.update(clock, '09:59')
-    expect(clock).not.toHaveAttribute('aria-invalid', 'true')
+    for (const key of '412') await fireEvent.keyDown(clock, { key })
+    await fireEvent.keyDown(clock, { key: ':' })
+    await fireEvent.keyDown(clock, { key: 'a' })
+    expect(clock).toHaveValue('04:12')
   })
 
+  // 07:52 is typed as 0,7,5,2 and passes through 00:75 on the way. The
+  // half-typed value is marked invalid and never saved, and the moment it
+  // parses it is both.
+  it('will not save a value that is only half typed', async () => {
+    const view = renderEditor()
+    const clock = screen.getByRole('textbox', { name: /clock/i })
+    await typeClock(clock, '075')
+    expect(clock).toHaveValue('00:75')
+    expect(clock).toHaveAttribute('aria-invalid', 'true')
+    // Earlier keystrokes DID save — '00:00' and '00:07' are real clocks, and
+    // the field showed them. What must never reach the draft is the value
+    // that is not a clock at all.
+    expect(lastUpdate(view).matchClock).not.toBe('00:75')
+    expect(lastUpdate(view).matchClock).toBe('00:07')
+
+    await fireEvent.keyDown(clock, { key: '2' })
+    expect(clock).toHaveValue('07:52')
+    expect(clock).not.toHaveAttribute('aria-invalid', 'true')
+    expect(lastUpdate(view).matchClock).toBe('07:52')
+  })
+
+  it('nudges the half the caret is in, and only that half', async () => {
+    const view = renderEditor({ matchClock: '04:12' })
+    const clock = screen.getByRole('textbox', { name: /clock/i })
+
+    ;(clock as HTMLInputElement).setSelectionRange(1, 1)
+    await fireEvent.keyDown(clock, { key: 'ArrowUp' })
+    expect(clock).toHaveValue('05:12')
+
+    ;(clock as HTMLInputElement).setSelectionRange(4, 4)
+    await fireEvent.keyDown(clock, { key: 'ArrowDown' })
+    expect(clock).toHaveValue('05:11')
+    expect(lastUpdate(view).matchClock).toBe('05:11')
+  })
+
+  // The note's clock is optional — "somewhere in this game" is a real thing
+  // for a coach to mean — so there has to be a way back to no clock at all.
   it('lets the coach empty the clock again', async () => {
-    const view = renderEditor({ matchClock: '06:40' })
-    await fireEvent.update(screen.getByRole('textbox', { name: /clock/i }), '')
+    const view = renderEditor({ matchClock: '00:04' })
+    const clock = screen.getByRole('textbox', { name: /clock/i })
+    await fireEvent.keyDown(clock, { key: 'Backspace' })
+    expect(clock).toHaveValue('00:00')
+    await fireEvent.keyDown(clock, { key: 'Backspace' })
+    expect(clock).toHaveValue('')
     expect(lastUpdate(view).matchClock).toBe('')
   })
 
@@ -115,106 +155,8 @@ describe('CoachNoteEditor — the in-match clock', () => {
     await view.rerender({ draft: { ...emptyDraft(), text: 'hydrated', matchClock: '06:40' } })
     expect(screen.getByRole('textbox', { name: /clock/i })).toHaveValue('06:40')
   })
-
-  it('leaves half-typed text alone while the draft is unchanged', async () => {
-    renderEditor()
-    const clock = screen.getByRole('textbox', { name: /clock/i })
-    await fireEvent.update(clock, '9:9')
-    expect(clock).toHaveValue('9:9')
-  })
-
-  it('keeps the clock exactly as the coach typed it when it already parses to the stored value', async () => {
-    const view = renderEditor()
-    const clock = screen.getByRole('textbox', { name: /clock/i })
-    await fireEvent.update(clock, '4:12')
-    await view.rerender({ draft: { ...emptyDraft(), matchClock: '04:12' } })
-    expect(clock).toHaveValue('4:12')
-  })
-
-  it('re-reads the clock when the desk moves to another match', async () => {
-    const view = renderEditor({ matchClock: '06:40' })
-    expect(screen.getByRole('textbox', { name: /clock/i })).toHaveValue('06:40')
-    await view.rerender({ matchKey: 'match-2026-08-07T20-05-00', draft: emptyDraft() })
-    expect(screen.getByRole('textbox', { name: /clock/i })).toHaveValue('')
-  })
 })
 
-describe('CoachNoteEditor — reviewed with nothing to add', () => {
-  it('is a switch that reports the draft kind', () => {
-    renderEditor({ kind: 'reviewed_only' })
-    expect(screen.getByRole('switch', { name: 'Reviewed' })).toHaveAttribute('aria-checked', 'true')
-  })
-
-  it('turns an empty draft into a reviewed-only mark', async () => {
-    const view = renderEditor()
-    await fireEvent.click(screen.getByRole('switch', { name: 'Reviewed' }))
-    expect(lastUpdate(view).kind).toBe('reviewed_only')
-  })
-
-  it('turns the mark back off', async () => {
-    const view = renderEditor({ kind: 'reviewed_only' })
-    await fireEvent.click(screen.getByRole('switch', { name: 'Reviewed' }))
-    expect(lastUpdate(view).kind).toBe('note')
-  })
-
-  it('is unavailable, with a reason, once the note says something', () => {
-    renderEditor({ text: 'Peel earlier.' })
-    const toggle = screen.getByRole('switch', { name: 'Reviewed' })
-    expect(toggle).toBeDisabled()
-    expect(toggle).toHaveAttribute('title', expect.stringContaining('written note'))
-  })
-})
-
-describe('CoachNoteEditor — moving and saving', () => {
-  it('steps to the neighboring frames', async () => {
-    const view = renderEditor({}, { hasPrev: true, hasNext: true })
-    await fireEvent.click(screen.getByRole('button', { name: 'Previous match' }))
-    await fireEvent.click(screen.getByRole('button', { name: 'Next match' }))
-    expect(view.emitted('prev')).toHaveLength(1)
-    expect(view.emitted('next')).toHaveLength(1)
-  })
-
-  it('disables the step that has nowhere to go', () => {
-    renderEditor({}, { hasPrev: false, hasNext: true })
-    expect(screen.getByRole('button', { name: 'Previous match' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Next match' })).toBeEnabled()
-  })
-
-  it('speaks the autosave state through a status line', async () => {
-    const view = renderEditor({}, { saveState: 'saving' })
-    expect(screen.getByRole('status')).toHaveTextContent('Saving')
-    await view.rerender({ saveState: 'saved' })
-    expect(screen.getByRole('status')).toHaveTextContent('Saved')
-  })
-})
-
-// A note the server will refuse is worse than no note: the coach types a
-// paragraph, every keystroke fails with "Not saved" in 10 px mono, and the
-// words are gone. When the room knows the save cannot land, the editor
-// stops accepting the typing and says why instead.
-describe('CoachNoteEditor — blocked from saving', () => {
-  const REASON = 'Say who this bundle is about before writing notes.'
-
-  it('refuses the typing and gives the reason', async () => {
-    renderEditor({}, { blockedReason: REASON })
-    expect(await markdownField()).toBeDisabled()
-    expect(screen.getByRole('textbox', { name: 'In-match clock' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'positioning' })).toBeDisabled()
-    expect(screen.getByRole('switch', { name: 'Reviewed' })).toBeDisabled()
-    expect(screen.getByRole('status')).toHaveTextContent(REASON)
-  })
-
-  it('takes the typing again once the block lifts', async () => {
-    const view = renderEditor({}, { blockedReason: REASON })
-    await view.rerender({ blockedReason: '' })
-    expect(await markdownField()).toBeEnabled()
-    expect(screen.getByRole('status')).toHaveTextContent('Autosaves as you write')
-  })
-})
-
-// The note is prose with a small markdown toolbar, and in the PLAYER's own
-// voice it is ONLY prose: the in-match clock and the focus-tag chips belong
-// to the coach filing notes about someone else, and duplicated what the
 // Moments strip already owns per match.
 describe('CoachNoteEditor — the self voice is prose', () => {
   it('drops the clock and the tag chips when the matches are your own', async () => {

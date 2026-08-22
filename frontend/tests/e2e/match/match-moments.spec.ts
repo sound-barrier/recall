@@ -100,7 +100,7 @@ test.describe('a player marking their own moments', () => {
 
     await strip(page).getByRole('button', { name: 'Mark a moment' }).click()
     const draft = () => strip(page).getByRole('group', { name: /^New moment/ })
-    await draft().getByLabel('Clock').fill('4:45')
+    await draft().getByLabel('Clock').pressSequentially('445')
     await draft().getByLabel('What happened').fill('Should have taken the off-angle.')
 
     await expect.poll(() => put.seen()).toBe(true)
@@ -123,7 +123,35 @@ test.describe('a player marking their own moments', () => {
       { moment_id: 'a', match_clock: '03:23', text: 'earlier' },
     ])
 
-    await expect(strip(page).getByTestId('moment-clock')).toHaveText(['03:23', '04:45'])
+    // Read off the FIELDS. The clock used to be printed a second time beside
+    // each one, so a moment displayed its time twice; there is one now, and
+    // the field is it.
+    const clocks = await strip(page).getByLabel('Clock')
+      .evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value))
+    expect(clocks).toEqual(['03:23', '04:45'])
+  })
+
+  // A coach transcribing moments off a replay was reaching for the colon key
+  // every single time. The field is always MM:SS, so the colon is never
+  // absent and the digits shift in from the right.
+  test('takes a clock as bare digits, with no colon to type', async ({ page }) => {
+    const { put } = await openJournal(page, [])
+
+    await strip(page).getByRole('button', { name: 'Mark a moment' }).click()
+    const draft = () => strip(page).getByRole('group', { name: /^New moment/ })
+    const clock = draft().getByLabel('Clock')
+
+    await clock.click()
+    await clock.pressSequentially('412')
+    await expect(clock).toHaveValue('04:12')
+
+    // The colon does nothing rather than breaking the value.
+    await clock.press(':')
+    await expect(clock).toHaveValue('04:12')
+
+    await draft().getByLabel('What happened').fill('Rotated late.')
+    await expect.poll(() => put.seen()).toBe(true)
+    expect(put.get().match_clock).toBe('04:12')
   })
 
   test('drops one the player takes back, and it stays gone', async ({ page }) => {

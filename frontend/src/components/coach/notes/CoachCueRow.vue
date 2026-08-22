@@ -2,6 +2,8 @@
 import { computed, ref, watch } from 'vue'
 
 import { FOCUS_TAGS, focusTagLabel, parseMatchClock } from '@/match/coach/coach-notes'
+import { EMPTY_CLOCK } from '@/match/coach/match-clock-field'
+import { useMatchClockField } from '@/composables/coach/useMatchClockField'
 import type { CoachSaveState } from '@/components/coach/room/coach-room-props'
 import { isPastTheEnd } from '@/match/coach/coach-cue-geometry'
 import { isSavable, type CoachMoment } from '@/match/coach/coach-moments'
@@ -33,7 +35,10 @@ const emit = defineEmits<{
   'copy-replay': []
 }>()
 
-const clockRaw = ref(props.moment.matchClock)
+// Always a complete MM:SS — a moment with no clock yet starts at 00:00
+// rather than empty, which is what lets the digits shift in with no
+// punctuation to type.
+const clockRaw = ref(props.moment.matchClock || EMPTY_CLOCK)
 watch(() => props.moment.matchClock, (incoming) => {
   // Only when the store's value genuinely differs from what this field is
   // showing — otherwise every keystroke's own echo would reformat mid-type.
@@ -60,11 +65,14 @@ const rowLabel = computed(() => {
 
 const pastTheEnd = computed(() => isPastTheEnd(props.moment.matchClock, props.gameLength))
 
-function onClockInput(value: string) {
-  clockRaw.value = value
-  const parsed = parseMatchClock(value)
-  if (parsed !== null) emit('update', { ...props.moment, matchClock: parsed })
-}
+const { onKeydown: onClockKeydown } = useMatchClockField(
+  () => clockRaw.value,
+  (next) => {
+    clockRaw.value = next
+    const parsed = parseMatchClock(next)
+    if (parsed !== null) emit('update', { ...props.moment, matchClock: parsed })
+  },
+)
 
 function onTextInput(value: string) {
   emit('update', { ...props.moment, text: value })
@@ -82,9 +90,11 @@ function onTagChange(tag: string) {
     </div>
     <div class="cue-body" role="group" :aria-label="rowLabel">
       <div class="cue-head">
-        <span v-if="moment.matchClock" class="cue-clock" data-testid="moment-clock">
-          {{ moment.matchClock }}
-        </span>
+        <!--
+          The clock is shown ONCE, by the field that holds it. There used to
+          be a read-only copy immediately to its left, so a moment with a
+          clock displayed the same time twice, side by side.
+        -->
         <label class="sr-only" :for="`cue-clock-${moment.momentId}`">Clock</label>
         <input
           :id="`cue-clock-${moment.momentId}`"
@@ -94,12 +104,11 @@ function onTagChange(tag: string) {
           spellcheck="false"
           autocomplete="off"
           autocorrect="off"
-          placeholder="MM:SS"
           :value="clockRaw"
           :disabled="blocked"
           :title="blocked ? blockedReason : undefined"
           :aria-invalid="clockValid ? undefined : 'true'"
-          @input="onClockInput(($event.target as HTMLInputElement).value)"
+          @keydown="onClockKeydown"
         >
         <button
           type="button"
