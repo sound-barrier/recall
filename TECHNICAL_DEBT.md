@@ -26,7 +26,7 @@ The 2026-07-02 full audit (49 verified findings; report archived at
 picture, and its Phase-0 quick-win sweep landed 17 fixes across db/app/
 frontend/CI. What remains: **activate the migration framework before the tag
 (section 5 — the deliberate *last* 1.0 commit)** — every other
-catalogued section has been paid (the decomposition round carved
+catalogued section from that audit has been paid (the decomposition round carved
 `pkg/bundle`, `pkg/gamedata`, and `pkg/profiles` out of the shell). Sections 6-7 were paid by the
 Phase-2 PR (v2 export bundles, the golden-corpus lane, the Store contract
 suite); section 8 by the Phase-3 PR (the narrow clause registry killed
@@ -40,8 +40,19 @@ on-disk log + the Vue error boundary + the DB health surface, and the
 oversized-SFC adjudications). The pre-tag coverage lift
 landed on the genuinely consequential gap (the read-path sidecar/override
 attach in `pkg/aggregate`, 75% → ~90%); the one infra package that stays
-thin (`pkg/probe`) does so structurally, not for want of a test (see §3). Everything else
-below is a catalogued section, deliberately accepted (§3), or out of scope.
+thin (`pkg/probe`) does so structurally, not for want of a test (see §3).
+
+**Sections 11–20 are new (2026-08-22)**, from the first audit against the
+restructured standards (root `CLAUDE.md` + the two language files + eight
+`.claude/rules/*.md`). `task lint` is green across four Go tag/GOOS combinations
+plus ESLint, stylelint, knip and vue-tsc, so **every mechanically enforced rule
+already passes** — all ten sections are judgment-area debt, which is the only
+kind a linter cannot hold. None blocks 1.0. Read them in priority order: §12's
+`dbtest.Fake` vocabulary is a one-line fix and the cheapest item in the ledger;
+§18 is the ledger auditing itself and was largely paid on arrival.
+
+Everything else below is a catalogued section, deliberately accepted (§3), or
+out of scope.
 
 ## 3. Consciously accepted — do NOT "fix" these without a new reason
 
@@ -51,7 +62,9 @@ changed bullets carry an inline re-evaluation note:
 
 - **What is left in `pkg/app`, and why it stays (2026-08-16).** The
   decomposition took it from 54 files / 7,607 LOC to 47 / 5,673 via six leaf
-  packages (`pkg/sse`, `pkg/seed`, `pkg/matchedit`, `pkg/snapshot`,
+  packages (**50 / 6,480 as of 2026-08-22** — the coaching work since added
+  `focus.go`, `self_review.go` and `coach_replay.go`, each a leaf shell on the
+  same template) (`pkg/sse`, `pkg/seed`, `pkg/matchedit`, `pkg/snapshot`,
   `pkg/screenshot`, `pkg/release`), on the template the earlier carves set:
   the leaf takes `db.Store` plus plain values, never `*App`. What remains is
   the shell, and it is meant to remain. **The five mutex-guarded clusters**
@@ -61,8 +74,8 @@ changed bullets carry an inline re-evaluation note:
   mutually recursive — carving it needs a ~10-method `ParseHost` interface,
   which is the interface-pollution smell CLAUDE.md names, not a leaf package.
   **`app_wails.go` / `app_server.go`** are the desktop-vs-server seam; the
-  pair is the point. **The nine `*_alias.go` shims** (358 LOC) are
-  load-bearing rather than residue: `pkg/cmd` maps 41 `app.Err*` sentinels to
+  pair is the point. **The nine `*_alias.go` shims** (445 LOC) are
+  load-bearing rather than residue: `pkg/cmd` maps 43 `app.Err*` sentinels to
   problem+json statuses inline across seven files, and a sentinel re-declared
   instead of aliased is a silent 500 with no compile error — pinned by
   `pkg/cmd/problems_ladder_test.go`, whose own completeness gap let exactly
@@ -126,7 +139,8 @@ changed bullets carry an inline re-evaluation note:
   and passes the leftover word `tsgo` as an INPUT FILE — which suppresses
   tsconfig.json and reports `TS5112` having checked nothing.
 
-- **Post file-size wave (2026-08-10): what stays over the 500-line soft cap.**
+- **Post file-size wave (2026-08-10; re-measured 2026-08-22): what stays
+  over the 500-line soft cap.**
   The sibling-stylesheet split (`<style scoped src="./x.css">` — hash-scoping
   and lazy-chunk placement verified byte-identical in the built assets) plus
   targeted script/data extractions took every previously-exempted oversized
@@ -136,7 +150,8 @@ changed bullets carry an inline re-evaluation note:
   useDashboardLayout 329, useEloCalculator 437, KeyboardShortcutsModal 351;
   `useMatchesDossierQueries` sits at 343 since the kernel extraction), so the
   old per-file exemptions are paid and deleted. What remains, argued fresh:
-  `MatchesView.vue` is now 508 (2026-08-17, from 698): the style block went
+  `MatchesView.vue` is **560** (2026-08-22; was 508 at 2026-08-17, from 698):
+  the style block went
   to a sibling sheet, and three cohesive clusters left the script for
   composables that each have one reason to change that is not this view's —
   `useMatchesRowActions` (the right-click menu's state machine AND what each
@@ -147,20 +162,26 @@ changed bullets carry an inline re-evaluation note:
   workspace composition itself — ~200 lines of wiring and ~210 of template —
   and the only seam remaining is splitting the layout, which would trade one
   readable shell for three partial ones. Growth trigger unchanged at ≥750
-  lines, or any non-wiring logic landing in its script. `api.ts` (529) is the
-  named-function facade over the generated SDK — 61 one-call wrappers,
-  complexity 1 each; the file IS the one-page wire-surface listing, and
-  splitting it buys indirection for zero win. `match-dossier-aggregate.ts`
-  (594) and `match-trends-helpers.ts` (519) are dense pure-helper kernels
+  lines, or any non-wiring logic landing in its script.
+
+  **`api.ts` has outgrown its own argument and is re-scoped, not re-accepted
+  (2026-08-22).** It was accepted at 529 lines / 61 wrappers as "the one-page
+  wire-surface listing." It is now **864 lines / 97 wrappers**. The complexity
+  claim still holds — each is a one-call wrapper — but the justification was
+  never *low complexity*, it was *one page*, and 864 lines is not one page.
+  Rather than launder a 63% overrun as a fresh acceptance, this is now tracked
+  as owed work in §18: split along the section comments already dividing the
+  file, or re-argue the number through the documented bump procedure.
+  `match-dossier-aggregate.ts` (594, now at `src/match/dossier/`) and
+  `match-trends-helpers.ts` (**623**, was 519) are dense pure-helper kernels
   (the dossier aggregation pass; the trends chart math) whose siblings
   (`match-dossier-tally`, `match-time`/`label`/`sample-helpers`) already
   hold the separable concerns — splitting what's left fragments one
   aggregation layer for a number, the same argument the retired
   useMatchesDossierQueries bullet made, still true one level down. Test
-  files over 500 (useMatchesDossier.test 1949, SettingsView.test 972,
-  useMatchesNarrow.test 845, MatchDetailPanel.test 622, MatchesView.test
-  605, useDashboardLayout.test 579 — re-counted after the Testing
-  Library migration) stay whole: a suite mirrors its
+  files over 500 (re-counted 2026-08-22: useMatchesDossier.test 1972,
+  useMatchesNarrow.test 1189, SettingsView.test 988, MatchesView.test 945,
+  MatchDetailPanel.test 620, useDashboardLayout.test 579) stay whole: a suite mirrors its
   surface, and splitting one by line count scatters a single surface's
   coverage story. The three BATCHED widget suites were the opposite case and
   are now split per-widget (2026-08-17): FormWidgets, ModifierWidgets and
@@ -168,12 +189,32 @@ changed bullets carry an inline re-evaluation note:
   PR rather than a surface. That split was also the stated precondition for
   reopening whether `dashboard/widgets` wants a family taxonomy; it was
   reopened and the answer stands — see the reasoning above that budget entry.
-- **App.vue is a clean 177-line thin shell** (zero business logic — it reads a
+
+  **The Go side of this cap was never argued, and twelve files sit over it
+  (2026-08-22).** Every exception above is a frontend file; §3 has named zero
+  Go files since the cap was written, which is not a finding that Go is
+  smaller — it is a blind spot. Unlisted and over 500:
+  `pkg/db/store_self_review.go` 621 · `pkg/aggregate/attach.go` 577 ·
+  `pkg/db/dbtest/fake.go` 562 · `frontend/src/stores/coach.ts` 550 ·
+  `BulkActionBar.vue` 547 · `pkg/cmd/server_coach.go` 545 ·
+  `pkg/db/store_types.go` 536 · `pkg/profiles/move.go` 523 ·
+  `match-momentum-helpers.ts` 511 · `MatchHeatmapHeader.vue` 509 ·
+  `MatchMapRoleBand.vue` 504 · `ProfileSwitcher.vue` 502. Four of the Vue
+  files are mostly irreducible markup and CSS (BulkActionBar's script is 101
+  lines, ProfileSwitcher's 34) and are the case the cap explicitly forgives;
+  the Go four and `stores/coach.ts` are not. **`MatchMapRoleBand.vue` is the
+  cautionary one**: it appears in the *paid* list above at 493 and has since
+  regrown to 504 — a file dropped under the line and then quietly crossed back,
+  which is exactly the per-file-trigger failure the Package-size rule records.
+  Two more are mine: the replay-code campaign took `stores/coach.ts` 446→550
+  and `server_coach.go` 453→545 and passed nine green local runs, because this
+  cap is prose, not a gate. Tracked as owed work in §18.
+- **App.vue is a clean 189-line thin shell** (zero business logic — it reads a
   few store refs, wires the App-shell composables, and renders chrome + one
   view; the parse-run-state / profile / tour / first-run wiring lives in the
   `composables/app/` seam, not the SFC). Extracting further is opportunistic
   Boy-Scout work, not owed. The thin-shell target is already met.
-  (Re-evaluated 2026-07-06: 168→177.)
+  (Re-evaluated 2026-08-22: 168→177→189.)
 - **In-app self-update is Windows-only, one accepted cosmetic gap.** Recall
   ships a Windows desktop app only, so the Wails v3 `pkg/updater` flow (About
   dialog → Install → SHA256SUMS-verified swap → Restart) runs on Windows and is
@@ -227,12 +268,16 @@ changed bullets carry an inline re-evaluation note:
   2026-07-06: `pkg/applog` left this bullet — the panic-recovery / on-disk-log
   work added public-surface tests of `RecoverPanic` / `AttachFile` / `Init`,
   taking it to ~85%.)
-- **Total-JS bundle headroom is ~550B (2026-08-10)** — the file-size wave's
-  module extractions spent ~645B of indirection against the cap in
-  `scripts/ci/check-bundle-size.sh` (313442/319000 initial, 1592448/1593000
-  total after the wave). The next non-trivial JS addition will trip the
-  gate; bump the budget deliberately with a history row when it does —
-  don't shave a feature to dodge a number the wave spent on structure.
+- **Bundle headroom stays thin, and the caps live in the gate, not here.**
+  The budgets are `MAX_INITIAL_JS_BYTES` / `MAX_TOTAL_JS_BYTES` (and the two
+  CSS twins) in `scripts/ci/check-bundle-size.sh` — **read them there.** This
+  bullet used to quote `313442/319000` and `1592448/1593000`; both were two
+  budget generations stale by 2026-08-22, which is the drift §18 is about, in
+  the one bullet that had a gate to defer to. The standing rule is what
+  survives re-reading: headroom is routinely under 1KB, so the next
+  non-trivial JS addition trips the gate — bump the budget deliberately with a
+  history row rather than shaving a feature to dodge a number. **The gate is
+  not in `task lint`**, so it can only fail in CI; build before you assume.
 - **External CI flake** — the WebKit `match-detail-panel` e2e timeout is
   environmental (WebKit on the ubuntu runner; the spec itself is a
   deterministic regression guard, and `@playwright/test` stays pinned at an
@@ -248,7 +293,7 @@ changed bullets carry an inline re-evaluation note:
 
 ## 5. Activate the schema-migration path — the deliberate last 1.0 commit
 
-`NewSQLStore` sets only `PRAGMA foreign_keys = ON` (`pkg/db/store.go:250`); there
+`NewSQLStore` sets only `PRAGMA foreign_keys = ON` (`pkg/db/store.go`); there
 is no `PRAGMA user_version`, and the migration runner is scaffolded-but-inert —
 `pkg/db/migrate.go`'s `applyMigrations` is a no-op and `pkg/db/migrations/` ships
 no `.up.sql`/`.down.sql` pairs. Today every incompatible schema change is
@@ -280,6 +325,253 @@ schema shape is final:
 **Effort:** M. **Risk:** High — on-disk schema management. Deliberately sequenced
 last so the schema is frozen before the baseline is captured.
 
+## 11. Untyped discriminants dispatched without a registry
+
+**Priority: HIGH. Effort: L.** The same smell in both languages, and in both
+the `default` arm defeats the exhaustiveness check that would otherwise catch a
+miss. Cited by symbol, not line — see §18 for why.
+
+**Go.** `parser.ScreenshotType` returns a bare `string`
+(`pkg/parser/classify.go`), and its six values — the five in
+`screenshotTypeChecks` plus the `"unknown"` fallback — are re-spelled as string
+literals across **13 files in 6 packages**. Adding a seventh type means editing
+all of them, and *nothing catches a miss*: every switch carries a `default` that
+absorbs the unknown type as `"unknown"` and writes a garbage row. Naming the
+type would **not** recruit the `exhaustive` linter — `.golangci.yml` sets
+`default-signifies-exhaustive: true`, so a `default` arm silently satisfies it.
+
+The guard that looks like it covers this does not.
+`TestApp_ParseScreenshots_DispatchesEachScreenshotType`
+(`pkg/app/parse_orchestration_test.go`) is a hand-written table of four cases —
+`teams`, `personal`, `rank`, `unknown`. **`summary` and `all_heroes` are
+absent.** The name promises a completeness check the body has never performed,
+which is worse than no test: it reads as coverage at review time.
+
+**Frontend.** `AggFn` is a 7-member union (`match/pivot/pivot-aggregate.ts`)
+dispatched by **5 switches** plus two hand-kept lists in `useMatchPivot.ts`.
+Four arms have a `default:` or a trailing `return null`, so adding `'median'`
+compiles clean, routes through `foldMeasure()` to `null`, and paints an **empty
+column**. The user sees nothing wrong; the build is green.
+
+**Remedy** in both cases is the pattern the repo already owns — a registry keyed
+by the discriminant plus a completeness test, as in `store_vocabulary_sync_test.go`,
+`NARROW_CLAUSES` and `WIDGET_REGISTRY`. A Go registry *map* loses the
+`exhaustive` check, so the paired completeness test is not optional. The Go half
+touches 5 packages, so per *Working style* its approach needs outlining before
+any code is written.
+
+## 12. Duplication past three that has already begun to diverge
+
+**Priority: HIGH. Effort: S–M.** Not "these look similar" — each of these has
+measurably drifted, which is what converts a rule-of-three observation into owed
+work.
+
+- **`checkMomentRoom` / `sortOrderFor` ×3** — `pkg/app/coach_session.go`,
+  `pkg/matchedit/moment.go`, `pkg/review/note.go`. `sortOrderFor` is
+  byte-identical bar the slice element type. `checkMomentRoom` has drifted into
+  **three different spellings**, and `pkg/review`'s copy is missing the
+  `momentID != ""` guard the other two have. Not a live bug — `review.PutMoment`
+  refuses an empty id upstream — but that is luck, not design, and the next
+  caller doesn't inherit the luck. The generic idiom already exists two files
+  away (`dropRowByFilename[T any]`).
+- **`dbtest.Fake` holds a third focus-tag vocabulary** (`checkFocusTags` in
+  `pkg/db/dbtest/fake_coach.go`) while `store_vocabulary_sync_test.go` says
+  *"two in Go"* and references the Fake's copy **zero times**. Add a ninth tag
+  correctly everywhere the sync test checks and the Fake rejects what production
+  accepts — failing every `pkg/app` test with an error pointing at the wrong
+  layer. This is *"a fake that cuts corners is a broken fake"* with a one-line
+  fix. **Do this one first**; it is the cheapest item in the ledger.
+- **The probe chip ×3** — `SettingsView.vue`, `SettingsEngine.vue`,
+  `SettingsFolders.vue`: the same three-line state machine and ~22 lines of
+  identical markup each, whose a11y labels have **already diverged** ("Dismiss
+  Tesseract detection result" vs "Dismiss detection result").
+- **Click-to-filter dimensions across 4 files** — the six-dimension if-chain in
+  `MatchesTable.vue` and `MatchesMembersList.vue` has already diverged in both
+  ordering *and* fallthrough target (`pickRole` vs `pickResult`). Both are
+  currently correct only because each is exhaustive over its own literal union.
+
+## 13. The Narrow panel's open-state is duplicated, so four call sites click a CSS class
+
+**Priority: HIGH. Effort: M.** One concept, two refs: `narrowOpen` in
+`stores/ui.ts` and a second in `MatchesDossierHead.vue`, kept in sync by a pure
+emit relay (`MatchesDossierHead` → `MatchesView`'s `@narrow-open` →
+`uiStore.setNarrowOpen`). The store's copy only feeds `backgroundFrozen`; the
+component's copy is the one that actually opens the panel.
+
+Because `setNarrowOpen(true)` does not open anything, every other caller
+synthesizes a DOM click instead:
+
+- `useOnboardingTourBridge.ts` — `.dossier-actions .dossier-btn.primary`
+- `useOnboardingTourBridge.ts` — `#narrow-popover .np-close`
+- `useAnchorToast.ts` — `[data-narrow-trigger]`
+- `useGlobalKeyboard.ts` — `getElementById('narrow-popover')`, then that same
+  `.dossier-actions .dossier-btn.primary` selector
+
+They already **disagree on how to address the same button**: three reach for the
+styling class, one for the `data-*` hook. `.dossier-btn.primary` is a *CSS*
+class — renaming it, or making some other button in `.dossier-actions` the
+`.primary` one, silently breaks the `/` shortcut, the anchor toast and the
+onboarding tour, with a green build. A fix applied to one spelling leaves the
+others broken. `useOnboardingTour.ts` carries a comment documenting the hack,
+which is the tell that it was known and deferred rather than missed.
+
+**Remedy:** collapse to the single store ref, make `setNarrowOpen` actually
+open the panel, and delete all four DOM-click call sites.
+
+## 14. The keyboard cheat-sheet is a parallel catalog with no parity test
+
+**Priority: MED-HIGH. Effort: S.** `SHORTCUT_GROUPS`
+(`keyboard-shortcuts.data.ts`, ~40 rows) and the real registrations in
+`useGlobalKeyboard.ts` share no code and no test — `SHORTCUT_GROUPS` appears in
+**zero test files**. A binding can be added, changed or removed with `task lint`,
+`task test` and `task test-e2e` all green while the "?" modal keeps advertising
+the old key. That is a **user-facing lie no gate can catch**, and the standards
+name the remedy: when a lookup cannot be collapsed into the thing it describes,
+*"pair it with a completeness test."*
+
+## 15. The documented store-reading migration is unfinished
+
+**Priority: MED. Effort: M.** `frontend/CLAUDE.md` states the target plainly:
+components read the stores directly; App neither prop-drills down nor wires
+mutation emits back up.
+
+- **`SettingsSections.vue`** is a ~90-line store-to-props shim — and the *same
+  template* renders `<SettingsProfiles />`, `<SettingsWindow />` and
+  `<SettingsCoach />` with **zero props**, which is the documented pattern. One
+  file demonstrating both the target and the miss, side by side.
+- **Row-interaction emits** are relayed verbatim through `MatchesMembersList`
+  (twice) and `MatchesTable`, neither of which reads them. The two paths through
+  `MatchesMembersList` have already drifted stylistically from each other.
+
+## 16. Server state read outside the query layer
+
+**Priority: MED. Effort: S.** `GetCoachingSettings` is fetched directly from
+`SettingsCoach.vue` and `SendToCoachModal.vue`, with **no entry in
+`queries/keys.ts`** — the only server read in the app outside the vue-query
+cache. So `SetCoachingSettings` has no key to invalidate, and the two surfaces
+stay consistent only because the modal happens to re-fetch every time it opens.
+It also opts out of the `meta: { banner }` error path, which is why one caller
+hand-rolls `setErrorFromRaw` and the other swallows the error entirely.
+
+**Not** part of this item: `SettingsDatabaseHealth.vue` reads the seam directly
+too, but it is user-pulled diagnostics with a written rationale — a legitimate
+carve-out, recorded here so the next audit doesn't re-flag it.
+
+## 17. Signatures a transposition survives, and the casts covering them
+
+**Priority: MED. Effort: S.** Adjacent same-typed parameters that the compiler
+cannot tell apart.
+
+- **`MomentRef` exists to kill a shape that is still live in five signatures.**
+  `pkg/CLAUDE.md` names this exact case. `(reviewID, matchKey, momentID string)`
+  survives in `pkg/app/self_review.go` (twice), on the **`db.Store` interface**
+  (`store_self_review.go`), in its implementation, and in the Fake — and
+  `PutSelfReviewMoment` takes the three loose strings and then *builds a
+  `MomentRef` out of them*, which is the abstraction arriving one layer too late.
+- **Four `as Set<string>` casts** in `matchesNarrow.clauses.ts` exist only
+  because `matchesAnySide(sides, picked: Set<string>)` (`narrowPredicates.ts`)
+  demands a *mutable* `Set` it never writes to, and `Set<T>` is invariant. The
+  cast asserts the callee may `.add()` an arbitrary string into a
+  `Set<LeaverPick>`. Widening the parameter to `ReadonlySet<string>` deletes all
+  four casts and makes the contract honest.
+- Also **`UpsertIngestedFile(filename, contentHash, duplicateOf string)`** — two
+  of those are filenames from one namespace — and **`SetReviewAt(matchKey,
+  reviewedBy, reviewedAt string)`**, whose two adjacent params differ by two
+  characters and where a transposition writes a timestamp into `reviewed_by`
+  with no `CHECK` constraint to stop it.
+
+## 18. The ledger and the standards have drifted from the code
+
+**Priority: HIGH. Effort: S.** Cheap to fix and actively misleading — the worst
+combination. Most of this section was **paid in the commit that added it** (§3's
+numbers were re-measured and corrected, §5's rotted line citation became a
+symbol reference); what stays open is listed at the bottom.
+
+Every numeric claim in §3 checked on 2026-08-22 was wrong: `api.ts` 529/61 →
+**864/97**; `MatchesView.vue` 508 → 560; `match-trends-helpers.ts` 519 → 623;
+`pkg/app` 47 files/5,673 LOC → 50/6,480; `*_alias.go` 358 LOC → 445; 41
+`app.Err*` sentinels → 43; `App.vue` 177 → 189; `useMatchesNarrow.test.ts` 845 →
+1189; `MatchesView.test.ts` 605 → 945; both bundle budget pairs two generations
+stale; `match-dossier-aggregate.ts` had moved to `src/match/dossier/`.
+
+This is precisely the failure the standards name — *"prose restatements
+drift"* — which is why coverage floors and package budgets were moved **into the
+gates**. §3 is prose restating measurements, so it rots identically. The
+Package-size rule already records this exact incident once: *"`TECHNICAL_DEBT.md`
+recorded per-file growth triggers that three files then passed unnoticed."* It
+has now happened a second time, which makes it a pattern rather than a lapse.
+
+**Still owed:**
+
+1. **Split or re-argue `api.ts`** at its true size (864 lines / 97 wrappers).
+   §3 no longer accepts it; the file has section comments already marking the
+   split lines. **Effort: S.**
+2. **Decide the twelve unlisted 500+ files** catalogued in §3 — in particular
+   the four Go files and `stores/coach.ts`, which have never been argued either
+   way, and `MatchMapRoleBand.vue`, which was paid down to 493 and has since
+   regrown to 504. **Effort: M.**
+3. **Stale pointers.** `pkg/app/correlation.go` and `pkg/app/probe_test.go`
+   **do not exist** — both left in the `pkg/correlate` carve — and are still
+   cited by `parser/screenshot_sources.go`, `screenshot_sources_test.go` and
+   `cmd/server_test.go`. (`.claude/rules/app-shell.md` cited `correlation.go`
+   too and was corrected alongside this section: a standard misdescribing the
+   layout it governs, auto-loaded for anyone touching `pkg/app/**`, was the one
+   pointer worth fixing in the same breath as recording it.) **Effort: S.**
+4. **`db.CoachStore`'s doc comment is false.** It claims *"the coach package
+   depends on ONE consumer-side seam."* It does not: `pkg/coach` declares its
+   own `NoteStore` and `pkg/coachreturn` its own `Store`, and the only reference
+   to `db.CoachStore` anywhere is its embedding one line away in `db.Store`.
+   **Effort: S.**
+5. **`SettingsView.test.ts` has 15 cases named `it('emits …')`** against a
+   component with **zero** `defineEmits`, via a `renderSettings({ props: … })`
+   harness that seeds Pinia and passes no props. The tests are correct; their
+   names send every reader hunting for emits that do not exist. **Effort: S.**
+
+**Prevention, not just repair:** the durable fix for the numbers is to stop
+restating measurements in prose. Where a gate exists, cite the gate
+(`scripts/ci/check-bundle-size.sh`, `package-size-budgets.txt`,
+`GO_COVERAGE_MIN`). Where none exists, cite the symbol and let the reader
+measure. Line-number citations are now absent from this file entirely — §5 held
+the last one, and it had rotted from 250 to ~400 inside a single release.
+
+## 19. Dead weight
+
+**Priority: LOW. Effort: S.** Three clusters, each with no mechanical gate that
+would ever find them.
+
+- **Seven `export_test.go` re-exports with zero callers** —
+  `ValidateMatchesQueryParams`, `ProblemStatus`, `ProblemSlug`,
+  `PathIsMissingOrNotADir`, `SetStore`, `ExportSchema`, `Crop`. `unused` does
+  not reach test-file exports and `dead-code-go` skips test code, so this class
+  has **no gate at all**. Two carry doc comments asserting a need that no longer
+  exists.
+- **A "Phase 1" compat shim whose follow-up never landed** — `LEGACY_DATA_KPI` /
+  `LEGACY_DATA_BREAKDOWN` (`useDashboardGrid.ts`), three of whose four entries
+  are identity mappings, costing two exported symbols, two props on a shared
+  component, and two DOM attributes on every widget. Deleting it means
+  re-pointing nine Playwright locators. The standards call this out by name:
+  *"no backwards-compat shims for undeployed code."*
+- **Five `shared/` files read by exactly one feature** — `useMatchClock` (5
+  importers, all under `components/matches/`), `useGlobalKeyboard` (1),
+  `useEventStream` (1), `CommandPalette.vue` (1), `useSummaryThumbnail` (1). The
+  frontend rule names this mechanism explicitly: *"that is how both `shared/`
+  folders became junk drawers the first time."* Moving them re-ratchets
+  directory budgets in the same commit, so pair the two.
+
+## 20. 29 of 123 directories sit at their size ceiling
+
+**Priority: MED. Effort: a decision, not a patch.** Zero-headroom is deliberate
+and correct — it is what makes the gate trip on the *first* file past the line.
+But a quarter of the tree sitting *at* the line means most future changes open a
+budget conversation before they open a code review, and the two legitimate
+answers (split vs. bump) are not interchangeable.
+
+Some of the 29 are genuine split candidates; others are budgets that were set at
+the directory's count rather than at its responsibility, which is the failure
+mode the rule warns about from the other direction. Telling them apart is a
+directory-by-directory judgment call. **Schedule it as its own pass** — treating
+it as a patch is how a folder silently regrows what it just shed.
+
 ## Out of scope — deliberately not building
 
 So a future pass doesn't re-propose them:
@@ -299,6 +591,25 @@ So a future pass doesn't re-propose them:
   `MatchCardDanger.vue` is already correct UX.
 
 ## Verified and dismissed — do not re-open
+
+**Swept clean by the 2026-08-22 standards audit** — recorded so the next pass
+doesn't re-derive them. Each was checked against source, not assumed:
+
+- **Zero stutter across all 23 packages** — no `parser.ParserFoo`,
+  `db.DBStore`-shaped names anywhere. Scanned exhaustively, 0 candidates.
+- **No vacuous or internals-coupled tests** — no assertion-free test bodies, and
+  no Go test reaching an unexported identifier outside the one sanctioned
+  `export_test.go` shim per package. (The shims themselves have dead entries —
+  that is §19, a different problem.)
+- **No unjustified `_ = f()` error drops**, no `any`-as-a-shortcut in authored
+  Go, no TypeScript `enum`, no index-as-key on a reorderable list, and every
+  store bundle correctly `markRaw`'d.
+- **No shadow state without a sync contract** other than the Narrow panel's,
+  which is §13.
+- **The `match/markdown` and `widget-config-schema` switches are exhaustive with
+  no `default` arm** — they are correctly *not* registries. A `switch` that the
+  `exhaustive` linter genuinely guards is the better tool; only the ones wearing
+  a `default` (§11) have lost that protection.
 
 A first automated review pass produced confident-but-false findings; each was
 checked against source and is false. Catalogued so they aren't re-chased:
