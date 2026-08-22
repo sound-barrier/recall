@@ -9,6 +9,7 @@ import (
 	"recall/pkg/coach"
 	"recall/pkg/db"
 	"recall/pkg/match"
+	"recall/pkg/matchedit"
 )
 
 // Coaching-session lifecycle. A session loans a player's exported bundle
@@ -239,7 +240,7 @@ func (a *App) PutCoachMoment(matchKey, momentID string, in coach.MomentInput) (c
 	// length on every save sent a moment to the bottom of its tied group the
 	// moment its typo was fixed — and since the wire carries only array order,
 	// the stored sort_order is the order the strip renders.
-	row := coach.MomentRowFromInput(note.NoteID, momentID, sortOrderFor(existing, momentID), normalized)
+	row := coach.MomentRowFromInput(note.NoteID, momentID, matchedit.SortOrderFor(existing, momentID), normalized)
 	saved, err := a.store.UpsertCoachNoteMoment(playerRef, row)
 	if err != nil {
 		return coach.Moment{}, fmt.Errorf("coach: save moment: %w", err)
@@ -247,31 +248,12 @@ func (a *App) PutCoachMoment(matchKey, momentID string, in coach.MomentInput) (c
 	return coach.MomentFromRow(saved), nil
 }
 
-// sortOrderFor keeps an existing moment's place and puts a new one after every
-// order already taken — NOT at len(existing), which collides with a survivor
-// after any delete and leaves the tie to whatever order the rows come back in.
-func sortOrderFor(existing []db.CoachNoteMoment, momentID string) int {
-	next := 0
-	for _, m := range existing {
-		if m.MomentID == momentID {
-			return m.SortOrder
-		}
-		if m.SortOrder >= next {
-			next = m.SortOrder + 1
-		}
-	}
-	return next
-}
-
 // checkMomentRoom refuses a NEW moment past the per-note ceiling; an edit to
-// one already stored always fits.
+// one already stored always fits. The coach's ceiling is its own; where a
+// moment lands among its siblings is not.
 func checkMomentRoom(existing []db.CoachNoteMoment, momentID string) error {
-	if momentID != "" {
-		for _, m := range existing {
-			if m.MomentID == momentID {
-				return nil
-			}
-		}
+	if matchedit.IsStoredMoment(existing, momentID) {
+		return nil
 	}
 	if len(existing) >= coach.MaxMomentsPerNote {
 		return fmt.Errorf("%w: a match holds at most %d moments", coach.ErrNoteInvalid, coach.MaxMomentsPerNote)

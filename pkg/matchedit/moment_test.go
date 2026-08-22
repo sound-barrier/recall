@@ -180,3 +180,42 @@ func TestFocusTags_AreTheVocabularyTheCoachUses(t *testing.T) {
 		}
 	}
 }
+
+// Where a moment lands among its siblings is one rule shared by three tables,
+// and until it was shared it had no test at all — three copies, none of them
+// exercised, one of them (the self-review sitting's) missing the empty-id
+// guard entirely. These pin the two parts that are easy to get wrong.
+func TestSortOrderFor_KeepsAPlaceAndAppendsAfterTheHighest(t *testing.T) {
+	existing := []db.MatchMoment{
+		{MomentID: "a", SortOrder: 0},
+		{MomentID: "b", SortOrder: 7},
+	}
+
+	if got := matchedit.SortOrderFor(existing, "b"); got != 7 {
+		t.Errorf("editing a stored moment moved it: got %d, want its own 7", got)
+	}
+
+	// The trap the rule exists for: len(existing) is 2, and a survivor already
+	// sits at 7. Appending at the count would collide with it and leave the
+	// reading order to however the rows came back.
+	if got := matchedit.SortOrderFor(existing, "new"); got != 8 {
+		t.Errorf("a new moment landed at %d, want 8 — past every order taken, not at len()", got)
+	}
+}
+
+func TestIsStoredMoment_TreatsTheEmptyIDAsANewMoment(t *testing.T) {
+	// A row CAN hold an empty id. Matching a blank id against it would report
+	// "already stored" for a moment that does not exist, waving every new
+	// moment past a full note's ceiling.
+	existing := []db.MatchMoment{{MomentID: "", SortOrder: 0}}
+
+	if matchedit.IsStoredMoment(existing, "") {
+		t.Error("an empty id matched an empty row — a new moment would edit its way past the ceiling")
+	}
+	if matchedit.IsStoredMoment(existing, "nope") {
+		t.Error("an unknown id reported as stored")
+	}
+	if !matchedit.IsStoredMoment([]db.MatchMoment{{MomentID: "a"}}, "a") {
+		t.Error("a stored id did not report as stored")
+	}
+}

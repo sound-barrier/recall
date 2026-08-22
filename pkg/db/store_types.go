@@ -397,6 +397,11 @@ type MatchMoment struct {
 	UpdatedAt  string
 }
 
+// MomentSlot answers which moment a row is and where it sits in the reading
+// order. Three tables carry that same pair, and the rules for placing a moment
+// among its siblings are identical for all three — see matchedit.MomentRow.
+func (m MatchMoment) MomentSlot() (id string, order int) { return m.MomentID, m.SortOrder }
+
 // CoachNoteMoment is one timestamped observation hanging off a coach note.
 // NoteID is the parent's public id rather than its row id, so callers address
 // a moment the same way the API path does.
@@ -410,6 +415,9 @@ type CoachNoteMoment struct {
 	CreatedAt  string
 	UpdatedAt  string
 }
+
+// MomentSlot — see MatchMoment.MomentSlot.
+func (m CoachNoteMoment) MomentSlot() (id string, order int) { return m.MomentID, m.SortOrder }
 
 // CoachPlayerSummary is one roster row: a player this user has coached,
 // with enough to recognize the work.
@@ -523,6 +531,9 @@ type SelfReviewMoment struct {
 	CreatedAt  string
 	UpdatedAt  string
 }
+
+// MomentSlot — see MatchMoment.MomentSlot.
+func (m SelfReviewMoment) MomentSlot() (id string, order int) { return m.MomentID, m.SortOrder }
 
 // SelfReviewNoteOnMatch is a self-review note as the match sees it: the
 // note plus the identity of the review it belongs to, which is what the

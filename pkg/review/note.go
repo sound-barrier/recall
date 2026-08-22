@@ -81,7 +81,7 @@ func PutMoment(s Store, ref MomentRef, in matchedit.MomentInput) (Moment, error)
 		MatchClock: normalized.MatchClock,
 		Text:       normalized.Text,
 		FocusTag:   normalized.FocusTag,
-		SortOrder:  sortOrderFor(existing, momentID),
+		SortOrder:  matchedit.SortOrderFor(existing, momentID),
 	})
 	if err != nil {
 		return Moment{}, MapStoreErr(err)
@@ -112,27 +112,11 @@ func momentsOnMatch(s Store, reviewID, matchKey string) ([]db.SelfReviewMoment, 
 // checkMomentRoom refuses a NEW moment past the ceiling; an edit to one
 // already stored always fits. Same ceiling as the player's per-match moments.
 func checkMomentRoom(existing []db.SelfReviewMoment, momentID string) error {
-	if slices.ContainsFunc(existing, func(m db.SelfReviewMoment) bool { return m.MomentID == momentID }) {
+	if matchedit.IsStoredMoment(existing, momentID) {
 		return nil
 	}
 	if len(existing) >= matchedit.MaxMomentsPerMatch {
 		return fmt.Errorf("%w: a match holds at most %d moments", matchedit.ErrInvalidMoment, matchedit.MaxMomentsPerMatch)
 	}
 	return nil
-}
-
-// sortOrderFor keeps an existing moment's place and puts a new one after
-// every order already taken — never at len(existing), which collides with a
-// survivor after any delete.
-func sortOrderFor(existing []db.SelfReviewMoment, momentID string) int {
-	next := 0
-	for _, m := range existing {
-		if m.MomentID == momentID {
-			return m.SortOrder
-		}
-		if m.SortOrder >= next {
-			next = m.SortOrder + 1
-		}
-	}
-	return next
 }

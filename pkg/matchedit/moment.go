@@ -141,34 +141,61 @@ func SetMoment(s MomentStore, matchKey, momentID string, in MomentInput) (db.Mat
 		MatchClock: normalized.MatchClock,
 		Text:       normalized.Text,
 		FocusTag:   normalized.FocusTag,
-		SortOrder:  sortOrderFor(existing, momentID),
+		SortOrder:  SortOrderFor(existing, momentID),
+	})
+}
+
+// MomentRow is a stored moment: which one it is, and where it sits in the
+// reading order. Three tables carry that pair — a match's own moments, a
+// coach's, and a self-review sitting's — and the rules for placing a moment
+// among its siblings do not vary between them. db's three moment types
+// satisfy this.
+type MomentRow interface {
+	MomentSlot() (id string, order int)
+}
+
+// SortOrderFor keeps an existing moment's place and puts a new one after every
+// order already taken — NOT at len(existing), which collides with a survivor
+// after any delete and leaves the tie to whatever order the rows come back in.
+func SortOrderFor[T MomentRow](existing []T, momentID string) int {
+	next := 0
+	for _, m := range existing {
+		id, order := m.MomentSlot()
+		if id == momentID {
+			return order
+		}
+		if order >= next {
+			next = order + 1
+		}
+	}
+	return next
+}
+
+// IsStoredMoment reports whether momentID names a moment already in existing,
+// which is what lets an edit through a ceiling a new moment would hit.
+//
+// The empty id is never a match. A blank id means a NEW moment, and matching
+// it against a row that also happens to hold "" would wave any new moment past
+// a full note. One of the three copies of this rule was missing that guard and
+// survived only because its caller refuses an empty id first.
+func IsStoredMoment[T MomentRow](existing []T, momentID string) bool {
+	if momentID == "" {
+		return false
+	}
+	return slices.ContainsFunc(existing, func(m T) bool {
+		id, _ := m.MomentSlot()
+		return id == momentID
 	})
 }
 
 // checkMomentRoom refuses a NEW moment past the ceiling; an edit to one
 // already stored always fits.
 func checkMomentRoom(existing []db.MatchMoment, momentID string) error {
-	if momentID != "" && slices.ContainsFunc(existing,
-		func(m db.MatchMoment) bool { return m.MomentID == momentID }) {
+	if IsStoredMoment(existing, momentID) {
 		return nil
 	}
 	if len(existing) >= MaxMomentsPerMatch {
 		return fmt.Errorf("%w: a match holds at most %d moments", ErrInvalidMoment, MaxMomentsPerMatch)
 	}
 	return nil
-}
-
-// sortOrderFor keeps an existing moment's place and puts a new one after every
-// order already taken.
-func sortOrderFor(existing []db.MatchMoment, momentID string) int {
-	next := 0
-	for _, m := range existing {
-		if m.MomentID == momentID {
-			return m.SortOrder
-		}
-		if m.SortOrder >= next {
-			next = m.SortOrder + 1
-		}
-	}
-	return next
 }
