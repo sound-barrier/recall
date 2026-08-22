@@ -1,5 +1,75 @@
 # Changelog
 
+## [0.32.0](https://github.com/sound-barrier/recall/compare/v0.31.0...v0.32.0) (2026-08-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* **db:** a database holding two matches with one replay code will not open. Wipe it, per the pre-1.0 rule.
+* **coachreturn:** coachreturn.Stage and coachreturn.Decide take a MatchMaker seam, and the Store interface requires LoadAnnotations. A replay note is no longer reported as an orphan.
+* **coach:** POST /api/v1/coach/session/export now requires a `sheet_html` body, and coach.WriteNotesArchive takes the page as an argument. Go no longer renders it — it puts the bytes in the zip, bounds them at 8 MiB, and declines to parse them exactly as before.
+* **coach:** CoachSessionView gains a required `source` field (bundle | replay). CoachMatchContext gains `replay_code`, which is load-bearing for a replay note: the player may not have the match, and that context is the only thing identifying what it is about.
+* **coach:** coach.IsTrackedMatchKey is now coach.IsReviewableMatchKey and admits replay- keys. A notes archive whose replay note lacks a matching match.replay_code is rejected with ErrNotesMalformed.
+* **match:** MatchRecord.source gains a fourth value, `replay`. Clients switching on the enum must handle it. MatchProvenanceBadge is the cautionary case: it collapsed anything it did not recognize to 'ocr', so without the new variant a coach-created match would have announced itself as "Parsed from screenshots" — a straight lie about the one match kind whose numbers somebody else typed.
+* **match:** replay_code is validated on write. The manual-match form and the match journal accepted 12 and 32 characters; both now accept six, and the API answers 400 where it used to accept anything.
+* **coach:** split the player's inbox out of the coach's desk
+
+### Features
+
+* **coach:** open a session from replay codes ([b486df0](https://github.com/sound-barrier/recall/commit/b486df0b56d376d85b1133be1a631360f2c1e725))
+* **coachreturn:** match on replay code, else create the match ([3247b22](https://github.com/sound-barrier/recall/commit/3247b22761272fbb9923a5dec5a13eccec24e00e))
+* **coach:** the review page is built where the styles are ([8d07bbd](https://github.com/sound-barrier/recall/commit/8d07bbda7d9b3da4f6e7fc4c03c35f2783e1c8e2))
+* **match:** a replay- match-key kind ([e104e30](https://github.com/sound-barrier/recall/commit/e104e305df1d71abb71a7fdd22e4bc81b2d25176))
+* **match:** pin the replay code to six characters ([22d5ab7](https://github.com/sound-barrier/recall/commit/22d5ab70e77654e2c5e9f2c8451270a4cdc1531f))
+
+
+### Bug Fixes
+
+* **ci:** the doc-path gate mis-parsed the task catalog under colour ([4c5d457](https://github.com/sound-barrier/recall/commit/4c5d4578877172681d37b95c40684e5b91473f63))
+* **coach:** escape user values in the new refusals ([66a758b](https://github.com/sound-barrier/recall/commit/66a758b2212c5cdd64a0446e5c0d24d1c8f32793))
+* **coach:** take a match clock as digits, and show it once ([eaa3ecd](https://github.com/sound-barrier/recall/commit/eaa3ecd65589c91c1f717b68981d617902910e3a))
+* **db:** no migration for the replay-code index; refuse duplicates ([80948f5](https://github.com/sound-barrier/recall/commit/80948f510b4ae3ad4056447b250e1b7e073af186))
+* **reviews:** one focus-list save key, not two that happen to match ([1d8abdd](https://github.com/sound-barrier/recall/commit/1d8abddd38f7124b89bd7eae2b929f8f6ba40a09))
+
+
+### Performance
+
+* **reviews:** keep a nine-line helper out of the entry chunk ([6822366](https://github.com/sound-barrier/recall/commit/68223661f271e6c78e0c536f38bbbcfb7d0afa74))
+
+
+### Refactors
+
+* **api:** name the return-status enum like its three siblings ([e961663](https://github.com/sound-barrier/recall/commit/e961663fefcec3779e1ce4a77cd56ea3296e9adb))
+* **coach:** a note may name a replay match ([ebc3515](https://github.com/sound-barrier/recall/commit/ebc35157df9e58005f55df33c62cf8a4a681509a))
+* **coach:** give the room's corpus a name instead of ten props ([26a74c1](https://github.com/sound-barrier/recall/commit/26a74c1ee3dd9f6b63023a6f972aac6a40a7b566))
+* **coach:** name the three status vocabularies ([e9aeb2b](https://github.com/sound-barrier/recall/commit/e9aeb2b7536e4eb915b522b35ca0070c1a7a55b8))
+* **coach:** split the player's inbox out of the coach's desk ([8824ac9](https://github.com/sound-barrier/recall/commit/8824ac964402b26a8632983e2985e5b6ce71c1e1))
+* **coach:** three Go cleanups, and a spike that settled a fourth ([9725f19](https://github.com/sound-barrier/recall/commit/9725f19a60481322d53eb7ef80cf86dfe7060a44))
+* **reviews:** take the index below the file ceiling, in three cuts ([25d4663](https://github.com/sound-barrier/recall/commit/25d46638e63ff7784834405061995384e23d0e2a))
+
+
+### Documentation
+
+* catalogue the post-restructure debt ([6f61a4f](https://github.com/sound-barrier/recall/commit/6f61a4f2c191ae751ccfe99ee5978b186f91d851))
+* coaching from a replay code ([ba94a9c](https://github.com/sound-barrier/recall/commit/ba94a9ceae388472c9a7cc3de7f18af3548c0f3a))
+* split the standards by language, three ways ([562bec7](https://github.com/sound-barrier/recall/commit/562bec7ddfec990e97fadf9c18c7b22f3cdc03dd))
+* stop telling people to run a build system we deleted ([933ec3a](https://github.com/sound-barrier/recall/commit/933ec3aed58ce8d6334d0993300efe84134405d5))
+
+
+### Build & Packaging
+
+* track the rules files instead of hiding them ([520fe89](https://github.com/sound-barrier/recall/commit/520fe89ad8e4330a2c2a6a1c233eefa23126b915))
+
+
+### CI
+
+* gate the standards files against the repo they describe ([ae37236](https://github.com/sound-barrier/recall/commit/ae372364f5d90b7aaeb796c97997e422f9bed748))
+
+
+### Tests
+
+* **notes:** gate the note search on a hydrated editor ([6316e75](https://github.com/sound-barrier/recall/commit/6316e753eeeb8cc41524f23b6fa8669cee2ca93d))
+
 ## [0.31.0](https://github.com/sound-barrier/recall/compare/v0.30.2...v0.31.0) (2026-08-21)
 
 
