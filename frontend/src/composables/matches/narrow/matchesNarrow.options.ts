@@ -44,4 +44,5 @@ export const REVIEWED_BY_OPTIONS = [
 export const PROVENANCE_OPTIONS = [
   { value: 'ocr_edited', label: 'Edited' },
   { value: 'manual', label: 'User entered' },
+  { value: 'replay', label: 'Replay review' },
 ]

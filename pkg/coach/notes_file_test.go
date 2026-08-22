@@ -110,3 +110,69 @@ func TestValidateNotesFile_Rejects(t *testing.T) {
 		})
 	}
 }
+
+// A coach reviewing from a replay code has none of the player's screenshots,
+// so the key a note carries is minted from the code itself. The file has to
+// admit it, or a code-only session produces an archive nobody can read.
+func TestValidateNotesFile_AcceptsANoteAboutAReplayMatch(t *testing.T) {
+	f := validNotesFile()
+	f.Notes = []coach.Note{{
+		NoteID: noteIDOne, MatchKey: "replay-A1B2C3", Kind: "note",
+		Text: "held the choke too long", FocusTags: []string{"positioning"},
+		ExtraTags: []string{}, MatchClock: "04:12", UpdatedAt: "2026-08-15T09:00:00Z",
+		Match: &coach.MatchContext{Map: "ilios", Result: "defeat", ReplayCode: "A1B2C3"},
+	}}
+	if err := coach.ValidateNotesFile(f); err != nil {
+		t.Fatalf("a note about a replay match is well-formed: %v", err)
+	}
+}
+
+// The archive is the ONLY thing the player's side has to work from: if the
+// note names a match they do not have, the context is what the match gets
+// created from. A replay note with no context, or with a code that disagrees
+// with its own key, cannot be honored — so it is refused at the door rather
+// than half-applied later.
+func TestValidateNotesFile_RejectsAReplayNoteThatCannotStandAlone(t *testing.T) {
+	base := func() coach.Note {
+		return coach.Note{
+			NoteID: noteIDOne, MatchKey: "replay-A1B2C3", Kind: "note",
+			Text: "held the choke", FocusTags: []string{}, ExtraTags: []string{},
+			UpdatedAt: "2026-08-15T09:00:00Z",
+			Match:     &coach.MatchContext{Map: "ilios", ReplayCode: "A1B2C3"},
+		}
+	}
+	cases := map[string]func(*coach.Note){
+		"no context at all":      func(n *coach.Note) { n.Match = nil },
+		"context with no code":   func(n *coach.Note) { n.Match.ReplayCode = "" },
+		"code disagrees withkey": func(n *coach.Note) { n.Match.ReplayCode = "Z9Y8X7" },
+	}
+	for name, mutate := range cases {
+		t.Run(name, func(t *testing.T) {
+			f := validNotesFile()
+			n := base()
+			mutate(&n)
+			f.Notes = []coach.Note{n}
+			if err := coach.ValidateNotesFile(f); !errors.Is(err, coach.ErrNotesMalformed) {
+				t.Fatalf("err = %v, want ErrNotesMalformed", err)
+			}
+		})
+	}
+}
+
+// Widening the note gate must not widen it to the sentinels. An unmatched or
+// ambiguous screenshot is still not something a coach can write about.
+func TestIsReviewableMatchKey(t *testing.T) {
+	cases := map[string]bool{
+		"match-2026-08-01T18-30-00": true,
+		"replay-A1B2C3":             true,
+		"unmatched-abc":             false,
+		"ambiguous-abc":             false,
+		"nonsense":                  false,
+		"":                          false,
+	}
+	for key, want := range cases {
+		if got := coach.IsReviewableMatchKey(key); got != want {
+			t.Errorf("IsReviewableMatchKey(%q) = %v, want %v", key, got, want)
+		}
+	}
+}

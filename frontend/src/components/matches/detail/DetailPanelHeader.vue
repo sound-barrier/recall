@@ -4,7 +4,7 @@ import { computed } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import MatchProvenanceBadge from '@/components/matches/shared/MatchProvenanceBadge.vue'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
-import { isTrackedMatchKey } from '@/match/match-key'
+import { isReviewableMatchKey } from '@/match/match-key'
 import { playerClockNote } from '@/match/match-time-helpers'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
@@ -39,13 +39,14 @@ const coachStore = useCoachStore()
 // clock, so the panel names whose clock that is — once, here.
 const clockNote = computed(() => playerClockNote(coachStore.player?.handle ?? ''))
 
-// Design rule 6: a coach's note keys on a TRACKED match. An `unmatched-` /
-// `ambiguous-` sentinel is a screenshot the parser never placed, and its
-// note PUT is a permanent 404 — so the hand-off refuses rather than opening
-// an editor that would swallow a paragraph.
+// Design rule 6: a coach's note keys on a REVIEWABLE match — a real one, or
+// a replay a coach was handed. An `unmatched-` / `ambiguous-` sentinel is a
+// screenshot the parser never placed, and its note PUT is a permanent 404 —
+// so the hand-off refuses rather than opening an editor that would swallow a
+// paragraph.
 const NO_MATCH_REASON = 'This screenshot was never matched to a match, so it carries no coach\'s note.'
 const ON_LOAN_NOTE = 'This match is on loan — notes go in the film room.'
-const canHandOff = computed(() => isTrackedMatchKey(props.record.match_key ?? ''))
+const canHandOff = computed(() => isReviewableMatchKey(props.record.match_key ?? ''))
 const sessionNote = computed(() => (canHandOff.value ? ON_LOAN_NOTE : NO_MATCH_REASON))
 
 function openInFilmRoom() {

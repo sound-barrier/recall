@@ -28,12 +28,13 @@ export type QueuePick = 'role' | 'open' | 'unknown'
 export type PlayModePick = 'quickplay' | 'competitive' | 'unknown'
 
 // SourcePick mirrors the `source` provenance enum on MatchRecord. The
-// narrow panel exposes only the two "I touched this" buckets as chips
-// — 'ocr_edited' (corrected after parsing) and 'manual' (hand-entered,
-// no screenshots). 'ocr' is the fallback bucket for pure parsed
-// matches; it's reachable in matchesSource (so picking either chip
-// drops pure-OCR rows) but has no chip of its own.
-export type SourcePick = 'ocr' | 'ocr_edited' | 'manual'
+// narrow panel exposes only the "somebody put this here" buckets as
+// chips — 'ocr_edited' (corrected after parsing), 'manual' (hand-entered,
+// no screenshots) and 'replay' (created by a coach's replay review).
+// 'ocr' is the fallback bucket for pure parsed matches; it's reachable in
+// matchesSource (so picking any chip drops pure-OCR rows) but has no chip
+// of its own.
+export type SourcePick = 'ocr' | 'ocr_edited' | 'manual' | 'replay'
 
 // DisruptionSide mirrors the `annotation.leavers` / `annotation.throwers`
 // vocabulary — which side someone left from or threw on: 'self' (the user

@@ -9,7 +9,8 @@ import {
   type ClauseSpec,
 } from '@/composables/matches/narrow/matchesNarrow.clauses'
 import { createMatchesNarrowState } from '@/composables/matches/narrow/matchesNarrow.state'
-import type { MatchesNarrowState } from '@/composables/matches/narrow/matchesNarrow.types'
+import type { MatchesNarrowState, SourcePick } from '@/composables/matches/narrow/matchesNarrow.types'
+import { PROVENANCE_OPTIONS } from '@/composables/matches/narrow/matchesNarrow.options'
 
 // The narrow-clause REGISTRY contract. Every dimension declares its own
 // predicate / restriction test / label / chip count / single-clause reset in
@@ -364,8 +365,22 @@ describe('label edge cases', () => {
     expect(label()).toBe('user-entered only')
     s.pickedSources.value = new Set(['ocr_edited'])
     expect(label()).toBe('edited only')
+    s.pickedSources.value = new Set(['replay'])
+    expect(label()).toBe('replay-review only')
     s.pickedSources.value = new Set(['manual', 'ocr_edited'])
     expect(label()).toBe('provenance filter')
+  })
+
+  // The label used to be a two-way ternary, so a third bucket would have
+  // silently read as "edited only". Every chip the panel offers has to name
+  // itself, and this is the test that says so rather than trusting the next
+  // person to notice.
+  it('every provenance chip names itself when it is the only one picked', () => {
+    const s = makeState()
+    for (const opt of PROVENANCE_OPTIONS) {
+      s.pickedSources.value = new Set([opt.value as SourcePick])
+      expect(spec('sources').label(s)).not.toBe('provenance filter')
+    }
   })
 
   it('the pool clause names the side it kept', () => {

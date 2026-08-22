@@ -39,6 +39,11 @@ type MatchContext struct {
 	Result     string `json:"result"`
 	Date       string `json:"date"`
 	FinishedAt string `json:"finished_at"`
+	// ReplayCode is what a coach watched. For a note about a match the
+	// player already has it is a convenience; for a note about a REPLAY
+	// match it is load-bearing, because the player's side may have to
+	// create the match and this is the only thing identifying it.
+	ReplayCode string `json:"replay_code,omitempty"`
 }
 
 // NoteInput is the body of a note write — the note minus its identity.

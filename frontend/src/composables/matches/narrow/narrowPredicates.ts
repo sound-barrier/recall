@@ -286,10 +286,11 @@ export function matchesPlayMode(r: MatchRecord, picked: Set<PlayModePick>): bool
 
 // matchesSource narrows to matches whose PROVENANCE bucket is in the
 // picked set. The bucket is `r.source` falling back to 'ocr' (a pure
-// parsed match omits the field). The narrow panel exposes only the
-// 'ocr_edited' and 'manual' chips ("Edited" / "User entered"), so a
-// non-empty pick set never contains 'ocr' and pure-OCR rows drop out —
-// exactly the "show me only the matches I touched" intent.
+// parsed match omits the field). The narrow panel exposes the
+// 'ocr_edited', 'manual' and 'replay' chips ("Edited" / "User entered" /
+// "Replay review"), so a non-empty pick set never contains 'ocr' and
+// pure-OCR rows drop out — exactly the "show me only the matches somebody
+// put here by hand" intent.
 export function matchesSource(r: MatchRecord, picked: Set<SourcePick>): boolean {
   if (!picked.size) return true
   const bucket: SourcePick = r.source ?? 'ocr'

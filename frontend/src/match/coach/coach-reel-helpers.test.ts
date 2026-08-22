@@ -155,3 +155,28 @@ describe('flattenReel + neighborKey', () => {
     expect(neighborKey(days, 'match-nope', 1)).toBeNull()
   })
 })
+
+// The reel gate is the one that fails silently: filter a replay frame out and
+// the coach sees "this bundle holds no matches to review" with no error
+// anywhere. A code-only session is entirely replay frames, so this is the
+// difference between the feature working and the desk being empty.
+describe('the reel admits replay matches', () => {
+  it('keeps a replay frame and still drops the unplaced sentinels', () => {
+    const days = groupReelByPlayerDay([
+      rec({ key: 'replay-A1B2C3' }),
+      rec({ key: 'match-2026-08-01T18-30-00', date: '2026-08-01', time: '18:30' }),
+      rec({ key: 'unmatched-abc' }),
+      rec({ key: 'ambiguous-abc' }),
+    ])
+    const keys = days.flatMap((d) => d.frames.map((f) => f.match_key))
+    expect(keys).toContain('replay-A1B2C3')
+    expect(keys).toContain('match-2026-08-01T18-30-00')
+    expect(keys).not.toContain('unmatched-abc')
+    expect(keys).not.toContain('ambiguous-abc')
+  })
+
+  it('still drops a hidden replay frame', () => {
+    const days = groupReelByPlayerDay([rec({ key: 'replay-A1B2C3', hidden: true })])
+    expect(days.flatMap((d) => d.frames)).toHaveLength(0)
+  })
+})
