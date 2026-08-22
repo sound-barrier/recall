@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"recall/pkg/coach"
 	"recall/pkg/db"
 )
 
@@ -16,13 +17,6 @@ import (
 // plain maps. The vocabulary CHECK constraints (kind, focus tag, decision) and the FK /
 // UNIQUE refusals are enforced here too, so app tests built on the Fake
 // cannot reach a state production refuses.
-
-// coachFocusVocabulary mirrors the CHECK on coach_note_focus_tags /
-// match_coach_note_focus_tags in schema.sql.
-var coachFocusVocabulary = []string{
-	"positioning", "ult_economy", "target_priority", "cooldowns",
-	"hero_pick", "comms", "mechanics", "mental",
-}
 
 func nowRFC3339() string { return time.Now().UTC().Format(time.RFC3339) }
 
@@ -38,9 +32,14 @@ func distinctSorted(values []string) []string {
 	return out
 }
 
+// checkFocusTags stands in for the CHECK on coach_note_focus_tags /
+// match_coach_note_focus_tags. It asks the vocabulary itself rather than
+// keeping a copy: a fake that accepts a different set than production is a
+// broken fake, and this one held a third list that no test compared against
+// anything — dropping a tag from it failed nothing in the suite.
 func checkFocusTags(tags []string) error {
 	for _, tag := range tags {
-		if tag != "" && !slices.Contains(coachFocusVocabulary, tag) {
+		if tag != "" && !coach.IsFocusTag(tag) {
 			return fmt.Errorf("dbtest: focus tag %q violates the vocabulary CHECK", tag)
 		}
 	}
