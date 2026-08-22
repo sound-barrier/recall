@@ -5,8 +5,7 @@ import type { MatchRecord } from '@/api-client'
 import type { GroupBy, SortOrder } from '@/composables/matches/list/useMatchesGroup'
 import { useMembersListWindow } from '@/composables/matches/list/useMembersListWindow'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
-import { useNarrow } from '@/composables/matches/narrow/useNarrow'
-import type { PlayModePick, QueuePick } from '@/composables/matches/narrow/matchesNarrow.types'
+import { useNarrowCellFilter } from '@/composables/matches/useNarrowCellFilter'
 import type { Density } from '@/composables/matches/table/useDensity'
 import type { useMatchesNarrow } from '@/composables/matches/narrow/useMatchesNarrow'
 import { playerClockNote } from '@/match/match-time-helpers'
@@ -58,30 +57,8 @@ const emit = defineEmits<{
 const records = toRef(props, 'records')
 const groupBy = toRef(props, 'groupBy')
 const sortOrder = toRef(props, 'sortOrder')
-const narrow = useNarrow()
 
-// Click-to-filter from a leaf-row cell (cozy/compact): every value cell toggles
-// its narrow dimension. Sorting is the sort/group toolbar's job, not a click.
-function onFilterCell(field: 'map' | 'mode' | 'queue' | 'hero' | 'role' | 'result', value: string) {
-  if (!value) return
-  if (field === 'map') narrow.pickMap(value)
-  else if (field === 'mode') narrow.pickPlayMode(value as PlayModePick)
-  else if (field === 'queue') narrow.pickQueue(value as QueuePick)
-  else if (field === 'hero') narrow.pickHero(value)
-  else if (field === 'role') narrow.pickRole(value)
-  else narrow.pickResult(value)
-}
-
-// The active narrow picks — passed to each row so a value cell whose value is
-// currently filtered lights up (the active-filter state).
-const activeFilters = computed(() => ({
-  maps: narrow.pickedMaps.value as ReadonlySet<string>,
-  modes: narrow.pickedPlayModes.value as ReadonlySet<string>,
-  queues: narrow.pickedQueues.value as ReadonlySet<string>,
-  heroes: narrow.pickedHeroes.value as ReadonlySet<string>,
-  roles: narrow.pickedRoles.value as ReadonlySet<string>,
-  results: narrow.pickedResults.value as ReadonlySet<string>,
-}))
+const { onFilterCell, activeFilters } = useNarrowCellFilter()
 
 // Sort/group → collapse → paginate (grouped) or virtualize (flat) → render shape,
 // plus the infinite-scroll IntersectionObserver and j/k auto-scroll, all live in

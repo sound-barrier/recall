@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { MatchRecord } from '@/api-client'
+import type { FilterableField } from '@/composables/matches/useNarrowCellFilter'
 import { useMatchClock } from '@/composables/shared/useMatchClock'
 import { useOWData } from '@/composables/shared/useOWData'
 import {
@@ -57,7 +58,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'open-match': [matchKey: string]
-  'filter-cell': [field: 'map' | 'mode' | 'queue' | 'hero' | 'role' | 'result', value: string]
+  'filter-cell': [field: FilterableField, value: string]
   'toggle-select': [matchKey: string]
   'row-context': [event: MouseEvent, matchKey: string]
   'hover-enter': [rec: MatchRecord, event: MouseEvent]
