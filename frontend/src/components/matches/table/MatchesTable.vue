@@ -4,13 +4,12 @@ import type { MatchRecord } from '@/api-client'
 import { useVirtualWindow } from '@/composables/matches/list/useVirtualWindow'
 import { useTableSort, type TableSortCol, TABLE_SORT_COLUMNS } from '@/composables/matches/table/useTableSort'
 import { useTableMode } from '@/composables/matches/table/useTableMode'
-import { useNarrow } from '@/composables/matches/narrow/useNarrow'
+import { useNarrowCellFilter } from '@/composables/matches/useNarrowCellFilter'
 import { useColumnResize } from '@/composables/matches/table/useColumnResize'
 import { useMatchClock } from '@/composables/shared/useMatchClock'
 import { useCellDragSelect } from '@/composables/matches/table/useCellDragSelect'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useAppStore } from '@/stores/app'
-import type { PlayModePick, QueuePick } from '@/composables/matches/narrow/matchesNarrow.types'
 import type { SearchClause } from '@/match/search-query'
 import MatchTableRow from '@/components/matches/table/MatchTableRow.vue'
 import PivotTable from '@/components/matches/pivot/PivotTable.vue'
@@ -53,28 +52,8 @@ const TABLE_ROW_HEIGHT = 30
 const ow = useOWData()
 const { sortKeys, cycleSort, ariaSort, sortRows, sortLevelOf } = useTableSort()
 const { tableMode, setTableMode } = useTableMode()
-const narrow = useNarrow()
 
-// Click-to-filter: every value cell toggles its narrow dimension (sorting is the
-// column headers' job). The active picks light the matching cells up.
-function onFilterCell(field: 'map' | 'result' | 'mode' | 'queue' | 'hero' | 'role', value: string) {
-  if (!value) return
-  if (field === 'map') narrow.pickMap(value)
-  else if (field === 'result') narrow.pickResult(value)
-  else if (field === 'mode') narrow.pickPlayMode(value as PlayModePick)
-  else if (field === 'queue') narrow.pickQueue(value as QueuePick)
-  else if (field === 'hero') narrow.pickHero(value)
-  else narrow.pickRole(value)
-}
-
-const activeFilters = computed(() => ({
-  maps: narrow.pickedMaps.value as ReadonlySet<string>,
-  modes: narrow.pickedPlayModes.value as ReadonlySet<string>,
-  queues: narrow.pickedQueues.value as ReadonlySet<string>,
-  heroes: narrow.pickedHeroes.value as ReadonlySet<string>,
-  roles: narrow.pickedRoles.value as ReadonlySet<string>,
-  results: narrow.pickedResults.value as ReadonlySet<string>,
-}))
+const { onFilterCell, activeFilters } = useNarrowCellFilter()
 
 // Column resize: persisted per-column widths drive a <colgroup> over a
 // fixed-layout table; the total feeds the table's own width so the pane scrolls

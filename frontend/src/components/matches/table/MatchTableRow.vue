@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 
 import type { MatchRecord } from '@/api-client'
+import type { FilterableField } from '@/composables/matches/useNarrowCellFilter'
 import { useMatchClock } from '@/composables/shared/useMatchClock'
 import { useOWData } from '@/composables/shared/useOWData'
 import {
@@ -59,7 +60,7 @@ function sel(col: number): boolean {
 
 const emit = defineEmits<{
   'open-match': [matchKey: string]
-  'filter-cell': [field: 'map' | 'result' | 'mode' | 'queue' | 'hero' | 'role', value: string]
+  'filter-cell': [field: FilterableField, value: string]
   'toggle-select': [matchKey: string]
   'row-context': [event: MouseEvent, matchKey: string]
   'hover-enter': [rec: MatchRecord, event: MouseEvent]
