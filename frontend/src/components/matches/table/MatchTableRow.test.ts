@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import { ROW_CONTEXT_KEY } from '@/composables/matches/list/useRowContext'
+import { ROW_CONTEXT_KEY } from '@/composables/matches/useRowContext'
 
 import type { MatchRecord } from '@/api'
 import type { SearchClause } from '@/match/search-query'

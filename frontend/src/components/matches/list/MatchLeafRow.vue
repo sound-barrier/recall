@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { useRowContext } from '@/composables/matches/list/useRowContext'
+import { useRowContext } from '@/composables/matches/useRowContext'
 import type { MatchRecord } from '@/api-client'
 import type { FilterableField } from '@/composables/matches/useNarrowCellFilter'
 import { useMatchClock } from '@/composables/matches/useMatchClock'

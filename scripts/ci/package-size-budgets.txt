@@ -406,13 +406,26 @@ frontend/src/components/settings              16
 # ceiling, registered for the same reason as settings.
 frontend/src/components/matches/detail        15
 
-# frontend/src — the app root: App.vue, main.ts, the api/* seam family
-# (api, api-client, api-platform, api-error, api-unwrap), the error-handling
-# pair, platform detection. Note this counts 14, not the 24 tracked files at
-# this root: 10 are *.test.ts siblings, which the metric folds into the file
-# they test. The api-* family is the obvious candidate for an @/api/ folder if
-# this grows.
-frontend/src                                  14
+# frontend/src — the app root: App.vue, main.ts, the seam family that remains
+# at this level (api-client, api-platform, api-error, api-unwrap), the
+# error-handling pair, platform detection. Note this counts files, not the
+# tracked total at this root: the *.test.ts siblings are folded into the file
+# they test.
+#
+# Ratcheted 14 -> 13 because api.ts became frontend/src/api/, which the old
+# comment here named as the obvious move "if this grows". It grew to 865 lines
+# and 97 wrappers, so it moved. A budget left sitting above its count is how a
+# folder silently regrows what it just shed, which is why the gate refuses one.
+frontend/src                                  13
+
+# frontend/src/api — the wire surface, one module per endpoint family, plus a
+# barrel and the app-facing type aliases. The number IS the family count: 11
+# endpoint groups (system, matches read/write, suppress-list, parse, settings,
+# profiles, coach session/returns, self-review, db-health) + index + types.
+# A twelfth family is a real addition and earns a bump; a second module inside
+# an existing family means that family wants a folder, not this number raised.
+# Registered rather than left on the default because 13 is already past it.
+frontend/src/api                              13
 
 # frontend/src/components/matches/dossier — the dossier band components and
 # their shell. Under the ceiling; registered because the climb-focused dossier

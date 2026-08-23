@@ -313,10 +313,13 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # fails a test rather than a budget.
 #
 # Measured 2117506B; set ~6.5KB above it per the sizing convention.
-# 2026-08-22 — 2152000 → 2158000. Same remediation, same trade, seen across
-# the whole graph rather than just the entry: the lazy views carry the other
-# half of those extractions. Measured 2156606B.
-: "${MAX_TOTAL_JS_BYTES:=2158000}"
+# 2026-08-22 — briefly 2152000 → 2158000 for the remediation's extractions,
+# then handed straight back. Splitting api.ts into one module per endpoint
+# family let the bundler drop what each importer does not use: total JS went
+# 2156606B → 2151855B, back under the ORIGINAL ceiling. The bump is reverted
+# rather than kept as headroom, because a budget nobody needs is a budget
+# nobody defends.
+: "${MAX_TOTAL_JS_BYTES:=2152000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
