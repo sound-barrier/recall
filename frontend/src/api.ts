@@ -65,6 +65,7 @@ export type {
   ActiveParse,
   AutoBackupStatus,
   CoachDecisionEnum,
+  CoachingSettings,
   CoachFocusTagEnum,
   CoachMatchContext,
   CoachMoment,

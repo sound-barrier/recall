@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { setApiBacking } from '@/api-client'
+import { resetQueryClient } from '@/queries/client'
 import SettingsCoach from '@/components/settings/SettingsCoach.vue'
 import { flushPromises } from '@/test-utils'
 
@@ -13,11 +14,22 @@ import { flushPromises } from '@/test-utils'
 // so the section reads them on mount and commits on blur / Enter.
 
 const STORED = { coach_name: 'Ordo', player_handle: 'Sable' }
-const GetCoachingSettings = vi.fn(async () => ({ ...STORED }))
-const SetCoachingSettings = vi.fn(async (next: typeof STORED) => next)
+
+// A server that REMEMBERS what it was told. It has to: the section reads
+// through the query cache now, and a write invalidates the key — so the value
+// the field settles on is whatever a re-read returns, not whatever the
+// component happened to be holding. A fake that forgot every write would
+// answer the old value and make a correct save look like a failed one.
+let stored = { ...STORED }
+const GetCoachingSettings = vi.fn(async () => ({ ...stored }))
+const SetCoachingSettings = vi.fn(async (next: typeof STORED) => {
+  stored = { ...next }
+  return { ...stored }
+})
 
 function renderRow() {
   setActivePinia(createPinia())
+  resetQueryClient()
   setApiBacking({ GetCoachingSettings, SetCoachingSettings })
   return render(SettingsCoach)
 }
@@ -27,9 +39,9 @@ const handleField = () => screen.getByLabelText('Your player handle')
 
 describe('SettingsCoach', () => {
   beforeEach(() => {
+    stored = { ...STORED }
     GetCoachingSettings.mockClear()
     SetCoachingSettings.mockClear()
-    GetCoachingSettings.mockResolvedValue({ ...STORED })
   })
 
   it('shows both identities the server already has', async () => {

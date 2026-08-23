@@ -1,12 +1,15 @@
-import { useQuery } from '@tanstack/vue-query'
+import { useMutation, useQuery } from '@tanstack/vue-query'
 
 import {
   GetAutoBackupStatus,
+  GetCoachingSettings,
   GetExitOnClose,
   GetScreenshotsDir,
   GetScreenshotsFolderCandidates,
   GetTesseractStatus,
   GetWatchEnabled,
+  SetCoachingSettings,
+  type CoachingSettings,
   type NamedCandidate,
   type TesseractStatus,
 } from '@/api-client'
@@ -57,5 +60,28 @@ export function useCandidatesQuery() {
         return []
       }
     },
+  }, getQueryClient())
+}
+
+// The coach name and player handle — server settings, not browser preferences:
+// the exported ledger is rendered server-side and needs the name, and the
+// handle is stamped into a shared bundle's manifest.
+//
+// These were the app's ONLY server read outside the cache (TECHNICAL_DEBT.md
+// section 16). Two components fetched them straight from the api seam, so
+// SetCoachingSettings had no key to invalidate and the two surfaces agreed
+// only because the share dialog happened to re-fetch every time it opened.
+export function useCoachingSettingsQuery() {
+  return useQuery({
+    queryKey: qk.settings.coaching,
+    queryFn: GetCoachingSettings,
+    meta: { banner: 'Could not load coaching settings' },
+  }, getQueryClient())
+}
+
+export function useSetCoachingSettingsMutation() {
+  return useMutation({
+    mutationFn: (next: CoachingSettings) => SetCoachingSettings(next),
+    onSuccess: () => getQueryClient().invalidateQueries({ queryKey: qk.settings.coaching }),
   }, getQueryClient())
 }

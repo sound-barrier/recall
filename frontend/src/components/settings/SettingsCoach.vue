@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
-import { GetCoachingSettings, SetCoachingSettings } from '@/api-client'
+import { useCoachingSettingsQuery, useSetCoachingSettingsMutation } from '@/queries/settings'
 import { useAppStore } from '@/stores/app'
 
 // Section 08 — the two identities coaching needs, one per direction.
@@ -18,22 +18,25 @@ const appStore = useAppStore()
 
 const coachName = ref('')
 const playerHandle = ref('')
-const saved = ref({ coach_name: '', player_handle: '' })
 const busy = ref(false)
 
+// Cached and shared: the share dialog reads the same key, so the handle it
+// shows is the one this section last wrote rather than whatever a second
+// fetch happened to return. The error banner comes from the query's `meta`,
+// which is why nothing here hand-rolls one for the read.
+const settingsQuery = useCoachingSettingsQuery()
+const setCoachingSettings = useSetCoachingSettingsMutation()
+
+const saved = computed(() => settingsQuery.data.value ?? { coach_name: '', player_handle: '' })
+
 function reset() {
-  coachName.value = saved.value.coach_name
-  playerHandle.value = saved.value.player_handle
+  coachName.value = saved.value.coach_name ?? ''
+  playerHandle.value = saved.value.player_handle ?? ''
 }
 
-onMounted(async () => {
-  try {
-    saved.value = await GetCoachingSettings()
-    reset()
-  } catch (e) {
-    appStore.setErrorFromRaw(String(e))
-  }
-})
+// The drafts follow the server's copy whenever it lands or changes — first
+// load, and after a write settles.
+watch(saved, reset, { immediate: true })
 
 // One writer for both fields: the PUT carries both, because an omitted
 // string is indistinguishable from an empty one and "leave this alone" would
@@ -47,7 +50,7 @@ async function commit() {
   if (busy.value || unchanged) return
   busy.value = true
   try {
-    saved.value = await SetCoachingSettings(next)
+    await setCoachingSettings.mutateAsync(next)
   } catch (e) {
     appStore.setErrorFromRaw(String(e))
   } finally {
