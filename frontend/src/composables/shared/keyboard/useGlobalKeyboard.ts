@@ -35,6 +35,11 @@ export interface GlobalKeyboardDeps {
   // The selected match's key — `e` only closes the detail panel
   // when its current selection matches the focused card.
   selectedKey: Ref<string | null>
+  // Open or close the Narrow panel. A dep rather than a store reach so the
+  // composable stays injectable — and a real state write rather than the DOM
+  // click this used to synthesize against `.dossier-btn.primary`, a CSS class
+  // that renaming would have broken silently (TECHNICAL_DEBT.md section 13).
+  setNarrowOpen: (open: boolean) => void
   // Imperatively close the detail panel from the `e` handler when
   // it's already on the focused card.
   closeSelection: () => void
@@ -84,6 +89,7 @@ export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
     modalOpen,
     selectionIsOpen,
     selectedKey,
+    setNarrowOpen,
     closeSelection,
     focusedCardIndex,
     narrowedRecords,
@@ -109,14 +115,11 @@ export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
       handler: () => {
         void (async () => {
           if (view.value !== 'matches') await goToView('matches')
+          setNarrowOpen(true)
+          // Two ticks: one for the panel to render, one for the teleported
+          // popover to mount, before the search input exists to focus.
           await nextTick()
-          if (!document.getElementById('narrow-popover')) {
-            const trigger = document.querySelector<HTMLButtonElement>(
-              '.dossier-actions .dossier-btn.primary',
-            )
-            trigger?.click()
-            await nextTick()
-          }
+          await nextTick()
           const el = document.getElementById('np-search')
           if (el instanceof HTMLInputElement) el.focus()
         })()

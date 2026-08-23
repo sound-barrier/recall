@@ -132,6 +132,26 @@ export default tseslint.config(
     },
   },
   {
+    // Production code drives the app by writing state, never by finding a
+    // rendered control and clicking it. TECHNICAL_DEBT.md section 13: the
+    // narrow panel's open-flag lived in two places, so setNarrowOpen could not
+    // open anything and three features synthesized a click on the trigger
+    // instead — addressing it three different ways, two of them by a CSS class
+    // that a rename would have broken with a green build.
+    //
+    // Scoped to querySelector/getElementById results: clicking an element you
+    // just created (a download anchor, a hidden file input) is a real browser
+    // idiom and stays legal.
+    files: ['src/**/*.{ts,vue}'],
+    ignores: ['src/**/*.test.ts'],
+    rules: {
+      'no-restricted-syntax': ['error', {
+        selector: "CallExpression[callee.property.name='click'][callee.object.callee.property.name=/^(querySelector|getElementById|querySelectorAll)$/]",
+        message: 'Drive the app by writing state, not by clicking a control you found in the DOM (root CLAUDE.md; TECHNICAL_DEBT.md section 13). If no state seam exists, add one.',
+      }],
+    },
+  },
+  {
     languageOptions: {
       globals: { ...globals.browser },
     },

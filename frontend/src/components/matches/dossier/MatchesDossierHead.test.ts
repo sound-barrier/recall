@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { computed, nextTick, ref } from 'vue'
 import { fireEvent, render, screen } from '@testing-library/vue'
+import { createPinia, setActivePinia } from 'pinia'
+
+import { useUiStore } from '@/stores/ui'
 
 import MatchesDossierHead from '@/components/matches/dossier/MatchesDossierHead.vue'
 import {
@@ -44,6 +47,10 @@ function installLocalStorageShim(): void {
 }
 
 beforeEach(() => {
+  // The narrow panel's open-state lives in the ui store now: one flag, so
+  // setNarrowOpen actually opens the panel instead of the shell having to
+  // click the trigger button by its CSS class.
+  setActivePinia(createPinia())
   installLocalStorageShim()
   localStorage.setItem(LAYOUT_VERSION_KEY, String(CURRENT_LAYOUT_VERSION))
   localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify({ 1: [], 2: [] }))
@@ -247,16 +254,34 @@ describe('MatchesDossierHead — narrow trigger', () => {
     expect(screen.getByRole('button', { name: 'Filter matches · 2' })).toHaveAttribute('aria-expanded', 'true')
   })
 
-  it('reports the open popover upward so the shell can freeze the background', async () => {
-    const { view } = setup()
-    // The popover is lazy — let its chunk land so the open transition is
-    // a real state change it can report (mounting already-open is silent).
+  // The shell freezes the background while the panel is up, and reads one
+  // flag to know. That flag used to be mirrored from a local ref through an
+  // emit relay, which meant the store's copy could not OPEN anything — so
+  // three other features clicked this button by its CSS class instead.
+  it('puts the open panel in the ui store, which is what freezes the background', async () => {
+    setup()
     await vi.dynamicImportSettled()
     await nextTick()
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Filter matches' }))
+    const ui = useUiStore()
+    expect(ui.narrowOpen).toBe(false)
 
-    expect(view.emitted()['narrow-open']).toEqual([[true]])
+    await fireEvent.click(screen.getByRole('button', { name: 'Filter matches' }))
+    expect(ui.narrowOpen).toBe(true)
+  })
+
+  // The other half of one flag: writing it opens the panel, so a caller does
+  // not have to reach for the trigger's markup to do it.
+  it('opens the panel when the store flag is set from elsewhere', async () => {
+    setup()
+    await vi.dynamicImportSettled()
+    await nextTick()
+
+    useUiStore().setNarrowOpen(true)
+    await nextTick()
+
+    expect(screen.getByRole('button', { name: 'Filter matches' }))
+      .toHaveAttribute('aria-expanded', 'true')
   })
 
   it('drops the count suffix when nothing is narrowed', () => {

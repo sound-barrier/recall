@@ -69,7 +69,6 @@ const emit = defineEmits<{
   // Open/close signal for App.vue's matchesNarrowOpen ref (drives
   // `inert` on the background container). Emitted synchronously on
   // every transition so the background tracks without a tick gap.
-  'narrow-open':   [open: boolean]
 }>()
 
 // Destructure the bundle into top-level setup vars so the template
@@ -163,7 +162,6 @@ function onOpenShortcut(e: KeyboardEvent) {
 }
 
 watch(() => props.open, (open) => {
-  emit('narrow-open', open)
   if (open) setTimeout(() => searchInputRef.value?.focus(), 0)
   else comboOpen.value = null
 })

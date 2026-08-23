@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, ref } from 'vue'
+import { storeToRefs } from 'pinia'
+
+import { useUiStore } from '@/stores/ui'
 
 import type { MatchRecord } from '@/api-client'
 import type { useMatchesNarrow } from '@/composables/matches/narrow/useMatchesNarrow'
@@ -38,7 +41,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   'open-match': [matchKey: string]
   'clear-anchor': []
-  'narrow-open': [open: boolean]
 }>()
 
 const {
@@ -144,9 +146,14 @@ const anchorChipLabel = computed(() => {
 //
 // The popover itself (template + focus trap + outside-click handler +
 // '/' keyboard shortcut + combobox state) lives in NarrowPopover.vue —
-// all that's left here is the trigger button + the open ref + the
-// trigger ref the popover needs for the outside-click exemption.
-const narrowOpen = ref(false)
+// all that's left here is the trigger button + the trigger ref the popover
+// needs for the outside-click exemption.
+//
+// Open-state is the ui store's, not a local ref mirrored up through an emit.
+// While there were two, setNarrowOpen(true) did not open anything, so every
+// other caller had to synthesize a DOM click on this button instead — and
+// they had already drifted into addressing it three different ways.
+const { narrowOpen } = storeToRefs(useUiStore())
 const triggerRef = ref<HTMLElement | null>(null)
 
 function toggleNarrow() {
@@ -248,7 +255,6 @@ function toggleNarrow() {
           :trigger-el="triggerRef"
           @open-match="(k: string) => emit('open-match', k)"
           @clear-anchor="emit('clear-anchor')"
-          @narrow-open="(v: boolean) => emit('narrow-open', v)"
         />
       </div>
 

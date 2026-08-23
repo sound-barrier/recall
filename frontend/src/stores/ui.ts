@@ -34,7 +34,6 @@ export const useUiStore = defineStore('ui', () => {
   // The "since this match" anchor toast + the first-run "name your main
   // account" gate are App-shell overlay state; they live here so AppOverlays
   // reads them straight from the store (no App-assembled prop bundle).
-  const anchor = useAnchorToast()
   const undoHide = useUndoHideToast()
   const firstRun = useFirstRun()
 
@@ -85,6 +84,11 @@ export const useUiStore = defineStore('ui', () => {
   // directly + App/AppOverlays read them without prop/emit drilling.
   const narrowOpen = ref(false)
   function setNarrowOpen(open: boolean) { narrowOpen.value = open }
+
+  // Declared after the flag it hands out: the anchor toast's "view filter" tap
+  // opens the narrow panel, and it takes the setter rather than reaching back
+  // into this store, which would re-enter this very setup.
+  const anchor = useAnchorToast(setNarrowOpen)
 
   const manualMatchOpen = ref(false)
   // Which entry point opened the modal — the toolbar's Add-match menu offers

@@ -9,9 +9,13 @@ export interface AnchorToastState { kind: 'set' | 'cleared'; label: string; toke
 // detail-panel anchor toggle and the narrow-panel filter. Setting/clearing the
 // anchor (frontend-only; matchAnchor persists it in localStorage) stamps a
 // bottom-right confirmation toast; the toast's "view filter" tap jumps to
-// Matches + opens the narrow popover the same way a user would. Lives in a
-// composable (not a store) because the view-filter reaches into the DOM.
-export function useAnchorToast() {
+// Matches and opens the narrow panel.
+//
+// openNarrow arrives as an argument rather than through useUiStore(), because
+// the ui store is what COMPOSES this — reaching back for it would re-enter
+// that store's own setup, which is a cycle the module graph rejects and a
+// recursion Pinia would only paper over.
+export function useAnchorToast(openNarrow: (open: boolean) => void) {
   const appStore = useAppStore()
   const matchesStore = useMatchesStore()
 
@@ -36,7 +40,7 @@ export function useAnchorToast() {
   async function onAnchorToastViewFilter() {
     if (appStore.view !== 'matches') await appStore.goToView('matches')
     await nextTick()
-    document.querySelector<HTMLButtonElement>('[data-narrow-trigger]')?.click()
+    openNarrow(true)
   }
 
   function onAnchorToastDismiss(t: number) {

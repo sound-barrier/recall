@@ -79,6 +79,7 @@ async function collectRegistrations(): Promise<Shortcut[]> {
         modalOpen: ref(false),
         selectionIsOpen: ref(false),
         selectedKey: ref<string | null>(null),
+        setNarrowOpen: vi.fn(),
         closeSelection: vi.fn(),
         focusedCardIndex: ref(0),
         narrowedRecords: ref([{ match_key: 'm1' } as unknown as MatchRecord]),
