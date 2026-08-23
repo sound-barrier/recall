@@ -29,15 +29,21 @@ export function invalidateProfiles(): Promise<void> {
   return getQueryClient().invalidateQueries({ queryKey: qk.profiles })
 }
 
-// The two non-reload writes. Both invalidate the list on success, so no
-// caller has to remember to — which is what the manual invalidateProfiles()
-// calls beside them used to be.
-export async function renameProfile(from: string, to: string) {
-  const resp = await RenameProfile(from, to)
-  await invalidateProfiles()
-  return resp
+// Renaming does NOT invalidate, on purpose. Its only caller is the first-run
+// modal, whose contract is that the parent reloads the window afterwards so
+// the masthead chip rebinds — a reload discards the whole cache, so awaiting a
+// refetch first is work thrown away. It was worse than pointless when it was
+// here: the refetch settled after the reload had already begun, and the modal
+// never reached its second step.
+//
+// It stays a wrapper because the rule is that components do not import the api
+// seam, not that every write must invalidate.
+export function renameProfile(from: string, to: string) {
+  return RenameProfile(from, to)
 }
 
+// Deleting DOES invalidate: nothing reloads after it, so the list on screen is
+// the one that has to change.
 export async function deleteProfile(name: string): Promise<void> {
   await DeleteProfile(name)
   await invalidateProfiles()
