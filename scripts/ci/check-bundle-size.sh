@@ -107,7 +107,23 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # match-time-helpers into the entry chunk. The helper now lives in
 # match-label-helpers.ts, which imports nothing at runtime. A leaf that costs
 # nothing to import is worth more than a leaf that sits beside its callers.
-: "${MAX_INITIAL_JS_BYTES:=352500}"
+# 2026-08-22 — 352500 → 356500. The standards-debt remediation. Six new
+# authored modules land in the entry graph, and every one of them is a
+# boundary that did not exist before: widget-schemas.ts (severing the
+# 45-cycle widget/registry knot), useNarrowCellFilter (one registry replacing
+# two drifted if-chains), useExternalLinks / useDiagnosticBundle /
+# useDatabaseHealth (components no longer reaching for the api seam), and
+# ProbeChip.vue (one chip instead of three). Plus AGG_SPECS, which is a
+# Record where five switches used to be.
+#
+# This is the trade the 2026-08-10 file-size wave already recorded and named:
+# module boundaries cost bytes, and the rule is to bump deliberately rather
+# than shave structure to fit a number. What was bought is measurable —
+# runtime import cycles 45 → 0, and an unhandled aggregation or screenshot
+# type is now a compile error rather than an empty column or a garbage row.
+#
+# Measured 355512B; ~1KB headroom, per the sizing convention here.
+: "${MAX_INITIAL_JS_BYTES:=356500}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
@@ -297,7 +313,10 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # fails a test rather than a budget.
 #
 # Measured 2117506B; set ~6.5KB above it per the sizing convention.
-: "${MAX_TOTAL_JS_BYTES:=2152000}"
+# 2026-08-22 — 2152000 → 2158000. Same remediation, same trade, seen across
+# the whole graph rather than just the entry: the lazy views carry the other
+# half of those extractions. Measured 2156606B.
+: "${MAX_TOTAL_JS_BYTES:=2158000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
