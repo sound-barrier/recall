@@ -2,11 +2,10 @@
 import { computed, ref } from 'vue'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import type { FailedFile } from '@/api-client'
-import { ExportDiagnosticBundle } from '@/api-client'
 import { screenshotURL } from '@/match/match-helpers'
 import { formatParsedAt } from '@/match/match-time-helpers'
+import { useDiagnosticBundle } from '@/composables/ingest/useDiagnosticBundle'
 import { useHoverThumbnail } from '@/composables/shared/media/useHoverThumbnail'
-import { useAppStore } from '@/stores/app'
 import { useParseStore } from '@/stores/parse'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
 
@@ -28,20 +27,11 @@ const failedFiles = computed(() => parseStore.failedFiles)
 // logs + environment manifest) for bug reports. Wails saves via the
 // native dialog; server mode blob-downloads. An empty saved-name means
 // the user canceled the dialog — stay silent.
-const bundleBusy = ref(false)
-const bundleSavedAs = ref('')
-async function onSaveDiagnosticBundle() {
-  if (bundleBusy.value) return
-  bundleBusy.value = true
-  bundleSavedAs.value = ''
-  try {
-    bundleSavedAs.value = await ExportDiagnosticBundle()
-  } catch (e) {
-    useAppStore().setErrorFromRaw(String(e))
-  } finally {
-    bundleBusy.value = false
-  }
-}
+const {
+  savedAs: bundleSavedAs,
+  busy: bundleBusy,
+  exportBundle: onSaveDiagnosticBundle,
+} = useDiagnosticBundle()
 
 // "Delete forever" arm/disarm — the UnknownUnmatchedSection pattern,
 // keyed by filename (failed rows have no match_key).

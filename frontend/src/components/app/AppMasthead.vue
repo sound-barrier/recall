@@ -7,11 +7,12 @@
 import { computed, defineAsyncComponent } from 'vue'
 import { storeToRefs } from 'pinia'
 
-import { OpenURL } from '@/api-client'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
 import { useSelfReviewStore } from '@/stores/selfReview'
 import { useWhatsNew } from '@/composables/app/useWhatsNew'
+const { openRepo } = useExternalLinks()
+
 const WhatsNewStrip = defineAsyncComponent(() => import('@/components/app/WhatsNewStrip.vue'))
 import { useCoachReturnsStore } from '@/stores/coachReturns'
 import { useMatchesStore } from '@/stores/matches'
@@ -21,6 +22,7 @@ import { tallyWLD } from '@/match/match-stats-helpers'
 import { winrateOrNull } from '@/match/dossier/match-dossier-tally'
 import { TABS, useTabKeyboardNav } from '@/composables/shared/keyboard/useTabKeyboardNav'
 import { GITHUB_REPO_URL } from '@/app-links'
+import { useExternalLinks } from '@/composables/app/useExternalLinks'
 import MastheadParseChip from '@/components/app/masthead/MastheadParseChip.vue'
 import MastheadWatchDot from '@/components/app/masthead/MastheadWatchDot.vue'
 import ProfileSwitcher from '@/components/app/masthead/ProfileSwitcher.vue'
@@ -111,7 +113,7 @@ const winRate = computed(() => winrateOrNull(wld.value.w, wld.value.w + wld.valu
         rel="noopener noreferrer"
         :title="`Open Recall on GitHub — ${GITHUB_REPO_URL}`"
         aria-label="Open the Recall project on GitHub"
-        @click.prevent="OpenURL(GITHUB_REPO_URL)"
+        @click.prevent="openRepo"
       >
         <span class="brand-tick">↺</span>
         <h1 class="brand">

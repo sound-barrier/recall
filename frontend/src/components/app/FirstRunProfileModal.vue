@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { RenameProfile, type NamedCandidate, type ProfilesResponse } from '@/api-client'
+import type { NamedCandidate, ProfilesResponse } from '@/api-client'
+import { renameProfile } from '@/queries/profiles'
 import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
 import ScreenshotSourcePicker from '@/components/settings/ScreenshotSourcePicker.vue'
 
@@ -81,7 +82,7 @@ async function onSave() {
   error.value = null
   try {
     const next = inputValue.value.trim()
-    const _resp: ProfilesResponse = await RenameProfile('main', next)
+    const _resp: ProfilesResponse = await renameProfile('main', next)
     void _resp
     pendingRenamedTo.value = next
     await advanceToSource()

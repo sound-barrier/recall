@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { DeleteProfile } from '@/api-client'
 import { plainLanguageError } from '@/error-helpers'
-import { invalidateProfiles, useProfilesData } from '@/queries/profiles'
+import { deleteProfile, useProfilesData } from '@/queries/profiles'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // Profiles management panel of the Settings view. Lists every profile
@@ -50,9 +49,8 @@ async function confirmDelete(name: string) {
   if (busy.value) return
   busy.value = true
   try {
-    await DeleteProfile(name)
+    await deleteProfile(name)
     confirmTarget.value = null
-    await invalidateProfiles()
   } catch (e) {
     actionError.value = plainLanguageError(String(e))
   } finally {

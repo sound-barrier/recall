@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/vue-query'
 import { toValue, type MaybeRefOrGetter } from 'vue'
 
-import { ListFocus } from '@/api-client'
+import { ListFocus, SetFocusItemStatus, type FocusStatus } from '@/api-client'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 
@@ -27,4 +27,10 @@ export function useFocusQuery(enabled: MaybeRefOrGetter<boolean>) {
  */
 export function invalidateFocus(): Promise<unknown> {
   return getQueryClient().invalidateQueries({ queryKey: qk.focus })
+}
+
+/** Move an item along. Invalidates for the reason above. */
+export async function setFocusItemStatus(itemID: string, status: FocusStatus): Promise<void> {
+  await SetFocusItemStatus(itemID, status)
+  await invalidateFocus()
 }

@@ -1,7 +1,7 @@
 import { computed } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 
-import { GetProfiles } from '@/api-client'
+import { DeleteProfile, GetProfiles, RenameProfile } from '@/api-client'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 
@@ -27,4 +27,18 @@ export function useProfilesData() {
 
 export function invalidateProfiles(): Promise<void> {
   return getQueryClient().invalidateQueries({ queryKey: qk.profiles })
+}
+
+// The two non-reload writes. Both invalidate the list on success, so no
+// caller has to remember to — which is what the manual invalidateProfiles()
+// calls beside them used to be.
+export async function renameProfile(from: string, to: string) {
+  const resp = await RenameProfile(from, to)
+  await invalidateProfiles()
+  return resp
+}
+
+export async function deleteProfile(name: string): Promise<void> {
+  await DeleteProfile(name)
+  await invalidateProfiles()
 }

@@ -1,35 +1,14 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-
-import type { DBHealth } from '@/api-client'
-import { GetDatabaseHealth, RunDatabaseMaintenance } from '@/api-client'
-import { useAppStore } from '@/stores/app'
+import { useDatabaseHealth } from '@/composables/settings/useDatabaseHealth'
 
 // Settings → Advanced → Database health: integrity_check + size /
 // freelist stats on demand, plus the optimize / compact maintenance
 // operations (the audit's "no live-DB health surface" gap, promoted
-// from the FEATURES.md triage list). Self-contained: reads the api
-// seam directly — a diagnostics panel needs no cross-view store
-// state. User-pulled only; nothing here runs at boot.
+// from the FEATURES.md triage list). User-pulled only; nothing here runs at
+// boot, and deliberately uncached — a stale integrity check is worse than
+// none, and two of the three passes change what they report on.
 
-const report = ref<DBHealth | null>(null)
-const busy = ref<'check' | 'optimize' | 'vacuum' | null>(null)
-
-async function run(kind: 'check' | 'optimize' | 'vacuum') {
-  if (busy.value) return
-  busy.value = kind
-  try {
-    report.value = kind === 'check'
-      ? await GetDatabaseHealth()
-      : await RunDatabaseMaintenance(kind)
-  } catch (e) {
-    // Resolved lazily: the store is only needed on failure, and the
-    // parent's unit tests mount this row without a Pinia.
-    useAppStore().setErrorFromRaw(String(e))
-  } finally {
-    busy.value = null
-  }
-}
+const { report, busy, run } = useDatabaseHealth()
 
 function mb(bytes: number): string {
   return `${(bytes / 1_048_576).toFixed(1)} MB`

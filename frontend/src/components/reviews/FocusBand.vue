@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, useTemplateRef } from 'vue'
 
-import { SetFocusItemStatus, type FocusEntry } from '@/api-client'
+import type { FocusEntry } from '@/api-client'
 import { formatPlayerDay } from '@/match/coach/coach-time'
 import { activeFocus, retiredFocus } from '@/match/reviews/focus-items'
-import { invalidateFocus } from '@/queries/focus'
+import { setFocusItemStatus } from '@/queries/focus'
 import { useAppStore } from '@/stores/app'
 
 // "What you're working on" — the one place the player's whole list lives,
@@ -57,8 +57,7 @@ function restoreFocus(): void {
 async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
   if (blocked.value) return
   try {
-    await SetFocusItemStatus(e.item_id, status)
-    await invalidateFocus()
+    await setFocusItemStatus(e.item_id, status)
     restoreFocus()
   } catch (err) {
     appStore.setErrorFromRaw(String(err))

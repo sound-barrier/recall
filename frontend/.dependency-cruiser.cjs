@@ -51,11 +51,7 @@ module.exports = {
         'composable that wraps it. Importing a TYPE from the api seam is fine — only ' +
         'value imports are forbidden. This is TECHNICAL_DEBT.md section 16 generalized ' +
         'to the rule that would have prevented it.',
-      // WARN, not error, until the ten pre-existing callers are routed through
-      // a composable or query -- TECHNICAL_DEBT.md section 16. Flip to 'error'
-      // in the commit that clears the last one; a warning that outlives its
-      // cleanup is exactly the toothless gate section 16 is a complaint about.
-      severity: 'warn',
+      severity: 'error',
       from: { path: '^src/components/' },
       to: { path: '^src/api-client', dependencyTypesNot: ['type-only'] },
     },
