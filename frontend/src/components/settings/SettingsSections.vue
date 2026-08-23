@@ -1,11 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useAppStore } from '@/stores/app'
-import { useDatabaseStore } from '@/stores/database'
-import { useMatchesStore } from '@/stores/matches'
-import { useParseStore } from '@/stores/parse'
-import { useSettingsStore } from '@/stores/settings'
 import SettingsAdvanced from '@/components/settings/SettingsAdvanced.vue'
 import SettingsAppearance from '@/components/settings/SettingsAppearance.vue'
 import SettingsBackupRestore from '@/components/settings/SettingsBackupRestore.vue'
@@ -16,154 +9,28 @@ import SettingsFolders from '@/components/settings/SettingsFolders.vue'
 import SettingsProfiles from '@/components/settings/SettingsProfiles.vue'
 import SettingsWindow from '@/components/settings/SettingsWindow.vue'
 
-// The seven configuration sections (Folders → Advanced), bound from the stores.
-// Extracted from SettingsView so the same blocks back both the Settings tab and
-// the Settings dialog (SettingsModal) without duplicating the wiring — the tab
-// adds the intro hero + first-run CTA around this; the dialog frames it in a
-// modal. Reads the stores directly, like every store-bound component.
-const appStore = useAppStore()
-const databaseStore = useDatabaseStore()
-const matchesStore = useMatchesStore()
-const parseStore = useParseStore()
-const settingsStore = useSettingsStore()
-const { goToView } = appStore
-const { dataLocation } = storeToRefs(appStore)
-const {
-  screenshotsDir,
-  watchEnabled,
-  themeMode,
-  weekStart,
-  probing,
-  probeMessage,
-  probeStatus,
-  probeTried,
-  tesseractReady,
-  tesseractSupported,
-  tesseractStatus,
-  tesseractPickerBusy,
-  tesseractProbing,
-  tesseractProbeMessage,
-  tesseractProbeStatus,
-  tesseractProbeTried,
-} = storeToRefs(settingsStore)
-const {
-  pickDir,
-  detectDir,
-  revealDir,
-  resetDir,
-  setTheme,
-  setWeekStart,
-  pickTesseractBinary,
-  resetTesseractPath,
-  detectTesseractBinary,
-} = settingsStore
-const {
-  parseBusy,
-  ignoredCount,
-} = storeToRefs(parseStore)
-const {
-  openIgnoredPanel,
-  onReParseAll,
-} = parseStore
-const {
-  backingUp,
-  restoring,
-  restoreArmed,
-  importingMatches,
-  backupStatus,
-  clearConfirm,
-  clearingDB,
-} = storeToRefs(databaseStore)
-const {
-  backup,
-  armRestore,
-  cancelRestore,
-  restore,
-  importMatches,
-  armClear,
-  cancelClear,
-  onClearDatabase,
-} = databaseStore
-const matchedCount = computed(() => matchesStore.records.length)
-const unknownCount = computed(() => matchesStore.unknownRecords.length)
-const reparsing = parseBusy
+// The nine configuration sections, in order. Extracted from SettingsView so the
+// same blocks back both the Settings tab and the Settings dialog without
+// duplicating the wiring — the tab adds the intro hero + first-run CTA around
+// this; the dialog frames it in a modal.
+//
+// Composition only. This used to be 90 lines of store-to-props shim over the
+// six sections that took props, while the three beside them already took none
+// — one file demonstrating both the target and the miss
+// (TECHNICAL_DEBT.md section 15). Every section reads the stores it renders
+// now, so the order below is the only thing left to state.
 </script>
 
 <template>
-  <SettingsFolders
-    :screenshots-dir="screenshotsDir"
-    :watch-enabled="watchEnabled"
-    :parse-busy="parseBusy"
-    :data-location="dataLocation"
-    :probing="probing"
-    :probe-message="probeMessage"
-    :probe-status="probeStatus"
-    :probe-tried="probeTried"
-    @pick-screenshots-dir="pickDir"
-    @detect-screenshots-dir="detectDir"
-    @reveal-screenshots-dir="revealDir"
-    @reset-screenshots-dir="resetDir"
-  />
-
-  <SettingsEngine
-    :tesseract-ready="tesseractReady"
-    :tesseract-supported="tesseractSupported"
-    :tesseract-status="tesseractStatus"
-    :tesseract-picker-busy="tesseractPickerBusy"
-    :tesseract-probing="tesseractProbing"
-    :tesseract-probe-message="tesseractProbeMessage"
-    :tesseract-probe-status="tesseractProbeStatus"
-    :tesseract-probe-tried="tesseractProbeTried"
-    @pick-tesseract="pickTesseractBinary"
-    @reset-tesseract="resetTesseractPath"
-    @detect-tesseract="detectTesseractBinary"
-  />
-
-  <SettingsAppearance
-    :theme-mode="themeMode"
-    @set-theme="setTheme"
-  />
-
-  <SettingsCalendar
-    :week-start="weekStart"
-    @set-week-start="setWeekStart"
-    @go-to-view="goToView"
-  />
-
+  <SettingsFolders />
+  <SettingsEngine />
+  <SettingsAppearance />
+  <SettingsCalendar />
   <SettingsProfiles />
-
-  <SettingsBackupRestore
-    :backing-up="backingUp"
-    :restoring="restoring"
-    :restore-armed="restoreArmed"
-    :importing-matches="importingMatches"
-    :status="backupStatus"
-    :matched-count="matchedCount"
-    :unknown-count="unknownCount"
-    @backup="backup"
-    @arm-restore="armRestore"
-    @restore="restore"
-    @cancel-restore="cancelRestore"
-    @import-matches="importMatches"
-  />
-
+  <SettingsBackupRestore />
   <SettingsWindow />
-
   <SettingsCoach />
-
-  <SettingsAdvanced
-    :clearing-d-b="clearingDB"
-    :clear-confirm="clearConfirm"
-    :matched-count="matchedCount"
-    :unknown-count="unknownCount"
-    :ignored-count="ignoredCount"
-    :reparsing="reparsing"
-    @arm-clear="armClear"
-    @cancel-clear="cancelClear"
-    @clear-database="onClearDatabase"
-    @open-ignored-panel="openIgnoredPanel"
-    @re-parse-all="onReParseAll"
-  />
+  <SettingsAdvanced />
 </template>
 
 <style scoped>

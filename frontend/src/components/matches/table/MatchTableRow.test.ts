@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import { ROW_CONTEXT_KEY } from '@/composables/matches/list/useRowContext'
 
 import type { MatchRecord } from '@/api'
 import type { SearchClause } from '@/match/search-query'
@@ -31,6 +32,13 @@ vi.mock('@/composables/shared/useOWData', async () => {
 
 const { default: MatchTableRow } = await import('@/components/matches/table/MatchTableRow.vue')
 
+// The row opens the context menu through the injected seam rather than
+// emitting up through the table and the leaf list, so a bare render has to
+// stand in for MatchesView's provider (TECHNICAL_DEBT.md section 15).
+const onRowContext = vi.fn()
+beforeEach(() => onRowContext.mockClear())
+const withRowContext = { global: { provide: { [ROW_CONTEXT_KEY]: { onRowContext } } } }
+
 function rec(over: Partial<MatchRecord['data']> = {}, key = 'm-1'): MatchRecord {
   return {
     match_key: key,
@@ -52,6 +60,7 @@ function rec(over: Partial<MatchRecord['data']> = {}, key = 'm-1'): MatchRecord 
 
 function renderRow(props: Partial<Record<string, unknown>> = {}) {
   return render(MatchTableRow, {
+    ...withRowContext,
     props: {
       rec: rec(),
       cardIndex: 0,
@@ -137,6 +146,7 @@ describe('MatchTableRow', () => {
 
   it('renders tag chips with a leading # and highlights a tag-scoped hit', () => {
     render(MatchTableRow, {
+    ...withRowContext,
       props: {
         rec: {
           match_key: 'm-tag',
@@ -314,7 +324,7 @@ describe('MatchTableRow', () => {
       const { emitted } = renderRow()
       const row = screen.getByRole('row')
       await fireEvent.contextMenu(row)
-      expect(emitted<[MouseEvent, string]>('row-context')?.[0]?.[1]).toBe('m-1')
+      expect(onRowContext).toHaveBeenCalledWith(expect.anything(), 'm-1')
       await fireEvent.mouseEnter(row)
       await fireEvent.mouseMove(row)
       await fireEvent.mouseLeave(row)

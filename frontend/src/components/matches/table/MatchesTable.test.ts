@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { ref } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { render, screen, fireEvent } from '@testing-library/vue'
+import { ROW_CONTEXT_KEY } from '@/composables/matches/list/useRowContext'
 
 import type { MatchRecord } from '@/api-client'
 import { NARROW_KEY, type NarrowApi } from '@/composables/matches/narrow/useNarrow'
@@ -26,6 +27,12 @@ vi.mock('@/composables/shared/useOWData', async () => {
 })
 
 const { default: MatchesTable } = await import('@/components/matches/table/MatchesTable.vue')
+
+// The row opens the context menu through the injected seam rather than
+// emitting up through the table and the leaf list, so a bare render has to
+// stand in for MatchesView's provider (TECHNICAL_DEBT.md section 15).
+const onRowContext = vi.fn()
+beforeEach(() => onRowContext.mockClear())
 
 function rec(over: Record<string, unknown> = {}, key = 'm-1'): MatchRecord {
   return {
@@ -87,7 +94,12 @@ function renderTable(opts: TableProps = {}) {
       searchClauses: [] as SearchClause[],
       narrowedIndexByKey: new Map(records.map((r, i) => [r.match_key, i])),
     },
-    global: { provide: { [NARROW_KEY as symbol]: narrow as unknown as NarrowApi } },
+    global: {
+      provide: {
+        [NARROW_KEY as symbol]: narrow as unknown as NarrowApi,
+        [ROW_CONTEXT_KEY]: { onRowContext },
+      },
+    },
   })
   return { ...view, narrow }
 }
@@ -235,7 +247,7 @@ describe('MatchesTable', () => {
       const { emitted } = renderTable()
       const row = screen.getAllByRole('row')[1]!
       await fireEvent.contextMenu(row)
-      expect(emitted<[MouseEvent, string]>('row-context')?.[0]?.[1]).toBe('m-1')
+      expect(onRowContext).toHaveBeenCalledWith(expect.anything(), 'm-1')
       await fireEvent.mouseEnter(row)
       await fireEvent.mouseMove(row)
       await fireEvent.mouseLeave(row)

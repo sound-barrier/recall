@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/vue'
+import { ROW_CONTEXT_KEY } from '@/composables/matches/list/useRowContext'
 
 import type { MatchRecord } from '@/api-client'
 import type { SearchClause } from '@/match/search-query'
@@ -31,6 +32,13 @@ vi.mock('@/composables/shared/useOWData', async () => {
 const { default: MatchLeafRow } = await import('@/components/matches/list/MatchLeafRow.vue')
 
 type RecData = Record<string, unknown>
+
+// The row opens the context menu through the injected seam rather than
+// emitting up through the table and the leaf list, so a bare render has to
+// stand in for MatchesView's provider (TECHNICAL_DEBT.md section 15).
+const onRowContext = vi.fn()
+beforeEach(() => onRowContext.mockClear())
+const withRowContext = { global: { provide: { [ROW_CONTEXT_KEY]: { onRowContext } } } }
 
 function rec(over: RecData = {}, top: RecData = {}): MatchRecord {
   return {
@@ -66,6 +74,7 @@ const NO_FILTERS = {
 
 function renderRow(props: Record<string, unknown> = {}) {
   return render(MatchLeafRow, {
+    ...withRowContext,
     props: {
       rec: rec(),
       cardIndex: 0,
@@ -243,7 +252,7 @@ describe('MatchLeafRow', () => {
       await fireEvent.click(row)
       expect(emitted('open-match')?.[0]).toEqual(['m-1'])
       await fireEvent.contextMenu(row)
-      expect(emitted<[MouseEvent, string]>('row-context')?.[0]?.[1]).toBe('m-1')
+      expect(onRowContext).toHaveBeenCalledWith(expect.anything(), 'm-1')
       await fireEvent.mouseEnter(row)
       await fireEvent.mouseMove(row)
       await fireEvent.mouseLeave(row)

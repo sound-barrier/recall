@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import { useRowContext } from '@/composables/matches/list/useRowContext'
+
 import type { MatchRecord } from '@/api-client'
 import type { FilterableField } from '@/composables/matches/useNarrowCellFilter'
 import { useMatchClock } from '@/composables/matches/useMatchClock'
@@ -31,6 +33,8 @@ import MatchProvenanceBadge from '@/components/matches/shared/MatchProvenanceBad
 // identically; only the rendering differs — table cells, not a card
 // grid. Reuses HighlightedText (the scoped-search highlight) on the
 // free-text cells, and the shared .leaf-checkbox styling (app.css).
+const { onRowContext } = useRowContext()
+
 const props = defineProps<{
   rec: MatchRecord
   cardIndex: number
@@ -62,7 +66,6 @@ const emit = defineEmits<{
   'open-match': [matchKey: string]
   'filter-cell': [field: FilterableField, value: string]
   'toggle-select': [matchKey: string]
-  'row-context': [event: MouseEvent, matchKey: string]
   'hover-enter': [rec: MatchRecord, event: MouseEvent]
   'hover-move': [event: MouseEvent]
   'hover-leave': []
@@ -118,7 +121,7 @@ const kda = computed(() => formatKda(kdaRatio(props.rec.data)))
       },
     ]"
     @click="emit('open-match', rec.match_key)"
-    @contextmenu="emit('row-context', $event, rec.match_key)"
+    @contextmenu="onRowContext($event, rec.match_key)"
     @mouseenter="emit('hover-enter', rec, $event)"
     @mousemove="emit('hover-move', $event)"
     @mouseleave="emit('hover-leave')"

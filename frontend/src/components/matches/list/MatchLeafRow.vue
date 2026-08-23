@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+
+import { useRowContext } from '@/composables/matches/list/useRowContext'
 import type { MatchRecord } from '@/api-client'
 import type { FilterableField } from '@/composables/matches/useNarrowCellFilter'
 import { useMatchClock } from '@/composables/matches/useMatchClock'
@@ -30,6 +32,8 @@ import MatchProvenanceBadge from '@/components/matches/shared/MatchProvenanceBad
 // the row reflects it via props and signals intent via emits. The
 // .leaf-checkbox styling is shared with the archive row, so it lives in
 // app.css (the >1-component rule).
+const { onRowContext } = useRowContext()
+
 const props = defineProps<{
   rec: MatchRecord
   // Position in the narrowed set — drives data-card-index and the
@@ -60,7 +64,6 @@ const emit = defineEmits<{
   'open-match': [matchKey: string]
   'filter-cell': [field: FilterableField, value: string]
   'toggle-select': [matchKey: string]
-  'row-context': [event: MouseEvent, matchKey: string]
   'hover-enter': [rec: MatchRecord, event: MouseEvent]
   'hover-move': [event: MouseEvent]
   'hover-leave': []
@@ -118,7 +121,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
       },
     ]"
     @click="emit('open-match', rec.match_key)"
-    @contextmenu="emit('row-context', $event, rec.match_key)"
+    @contextmenu="onRowContext($event, rec.match_key)"
     @mouseenter="emit('hover-enter', rec, $event)"
     @mousemove="emit('hover-move', $event)"
     @mouseleave="emit('hover-leave')"

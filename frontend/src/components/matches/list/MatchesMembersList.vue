@@ -46,7 +46,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   'open-match': [matchKey: string]
   'toggle-select': [matchKey: string]
-  'row-context': [event: MouseEvent, matchKey: string]
   'hover-enter': [rec: MatchRecord, event: MouseEvent]
   'hover-move': [event: MouseEvent]
   'hover-leave': []
@@ -156,7 +155,6 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
           @filter-cell="onFilterCell"
           @open-match="emit('open-match', $event)"
           @toggle-select="emit('toggle-select', $event)"
-          @row-context="(e, k) => emit('row-context', e, k)"
           @hover-enter="(r, e) => emit('hover-enter', r, e)"
           @hover-move="(e) => emit('hover-move', e)"
           @hover-leave="emit('hover-leave')"
@@ -211,7 +209,6 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
     :narrowed-index-by-key="narrowedIndexByKey"
     @open-match="(k) => emit('open-match', k)"
     @toggle-select="(k) => emit('toggle-select', k)"
-    @row-context="(e, k) => emit('row-context', e, k)"
     @hover-enter="(r, e) => emit('hover-enter', r, e)"
     @hover-move="(e) => emit('hover-move', e)"
     @hover-leave="emit('hover-leave')"
