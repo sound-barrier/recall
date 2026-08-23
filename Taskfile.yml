@@ -188,6 +188,18 @@ tasks:
       - echo "[ recall ] ✓  No forbidden edges (warnings above are tracked debt)"
 
   lint-dupes:
+    # Ratchet, not a finder — see TECHNICAL_DEBT.md's dismissed list for why
+    # exact-clone detection cannot see the duplication section 12 charged.
+    # The threshold lives in frontend/.jscpd.json (JSON takes no comments).
+    #
+    # 2026-08-22: 0.52 → 0.53. TWO causes, and the second is a property of
+    # percentage ratchets worth knowing. Duplicated lines rose 909 → 921,
+    # because six Settings sections each wire their own stores now instead of
+    # taking props — which is the shape frontend/CLAUDE.md asks for, and reads
+    # as duplication to a token matcher. And the denominator FELL 174621 →
+    # 174174: deleting non-duplicated code raises the percentage even when
+    # nothing was copied. A ratchet on a ratio punishes cleanup; re-baseline
+    # deliberately when the cause is one of those two, never to absorb a paste.
     desc: Ratchet frontend copy-paste duplication (jscpd)
     cmds:
       - echo "[ recall ] Checking duplication (jscpd)…"
