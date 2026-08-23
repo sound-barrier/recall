@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { storeToRefs } from 'pinia'
+
 import ProbeChip from '@/components/settings/ProbeChip.vue'
-import type { TesseractStatus } from '@/api-client'
+import { useSettingsStore } from '@/stores/settings'
 
 // Engine panel — Tesseract status display + Detect / Change / Reset
 // button cluster mirroring the screenshots-dir affordances. Extracted
@@ -11,31 +13,25 @@ import type { TesseractStatus } from '@/api-client'
 //
 // `.engine-*` + `.warn-icon` + `.link-btn` scoped styles move too.
 
-const props = defineProps<{
-  tesseractReady?:      boolean
-  tesseractSupported?:  boolean
-  tesseractStatus?:     TesseractStatus
-  tesseractPickerBusy?: boolean
-  // Detect-button state — shared shape with screenshots-dir probe so
-  // both rows render the same chip + "Looked in" disclosure.
-  tesseractProbing?:      boolean
-  tesseractProbeMessage?: string
-  tesseractProbeStatus?:  '' | 'success' | 'blocked'
-  tesseractProbeTried?:   string[]
-}>()
-
-const emit = defineEmits<{
-  'pick-tesseract':   []
-  'reset-tesseract':  []
-  'detect-tesseract': []
-}>()
+// Reads and writes the settings store directly — see SettingsAppearance.
+const settingsStore = useSettingsStore()
+const {
+  tesseractReady,
+  tesseractSupported,
+  tesseractStatus,
+  tesseractPickerBusy,
+  tesseractProbing,
+  tesseractProbeMessage,
+  tesseractProbeStatus,
+  tesseractProbeTried,
+} = storeToRefs(settingsStore)
 
 // Reset is meaningful only when the current path differs from the
 // platform default — there's no override to clear otherwise.
 const hasOverride = computed(() =>
-  !!props.tesseractStatus
-    && !!props.tesseractStatus.default
-    && props.tesseractStatus.path !== props.tesseractStatus.default,
+  !!tesseractStatus.value
+    && !!tesseractStatus.value.default
+    && tesseractStatus.value.path !== tesseractStatus.value.default,
 )
 
 // Probe-chip dismissal — same shape as SettingsFolders. Reset every
@@ -133,7 +129,7 @@ const probeDismissed = ref(false)
               :class="tesseractReady ? 'ghost' : 'primary'"
               :disabled="tesseractReady || tesseractProbing || tesseractPickerBusy"
               :title="tesseractReady ? 'Reset to platform default first to re-detect' : 'Search the usual install locations for Tesseract'"
-              @click="emit('detect-tesseract')"
+              @click="settingsStore.detectTesseractBinary()"
             >
               <span v-if="tesseractProbing">Detecting…</span>
               <span v-else>Detect</span>
@@ -141,7 +137,7 @@ const probeDismissed = ref(false)
             <button
               class="btn ghost tiny"
               :disabled="tesseractPickerBusy"
-              @click="emit('pick-tesseract')"
+              @click="settingsStore.pickTesseractBinary()"
             >
               <span v-if="tesseractPickerBusy">Locating…</span>
               <span v-else>Change Binary…</span>
@@ -150,7 +146,7 @@ const probeDismissed = ref(false)
               class="btn ghost tiny reset-btn"
               :disabled="!hasOverride || tesseractPickerBusy"
               :title="hasOverride ? 'Restore the platform default path' : 'Already using the platform default'"
-              @click="emit('reset-tesseract')"
+              @click="settingsStore.resetTesseractPath()"
             >
               Reset
             </button>

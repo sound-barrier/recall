@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { storeToRefs } from 'pinia'
+
 import ProbeChip from '@/components/settings/ProbeChip.vue'
-import type { DataLocation } from '@/api-client'
+import { useAppStore } from '@/stores/app'
+import { useParseStore } from '@/stores/parse'
+import { useSettingsStore } from '@/stores/settings'
 
 // Folders panel (steady-state section 01) — Screenshots Folder row
 // + Data Location read-only paths. The first-run empty-hero stays
@@ -13,23 +17,13 @@ import type { DataLocation } from '@/api-client'
 // Change / Reset button cluster all live with the section that owns
 // them.
 
-const props = defineProps<{
-  screenshotsDir: string
-  parseBusy: boolean
-  watchEnabled?:  boolean
-  dataLocation?:  DataLocation | null
-  probing?:       boolean
-  probeMessage?:  string
-  probeStatus?:   '' | 'success' | 'blocked'
-  probeTried?:    string[]
-}>()
-
-const emit = defineEmits<{
-  'pick-screenshots-dir':    []
-  'detect-screenshots-dir':  []
-  'reveal-screenshots-dir':  []
-  'reset-screenshots-dir':   []
-}>()
+// Reads and writes the stores directly — see SettingsAppearance.
+const settingsStore = useSettingsStore()
+const {
+  screenshotsDir, watchEnabled, probeMessage, probeStatus, probeTried,
+} = storeToRefs(settingsStore)
+const { parseBusy } = storeToRefs(useParseStore())
+const { dataLocation } = storeToRefs(useAppStore())
 
 // Probe-chip dismissal — local-only transient UI noise. Reset
 // whenever a fresh probeMessage lands so a second Detect click
@@ -80,7 +74,7 @@ async function copyPath(path: string, which: 'db' | 'settings') {
             </span>
           </h4>
           <p class="setting-desc">
-            <template v-if="props.watchEnabled">
+            <template v-if="watchEnabled">
               Recall is watching this folder for new screenshots.
             </template>
             <template v-else>
@@ -113,7 +107,7 @@ async function copyPath(path: string, which: 'db' | 'settings') {
               class="btn ghost tiny"
               :disabled="parseBusy"
               :title="'Reveal ' + screenshotsDir + ' in your file manager'"
-              @click="emit('reveal-screenshots-dir')"
+              @click="settingsStore.revealDir()"
             >
               <svg viewBox="0 0 24 24" class="btn-icon" aria-hidden="true">
                 <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
@@ -133,14 +127,14 @@ async function copyPath(path: string, which: 'db' | 'settings') {
             >
               Detect
             </button>
-            <button class="btn ghost tiny" :disabled="parseBusy" @click="emit('pick-screenshots-dir')">
+            <button class="btn ghost tiny" :disabled="parseBusy" @click="settingsStore.pickDir()">
               Change…
             </button>
             <button
               class="btn ghost tiny reset-btn"
               :disabled="parseBusy"
               :title="'Clear the configured folder'"
-              @click="emit('reset-screenshots-dir')"
+              @click="settingsStore.resetDir()"
             >
               Reset
             </button>

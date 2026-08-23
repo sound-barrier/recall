@@ -3,6 +3,7 @@
 // SettingsView.test.ts; the cases below pin behavior the
 // Manage-ignored + re-parse-progress props/emits introduced.
 
+import { nextTick } from 'vue'
 import { render, screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
@@ -27,10 +28,29 @@ vi.mock('@/api', async (importOriginal) => ({
 
 import SettingsAdvanced from '@/components/settings/SettingsAdvanced.vue'
 import { useUiStore } from '@/stores/ui'
+import { useDatabaseStore } from '@/stores/database'
+import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
+import type { MatchRecord } from '@/api-client'
 
-// The component reads useUiStore (Replay-tour request), so every render
-// needs an active Pinia.
+// Every render needs an active Pinia: the section reads the stores it
+// renders rather than taking a bundle of props from a parent shim
+// (TECHNICAL_DEBT.md section 15).
 beforeEach(() => setActivePinia(createPinia()))
+
+// A record counts as "unknown" when it has no map and is not ambiguous, so a
+// matched one needs a map — otherwise every seeded record lands in both totals
+// and the Clear button offers to delete twice what was seeded.
+function seedRecords(matched: number, unknown = 0): MatchRecord[] {
+  const recs: MatchRecord[] = []
+  for (let i = 0; i < matched; i++) {
+    recs.push({ match_key: `m-${i}`, source_files: [], data: { map: 'rialto', date: '2026-05-10' } } as unknown as MatchRecord)
+  }
+  for (let i = 0; i < unknown; i++) {
+    recs.push({ match_key: `u-${i}`, source_files: [`u-${i}.png`], data: {} } as unknown as MatchRecord)
+  }
+  return recs
+}
 
 function renderAdvanced(overrides: Partial<{
   clearConfirm:      boolean
@@ -38,14 +58,20 @@ function renderAdvanced(overrides: Partial<{
   unknownCount:      number
   ignoredCount:      number
 }> = {}) {
-  return render(SettingsAdvanced, {
-    props: {
-      clearConfirm:      overrides.clearConfirm ?? false,
-      matchedCount:      overrides.matchedCount ?? 5,
-      unknownCount:      overrides.unknownCount ?? 0,
-      ignoredCount:      overrides.ignoredCount ?? 0,
-    },
-  })
+  const database = useDatabaseStore()
+  const matches = useMatchesStore()
+  const parse = useParseStore()
+
+  if (overrides.clearConfirm) database.armClear()
+  matches.records = seedRecords(overrides.matchedCount ?? 5, overrides.unknownCount ?? 0)
+  parse.ignoredScreenshots = Array.from({ length: overrides.ignoredCount ?? 0 }, (_, i) => ({
+    filename: `ig-${i}.png`, ignored_at: '2026-05-10T00:00:00Z',
+  }))
+  const spies = {
+    openIgnoredPanel: vi.spyOn(parse, 'openIgnoredPanel'),
+    onClearDatabase:  vi.spyOn(database, 'onClearDatabase').mockResolvedValue(undefined),
+  }
+  return { ...render(SettingsAdvanced), spies }
 }
 
 const keepIgnoredCheckbox = (count: number) =>
@@ -59,13 +85,13 @@ describe('SettingsAdvanced — Manage ignored row', () => {
     expect(screen.getByRole('button', { name: 'Manage…' })).toBeDisabled()
   })
 
-  it('Manage button is enabled and emits open-ignored-panel when ignoredCount > 0', async () => {
+  it('Manage button is enabled and opens the ignored panel when ignoredCount > 0', async () => {
     const user = userEvent.setup()
-    const { emitted } = renderAdvanced({ ignoredCount: 3 })
+    const { spies } = renderAdvanced({ ignoredCount: 3 })
     const btn = screen.getByRole('button', { name: 'Manage…' })
     expect(btn).toBeEnabled()
     await user.click(btn)
-    expect(emitted('open-ignored-panel')).toBeTruthy()
+    expect(spies.openIgnoredPanel).toHaveBeenCalled()
   })
 
   it('Description reads "haven\'t deleted any" when ignoredCount is 0', () => {
@@ -97,78 +123,62 @@ describe('SettingsAdvanced — Clear Database opt-out checkbox', () => {
     expect(keepIgnoredCheckbox(1)).toBeInTheDocument()
   })
 
-  it('Confirm emits clear-database with { keepIgnored: false } by default', async () => {
+  it('Confirm clears the database with { keepIgnored: false } by default', async () => {
     const user = userEvent.setup()
-    const { emitted } = renderAdvanced({ clearConfirm: true, ignoredCount: 3 })
+    const { spies } = renderAdvanced({ clearConfirm: true, ignoredCount: 3 })
     await user.click(screen.getByRole('button', { name: 'Delete 5 Records' }))
-    expect(emitted('clear-database')).toEqual([[{ keepIgnored: false }]])
+    expect(spies.onClearDatabase).toHaveBeenCalledWith({ keepIgnored: false })
   })
 
-  it('Checking the box and confirming emits with { keepIgnored: true }', async () => {
+  it('Checking the box and confirming clears with { keepIgnored: true }', async () => {
     const user = userEvent.setup()
-    const { emitted } = renderAdvanced({ clearConfirm: true, ignoredCount: 3 })
+    const { spies } = renderAdvanced({ clearConfirm: true, ignoredCount: 3 })
     await user.click(keepIgnoredCheckbox(3))
     await user.click(screen.getByRole('button', { name: 'Delete 5 Records' }))
-    expect(emitted('clear-database')).toEqual([[{ keepIgnored: true }]])
+    expect(spies.onClearDatabase).toHaveBeenCalledWith({ keepIgnored: true })
   })
 
   it('Opt-out checkbox resets to false when the arm is re-opened', async () => {
     const user = userEvent.setup()
-    const { rerender } = renderAdvanced({ clearConfirm: true, ignoredCount: 3 })
+    renderAdvanced({ clearConfirm: true, ignoredCount: 3 })
     await user.click(keepIgnoredCheckbox(3))
     expect(keepIgnoredCheckbox(3)).toBeChecked()
-    // Simulate the parent toggling clearConfirm off then on again
-    // (user clicked Cancel, then re-armed). The checkbox must reset.
-    await rerender({ clearConfirm: false })
-    await rerender({ clearConfirm: true })
+
+    // Cancel, then re-arm — the two clicks a user actually makes, rather than
+    // a parent re-rendering the section with a different prop.
+    const database = useDatabaseStore()
+    database.cancelClear()
+    await nextTick()
+    database.armClear()
+    await nextTick()
+
     expect(keepIgnoredCheckbox(3)).not.toBeChecked()
   })
 })
 
+// The progress line reads the parse store now, so these seed it rather than
+// handing the component a prop bundle.
+function renderWithProgress(parseProgress: unknown, reparsing = false) {
+  const parse = useParseStore()
+  parse.parseProgress = parseProgress as never
+  parse.parseBusy = reparsing
+  return render(SettingsAdvanced)
+}
+
 describe('SettingsAdvanced — re-parse progress line (item 12)', () => {
   it('renders nothing when parseProgress carries no re-parse counters', () => {
-    render(SettingsAdvanced, {
-      props: {
-        parseProgress: { done: 5, total: 47, filename: 'x.png', screenshot_type: 'teams' },
-      },
-    })
+    renderWithProgress({ done: 5, total: 47, filename: 'x.png', screenshot_type: 'teams' })
     expect(screen.queryByText(/matches updated/)).not.toBeInTheDocument()
   })
 
   it('renders the cumulative counters when the SSE event carries them', () => {
-    render(SettingsAdvanced, {
-      props: {
-        reparsing: true,
-        parseProgress: {
-          done: 47,
-          total: 47,
-          filename: 'x.png',
-          screenshot_type: 'teams',
-          matches_updated: 12,
-          hero_corrections: 3,
-          map_corrections: 1,
-        },
-      },
-    })
+    renderWithProgress({   done: 47,   total: 47,   filename: 'x.png',   screenshot_type: 'teams',   matches_updated: 12,   hero_corrections: 3,   map_corrections: 1, }, true)
     const line = screen.getByText(/12 of 47 matches updated/)
     expect(line).toHaveTextContent('3 hero / 1 map corrected')
   })
 
   it('omits the corrections suffix when neither hero nor map fields changed', () => {
-    render(SettingsAdvanced, {
-      props: {
-        reparsing: true,
-        parseProgress: {
-          done: 47,
-          total: 47,
-          filename: 'x.png',
-          screenshot_type: 'teams',
-          matches_updated: 12,
-          hero_corrections: 0,
-          map_corrections: 0,
-        },
-      },
-    })
+    renderWithProgress({   done: 47,   total: 47,   filename: 'x.png',   screenshot_type: 'teams',   matches_updated: 12,   hero_corrections: 0,   map_corrections: 0, }, true)
     const line = screen.getByText(/12 of 47 matches updated/)
     expect(line).not.toHaveTextContent('corrected')
   })
@@ -193,18 +203,18 @@ describe('user-event on happy-dom (migration smoke)', () => {
   // in the affected tests.
   it('click, Enter activation, and tab traversal all reach the component', async () => {
     const user = userEvent.setup()
-    const { emitted } = renderAdvanced({ ignoredCount: 2 })
+    const { spies } = renderAdvanced({ ignoredCount: 2 })
     const manage = screen.getByRole('button', { name: 'Manage…' })
 
     await user.click(manage)
-    expect(emitted('open-ignored-panel')).toHaveLength(1)
+    expect(spies.openIgnoredPanel).toHaveBeenCalledTimes(1)
 
     manage.focus()
     // happy-dom's activeElement fails identity compares (see
     // frontend/CLAUDE.md), so assert focus via textContent.
     expect(document.activeElement?.textContent?.trim()).toBe('Manage…')
     await user.keyboard('{Enter}')
-    expect(emitted('open-ignored-panel')).toHaveLength(2)
+    expect(spies.openIgnoredPanel).toHaveBeenCalledTimes(2)
 
     await user.tab()
     expect(document.activeElement?.textContent?.trim()).not.toBe('Manage…')

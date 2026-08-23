@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import type { ExportStatus } from '@/composables/settings/useBackupRestore'
+
+import { useDatabaseStore } from '@/stores/database'
+import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { formatIgnoredAt } from '@/match/match-time-helpers'
@@ -14,23 +17,14 @@ import { formatIgnoredAt } from '@/match/match-time-helpers'
 // `.setting-row.danger-row` + `.clear-confirm-group` are shared with the
 // SettingsAdvanced Clear-DB row, so those styles stay in the parent stylesheet.
 
-defineProps<{
-  backingUp?:        boolean
-  restoring?:        boolean
-  restoreArmed?:     boolean
-  importingMatches?: boolean
-  status?:           ExportStatus | null
-  matchedCount?:     number
-  unknownCount?:     number
-}>()
-
-const emit = defineEmits<{
-  'backup':         []
-  'arm-restore':    []
-  'restore':        []
-  'cancel-restore': []
-  'import-matches': []
-}>()
+// Reads and writes the stores directly — see SettingsAppearance.
+const databaseStore = useDatabaseStore()
+const matchesStore = useMatchesStore()
+const {
+  backingUp, restoring, restoreArmed, importingMatches, backupStatus: status,
+} = storeToRefs(databaseStore)
+const matchedCount = computed(() => matchesStore.records.length)
+const unknownCount = computed(() => matchesStore.unknownRecords.length)
 
 // Automatic backups read the settings store directly (the store-direct
 // convention) — the rest of this panel predates it and stays prop-driven.
@@ -89,7 +83,7 @@ const INTERVALS = [
           <button
             class="btn ghost"
             :disabled="backingUp || restoring || importingMatches"
-            @click="emit('backup')"
+            @click="databaseStore.backup()"
           >
             <span v-if="backingUp">Saving…</span>
             <span v-else>Backup (.db)</span>
@@ -167,7 +161,7 @@ const INTERVALS = [
             class="btn ghost"
             :disabled="importingMatches || restoring || backingUp || writesLocked"
             :title="lockedTitle('')"
-            @click="emit('import-matches')"
+            @click="databaseStore.importMatches()"
           >
             <span v-if="importingMatches">Importing…</span>
             <span v-else>Import matches or notes…</span>
@@ -202,7 +196,7 @@ const INTERVALS = [
               class="btn danger-outline"
               :disabled="restoring || backingUp || importingMatches || writesLocked"
               :title="lockedTitle('')"
-              @click="emit('arm-restore')"
+              @click="databaseStore.armRestore()"
             >
               Restore (.db)…
             </button>
@@ -212,12 +206,12 @@ const INTERVALS = [
               <button
                 class="btn danger"
                 :disabled="restoring"
-                @click="emit('restore')"
+                @click="databaseStore.restore()"
               >
                 <span v-if="restoring">Loading…</span>
                 <span v-else>Choose File…</span>
               </button>
-              <button class="btn ghost" :disabled="restoring" @click="emit('cancel-restore')">
+              <button class="btn ghost" :disabled="restoring" @click="databaseStore.cancelRestore()">
                 Cancel
               </button>
             </div>

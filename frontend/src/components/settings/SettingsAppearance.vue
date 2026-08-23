@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
+
 import type { ThemeMode } from '@/composables/settings/useTheme'
+import { useSettingsStore } from '@/stores/settings'
 
 // Appearance panel of the Settings view — four theme swatches.
 // Each preview card is a miniature of the theme's palette; clicking
@@ -12,16 +15,15 @@ import type { ThemeMode } from '@/composables/settings/useTheme'
 // CSS-variable palettes (day-swatch / dark-swatch / night-swatch /
 // contrast-swatch) live with the component that owns the surface.
 
-defineProps<{
-  themeMode: ThemeMode
-}>()
-
-const emit = defineEmits<{
-  'set-theme': [mode: ThemeMode]
-}>()
+// Reads the store it renders, and writes it directly. The seven sections
+// were bound from one 212-line store-to-props shim while three of their
+// siblings in the same template already took no props at all
+// (TECHNICAL_DEBT.md section 15).
+const settingsStore = useSettingsStore()
+const { themeMode } = storeToRefs(settingsStore)
 
 function pick(mode: ThemeMode) {
-  emit('set-theme', mode)
+  settingsStore.setTheme(mode)
 }
 </script>
 

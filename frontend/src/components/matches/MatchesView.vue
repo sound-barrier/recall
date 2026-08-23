@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onUnmounted, computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
 import { provideMatchesContext } from '@/composables/matches/useMatchesContext'
+import { provideRowContext } from '@/composables/matches/list/useRowContext'
 import MatchesSortGroupPopover from '@/components/matches/list/MatchesSortGroupPopover.vue'
 import MatchesTableSortPopover from '@/components/matches/table/MatchesTableSortPopover.vue'
 import { useDensity } from '@/composables/matches/table/useDensity'
@@ -316,6 +317,11 @@ const {
   openSourceFolder: onOpenSourceFolder,
   sendToCoach: (k: string) => matchesStore.requestShare([k], 'row'),
 })
+
+// The rows open the context menu themselves rather than emitting up through
+// the table and the leaf list, neither of which read it. The view still owns
+// the menu's state and renders it.
+provideRowContext({ onRowContext })
 </script>
 
 <template>
@@ -462,7 +468,6 @@ const {
           :clause-exclusion-counts="clauseExclusionCounts"
           @open-match="selection.open($event)"
           @toggle-select="(k: string) => { uiStore.clearReviewPickHint(); toggleSelected(k) }"
-          @row-context="onRowContext"
           @hover-enter="onLeafMouseEnter"
           @hover-move="onLeafMouseMove"
           @hover-leave="onLeafMouseLeave"

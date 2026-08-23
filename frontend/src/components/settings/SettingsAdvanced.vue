@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
+import { storeToRefs } from 'pinia'
+
 import SupportedSourcesRow from '@/components/settings/SupportedSourcesRow.vue'
 import SettingsDatabaseHealth from '@/components/settings/SettingsDatabaseHealth.vue'
 import { useUiStore } from '@/stores/ui'
+import { useDatabaseStore } from '@/stores/database'
+import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // Advanced collapsible at the bottom of Settings — destructive Clear
@@ -25,47 +29,24 @@ const uiStore = useUiStore()
 // session must not do on top of a loaned corpus (session > tour).
 const { writesLocked, lockedTitle } = useWriteGate()
 
-const props = defineProps<{
-  clearingDB?:       boolean
-  clearConfirm?:     boolean
-  matchedCount?:     number
-  unknownCount?:     number
-  // Count of files in the Unknown-tab "Delete forever" suppress list.
-  // 0 hides the keep-suppress-list checkbox in the Clear arm step and
-  // disables the Manage button.
-  ignoredCount?:     number
-  // True while a Re-parse-all run is in flight (parse-progress SSE
-  // events streaming). Driven by the parent's parseProgress state
-  // machine — same source the masthead's parse indicator reads.
-  reparsing?:        boolean
-  // Latest parse-progress event — drives the re-parse running-count
-  // line beneath the button ("X of Y matches updated · N hero / M
-  // map corrected"). Null when no parse is in flight.
-  parseProgress?:    ParseProgressEvent | null
-}>()
-
-const emit = defineEmits<{
-  'arm-clear':          []
-  'cancel-clear':       []
-  'clear-database':     [opts: { keepIgnored: boolean }]
-  'open-ignored-panel': []
-  // Two-step arm/disarm fires this once on confirm. App.vue calls
-  // api.ts ReParseAll() which POSTs /api/v1/parses?scope=all and
-  // streams parse-progress events. The progress panel surfaces
-  // per-file activity through its existing SSE wiring.
-  're-parse-all':       []
-}>()
+// Reads and writes the stores directly — see SettingsAppearance.
+const databaseStore = useDatabaseStore()
+const parseStore = useParseStore()
+const matchesStore = useMatchesStore()
+const { clearingDB, clearConfirm } = storeToRefs(databaseStore)
+const { ignoredCount, parseProgress, parseBusy: reparsing } = storeToRefs(parseStore)
+const matchedCount = computed(() => matchesStore.records.length)
+const unknownCount = computed(() => matchesStore.unknownRecords.length)
 
 // Re-parse running counts — surfaced beneath the button while a
 // re-parse-all run is in flight, then held visible for 5 s after
 // completion so the user reads the result before it clears. Pulled
-// from props.parseProgress directly so the test can mount with the
-// prop set and see the line render immediately (a watch wouldn't
-// fire on initial render).
+// from the parse store directly, with immediate: true so the line renders
+// on mount rather than waiting for the next change.
 const lastReparseSummary = ref<{ updated: number; hero: number; map: number; total: number } | null>(null)
 let reparseClearTimer: ReturnType<typeof setTimeout> | null = null
 
-watch(() => props.parseProgress, (next) => {
+watch(parseProgress, (next) => {
   if (next && (next.matches_updated || next.hero_corrections || next.map_corrections)) {
     lastReparseSummary.value = {
       updated: next.matches_updated ?? 0,
@@ -76,7 +57,7 @@ watch(() => props.parseProgress, (next) => {
   }
 }, { immediate: true })
 
-watch(() => props.reparsing, (next, prev) => {
+watch(reparsing, (next, prev) => {
   // Transition true → false signals the run finished — hold the
   // visible summary for 5 s, then clear so the row's clean.
   if (prev && !next) {
@@ -122,7 +103,7 @@ function cancelReparse() {
 }
 function confirmReparse() {
   cancelReparse()
-  emit('re-parse-all')
+  void parseStore.onReParseAll()
 }
 
 // Opt-out checkbox state. Default false so the Clear arm's "factory
@@ -131,7 +112,7 @@ function confirmReparse() {
 // re-opens so an old toggle doesn't sneak through.
 const keepIgnoredOnClear = ref(false)
 watch(
-  () => props.clearConfirm,
+  clearConfirm,
   (next, prev) => {
     if (next && !prev) keepIgnoredOnClear.value = false
   },
@@ -174,7 +155,7 @@ watch(
           <button
             class="btn"
             :disabled="(ignoredCount ?? 0) === 0"
-            @click="emit('open-ignored-panel')"
+            @click="parseStore.openIgnoredPanel()"
           >
             Manage…
           </button>
@@ -295,7 +276,7 @@ watch(
               class="btn danger-outline"
               :disabled="clearingDB || writesLocked || ((matchedCount ?? 0) + (unknownCount ?? 0)) === 0"
               :title="lockedTitle('Delete every parsed match')"
-              @click="emit('arm-clear')"
+              @click="databaseStore.armClear()"
             >
               Clear Database…
             </button>
@@ -305,12 +286,12 @@ watch(
               <button
                 class="btn danger"
                 :disabled="clearingDB"
-                @click="emit('clear-database', { keepIgnored: keepIgnoredOnClear })"
+                @click="databaseStore.onClearDatabase({ keepIgnored: keepIgnoredOnClear })"
               >
                 <span v-if="clearingDB">Deleting…</span>
                 <span v-else>Delete {{ (matchedCount ?? 0) + (unknownCount ?? 0) }} Record{{ ((matchedCount ?? 0) + (unknownCount ?? 0)) === 1 ? '' : 's' }}</span>
               </button>
-              <button class="btn ghost" :disabled="clearingDB" @click="emit('cancel-clear')">
+              <button class="btn ghost" :disabled="clearingDB" @click="databaseStore.cancelClear()">
                 Cancel
               </button>
             </div>

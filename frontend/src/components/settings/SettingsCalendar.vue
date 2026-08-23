@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { storeToRefs } from 'pinia'
+
 import type { WeekStart } from '@/match/match-time-helpers'
 import { WEEKDAYS_FULL } from '@/match/match-time-helpers'
+import { useAppStore } from '@/stores/app'
+import { useSettingsStore } from '@/stores/settings'
 
 // Calendar panel of the Settings view — the first-day-of-week
 // preference that anchors the "Week of …" headers on the Matches
@@ -11,14 +15,10 @@ import { WEEKDAYS_FULL } from '@/match/match-time-helpers'
 // the caption + the day-name lookup stay scoped to the section that
 // owns them.
 
-const props = defineProps<{
-  weekStart: WeekStart
-}>()
-
-const emit = defineEmits<{
-  'set-week-start': [next: WeekStart]
-  'go-to-view': [next: 'settings' | 'ingest' | 'matches' | 'unknown']
-}>()
+// Reads and writes the stores directly — see SettingsAppearance.
+const settingsStore = useSettingsStore()
+const appStore = useAppStore()
+const { weekStart } = storeToRefs(settingsStore)
 
 // The seven first-day-of-week options. Order = JS Date.getDay() so
 // the index IS the WeekStart value — no separate mapping needed.
@@ -31,7 +31,7 @@ const DAY_SEGMENTS = WEEKDAYS_FULL.map((name, idx) => ({
   name,
 }))
 
-const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sunday')
+const activeWeekDayName = computed(() => WEEKDAYS_FULL[weekStart.value] ?? 'Sunday')
 </script>
 
 <template>
@@ -58,7 +58,7 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
           </h4>
           <p class="setting-desc">
             Anchors the
-            <button type="button" class="empty-link" @click="emit('go-to-view', 'matches')">
+            <button type="button" class="empty-link" @click="appStore.goToView('matches')">
               Week of
             </button>
             headers on the Matches page.
@@ -79,7 +79,7 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
               :aria-checked="weekStart === seg.idx"
               :class="{ active: weekStart === seg.idx }"
               :title="`Weeks begin on ${seg.name}`"
-              @click="emit('set-week-start', seg.idx)"
+              @click="settingsStore.setWeekStart(seg.idx)"
             >
               <span class="weekstart-letter" aria-hidden="true">{{ seg.letter }}</span>
             </button>

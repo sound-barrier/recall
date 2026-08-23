@@ -33,7 +33,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   'open-match':    [matchKey: string]
   'toggle-select': [matchKey: string]
-  'row-context':   [e: MouseEvent, matchKey: string]
   'hover-enter':   [rec: MatchRecord, e: MouseEvent]
   'hover-move':    [e: MouseEvent]
   'hover-leave':   []
@@ -261,7 +260,6 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
             @filter-cell="onFilterCell"
             @open-match="onRowOpen"
             @toggle-select="emit('toggle-select', $event)"
-            @row-context="(e, k) => emit('row-context', e, k)"
             @hover-enter="(r, e) => emit('hover-enter', r, e)"
             @hover-move="(e) => emit('hover-move', e)"
             @hover-leave="emit('hover-leave')"
