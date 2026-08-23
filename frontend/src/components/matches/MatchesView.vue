@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onUnmounted, computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
 import { provideMatchesContext } from '@/composables/matches/useMatchesContext'
-import { provideRowContext } from '@/composables/matches/list/useRowContext'
+import { provideRowContext } from '@/composables/matches/useRowContext'
 import MatchesSortGroupPopover from '@/components/matches/list/MatchesSortGroupPopover.vue'
 import MatchesTableSortPopover from '@/components/matches/table/MatchesTableSortPopover.vue'
 import { useDensity } from '@/composables/matches/table/useDensity'
