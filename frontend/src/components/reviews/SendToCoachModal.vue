@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 
-import { GetCoachingSettings } from '@/api-client'
+import { useCoachingSettingsQuery } from '@/queries/settings'
 import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
 import { useMatchesStore } from '@/stores/matches'
 
@@ -40,10 +40,17 @@ function defaultFilename(): string {
 // Prefilled best-effort from the handle already on file, and deliberately
 // not awaited: the dialog opens now, and the prefill lands when it lands —
 // never over something already typed.
+//
+// Read through the shared query rather than fetched here, so the handle is
+// the one Settings last saved. The two used to fetch independently and agreed
+// only because this dialog re-fetched every time it opened.
+const coachingSettings = useCoachingSettingsQuery()
+
 async function prefillHandle(): Promise<void> {
   try {
-    const settings = await GetCoachingSettings()
-    if (handle.value === '') handle.value = settings.player_handle ?? ''
+    const settings = coachingSettings.data.value
+      ?? await coachingSettings.suspense().then(() => coachingSettings.data.value)
+    if (handle.value === '') handle.value = settings?.player_handle ?? ''
   } catch { /* the field is editable; a failed prefill is not an error */ }
 }
 

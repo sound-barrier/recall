@@ -15,6 +15,7 @@ export const qk = {
     exitOnClose:    ['settings', 'exit-on-close'] as const,
     tesseract:      ['settings', 'tesseract'] as const,
     autoBackup:     ['settings', 'auto-backup'] as const,
+    coaching:       ['settings', 'coaching'] as const,
   },
   profiles:       ['profiles'] as const,
   // The loaned corpus nests UNDER the session on purpose: ending a
