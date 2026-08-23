@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/vue'
+import { flushPromises } from '@/test-utils'
 
 import ManualMatchModal from '@/components/matches/manual/ManualMatchModal.vue'
 import { ApiError, setApiBacking, type ManualMatchInput, type MatchRecord, type OWData } from '@/api-client'
@@ -438,6 +439,7 @@ describe('ManualMatchForm — submit failures', () => {
     renderModal()
     await fillMinimalFullForm()
     await fireEvent.click(submitBtn())
+    await flushPromises()
 
     expect(screen.getByRole('alert')).toHaveTextContent('A match already exists at that time')
     // Still open, still armed — the entry is not thrown away.
@@ -453,6 +455,7 @@ describe('ManualMatchForm — submit failures', () => {
     renderModal()
     await fillMinimalFullForm()
     await fireEvent.click(submitBtn())
+    await flushPromises()
     expect(screen.getByRole('alert')).toHaveTextContent('Failed to fetch')
   })
 

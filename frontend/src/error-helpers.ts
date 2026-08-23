@@ -1,3 +1,5 @@
+import { ApiError } from '@/api-client'
+
 // Map Go-style raw error strings to plain-language CTAs end users
 // can act on. Recall's Go backend surfaces errors verbatim via
 // `http.Error` / `fmt.Errorf`, so messages like
@@ -83,4 +85,19 @@ export function plainLanguageError(raw: string): string {
     if (p.match.test(raw)) return p.rewrite(raw)
   }
   return raw
+}
+
+/**
+ * The message inside a failed API call.
+ *
+ * The server's own body is the useful part — it says which field was refused
+ * and why — and it is only reachable by narrowing to ApiError. Doing that at a
+ * call site means importing the api seam to read an error, which is how a
+ * component ends up depending on the transport just to render a message.
+ */
+export function serverErrorText(err: unknown, fallback?: string): string {
+  if (err instanceof ApiError) {
+    return err.body || err.message || fallback || `Request failed (HTTP ${err.status})`
+  }
+  return String(err)
 }

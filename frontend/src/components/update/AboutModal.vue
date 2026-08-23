@@ -18,9 +18,11 @@ import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTr
 import { useGameDataUpdate } from '@/composables/update/useGameDataUpdate'
 import UpdateDiffManifest from '@/components/update/UpdateDiffManifest.vue'
 import SelfUpdateCta from '@/components/update/SelfUpdateCta.vue'
-import { OpenURL, type UpdateInfo, type DataUpdateResult } from '@/api-client'
-import { GITHUB_REPO_URL, LICENSE_URL, ISSUES_URL } from '@/app-links'
+import type { UpdateInfo, DataUpdateResult } from '@/api-client'
+import { useExternalLinks } from '@/composables/app/useExternalLinks'
 import type { SelfUpdateState } from '@/self-update-events'
+
+const { openRepo, openIssues, openLicense, openReleaseNotes } = useExternalLinks()
 
 const props = withDefaults(defineProps<{
   open:           boolean
@@ -72,7 +74,7 @@ const {
 )
 
 function openReleasePage() {
-  if (info.value?.url) OpenURL(info.value.url)
+  if (info.value?.url) openReleaseNotes(info.value.url)
 }
 </script>
 
@@ -259,13 +261,13 @@ function openReleasePage() {
               About
             </h3>
             <div class="about-links">
-              <button type="button" class="about-link" data-about-github @click="OpenURL(GITHUB_REPO_URL)">
+              <button type="button" class="about-link" data-about-github @click="openRepo">
                 Source on GitHub ↗
               </button>
-              <button type="button" class="about-link" data-about-license @click="OpenURL(LICENSE_URL)">
+              <button type="button" class="about-link" data-about-license @click="openLicense">
                 Apache-2.0 license ↗
               </button>
-              <button type="button" class="about-link" data-about-issues @click="OpenURL(ISSUES_URL)">
+              <button type="button" class="about-link" data-about-issues @click="openIssues">
                 Report an issue ↗
               </button>
             </div>

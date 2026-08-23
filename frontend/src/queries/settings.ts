@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/vue-query'
+import { useQuery } from '@tanstack/vue-query'
 
 import {
   GetAutoBackupStatus,
@@ -79,9 +79,8 @@ export function useCoachingSettingsQuery() {
   }, getQueryClient())
 }
 
-export function useSetCoachingSettingsMutation() {
-  return useMutation({
-    mutationFn: (next: CoachingSettings) => SetCoachingSettings(next),
-    onSuccess: () => getQueryClient().invalidateQueries({ queryKey: qk.settings.coaching }),
-  }, getQueryClient())
+export async function setCoachingSettings(next: CoachingSettings): Promise<CoachingSettings> {
+  const saved = await SetCoachingSettings(next)
+  await getQueryClient().invalidateQueries({ queryKey: qk.settings.coaching })
+  return saved
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
-import { useCoachingSettingsQuery, useSetCoachingSettingsMutation } from '@/queries/settings'
+import { setCoachingSettings, useCoachingSettingsQuery } from '@/queries/settings'
 import { useAppStore } from '@/stores/app'
 
 // Section 08 — the two identities coaching needs, one per direction.
@@ -25,7 +25,6 @@ const busy = ref(false)
 // fetch happened to return. The error banner comes from the query's `meta`,
 // which is why nothing here hand-rolls one for the read.
 const settingsQuery = useCoachingSettingsQuery()
-const setCoachingSettings = useSetCoachingSettingsMutation()
 
 const saved = computed(() => settingsQuery.data.value ?? { coach_name: '', player_handle: '' })
 
@@ -50,7 +49,7 @@ async function commit() {
   if (busy.value || unchanged) return
   busy.value = true
   try {
-    await setCoachingSettings.mutateAsync(next)
+    await setCoachingSettings(next)
   } catch (e) {
     appStore.setErrorFromRaw(String(e))
   } finally {

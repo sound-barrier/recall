@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/vue-query'
 
-import { GetFailedFiles, GetMatchResults, GetNewScreenshotCount } from '@/api-client'
+import {
+  CreateManualMatch, GetFailedFiles, GetMatchResults, GetNewScreenshotCount,
+} from '@/api-client'
 import { getQueryClient } from '@/queries/client'
 import { matchesCluster, qk } from '@/queries/keys'
 
@@ -47,4 +49,15 @@ export async function refetchMatchesCluster(): Promise<void> {
   await Promise.all(
     matchesCluster.map(key => getQueryClient().refetchQueries({ queryKey: key })),
   )
+}
+
+/**
+ * A hand-entered match. Invalidates the whole matches cluster on success,
+ * because a new record changes the list, the counts and every derived view
+ * over them — the same set a reload refetches.
+ */
+export async function createManualMatch(input: Parameters<typeof CreateManualMatch>[0]) {
+  const rec = await CreateManualMatch(input)
+  await refetchMatchesCluster()
+  return rec
 }

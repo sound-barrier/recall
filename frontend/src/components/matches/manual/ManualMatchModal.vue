@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, provide, ref, toRef } from 'vue'
-import { ApiError, CreateManualMatch, type MatchRecord } from '@/api-client'
+import type { MatchRecord } from '@/api-client'
+import { serverErrorText } from '@/error-helpers'
+import { createManualMatch } from '@/queries/matches'
 import { useManualMatchForm, manualMatchFormKey, type ManualMatchMode } from '@/composables/matches/manual/useManualMatchForm'
 import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
@@ -41,10 +43,10 @@ async function submit() {
   submitting.value = true
   errorMsg.value = ''
   try {
-    const rec = await CreateManualMatch(f.toInput())
+    const rec = await createManualMatch(f.toInput())
     emit('created', rec)
   } catch (e) {
-    errorMsg.value = e instanceof ApiError ? e.body || e.message : String(e)
+    errorMsg.value = serverErrorText(e)
   } finally {
     submitting.value = false
   }
