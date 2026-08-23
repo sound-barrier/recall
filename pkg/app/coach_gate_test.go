@@ -132,7 +132,9 @@ func gatedSelfReviewWrites(a *app.App) map[string]func() error {
 			_, err := a.PutSelfReviewMoment("r", "k", "m", matchedit.MomentInput{MatchClock: "4:45", Text: "x"})
 			return err
 		},
-		"DeleteSelfReviewMoment": func() error { return a.DeleteSelfReviewMoment("r", "k", "m") },
+		"DeleteSelfReviewMoment": func() error {
+			return a.DeleteSelfReviewMoment("r", "k", "m")
+		},
 	}
 }
 

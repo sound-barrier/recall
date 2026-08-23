@@ -520,6 +520,26 @@ type SelfReviewNote struct {
 	UpdatedAt  string
 }
 
+// SelfReviewNoteRef addresses a sitting's note about one match, and
+// SelfReviewMomentRef one moment inside it.
+//
+// Structs rather than positional strings: the note and moment methods took
+// (reviewID, matchKey) and (reviewID, matchKey, momentID) adjacent and
+// same-typed, so transposing two of them compiled cleanly and wrote to the
+// wrong place. pkg/review had already learned this and built a MomentRef at
+// its own boundary -- out of the three loose strings it had just been handed,
+// which is the abstraction arriving one layer too late.
+type SelfReviewNoteRef struct {
+	ReviewID string
+	MatchKey string
+}
+
+// SelfReviewMomentRef is a note ref plus which moment on it.
+type SelfReviewMomentRef struct {
+	SelfReviewNoteRef
+	MomentID string
+}
+
 // SelfReviewMoment is one timestamped observation inside a self-review
 // note. MomentID is minted by the client and unique within its note.
 type SelfReviewMoment struct {

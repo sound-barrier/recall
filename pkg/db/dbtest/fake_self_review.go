@@ -167,7 +167,8 @@ func (f *Fake) UpsertSelfReviewNote(n db.SelfReviewNote) (db.SelfReviewNote, err
 	return cloneSelfReviewNote(n), nil
 }
 
-func (f *Fake) DeleteSelfReviewNote(reviewID, matchKey string) error {
+func (f *Fake) DeleteSelfReviewNote(ref db.SelfReviewNoteRef) error {
+	reviewID, matchKey := ref.ReviewID, ref.MatchKey
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	r, ok := f.SelfReviews[reviewID]
@@ -183,7 +184,8 @@ func (f *Fake) DeleteSelfReviewNote(reviewID, matchKey string) error {
 	return nil
 }
 
-func (f *Fake) UpsertSelfReviewMoment(reviewID, matchKey string, m db.SelfReviewMoment) (db.SelfReviewMoment, error) {
+func (f *Fake) UpsertSelfReviewMoment(ref db.SelfReviewNoteRef, m db.SelfReviewMoment) (db.SelfReviewMoment, error) {
+	reviewID, matchKey := ref.ReviewID, ref.MatchKey
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if m.MomentID == "" {
@@ -247,7 +249,8 @@ func placeMoment(moments []db.SelfReviewMoment, m db.SelfReviewMoment) ([]db.Sel
 	return append(moments, m), m
 }
 
-func (f *Fake) DeleteSelfReviewMoment(reviewID, matchKey, momentID string) error {
+func (f *Fake) DeleteSelfReviewMoment(ref db.SelfReviewMomentRef) error {
+	reviewID, matchKey, momentID := ref.ReviewID, ref.MatchKey, ref.MomentID
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	r, ok := f.SelfReviews[reviewID]

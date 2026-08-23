@@ -270,9 +270,9 @@ export const NARROW_CLAUSES: readonly ClauseSpec[] = [
   {
     id: 'leaverSide',
     restricts: (s) => s.pickedLeavers.value.size > 0,
-    passes: (r, s) => matchesAnySide(r.annotation?.leavers, s.pickedLeavers.value as Set<string>),
+    passes: (r, s) => matchesAnySide(r.annotation?.leavers, s.pickedLeavers.value),
     label: (s) => pickedLabel(
-      s.pickedLeavers.value as Set<string>,
+      s.pickedLeavers.value,
       (v) => `${v as LeaverPick} leaver`,
       'leaver sides',
     ),
@@ -285,9 +285,9 @@ export const NARROW_CLAUSES: readonly ClauseSpec[] = [
     // 3-way handling control.
     id: 'throwerSide',
     restricts: (s) => s.pickedThrowers.value.size > 0,
-    passes: (r, s) => matchesAnySide(r.annotation?.throwers, s.pickedThrowers.value as Set<string>),
+    passes: (r, s) => matchesAnySide(r.annotation?.throwers, s.pickedThrowers.value),
     label: (s) => pickedLabel(
-      s.pickedThrowers.value as Set<string>,
+      s.pickedThrowers.value,
       (v) => `${v as ThrowerPick} thrower`,
       'thrower sides',
     ),

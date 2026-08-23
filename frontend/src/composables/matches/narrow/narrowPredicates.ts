@@ -174,7 +174,12 @@ export function matchesPickedSet(value: string | undefined, picked: Set<string>)
 // the picked sides — OR semantics, matching how tags and modifiers behave — so
 // a match tagged on both teams surfaces under either pick without counting
 // twice. Empty pick set ≡ no filter.
-export function matchesAnySide(sides: string[] | undefined, picked: Set<string>): boolean {
+// ReadonlySet, not Set: this only reads. Set<T> is invariant, so demanding a
+// mutable one made every caller cast a Set<LeaverPick> to Set<string> — four
+// casts asserting this function may `.add()` an arbitrary string into a set of
+// a narrower union, which it has never done and must not (TECHNICAL_DEBT.md
+// section 17).
+export function matchesAnySide(sides: string[] | undefined, picked: ReadonlySet<string>): boolean {
   if (!picked.size) return true
   if (!sides?.length) return false
   return sides.some((s) => picked.has(s))

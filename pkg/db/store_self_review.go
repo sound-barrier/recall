@@ -65,7 +65,7 @@ type SelfReviewStore interface {
 	UpsertSelfReviewNote(n SelfReviewNote) (SelfReviewNote, error)
 	// DeleteSelfReviewNote removes the (review, match) note and its moments;
 	// absent is a no-op.
-	DeleteSelfReviewNote(reviewID, matchKey string) error
+	DeleteSelfReviewNote(ref SelfReviewNoteRef) error
 	// UpsertSelfReviewMoment saves one moment on the (review, match) note,
 	// keyed by its client-minted MomentID; a re-save replaces clock / text /
 	// tag / order and keeps created_at. A match with no note yet gets a
@@ -73,9 +73,9 @@ type SelfReviewStore interface {
 	// of the match — so a note write racing the first moment can never be
 	// downgraded by a check-then-open above the store. ErrSelfReviewMatchUnknown
 	// when the match is not in the review.
-	UpsertSelfReviewMoment(reviewID, matchKey string, m SelfReviewMoment) (SelfReviewMoment, error)
+	UpsertSelfReviewMoment(ref SelfReviewNoteRef, m SelfReviewMoment) (SelfReviewMoment, error)
 	// DeleteSelfReviewMoment removes one moment; absent is a no-op.
-	DeleteSelfReviewMoment(reviewID, matchKey, momentID string) error
+	DeleteSelfReviewMoment(ref SelfReviewMomentRef) error
 	// LoadSelfReviewNotes is the aggregator's read: every note on every
 	// review, keyed by match_key and carrying the review's identity, in
 	// (review created_at, review_id) order within a match.
@@ -494,7 +494,8 @@ func loadSelfReviewMomentsForNote(q querier, noteRow int64) ([]SelfReviewMoment,
 	return out, rows.Err()
 }
 
-func (s *SQLStore) DeleteSelfReviewNote(reviewID, matchKey string) error {
+func (s *SQLStore) DeleteSelfReviewNote(ref SelfReviewNoteRef) error {
+	reviewID, matchKey := ref.ReviewID, ref.MatchKey
 	// Tags and moments CASCADE on the note's FK. A delete is always live work
 	// on the sitting (nothing replays one), so it touches the sitting when it
 	// removed something.
@@ -544,7 +545,8 @@ func ensureSelfReviewNoteRow(tx *sql.Tx, reviewID, matchKey string) (int64, erro
 	return id, nil
 }
 
-func (s *SQLStore) UpsertSelfReviewMoment(reviewID, matchKey string, m SelfReviewMoment) (SelfReviewMoment, error) {
+func (s *SQLStore) UpsertSelfReviewMoment(ref SelfReviewNoteRef, m SelfReviewMoment) (SelfReviewMoment, error) {
+	reviewID, matchKey := ref.ReviewID, ref.MatchKey
 	if m.MomentID == "" {
 		return SelfReviewMoment{}, errors.New("upsert self review moment: moment_id is required")
 	}
@@ -579,7 +581,8 @@ func (s *SQLStore) UpsertSelfReviewMoment(reviewID, matchKey string, m SelfRevie
 	return m, tx.Commit()
 }
 
-func (s *SQLStore) DeleteSelfReviewMoment(reviewID, matchKey, momentID string) error {
+func (s *SQLStore) DeleteSelfReviewMoment(ref SelfReviewMomentRef) error {
+	reviewID, matchKey, momentID := ref.ReviewID, ref.MatchKey, ref.MomentID
 	return s.deleteTouchingSelfReview(reviewID,
 		`DELETE FROM self_review_note_moments
 		 WHERE moment_id = ? AND self_review_note_id IN (

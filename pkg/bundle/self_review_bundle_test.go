@@ -48,7 +48,7 @@ func seedSitting(t *testing.T, s db.Store) {
 		}); err != nil {
 			t.Fatalf("seed note: %v", err)
 		}
-		if _, err := s.UpsertSelfReviewMoment(sittingID, k, db.SelfReviewMoment{
+		if _, err := s.UpsertSelfReviewMoment(db.SelfReviewNoteRef{ReviewID: sittingID, MatchKey: k}, db.SelfReviewMoment{
 			MomentID: "moment-" + k, MatchClock: "06:40", Text: "at " + k, CreatedAt: sittingMomentAt, UpdatedAt: sittingMomentAt,
 		}); err != nil {
 			t.Fatalf("seed moment: %v", err)

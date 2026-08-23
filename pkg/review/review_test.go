@@ -156,7 +156,7 @@ func TestPutNote_ObeysTheCoachNoteRules(t *testing.T) {
 		{"non-member", putNote(r.ReviewID, keyB, coach.NoteInput{Kind: "note", Text: "x"}), review.ErrMatchNotInReview},
 		{"ghost review", putNote("ghost", keyA, coach.NoteInput{Kind: "note", Text: "x"}), review.ErrNotFound},
 	})
-	mustNoErr(t, review.DeleteNote(s, r.ReviewID, keyA))
+	mustNoErr(t, review.DeleteNote(s, db.SelfReviewNoteRef{ReviewID: r.ReviewID, MatchKey: keyA}))
 	if got := mustGet(t, s, r.ReviewID); len(got.Notes) != 0 {
 		t.Errorf("note survived delete: %+v", got.Notes)
 	}
