@@ -23,7 +23,7 @@ func TestScreenshotSourcesYAML_LoadsCleanly(t *testing.T) {
 // the three canonical capture-tool filenames each match exactly one
 // source (and that the first-match-wins regex captures the six
 // expected groups). Regression catches a YAML edit that breaks the
-// existing parser callsites in pkg/app/correlation.go.
+// existing parser callsites in pkg/correlate/correlation.go.
 func TestScreenshotSourcesYAML_CoversCanonicalFilenames(t *testing.T) {
 	cases := []struct {
 		filename string
@@ -51,7 +51,7 @@ func TestScreenshotSourcesYAML_CoversCanonicalFilenames(t *testing.T) {
 
 // firstMatchingSource walks Sources() in order and returns the first entry
 // whose prefix + regex both match filename (the same first-match-wins rule
-// pkg/app/correlation.go applies), failing the test when a match produces
+// pkg/correlate/correlation.go applies), failing the test when a match produces
 // the wrong group count. nil when no source matches.
 func firstMatchingSource(t *testing.T, filename string) *parser.ScreenshotSource {
 	t.Helper()

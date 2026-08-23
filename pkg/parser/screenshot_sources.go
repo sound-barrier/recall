@@ -10,7 +10,7 @@ import (
 )
 
 // screenshot_sources.yaml describes the per-capture-tool filename
-// formats parseFilenameTimestamp walks in pkg/app/correlation.go.
+// formats parseFilenameTimestamp walks in pkg/correlate/correlation.go.
 // Adding a new tool is a YAML edit; the loader rejects un-anchored
 // regexes at init so a malformed pattern can't silently absorb
 // unrelated screenshot files from the watched folder.
@@ -20,7 +20,7 @@ import (
 // Sources().
 
 // ScreenshotSource is one capture tool's filename grammar.
-// Consumers (pkg/app/correlation.go) read the fields directly.
+// Consumers (pkg/correlate/correlation.go) read the fields directly.
 type ScreenshotSource struct {
 	Name       string         // stable id (nvidia / prntscn / snip / …)
 	Prefix     string         // fast strings.HasPrefix gate

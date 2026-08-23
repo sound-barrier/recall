@@ -192,6 +192,10 @@ const probeChip = () => screen.queryByRole('status')
 const engineButton = (text: string) =>
   within(engineSection()).getAllByRole('button').find((b) => b.textContent?.trim() === text)
 
+// These name what the user does and what follows. They used to be named
+// "emits <event>" against a component that has no defineEmits at all — the
+// assertions were always right, but the names sent every reader hunting for an
+// emit surface that does not exist (TECHNICAL_DEBT.md section 18).
 describe('SettingsView', () => {
   it('shows the empty-state hero when no folder is selected', () => {
     renderSettings({
@@ -215,7 +219,7 @@ describe('SettingsView', () => {
     expect(screen.queryByRole('button', { name: /Pick a different folder/ })).not.toBeInTheDocument()
   })
 
-  it('emits pick-screenshots-dir when the Change… button is clicked', async () => {
+  it('opens the folder picker from Change…', async () => {
     const { spies } = renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
@@ -230,7 +234,7 @@ describe('SettingsView', () => {
     expect(button('Change…')).toBeDisabled()
   })
 
-  it('emits set-theme with the picked mode when a swatch is clicked', async () => {
+  it('switches to the theme whose swatch was clicked', async () => {
     const { spies } = renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
@@ -239,7 +243,7 @@ describe('SettingsView', () => {
     expect(spies.setTheme).toHaveBeenCalledWith('day')
   })
 
-  it('emits set-theme with "high-contrast" when the Contrast swatch is clicked', async () => {
+  it('switches to high contrast from the Contrast swatch', async () => {
     const { spies } = renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
@@ -271,7 +275,7 @@ describe('SettingsView', () => {
     expect(screen.getByRole('radio', { name: /Day/ })).toHaveAttribute('aria-checked', 'false')
   })
 
-  it('emits go-to-view ingest when the "Parse →" link is clicked', async () => {
+  it('goes to Parse from the "Parse →" link', async () => {
     const { app } = renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
@@ -279,7 +283,7 @@ describe('SettingsView', () => {
     expect(app.view).toBe('ingest')
   })
 
-  it('emits go-to-view matches when the "Week of" cross-reference is clicked', async () => {
+  it('goes to Matches from the "Week of" cross-reference', async () => {
     const { app } = renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
@@ -322,7 +326,7 @@ describe('SettingsView', () => {
     })
   })
 
-  it('emits set-week-start with the numeric day index on cell click', async () => {
+  it('sets the week start to the day whose cell was clicked', async () => {
     const { spies } = renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
@@ -416,7 +420,7 @@ describe('SettingsView — Engine section', () => {
     expect(within(engineSection()).getByRole('status')).toBeInTheDocument()
   })
 
-  it('emits pick-tesseract from the Change Binary button', async () => {
+  it('opens the binary picker from Change Binary', async () => {
     const { spies } = renderSettings({ props: baseEngineProps })
     await fireEvent.click(button(/Change Binary/))
     expect(spies.pickTesseractBinary).toHaveBeenCalled()
@@ -454,7 +458,7 @@ describe('SettingsView — Engine section', () => {
     expect(engineButton('Detect')).toBeDisabled()
   })
 
-  it('emits detect-tesseract when the Detect button is clicked while not ready', async () => {
+  it('runs detection from the Detect button while the engine is not ready', async () => {
     const { spies } = renderSettings({
       props: {
         ...baseEngineProps,
@@ -466,7 +470,7 @@ describe('SettingsView — Engine section', () => {
     expect(spies.detectTesseractBinary).toHaveBeenCalled()
   })
 
-  it('emits reset-tesseract when the Reset button is clicked', async () => {
+  it('resets the engine path from Reset', async () => {
     const { spies } = renderSettings({
       props: {
         ...baseEngineProps,
@@ -569,13 +573,13 @@ describe('SettingsView — Backup & Restore', () => {
     expect(button(/Restore \(\.db\)/)).toBeInTheDocument()
   })
 
-  it('emits backup when the Backup button is clicked', async () => {
+  it('starts a backup from the Backup button', async () => {
     const { spies } = renderSettings({ props: baseProps })
     await fireEvent.click(button('Backup (.db)'))
     expect(spies.backup).toHaveBeenCalled()
   })
 
-  it('emits import-matches when the Import matches button is clicked', async () => {
+  it('starts an import from the Import matches button', async () => {
     const { spies } = renderSettings({ props: baseProps })
     await fireEvent.click(button(/Import matches/))
     expect(spies.importMatches).toHaveBeenCalled()
@@ -835,7 +839,7 @@ describe('SettingsView — First-run picker (empty state hero)', () => {
     expect(within(grid!).getAllByRole('button')).toHaveLength(4)
   })
 
-  it('emits pick-detected-source with the path when a found card is clicked', async () => {
+  it('commits the path of a detected source when its card is clicked', async () => {
     const { spies } = renderSettings({
       props: {
         ...emptyProps,
@@ -853,7 +857,7 @@ describe('SettingsView — First-run picker (empty state hero)', () => {
     expect(spies.pickDetectedSource).toHaveBeenCalledWith('C:\\v\\OW')
   })
 
-  it('emits pick-screenshots-dir when the custom-pick tile is clicked', async () => {
+  it('opens the folder picker from the custom-pick tile', async () => {
     const { spies } = renderSettings({
       props: { ...emptyProps, platform: 'darwin', screenshotCandidates: [] },
     })
@@ -892,13 +896,13 @@ describe('SettingsView — steady-state row affordances', () => {
     expect(foldersDetect()).toBeDisabled()
   })
 
-  it('emits reveal-screenshots-dir when Reveal is clicked', async () => {
+  it('reveals the folder from Reveal', async () => {
     const { spies } = renderSettings({ props: setProps })
     await fireEvent.click(button('Reveal'))
     expect(spies.revealDir).toHaveBeenCalled()
   })
 
-  it('emits reset-screenshots-dir when Reset is clicked', async () => {
+  it('resets the folder from Reset', async () => {
     const { spies } = renderSettings({ props: setProps })
     await fireEvent.click(screen.getAllByRole('button', { name: 'Reset' })[0]!)
     expect(spies.resetDir).toHaveBeenCalled()

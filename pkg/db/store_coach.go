@@ -41,9 +41,15 @@ var (
 	ErrMatchCoachNoteUnknown = errors.New("match coach note not found")
 )
 
-// CoachStore is the coaching slice of Store. Both families and the
-// tracked-key registry live here so the coach package depends on ONE
-// consumer-side seam (db.Store satisfies it; dbtest.Fake mirrors it).
+// CoachStore is the coaching slice of Store: both note families plus the
+// tracked-key registry, grouped so the coaching methods read as one surface
+// rather than scattered through Store's alphabet.
+//
+// It is NOT what the coach packages depend on, and a previous version of this
+// comment claimed it was. pkg/coach declares its own NoteStore and
+// pkg/coachreturn its own Store -- consumer-side interfaces, each naming only
+// the methods it calls, which is the pattern pkg/CLAUDE.md asks for. The only
+// reference to this type anywhere is its embedding in Store, one file away.
 type CoachStore interface {
 	// EnsureCoachPlayer resolves the player a coaching session is about,
 	// creating the row on first meeting. Identity is player_id when the
