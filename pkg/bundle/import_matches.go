@@ -191,7 +191,7 @@ func WriteSelfReview(store db.Store, r db.SelfReview) error {
 			return fmt.Errorf("import: self review note %q/%q: %w", r.ReviewID, k, err)
 		}
 		for _, m := range n.Moments {
-			if _, err := store.UpsertSelfReviewMoment(r.ReviewID, k, m); err != nil {
+			if _, err := store.UpsertSelfReviewMoment(db.SelfReviewNoteRef{ReviewID: r.ReviewID, MatchKey: k}, m); err != nil {
 				return fmt.Errorf("import: self review moment %q/%q/%q: %w", r.ReviewID, k, m.MomentID, err)
 			}
 		}

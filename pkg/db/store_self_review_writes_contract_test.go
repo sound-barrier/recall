@@ -45,10 +45,10 @@ func TestSelfReviewContract_DeleteMomentRemovesOnlyThatMoment(t *testing.T) {
 				{MomentID: "m-1", MatchClock: "04:45", Text: "first"},
 				{MomentID: "m-2", MatchClock: "09:10", Text: "second"},
 			} {
-				_, err := s.UpsertSelfReviewMoment(reviewID, reviewKeyA, m)
+				_, err := s.UpsertSelfReviewMoment(db.SelfReviewNoteRef{ReviewID: reviewID, MatchKey: reviewKeyA}, m)
 				mustNoErr(t, err)
 			}
-			mustNoErr(t, s.DeleteSelfReviewMoment(reviewID, reviewKeyA, "m-1"))
+			mustNoErr(t, s.DeleteSelfReviewMoment(db.SelfReviewMomentRef{ReviewID: reviewID, MatchKey: reviewKeyA, MomentID: "m-1"}))
 			moments := loadSitting(t, s, reviewID).Notes[reviewKeyA].Moments
 			if len(moments) != 1 || moments[0].MomentID != "m-2" || moments[0].Text != "second" {
 				t.Errorf("moments after deleting m-1 = %+v, want m-2 alone", moments)
@@ -87,9 +87,9 @@ func TestSelfReviewContract_MomentResaveReplacesEveryField(t *testing.T) {
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
 			reviewID := seedSittingAt(t, s)
-			_, err := s.UpsertSelfReviewMoment(reviewID, reviewKeyA, db.SelfReviewMoment{MomentID: "m-1", MatchClock: "04:45", Text: "first"})
+			_, err := s.UpsertSelfReviewMoment(db.SelfReviewNoteRef{ReviewID: reviewID, MatchKey: reviewKeyA}, db.SelfReviewMoment{MomentID: "m-1", MatchClock: "04:45", Text: "first"})
 			mustNoErr(t, err)
-			_, err = s.UpsertSelfReviewMoment(reviewID, reviewKeyA, db.SelfReviewMoment{
+			_, err = s.UpsertSelfReviewMoment(db.SelfReviewNoteRef{ReviewID: reviewID, MatchKey: reviewKeyA}, db.SelfReviewMoment{
 				MomentID: "m-1", MatchClock: "07:30", Text: "first, reworded", FocusTag: "cooldowns", SortOrder: 3,
 			})
 			mustNoErr(t, err)
@@ -124,7 +124,7 @@ func touchCases() []touchCase {
 		}, true},
 		{"live moment", func(t *testing.T, s db.Store, id string) {
 			t.Helper()
-			_, err := s.UpsertSelfReviewMoment(id, reviewKeyA, db.SelfReviewMoment{MomentID: "m-1", MatchClock: "04:45", Text: "live"})
+			_, err := s.UpsertSelfReviewMoment(db.SelfReviewNoteRef{ReviewID: id, MatchKey: reviewKeyA}, db.SelfReviewMoment{MomentID: "m-1", MatchClock: "04:45", Text: "live"})
 			mustNoErr(t, err)
 		}, true},
 		{"delete note", func(t *testing.T, s db.Store, id string) {
@@ -133,13 +133,13 @@ func touchCases() []touchCase {
 			n.ReviewID = id
 			_, err := s.UpsertSelfReviewNote(n)
 			mustNoErr(t, err)
-			mustNoErr(t, s.DeleteSelfReviewNote(id, reviewKeyA))
+			mustNoErr(t, s.DeleteSelfReviewNote(db.SelfReviewNoteRef{ReviewID: id, MatchKey: reviewKeyA}))
 		}, true},
 		{"delete moment", func(t *testing.T, s db.Store, id string) {
 			t.Helper()
-			_, err := s.UpsertSelfReviewMoment(id, reviewKeyA, replayMoment)
+			_, err := s.UpsertSelfReviewMoment(db.SelfReviewNoteRef{ReviewID: id, MatchKey: reviewKeyA}, replayMoment)
 			mustNoErr(t, err)
-			mustNoErr(t, s.DeleteSelfReviewMoment(id, reviewKeyA, "m-1"))
+			mustNoErr(t, s.DeleteSelfReviewMoment(db.SelfReviewMomentRef{ReviewID: id, MatchKey: reviewKeyA, MomentID: "m-1"}))
 		}, true},
 		{"replay note", func(t *testing.T, s db.Store, id string) {
 			t.Helper()
@@ -150,7 +150,7 @@ func touchCases() []touchCase {
 		}, false},
 		{"replay moment", func(t *testing.T, s db.Store, id string) {
 			t.Helper()
-			_, err := s.UpsertSelfReviewMoment(id, reviewKeyA, replayMoment)
+			_, err := s.UpsertSelfReviewMoment(db.SelfReviewNoteRef{ReviewID: id, MatchKey: reviewKeyA}, replayMoment)
 			mustNoErr(t, err)
 		}, false},
 	}
@@ -205,7 +205,7 @@ func TestSelfReviewContract_FirstMomentOpensAReviewedOnlyNote(t *testing.T) {
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
 			reviewID := seedSittingAt(t, s)
-			_, err := s.UpsertSelfReviewMoment(reviewID, reviewKeyB, db.SelfReviewMoment{MomentID: "m-1", MatchClock: "01:00", Text: "opened by a moment"})
+			_, err := s.UpsertSelfReviewMoment(db.SelfReviewNoteRef{ReviewID: reviewID, MatchKey: reviewKeyB}, db.SelfReviewMoment{MomentID: "m-1", MatchClock: "01:00", Text: "opened by a moment"})
 			mustNoErr(t, err)
 			note, has := loadSitting(t, s, reviewID).Notes[reviewKeyB]
 			if !has || note.Kind != "reviewed_only" {

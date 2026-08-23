@@ -128,7 +128,7 @@ func (a *App) DeleteSelfReviewNote(reviewID, matchKey string) error {
 	if err := a.assertSelfReviewWritable(); err != nil {
 		return err
 	}
-	if err := review.DeleteNote(a.store, reviewID, matchKey); err != nil {
+	if err := review.DeleteNote(a.store, db.SelfReviewNoteRef{ReviewID: reviewID, MatchKey: matchKey}); err != nil {
 		return err
 	}
 	a.emitMatchByKey(matchKey)
@@ -141,8 +141,7 @@ func (a *App) PutSelfReviewMoment(reviewID, matchKey, momentID string, in matche
 	if err := a.assertSelfReviewWritable(); err != nil {
 		return review.Moment{}, err
 	}
-	m, err := review.PutMoment(a.store,
-		review.MomentRef{ReviewID: reviewID, MatchKey: matchKey, MomentID: momentID}, in)
+	m, err := review.PutMoment(a.store, momentRef(reviewID, matchKey, momentID), in)
 	if err != nil {
 		return review.Moment{}, err
 	}
@@ -155,8 +154,7 @@ func (a *App) DeleteSelfReviewMoment(reviewID, matchKey, momentID string) error 
 	if err := a.assertSelfReviewWritable(); err != nil {
 		return err
 	}
-	if err := review.DeleteMoment(a.store,
-		review.MomentRef{ReviewID: reviewID, MatchKey: matchKey, MomentID: momentID}); err != nil {
+	if err := review.DeleteMoment(a.store, momentRef(reviewID, matchKey, momentID)); err != nil {
 		return err
 	}
 	a.emitMatchByKey(matchKey)
@@ -192,4 +190,18 @@ func (a *App) SetSelfReviewFocusItems(reviewID string, items []db.FocusItem) (re
 		return review.Session{}, review.MapStoreErr(err)
 	}
 	return review.Get(a.store, reviewID)
+}
+
+// momentRef assembles the ref from what the RPC boundary is handed.
+//
+// The exported methods above keep positional strings because that IS the wire
+// shape -- the HTTP handler pulls three path params and the Wails binding is
+// generated from the signature. Everything below this line takes the ref, so
+// the three-loose-strings window is one function long instead of four layers
+// deep (TECHNICAL_DEBT.md section 17).
+func momentRef(reviewID, matchKey, momentID string) review.MomentRef {
+	return review.MomentRef{
+		ReviewID: reviewID, MatchKey: matchKey,
+		MomentID: momentID,
+	}
 }

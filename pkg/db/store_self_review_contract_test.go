@@ -64,9 +64,9 @@ func writeSitting(t *testing.T, s db.Store) string {
 		FocusTags: []string{"positioning", "positioning", ""}, ExtraTags: []string{"tempo"},
 	})
 	mustNoErr(t, err)
-	_, err = s.UpsertSelfReviewMoment(created.ReviewID, reviewKeyA, db.SelfReviewMoment{MomentID: "m-2", MatchClock: "09:10", Text: "second", SortOrder: 1})
+	_, err = s.UpsertSelfReviewMoment(db.SelfReviewNoteRef{ReviewID: created.ReviewID, MatchKey: reviewKeyA}, db.SelfReviewMoment{MomentID: "m-2", MatchClock: "09:10", Text: "second", SortOrder: 1})
 	mustNoErr(t, err)
-	_, err = s.UpsertSelfReviewMoment(created.ReviewID, reviewKeyA, db.SelfReviewMoment{MomentID: "m-1", MatchClock: "04:45", Text: "first", FocusTag: "cooldowns"})
+	_, err = s.UpsertSelfReviewMoment(db.SelfReviewNoteRef{ReviewID: created.ReviewID, MatchKey: reviewKeyA}, db.SelfReviewMoment{MomentID: "m-1", MatchClock: "04:45", Text: "first", FocusTag: "cooldowns"})
 	mustNoErr(t, err)
 	return created.ReviewID
 }
@@ -195,7 +195,7 @@ func assertRefusesWhatIsNotThere(t *testing.T, s db.Store, reviewID string) {
 			return err
 		}, db.ErrSelfReviewUnknown},
 		{"moment on a non-member", func() error {
-			_, err := s.UpsertSelfReviewMoment(reviewID, reviewKeyB, db.SelfReviewMoment{MomentID: "m", MatchClock: "01:00", Text: "x"})
+			_, err := s.UpsertSelfReviewMoment(db.SelfReviewNoteRef{ReviewID: reviewID, MatchKey: reviewKeyB}, db.SelfReviewMoment{MomentID: "m", MatchClock: "01:00", Text: "x"})
 			return err
 		}, db.ErrSelfReviewMatchUnknown},
 		{"update missing", func() error { return s.UpdateSelfReview("ghost", "t") }, db.ErrSelfReviewUnknown},
@@ -217,7 +217,7 @@ func TestSelfReviewContract_ResaveKeepsFirstInstantAndMoments(t *testing.T) {
 			mustNoErr(t, err)
 			first, err := s.UpsertSelfReviewNote(db.SelfReviewNote{ReviewID: r.ReviewID, MatchKey: reviewKeyA, Kind: "reviewed_only", CreatedAt: "2026-08-01T10:00:00Z"})
 			mustNoErr(t, err)
-			_, err = s.UpsertSelfReviewMoment(r.ReviewID, reviewKeyA, db.SelfReviewMoment{MomentID: "m-1", MatchClock: "04:45", Text: "x"})
+			_, err = s.UpsertSelfReviewMoment(db.SelfReviewNoteRef{ReviewID: r.ReviewID, MatchKey: reviewKeyA}, db.SelfReviewMoment{MomentID: "m-1", MatchClock: "04:45", Text: "x"})
 			mustNoErr(t, err)
 			second, err := s.UpsertSelfReviewNote(db.SelfReviewNote{ReviewID: r.ReviewID, MatchKey: reviewKeyA, Kind: "note", Text: "now with words"})
 			mustNoErr(t, err)
@@ -275,13 +275,13 @@ func notesByMatchCarryTheirReview(t *testing.T, s db.Store) {
 		t.Errorf("review identity on the block = %+v / %+v", blocks[0], blocks[1])
 	}
 	// The delete of one note is scoped to its review.
-	mustNoErr(t, s.DeleteSelfReviewNote(later, reviewKeyA))
+	mustNoErr(t, s.DeleteSelfReviewNote(db.SelfReviewNoteRef{ReviewID: later, MatchKey: reviewKeyA}))
 	byMatch, err = s.LoadSelfReviewNotes()
 	mustNoErr(t, err)
 	if len(byMatch[reviewKeyA]) != 1 || byMatch[reviewKeyA][0].ReviewID != "r-a" {
 		t.Errorf("after deleting r-b's note, blocks = %+v", byMatch[reviewKeyA])
 	}
-	mustNoErr(t, s.DeleteSelfReviewMoment(later, reviewKeyA, "nope")) // absent, no-op
+	mustNoErr(t, s.DeleteSelfReviewMoment(db.SelfReviewMomentRef{ReviewID: later, MatchKey: reviewKeyA, MomentID: "nope"})) // absent, no-op
 }
 
 // seedTwoSittingsOnA puts a later and an earlier sitting on match A, each

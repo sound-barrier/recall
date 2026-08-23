@@ -106,7 +106,7 @@ func seedReviewFamilies(store db.Store) error {
 	}); err != nil {
 		return err
 	}
-	_, err = store.UpsertSelfReviewMoment(sitting.ReviewID, playerMatchRialto, db.SelfReviewMoment{
+	_, err = store.UpsertSelfReviewMoment(db.SelfReviewNoteRef{ReviewID: sitting.ReviewID, MatchKey: playerMatchRialto}, db.SelfReviewMoment{
 		MomentID: "self-moment-1", MatchClock: "06:40", Text: "should have held", CreatedAt: "2026-05-14T18:12:00Z", UpdatedAt: "2026-05-14T18:12:00Z",
 	})
 	return err

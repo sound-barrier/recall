@@ -36,21 +36,17 @@ func PutNote(s Store, reviewID, matchKey string, in coach.NoteInput) (Note, erro
 }
 
 // DeleteNote removes the note and its moments; absent is a no-op.
-func DeleteNote(s Store, reviewID, matchKey string) error {
-	return s.DeleteSelfReviewNote(reviewID, matchKey)
+func DeleteNote(s Store, ref db.SelfReviewNoteRef) error {
+	return s.DeleteSelfReviewNote(ref)
 }
 
 // MomentRef says which moment, in which match, in which sitting.
 //
-// A struct rather than three positional strings: PutMoment and DeleteMoment
-// both took (reviewID, matchKey, momentID) adjacent and same-typed, so a caller
-// transposing two of them compiled cleanly and wrote to the wrong place. Field
-// names make that mistake visible at the call site.
-type MomentRef struct {
-	ReviewID string
-	MatchKey string
-	MomentID string
-}
+// An alias rather than a second struct: this shape used to stop at this
+// package's door, so the store below still took three positional strings and
+// PutMoment built the ref out of what it had just been handed. One type now,
+// all the way down.
+type MomentRef = db.SelfReviewMomentRef
 
 // PutMoment saves one timestamped moment on the sitting's note about a
 // match. A match with no note yet gets a reviewed_only one — a moment IS a
@@ -76,7 +72,7 @@ func PutMoment(s Store, ref MomentRef, in matchedit.MomentInput) (Moment, error)
 	if err := checkMomentRoom(existing, momentID); err != nil {
 		return Moment{}, err
 	}
-	saved, err := s.UpsertSelfReviewMoment(reviewID, matchKey, db.SelfReviewMoment{
+	saved, err := s.UpsertSelfReviewMoment(db.SelfReviewNoteRef{ReviewID: reviewID, MatchKey: matchKey}, db.SelfReviewMoment{
 		MomentID:   momentID,
 		MatchClock: normalized.MatchClock,
 		Text:       normalized.Text,
@@ -91,7 +87,7 @@ func PutMoment(s Store, ref MomentRef, in matchedit.MomentInput) (Moment, error)
 
 // DeleteMoment removes one moment; absent is a no-op.
 func DeleteMoment(s Store, ref MomentRef) error {
-	return s.DeleteSelfReviewMoment(ref.ReviewID, ref.MatchKey, ref.MomentID)
+	return s.DeleteSelfReviewMoment(ref)
 }
 
 // momentsOnMatch reads the moments the sitting already holds on the match —
