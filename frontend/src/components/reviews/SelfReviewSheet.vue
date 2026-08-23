@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
 
-import SheetFocusTally from '@/components/coach/notes/SheetFocusTally.vue'
-import SheetRecord from '@/components/coach/notes/SheetRecord.vue'
-import SheetFocusItems from '@/components/coach/notes/SheetFocusItems.vue'
+import SheetFocusTally from '@/components/sheet/SheetFocusTally.vue'
+import SheetRecord from '@/components/sheet/SheetRecord.vue'
+import SheetFocusItems from '@/components/sheet/SheetFocusItems.vue'
 import { SAVE_LABEL, type CoachSaveState } from '@/components/coach/room/coach-room-props'
 import type { FocusItem } from '@/api'
 import type { FocusCount } from '@/match/coach/coach-notes'
