@@ -176,7 +176,7 @@ func TestServerMux_GetScreenshotsFolderCandidates_ReturnsJSONArray(t *testing.T)
 		t.Fatalf("decode: %v body=%s", err, rec.Body.String())
 	}
 	// On non-Windows the slice is empty; the App-level test in
-	// pkg/app/probe_test.go pins the Windows shape. Here we only
+	// pkg/probe/probe_test.go pins the Windows shape. Here we only
 	// confirm the wire contract: always an array, never null.
 	if got == nil {
 		t.Errorf("response decoded as null; expected [] for the empty case")

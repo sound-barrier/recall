@@ -8,7 +8,7 @@
 // one monolith:
 //
 // Filenames match concerns (`tesseract.go`, `watcher.go`,
-// `correlation.go`, `aggregate.go`, …); production code and tests
+// `watcher.go`, `aggregate.go`, …); production code and tests
 // are 1:1 sibling files. Screenshot classification lives in
 // `parser.ScreenshotType` (pure function over `parser.MatchResult`),
 // not in this package.
