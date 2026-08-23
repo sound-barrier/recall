@@ -25,7 +25,10 @@ export function useProfilesData() {
   return { query, profiles, active }
 }
 
-export function invalidateProfiles(): Promise<void> {
+// Unexported: deleteProfile below is the only caller now. It was exported
+// while components invalidated by hand after their own write — which is the
+// second line at a call site that a caller could forget.
+function invalidateProfiles(): Promise<void> {
   return getQueryClient().invalidateQueries({ queryKey: qk.profiles })
 }
 
