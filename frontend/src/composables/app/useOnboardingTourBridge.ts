@@ -5,6 +5,7 @@ import { cacheActiveProfile } from '@/composables/profile/profileStorage'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
+import { useUiStore } from '@/stores/ui'
 import { ONBOARDING_RESUME_KEY } from '@/composables/shared/storageKeys'
 
 // Bridges the OnboardingTour overlay to the live app: each step drives the real
@@ -15,6 +16,7 @@ import { ONBOARDING_RESUME_KEY } from '@/composables/shared/storageKeys'
 // panel update in one pass. Lives in a composable because it reaches into the DOM.
 export function useOnboardingTourBridge() {
   const appStore = useAppStore()
+  const uiStore = useUiStore()
   // Session > tour, and the two are mutually exclusive: seeding the demo
   // profile mid-session would swap the record set out from under a loaned
   // corpus. Only the SESSION blocks it — a read-only profile must still be
@@ -37,12 +39,11 @@ export function useOnboardingTourBridge() {
   async function onTourOpenNarrow() {
     if (appStore.view !== 'matches') await appStore.goToView('matches')
     await nextTick()
-    document.querySelector<HTMLButtonElement>('.dossier-actions .dossier-btn.primary')?.click()
+    uiStore.setNarrowOpen(true)
   }
 
-  async function onTourCloseNarrow() {
-    await nextTick()
-    document.querySelector<HTMLButtonElement>('#narrow-popover .np-close')?.click()
+  function onTourCloseNarrow() {
+    uiStore.setNarrowOpen(false)
   }
 
   function onTourApplyHeroFilter(hero: string) {

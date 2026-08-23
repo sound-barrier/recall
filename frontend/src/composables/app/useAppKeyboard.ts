@@ -63,6 +63,7 @@ export function useAppKeyboard() {
     modalOpen: shortcutMutingModalOpen,
     selectionIsOpen: selection.isOpen,
     selectedKey: selection.selectedKey,
+    setNarrowOpen: uiStore.setNarrowOpen,
     closeSelection: selection.close,
     focusedCardIndex,
     narrowedRecords: matchesNarrow.narrowedRecords,

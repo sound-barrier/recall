@@ -48,10 +48,9 @@ export interface TourActionContext {
   openMatch:  (matchKey: string) => void
   closeMatch: () => void
   // Narrow popover control — opens / closes the left-side filter
-  // panel that lives inside MatchesView. App.vue drives this via a
-  // DOM click on the `.dossier-actions .dossier-btn.primary`
-  // trigger (and the `.np-close` button on the popover header), so
-  // the tour exercises the same path a real user click would.
+  // panel that lives inside MatchesView. App.vue drives this by
+  // writing the ui store's narrowOpen flag, the same state the
+  // trigger button toggles.
   openNarrow:  () => void | Promise<void>
   closeNarrow: () => void | Promise<void>
   // Filter mutation — applies a single hero filter / clears every
@@ -208,7 +207,7 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
   },
   // ── 10. Narrow + live Lucio filter demo ────────────────────
   // setup() opens the Narrow popover (via App.vue's DOM click on
-  // .dossier-actions .dossier-btn.primary) and applies a one-hero
+  // the ui store's narrowOpen flag) and applies a one-hero
   // filter so the user sees the dossier + list collapse to a
   // single hero in real time. teardown() reverses both — clears
   // the picked-heroes set and closes the popover — so the next

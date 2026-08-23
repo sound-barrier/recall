@@ -203,12 +203,13 @@ describe('NarrowPopover — popover mode', () => {
     expect(emitted('clear-anchor')).toHaveLength(1)
   })
 
-  it('reports every open/close transition so the background can go inert', async () => {
-    const { emitted, rerender } = setup({ open: false })
-    await rerender({ open: true })
-    await rerender({ open: false })
-    expect(emitted('narrow-open')).toEqual([[true], [false]])
-  })
+  // The `narrow-open` mirror this used to assert is gone. It existed only to
+  // carry the open flag up to the ui store alongside `update:open`, because
+  // the store held a SECOND copy of the panel's open-state. There is one copy
+  // now — the popover's v-model writes it directly — so the transitions are
+  // covered by the `update:open` assertions above and below, and "the shell
+  // freezes the background" is pinned in MatchesDossierHead.test.ts against
+  // the flag the shell actually reads.
 })
 
 describe('NarrowPopover — the / shortcut', () => {

@@ -355,7 +355,6 @@ const {
         :narrow-mode="narrowMode"
         @open-match="(k: string) => selection.open(k)"
         @clear-anchor="uiStore.onSetAnchor('')"
-        @narrow-open="uiStore.setNarrowOpen"
       />
 
       <!-- ─── DOSSIER SECTIONS (Campaign Log, Geography) ──────────

@@ -66,6 +66,7 @@ function makeDeps(overrides: Partial<GlobalKeyboardDeps> = {}): GlobalKeyboardDe
     modalOpen: ref(false),
     selectionIsOpen: ref(false),
     selectedKey: ref<string | null>(null),
+    setNarrowOpen: vi.fn(),
     closeSelection: vi.fn(),
     focusedCardIndex: ref(0),
     narrowedRecords: ref([{ match_key: 'm1' } as unknown as MatchRecord]),
@@ -341,24 +342,10 @@ describe('useGlobalKeyboard — the / shortcut', () => {
   it('switches to Matches, opens the narrow panel, and focuses its search', async () => {
     const deps = makeDeps({ view: ref<ViewId>('settings') })
     const view = mountKeyboard(deps)
-    fixtureNarrowTrigger()
-
-    press('/')
-    await settle()
-
-    expect(deps.goToView).toHaveBeenCalledWith('matches')
-    expect(focusedId()).toBe('np-search')
-    view.unmount()
-  })
-
-  it('leaves an already-open narrow panel alone and just takes focus', async () => {
-    const deps = makeDeps()
-    const view = mountKeyboard(deps)
-    const trigger = fixtureNarrowTrigger()
-    const opened = vi.fn()
-    trigger.addEventListener('click', opened)
-    // The popover is already mounted — re-clicking the trigger would
-    // toggle it shut under the user.
+    // The panel is state, not a button to click: the shortcut asks for it to
+    // be open and the panel opens. It used to reach for the trigger by its
+    // CSS class, so renaming `.dossier-btn.primary` would have broken this
+    // silently (TECHNICAL_DEBT.md section 13).
     const popover = document.createElement('div')
     popover.id = 'narrow-popover'
     const search = document.createElement('input')
@@ -369,7 +356,29 @@ describe('useGlobalKeyboard — the / shortcut', () => {
     press('/')
     await settle()
 
-    expect(opened).not.toHaveBeenCalled()
+    expect(deps.goToView).toHaveBeenCalledWith('matches')
+    expect(deps.setNarrowOpen).toHaveBeenCalledWith(true)
+    expect(focusedId()).toBe('np-search')
+    view.unmount()
+  })
+
+  it('asks for open even when the panel already is — opening is idempotent now', async () => {
+    const deps = makeDeps()
+    const view = mountKeyboard(deps)
+    // Previously this had to avoid re-clicking the trigger, because a click
+    // TOGGLES and would have shut the panel under the user. setNarrowOpen(true)
+    // is not a toggle, so the special case is gone.
+    const popover = document.createElement('div')
+    popover.id = 'narrow-popover'
+    const search = document.createElement('input')
+    search.id = 'np-search'
+    popover.appendChild(search)
+    mount(popover)
+
+    press('/')
+    await settle()
+
+    expect(deps.setNarrowOpen).toHaveBeenCalledWith(true)
     expect(focusedId()).toBe('np-search')
     view.unmount()
   })
