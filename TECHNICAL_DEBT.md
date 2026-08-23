@@ -43,22 +43,29 @@ attach in `pkg/aggregate`, 75% → ~90%); the one infra package that stays
 thin (`pkg/probe`) does so structurally, not for want of a test (see §3).
 
 **Sections 11–20 were the 2026-08-22 audit against the restructured standards**
-(root `CLAUDE.md` + the two language files + eight `.claude/rules/*.md`). Seven
-are paid and deleted: §11 untyped discriminants, §12 diverged duplication, §13
-the Narrow panel's duplicated open-state, §14 the cheat-sheet with no parity
-test, §16 server state outside the query layer, §17 transposable signatures,
-§19 dead weight. **§15, §18 and §20 remain** — each for a stated reason rather
-than for want of time, and each below.
+(root `CLAUDE.md` + the two language files + eight `.claude/rules/*.md`), and
+**all ten are paid and deleted.** §11 untyped discriminants · §12 diverged
+duplication · §13 the Narrow panel's duplicated open-state · §14 the cheat-sheet
+with no parity test · §15 the store-reading migration · §16 server state outside
+the query layer · §17 transposable signatures · §18 `api.ts` and the drifted
+citations · §19 dead weight · §20 the sizing adjudication.
 
-The campaign's durable half is the gates, because every one of those seven was
-found by reading rather than by a build: a `default` arm no longer satisfies
-`exhaustive` (Go) or `switch-exhaustiveness-check` (TS); dependency-cruiser
-holds the module graph, which is now free of runtime import cycles (45 → 0) and
-of components reaching for the api seam; jscpd ratchets duplication;
-`check-test-exports.sh` closes the hole that let seven dead `export_test.go`
-entries accumulate with no linter able to see them. All are in `task lint`
-**and** the CI lint job — the umbrella task alone would not have run them,
-which is the §18 lesson applied to §18's own fix.
+The durable half is the gates, because every one of those ten was found by
+*reading* rather than by a build. A `default` arm no longer satisfies
+exhaustiveness in either language — both settings deliberately reject the
+"a default counts as exhaustive" option that made §11 possible.
+dependency-cruiser holds the module graph, which is free of runtime import
+cycles (45 → 0) and of components reaching for the api seam. jscpd ratchets
+duplication. `check-test-exports.sh` closes the hole that let seven dead
+`export_test.go` entries accumulate with no linter able to see them. All run in
+`task lint` **and** the CI lint job — the umbrella task alone would not have
+put them in front of a pull request, which is §18's lesson applied to §18's own
+fix.
+
+Three gates caught the campaign that added them: dependency-cruiser rejected a
+store cycle the moment it was written, the bundle budget failed while
+`task lint` was green, and knip found a newly-orphaned export on CI. The last
+two are gates outside `task lint`; §3 says in writing to build before assuming.
 
 Everything else below is a catalogued section, deliberately accepted (§3), or
 out of scope.
@@ -199,25 +206,44 @@ changed bullets carry an inline re-evaluation note:
   reopening whether `dashboard/widgets` wants a family taxonomy; it was
   reopened and the answer stands — see the reasoning above that budget entry.
 
-  **The Go side of this cap was never argued, and twelve files sit over it
-  (2026-08-22).** Every exception above is a frontend file; §3 has named zero
-  Go files since the cap was written, which is not a finding that Go is
-  smaller — it is a blind spot. Unlisted and over 500:
-  `pkg/db/store_self_review.go` 621 · `pkg/aggregate/attach.go` 577 ·
-  `pkg/db/dbtest/fake.go` 562 · `frontend/src/stores/coach.ts` 550 ·
-  `BulkActionBar.vue` 547 · `pkg/cmd/server_coach.go` 545 ·
-  `pkg/db/store_types.go` 536 · `pkg/profiles/move.go` 523 ·
-  `match-momentum-helpers.ts` 511 · `MatchHeatmapHeader.vue` 509 ·
-  `MatchMapRoleBand.vue` 504 · `ProfileSwitcher.vue` 502. Four of the Vue
-  files are mostly irreducible markup and CSS (BulkActionBar's script is 101
-  lines, ProfileSwitcher's 34) and are the case the cap explicitly forgives;
-  the Go four and `stores/coach.ts` are not. **`MatchMapRoleBand.vue` is the
-  cautionary one**: it appears in the *paid* list above at 493 and has since
-  regrown to 504 — a file dropped under the line and then quietly crossed back,
-  which is exactly the per-file-trigger failure the Package-size rule records.
-  Two more are mine: the replay-code campaign took `stores/coach.ts` 446→550
-  and `server_coach.go` 453→545 and passed nine green local runs, because this
-  cap is prose, not a gate. Tracked as owed work in §18.
+  **Every file over the cap, adjudicated (2026-08-22).** The Go side had never
+  been argued at all — §3 named only frontend files from the day the cap was
+  written, which was a blind spot rather than evidence Go was smaller. `api.ts`
+  is off this list entirely: it was the one file whose own argument had failed,
+  and it is now eleven modules under `src/api/`, largest 172 lines.
+
+  *Irreducible markup and CSS — the case the cap explicitly forgives.*
+  `ProfileSwitcher.vue` (502) is 34 lines of script against 325 of style;
+  `BulkActionBar.vue` (547) is 101 against 211 template and 216 style. Neither
+  has logic to extract. **Growth trigger: script blocks past ~150 lines.**
+
+  *Dense single-pass logic.* `MatchMapRoleBand.vue` (504, script 347) and
+  `MatchHeatmapHeader.vue` (509, script 306) each compute one band's geometry
+  in one pass; the pure helpers they could shed already live in `@/match/`.
+  `match-momentum-helpers.ts` (511) is the third dossier kernel beside the two
+  argued above, same argument. **Trigger: a second band or a second chart in
+  the same file.**
+
+  *Go, file-per-concern spelled long.* `store_self_review.go` (624) is one
+  store family — sittings, notes, moments, and the ref types §17 pushed down.
+  `store_types.go` (567) is the row shapes: splitting them by family would put
+  a row and the query that fills it in different files. `dbtest/fake.go` (562)
+  is the Fake's core, already split per family into eleven siblings.
+  `attach.go` (577) is the read-path sidecar attach, one pass over one record.
+  `server_coach.go` (545) is one endpoint group. `move.go` (523) is one
+  operation with a long invariant list. **Trigger for each: a second
+  responsibility, not a line count** — `pkg/db` is the repo's own canonical
+  correctly-large package and must not be split to chase a number.
+
+  *The one to watch.* `MatchMapRoleBand.vue` appears in the PAID list above at
+  493 and is 504 now. A file that dropped under the line and quietly crossed
+  back is the per-file-trigger failure the Package-size rule records, and it is
+  why triggers above are written as conditions rather than numbers.
+
+  `stores/coach.ts` (550) grew in the replay-code campaign and is the coaching
+  session's whole client-side state machine — one machine, and splitting it
+  would put transitions in one file and the state they act on in another.
+
 - **App.vue is a clean 189-line thin shell** (zero business logic — it reads a
   few store refs, wires the App-shell composables, and renders chrome + one
   view; the parse-run-state / profile / tour / first-run wiring lives in the
@@ -334,80 +360,6 @@ schema shape is final:
 **Effort:** M. **Risk:** High — on-disk schema management. Deliberately sequenced
 last so the schema is frozen before the baseline is captured.
 
-## 15. The documented store-reading migration is unfinished
-
-**Priority: MED. Effort: M.** `frontend/CLAUDE.md` states the target plainly:
-components read the stores directly; App neither prop-drills down nor wires
-mutation emits back up.
-
-- **`SettingsSections.vue`** is a 212-line store-to-props shim over seven
-  sections — and the *same template* renders `<SettingsProfiles />`,
-  `<SettingsWindow />` and `<SettingsCoach />` with **zero props**, which is the
-  documented pattern. One file demonstrating both the target and the miss.
-- **Row-interaction emits** are relayed verbatim through `MatchesMembersList`
-  (twice) and `MatchesTable`, neither of which reads them — they exist to carry
-  `row-context` up to `useMatchesRowContext`, which `MatchesView` owns.
-
-**Deliberately NOT done in the 2026-08-22 remediation**, and the reason is the
-size rather than the difficulty: it is seven component migrations plus their
-tests, and `SettingsView.test.ts` — 988 lines, the largest suite in the repo —
-drives the whole surface through a `renderSettings({ props })` harness built
-around exactly the prop-drilling being removed. Folding that into a PR that
-already carried nine sections would have made the riskiest change the one
-reviewed last and least. The row-context relay is the same shape one layer
-down: the composable that owns the state is provided by `MatchesView`, so
-letting a row call it directly is the same migration, not a smaller one.
-
-**Do it as its own PR**, sections first and the test harness with them.
-
-## 18. `api.ts` and the unlisted 500-line files
-
-**Priority: MED. Effort: S–M.** What is left of the drift section after the
-2026-08-22 remediation. The stale pointers, the false `db.CoachStore` comment
-and the fifteen mis-named `SettingsView` cases are fixed; §3's numbers were
-re-measured when they were written. These two are judgment calls rather than
-corrections, which is why they outlived the rest.
-
-1. **`api.ts` is 865 lines / 97 wrappers and has no accepted argument.** §3
-   used to accept it at 529/61 as "the one-page wire-surface listing"; that
-   sentence is not true of 865 lines, and §3 now says so rather than pretending
-   otherwise. Split along the section comments already dividing the file
-   (matches, settings, coach, review, system), or re-argue the number through
-   the documented bump procedure. What it must not do is sit un-argued.
-2. **Sixteen files are over the 500-line soft cap and §3 argues four of them.**
-   The Go side has never been argued at all — `store_self_review.go` 624,
-   `attach.go` 577, `store_types.go` 567, `dbtest/fake.go` 562,
-   `server_coach.go` 545, `move.go` 523 — and neither has `stores/coach.ts`
-   550. Four of the Vue files are irreducible markup and CSS and are the case
-   the cap forgives. `MatchMapRoleBand.vue` is the one to watch: it appears in
-   §3's *paid* list at 493 and is 504 now, which is a file crossing back after
-   being marked done.
-
-   Note that three of these grew in this campaign for reasons the cap would
-   endorse: `store_types.go` 536 → 567 and `store_self_review.go` 621 → 624
-   took the self-review ref types and their signatures, which is what §17 asked
-   for. Growth with a reason is not the problem the cap is about; growth nobody
-   noticed is.
-
-## 20. 30 of 123 directories sit at their size ceiling
-
-**Priority: MED. Effort: a decision, not a patch.** Zero-headroom is deliberate
-and correct — it is what makes the gate trip on the *first* file past the line.
-But a quarter of the tree sitting *at* the line means most future changes open a
-budget conversation before they open a code review, and the two legitimate
-answers (split vs. bump) are not interchangeable.
-
-Some of the 30 are genuine split candidates; others are budgets that were set at
-the directory's count rather than at its responsibility, which is the failure
-mode the rule warns about from the other direction. Telling them apart is a
-directory-by-directory judgment call.
-
-Re-measured 2026-08-22 after the remediation: 29 → 30. The campaign added
-`ProbeChip.vue` (a bump, argued in `package-size-budget-history.md`) and moved
-`useMatchClock` into the feature that reads it. **Schedule it as its own pass** —
-treating it as a patch is how a folder silently regrows what it just shed, and
-it should run after §15, which moves files again.
-
 ## Out of scope — deliberately not building
 
 So a future pass doesn't re-propose them:
@@ -453,6 +405,16 @@ with measurements, so the next pass does not re-derive them:
   has nine importers, and `CommandPalette.vue` / `useSummaryThumbnail` would
   move into directories already at their ceiling. Only `useMatchClock` was a
   clean move. A single-consumer count is not on its own a reason to split.
+- **"30 of 123 directories at their ceiling" was the wrong frame.** A declared
+  budget EQUALS its directory's count by construction — the gate refuses
+  headroom in both directions, so every registered directory sits at its line
+  by design and always will. The number that mattered was the seven sitting on
+  the DEFAULT of 12: at a number nobody chose, with no stated reason for the
+  next person to read. Six were checked and registered with their WHY; the
+  seventh, `components/coach/notes`, genuinely carried two concerns and lost
+  the shared sheet family to `components/sheet/` — which also ended
+  `reviews/SelfReviewSheet.vue` reaching into the coach's folder to render a
+  self-review.
 - **`parser.go`'s probe names and `schema.go`'s column names are not the
   screenshot-type vocabulary**, though they spell some of the same words —
   the probe table says `"all-heroes"` with a hyphen. Both were left alone when

@@ -2,7 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/vue'
 import { describe, expect, it } from 'vitest'
 
 import type { FocusItem } from '@/api-client'
-import SheetFocusItems from '@/components/coach/notes/SheetFocusItems.vue'
+import SheetFocusItems from '@/components/sheet/SheetFocusItems.vue'
 
 const THREE: FocusItem[] = [
   { item_id: 'a', text: 'hold the angle' },

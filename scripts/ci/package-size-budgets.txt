@@ -448,3 +448,53 @@ frontend/src/components/matches/dossier       13
 # 15: WhatsNewStrip.vue — the one-time feature pointer for installs the tour
 # (first-run only) can never reach; app chrome like the banners beside it.
 frontend/src/components/app                   15
+
+# ── Registered by the 2026-08-22 sizing adjudication ──────────────────────
+#
+# These six sat at the DEFAULT of 12 — not because anyone chose 12 for them,
+# but because they grew to it. A directory on the default has no stated reason
+# anywhere, so the next person to add a file meets a gate with nothing to read.
+# Each was checked for cohesion and each is one responsibility; the number
+# below is that responsibility's current shape, not a high-water mark.
+
+# frontend/src/components/coach/room — the film room's surfaces: the desk, the
+# nav strip, the match card and its hero split, the identity prompt, the loan
+# slip, the observed-context form, the session rule. One room, one reason to
+# change. Its sibling notes/ was the pair that DID carry two concerns, and the
+# shared sheet family moved out to components/sheet/.
+frontend/src/components/coach/room            12
+
+# frontend/src/composables/app — what App.vue wires: boot, keyboard, menus,
+# palette, first-run, server events, the two toasts, the tour bridge, external
+# links. The unit is "app-shell concern", and each file is one. A composable
+# here that no longer serves the shell belongs with the feature that reads it,
+# which is how useMatchClock left composables/shared.
+frontend/src/composables/app                  12
+
+# frontend/src/composables/matches/narrow — the narrow filter language: state,
+# types, options, clause registry, predicates, presets, tab nav, the search
+# grammar, and the provide/inject seam. One language; splitting it by file type
+# would put a clause's registry entry and its predicate in different folders,
+# which is the arrangement that shipped the enumeration-spread bug.
+frontend/src/composables/matches/narrow       12
+
+# frontend/src/match — pure match-domain helpers at the root, with a subfolder
+# per family (coach/, compare/, dossier/, elo/, pivot/, reviews/, table/,
+# trends/, export/). Non-recursive count: these twelve are the helpers that
+# belong to no single family. A thirteenth usually means a new family, and a
+# family gets a folder rather than this number.
+frontend/src/match                            12
+
+# pkg/db/dbtest — the in-memory Store, one file per family, mirroring pkg/db's
+# own split. The count tracks pkg/db's families by construction: a new store
+# family needs a Fake file or the interface is unimplemented, so this number
+# moves when pkg/db's does and for the same reason.
+pkg/db/dbtest                                 12
+
+# pkg/matchedit — one file per editable thing about a match: annotation,
+# ignored, manual, moment, play mode, queue, replay code, review, user data,
+# visibility, plus validation and the package's own entry point. The unit is
+# "a field the user can change", which is why the file list reads like the
+# edit menu.
+pkg/matchedit                                 12
+
