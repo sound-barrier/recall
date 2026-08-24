@@ -172,3 +172,21 @@ for (const theme of THEMES) {
     })
   }
 }
+
+// The hatched header bands (reel days, the focus banner, review-card
+// heads) write small ink type ON the stripes. High contrast once ran the
+// stripes at 40% white under white 10px labels — the legibility theme was
+// the least legible. The stripe bed is capped; this pins the cap.
+test('high contrast keeps its hatch stripes out of the type', async ({ page }) => {
+  await openView(page, 'tab-reviews', 'high-contrast')
+  const stripe = await page.evaluate(() => {
+    const probe = document.createElement('div')
+    probe.className = 'paper paper-rule-hatch'
+    document.body.appendChild(probe)
+    const bg = getComputedStyle(probe).backgroundImage
+    probe.remove()
+    const alpha = /rgba\(255, 255, 255, (0\.\d+)\)/.exec(bg)
+    return alpha?.[1] ?? bg
+  })
+  expect(Number(stripe)).toBeLessThanOrEqual(0.15)
+})

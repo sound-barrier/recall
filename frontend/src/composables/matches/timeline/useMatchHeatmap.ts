@@ -154,8 +154,14 @@ function walkCells(
   return { cells, maxTotal, weekIndex }
 }
 
+// A three-letter label needs about three week-columns to stand apart from
+// its neighbor; the week-snapped window can open on a month's LAST week,
+// whose one-column label then prints hard against the next ("FEBMAR").
+const MIN_LABEL_GAP_WEEKS = 3
+
 // Month column labels — anchor at the first week of each month
-// (looking at the cell in the top row, i.e. dayOfWeek === 0).
+// (looking at the cell in the top row, i.e. dayOfWeek === 0). A leading
+// label too narrow to stand apart from its successor is dropped.
 function buildMonthLabels(cells: HeatmapCell[]): MonthLabel[] {
   const monthLabels: MonthLabel[] = []
   let lastMonth = -1
@@ -167,7 +173,10 @@ function buildMonthLabels(cells: HeatmapCell[]): MonthLabel[] {
       lastMonth = m
     }
   }
-  return monthLabels
+  return monthLabels.filter((l, i) => {
+    const next = monthLabels[i + 1]
+    return next === undefined || next.weekIndex - l.weekIndex >= MIN_LABEL_GAP_WEEKS
+  })
 }
 
 // parseLocalDate avoids `new Date('YYYY-MM-DD')`'s UTC-midnight bug,

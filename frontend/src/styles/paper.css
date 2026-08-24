@@ -167,12 +167,15 @@
   border-style: dashed;
 }
 
+/* The stripes take their own token, not the hairline's: high contrast
+   runs its RULES at 40% white — right for a border, but as a bed under
+   10px white type it made the legibility theme the least legible one. */
 .paper-rule-hatch {
   color: var(--ink);
   background:
     repeating-linear-gradient(
       45deg,
-      var(--paper-rule) 0 2px,
+      var(--paper-hatch, var(--paper-rule)) 0 2px,
       transparent 2px 6px
     ),
     var(--paper);
