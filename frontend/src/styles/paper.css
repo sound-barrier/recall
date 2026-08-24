@@ -175,7 +175,7 @@
   background:
     repeating-linear-gradient(
       45deg,
-      var(--paper-hatch, var(--paper-rule)) 0 2px,
+      var(--paper-hatch) 0 2px,
       transparent 2px 6px
     ),
     var(--paper);

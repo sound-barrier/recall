@@ -195,6 +195,11 @@
   --paper: #262019;
   --paper-2: #1b1712;
   --paper-rule: rgb(242 237 225 / 14%);
+
+  /* The hatch's stripe bed. Follows the rule everywhere the rule is
+     gentle; high contrast overrides it down — 40% white is right for a
+     border and wrong under 10px white type. */
+  --paper-hatch: var(--paper-rule);
   --paper-edge: #877e6a;
   --ink: #f2ede1;
   --ink-dim: #c2bbab;

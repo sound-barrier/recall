@@ -59,7 +59,7 @@
 .btn.ghost {
   background: transparent;
   color: var(--text-dim);
-  border-color: var(--btn-ghost-border, var(--border-strong));
+  border-color: var(--btn-ghost-border);
 }
 
 .btn.ghost:hover:not(:disabled) {
