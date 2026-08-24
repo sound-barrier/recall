@@ -37,7 +37,18 @@ const resultTint = computed(() => RESULT_TINT[result.value] ?? 'none')
 // "the player" when a bundle named nobody, a state the identity prompt
 // makes reachable. In the viewer's own voice it is simply "your".
 const possessive = computed(() => (props.voice === 'your' ? 'your' : `${playerClockOwner(props.handle)}'s`))
-const ownNoteLabel = computed(() => (props.voice === 'your' ? 'Your own note' : `${props.handle}'s own note`))
+// In self voice "Your own note" sat one card above the editor's "Your
+// note" — two near-identical labels for a read-only quote and a live
+// field. The quote now names its source instead.
+const ownNoteLabel = computed(() => (props.voice === 'your' ? 'From your match journal' : `${props.handle}'s own note`))
+
+// Whether the two mode chips have a real value to say — the template
+// omits their unknown fallbacks (see the comment there).
+const queueKnown = computed(() => props.record.queue_type === 'role' || props.record.queue_type === 'open')
+const playModeKnown = computed(() => {
+  const m = props.record.play_mode ?? data.value.playlist
+  return m === 'quickplay' || m === 'competitive'
+})
 
 const whenLabel = computed(() => {
   const day = formatPlayerDay(playerClockDayKey(props.record))
@@ -97,12 +108,18 @@ const earlierWords = computed(() => {
         <span class="eyebrow">{{ voice === 'your' ? 'When' : `When · ${possessive} clock` }}</span>
         <span class="meta-value">{{ whenLabel }}</span>
       </div>
-      <div class="meta-cell">
+      <!--
+        Unknown fallbacks are omitted here, unlike the Matches table: a
+        column reads best when every row carries a chip, but on a lone card
+        an all-caps UNKNOWN between two real facts reads as an error in the
+        data the coach was handed — and they cannot fix a loaned record.
+      -->
+      <div v-if="data.game_mode || queueKnown || playModeKnown" class="meta-cell">
         <span class="eyebrow">Mode</span>
         <span class="meta-value meta-badges">
           <span v-if="data.game_mode" class="badge mode">{{ data.game_mode }}</span>
-          <span class="badge type">{{ formatQueueTypeLabel(record) }}</span>
-          <span class="badge type">{{ formatPlayModeLabel(record) }}</span>
+          <span v-if="queueKnown" class="badge type">{{ formatQueueTypeLabel(record) }}</span>
+          <span v-if="playModeKnown" class="badge type">{{ formatPlayModeLabel(record) }}</span>
         </span>
       </div>
       <div v-if="looseModifiers.length" class="meta-cell">
@@ -143,7 +160,9 @@ const earlierWords = computed(() => {
     </section>
 
     <footer v-if="annotation?.tags?.length || annotation?.replay_code" class="card-foot">
-      <span v-for="tag in annotation?.tags ?? []" :key="tag" class="badge">{{ tag }}</span>
+      <!-- The hash form Matches uses, in a muted chip: a bare STACK badge
+           read as a control that did nothing when clicked. -->
+      <span v-for="tag in annotation?.tags ?? []" :key="tag" class="badge card-tag">#{{ tag }}</span>
       <span v-if="annotation?.replay_code" class="card-replay">
         <span class="eyebrow">Replay</span>
         <span class="card-replay-code">{{ annotation.replay_code }}</span>

@@ -127,6 +127,13 @@
   gap: 0.4rem 0.7rem;
 }
 
+/* A player's tag, quoted — visibly not a control. */
+.card-tag {
+  color: var(--text-dim);
+  background: transparent;
+  border-color: var(--border);
+}
+
 .card-replay {
   display: inline-flex;
   align-items: baseline;

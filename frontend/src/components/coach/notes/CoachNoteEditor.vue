@@ -78,7 +78,7 @@ const blocked = computed(() => props.blockedReason !== '')
 const toolsDisabled = computed(() => blocked.value || reviewed.value)
 const toolsDisabledReason = computed(() => {
   if (blocked.value) return props.blockedReason
-  return reviewed.value ? `${switchLabel.value} is on — turn it off to write.` : undefined
+  return reviewed.value ? `“${switchLabel.value}” is on — turn it off to write.` : undefined
 })
 
 // The words follow the voice: a coach writes for someone else to read next
@@ -92,7 +92,7 @@ const notePlaceholder = computed(() => (props.voice === 'your'
 // tag are how they point at the moment they mean. Over your own matches the
 // Moments strip already owns both, per match — the note is prose.
 const filesUnderTags = computed(() => props.voice !== 'your')
-const switchLabel = computed(() => (props.voice === 'your' ? 'Nothing to add' : 'Reviewed'))
+const switchLabel = computed(() => (props.voice === 'your' ? 'Nothing to add' : 'Reviewed — nothing to add'))
 const statusLine = computed(() => (blocked.value ? props.blockedReason : SAVE_LABEL[props.saveState]))
 const reviewedDisabledReason = computed(() => {
   if (blocked.value) return props.blockedReason
@@ -260,7 +260,8 @@ function toggleReviewed(): void {
           @keydown="onClockKeydown"
         >
         <p :id="CLOCK_HINT_ID" class="note-hint">
-          Type the digits — when in the match it happened. Optional.
+          Type the digits — when in the match it happened. For a specific
+          play, use Moments above. Optional.
         </p>
       </div>
 

@@ -110,10 +110,13 @@ function onRemoveFrame(): void {
         Only for a frame the app has never seen. A bundle's match arrives
         parsed, so there is nothing for the coach to tell us about it; a
         replay's arrives blank, and the card above would read "No result ·
-        Not dated · —" until somebody says otherwise.
+        Not dated · —" until somebody says otherwise. Keyed on PROVENANCE
+        (a typed corpus, a coded frame) and never on the data: keying on a
+        blank map made the whole form vanish, mid-task and for good, the
+        moment its own map save round-tripped.
       -->
       <CoachObservedContext
-        v-if="sessionDate && !record.data?.map && record.annotation?.replay_code"
+        v-if="sessionDate && record.annotation?.replay_code"
         :record="record"
         :session-date="sessionDate"
         @update="(ctx: ObservedContext) => emit('update-context', ctx)"

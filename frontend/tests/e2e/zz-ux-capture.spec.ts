@@ -5,6 +5,7 @@
  * review pass. Deleted when the review lands; the zz- prefix keeps it at the
  * bottom of the tree and out of anyone's way meanwhile.
  */
+/* eslint-disable playwright/expect-expect -- a capture rig, not tests: each "test" stages a state and screenshots it */
 import { test, expect } from './_fixtures'
 import type { Page, Route } from '@playwright/test'
 
