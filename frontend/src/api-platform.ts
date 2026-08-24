@@ -217,7 +217,7 @@ export function ExportBundle(opts: {
   if (IS_WAILS) {
     return saveBundleNatively({
       ...opts,
-      filename: chosen || `recall-${opts.share ? 'share' : 'bundle'}-${tsFilenameStamp()}.zip`,
+      filename: chosen || `recall-${opts.share ? 'share' : 'backup'}-${tsFilenameStamp()}.zip`,
     })
   }
   return saveBlobResponse(

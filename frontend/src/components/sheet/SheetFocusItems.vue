@@ -56,7 +56,9 @@ function setRow(el: unknown, index: number): void {
 // could not show them past ~20 characters.
 function fitRow(el: HTMLTextAreaElement): void {
   el.style.height = 'auto'
-  el.style.height = `${el.scrollHeight}px`
+  // scrollHeight excludes the border-box borders; without them the last
+  // line's descenders sit 2px under the overflow:hidden clip.
+  el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`
 }
 
 function focusRow(index: number): void {
@@ -194,7 +196,7 @@ function onRowKeydown(index: number, e: KeyboardEvent): void {
     </button>
     <p v-if="lastRemoved" class="focus-undo" role="status">
       Removed “{{ undoLine }}”
-      <button type="button" class="paper-chip focus-tool" @click="undoRemove">
+      <button type="button" class="paper-chip focus-tool" :disabled="blocked()" @click="undoRemove">
         Undo
       </button>
     </p>
