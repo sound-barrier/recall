@@ -92,6 +92,15 @@ watch(() => props.record?.match_key, () => { removeArmed.value = false })
 
 const LAST_FRAME_REASON = 'A review needs at least one match — delete the review instead.'
 
+// The desk's order follows the voice. A coach watches a stranger's match,
+// marks what they see, and only then writes the overall read — strip, then
+// note. A player already knows their own match: the note ("what will you do
+// differently?") is the primary act, and leading with it keeps the writing
+// surface above the fold on a 720-tall window instead of behind stats they
+// played through themselves.
+const deskOrder = computed<readonly ('note' | 'moments')[]>(() =>
+  (props.voice === 'your' ? ['note', 'moments'] : ['moments', 'note']))
+
 function onRemoveFrame(): void {
   if (!removeArmed.value) {
     removeArmed.value = true
@@ -121,33 +130,35 @@ function onRemoveFrame(): void {
         :session-date="sessionDate"
         @update="(ctx: ObservedContext) => emit('update-context', ctx)"
       />
-      <!--
-        The strip sits between the match and the note on purpose: the coach
-        watches, marks what they see, and only then writes the overall read.
-      -->
-      <CoachCueStrip
-        :moments="moments"
-        :game-length="record.data?.game_length ?? ''"
-        :replay-code="record.annotation?.replay_code ?? ''"
-        :blocked="blockedReason !== ''"
-        :blocked-reason="blockedReason"
-        :save-state-for="momentSaveState"
-        @update="(m: CoachMoment) => emit('update-moment', m)"
-        @remove="(id: string) => emit('remove-moment', id)"
-        @copy-replay="emit('copy-replay')"
-      />
-      <CoachNoteEditor
-        :match-key="record.match_key"
-        :voice="voice"
-        :draft="draft"
-        :save-state="saveState"
-        :blocked-reason="blockedReason"
-        :has-prev="hasPrev"
-        :has-next="hasNext"
-        @update="(next: CoachNoteDraft) => emit('update-note', next)"
-        @prev="emit('prev')"
-        @next="emit('next')"
-      />
+      <!-- Real DOM order, not CSS order — the tab order must match what
+           the eye sees. See deskOrder for why the voices differ. -->
+      <template v-for="piece in deskOrder" :key="piece">
+        <CoachCueStrip
+          v-if="piece === 'moments'"
+          :moments="moments"
+          :game-length="record.data?.game_length ?? ''"
+          :replay-code="record.annotation?.replay_code ?? ''"
+          :blocked="blockedReason !== ''"
+          :blocked-reason="blockedReason"
+          :save-state-for="momentSaveState"
+          @update="(m: CoachMoment) => emit('update-moment', m)"
+          @remove="(id: string) => emit('remove-moment', id)"
+          @copy-replay="emit('copy-replay')"
+        />
+        <CoachNoteEditor
+          v-else
+          :match-key="record.match_key"
+          :voice="voice"
+          :draft="draft"
+          :save-state="saveState"
+          :blocked-reason="blockedReason"
+          :has-prev="hasPrev"
+          :has-next="hasNext"
+          @update="(next: CoachNoteDraft) => emit('update-note', next)"
+          @prev="emit('prev')"
+          @next="emit('next')"
+        />
+      </template>
       <!-- App-surface buttons, not paper ones: this strip sits on the room's
            own background, where paper ink has no contrast. Blocked (a
            read-only profile) outranks the last-frame reason — the same

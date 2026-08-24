@@ -233,11 +233,13 @@ function onTitleInput(e: Event): void {
   color: var(--ink);
 }
 
+/* The one sentence that answers "will I lose my notes?" — a step up from
+   footnote ink, because it is read exactly when a player dares to leave. */
 .sheet-persist {
   margin: 0;
-  font-size: var(--type-2xs);
+  font-size: var(--type-xs);
   line-height: 1.45;
-  color: var(--ink-faint);
+  color: var(--ink-dim);
 }
 
 .sheet-actions {

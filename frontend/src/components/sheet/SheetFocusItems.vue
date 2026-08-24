@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 
 import type { FocusItem } from '@/api'
 import { SAVE_LABEL, type CoachSaveState } from '@/components/coach/room/coach-room-props'
@@ -31,8 +31,12 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{ update: [items: FocusItem[]] }>()
 
-const rows = ref<HTMLInputElement[]>([])
+const rows = ref<HTMLTextAreaElement[]>([])
 const blocked = () => props.blockedReason !== ''
+
+// The one removal that can be taken back. Only a row that said something
+// earns the stash — clearing an empty row must not clobber a real undo.
+const lastRemoved = ref<{ item: FocusItem; index: number } | null>(null)
 
 /**
  * Capture a row's field. A function ref rather than a named one: the rows
@@ -41,7 +45,18 @@ const blocked = () => props.blockedReason !== ''
  * array), which is why the list is trimmed to length before every focus.
  */
 function setRow(el: unknown, index: number): void {
-  if (el instanceof HTMLInputElement) rows.value[index] = el
+  if (el instanceof HTMLTextAreaElement) {
+    rows.value[index] = el
+    fitRow(el)
+  }
+}
+
+// The row grows to its text instead of hiding it behind a caret-scroll:
+// these are the player's conclusions, written on the one surface that
+// could not show them past ~20 characters.
+function fitRow(el: HTMLTextAreaElement): void {
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight}px`
 }
 
 function focusRow(index: number): void {
@@ -52,7 +67,8 @@ function focusRow(index: number): void {
 }
 
 function onInput(index: number, e: Event): void {
-  if (!(e.target instanceof HTMLInputElement)) return
+  if (!(e.target instanceof HTMLTextAreaElement)) return
+  fitRow(e.target)
   emit('update', withText(props.items, index, e.target.value))
 }
 
@@ -64,9 +80,31 @@ function addRow(): void {
 
 function remove(index: number): void {
   if (blocked()) return
+  const item = props.items[index]
+  if (item && item.text.trim() !== '') lastRemoved.value = { item, index }
   emit('update', removeAt(props.items, index))
   focusRow(Math.max(0, index - 1))
 }
+
+// Autosave persists a removal within the second, so the way back is an
+// explicit door rather than a confirm in the way of every edit —
+// Backspace on an empty row already removes without asking, and an armed
+// × beside an unarmed Backspace would be two rules for one action.
+function undoRemove(): void {
+  const gone = lastRemoved.value
+  if (!gone || blocked()) return
+  const next = [...props.items]
+  const at = Math.min(gone.index, next.length)
+  next.splice(at, 0, gone.item)
+  lastRemoved.value = null
+  emit('update', next)
+  focusRow(at)
+}
+
+const undoLine = computed(() => {
+  const text = lastRemoved.value?.item.text ?? ''
+  return text.length > 40 ? `${text.slice(0, 40)}…` : text
+})
 
 /**
  * Reorder, and keep the finger on the button. Sending focus to the row's
@@ -113,11 +151,11 @@ function onRowKeydown(index: number, e: KeyboardEvent): void {
     <ul class="focus-list" :aria-labelledby="`${id}-label`">
       <li v-for="(item, i) in items" :key="item.item_id" class="focus-row">
         <span class="focus-mark" aria-hidden="true">•</span>
-        <input
+        <textarea
           :id="`${id}-${i}`"
           :ref="(el) => setRow(el, i)"
           class="focus-text"
-          type="text"
+          rows="1"
           maxlength="2000"
           spellcheck="true"
           autocorrect="off"
@@ -128,7 +166,7 @@ function onRowKeydown(index: number, e: KeyboardEvent): void {
           :placeholder="i === 0 ? placeholder : ''"
           @input="onInput(i, $event)"
           @keydown="onRowKeydown(i, $event)"
-        >
+        />
         <span class="focus-tools">
           <button
             type="button" class="paper-chip focus-tool"
@@ -154,6 +192,12 @@ function onRowKeydown(index: number, e: KeyboardEvent): void {
     <button type="button" class="paper-chip focus-add" :disabled="blocked()" @click="addRow">
       + Add an item
     </button>
+    <p v-if="lastRemoved" class="focus-undo" role="status">
+      Removed “{{ undoLine }}”
+      <button type="button" class="paper-chip focus-tool" @click="undoRemove">
+        Undo
+      </button>
+    </p>
     <p v-if="showStatus" class="sheet-summary-status" role="status" aria-label="Focus list save state">
       {{ blockedReason || SAVE_LABEL[saveState] }}
     </p>
@@ -180,7 +224,9 @@ function onRowKeydown(index: number, e: KeyboardEvent): void {
 
 .focus-row {
   display: flex;
-  align-items: center;
+
+  /* Top-aligned: a wrapped row keeps its mark and tools at the first line. */
+  align-items: flex-start;
   gap: 0.4rem;
 }
 
@@ -199,6 +245,20 @@ function onRowKeydown(index: number, e: KeyboardEvent): void {
   background: var(--paper-2);
   border: 1px solid var(--ink-faint);
   border-radius: var(--radius);
+
+  /* A single wrapping line, not a scrolling box — fitRow owns the height. */
+  resize: none;
+  overflow: hidden;
+  line-height: 1.4;
+}
+
+.focus-undo {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: var(--type-2xs);
+  color: var(--ink-dim);
 }
 
 .focus-tools {
