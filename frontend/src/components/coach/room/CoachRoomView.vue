@@ -4,6 +4,7 @@ import { computed, ref, useTemplateRef, watch } from 'vue'
 import type { ObservedContext } from '@/api-client'
 import CoachDesk from '@/components/coach/room/CoachDesk.vue'
 import CoachIdentityPrompt from '@/components/coach/room/CoachIdentityPrompt.vue'
+import { playerClockOwner } from '@/match/match-time-helpers'
 import CoachAddCode from '@/components/coach/reel/CoachAddCode.vue'
 import CoachReel from '@/components/coach/reel/CoachReel.vue'
 import CoachSessionSheet from '@/components/coach/notes/CoachSessionSheet.vue'
@@ -80,6 +81,7 @@ const emit = defineEmits<{
   'update-focus-items': [items: FocusItem[]]
   'confirm-player': [handle: string]
   export: []
+  'export-sheet': []
   end: []
   'keep-working': []
 }>()
@@ -156,7 +158,7 @@ function step(key: string | null): void {
     <!-- The room finally says its own name — three other surfaces send you
          to "the film room", and until now no surface wore the words. -->
     <p class="eyebrow coach-room-title">
-      {{ voice === 'your' ? 'Film room · your review' : `Film room · reviewing ${player.handle}` }}
+      {{ voice === 'your' ? 'Film room · your review' : `Film room · reviewing ${playerClockOwner(player.handle)}` }}
     </p>
     <div ref="reelColumn" class="coach-room-reel" @keydown="onReelKeydown">
       <slot name="reel">
@@ -179,6 +181,7 @@ function step(key: string | null): void {
         :key="player.handle"
         :handle="player.handle"
         :unconfirmed="unconfirmed"
+        :source="api.sessionSource?.() ?? 'bundle'"
         @confirm="confirmPlayer"
         @cancel="correcting = false"
       />
@@ -237,6 +240,7 @@ function step(key: string | null): void {
           @update-focus-items="(items: FocusItem[]) => emit('update-focus-items', items)"
           @change-player="correcting = true"
           @export="emit('export')"
+          @export-sheet="emit('export-sheet')"
           @end="emit('end')"
           @keep-working="emit('keep-working')"
         />

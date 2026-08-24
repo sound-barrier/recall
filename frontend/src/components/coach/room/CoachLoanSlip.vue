@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { formatLocalFromUTC } from '@/match/match-time-helpers'
+import { formatLocalFromUTC, playerClockOwner } from '@/match/match-time-helpers'
 import { noteMark } from '@/match/coach/coach-notes'
 import { useCoachStore } from '@/stores/coach'
 
@@ -17,16 +17,17 @@ const coach = useCoachStore()
 // A plain export names nobody, so the slip has a blank where the handle
 // goes until the room's "Who is this?" prompt is answered. Saying so is
 // better than a masthead that reads "reviewing" and then stops.
-const UNNAMED_PLAYER = 'a player not yet named'
 const handle = computed(() =>
-  (coach.needsPlayerHandle ? UNNAMED_PLAYER : coach.player?.handle ?? ''))
+  (coach.needsPlayerHandle ? playerClockOwner('') : coach.player?.handle ?? ''))
 const label = computed(() => `Coaching session: reviewing ${handle.value}`)
 
+// The export date is the PLAYER's — "exported Aug 22" alone read as the
+// coach's own export status, one line above buttons that do that export.
 const loanLine = computed(() => {
   const count = coach.session?.match_count ?? 0
   const exported = formatLocalFromUTC(coach.session?.exported_at)
   const matches = `${count} match${count === 1 ? '' : 'es'}`
-  return exported ? `${matches} · exported ${exported}` : matches
+  return exported ? `${matches} · ${handle.value} exported ${exported}` : matches
 })
 
 // Marks, not drafts: a half-typed note that says nothing yet isn't a note.
@@ -85,7 +86,7 @@ const requestEnd = () => coach.requestEndSession()
         :title="exportTitle"
         @click="coach.exportNotes()"
       >
-        1 · Export notes
+        1 · Export notes file — for their Recall
       </button>
       <!--
         The other way to hand it over. The archive is for a player who runs
@@ -100,7 +101,7 @@ const requestEnd = () => coach.requestEndSession()
         :title="exportTitle"
         @click="coach.exportSheet()"
       >
-        …or save it as one page
+        Save a web page — read-only
       </button>
       <!--
         The receipt: the export used to succeed in silence, on the one action
@@ -108,6 +109,11 @@ const requestEnd = () => coach.requestEndSession()
       -->
       <p v-if="coach.exportedTo" class="coach-slip-receipt" role="status">
         Notes saved to {{ coach.exportedTo }}.
+      </p>
+      <!-- The reason in visible text: a hover title reaches nobody on a
+           keyboard, and the likeliest coach here is a first-time user. -->
+      <p v-if="!canExport" class="coach-slip-blocked">
+        {{ coach.exportBlockedReason }}
       </p>
 
       <button
@@ -171,6 +177,13 @@ const requestEnd = () => coach.requestEndSession()
   margin: 0;
   font-size: var(--type-3xs);
   color: var(--win);
+}
+
+.coach-slip-blocked {
+  margin: 0;
+  font-size: var(--type-3xs);
+  line-height: 1.4;
+  color: var(--ink-dim);
 }
 
 .coach-slip-line {

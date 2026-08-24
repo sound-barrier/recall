@@ -49,6 +49,8 @@ const emit = defineEmits<{
   /** Re-open the room's "who is this?" prompt — the bundle only suggested. */
   'change-player': []
   export: []
+  /** The one-page copy — for a player who does not run Recall. */
+  'export-sheet': []
   end: []
 }>()
 </script>
@@ -57,7 +59,7 @@ const emit = defineEmits<{
   <section class="paper coach-sheet" aria-label="Session sheet">
     <div class="sheet-head">
       <h2 class="sheet-title">
-        Reviewing {{ player.handle || 'nobody yet' }}
+        Reviewing {{ player.handle || 'the player' }}
       </h2>
       <button
         type="button"
@@ -94,7 +96,19 @@ const emit = defineEmits<{
         :title="canExport ? undefined : exportReason"
         @click="emit('export')"
       >
-        1 · Export notes
+        1 · Export notes file — for their Recall
+      </button>
+      <!-- The pairing the loan slip offers, here where the export decision
+           is framed: a coach whose player does not run Recall never learned
+           the browser-openable page existed unless they read the masthead. -->
+      <button
+        type="button"
+        class="paper-btn"
+        :disabled="!canExport"
+        :title="canExport ? undefined : exportReason"
+        @click="emit('export-sheet')"
+      >
+        Save a web page — read-only
       </button>
       <!-- Routes through the same armed question the loan slip asks. -->
       <button type="button" class="paper-btn" @click="emit('end')">
@@ -109,6 +123,9 @@ const emit = defineEmits<{
         Keep working
       </button>
     </footer>
+    <p v-if="!canExport && exportReason" class="sheet-blocked">
+      {{ exportReason }}
+    </p>
   </section>
 </template>
 

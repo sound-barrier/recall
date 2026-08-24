@@ -71,7 +71,7 @@ describe('CoachLoanSlip', () => {
 
     expect(slip()).toBeInTheDocument()
     expect(within(slip()).getByText('Sable')).toBeInTheDocument()
-    expect(within(slip()).getByText(/6 matches · exported /)).toBeInTheDocument()
+    expect(within(slip()).getByText(/6 matches · Sable exported /)).toBeInTheDocument()
   })
 
   it('promises the coach nothing here is kept', () => {
@@ -93,16 +93,23 @@ describe('CoachLoanSlip', () => {
 
   it('exports on demand', async () => {
     const { spies } = renderSlip()
-    await fireEvent.click(within(slip()).getByRole('button', { name: '1 · Export notes' }))
+    await fireEvent.click(within(slip()).getByRole('button', { name: /^1 · Export notes file/ }))
     expect(spies.exportNotes).toHaveBeenCalled()
   })
 
   it('refuses to export without a coach name, and says why', () => {
     renderSlip({ coach_name: '' })
-    const button = within(slip()).getByRole('button', { name: '1 · Export notes' })
+    const button = within(slip()).getByRole('button', { name: /^1 · Export notes file/ })
 
     expect(button).toBeDisabled()
     expect(button.title).toMatch(/coach name/i)
+    // The reason in visible text too — a title reaches nobody on a keyboard.
+    expect(within(slip()).getByText(/coach name/i)).toBeInTheDocument()
+  })
+
+  it('pairs the one-page copy with the notes file, behind the same gate', () => {
+    renderSlip({ coach_name: '' })
+    expect(within(slip()).getByRole('button', { name: /Save a web page/ })).toBeDisabled()
   })
 
   // A clean session ends without a second question — nothing is at stake, so
@@ -147,7 +154,7 @@ describe('CoachLoanSlip', () => {
 // nothing to put where the handle goes until the room's prompt is answered.
 describe('CoachLoanSlip — a bundle that named nobody', () => {
   const unnamedSlip = () =>
-    screen.getByRole('region', { name: 'Coaching session: reviewing a player not yet named' })
+    screen.getByRole('region', { name: 'Coaching session: reviewing the player' })
 
   it('says so rather than showing a blank name', () => {
     renderSlip({ player: { id: '', handle: '', message: '' }, handle_from_bundle: false })
@@ -156,7 +163,7 @@ describe('CoachLoanSlip — a bundle that named nobody', () => {
 
   it('refuses to export an archive with nobody to address it to', () => {
     renderSlip({ player: { id: '', handle: '', message: '' }, handle_from_bundle: false })
-    const button = within(unnamedSlip()).getByRole('button', { name: '1 · Export notes' })
+    const button = within(unnamedSlip()).getByRole('button', { name: /^1 · Export notes file/ })
 
     expect(button).toBeDisabled()
     expect(button.title).toMatch(/who this bundle is about/i)

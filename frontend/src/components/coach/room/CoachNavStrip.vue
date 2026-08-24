@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import { playerClockOwner } from '@/match/match-time-helpers'
 import type { ViewId } from '@/composables/shared/keyboard/useTabKeyboardNav'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
@@ -45,7 +46,11 @@ const sittingAway = computed(() =>
 // The room is the Reviews tab's content while a session is open, so "in the
 // room" and "on the Reviews tab" are the same fact.
 const inRoom = computed(() => appStore.view === 'reviews')
-const handle = computed(() => coach.player?.handle ?? '')
+// One shared fallback for every possessive — never a dangling "Step into 's:".
+const owner = computed(() => playerClockOwner(coach.player?.handle ?? ''))
+// A codes session carries no history: the doors would open onto charts over
+// blank replay stubs, which reads as the app being broken.
+const hasHistory = computed(() => coach.sessionSource !== 'replay')
 
 function stepInto(target: StepTarget): void {
   if (target === 'trends') {
@@ -68,8 +73,8 @@ function stepInto(target: StepTarget): void {
     </button>
   </nav>
   <nav v-else class="coach-nav" aria-label="Coaching session">
-    <template v-if="inRoom">
-      <span class="eyebrow accent coach-nav-lead">Step into {{ handle }}'s:</span>
+    <template v-if="inRoom && hasHistory">
+      <span class="eyebrow accent coach-nav-lead">Step into {{ owner }}'s:</span>
       <button
         v-for="step in STEPS"
         :key="step.target"
@@ -80,6 +85,9 @@ function stepInto(target: StepTarget): void {
         {{ step.label }}
       </button>
     </template>
+    <span v-else-if="inRoom" class="eyebrow coach-nav-lead">
+      No history came with these codes — what you see is what was typed.
+    </span>
     <button
       v-else
       type="button"

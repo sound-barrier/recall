@@ -14,7 +14,9 @@ const props = withDefaults(defineProps<{
   handle?: string
   /** True while no handle is confirmed at all, which is the blocking case. */
   unconfirmed?: boolean
-}>(), { handle: '', unconfirmed: false })
+  /** Where the corpus came from — a codes coach has no bundle to be told about. */
+  source?: 'bundle' | 'replay'
+}>(), { handle: '', unconfirmed: false, source: 'bundle' })
 
 const emit = defineEmits<{
   confirm: [handle: string]
@@ -41,10 +43,18 @@ function confirm(): void {
       Who is this?
     </h3>
     <p class="identity-copy">
-      <template v-if="unconfirmed">
+      <template v-if="unconfirmed && source === 'replay'">
+        Nothing said who these codes are about. Notes are filed under the
+        name you give here and come back the next time you review this
+        player — nothing can be saved until then.
+      </template>
+      <template v-else-if="unconfirmed">
         This bundle did not say who it belongs to. Notes are filed under the
-        name you give here and come back the next time you open their bundle —
-        nothing can be saved until then.
+        name you give here and come back the next time you review this
+        player — nothing can be saved until then.
+      </template>
+      <template v-else-if="source === 'replay'">
+        Change the name and the notes re-file under the corrected player.
       </template>
       <template v-else>
         The bundle suggested this name. Change it and the notes re-file under

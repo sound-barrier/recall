@@ -21,6 +21,15 @@ const addBtn = () => screen.getByRole('button', { name: 'Add' })
 const startBtn = () => screen.getByRole('button', { name: 'Start review' })
 
 describe('CoachFromCodesModal', () => {
+  // One name end to end: the button that opened it is the name it wears.
+  it('wears the name of the button that opened it', () => {
+    renderModal()
+    expect(screen.getByRole('dialog', { name: 'Use a replay code' })).toBeInTheDocument()
+    expect(screen.getByText(/Recall can't show anything from a code/)).toBeInTheDocument()
+    expect(screen.getByText(/how the player's Recall finds the match/)).toBeInTheDocument()
+    expect(screen.getByText(/Add at least one code to start/)).toBeInTheDocument()
+  })
+
   it('cannot start a review of nothing', () => {
     renderModal()
     expect(startBtn()).toBeDisabled()

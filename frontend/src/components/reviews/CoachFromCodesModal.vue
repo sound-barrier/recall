@@ -76,18 +76,22 @@ useModalFocusTrap(open, {
     <div class="sheet-backdrop" aria-hidden="true" @click="open = false" />
     <form class="sheet-box coach-codes-box" @submit.prevent="startReview">
       <p class="eyebrow accent sheet-fixed">
-        Review by replay code
+        Coaching
       </p>
-      <h2 id="coach-codes-title" class="sheet-title">
-        Coach from a replay code
+      <h2 id="coach-codes-title" class="sheet-fixed coach-codes-title">
+        Use a replay code
       </h2>
       <p class="sheet-lede">
-        Add the codes you were given. You will watch each replay in Overwatch
-        and write your notes here, then hand back a file — or a single page —
-        for the player to read.
+        Add the codes you were given. Recall can't show anything from a code —
+        you'll watch each replay in Overwatch and fill in what you saw
+        yourself — then hand back a file, or a single page, for the player
+        to read.
       </p>
 
       <label class="eyebrow coach-codes-label" for="coach-code-input">Replay code</label>
+      <p class="sheet-note coach-codes-check">
+        Double-check each code: it's how the player's Recall finds the match.
+      </p>
       <div class="coach-codes-entry">
         <input
           id="coach-code-input"
@@ -121,7 +125,8 @@ useModalFocusTrap(open, {
         </li>
       </ul>
       <p v-else class="sheet-note">
-        No codes yet. You can add more once the review is under way.
+        Add at least one code to start — more can join while the review is
+        under way.
       </p>
 
       <div class="sheet-actions">
@@ -137,6 +142,27 @@ useModalFocusTrap(open, {
 </template>
 
 <style scoped>
+/* The send dialog's grammar — same width cap, same display title — so the
+   tab's two sibling dialogs read as one product. */
+.coach-codes-box {
+  width: min(32rem, 100%);
+}
+
+.coach-codes-title {
+  margin: 0.2rem 0 0;
+  font-family: var(--display);
+  font-size: var(--type-7xl);
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text);
+  text-transform: uppercase;
+}
+
+.coach-codes-check {
+  margin: 0.15rem 0 0.35rem;
+}
+
 .coach-codes-label {
   display: block;
   margin-bottom: var(--space-1);
@@ -172,7 +198,11 @@ useModalFocusTrap(open, {
 .coach-code-remove {
   appearance: none;
   border: 0;
-  padding: 0;
+
+  /* A padded hit area: removing a mistyped code is the exact correction
+     this dialog exists for, and a bare glyph made it a precision click. */
+  padding: 0.25rem 0.45rem;
+  margin: -0.25rem -0.3rem -0.25rem -0.15rem;
   background: none;
   color: inherit;
   cursor: pointer;

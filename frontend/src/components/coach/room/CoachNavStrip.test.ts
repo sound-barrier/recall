@@ -43,8 +43,11 @@ beforeEach(() => {
 
 // 'reviews' IS the room while a session is open — the strip's "in the room"
 // and "on the Reviews tab" are the same fact.
-function renderStrip(startView: 'reviews' | 'matches' | 'settings') {
-  seedQuery(qk.coach.session, view())
+function renderStrip(
+  startView: 'reviews' | 'matches' | 'settings',
+  sessionOver: Partial<ReturnType<typeof view>> = {},
+) {
+  seedQuery(qk.coach.session, { ...view(), ...sessionOver })
   const coach = useCoachStore()
   const app = useAppStore()
   app.view = startView
@@ -94,5 +97,26 @@ describe('CoachNavStrip — on a tab', () => {
     const { goToView } = renderStrip('settings')
     await fireEvent.click(screen.getByRole('button', { name: /Back to the film room/ }))
     expect(goToView).toHaveBeenCalledWith('reviews')
+  })
+
+})
+
+describe('CoachNavStrip — a codes session', () => {
+  // The doors would open onto charts over blank replay stubs: no history
+  // came with six characters, and empty views read as the app being broken.
+  it('closes the doors into history that never arrived', () => {
+    renderStrip('reviews', { source: 'replay' })
+
+    expect(screen.getByText(/No history came with these codes/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Matches' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Trends' })).not.toBeInTheDocument()
+  })
+})
+
+describe('CoachNavStrip — before a handle is confirmed', () => {
+  it("never renders a dangling possessive", () => {
+    renderStrip('reviews', { player: { id: '', handle: '', message: '' }, handle_from_bundle: false })
+
+    expect(screen.getByText("Step into the player's:")).toBeInTheDocument()
   })
 })
