@@ -85,7 +85,7 @@ describe('CoachSessionSheet', () => {
 
   it('exports and ends the session through its own affordances', async () => {
     const view = renderSheet()
-    await fireEvent.click(screen.getByRole('button', { name: '1 · Export notes' }))
+    await fireEvent.click(screen.getByRole('button', { name: /^1 · Export notes file/ }))
     await fireEvent.click(screen.getByRole('button', { name: '2 · End session' }))
     expect(view.emitted('export')).toHaveLength(1)
     expect(view.emitted('end')).toHaveLength(1)
@@ -93,8 +93,24 @@ describe('CoachSessionSheet', () => {
 
   it('disables Export with the reason it cannot run yet', () => {
     renderSheet({ canExport: false, exportReason: 'Set a coach name in Settings first.' })
-    const button = screen.getByRole('button', { name: '1 · Export notes' })
+    const button = screen.getByRole('button', { name: /^1 · Export notes file/ })
     expect(button).toBeDisabled()
     expect(button).toHaveAttribute('title', 'Set a coach name in Settings first.')
+    // And in visible text — a hover title reaches nobody on a keyboard.
+    expect(screen.getByText('Set a coach name in Settings first.')).toBeInTheDocument()
+  })
+
+  // The pairing the loan slip offers, here where the export decision is
+  // framed: without it a coach whose player does not run Recall never
+  // learned the browser-openable page existed.
+  it('offers the one-page copy beside the notes file', async () => {
+    const view = renderSheet()
+    await fireEvent.click(screen.getByRole('button', { name: /Save a web page/ }))
+    expect(view.emitted('export-sheet')).toHaveLength(1)
+  })
+
+  it('holds the one-page copy behind the same gate as the file', () => {
+    renderSheet({ canExport: false, exportReason: 'Set a coach name in Settings first.' })
+    expect(screen.getByRole('button', { name: /Save a web page/ })).toBeDisabled()
   })
 })

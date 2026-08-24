@@ -85,6 +85,7 @@ const { onCopyReplayCode: copyReplayCode } = useMatchActions()
       @update-focus-items="coachStore.updateFocusItems"
       @confirm-player="coachStore.setPlayerHandle"
       @export="coachStore.exportNotes"
+      @export-sheet="coachStore.exportSheet"
       @end="coachStore.requestEndSession"
       @keep-working="coachStore.cancelEndSession"
     />

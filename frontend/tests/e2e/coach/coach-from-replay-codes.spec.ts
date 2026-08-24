@@ -248,4 +248,53 @@ test.describe('coaching from replay codes', () => {
     await expect.poll(() => mock.context()?.hero).toBe('Ana')
     await expect.poll(() => mock.context()?.map).toBe('Ilios')
   })
+
+  // The flow wears ONE name — the button's — through the dialog too, and a
+  // codes session closes the doors into history that never arrived: the
+  // masthead's "Step into X's: Matches / Trends…" over a corpus of blank
+  // replay stubs renders empty views that read as the app being broken.
+  test('the door wears one name, and no empty history is offered', async ({ page }) => {
+    await mockReplaySession(page)
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Reviews/ }).click()
+    await page.getByRole('button', { name: /Use a replay code/ }).click()
+    await expect(page.getByRole('dialog', { name: 'Use a replay code' })).toBeVisible()
+
+    await addCode(page, CODE_A)
+    await page.getByRole('button', { name: 'Start review' }).click()
+    await confirmPlayer(page, 'Sable')
+
+    const strip = page.getByRole('navigation', { name: 'Coaching session' })
+    await expect(strip.getByText(/No history came with these codes/)).toBeVisible()
+    await expect(strip.getByRole('button', { name: 'Matches' })).toHaveCount(0)
+    await expect(strip.getByRole('button', { name: 'Trends' })).toHaveCount(0)
+  })
+
+  // "Save a web page" hands the player the same document the notes file
+  // carries — so it must count as handing something over. It used to leave
+  // dirtySinceExport standing, and End then warned "notes not exported":
+  // a false statement at the scariest moment of the flow.
+  test('saving the one-page sheet counts as handing the notes over', async ({ page }) => {
+    await mockReplaySession(page)
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Reviews/ }).click()
+    await page.getByRole('button', { name: /Use a replay code/ }).click()
+    await addCode(page, CODE_A)
+    await page.getByRole('button', { name: 'Start review' }).click()
+    await confirmPlayer(page, 'Sable')
+
+    const editor = page.getByRole('textbox', { name: /note/i }).first()
+    await editor.click()
+    await page.keyboard.type('Hold the high ground until their dive commits.')
+    await editor.blur()
+
+    const downloading = page.waitForEvent('download')
+    await page.getByRole('button', { name: /Save a web page/ }).first().click()
+    await downloading
+    await expect(page.getByText(/Notes saved to/).first()).toBeVisible()
+
+    await page.getByRole('button', { name: /End session/ }).first().click()
+    await expect(page.getByRole('button', { name: /End anyway/ })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Use a replay code/ })).toBeVisible()
+  })
 })

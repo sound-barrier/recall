@@ -450,7 +450,17 @@ export const useCoachStore = defineStore('coach', () => {
     try {
       const handle = session.value?.player?.handle || 'player'
       const name = `recall-review-${handle}-${session.value?.session_date ?? ''}.html`
-      await ExportCoachSheet(await renderSheet(), name)
+      const saved = await ExportCoachSheet(await renderSheet(), name)
+      // "" is a canceled native dialog — nothing written, nothing changes.
+      if (!saved) return
+      // The page IS the hand-over for a player who does not run Recall —
+      // the documented codes-session path. Leaving dirtySinceExport set
+      // made End warn "notes not exported" at a coach who had just
+      // exported them, the flow's one false statement at its scariest
+      // moment. Same receipt as the notes file, for the same reason.
+      dirtySinceExport.value = false
+      endArmed.value = false
+      exportedTo.value = saved
     } catch (e) {
       useAppStore().setErrorFromRaw(String(e))
     }

@@ -103,7 +103,7 @@ test.describe('the sheet a coach hands over', () => {
 
     // The real path: the button, the blob, the file on disk.
     const downloading = page.waitForEvent('download')
-    await page.getByRole('button', { name: /save it as one page/i }).click()
+    await page.getByRole('button', { name: /Save a web page/ }).first().click()
     const download = await downloading
     const path = await download.path()
     const { readFileSync } = await import('node:fs')
