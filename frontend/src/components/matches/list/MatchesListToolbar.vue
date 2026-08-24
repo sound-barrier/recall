@@ -45,7 +45,7 @@ const emit = defineEmits<{
   // Merge matches from a shared bundle (.zip), or open a coach's returned
   // notes — one affordance takes both, and the server sniffs which. Additive
   // — the counterpart to
-  // the selection-only "Export bundle" in the bulk action bar.
+  // the selection-only "Export backup" in the bulk action bar.
   'import-matches': []
   // Fold / unfold every group section at once.
   'expand-all': []

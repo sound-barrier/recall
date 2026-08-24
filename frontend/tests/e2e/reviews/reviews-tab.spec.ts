@@ -73,7 +73,7 @@ test.describe('07 Reviews — the tab', () => {
     await expect(panel(page).getByRole('heading', { name: 'Your reviews' })).toBeVisible()
     // Sections are numbered because they are an arc: you → a coach → someone
     // else. Each carries its action whether or not it is empty.
-    await expect(panel(page).getByRole('heading', { name: 'From a coach' })).toBeVisible()
+    await expect(panel(page).getByRole('heading', { name: 'With a coach' })).toBeVisible()
     await expect(panel(page).getByRole('button', { name: /send to a coach/i }).first()).toBeVisible()
     // The other way notes arrive is permanent, not a hint that deletes
     // itself after the first review.
@@ -236,7 +236,7 @@ test.describe('07 Reviews — the tab', () => {
     await expect(panel(page).getByText(/No coach has looked yet/)).toHaveCount(0)
     const row = panel(page).getByText(/None of these notes are on your matches/)
     await expect(row).toBeVisible()
-    await panel(page).getByRole('button', { name: 'Read again' }).click()
+    await panel(page).getByRole('button', { name: 'Read the notes again' }).click()
     await expect(page.getByRole('dialog', { name: new RegExp(`Notes from ${COACH_NAME}`) })).toBeVisible()
   })
 
@@ -276,6 +276,6 @@ test.describe('07 Reviews — the tab', () => {
     await expect(panel(page).locator('#film-room')).toBeVisible()
     await expect(loanSlip(page)).toBeVisible()
     // The index is not shown underneath the room.
-    await expect(panel(page).getByRole('heading', { name: 'From a coach' })).toHaveCount(0)
+    await expect(panel(page).getByRole('heading', { name: 'With a coach' })).toHaveCount(0)
   })
 })

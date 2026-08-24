@@ -667,7 +667,7 @@ describe('MatchesView — CSV export', () => {
     const spy = vi.spyOn(store, 'onExportBundleRequest').mockResolvedValue(undefined)
 
     await user().click(leafChecks()[0]!)
-    await user().click(inBulkBar().getByRole('button', { name: /Export bundle/ }))
+    await user().click(inBulkBar().getByRole('button', { name: /Export backup/ }))
     expect(spy).toHaveBeenCalledWith(['k1'])
   })
 })

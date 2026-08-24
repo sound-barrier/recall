@@ -42,7 +42,7 @@ describe('BulkActionBar', () => {
       const { emitted } = renderBar()
       await fireEvent.click(screen.getByRole('button', { name: 'Hide' }))
       await fireEvent.click(screen.getByRole('button', { name: 'Review these (3)' }))
-      await fireEvent.click(screen.getByRole('button', { name: 'Export bundle…' }))
+      await fireEvent.click(screen.getByRole('button', { name: 'Export backup…' }))
       await fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }))
       await fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
       expect(emitted('hide')).toHaveLength(1)

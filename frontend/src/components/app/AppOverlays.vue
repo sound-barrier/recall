@@ -259,8 +259,8 @@ const lightboxSrc = computed(() => {
     @pick-custom-source="onFirstRunPickCustomSource"
   />
 
-  <!-- Export bundle modal — opens from the Matches bulk-action bar's
-       "Export bundle…" button. -->
+  <!-- Export backup modal — opens from the Matches bulk-action bar's
+       "Export backup…" button. -->
   <ExportBundleModal
     :open="exportBundleOpen"
     :selected-count="exportBundleSelectedKeys.length"

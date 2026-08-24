@@ -4,7 +4,7 @@ import { computed, nextTick, onBeforeUnmount, ref, toRef, watch } from 'vue'
 import { useScrollLock } from '@/composables/shared/keyboard/useScrollLock'
 import type { ExportBundleRequest } from '@/composables/matches/useExportBundle'
 
-// Selection-aware "Export bundle" modal — a BACKUP, and only that. Opens
+// Selection-aware "Export backup" modal — a BACKUP, and only that. Opens
 // from the MatchesView bulk-action bar; confirms the destination filename
 // and optionally folds in every hidden or unknown match. useExportBundle
 // dispatches the save via api.ts ExportBundle (Wails native dialog or
@@ -44,7 +44,7 @@ function defaultFilename(): string {
   const d = new Date()
   const pad = (n: number) => String(n).padStart(2, '0')
   return (
-    'recall-bundle-' +
+    'recall-backup-' +
     `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-` +
     `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.zip`
   )
@@ -65,7 +65,7 @@ const lastFocus = ref<HTMLElement | null>(null)
 //
 // `immediate` is load-bearing, not tidiness: this component is a
 // defineAsyncComponent overlay, so it can mount with `open` ALREADY
-// true (the chunk resolving after the user clicked "Export bundle…").
+// true (the chunk resolving after the user clicked "Export backup…").
 // Without it the open transition is never observed on that path and the
 // Esc handler, the Tab trap, and the focus hand-off are all never wired.
 // An immediate run with open=false is a no-op: `prev` is undefined, so
@@ -177,11 +177,12 @@ onBeforeUnmount(() => {
         Data &amp; Export
       </p>
       <h2 id="export-bundle-title" class="sheet-fixed export-bundle-title">
-        Export bundle
+        Export backup
       </h2>
       <p id="export-bundle-desc" class="sheet-fixed export-bundle-desc">
-        A <code>.zip</code> containing each match's JSON data and
-        every referenced screenshot.
+        A backup <code>.zip</code> of each match's JSON data and every
+        referenced screenshot — for you, not for a coach (that is
+        "Send to a coach…" on the Reviews tab).
         Restores via Settings → Backup &amp; Restore.
       </p>
 

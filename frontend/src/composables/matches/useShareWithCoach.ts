@@ -28,6 +28,12 @@ export interface ShareSubmission {
   filename: string
 }
 
+/** The half-written dialog — what survives the fix round-trip. */
+export interface ShareDraft {
+  handle: string
+  message: string
+}
+
 export interface ShareWithCoachDeps {
   /** The records the keys are resolved against. */
   records: Ref<MatchRecord[]>
@@ -50,6 +56,11 @@ const SUBJECT: Record<ShareOrigin, (n: number) => string> = {
 export function useShareWithCoach(deps: ShareWithCoachDeps) {
   const shareOpen = ref(false)
   const shareKeys = ref<string[]>([])
+  // The typed handle and message. Held HERE rather than in the dialog so
+  // the sanctioned remediation path — "Show the N on Matches", fix the
+  // codes, come back — does not eat the words. Cleared on the two real
+  // endings: an explicit close, and a send that succeeded.
+  const shareDraft = ref<ShareDraft | null>(null)
   const shareOrigin = ref<ShareOrigin>('selection')
   const shareBusy = ref(false)
   // Bumped on every open, so a send can tell whether the dialog it is
@@ -95,6 +106,12 @@ export function useShareWithCoach(deps: ShareWithCoachDeps) {
 
   function closeShare(): void {
     shareOpen.value = false
+    shareDraft.value = null
+  }
+
+  /** The dialog reports every keystroke; the draft is whatever was last typed. */
+  function stashShareDraft(draft: ShareDraft): void {
+    shareDraft.value = draft
   }
 
   /** Put the blockers on screen, and get out of the way. */
@@ -139,6 +156,7 @@ export function useShareWithCoach(deps: ShareWithCoachDeps) {
       if (token === openToken) {
         shareOpen.value = false
         shareKeys.value = []
+        shareDraft.value = null
       }
     }
   }
@@ -146,6 +164,8 @@ export function useShareWithCoach(deps: ShareWithCoachDeps) {
   return {
     shareOpen,
     shareKeys,
+    shareDraft,
+    stashShareDraft,
     shareOrigin,
     shareBusy,
     shareManifest,

@@ -91,6 +91,51 @@ test.describe('sending matches to a coach', () => {
     await expect(dialog(page)).toHaveCount(0)
   })
 
+  // The fix box is the sanctioned remediation path, and the message field
+  // sits above it — so the natural order is: type, discover the block, take
+  // the door, fix, come back. The words must still be there.
+  test('the typed message and handle survive the fix round-trip', async ({ page }) => {
+    await page.goto('/')
+    await reviewsTab(page).click()
+    await page.getByRole('button', { name: /Send to a coach…/ }).click()
+
+    await dialog(page).getByRole('textbox', { name: /Your handle/ }).fill('Sable#1234')
+    await dialog(page).getByRole('textbox', { name: /Message for your coach/ })
+      .fill('Look at my ult timing on the Dorado loss.')
+    await dialog(page).getByRole('button', { name: /Show the 2 on Matches/ }).click()
+    await expect(matchesTab(page)).toHaveAttribute('aria-selected', 'true')
+
+    await reviewsTab(page).click()
+    await page.getByRole('button', { name: /Send to a coach…/ }).click()
+    await expect(dialog(page).getByRole('textbox', { name: /Your handle/ })).toHaveValue('Sable#1234')
+    await expect(dialog(page).getByRole('textbox', { name: /Message for your coach/ }))
+      .toHaveValue('Look at my ult timing on the Dorado loss.')
+
+    // An explicit Cancel is a decision — the draft goes with it.
+    await dialog(page).getByRole('button', { name: 'Cancel' }).click()
+    await page.getByRole('button', { name: /Send to a coach…/ }).click()
+    await expect(dialog(page).getByRole('textbox', { name: /Your handle/ })).not.toHaveValue('Sable#1234')
+  })
+
+  // The manifest exists so the player sees exactly what is going to another
+  // human BEFORE pressing Send; the pinned-actions design guarantees a cut
+  // at some height, so the cut must be visible.
+  test('a cut-off manifest says there is more below the fold', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 560 })
+    await page.goto('/')
+    await reviewsTab(page).click()
+    await page.getByRole('button', { name: /Send to a coach…/ }).click()
+
+    const cue = dialog(page).locator('.send-to-coach-scroll-cue')
+    await expect(cue).toBeVisible()
+
+    // Scrolled to the end, nothing is hidden and the cue stands down.
+    await dialog(page).locator('.sheet-body').evaluate((el) => {
+      el.scrollTop = el.scrollHeight
+    })
+    await expect(cue).toBeHidden()
+  })
+
   test('a match with a code reads as ready', async ({ page }) => {
     await seedWithOneCode(page)
     await page.goto('/')

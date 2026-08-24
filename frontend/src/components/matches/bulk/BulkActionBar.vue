@@ -166,7 +166,7 @@ function pickTag(v: string) {
         @click="emit('exportBundle')"
       >
         <span class="bab-btn-glyph" aria-hidden="true">📦</span>
-        Export bundle…
+        Export backup…
       </button>
       <button
         type="button"
