@@ -20,14 +20,18 @@
 
 /* The unmarked variant is the SECONDARY action. It carried no fill and
    no border — literally invisible on Day's cream, a label pretending to
-   be dead space beside the primary it ranks under. */
-.btn:not(.primary, .ghost) {
+   be dead space beside the primary it ranks under. Every fill-carrying
+   variant is excluded by NAME: the hover rule below weighs (0,4,0),
+   which out-cascades a variant's own (0,2,0) base fill — an unlisted
+   .danger went cream mid-hover, an illegible destructive confirm at the
+   exact moment of interaction. */
+.btn:not(.primary, .ghost, .danger, .danger-outline, .alert-cta) {
   background: var(--surface-3);
   color: var(--text);
   border-color: var(--border-strong);
 }
 
-.btn:not(.primary, .ghost):hover:not(:disabled) {
+.btn:not(.primary, .ghost, .danger, .danger-outline, .alert-cta):hover:not(:disabled) {
   background: var(--surface-2);
   border-color: var(--btn-ghost-border);
 }
