@@ -229,7 +229,7 @@ export function ExportBundle(opts: {
         ...(opts.share ? { share: opts.share } : {}),
       },
     }),
-    chosen || `recall-${opts.share ? 'share' : 'bundle'}-${tsFilenameStamp()}.zip`,
+    chosen || `recall-${opts.share ? 'share' : 'backup'}-${tsFilenameStamp()}.zip`,
     chosen !== '',
   )
 }
@@ -243,7 +243,7 @@ function saveBundleNatively(opts: {
 }): Promise<string> {
   // The filename travels even though the native dialog owns the naming: it
   // is what the dialog OPENS with, and hard-coding it there meant a share
-  // was offered as `recall-bundle-...` while the modal beside it said
+  // was offered under the backup's stem while the modal beside it said
   // `recall-share-...` — the one distinction that tells a coach's copy from
   // the player's own backups later.
   const selection = [opts.matchKeys, opts.includeUnknown, opts.includeHidden] as const

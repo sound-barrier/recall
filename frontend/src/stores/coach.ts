@@ -409,6 +409,17 @@ export const useCoachStore = defineStore('coach', () => {
   /** False while the archive would be unsigned, unaddressed or incomplete. */
   const canExportNotes = computed(() => exportBlockedReason.value === '')
 
+  // The armed End names what is actually at risk. After a deliberate page
+  // save with a note the server never took, "notes not exported" is false
+  // — the receipt above it says saved — so the button names the real
+  // danger instead: the note that never landed.
+  const endArmedLabel = computed(() => (hasFailedSaves.value
+    ? 'End anyway — a note never saved'
+    : 'End anyway — notes not exported'))
+  const endArmedTitle = computed(() => (hasFailedSaves.value
+    ? 'A note could not be saved to the session — ending now loses its server copy'
+    : 'These notes have not been exported yet'))
+
   // An archive missing a note is worse than a refused export: it also clears
   // `dirtySinceExport`, so the "not exported yet" warning goes with the note.
   // The flush is the retry — only a failure that survives it refuses.
@@ -458,7 +469,6 @@ export const useCoachStore = defineStore('coach', () => {
     // between that loss and silence. exportNotes re-checks after its
     // flush for exactly this window.
     const sessionIncomplete = hasFailedSaves.value
-    if (sessionIncomplete) useAppStore().setError(UNSAVED_SHEET_REASON)
     try {
       const handle = session.value?.player?.handle || 'player'
       const name = `recall-review-${handle}-${session.value?.session_date ?? ''}.html`
@@ -466,7 +476,12 @@ export const useCoachStore = defineStore('coach', () => {
       // "" is a canceled native dialog — nothing written, nothing changes.
       if (!saved) return
       exportedTo.value = saved
-      if (sessionIncomplete) return
+      // Only now — a canceled dialog must not leave a banner claiming a
+      // saved page exists.
+      if (sessionIncomplete) {
+        useAppStore().setError(UNSAVED_SHEET_REASON)
+        return
+      }
       // The page IS the hand-over for a player who does not run Recall —
       // the documented codes-session path. Leaving dirtySinceExport set
       // made End warn "notes not exported" at a coach who had just
@@ -549,6 +564,8 @@ export const useCoachStore = defineStore('coach', () => {
     selectKey,
     updateNote,
     endArmed,
+    endArmedLabel,
+    endArmedTitle,
     exportedTo,
     requestEndSession,
     cancelEndSession,

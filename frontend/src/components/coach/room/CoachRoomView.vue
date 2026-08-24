@@ -36,6 +36,8 @@ const props = withDefaults(defineProps<{
   coachName?: string
   /** True once ending has been asked about and not yet confirmed. */
   endArmed?: boolean
+  /** What the armed End says — state-aware, threaded to the sheet. */
+  endArmedLabel?: string
   canExport?: boolean
   exportReason?: string
   labels?: CoachLabels
@@ -65,7 +67,7 @@ const props = withDefaults(defineProps<{
   focusItems: () => [],
   coachName: '',
   saveStateFor: (): CoachSaveState => 'idle',
-  endArmed: false,
+  endArmed: false, endArmedLabel: 'End anyway — notes not exported',
   canExport: true,
   exportReason: undefined,
   labels: () => DEFAULT_COACH_LABELS,
@@ -234,6 +236,7 @@ function step(key: string | null): void {
           :focus-items="api.focusItems()"
           :focus-save-state="api.saveStateFor(FOCUS_SAVE_KEY)"
           :end-armed="endArmed"
+          :end-armed-label="endArmedLabel"
           :can-export="canExport"
           :export-reason="exportReason"
           :blocked-reason="blockedReason"

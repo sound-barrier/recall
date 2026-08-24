@@ -144,6 +144,10 @@ export function useShareWithCoach(deps: ShareWithCoachDeps) {
       // so there is nothing to report and nothing to record.
       if (saved) {
         deps.onSaved(`Sent: ${saved}`)
+        // The send succeeded — the words did their job and the draft dies.
+        // ONLY here: a failed send and a dismissed save dialog are exactly
+        // the retry paths the stash exists for.
+        shareDraft.value = null
         // The sent ledger is Reviews-tab-gated with staleTime Infinity, so a
         // refetch of it would be silently skipped while the tab is off
         // screen. Invalidating is honored the moment it comes back.
@@ -156,7 +160,6 @@ export function useShareWithCoach(deps: ShareWithCoachDeps) {
       if (token === openToken) {
         shareOpen.value = false
         shareKeys.value = []
-        shareDraft.value = null
       }
     }
   }

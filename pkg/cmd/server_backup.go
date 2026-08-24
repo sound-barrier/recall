@@ -147,10 +147,12 @@ func handleExportBundle(a *app.App) http.HandlerFunc {
 		// The receipt, now that the bytes exist and are being handed to the
 		// browser — the closest to "it left" a server can know (the download
 		// path is the browser's business, hence no saved_path here).
+		stem := "backup"
 		if req.share != nil {
 			a.RecordShareReceipt(*req.share, "", req.opts.MatchKeys)
+			stem = "share"
 		}
-		fname := "recall-bundle-" + time.Now().UTC().Format("20060102-150405") + ".zip"
+		fname := "recall-" + stem + "-" + time.Now().UTC().Format("20060102-150405") + ".zip"
 		w.Header().Set("Content-Type", "application/zip")
 		w.Header().Set("Content-Disposition", `attachment; filename="`+fname+`"`)
 		_, _ = w.Write(data)

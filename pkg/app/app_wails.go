@@ -251,14 +251,20 @@ func bundleSelection(matchKeys []string, includeUnknown, includeHidden bool) Exp
 // suggests `recall-share-<ts>.zip` for a share precisely so the two can be
 // told apart later on the coach's disk among the player's own backups.
 func (a *App) saveBundleDialog(opts ExportBundleOptions, player *SharePlayer, filename string) (string, error) {
+	// "bundle" names only the coach-share artifact; the plain export is a
+	// backup, and its dialog chrome and fallback stem must say so.
+	stem, chrome := "backup", "Save Recall backup"
+	if player != nil {
+		stem, chrome = "share", "Save the bundle for your coach"
+	}
 	defaultName := strings.TrimSpace(filename)
 	if defaultName == "" {
-		defaultName = "recall-bundle-" + time.Now().UTC().Format("20060102-150405") + ".zip"
+		defaultName = "recall-" + stem + "-" + time.Now().UTC().Format("20060102-150405") + ".zip"
 	}
 	path, err := application.Get().Dialog.SaveFile().
-		SetMessage("Save Recall bundle").
+		SetMessage(chrome).
 		SetFilename(defaultName).
-		AddFilter("Recall bundle (ZIP)", "*.zip").
+		AddFilter("Recall archive (ZIP)", "*.zip").
 		AddFilter("All files", "*").
 		PromptForSingleSelection()
 	if err != nil {

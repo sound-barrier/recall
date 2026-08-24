@@ -81,6 +81,7 @@ const { onCopyReplayCode: copyReplayCode } = useMatchActions()
       :export-reason="coachStore.exportBlockedReason || undefined"
       :labels="coachLabels"
       :end-armed="coachStore.endArmed"
+      :end-armed-label="coachStore.endArmedLabel"
       @copy-replay="coachStore.copyReplayCode"
       @update-focus-items="coachStore.updateFocusItems"
       @confirm-player="coachStore.setPlayerHandle"

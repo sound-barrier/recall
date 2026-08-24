@@ -51,7 +51,7 @@ describe('App.vue lazy-loaded components', () => {
     // of its bytes should only be paid by users who actually see it.
     { name: 'FirstRunProfileModal',   path: '@/components/app/FirstRunProfileModal.vue' },
     // Export bundle modal — only renders when the user clicks
-    // "Export bundle…" on the Matches bulk-action bar.
+    // "Export backup…" on the Matches bulk-action bar.
     { name: 'ExportBundleModal',      path: '@/components/matches/export/ExportBundleModal.vue' },
     // Send to a coach — the outbound leg of the review cycle. Lazy for the
     // same reason: nobody who never sends a bundle should carry its bytes.
