@@ -366,7 +366,7 @@ lefthook install        # wires the hooks into .git/hooks/{pre-commit,pre-push,c
 | `test-skips`     | `pkg/**/*_test.go`              | `scripts/ci/check-test-skips.sh` — every `t.Skip` must be on the allow-list |
 | `actionlint`     | `.github/workflows/*`           | `actionlint` + the SHA-pin policy check |
 
-Moved to CI-only (and `task verify`): the coverage gate, bundle-size budget, Playwright smoke subset, schemathesis API-drift fuzz, semgrep, complexity report, deadcode + knip, and the whole-project golangci/ESLint/vue-tsc sweeps. **Ratchet policy** (unchanged): every release is a chance to bump `GO_COVERAGE_MIN` upward by `floor(current) - 2` to lock in new coverage — the gate now lives in CI's coverage jobs + `task verify`.
+Moved to CI-only (and `task verify`): the coverage gate, bundle-size budget, Playwright smoke subset, schemathesis API-drift fuzz, complexity report, Go deadcode, and the whole-project golangci/ESLint/vue-tsc sweeps. Semgrep and knip are NOT in that list — both are in `task lint`: semgrep always was, and knip joined it in 2026-08 because it needs 1.7s and no build, so there was never a reason for it to share a bucket with the two gates that genuinely require one. **Ratchet policy** (unchanged): every release is a chance to bump `GO_COVERAGE_MIN` upward by `floor(current) - 2` to lock in new coverage — the gate now lives in CI's coverage jobs + `task verify`.
 
 If a tool isn't installed, the corresponding hook fails — install it (or skip the hook for one push/commit, see below).
 

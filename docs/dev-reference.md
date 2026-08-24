@@ -37,7 +37,7 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 | `eval "$(mise activate zsh)"` | One-time shell hook (or `bash`) so the toolchain + `RECALL_DATA_DIR` load automatically on `cd`. |
 | `cd frontend && npm ci` | Install frontend deps (required after clone / `task clean`). |
 | `task fmt` | Go (`golangci-lint fmt` — gci import groups + gofmt -s) + shell (`shfmt -w -i 2 -ci -bn`). Sub-targets `fmt-go`, `fmt-shell`. |
-| `task lint` | golangci-lint (both tags), ESLint, Stylelint, HTMLHint, shellcheck + shfmt diff, yamllint, taplo (TOML), sqlfluff (SQL), Biome (JSON), Spectral. |
+| `task lint` | golangci-lint (both tags), ESLint, Stylelint, HTMLHint, shellcheck + shfmt diff, yamllint, taplo (TOML), sqlfluff (SQL), Biome (JSON), Spectral, typos, markdownlint, actionlint, semgrep — plus the structural gates: dependency-cruiser (`lint-arch`), jscpd (`lint-dupes`), knip (`dead-code-ts`), `check-doc-paths`, `check-test-exports`. NOT the bundle budget or the API-drift fuzz: those need a build or a server, so they live in `task verify` and CI. |
 | `task clean` | Remove `dist/`, `build/bin/`, `frontend/{dist,node_modules}`. |
 | `task update-deps` | `go get -u ./...` + `go mod tidy` + `npm update`. |
 | `task check-deps` | Compare pinned tools vs latest. |

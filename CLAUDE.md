@@ -338,6 +338,15 @@ behavior does.
 touched, also run `task test-e2e`. Never present work as complete while the
 build is red or tests are failing — say what's broken and why instead.
 
+**`task lint` green is not CI green.** Two gates cannot live in it, because
+both need a production build or a running server: the **bundle-size budget**
+(`scripts/ci/check-bundle-size.sh`) and the **schemathesis API-drift fuzz**.
+Both fail in CI on a branch that lints clean locally, and both have done
+exactly that. Before opening a PR that touched the frontend or `api/`, run
+**`task verify`** — the full local battery, including those two plus the
+coverage gate and the Playwright smoke subset. (`task cover` is the narrower
+must-run before any PR; the full catalog is in `docs/dev-reference.md`.)
+
 ### What to avoid
 
 The quick list; see **Code smells** above for the full catalog and what's
