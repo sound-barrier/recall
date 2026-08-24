@@ -4,7 +4,7 @@ Three ways to look hard at a set of matches, and one place for all of
 them — the **07 Reviews** tab (`g r`):
 
 - **Review yourself.** Sit down with a handful of your own games in the
-  film room, the way a coach would, and keep the sitting.
+  film room, the way a coach would, and keep the review.
 - **Get coached.** Hand your matches to someone else and read what comes
   back. Two files, passed between two copies of Recall — no account, no
   server, nothing uploaded. You send a bundle; they send notes; you decide
@@ -69,8 +69,8 @@ A share bundle is a `.zip` containing, **for the matches you selected**:
 - your own journal layer: notes you wrote, the moments you marked, tags,
   squad members you named, anyone you marked as a leaver or thrower, and
   replay codes
-- your own reviews of those matches — the sittings above, notes and
-  moments included, so a coach reads what you already noticed
+- your own reviews of those matches — notes and moments included, so a
+  coach reads what you already noticed
 - any review an earlier coach sent back and you accepted — a second coach
   sees the first one's notes
 - your handle, and a message to the coach if you write one
@@ -91,33 +91,57 @@ bundle is exactly the matches you tick, and nothing else.
 
 ### 1. Pick the matches
 
-Go to **Matches**, tick the rows you want reviewed. A bar appears at the
-bottom with **Export bundle…** — or, from the Reviews tab, **Share with
-a coach…** (its label carries the live count of what would go) takes you
-to Matches and opens the same dialog over the set showing there, already
-set to share.
-
 Pick the matches you have a question about. A coach reading forty games
 gives you forty shallow notes; a coach reading six gives you six useful
 ones.
 
-### 2. Share it
+One hard requirement, worth knowing before you pick: **every match you
+send needs its replay code.** A coach reviews by *watching the replay*,
+so a match without a code is a match they cannot act on — the send
+refuses until each one has its code. Codes live in the match's journal;
+the easiest habit is writing each one down right after the game, while
+Overwatch still shows it. (The dialog names any match that is missing
+one and offers **Show the N on Matches →** to go fix them; what you had
+typed is still there when you come back.)
 
-In the dialog, tick **Share with a coach**. That changes what the file
-IS — it stamps your handle on it so their Recall can open it as a
-session rather than merging it into their own history.
+Four doors, all landing in the same dialog:
 
-- **Your handle (required)** — the name your coach knows you by. Filled
-  in from the last time you shared; you can also set it in Settings →
-  Coaching.
+- **Send to a coach…** on the Reviews tab, under *02 · With a coach* —
+  sends everything currently showing on Matches, so narrow the list
+  there first to choose the set.
+- **Send my last session to a coach** beside it — the same trailing run
+  of games *Review my last session* opens, sent instead of reviewed.
+- On **Matches**: tick rows and use the bar's send button for exactly
+  those, or a row's right-click menu to send just that match.
+
+Do **not** use **Export backup…** for this. That button is a backup of
+your data for *you* — the file it writes is not stamped with your
+handle, so a coach who receives one gets an anonymous zip: their Recall
+can still open it as a session via *Open a player's bundle…*, but it
+names nobody, and if they mistake it for match data and use the generic
+Import instead, it merges into **their** history. The send dialog exists
+so none of that can happen.
+
+### 2. Send it
+
+The dialog opens in place, over the Reviews tab, and shows a manifest —
+one row per match, each with its replay code or the gap where one should
+be — so you see exactly what is going to another human before anything
+leaves.
+
+- **Your handle (required)** — the name your coach knows you by. The
+  bundle is stamped with it; that stamp is what makes their Recall open
+  the file as a coaching session rather than data. Prefilled from the
+  last time you sent; also settable in Settings → Coaching.
 - **Message for your coach** — optional, and the most useful field in
   the dialog. "Watch my ult timing on control" gets you a better review
   than silence does.
+- **Save as** — the file's name, prefilled with a `recall-share-…`
+  stamp so it can never be mistaken for one of your backups later.
 
 Save the `.zip` and send it however you like: Discord, email, a drive
 share. Recall has no opinion about that — but it keeps the receipt: the
-Reviews tab lists every share you sent, and marks the ones a coach has
-answered.
+Reviews tab lists every send, and marks the ones a coach has answered.
 
 ### 3. Read what comes back
 
@@ -142,11 +166,14 @@ your list the moment the file is staged. You can disagree with your coach
 here. Discarding the whole file is the only thing that takes them back
 off.
 
-Nothing is written until you press **Finish**. **Decide later** saves
-exactly what you have decided so far and closes; a banner stays up on
-every tab — **Read the notes** reopens the sheet — until every note has
-an answer. Once a review lands, its card under *02 · From a coach* shows
-the coach, the counts, and **Show these matches →**.
+Nothing is written until you press **Finish** — and Finish says what it
+is about to do: *Finish · 2 accepted · 3 skipped*. Press it while notes
+are still undecided and it asks first, because the inbox banner stays up
+until every note has an answer. **Decide later** saves exactly what you
+have decided so far and closes; the banner — **Read the notes** reopens
+the sheet — keeps count of what is left. Once a review lands, its card
+under *02 · With a coach* shows the coach, the counts, and **Show these
+matches →**.
 
 If the file was the wrong one, or you have decided you do not want the
 review, **Discard…** throws it away. That is not the same as skipping
@@ -185,7 +212,7 @@ You do not need a coach to point at a moment. The match journal has its
 own **Moments** strip: mark a time, say what happened, and optionally
 file it under a focus tag. It reads down the match, exactly as a
 coach's does, and sits above their notes because they are your words.
-(A review sitting — above — does the same over a whole set at once.)
+(A review — above — does the same over a whole set at once.)
 
 ## Coaching someone
 
@@ -248,9 +275,11 @@ You land in the film room. Three columns:
 - **The session sheet** on the right — their record, what you have
   written so far, and the one thing to work on.
 
-You can also step into their Matches, Trends, Compare and Elo tabs from
-the strip under the masthead, and come back with **← Back to the film
-room** (or `g r`).
+In a bundle session you can also step into their Matches, Trends,
+Compare and Elo tabs from the strip under the masthead, and come back
+with **← Back to the film room** (or `g r`). A replay-code session has
+no history to step into, and the strip says so instead of offering
+empty rooms.
 
 ### 3. Mark moments while you watch
 
@@ -278,16 +307,21 @@ what the match was about — and the moments carry the specifics.
 
 ### 4. Send it back
 
-**1 · Export notes** writes a `.zip` holding `notes.json` (what their
-Recall reads) and the review page. Send it back the same way the bundle
-came.
+**1 · Export notes file — for their Recall** writes a `.zip` holding
+`notes.json` (what their Recall reads) and the review page. Send it back
+the same way the bundle came. Both export buttons need your coach name
+set — if it is not, they say so in plain text right there.
 
-**…or save it as one page** writes just the page: one self-contained
+**Save a web page — read-only** writes just the page: one self-contained
 HTML file that opens in any browser, offline, with nothing to install.
 It is the same document that rides inside the `.zip` — use it for a
 player who does not run Recall, or does not want to import anything.
+Saving it counts as handing the session over: End will not warn you
+about unexported notes after a deliberate page save.
 
-If you reviewed replay codes, this is usually the one you want.
+If you reviewed replay codes, the page is usually the one you want —
+but only the notes *file* can land notes back on the player's matches,
+so if they run Recall, send the file.
 
 **2 · End session** hands their records back and lands you on the
 Reviews tab with a notice naming what ended (and where the notes file
@@ -306,11 +340,15 @@ Two things you can do to an item, and deliberately not a third:
 
 - **Accept** — you have read what your coach sent. It stays on the list;
   accepting is acknowledging it, not agreeing to it.
-- **Got this** — you are done with it. It comes off the live list and
-  folds behind a count, because retiring something is not unsaying it.
+- **Done with this** — you are done working on it. It comes off the live
+  list and folds behind a count, because retiring something is not
+  unsaying it.
 
-There is no way to delete an item or turn one down. An item you wrote is
-yours to retire; an item your coach wrote is theirs to have said.
+There is no way to delete an item or turn one down — the band says so
+itself. An item you wrote is yours to retire; an item your coach wrote
+is theirs to have said. Each item's source line is a door: click it to
+reopen the return sheet the coach sent it on, or the review you wrote
+it in.
 
 When you are mid-session — Recall knows, because a parse just landed
 between games — the top three come back to you once, in the corner, so
@@ -331,11 +369,11 @@ dropping the rest silently.
 
 **Two coaches can review the same match.** Their notes accumulate as
 separate blocks, each signed and dated. Nothing merges — and your own
-review sittings sit beside them as their own blocks, the same way.
+reviews sit beside them as their own blocks, the same way.
 
 **A coach sees your own notes.** The bundle carries your journal and your
-review sittings, and the coach's desk quotes them under your note, so they
-read what you already noticed before they write.
+reviews, and the coach's desk quotes them under your note, so they read
+what you already noticed before they write.
 
 ## Next chapter
 
