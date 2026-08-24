@@ -15,7 +15,10 @@
   --border-strong: #3a3e49;
 
   /* Section CTAs (.btn.ghost) draw rank with this. Dark's --border-strong
-     happens to BE its accent; the other themes resolve their own. */
+     happens to BE its accent; the other themes resolve their own. Note it
+     substitutes on the ROOT element: .paper's per-element --accent-text
+     remap can never reach it, so a .btn.ghost placed on paper would draw
+     the page accent — keep paper controls on the paper-btn family. */
   --btn-ghost-border: var(--accent-text);
   --hairline: rgb(255 255 255 / 7%);
   --text: #ecedf0;
