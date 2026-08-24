@@ -317,6 +317,8 @@ export const useMatchesStore = defineStore('matches', () => {
     shareSubject: shareWithCoach.shareSubject,
     shareBlocked: shareWithCoach.shareBlocked,
     requestShare: shareWithCoach.requestShare,
+    shareDraft: shareWithCoach.shareDraft,
+    stashShareDraft: shareWithCoach.stashShareDraft,
     closeShare: shareWithCoach.closeShare,
     showMissingOnMatches: shareWithCoach.showMissingOnMatches,
     confirmShare: shareWithCoach.confirmShare,

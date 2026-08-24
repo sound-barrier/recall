@@ -132,3 +132,12 @@
   line-height: 1.5;
   color: var(--text-faint);
 }
+
+/* Two doors to one verb, stacked — a row, and they read as unrelated
+   buttons in different sections again. */
+.reviews-send-doors {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+}

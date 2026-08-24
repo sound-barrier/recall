@@ -36,7 +36,7 @@ describe('ExportBundleModal — render gating', () => {
 
   it('renders the dialog when open=true', () => {
     renderModal({ open: true })
-    const dialog = screen.getByRole('dialog', { name: 'Export bundle' })
+    const dialog = screen.getByRole('dialog', { name: 'Export backup' })
     expect(dialog).toHaveAttribute('aria-modal', 'true')
   })
 })
@@ -137,9 +137,9 @@ describe('ExportBundleModal — emits', () => {
 })
 
 describe('ExportBundleModal — filename defaults', () => {
-  it('seeds a recall-bundle-<timestamp>.zip default', () => {
+  it('seeds a recall-backup-<timestamp>.zip default', () => {
     renderModal()
-    expect(screen.getByLabelText('Filename')).toHaveDisplayValue(/^recall-bundle-\d{8}-\d{6}\.zip$/)
+    expect(screen.getByLabelText('Filename')).toHaveDisplayValue(/^recall-backup-\d{8}-\d{6}\.zip$/)
   })
 })
 
@@ -234,7 +234,7 @@ describe('ExportBundleModal — open/close lifecycle', () => {
     await rerender({ open: true, selectedCount: 2, hiddenCount: 2, unknownCount: 5 })
     await nextTick()
 
-    expect(screen.getByLabelText('Filename')).toHaveDisplayValue(/^recall-bundle-\d{8}-\d{6}\.zip$/)
+    expect(screen.getByLabelText('Filename')).toHaveDisplayValue(/^recall-backup-\d{8}-\d{6}\.zip$/)
     expect(hiddenToggle()).not.toBeChecked()
     expect(unknownToggle()).not.toBeChecked()
   })
@@ -264,13 +264,13 @@ describe('ExportBundleModal — sharing is not its job', () => {
     expect(screen.queryByRole('checkbox', { name: /Share with a coach/ })).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Your handle (required)')).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/Message for your coach/)).not.toBeInTheDocument()
-    expect(screen.getByRole('dialog', { name: 'Export bundle' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Export backup' })).toBeInTheDocument()
   })
 
   it('always offers a backup filename, never a share one', () => {
     renderModal()
     expect((screen.getByLabelText('Filename') as HTMLInputElement).value)
-      .toMatch(/^recall-bundle-\d{8}-\d{6}\.zip$/)
+      .toMatch(/^recall-backup-\d{8}-\d{6}\.zip$/)
   })
 
   // A backup is for the person who made it, and their own replay codes are

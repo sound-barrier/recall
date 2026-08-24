@@ -251,18 +251,6 @@ const codesOpen = ref(false)
           <button type="button" class="btn ghost" @click="pickMatches">
             Pick matches…
           </button>
-          <!-- The same set "Review my last session" acts on, sent instead of
-               reviewed — so the two quick-picks are provably the same matches. -->
-          <button
-            type="button"
-            class="btn ghost"
-            :disabled="sessionActive || sessionKeys.length === 0"
-            :title="sessionActive ? SESSION_SHARE_REASON
-              : (sessionKeys.length === 0 ? 'No matches yet — parse or add some first' : undefined)"
-            @click="matches.requestShare(sessionKeys, 'last-session')"
-          >
-            Send my last session to a coach ({{ sessionKeys.length }})
-          </button>
         </div>
       </div>
 
@@ -282,13 +270,15 @@ const codesOpen = ref(false)
       </p>
     </div>
 
-    <!-- 02 / FROM A COACH -->
+    <!-- 02 / WITH A COACH — the whole exchange, both directions. Sending
+         used to live under "From a coach", a header naming the opposite
+         direction, and a fourth send door hid under "Your own reviews". -->
     <div id="sec-from-a-coach" class="settings-section">
       <div class="section-header">
         <span class="section-num">02</span>
         <span class="section-slash" aria-hidden="true">/</span>
         <h3 class="section-title">
-          From a coach
+          With a coach
         </h3>
       </div>
       <div class="setting-rows">
@@ -298,13 +288,13 @@ const codesOpen = ref(false)
               Send matches to a coach
             </h4>
             <p class="setting-desc">
-              Sends the matches showing on Matches — narrow the list there to
-              choose the set — as a file stamped with your name, for a coach
-              to open in their own Recall. Their notes come back as a file
-              you decide on, match by match.
+              Sends matches as a bundle — a .zip stamped with your name — for
+              a coach to open in their own Recall. Every match needs its
+              replay code (add them in each match's journal as you play).
+              Their notes come back as a file you decide on, match by match.
             </p>
           </div>
-          <div class="setting-control">
+          <div class="setting-control reviews-send-doors">
             <button
               type="button"
               class="btn ghost"
@@ -314,6 +304,20 @@ const codesOpen = ref(false)
               @click="sendToCoach"
             >
               Send to a coach… ({{ showingCount }} showing on Matches)
+            </button>
+            <!-- The same set "Review my last session" acts on, sent instead
+                 of reviewed — so the two quick-picks are provably the same
+                 matches. It sat in section 01 next to its twin, a send door
+                 hidden under a header about your own reviews. -->
+            <button
+              type="button"
+              class="btn ghost"
+              :disabled="sessionActive || sessionKeys.length === 0"
+              :title="sessionActive ? SESSION_SHARE_REASON
+                : (sessionKeys.length === 0 ? 'No matches yet — parse or add some first' : undefined)"
+              @click="matches.requestShare(sessionKeys, 'last-session')"
+            >
+              Send my last session to a coach ({{ sessionKeys.length }})
             </button>
           </div>
         </div>
@@ -397,7 +401,7 @@ const codesOpen = ref(false)
           notes are on your matches; you skipped or removed them.
           <template #action>
             <button type="button" class="btn ghost" @click="returns.openReturnSheet(sheet.id)">
-              Read again
+              Read the notes again
             </button>
           </template>
         </ReviewLedgerRow>
@@ -406,7 +410,7 @@ const codesOpen = ref(false)
       <!-- The actions are the rows above; this only says what the
            emptiness means. -->
       <p v-if="noCoachYet" class="reviews-empty">
-        No coach has looked yet — share some matches, or open a notes file
+        No coach has looked yet — send some matches, or open a notes file
         you were given.
       </p>
     </div>

@@ -4,7 +4,7 @@
  * Drives the full contract through the real browser:
  *   1. Three visible matches load.
  *   2. User ticks two checkboxes → bulk-action bar appears with the
- *      "Export bundle…" button.
+ *      "Export backup…" button.
  *   3. Click → ExportBundleModal opens with:
  *        - "Selected matches: 2"
  *        - filename input defaulted to recall-bundle-<timestamp>.zip
@@ -94,7 +94,7 @@ test.describe('matches — export bundle', () => {
     await page.locator('.leaf-row').nth(0).locator('.leaf-checkbox').click()
     await page.locator('.leaf-row').nth(1).locator('.leaf-checkbox').click()
 
-    // The bulk-action bar shows the new Export bundle button.
+    // The bulk-action bar shows the new Export backup button.
     const exportBtn = page.getByTestId('bulk-export-bundle')
     await expect(exportBtn).toBeVisible()
     await exportBtn.click()
@@ -104,9 +104,9 @@ test.describe('matches — export bundle', () => {
     await expect(modal).toBeVisible()
     await expect(modal.locator('.export-bundle-value')).toContainText('2')
 
-    // Filename default matches the recall-bundle-<timestamp>.zip pattern.
+    // Filename default matches the recall-backup-<timestamp>.zip pattern.
     const filenameInput = modal.getByTestId('filename')
-    await expect(filenameInput).toHaveValue(/^recall-bundle-\d{8}-\d{6}\.zip$/)
+    await expect(filenameInput).toHaveValue(/^recall-backup-\d{8}-\d{6}\.zip$/)
 
     // Click Export. The POST /api/v1/exports/bundle handler records
     // the body so we can assert match_keys + the toggle values.

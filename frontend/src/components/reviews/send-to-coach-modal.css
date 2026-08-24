@@ -10,6 +10,25 @@
   width: min(32rem, 100%);
 }
 
+/* Sticky at the bottom of the scroll region: a fade that says "there is
+   more" while there is, and stands down at the end. Sticky, so it rides
+   the fold itself rather than guessing where the fold is. */
+.send-to-coach-scroll-cue {
+  position: sticky;
+  bottom: 0;
+  flex: none;
+  height: 2.2rem;
+  margin-top: -2.2rem;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--surface));
+}
+
+.send-to-coach-field-hint {
+  margin: 0.25rem 0 0;
+  font-size: var(--type-xs);
+  color: var(--text-dim);
+}
+
 .send-to-coach-more {
   margin: 0.35rem 0 0;
   font-size: var(--type-xs);
@@ -186,4 +205,24 @@
 .send-to-coach-cancel:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* The app's focus language, not the UA's blue — the first field of the
+   send flow read as an unstyled form. */
+.send-to-coach-input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+/* A Send that cannot fire wears the ghost style: the vivid fill promised
+   a click the state refuses. */
+.send-to-coach-send:disabled {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+
+  /* Not the shared 0.5 dim on top of the ghost ink — that double-dims the
+     label below AA. The ghost surface IS the disabled look. */
+  opacity: 1;
 }

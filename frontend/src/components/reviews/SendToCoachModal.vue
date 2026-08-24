@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import { useCoachingSettingsQuery } from '@/queries/settings'
@@ -62,11 +62,35 @@ async function prefillHandle(): Promise<void> {
 // useModalFocusTrap carries the same note for the same reason.
 watch(shareOpen, (open) => {
   if (!open) return
-  handle.value = ''
-  message.value = ''
+  // The stash survives the "Show the N on Matches" round-trip — a player
+  // who typed a message, found the block, and took the door to fix it must
+  // not come back to an empty dialog. An explicit Cancel or a successful
+  // send cleared it (the composable owns those endings).
+  const stash = matches.shareDraft
+  handle.value = stash?.handle ?? ''
+  message.value = stash?.message ?? ''
   filename.value = defaultFilename()
-  void prefillHandle()
+  if (handle.value === '') void prefillHandle()
+  void nextTick(measureScroll)
 }, { immediate: true })
+
+// Every keystroke updates the stash; the composable decides when it dies.
+watch([handle, message], ([h, m]) => {
+  if (shareOpen.value) matches.stashShareDraft({ handle: h, message: m })
+})
+
+// ── The fold cue ─────────────────────────────────────────────────────
+// The pinned-actions design guarantees the manifest is cut at some window
+// height, and thin overlay scrollbars make the cut invisible — so the
+// scroll region itself says when there is more below the fold.
+const sheetBody = useTemplateRef<HTMLElement>('sheetBody')
+const moreBelow = ref(false)
+
+function measureScroll(): void {
+  const el = sheetBody.value
+  if (!el) return
+  moreBelow.value = el.scrollTop + el.clientHeight < el.scrollHeight - 1
+}
 
 // The manifest is one row per match and `narrow` can be the whole corpus, so
 // it is capped. The count above it is the whole truth; these rows exist to make
@@ -124,7 +148,7 @@ function onSend(): void {
         {{ shareSubject }}
       </p>
 
-      <div class="sheet-body">
+      <div ref="sheetBody" class="sheet-body" @scroll.passive="measureScroll">
         <label class="send-to-coach-field-label" for="send-to-coach-handle">
           Your handle (required)
         </label>
@@ -135,11 +159,22 @@ function onSend(): void {
           type="text"
           maxlength="64"
           aria-required="true"
+          aria-describedby="send-to-coach-handle-hint"
           placeholder="the name your coach knows you by"
           spellcheck="false"
           autocomplete="off"
           autocorrect="off"
         >
+        <!-- The requirement beside the field it names, not only in the
+             footer: the footer line is the least prominent text in the
+             dialog and nowhere near the thing to fix. -->
+        <p
+          v-if="needsHandle"
+          id="send-to-coach-handle-hint"
+          class="send-to-coach-field-hint"
+        >
+          The bundle is signed with this — Send stays off until it has a name.
+        </p>
 
         <label class="send-to-coach-field-label" for="send-to-coach-message">
           Message for your coach (optional)
@@ -213,6 +248,11 @@ function onSend(): void {
         <p v-if="hiddenManifestCount > 0" class="send-to-coach-more">
           …and {{ hiddenManifestCount }} more
         </p>
+        <div
+          v-show="moreBelow"
+          class="send-to-coach-scroll-cue"
+          aria-hidden="true"
+        />
       </div>
 
       <div class="sheet-fixed send-to-coach-actions">
