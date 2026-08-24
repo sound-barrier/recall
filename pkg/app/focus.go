@@ -101,7 +101,7 @@ func day(instant string) string {
 
 // SetFocusItemStatus moves one of the player's items. There is no "denied":
 // a coach's item is active the moment it lands, Accept acknowledges it
-// (new → working), and "Got this" retires it (→ done) without deleting what
+// (new → working), and "Done with this" retires it (→ done) without deleting what
 // was said.
 func (a *App) SetFocusItemStatus(itemID, status string) error {
 	// The one lock: while a coach session is open the visible records are

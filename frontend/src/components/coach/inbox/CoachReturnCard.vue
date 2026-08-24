@@ -67,15 +67,17 @@ function pick(decision: CoachDecisionEnum) {
 // was unreachable without a mouse. One radio is always the Tab stop — the
 // checked one, else the first the note allows — and arrows move AND select,
 // the way a radio group moves.
+// An orphan's Accept is disabled, and a disabled radio can never be the
+// stop — not even when it carries a recorded accept (the match was deleted
+// after the decision landed; that state really arrives off the wire).
 const acceptTab = computed(() => {
-  if (props.verdict === 'accepted') return 0
-  if (props.verdict === '' && !orphan.value) return 0
+  if (orphan.value) return -1
+  if (props.verdict === 'accepted' || props.verdict === '') return 0
   return -1
 })
 const skipTab = computed(() => {
-  if (props.verdict === 'skipped') return 0
-  if (props.verdict === '' && orphan.value) return 0
-  return -1
+  if (orphan.value) return 0
+  return props.verdict === 'skipped' ? 0 : -1
 })
 
 function onArrow(e: KeyboardEvent) {

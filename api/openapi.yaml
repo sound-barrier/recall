@@ -3423,7 +3423,7 @@ paths:
       tags: [Self review]
       summary: Move one item along the player's list
       description: |
-        `new` → `working` is Accept, `working` → `done` is "Got this".
+        `new` → `working` is Accept, `working` → `done` is "Done with this".
 
         There is no deny and no delete. A coach's item is live the moment it
         lands, so Accept acknowledges it rather than admitting it, and
@@ -5376,7 +5376,7 @@ components:
       description: |
         The player's own progress on one item. A coach's item arrives `new`
         and Accept moves it to `working`; the player's own is born
-        `working`; "Got this" retires either to `done`. There is no
+        `working`; "Done with this" retires either to `done`. There is no
         `denied` — see `PUT /api/v1/focus/{item_id}/status`.
 
     FocusItem:

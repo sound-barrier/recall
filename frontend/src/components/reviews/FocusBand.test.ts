@@ -102,4 +102,11 @@ describe('FocusBand', () => {
     expect(rows[0]).toHaveTextContent('first')
     expect(rows[1]).toHaveTextContent('second')
   })
+
+  // The door is server-refused during a live coach session — a disabled
+  // button with the reason beats a dead-end error banner.
+  it('locks the provenance door while writes are blocked', () => {
+    renderBand([entry({ source: 'coach', source_id: '7' })], 'A coach session is open.')
+    expect(screen.getByRole('button', { name: /Open where this came from/ })).toBeDisabled()
+  })
 })

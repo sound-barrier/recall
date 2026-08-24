@@ -1875,7 +1875,7 @@ export const listFocus = <ThrowOnError extends boolean = false>(options?: Option
 /**
  * Move one item along the player's list
  *
- * `new` → `working` is Accept, `working` → `done` is "Got this".
+ * `new` → `working` is Accept, `working` → `done` is "Done with this".
  *
  * There is no deny and no delete. A coach's item is live the moment it
  * lands, so Accept acknowledges it rather than admitting it, and

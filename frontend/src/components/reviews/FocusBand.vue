@@ -50,7 +50,9 @@ function provenance(e: FocusEntry): string {
 const hasCoachItems = computed(() => active.value.some((e) => e.source === 'coach'))
 
 function openSource(e: FocusEntry): void {
-  if (!e.source_id) return
+  // The server refuses the sheet's writes during a live coach session —
+  // a disabled door with the reason beats a dead-end error banner.
+  if (blocked.value || !e.source_id) return
   if (e.source === 'coach') void returns.openReturnSheet(Number(e.source_id))
   else void selfReviews.openSitting(e.source_id)
 }
@@ -59,7 +61,7 @@ const bandHead = useTemplateRef<HTMLElement>('bandHead')
 
 /**
  * Both moves destroy the control that was pressed: Accept unmounts itself
- * (the row is no longer `new`) and "Got this" takes the whole row out of
+ * (the row is no longer `new`) and "Done with this" takes the whole row out of
  * the live list. A button that vanishes under the finger leaves focus on
  * `<body>`, so the next Tab restarts from the top of the document.
  *
@@ -104,6 +106,8 @@ async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
             type="button"
             class="focus-band-from focus-band-from-link"
             :aria-label="`Open where this came from: ${provenance(e)}`"
+            :disabled="blocked"
+            :title="blockedReason || undefined"
             @click="openSource(e)"
           >
             {{ provenance(e) }}<template v-if="isNew(e)">

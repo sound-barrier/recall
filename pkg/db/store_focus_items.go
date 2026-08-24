@@ -332,7 +332,7 @@ func (s *SQLStore) LoadReceivedFocusItems() ([]ReceivedFocusItem, error) {
 
 // SetFocusItemStatus moves an item in either player-side family. One method
 // rather than two because the caller has an item id and nothing else — the
-// UI's "Accept" and "Got this" know which row they are looking at, not which
+// UI's "Accept" and "Done with this" know which row they are looking at, not which
 // table it came from.
 func (s *SQLStore) SetFocusItemStatus(itemID string, status FocusStatus) error {
 	if !isFocusStatus(status) {

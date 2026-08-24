@@ -786,12 +786,12 @@ func assertSelfFocusItems(t *testing.T, s db.Store) {
 		t.Fatalf("LoadAll = %v, want the sitting's one item", all)
 	}
 
-	// "Got this" retires it without deleting it.
+	// "Done with this" retires it without deleting it.
 	mustNoErr(t, s.SetFocusItemStatus("s-1", db.FocusDone))
 	mine, err = s.LoadSelfReviewFocusItems(sitting.ReviewID)
 	mustNoErr(t, err)
 	if len(mine) != 1 || mine[0].Status != db.FocusDone {
-		t.Fatalf("after Got this = %+v, want one at %q", mine, db.FocusDone)
+		t.Fatalf("after Done with this = %+v, want one at %q", mine, db.FocusDone)
 	}
 }
 

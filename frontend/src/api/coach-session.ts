@@ -147,7 +147,7 @@ export function ListFocus(): Promise<FocusEntry[]> {
   return unwrap(sdk.listFocus())
 }
 
-/** Accept (new → working) or retire ("Got this", → done) one item. */
+/** Accept (new → working) or retire ("Done with this", → done) one item. */
 export function SetFocusItemStatus(itemID: string, status: FocusStatus): Promise<void> {
   return unwrapVoid(sdk.setFocusItemStatus({ path: { item_id: itemID }, body: { status } }))
 }
