@@ -152,6 +152,7 @@ tasks:
       - task: lint-md
       - task: check-doc-paths
       - task: check-test-exports
+      - task: dead-code-ts
       - task: lint-actions
       - task: lint-semgrep
 
@@ -465,6 +466,14 @@ tasks:
       - GOOS=windows golangci-lint run ./...
       - GOOS=windows golangci-lint run --build-tags serveronly ./...
       - cd frontend && npm run lint:js && npm run lint:css && npx vue-tsc --noEmit && npm run typecheck:e2e
+      # Build frontend/dist BEFORE anything compiles Go: assets.go carries
+      # `//go:embed all:frontend/dist`, so `task cover` cannot build the test
+      # binaries without it. Nothing else here populates the real dist — the
+      # bundle step below stages its build elsewhere on purpose, to avoid
+      # racing this very embed — so on a fresh clone verify used to fail at
+      # the coverage gate with "pattern all:frontend/dist: no matching files".
+      - echo "[ recall ] verify — frontend build (the Go embed needs it)…"
+      - cd frontend && npm run build >/dev/null
       - echo "[ recall ] verify — coverage gate…"
       - task: cover
       - echo "[ recall ] verify — bundle budget (fresh build)…"
