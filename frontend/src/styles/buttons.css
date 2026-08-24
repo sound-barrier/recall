@@ -18,6 +18,20 @@
 }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+/* The unmarked variant is the SECONDARY action. It carried no fill and
+   no border — literally invisible on Day's cream, a label pretending to
+   be dead space beside the primary it ranks under. */
+.btn:not(.primary, .ghost) {
+  background: var(--surface-3);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.btn:not(.primary, .ghost):hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--btn-ghost-border);
+}
+
 .btn.primary {
   background: var(--accent);
   color: var(--primary-text-on-accent);
@@ -38,10 +52,14 @@
 
 /* .btn-dot moved to IngestView.vue */
 
+/* The border rides its own token: dark's --border-strong is already the
+   accent, so dark CTAs carried a visual rank day and night silently
+   dropped. Every theme now resolves it to its own readable amber; high
+   contrast pins white. */
 .btn.ghost {
   background: transparent;
   color: var(--text-dim);
-  border-color: var(--border-strong);
+  border-color: var(--btn-ghost-border, var(--border-strong));
 }
 
 .btn.ghost:hover:not(:disabled) {

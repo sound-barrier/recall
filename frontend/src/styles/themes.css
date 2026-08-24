@@ -285,6 +285,10 @@
   --border: #fff;
   --border-soft: #888;
   --border-strong: #fff;
+
+  /* High contrast keeps every control boundary white — amber rank lines
+     are the readable themes' luxury. */
+  --btn-ghost-border: #fff;
   --hairline: rgb(255 255 255 / 30%);
   --text: #fff;
 
@@ -377,6 +381,11 @@
   --paper: #000;
   --paper-2: #0d0d0d;
   --paper-rule: rgb(255 255 255 / 40%);
+
+  /* Texture only, never a bed the type must fight: 40% stripes under
+     white 10px labels read as static. ~12% keeps the stencil feel at
+     ≥13:1 for the ink above it. */
+  --paper-hatch: rgb(255 255 255 / 12%);
   --paper-edge: #fff;
   --ink: #fff;
   --ink-dim: #fff;

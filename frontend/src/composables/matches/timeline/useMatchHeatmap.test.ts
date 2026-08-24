@@ -128,6 +128,21 @@ describe('useMatchHeatmap', () => {
     expect(model.value.maxTotal).toBe(4)
   })
 
+  // The window snaps to a week boundary, so the first "month" can be a
+  // single truncated column — its label then prints hard against the next
+  // month's and reads as one word ("FEBMAR"). A label needs room to be one.
+  it('drops a leading month label too narrow to stand apart', () => {
+    // Aug 24 2026: the 26-week window starts in February's last week, the
+    // exact clock under which the audit photographed "FEBMAR".
+    vi.setSystemTime(new Date(2026, 7, 24))
+    const records = ref<MatchRecord[]>([])
+    const model = useMatchHeatmap(records)
+    const labels = model.value.monthLabels
+    for (let i = 0; i < labels.length - 1; i++) {
+      expect(labels[i + 1]!.weekIndex - labels[i]!.weekIndex).toBeGreaterThanOrEqual(3)
+    }
+  })
+
   it('emits month labels in ascending weekIndex order', () => {
     const records = ref<MatchRecord[]>([])
     const model = useMatchHeatmap(records, { windowWeeks: 52 })

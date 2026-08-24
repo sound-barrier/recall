@@ -13,6 +13,10 @@
   --border: #2c2f38;
   --border-soft: #1a1d24;
   --border-strong: #3a3e49;
+
+  /* Section CTAs (.btn.ghost) draw rank with this. Dark's --border-strong
+     happens to BE its accent; the other themes resolve their own. */
+  --btn-ghost-border: var(--accent-text);
   --hairline: rgb(255 255 255 / 7%);
   --text: #ecedf0;
   --text-dim: #9ca0ac;
