@@ -44,11 +44,15 @@ const UNSAVED_EXPORT_REASON
 const UNSAVED_END_REASON
   = 'The session ended with a note that could not be saved — it was not kept.'
 
+/** The page saved, but a note never reached the session — End still asks. */
+const UNSAVED_SHEET_REASON
+  = 'A note could not be saved to the session — the saved page carries it, but End will still ask until the save lands.'
+
 /** Why Export is refused before the coach has a name to sign with. */
 const NO_COACH_NAME_REASON = 'Set a coach name in Settings before exporting notes'
 
 /** Why Export is refused before anyone has said who the bundle is about. */
-const UNCONFIRMED_EXPORT_REASON = 'Say who this bundle is about before exporting notes'
+const UNCONFIRMED_EXPORT_REASON = 'Say who this review is about before exporting notes'
 
 /**
  * The two halves of "put the coach's own narrow aside for the loan".
@@ -447,20 +451,30 @@ export const useCoachStore = defineStore('coach', () => {
   // does not run Recall at all. Same document as the one inside the archive.
   async function exportSheet(): Promise<void> {
     await flushSaves()
+    // The page renders the DRAFTS, so it is complete even when a server
+    // save failed — saving it is fine. What must not happen is the save
+    // clearing the End protection below: the SESSION's copy is still
+    // missing the note, and "End anyway" is the one question standing
+    // between that loss and silence. exportNotes re-checks after its
+    // flush for exactly this window.
+    const sessionIncomplete = hasFailedSaves.value
+    if (sessionIncomplete) useAppStore().setError(UNSAVED_SHEET_REASON)
     try {
       const handle = session.value?.player?.handle || 'player'
       const name = `recall-review-${handle}-${session.value?.session_date ?? ''}.html`
       const saved = await ExportCoachSheet(await renderSheet(), name)
       // "" is a canceled native dialog — nothing written, nothing changes.
       if (!saved) return
+      exportedTo.value = saved
+      if (sessionIncomplete) return
       // The page IS the hand-over for a player who does not run Recall —
       // the documented codes-session path. Leaving dirtySinceExport set
       // made End warn "notes not exported" at a coach who had just
       // exported them, the flow's one false statement at its scariest
-      // moment. Same receipt as the notes file, for the same reason.
+      // moment. (In a bundle session this same disarm is a flagged
+      // trade: the labels say which artifact their Recall can import.)
       dirtySinceExport.value = false
       endArmed.value = false
-      exportedTo.value = saved
     } catch (e) {
       useAppStore().setErrorFromRaw(String(e))
     }
