@@ -107,8 +107,8 @@ test.describe('return of notes — player side', () => {
 
     // Accept all → Finish saves three; the banner is done.
     const layered = await mockMatchesWithCoachNotes(page)
-    await sheetDialog(page).getByRole('button', { name: 'Accept all' }).click()
-    await sheetDialog(page).getByRole('button', { name: /^Finish · save 3 accepted/ }).click()
+    await sheetDialog(page).getByRole('button', { name: 'Accept all notes' }).click()
+    await sheetDialog(page).getByRole('button', { name: /^Finish · 3 accepted/ }).click()
     await expect(sheetDialog(page)).toBeHidden()
     await expect.poll(() => returns.putCount()).toBe(2)
     expect(returns.decisionsPut.get()).toEqual({
@@ -136,6 +136,53 @@ test.describe('return of notes — player side', () => {
     await expect.poll(() => layered.deleted.seen()).toBe(true)
     expect(layered.deleted.get()).toEqual({ matchKey: NOTED_MATCH.match_key, noteId: 1 })
     await expect(block).toHaveCount(0)
+  })
+
+  test('a verdict shows on the card, and the keyboard can decide', async ({ page }) => {
+    const inbox: CoachReturnSheet[] = []
+    const returns = await mockInbox(page, inbox)
+    await mockNotesImport(page, inbox)
+    await page.goto('/')
+    await importFromSettings(page)
+    await expect(sheetDialog(page)).toBeVisible()
+
+    // Undecided: exactly one radio per card is in the Tab order, so the
+    // group is reachable without a mouse.
+    const first = cards(page).nth(0)
+    await expect(first.getByRole('radio', { name: 'Accept' })).toHaveAttribute('tabindex', '0')
+    await expect(first.getByRole('radio', { name: 'Skip' })).toHaveAttribute('tabindex', '-1')
+
+    // Clicking Accept must CHANGE THE PIXELS, not just an attribute — the
+    // chosen chip fills, the unchosen one does not share its background.
+    const accept = first.getByRole('radio', { name: 'Accept' })
+    const skip = first.getByRole('radio', { name: 'Skip' })
+    const bgOf = (loc: typeof accept) =>
+      loc.evaluate((el) => getComputedStyle(el).backgroundColor)
+    const before = await bgOf(accept)
+    await accept.click()
+    await expect(accept).toHaveAttribute('aria-checked', 'true')
+    await expect.poll(() => bgOf(accept)).not.toBe(before)
+    expect(await bgOf(accept)).not.toBe(await bgOf(skip))
+
+    // Arrow keys move the verdict the way a radio group moves: from the
+    // checked chip, ArrowRight lands on and selects Skip.
+    await accept.press('ArrowRight')
+    await expect(skip).toHaveAttribute('aria-checked', 'true')
+    await expect(accept).toHaveAttribute('aria-checked', 'false')
+
+    // The undecided sibling card is still reachable by keyboard alone.
+    const second = cards(page).nth(1)
+    await expect(second.getByRole('radio', { name: 'Accept' })).toHaveAttribute('tabindex', '0')
+    await second.getByRole('radio', { name: 'Accept' }).press('Enter')
+    await expect(second.getByRole('radio', { name: 'Accept' })).toHaveAttribute('aria-checked', 'true')
+
+    // Finish with one note still undecided ARMS rather than closing —
+    // the banner would keep nagging about the one left behind.
+    await sheetDialog(page).getByRole('button', { name: /^Finish · 1 accepted · 1 skipped/ }).click()
+    await expect(sheetDialog(page).getByText(/1 note is still undecided/)).toBeVisible()
+    await sheetDialog(page).getByRole('button', { name: 'Finish anyway' }).click()
+    await expect(sheetDialog(page)).toBeHidden()
+    await expect.poll(() => returns.decisionsPut.seen()).toBe(true)
   })
 
   test('a plain bundle import still reports its counts', async ({ page }) => {
@@ -202,7 +249,7 @@ test.describe('return of notes — moments', () => {
     await importFromSettings(page)
 
     await mockMatchesWithCoachNotes(page)
-    await sheetDialog(page).getByRole('button', { name: 'Accept all' }).click()
+    await sheetDialog(page).getByRole('button', { name: 'Accept all notes' }).click()
     await sheetDialog(page).getByRole('button', { name: /^Finish/ }).click()
     await expect(sheetDialog(page)).toBeHidden()
 

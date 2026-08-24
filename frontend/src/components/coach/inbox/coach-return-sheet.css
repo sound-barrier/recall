@@ -121,3 +121,12 @@
   color: var(--ink-dim);
 }
 
+/* The notes header row: the group's name made visible, with the bulk
+   verdicts beside it so "all" visibly means "all NOTES". */
+.return-notes-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}

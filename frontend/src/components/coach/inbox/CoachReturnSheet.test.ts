@@ -85,23 +85,28 @@ describe('CoachReturnSheet', () => {
     await user.click(within(cards()[0]!).getByRole('radio', { name: 'Accept' }))
     await user.click(within(cards()[1]!).getByRole('radio', { name: 'Skip' }))
     expect(within(cards()[0]!).getByRole('radio', { name: 'Accept' })).toBeChecked()
-    expect(within(dialog()).getByRole('button', { name: /^Finish · save 1 accepted/ })).toBeInTheDocument()
+    expect(within(dialog()).getByRole('button', { name: /^Finish · 1 accepted/ })).toBeInTheDocument()
   })
 
   it('Accept all sweeps every note; Skip all takes them back', async () => {
     const user = userEvent.setup()
     open()
-    await user.click(within(dialog()).getByRole('button', { name: 'Accept all' }))
-    expect(within(dialog()).getByRole('button', { name: /^Finish · save 2 accepted/ })).toBeInTheDocument()
-    await user.click(within(dialog()).getByRole('button', { name: 'Skip all' }))
-    expect(within(dialog()).getByRole('button', { name: /^Finish · save 0 accepted/ })).toBeInTheDocument()
+    await user.click(within(dialog()).getByRole('button', { name: 'Accept all notes' }))
+    expect(within(dialog()).getByRole('button', { name: /^Finish · 2 accepted/ })).toBeInTheDocument()
+    await user.click(within(dialog()).getByRole('button', { name: 'Skip all notes' }))
+    expect(within(dialog()).getByRole('button', { name: /^Finish · 0 accepted/ })).toBeInTheDocument()
   })
 
   it('Finish writes the decided notes and closes', async () => {
     const user = userEvent.setup()
     const { decide } = open()
     await user.click(within(cards()[0]!).getByRole('radio', { name: 'Accept' }))
+    // One note is still undecided, so Finish ARMS first — the banner would
+    // keep nagging about it — and "Finish anyway" is the informed commit.
     await user.click(within(dialog()).getByRole('button', { name: /^Finish/ }))
+    expect(within(dialog()).getByText(/1 note is still undecided/)).toBeInTheDocument()
+    expect(decide).not.toHaveBeenCalled()
+    await user.click(within(dialog()).getByRole('button', { name: 'Finish anyway' }))
     expect(decide).toHaveBeenCalledWith(7, { 'n-1': 'accepted' })
     expect(screen.queryByRole('dialog')).toBeNull()
   })
@@ -131,9 +136,11 @@ describe('CoachReturnSheet', () => {
     decide.mockRejectedValueOnce(new Error('server said no'))
     await user.click(within(cards()[0]!).getByRole('radio', { name: 'Accept' }))
     await user.click(within(dialog()).getByRole('button', { name: /^Finish/ }))
+    await user.click(within(dialog()).getByRole('button', { name: 'Finish anyway' }))
     expect(within(dialog()).getByRole('alert')).toBeInTheDocument()
 
     await user.click(within(dialog()).getByRole('button', { name: /^Finish/ }))
+    await user.click(within(dialog()).getByRole('button', { name: 'Finish anyway' }))
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
@@ -158,7 +165,7 @@ describe('CoachReturnSheet', () => {
     open(sheet({ decisions: { 'n-1': 'accepted', 'n-2': 'skipped' } }))
     expect(within(cards()[0]!).getByRole('radio', { name: 'Accept' })).toBeChecked()
     expect(within(cards()[1]!).getByRole('radio', { name: 'Skip' })).toBeChecked()
-    expect(within(dialog()).getByRole('button', { name: /^Finish · save 1 accepted/ })).toBeInTheDocument()
+    expect(within(dialog()).getByRole('button', { name: /^Finish · 1 accepted/ })).toBeInTheDocument()
   })
 
   // A second session re-sends notes the player already accepted. The server
@@ -187,8 +194,8 @@ describe('CoachReturnSheet', () => {
     expect(accept).toBeDisabled()
     expect(within(dialog()).getByText(/isn't in your history any more/)).toBeInTheDocument()
 
-    await user.click(within(dialog()).getByRole('button', { name: 'Accept all' }))
-    expect(within(dialog()).getByRole('button', { name: /^Finish · save 0 accepted/ })).toBeInTheDocument()
+    await user.click(within(dialog()).getByRole('button', { name: 'Accept all notes' }))
+    expect(within(dialog()).getByRole('button', { name: /^Finish · 0 accepted/ })).toBeInTheDocument()
 
     await user.click(within(cards()[0]!).getByRole('radio', { name: 'Skip' }))
     expect(within(cards()[0]!).getByRole('radio', { name: 'Skip' })).toBeChecked()

@@ -1382,6 +1382,13 @@ export type FocusEntry = {
      */
     source: 'coach' | 'self';
     /**
+     * The way back to where the item was written — the return sheet's
+     * id for a coach's item, the sitting's review id for the player's
+     * own. Omitted when the origin is gone.
+     *
+     */
+    source_id?: string;
+    /**
      * Who sent it. Absent on the player's own items.
      */
     coach_name?: string;

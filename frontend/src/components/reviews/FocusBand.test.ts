@@ -44,10 +44,10 @@ describe('FocusBand', () => {
   // "A player can disagree with their coach, but they need to listen to
   // them." An item that arrived is already live; the only choices are
   // acknowledging it and retiring it.
-  it('offers Accept and Got this — and never a way to refuse', () => {
+  it('offers Accept and Done with this — and never a way to refuse', () => {
     renderBand([entry({ source: 'coach', coach_name: 'Ordo', status: 'new' })])
     expect(screen.getByRole('button', { name: 'Accept: hold the angle' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Got this: hold the angle' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Done with this: hold the angle' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /deny|reject|skip|dismiss|delete/i })).not.toBeInTheDocument()
   })
 
@@ -55,14 +55,14 @@ describe('FocusBand', () => {
   // this", with nothing to tell them apart.
   it('names each action by the item it acts on', () => {
     renderBand([entry({ item_id: '1', text: 'hold the angle' }), entry({ item_id: '2', text: 'ult economy' })])
-    expect(screen.getByRole('button', { name: 'Got this: hold the angle' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Got this: ult economy' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Done with this: hold the angle' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Done with this: ult economy' })).toBeInTheDocument()
   })
 
   it('offers no Accept on an item you wrote yourself', () => {
     renderBand([entry()])
     expect(screen.queryByRole('button', { name: /^Accept/ })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Got this: hold the angle' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Done with this: hold the angle' })).toBeInTheDocument()
   })
 
   it('accepts a coach item into working', async () => {
@@ -73,7 +73,7 @@ describe('FocusBand', () => {
 
   it('retires an item without deleting it', async () => {
     renderBand([entry({ item_id: 's-1' })])
-    await fireEvent.click(screen.getByRole('button', { name: /^Got this/ }))
+    await fireEvent.click(screen.getByRole('button', { name: /^Done with this/ }))
     expect(setStatus).toHaveBeenCalledWith('s-1', 'done')
   })
 
@@ -81,7 +81,7 @@ describe('FocusBand', () => {
     renderBand([entry({ item_id: 'a' }), entry({ item_id: 'b', text: 'ult economy', status: 'done' })])
     expect(screen.queryByText('ult economy')).not.toBeInTheDocument()
 
-    const toggle = screen.getByRole('button', { name: "Show 1 you've got" })
+    const toggle = screen.getByRole('button', { name: "Show 1 you're done with" })
     await fireEvent.click(toggle)
     expect(screen.getByText('ult economy')).toBeInTheDocument()
   })
@@ -89,7 +89,7 @@ describe('FocusBand', () => {
   it('refuses both moves while writes are locked, and says why', () => {
     renderBand([entry({ source: 'coach', status: 'new' })], 'A coaching session is open.')
     expect(screen.getByRole('button', { name: /^Accept/ })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /^Got this/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /^Done with this/ })).toBeDisabled()
   })
 
   it('keeps the live list in the order it was handed', () => {

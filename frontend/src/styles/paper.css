@@ -88,6 +88,16 @@
   border-color: var(--ink);
 }
 
+/* The radio twin of the pressed rule. The return sheet's Accept/Skip chips
+   carried aria-checked with NO selector anywhere reading it, so a verdict
+   changed zero pixels — the whole decision surface gave no feedback. */
+.paper-chip[aria-checked="true"] {
+  font-weight: 800;
+  color: var(--paper);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
 .paper-btn {
   display: inline-flex;
   align-items: center;

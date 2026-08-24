@@ -143,3 +143,23 @@
 .return-card.is-taken {
   background: var(--paper-2);
 }
+
+/* Verdict chips are CONTROLS, not metadata: the tag chips above them share
+   .paper-chip's silhouette, so the pair gets button weight — heavier border,
+   more air — and a decided group dims the road not taken. */
+.verdict-chip {
+  border-width: 2px;
+  padding: 0.35em 1em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.return-card-verdict.is-decided .verdict-chip[aria-checked="false"] {
+  opacity: 0.45;
+}
+
+.return-card-verdict.is-decided .verdict-chip[aria-checked="false"]:hover,
+.return-card-verdict.is-decided .verdict-chip[aria-checked="false"]:focus-visible {
+  opacity: 1;
+}
