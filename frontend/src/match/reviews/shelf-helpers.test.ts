@@ -34,7 +34,7 @@ describe('shelfCard', () => {
       focus_items: [{ item_id: 'f-1', text: 'x'.repeat(200) }],
       finished_at: '2026-08-18T20:00:00Z',
     }), [])
-    expect(card.title).toBe('Review of 2026-08-18')
+    expect(card.title).toBe('Review of Tue · Aug 18')
     expect(card.focusExcerpt.length).toBe(140)
     expect(card.focusExcerpt.endsWith('…')).toBe(true)
     expect(card.finished).toBe(true)

@@ -1,6 +1,7 @@
 import type { MatchRecord, SelfReview } from '@/api'
 import { tallyWLD, type WLDTally } from '@/match/match-stats-helpers'
 import { pluralize } from '@/match/match-label-helpers'
+import { formatPlayerDay } from '@/match/coach/coach-time'
 
 // What a shelf card says about a sitting, derived once from the sitting and
 // the player's records. The mini sprocket rail is the reel's own rail at
@@ -43,7 +44,7 @@ export function shelfCard(sitting: SelfReview, records: readonly MatchRecord[]):
   })
   return {
     reviewId: sitting.review_id,
-    title: sitting.title.trim() || `Review of ${sitting.created_at.slice(0, 10)}`,
+    title: sitting.title.trim() || `Review of ${formatPlayerDay(sitting.created_at.slice(0, 10))}`,
     dayKey: sitting.created_at.slice(0, 10),
     finished: Boolean(sitting.finished_at),
     matchCount: sitting.match_keys.length,

@@ -115,3 +115,36 @@ describe('SheetFocusItems — the typing itself', () => {
     expect(row(1)).toHaveAttribute('autocorrect', 'off')
   })
 })
+
+// Autosave persists a removal within the second, so the way back is an
+// explicit Undo rather than a confirm in front of every edit.
+describe('SheetFocusItems — the way back from a remove', () => {
+  it('offers Undo for a removed item, and Undo restores it in place', async () => {
+    // Controlled component: reflect each update back into props, the way
+    // the owning sheet does.
+    const view = renderList()
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove item 2' }))
+    await view.rerender({ items: lastUpdate(view) })
+
+    expect(screen.getByText(/Removed “ult economy”/)).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(lastUpdate(view).map((i) => i.text))
+      .toEqual(['hold the angle', 'ult economy', 'call the dive'])
+    await view.rerender({ items: lastUpdate(view) })
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull()
+  })
+
+  it('does not let an empty row clobber a real item\'s undo', async () => {
+    const view = renderList([
+      { item_id: 'a', text: 'hold the angle' },
+      { item_id: 'b', text: '' },
+    ])
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove item 1' }))
+    await view.rerender({ items: lastUpdate(view) })
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove item 1' }))
+    await view.rerender({ items: lastUpdate(view) })
+
+    // The empty row's removal left the real one's undo standing.
+    expect(screen.getByText(/Removed “hold the angle”/)).toBeInTheDocument()
+  })
+})

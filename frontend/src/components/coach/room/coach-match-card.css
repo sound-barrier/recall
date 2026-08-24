@@ -127,6 +127,22 @@
   gap: 0.4rem 0.7rem;
 }
 
+/* The folded numbers, self voice only. */
+.card-numbers {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.card-numbers-summary {
+  cursor: pointer;
+  user-select: none;
+  width: fit-content;
+}
+
+.card-numbers-summary::marker {
+  color: var(--text-faint);
+}
+
 /* A player's tag, quoted — visibly not a control. */
 .card-tag {
   color: var(--text-dim);

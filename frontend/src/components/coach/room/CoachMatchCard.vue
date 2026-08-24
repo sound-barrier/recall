@@ -130,19 +130,41 @@ const earlierWords = computed(() => {
       </div>
     </div>
 
-    <ul class="card-stats">
-      <li v-for="stat in stats" :key="stat.label" class="stat-cell">
-        <span class="eyebrow">{{ stat.label }}</span>
-        <span class="stat-value">{{ stat.value == null ? '—' : (stat.format ?? String)(stat.value) }}</span>
-      </li>
-    </ul>
-
-    <MatchRankBlock v-if="data.rank" :record="record" />
-
-    <section v-if="data.heroes_played?.length" class="card-section">
-      <span class="eyebrow">Heroes played</span>
-      <CoachHeroSplit :heroes="data.heroes_played" :labels="labels" />
-    </section>
+    <!--
+      In your own voice the numbers fold away: you played the match, and on
+      a 720-tall laptop window they pushed the entire writing surface — the
+      room's whole point — below the fold. A coach reads a stranger's match,
+      so their card keeps the numbers open.
+    -->
+    <details v-if="voice === 'your'" class="card-numbers" role="group">
+      <summary class="eyebrow card-numbers-summary">
+        The numbers
+      </summary>
+      <ul class="card-stats">
+        <li v-for="stat in stats" :key="stat.label" class="stat-cell">
+          <span class="eyebrow">{{ stat.label }}</span>
+          <span class="stat-value">{{ stat.value == null ? '—' : (stat.format ?? String)(stat.value) }}</span>
+        </li>
+      </ul>
+      <MatchRankBlock v-if="data.rank" :record="record" />
+      <section v-if="data.heroes_played?.length" class="card-section">
+        <span class="eyebrow">Heroes played</span>
+        <CoachHeroSplit :heroes="data.heroes_played" :labels="labels" />
+      </section>
+    </details>
+    <template v-else>
+      <ul class="card-stats">
+        <li v-for="stat in stats" :key="stat.label" class="stat-cell">
+          <span class="eyebrow">{{ stat.label }}</span>
+          <span class="stat-value">{{ stat.value == null ? '—' : (stat.format ?? String)(stat.value) }}</span>
+        </li>
+      </ul>
+      <MatchRankBlock v-if="data.rank" :record="record" />
+      <section v-if="data.heroes_played?.length" class="card-section">
+        <span class="eyebrow">Heroes played</span>
+        <CoachHeroSplit :heroes="data.heroes_played" :labels="labels" />
+      </section>
+    </template>
 
     <section v-if="annotation?.note" class="card-section">
       <span class="eyebrow">{{ ownNoteLabel }}</span>

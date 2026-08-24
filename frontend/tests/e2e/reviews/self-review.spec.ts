@@ -43,6 +43,24 @@ test.describe('self review', () => {
     await seedProfiles(page)
   })
 
+  // The room exists to WRITE. On a common laptop viewport the whole
+  // writing surface sat below the fold behind stats the player already
+  // knows, and a first-timer could conclude the room is read-only.
+  test('the writing surface is above the fold on a 720-tall window', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 })
+    await mockSelfReviews(page)
+    await page.goto('/')
+    await tickFirstRows(page, 2)
+    await page.getByRole('button', { name: /^Review these/ }).click()
+
+    await expect(filmRoom(page)).toBeVisible()
+    await expect(filmRoom(page).getByRole('textbox', { name: 'Note' })).toBeInViewport()
+    // The numbers are a disclosure, not gone — one click away.
+    await filmRoom(page).getByRole('group').filter({ hasText: 'The numbers' })
+      .locator('summary').click()
+    await expect(filmRoom(page).getByText('Elims')).toBeVisible()
+  })
+
   test('Review these opens a sitting over the ticked rows, in the room, in your own clock', async ({ page }) => {
     const mock = await mockSelfReviews(page)
     await page.goto('/')
