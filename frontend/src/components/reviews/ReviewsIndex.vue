@@ -95,7 +95,7 @@ function pickMatches(): void {
   void appStore.goToView('matches')
 }
 
-// ── 02 From a coach ────────────────────────────────────────────────────
+// ── 02 With a coach ────────────────────────────────────────────────────
 // Waiting: sheets still holding an undecided note. Received: one coach's one
 // sitting, reassembled from the blocks that landed — the app keeps no other
 // record of a review it was given.

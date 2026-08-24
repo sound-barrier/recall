@@ -134,10 +134,10 @@ const requestEnd = () => coach.requestEndSession()
         <button
           type="button"
           class="paper-btn primary coach-slip-btn"
-          title="These notes have not been exported yet"
+          :title="coach.endArmedTitle"
           @click="requestEnd"
         >
-          End anyway — notes not exported
+          {{ coach.endArmedLabel }}
         </button>
         <button
           type="button"

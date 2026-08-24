@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import { useCoachingSettingsQuery } from '@/queries/settings'
@@ -92,6 +92,7 @@ function measureScroll(): void {
   moreBelow.value = el.scrollTop + el.clientHeight < el.scrollHeight - 1
 }
 
+
 // The manifest is one row per match and `narrow` can be the whole corpus, so
 // it is capped. The count above it is the whole truth; these rows exist to make
 // a gap NAMEABLE, and a name you have to scroll past hundreds of others to
@@ -102,6 +103,16 @@ const hiddenManifestCount = computed(() =>
   Math.max(0, shareManifest.value.length - MANIFEST_ROWS_SHOWN))
 
 const needsHandle = computed(() => handle.value.trim() === '')
+
+// The fold moves without a scroll: a window resize, the fix box leaving
+// after a refetch, the handle hint appearing. Each re-measures — a cue
+// that only answered the open moment went stale in exactly the case it
+// exists for.
+onMounted(() => window.addEventListener('resize', measureScroll))
+onUnmounted(() => window.removeEventListener('resize', measureScroll))
+watch([shareManifest, shareMissing, needsHandle], () => {
+  void nextTick(measureScroll)
+})
 const canSend = computed(() =>
   !shareBusy.value && shareBlocked.value === undefined && !needsHandle.value)
 
@@ -159,7 +170,7 @@ function onSend(): void {
           type="text"
           maxlength="64"
           aria-required="true"
-          aria-describedby="send-to-coach-handle-hint"
+          :aria-describedby="needsHandle ? 'send-to-coach-handle-hint' : undefined"
           placeholder="the name your coach knows you by"
           spellcheck="false"
           autocomplete="off"

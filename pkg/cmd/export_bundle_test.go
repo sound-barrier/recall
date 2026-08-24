@@ -32,8 +32,8 @@ func TestExportBundle_PostReturnsZip(t *testing.T) {
 	if ct := rec.Header().Get("Content-Type"); ct != "application/zip" {
 		t.Errorf("Content-Type = %q, want application/zip", ct)
 	}
-	if cd := rec.Header().Get("Content-Disposition"); !strings.Contains(cd, "recall-bundle-") {
-		t.Errorf("Content-Disposition = %q, expected recall-bundle- prefix", cd)
+	if cd := rec.Header().Get("Content-Disposition"); !strings.Contains(cd, "recall-backup-") {
+		t.Errorf("Content-Disposition = %q, expected recall-backup- prefix", cd)
 	}
 
 	// The body is a parseable ZIP with manifest.json + data.json.

@@ -22,6 +22,8 @@ withDefaults(defineProps<{
   focusTally: FocusCount[]
   /** True once ending has been asked about and not yet confirmed. */
   endArmed?: boolean
+  /** What the armed End says — state-aware, from the store. */
+  endArmedLabel?: string
   /** "7 notes · 19 moments · 1 reviewed only · Ordo" — from notesSummaryLine(). */
   notesLine: string
   /** What this player is being told to work on, in the coach's order. */
@@ -40,7 +42,8 @@ withDefaults(defineProps<{
   blockedReason?: string
 }>(), {
   canExport: true, exportReason: undefined, blockedReason: '',
-  endArmed: false, focusSaveState: 'idle',
+  endArmed: false, endArmedLabel: 'End anyway — notes not exported',
+  focusSaveState: 'idle',
 })
 
 const emit = defineEmits<{
@@ -112,7 +115,7 @@ const emit = defineEmits<{
       </button>
       <!-- Routes through the same armed question the loan slip asks. -->
       <button type="button" class="paper-btn" @click="emit('end')">
-        {{ endArmed ? 'End anyway — notes not exported' : '2 · End session' }}
+        {{ endArmed ? endArmedLabel : '2 · End session' }}
       </button>
       <button
         v-if="endArmed"

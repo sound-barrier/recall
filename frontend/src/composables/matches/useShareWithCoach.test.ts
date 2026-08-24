@@ -135,8 +135,11 @@ describe('useShareWithCoach', () => {
     setApiBacking({ ExportBundle: exportBundle })
     const share = make([READY])
     share.requestShare(['m-1'], 'row')
+    share.stashShareDraft({ handle: 'Sable', message: 'look at dorado' })
     await share.confirmShare(SUBMISSION)
     expect(onSaved).not.toHaveBeenCalled()
+    // A dismissed picker is not a decision about the words.
+    expect(share.shareDraft.value).toEqual({ handle: 'Sable', message: 'look at dorado' })
   })
 
   it('reports a refusal rather than swallowing it', async () => {
@@ -144,9 +147,25 @@ describe('useShareWithCoach', () => {
     setApiBacking({ ExportBundle: exportBundle })
     const share = make([READY])
     share.requestShare(['m-1'], 'row')
+    share.stashShareDraft({ handle: 'Sable', message: 'look at dorado' })
     await share.confirmShare(SUBMISSION)
     expect(onError).toHaveBeenCalledWith(expect.stringMatching(/replay code/))
     expect(share.shareOpen.value).toBe(false)
+    // The refusal is exactly the retry path the draft exists for.
+    expect(share.shareDraft.value).toEqual({ handle: 'Sable', message: 'look at dorado' })
+  })
+
+  it('lets the draft die only with a successful send or an explicit close', async () => {
+    const share = make([READY])
+    share.requestShare(['m-1'], 'row')
+    share.stashShareDraft({ handle: 'Sable', message: 'look at dorado' })
+    await share.confirmShare(SUBMISSION)
+    expect(share.shareDraft.value).toBeNull()
+
+    share.requestShare(['m-1'], 'row')
+    share.stashShareDraft({ handle: 'Sable', message: 'second draft' })
+    share.closeShare()
+    expect(share.shareDraft.value).toBeNull()
   })
 
   it('puts the blockers on screen and gets out of the way', async () => {
