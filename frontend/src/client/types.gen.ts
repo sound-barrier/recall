@@ -4493,7 +4493,8 @@ export type ExportBundleError = ExportBundleErrors[keyof ExportBundleErrors];
 export type ExportBundleResponses = {
     /**
      * ZIP bundle with a `Content-Disposition: attachment;
-     * filename="recall-bundle-<timestamp>.zip"` header.
+     * filename="recall-backup-<timestamp>.zip"` header
+     * (`recall-share-…` when a share block was sent).
      *
      */
     200: Blob | File;

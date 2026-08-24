@@ -127,14 +127,14 @@ describe('native dialog dispatch (Wails mode)', () => {
   })
 
   // The name the modal showed is what the native dialog opens with. Left to
-  // the Go side it was hard-coded `recall-bundle-...` in BOTH modes, so a
-  // share was offered under the name of an ordinary backup.
+  // the Go side it was hard-coded under one stem in BOTH modes, so a share
+  // was offered under the name of an ordinary backup.
   it('falls back to a mode-appropriate default name when none was chosen', async () => {
     const { ExportBundle } = await import('@/api')
     await ExportBundle({ matchKeys: ['match:x'], includeUnknown: true, includeHidden: false })
     expect(callByName).toHaveBeenCalledWith(
       FQN + 'SaveBundleToFile', ['match:x'], true, false,
-      expect.stringMatching(/^recall-bundle-.*\.zip$/) as unknown as string)
+      expect.stringMatching(/^recall-backup-.*\.zip$/) as unknown as string)
   })
 
   // Share mode is a different native method, not a nullable argument: the

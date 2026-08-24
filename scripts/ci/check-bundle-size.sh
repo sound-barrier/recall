@@ -319,7 +319,12 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # 2156606B → 2151855B, back under the ORIGINAL ceiling. The bump is reverted
 # rather than kept as headroom, because a budget nobody needs is a budget
 # nobody defends.
-: "${MAX_TOTAL_JS_BYTES:=2152000}"
+# 2026-08: 2152000 -> 2166000 -- the film-room audit campaign: fifty-one UX
+# fixes spread across the review flow's LAZY chunks (verdict roving + armed
+# confirms on the return sheet, the draft stash + fold cue in the send
+# dialog, disclosures/undo/autogrow in the film room, the codes modal's
+# restyle). Nothing eager moved -- initial JS stands. Measured 2160078B.
+: "${MAX_TOTAL_JS_BYTES:=2166000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
@@ -357,7 +362,10 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # because extracting the shared .sheet-* family took 1165B of duplicate back
 # out at the same time (416393B before the extraction, 415228B after). New
 # surface; ~2.8KB headroom.
-: "${MAX_TOTAL_CSS_BYTES:=419000}"
+# 2026-08: 419000 -> 423000 -- the same campaign's scoped styles: verdict
+# chips, the sticky fold cue, the numbers disclosure, visible blocked-reason
+# lines, the codes dialog joining the send dialog's grammar. Measured 421518B.
+: "${MAX_TOTAL_CSS_BYTES:=423000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never

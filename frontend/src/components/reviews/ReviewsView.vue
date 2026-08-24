@@ -90,8 +90,13 @@ const { onCopyReplayCode: copyReplayCode } = useMatchActions()
       @end="coachStore.requestEndSession"
       @keep-working="coachStore.cancelEndSession"
     />
+    <!-- Keyed by the sitting: openSitting can swap the review IN PLACE
+         (palette, shelf), and an unkeyed room let per-component state — a
+         focus item's pending Undo, a card's armed remove — leak from one
+         review into the next one's writes. -->
     <CoachRoomView
       v-else-if="sittingOpen && sitting"
+      :key="sitting.review_id"
       :player="SELF"
       voice="your"
       :locked-reason="lockReason"
