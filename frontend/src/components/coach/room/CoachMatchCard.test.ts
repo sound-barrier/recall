@@ -90,7 +90,7 @@ describe('CoachMatchCard', () => {
     // mapping for — so the element type is pinned here directly.
     // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container -- see above
     expect(view.container.querySelector('blockquote')).toHaveTextContent(/Kept peeling too late/)
-    expect(screen.getByText('stack')).toBeInTheDocument()
+    expect(screen.getByText('#stack')).toBeInTheDocument()
     expect(screen.getByText('A1B2C3')).toBeInTheDocument()
   })
 
@@ -123,7 +123,7 @@ describe('CoachMatchCard — voice', () => {
     renderCard(KINGS_ROW, { voice: 'your' })
     expect(screen.getByText('When')).toBeInTheDocument()
     expect(screen.queryByText(/your clock/)).not.toBeInTheDocument()
-    expect(screen.getByText('Your own note')).toBeInTheDocument()
+    expect(screen.getByText('From your match journal')).toBeInTheDocument()
     expect(screen.queryByText(/Sable's/)).not.toBeInTheDocument()
   })
 })

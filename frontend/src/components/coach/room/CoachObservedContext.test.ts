@@ -50,9 +50,13 @@ describe('CoachObservedContext', () => {
     expect(screen.getByLabelText('Date')).toHaveValue('2026-08-01')
   })
 
-  it('reports what the coach observed', async () => {
+  // Commits ride change/blur, never keystrokes — an @input commit fed the
+  // autosave debounce mid-word and shipped "Ilio" to the server.
+  it('reports what the coach observed once they leave the field', async () => {
     const view = renderContext()
     await fireEvent.update(screen.getByLabelText('Map'), 'Ilios')
+    expect(view.emitted('update')).toBeUndefined()
+    await fireEvent.change(screen.getByLabelText('Map'))
     expect(lastContext(view).map).toBe('Ilios')
   })
 

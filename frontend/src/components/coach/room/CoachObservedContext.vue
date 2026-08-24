@@ -43,6 +43,10 @@ const heroes = computed(() => [...heroIndex.value.values()].map((h) => h.display
 // thing — "only omission is free" — but a <select> needs a value for its
 // "Not sure" option, and the wire type has no empty member because an empty
 // result is not a result. commit() is where the two meet.
+//
+// commit() rides change and blur, never keystrokes: an @input commit fed
+// the autosave debounce mid-word, and a coach pausing halfway through
+// "Ilios" shipped "Ilio" to the server.
 type ContextDraft = Omit<ObservedContext, 'result'> & { result: '' | NonNullable<ObservedContext['result']> }
 
 const draft = ref<ContextDraft>({ result: '' })
@@ -81,7 +85,6 @@ function commit(): void {
           list="observed-maps"
           autocomplete="off"
           placeholder="e.g. Ilios"
-          @input="commit"
           @change="commit"
           @blur="commit"
         >
@@ -99,7 +102,6 @@ function commit(): void {
           list="observed-heroes"
           autocomplete="off"
           placeholder="e.g. Ana"
-          @input="commit"
           @change="commit"
           @blur="commit"
         >
@@ -138,7 +140,6 @@ function commit(): void {
           v-model="draft.date"
           class="mm-input"
           type="date"
-          @input="commit"
           @change="commit"
           @blur="commit"
         >

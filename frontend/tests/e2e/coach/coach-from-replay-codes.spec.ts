@@ -30,6 +30,10 @@ interface ReplaySessionState {
   codes: string[]
   handle: string
   notes: Record<string, unknown>[]
+  /** What the coach said they saw, per match key — the REAL server folds
+   *  this into the corpus on refresh, and the folding is what once made
+   *  the editor vanish. The mock must be as faithful. */
+  contextByKey: Record<string, Record<string, string>>
 }
 
 function view(state: ReplaySessionState) {
@@ -52,7 +56,7 @@ function matchesOf(state: ReplaySessionState) {
     source_files: [],
     source: 'replay',
     source_types: {},
-    data: {},
+    data: { ...(state.contextByKey[`replay-${code}`] ?? {}) },
     annotation: { leavers: [], throwers: [], replay_code: code },
   }))
 }
@@ -60,10 +64,11 @@ function matchesOf(state: ReplaySessionState) {
 /** A server that only knows how to run a code-only session. */
 async function mockReplaySession(
   page: Page,
-): Promise<{ opened: () => string[]; context: () => Record<string, string> | null }> {
-  const state: ReplaySessionState = { codes: [], handle: '', notes: [] }
+): Promise<{ opened: () => string[]; context: () => Record<string, string> | null; contextCalls: () => number }> {
+  const state: ReplaySessionState = { codes: [], handle: '', notes: [], contextByKey: {} }
   let opened: string[] = []
   let context: Record<string, string> | null = null
+  let contextCalls = 0
 
   await page.route('**/api/v1/coach/session/replay', async (route: Route) => {
     const body = JSON.parse(route.request().postData() ?? '{}') as { codes: string[] }
@@ -100,6 +105,9 @@ async function mockReplaySession(
   await page.route('**/api/v1/coach/session/matches/*/context', async (route: Route) => {
     const body = JSON.parse(route.request().postData() ?? '{}') as Record<string, string>
     context = body
+    contextCalls += 1
+    const key = decodeURIComponent(new URL(route.request().url()).pathname.split('/matches/')[1]?.replace(/\/context$/, '') ?? '')
+    state.contextByKey[key] = body
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(view(state)) })
   })
   await page.route('**/api/v1/coach/session/notes/**', async (route: Route) => {
@@ -109,7 +117,7 @@ async function mockReplaySession(
     state.notes = [note]
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(note) })
   })
-  return { opened: () => opened, context: () => context }
+  return { opened: () => opened, context: () => context, contextCalls: () => contextCalls }
 }
 
 type Page = import('@playwright/test').Page
@@ -198,5 +206,46 @@ test.describe('coaching from replay codes', () => {
     await expect.poll(() => mock.context()?.map).toBe('Ilios')
     await expect.poll(() => mock.context()?.result).toBe('defeat')
     await expect.poll(() => mock.context()?.date ?? '').not.toBe('')
+  })
+
+  // The editor is keyed on the frame's PROVENANCE (a codes session, a frame
+  // with a replay code), never on whether the map happens to be blank right
+  // now: keying on the data made the whole form vanish mid-task the moment
+  // the map save round-tripped, taking Result, Hero and the date with it.
+  // And a commit rides change/blur, never keystrokes — a mid-word pause
+  // must not land "Ilio" on the server.
+  test('the editor survives its own save, and typing alone saves nothing', async ({ page }) => {
+    const mock = await mockReplaySession(page)
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Reviews/ }).click()
+    await page.getByRole('button', { name: /Use a replay code/ }).click()
+    await addCode(page, CODE_A)
+    await page.getByRole('button', { name: 'Start review' }).click()
+    await confirmPlayer(page, 'Sable')
+
+    const observed = page.getByRole('region', { name: new RegExp(`What you saw in ${CODE_A}`) })
+    const mapField = observed.getByRole('combobox', { name: 'Map' })
+
+    // A mid-word pause, longer than the autosave debounce. Nothing may land.
+    await mapField.pressSequentially('Ilio')
+    // A fixed wait, on purpose: proving the ABSENCE of a request over the
+    // debounce window is the one thing a poll cannot do.
+    await page.waitForTimeout(700)
+    expect(mock.contextCalls()).toBe(0)
+
+    // Finish the word, then leave the field: NOW it commits.
+    await mapField.pressSequentially('s')
+    await observed.getByRole('combobox', { name: 'Result' }).selectOption('defeat')
+    await expect.poll(() => mock.context()?.map).toBe('Ilios')
+    await expect.poll(() => mock.context()?.result).toBe('defeat')
+
+    // The save round-tripped and the frame now carries data.map — the
+    // editor must still be standing, every field of it.
+    await expect(observed).toBeVisible()
+    const hero = observed.getByRole('combobox', { name: 'Hero' })
+    await hero.fill('Ana')
+    await hero.blur()
+    await expect.poll(() => mock.context()?.hero).toBe('Ana')
+    await expect.poll(() => mock.context()?.map).toBe('Ilios')
   })
 })
