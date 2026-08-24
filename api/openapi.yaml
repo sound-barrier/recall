@@ -5419,6 +5419,12 @@ components:
           type: string
           enum: [coach, self]
           description: Coach items outrank the player's own in the readout.
+        source_id:
+          type: string
+          description: |
+            The way back to where the item was written — the return sheet's
+            id for a coach's item, the sitting's review id for the player's
+            own. Omitted when the origin is gone.
         coach_name:
           type: string
           description: Who sent it. Absent on the player's own items.

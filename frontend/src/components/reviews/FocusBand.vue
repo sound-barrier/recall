@@ -6,16 +6,20 @@ import { formatPlayerDay } from '@/match/coach/coach-time'
 import { activeFocus, retiredFocus } from '@/match/reviews/focus-items'
 import { setFocusItemStatus } from '@/queries/focus'
 import { useAppStore } from '@/stores/app'
+import { useCoachReturnsStore } from '@/stores/coachReturns'
+import { useSelfReviewStore } from '@/stores/selfReview'
 
 // "What you're working on" — the one place the player's whole list lives,
 // at the top of 07 where both halves of the review cycle land.
 //
 // Two moves, and deliberately not a third. Accept acknowledges a coach's
-// item (new → working); "Got this" retires either kind (→ done). There is
-// no deny and no delete: an item a coach sent is live the moment it arrives,
-// so the player's choice is when to say they have read it, not whether to
-// let it in. A player can disagree with their coach — they still have to
-// hear it.
+// item (new → working); "Done with this" retires either kind (→ done) —
+// renamed from "Got this", which read as the same acknowledgement Accept
+// performs while actually ENDING the item. There is no deny and no delete:
+// an item a coach sent is live the moment it arrives, so the player's
+// choice is when to say they have read it, not whether to let it in. A
+// player can disagree with their coach — they still have to hear it. That
+// rule used to be enforced silently; the band now says it.
 
 const props = defineProps<{
   entries: readonly FocusEntry[]
@@ -24,6 +28,8 @@ const props = defineProps<{
 }>()
 
 const appStore = useAppStore()
+const returns = useCoachReturnsStore()
+const selfReviews = useSelfReviewStore()
 const showRetired = ref(false)
 const active = computed(() => activeFocus(props.entries))
 const retired = computed(() => retiredFocus(props.entries))
@@ -36,6 +42,17 @@ const isNew = (e: FocusEntry): boolean => e.status === 'new'
 function provenance(e: FocusEntry): string {
   const who = e.source === 'coach' ? (e.coach_name || 'your coach') : 'you'
   return `${who} · ${formatPlayerDay(e.from)}`
+}
+
+// Provenance is a door, not just a caption: the item's origin — the return
+// sheet a coach sent it on, or the sitting the player wrote it in — opens
+// from the line that names it.
+const hasCoachItems = computed(() => active.value.some((e) => e.source === 'coach'))
+
+function openSource(e: FocusEntry): void {
+  if (!e.source_id) return
+  if (e.source === 'coach') void returns.openReturnSheet(Number(e.source_id))
+  else void selfReviews.openSitting(e.source_id)
 }
 
 const bandHead = useTemplateRef<HTMLElement>('bandHead')
@@ -82,7 +99,18 @@ async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
           <p class="focus-band-line">
             {{ e.text }}
           </p>
-          <p class="focus-band-from">
+          <button
+            v-if="e.source_id"
+            type="button"
+            class="focus-band-from focus-band-from-link"
+            :aria-label="`Open where this came from: ${provenance(e)}`"
+            @click="openSource(e)"
+          >
+            {{ provenance(e) }}<template v-if="isNew(e)">
+              · new
+            </template>
+          </button>
+          <p v-else class="focus-band-from">
             {{ provenance(e) }}<template v-if="isNew(e)">
               · new
             </template>
@@ -105,18 +133,23 @@ async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
             class="paper-chip"
             :disabled="blocked"
             :title="blockedReason || undefined"
-            :aria-label="`Got this: ${e.text}`"
+            :aria-label="`Done with this: ${e.text}`"
             @click="move(e, 'done')"
           >
-            Got this
+            Done with this
           </button>
         </div>
       </li>
     </ol>
 
+    <p v-if="hasCoachItems" class="focus-band-rule">
+      A coach's item stays here until you're done with it — accepting is
+      acknowledging, not agreeing.
+    </p>
+
     <div v-if="retired.length" class="focus-band-retired">
       <button type="button" class="paper-chip" :aria-expanded="showRetired" @click="showRetired = !showRetired">
-        {{ showRetired ? 'Hide' : 'Show' }} {{ retired.length }} you've got
+        {{ showRetired ? 'Hide' : 'Show' }} {{ retired.length }} you're done with
       </button>
       <ul v-if="showRetired" class="focus-band-list focus-band-done">
         <li v-for="e in retired" :key="e.item_id" class="focus-band-row">
@@ -190,6 +223,29 @@ async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
   margin: 0.1rem 0 0;
   font-size: var(--type-sm);
   color: var(--ink-faint);
+}
+
+/* The provenance door keeps the caption's quiet look until pointed at —
+   it is a wayback, not a call to action. */
+.focus-band-from-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.focus-band-from-link:hover,
+.focus-band-from-link:focus-visible {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+.focus-band-rule {
+  margin: 0;
+  font-size: var(--type-sm);
+  color: var(--ink-dim);
 }
 
 .focus-band-actions {

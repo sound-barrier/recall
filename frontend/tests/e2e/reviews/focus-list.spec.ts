@@ -86,7 +86,7 @@ test.describe("07 Reviews — what you're working on", () => {
     await mockFocus(page, [FROM_SELF])
     await openTab(page)
     await expect(band(page).getByRole('button', { name: /^Accept/ })).toHaveCount(0)
-    await expect(band(page).getByRole('button', { name: /^Got this/ })).toBeVisible()
+    await expect(band(page).getByRole('button', { name: /^Done with this/ })).toBeVisible()
   })
 
   // There is no deny. Nothing on this band refuses an item a coach sent.
@@ -98,19 +98,19 @@ test.describe("07 Reviews — what you're working on", () => {
     ).toHaveCount(0)
   })
 
-  test('"Got this" retires an item behind a count rather than deleting it', async ({ page }) => {
+  test('"Done with this" retires an item behind a count rather than deleting it', async ({ page }) => {
     const focus = await mockFocus(page, [FROM_COACH, FROM_SELF])
     await openTab(page)
 
     await band(page).getByRole('listitem').nth(1)
-      .getByRole('button', { name: /^Got this/ }).click()
+      .getByRole('button', { name: /^Done with this/ }).click()
 
     await expect.poll(() => focus.moves).toEqual([
       { itemID: FROM_SELF.item_id, status: 'done' },
     ])
     // Off the live list, still on the record.
     await expect(band(page).getByText('Ult economy on control.')).toHaveCount(0)
-    const toggle = band(page).getByRole('button', { name: "Show 1 you've got" })
+    const toggle = band(page).getByRole('button', { name: "Show 1 you're done with" })
     await expect(toggle).toBeVisible()
     await toggle.click()
     await expect(band(page).getByText('Ult economy on control.')).toBeVisible()

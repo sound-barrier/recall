@@ -5,6 +5,7 @@ import { computed } from 'vue'
 import type { CoachDecisionEnum, CoachReturnItem } from '@/api-client'
 import { isOrphan } from '@/composables/coach/useCoachReturnDecisions'
 import { focusTagLabel } from '@/match/coach/coach-notes'
+import { formatPlayerDay } from '@/match/coach/coach-time'
 
 // One returned note on the player's decision sheet: what the coach wrote,
 // which match it is about, and the Accept / Skip verdict. Presentational —
@@ -32,22 +33,62 @@ const reviewedOnly = computed(() => props.note.kind === 'reviewed_only')
 const tags = computed(() => [...props.note.focus_tags, ...props.note.extra_tags])
 
 // "numbani · ana · victory" — the descriptive snapshot the archive carries,
-// so a note still reads even when its match is gone.
+// so a note still reads even when its match is gone. An orphan with no
+// snapshot gets human copy, never the raw internal key — that goes in the
+// small mono slot for anyone correlating by hand.
 const matchLabel = computed(() => {
   const m = props.note.match
-  if (!m) return props.note.match_key
+  if (!m) return 'A match no longer in your history'
   return [m.map, m.hero, m.result].filter(Boolean).join(' · ')
 })
 
+// The app's date language, not raw wire values: "Fri · Aug 21 · 22:30".
 const playedLabel = computed(() => {
   const m = props.note.match
-  if (!m) return ''
-  return [m.date, m.finished_at].filter(Boolean).join(' · ')
+  if (!m) return props.note.match_key
+  return [m.date ? formatPlayerDay(m.date) : '', m.finished_at].filter(Boolean).join(' · ')
 })
+
+// Skip is only "leave it out" while the note is not on the match yet. On an
+// already-accepted note the same verdict UN-writes it, so the control says
+// that instead of promising a no-op.
+const skipLabel = computed(() => (alreadyAccepted.value ? 'Remove from the match' : 'Skip'))
+const skipTitle = computed(() => (alreadyAccepted.value
+  ? 'Take this note back off the match'
+  : 'Leave this note out of your history'))
 
 function pick(decision: CoachDecisionEnum) {
   if (decision === 'accepted' && orphan.value) return
   emit('decide', decision)
+}
+
+// Real roving for the radiogroup: while undecided nothing is checked, so the
+// checked-chip-is-tabbable rule left BOTH radios at tabindex -1 and the pair
+// was unreachable without a mouse. One radio is always the Tab stop — the
+// checked one, else the first the note allows — and arrows move AND select,
+// the way a radio group moves.
+const acceptTab = computed(() => {
+  if (props.verdict === 'accepted') return 0
+  if (props.verdict === '' && !orphan.value) return 0
+  return -1
+})
+const skipTab = computed(() => {
+  if (props.verdict === 'skipped') return 0
+  if (props.verdict === '' && orphan.value) return 0
+  return -1
+})
+
+function onArrow(e: KeyboardEvent) {
+  const forward = e.key === 'ArrowRight' || e.key === 'ArrowDown'
+  const backward = e.key === 'ArrowLeft' || e.key === 'ArrowUp'
+  if (!forward && !backward) return
+  e.preventDefault()
+  const onAccept = (e.target as HTMLElement).matches('[data-verdict="accepted"]')
+  const next: CoachDecisionEnum = onAccept ? 'skipped' : 'accepted'
+  if (next === 'accepted' && orphan.value) return
+  emit('decide', next)
+  const sel = next === 'accepted' ? '[data-verdict="accepted"]' : '[data-verdict="skipped"]'
+  ;(e.currentTarget as HTMLElement).querySelector<HTMLButtonElement>(sel)?.focus()
 }
 </script>
 
@@ -82,7 +123,7 @@ function pick(decision: CoachDecisionEnum) {
     <NoteProse v-else-if="note.text" class="return-card-text" :text="note.text" />
 
     <p v-if="note.match_clock" class="return-card-clock">
-      {{ note.match_clock }}
+      at {{ note.match_clock }} in the match
     </p>
 
     <!--
@@ -116,15 +157,18 @@ function pick(decision: CoachDecisionEnum) {
 
     <div
       class="return-card-verdict"
+      :class="{ 'is-decided': verdict !== '' }"
       role="radiogroup"
       :aria-label="`Verdict on the note about ${matchLabel}`"
+      @keydown="onArrow"
     >
       <button
         type="button"
-        class="paper-chip"
+        class="paper-chip verdict-chip"
         role="radio"
+        data-verdict="accepted"
         :aria-checked="verdict === 'accepted'"
-        :tabindex="verdict === 'accepted' ? 0 : -1"
+        :tabindex="acceptTab"
         :disabled="orphan"
         :title="orphan ? 'This note has no match to land on.' : 'Save this note onto the match'"
         @click="pick('accepted')"
@@ -133,14 +177,15 @@ function pick(decision: CoachDecisionEnum) {
       </button>
       <button
         type="button"
-        class="paper-chip"
+        class="paper-chip verdict-chip"
         role="radio"
+        data-verdict="skipped"
         :aria-checked="verdict === 'skipped'"
-        :tabindex="verdict === 'skipped' || (orphan && verdict !== 'accepted') ? 0 : -1"
-        title="Leave this note out of your history"
+        :tabindex="skipTab"
+        :title="skipTitle"
         @click="pick('skipped')"
       >
-        Skip
+        {{ skipLabel }}
       </button>
     </div>
   </article>

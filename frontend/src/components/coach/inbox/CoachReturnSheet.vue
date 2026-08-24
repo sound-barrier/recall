@@ -34,6 +34,26 @@ const mismatchedHandle = computed(() =>
 // closing would throw away work the server never took.
 const saveFailed = ref(false)
 
+// The honest Finish label states the whole outcome, and finishing over
+// undecided notes ARMS instead of closing: the banner keeps nagging about
+// whatever is left, so leaving silently reads as done when it is not.
+const skippedCount = computed(() =>
+  Object.values(decisions.verdicts.value).filter((v) => v === 'skipped').length)
+const undecidedCount = computed(() =>
+  notes.value.filter((n) => decisions.verdictOf(n.note_id) === '').length)
+const finishLabel = computed(() =>
+  `Finish · ${decisions.acceptedCount.value} accepted · ${skippedCount.value} skipped`)
+const finishArmed = ref(false)
+
+async function finish() {
+  if (undecidedCount.value > 0 && !finishArmed.value) {
+    finishArmed.value = true
+    return
+  }
+  finishArmed.value = false
+  await commit()
+}
+
 // One commit path behind both buttons: "Decide later" and "Finish" write
 // the same partial map — they differ in what the player means by them, not
 // in what is saved. An untouched sheet closes without a request.
@@ -69,7 +89,12 @@ async function discard() {
 }
 
 // A sheet that closes while the confirm is up must not reopen holding it.
-watch(open, (isOpen) => { if (!isOpen) discardArmed.value = false })
+watch(open, (isOpen) => {
+  if (!isOpen) {
+    discardArmed.value = false
+    finishArmed.value = false
+  }
+})
 
 useModalFocusTrap(open, {
   containerSelector: '.coach-return-sheet',
@@ -103,7 +128,9 @@ useModalFocusTrap(open, {
             </li>
           </ul>
           <p class="return-focus-note">
-            These are already on your list. Accept them there when you have read them.
+            These are already in “What you're working on” — read them there when
+            you're done here. A coach's item stays on your list until you've
+            worked it.
           </p>
         </section>
         <p v-if="mismatchedHandle" class="return-mismatch">
@@ -115,13 +142,22 @@ useModalFocusTrap(open, {
         </p>
       </header>
 
-      <div class="return-bulk">
-        <button type="button" class="paper-btn" @click="decisions.acceptAll()">
-          Accept all
-        </button>
-        <button type="button" class="paper-btn" @click="decisions.skipAll()">
-          Skip all
-        </button>
+      <!-- The bulk verdicts live under the NOTES header and say "notes",
+           because they act on the note cards — they used to sit directly
+           beneath the focus-items copy, which had just said "Accept them
+           there", and read as acting on the bullets above instead. -->
+      <div class="return-notes-head">
+        <p class="eyebrow ink">
+          Notes in this file
+        </p>
+        <div class="return-bulk">
+          <button type="button" class="paper-btn" @click="decisions.acceptAll()">
+            Accept all notes
+          </button>
+          <button type="button" class="paper-btn" @click="decisions.skipAll()">
+            Skip all notes
+          </button>
+        </div>
       </div>
 
       <!-- Focusable because it scrolls: when every note is an orphan the
@@ -145,12 +181,25 @@ useModalFocusTrap(open, {
           had this endpoint the whole time and nothing called it.
         -->
         <template v-if="discardArmed">
-          <span class="return-discard-ask">Throw these notes away without deciding them?</span>
+          <span class="return-discard-ask">Throw these notes away? The what-to-work-on
+            items from this file come off your list too.</span>
           <button type="button" class="paper-btn" @click="discardArmed = false">
             Keep them
           </button>
           <button type="button" class="paper-btn return-discard-go" @click="discard">
             Discard these notes
+          </button>
+        </template>
+        <template v-else-if="finishArmed">
+          <span class="return-discard-ask">
+            {{ undecidedCount }} note{{ undecidedCount === 1 ? ' is' : 's are' }} still
+            undecided — the banner stays until they are.
+          </span>
+          <button type="button" class="paper-btn" @click="finishArmed = false">
+            Keep deciding
+          </button>
+          <button type="button" class="paper-btn primary" @click="finish">
+            Finish anyway
           </button>
         </template>
         <template v-else>
@@ -160,8 +209,8 @@ useModalFocusTrap(open, {
           <button type="button" class="paper-btn" @click="commit">
             Decide later
           </button>
-          <button type="button" class="paper-btn primary" @click="commit">
-            Finish · save {{ decisions.acceptedCount.value }} accepted
+          <button type="button" class="paper-btn primary" @click="finish">
+            {{ finishLabel }}
           </button>
         </template>
       </footer>

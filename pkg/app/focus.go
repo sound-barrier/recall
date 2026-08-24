@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -37,6 +38,10 @@ type FocusEntry struct {
 	// From is the session date (coach) or the sitting's creation day (self),
 	// which is what the list orders by within each source.
 	From string `json:"from"`
+	// SourceID is the way back: the return sheet's id (coach) or the
+	// sitting's review id (self). The band turns provenance into a door
+	// with it — an item's origin was previously named but unreachable.
+	SourceID string `json:"source_id,omitempty"`
 }
 
 // FocusList returns the player's whole list, coach items first, each source
@@ -52,6 +57,7 @@ func (a *App) FocusList() ([]FocusEntry, error) {
 		out = append(out, FocusEntry{
 			ItemID: it.ItemID, Text: it.Text, Status: string(it.Status),
 			Source: SourceCoach, CoachName: it.CoachName, From: it.SessionDate,
+			SourceID: strconv.FormatInt(it.ReturnID, 10),
 		})
 	}
 
@@ -71,6 +77,7 @@ func (a *App) FocusList() ([]FocusEntry, error) {
 			out = append(out, FocusEntry{
 				ItemID: it.ItemID, Text: it.Text, Status: string(it.Status),
 				Source: SourceSelf, From: day(s.CreatedAt),
+				SourceID: s.ReviewID,
 			})
 		}
 	}
