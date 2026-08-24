@@ -89,6 +89,7 @@ beforeEach(() => {
     DeleteCoachNote: vi.fn(async () => undefined),
     PutCoachFocusItems: vi.fn(async () => undefined),
     ExportCoachNotes: vi.fn(async () => 'recall-coach-notes-sable.zip'),
+    ExportCoachSheet: vi.fn(async () => 'recall-review-sable.html'),
     OpenCoachReplaySession: vi.fn(async () => replaySessionView()),
     AddCoachSessionReplayCode: vi.fn(async () => replaySessionView({ match_count: 2 })),
     SetCoachSessionMatchContext: vi.fn(async () => replaySessionView()),
@@ -454,6 +455,27 @@ describe('coach store — a save that failed', () => {
     // "these notes are not in an archive yet" flag survives.
     expect(api.PutCoachNote).toHaveBeenCalledTimes(2)
     expect(api.ExportCoachNotes).not.toHaveBeenCalled()
+    expect(coach.dirtySinceExport).toBe(true)
+    expect(app.error).not.toBe('')
+  })
+
+  // The page renders the DRAFTS, so it is complete even when a server save
+  // failed — saving it is fine. What must NOT happen is the save clearing
+  // the End protection: the session's copy is still missing the note, and
+  // "End anyway" was the one question standing between that and silence.
+  it('saves the page under a failed save, but keeps the End protection', async () => {
+    failOn(MATCH_A)
+    const coach = useCoachStore()
+    const app = useAppStore()
+    await coach.openBundle()
+    await settle()
+
+    coach.updateNote(MATCH_A, draft({ text: 'On the page, not in the session.' }))
+    await vi.advanceTimersByTimeAsync(1000)
+
+    await coach.exportSheet()
+
+    expect(api.ExportCoachSheet).toHaveBeenCalledTimes(1)
     expect(coach.dirtySinceExport).toBe(true)
     expect(app.error).not.toBe('')
   })

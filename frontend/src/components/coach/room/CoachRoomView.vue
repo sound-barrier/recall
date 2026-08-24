@@ -132,7 +132,7 @@ const momentSaveStateFor = (momentId: string): CoachSaveState =>
 // sitting names nobody and asks nothing.
 const unconfirmed = computed(() => props.voice !== 'your' && props.player.handle === '')
 const UNCONFIRMED_REASON
-  = 'Say who this bundle is about before writing notes — nothing can be saved without it.'
+  = 'Say who this review is about before writing notes — nothing can be saved without it.'
 const blockedReason = computed(() => (unconfirmed.value ? UNCONFIRMED_REASON : props.lockedReason))
 
 // A suggested handle is a suggestion: the sheet re-opens the same prompt to
