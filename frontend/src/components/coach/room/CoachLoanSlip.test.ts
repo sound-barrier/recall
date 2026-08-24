@@ -166,6 +166,6 @@ describe('CoachLoanSlip — a bundle that named nobody', () => {
     const button = within(unnamedSlip()).getByRole('button', { name: /^1 · Export notes file/ })
 
     expect(button).toBeDisabled()
-    expect(button.title).toMatch(/who this bundle is about/i)
+    expect(button.title).toMatch(/who this review is about/i)
   })
 })
