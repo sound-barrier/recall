@@ -205,4 +205,43 @@ describe('CoachReturnSheet', () => {
     open(sheet({ player_mismatch: true, player_handle: 'Wren' }))
     expect(within(dialog()).getByText(/written about Wren/)).toBeInTheDocument()
   })
+
+  // The armed Finish and the inbox banner must agree on what "undecided"
+  // means. The banner settles accepted/skipped/orphan statuses; a confirm
+  // that counts them again nags about notes nobody can or need decide.
+  it('does not arm Finish over notes the server already settled', async () => {
+    const user = userEvent.setup()
+    const { decide } = open(sheet({
+      notes: [note('n-old', { status: 'accepted' }), note('n-gone', { status: 'orphan' })],
+      pending: 0,
+    }))
+    await user.click(within(dialog()).getByRole('button', { name: /^Finish/ }))
+    expect(screen.queryByText(/still\s+undecided/)).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(decide).not.toHaveBeenCalled()
+  })
+
+  it('stands the armed confirm down once the last note is decided', async () => {
+    const user = userEvent.setup()
+    open()
+    await user.click(within(dialog()).getByRole('button', { name: /^Finish/ }))
+    expect(within(dialog()).getByText(/still\s+undecided/)).toBeInTheDocument()
+    // Arming must not strand a screen reader: focus lands on the safe way out.
+    expect(within(dialog()).getByRole('button', { name: 'Keep deciding' })).toHaveFocus()
+
+    await user.click(within(cards()[0]!).getByRole('radio', { name: 'Accept' }))
+    await user.click(within(cards()[1]!).getByRole('radio', { name: 'Skip' }))
+    expect(within(dialog()).queryByText(/still\s+undecided/)).toBeNull()
+    expect(within(dialog()).getByRole('button', { name: /^Finish · 1 accepted · 1 skipped/ })).toBeInTheDocument()
+  })
+
+  // status:'orphan' with a RECORDED accept is a real server state (the match
+  // was deleted after the decision landed). The accept radio is disabled, so
+  // the Tab stop must sit on the one radio the note still allows.
+  it('keeps a Tab stop in the pair when a recorded accept sits on an orphan', () => {
+    open(sheet({ notes: [note('n-1', { status: 'orphan' })], decisions: { 'n-1': 'accepted' } }))
+    const pair = cards()[0]!
+    expect(within(pair).getByRole('radio', { name: 'Accept' })).toBeDisabled()
+    expect(within(pair).getByRole('radio', { name: 'Skip' })).toHaveAttribute('tabindex', '0')
+  })
 })

@@ -14,7 +14,7 @@ import (
 // READING the whole list and moving one item along it.
 //
 // There is no delete and no deny. A coach's item is live the moment it
-// lands, Accept acknowledges it, "Got this" retires it — and nothing here
+// lands, Accept acknowledges it, "Done with this" retires it — and nothing here
 // removes what was said.
 
 func registerFocusRoutes(apiMux *http.ServeMux, a *app.App) {

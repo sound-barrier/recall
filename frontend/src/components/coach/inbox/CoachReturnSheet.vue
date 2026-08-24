@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import CoachReturnCard from '@/components/coach/inbox/CoachReturnCard.vue'
@@ -39,20 +39,38 @@ const saveFailed = ref(false)
 // whatever is left, so leaving silently reads as done when it is not.
 const skippedCount = computed(() =>
   Object.values(decisions.verdicts.value).filter((v) => v === 'skipped').length)
+// The same closed set the inbox banner settles (coachReturns.withPending):
+// a re-sent note the player accepted last session, or an orphan that can
+// never land, is not "undecided" — a confirm that counts them again nags
+// about notes nobody can or need decide.
+const SETTLED_STATUSES = new Set(['accepted', 'skipped', 'orphan'])
 const undecidedCount = computed(() =>
-  notes.value.filter((n) => decisions.verdictOf(n.note_id) === '').length)
+  notes.value.filter((n) =>
+    !SETTLED_STATUSES.has(n.status) && decisions.verdictOf(n.note_id) === '').length)
 const finishLabel = computed(() =>
   `Finish · ${decisions.acceptedCount.value} accepted · ${skippedCount.value} skipped`)
 const finishArmed = ref(false)
+const keepDecidingButton = useTemplateRef<HTMLButtonElement>('keepDecidingButton')
 
 async function finish() {
   if (undecidedCount.value > 0 && !finishArmed.value) {
     finishArmed.value = true
+    // Arming unmounts the button that was pressed; without a landing the
+    // focus falls to <body> and a screen reader hears nothing. The safe
+    // way out takes it, and reads the count via aria-describedby.
+    void nextTick(() => keepDecidingButton.value?.focus())
     return
   }
   finishArmed.value = false
   await commit()
 }
+
+// Deciding the last note answers the confirm's whole question — an armed
+// banner reading "0 notes are still undecided" would offer to force what
+// no longer needs forcing.
+watch(undecidedCount, (left) => {
+  if (left === 0) finishArmed.value = false
+})
 
 // One commit path behind both buttons: "Decide later" and "Finish" write
 // the same partial map — they differ in what the player means by them, not
@@ -80,6 +98,14 @@ async function commit() {
 // writes decisions and marks the matches reviewed by a coach whose review the
 // player has just said they do not want.
 const discardArmed = ref(false)
+const keepThemButton = useTemplateRef<HTMLButtonElement>('keepThemButton')
+
+// Same landing as the armed Finish: the pressed button unmounts, so focus
+// moves to the safe answer and the question rides its description.
+function armDiscard(): void {
+  discardArmed.value = true
+  void nextTick(() => keepThemButton.value?.focus())
+}
 
 async function discard() {
   const sheet = returnSheet.value
@@ -181,29 +207,29 @@ useModalFocusTrap(open, {
           had this endpoint the whole time and nothing called it.
         -->
         <template v-if="discardArmed">
-          <span class="return-discard-ask">Throw these notes away? The what-to-work-on
+          <span id="return-discard-ask" class="return-discard-ask" role="status">Throw these notes away? The what-to-work-on
             items from this file come off your list too.</span>
-          <button type="button" class="paper-btn" @click="discardArmed = false">
+          <button ref="keepThemButton" type="button" class="paper-btn" aria-describedby="return-discard-ask" @click="discardArmed = false">
             Keep them
           </button>
-          <button type="button" class="paper-btn return-discard-go" @click="discard">
+          <button type="button" class="paper-btn return-discard-go" aria-describedby="return-discard-ask" @click="discard">
             Discard these notes
           </button>
         </template>
         <template v-else-if="finishArmed">
-          <span class="return-discard-ask">
+          <span id="return-finish-ask" class="return-discard-ask" role="status">
             {{ undecidedCount }} note{{ undecidedCount === 1 ? ' is' : 's are' }} still
             undecided — the banner stays until they are.
           </span>
-          <button type="button" class="paper-btn" @click="finishArmed = false">
+          <button ref="keepDecidingButton" type="button" class="paper-btn" aria-describedby="return-finish-ask" @click="finishArmed = false">
             Keep deciding
           </button>
-          <button type="button" class="paper-btn primary" @click="finish">
+          <button type="button" class="paper-btn primary" aria-describedby="return-finish-ask" @click="finish">
             Finish anyway
           </button>
         </template>
         <template v-else>
-          <button type="button" class="paper-btn return-discard" @click="discardArmed = true">
+          <button type="button" class="paper-btn return-discard" @click="armDiscard">
             Discard…
           </button>
           <button type="button" class="paper-btn" @click="commit">

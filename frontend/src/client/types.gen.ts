@@ -1347,7 +1347,7 @@ export type SelfReviewUpdateInput = {
 /**
  * The player's own progress on one item. A coach's item arrives `new`
  * and Accept moves it to `working`; the player's own is born
- * `working`; "Got this" retires either to `done`. There is no
+ * `working`; "Done with this" retires either to `done`. There is no
  * `denied` — see `PUT /api/v1/focus/{item_id}/status`.
  *
  */
