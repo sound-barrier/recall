@@ -666,7 +666,7 @@ CREATE TABLE IF NOT EXISTS coach_players (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   player_id TEXT UNIQUE,
   handle TEXT NOT NULL COLLATE NOCASE,
-  kind TEXT NOT NULL DEFAULT 'player'
+  kind TEXT NOT NULL DEFAULT 'player' CHECK (kind IN ('player', 'team'))
 ) STRICT;
 -- statement-end
 

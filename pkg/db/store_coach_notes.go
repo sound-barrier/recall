@@ -20,6 +20,12 @@ func (s *SQLStore) EnsureCoachPlayer(playerID, handle, kind string) (CoachPlayer
 	if kind != CoachKindPlayer && kind != CoachKindTeam {
 		return CoachPlayer{}, fmt.Errorf("%w: %q", ErrCoachKindInvalid, kind)
 	}
+	// A team never carries a player_id — the id is minted by a PLAYER's
+	// share export. Refusing the pair keeps adoption a player-only
+	// mechanism in every implementation.
+	if kind == CoachKindTeam && playerID != "" {
+		return CoachPlayer{}, fmt.Errorf("%w: a team never carries a player id", ErrCoachKindInvalid)
+	}
 	tx, err := s.db.Begin()
 	if err != nil {
 		return CoachPlayer{}, err

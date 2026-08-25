@@ -62,6 +62,9 @@ func (f *Fake) EnsureCoachPlayer(playerID, handle, kind string) (db.CoachPlayer,
 	if kind != db.CoachKindPlayer && kind != db.CoachKindTeam {
 		return db.CoachPlayer{}, fmt.Errorf("%w: %q", db.ErrCoachKindInvalid, kind)
 	}
+	if kind == db.CoachKindTeam && playerID != "" {
+		return db.CoachPlayer{}, fmt.Errorf("%w: a team never carries a player id", db.ErrCoachKindInvalid)
+	}
 	if playerID != "" {
 		if i := slices.IndexFunc(f.CoachPlayers, func(p db.CoachPlayer) bool { return p.PlayerID == playerID }); i >= 0 {
 			return f.CoachPlayers[i], nil

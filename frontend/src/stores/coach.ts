@@ -152,7 +152,10 @@ export const useCoachStore = defineStore('coach', () => {
   let hydratedFor = ''
   function identityOf(view: CoachSessionView | null): string {
     if (!view) return ''
-    return [view.player.id, view.player.handle, view.exported_at].join('|')
+    // kind is part of the identity: a team named Aria and a player named
+    // Aria are two roster rows, and confirming the other kind re-keys the
+    // notes server-side exactly like a corrected handle does.
+    return [view.player.id, view.player.handle, view.player.kind, view.exported_at].join('|')
   }
 
   watch(session, (view) => {

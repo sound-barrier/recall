@@ -130,3 +130,18 @@ func TestStoreContract_AdoptionNeverPicksATeamRow(t *testing.T) {
 		})
 	}
 }
+
+// A team never carries a player_id — the id is minted by a PLAYER's share
+// export, and a codes session (the only way to a team) has none. Refusing
+// the pair outright is what keeps the two implementations from diverging
+// on whether an id request may adopt a team row.
+func TestStoreContract_AnIDNeverPairsWithATeam(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			if _, err := s.EnsureCoachPlayer("uuid-a", "Aria", db.CoachKindTeam); !errors.Is(err, db.ErrCoachKindInvalid) {
+				t.Fatalf("EnsureCoachPlayer(id, team) = %v, want ErrCoachKindInvalid", err)
+			}
+		})
+	}
+}

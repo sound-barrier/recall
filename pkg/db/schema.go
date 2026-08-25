@@ -52,7 +52,7 @@ var additiveColumns = []struct{ table, column, ddl string }{
 	{"rank_screenshots", "modifiers_raw", "TEXT NOT NULL DEFAULT ''"},
 	// Every row that predates teams was a player — the constant default IS
 	// the backfill, same shape as modifiers_raw above.
-	{"coach_players", "kind", "TEXT NOT NULL DEFAULT 'player'"},
+	{"coach_players", "kind", "TEXT NOT NULL DEFAULT 'player' CHECK (kind IN ('player', 'team'))"},
 }
 
 // ensureAdditiveColumns adds any additiveColumns missing from an already-created

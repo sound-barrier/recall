@@ -111,7 +111,7 @@ func TestExportNotes_AssemblesTheFileAndValidates(t *testing.T) {
 		ExportedAt:    "2026-08-12T15:04:05Z",
 		RecallVersion: "0.31.0",
 		CoachName:     "Ordo",
-		Player:        coach.Player{ID: sharePlayer().ID, Handle: "Sable"},
+		Player:        coach.Player{ID: sharePlayer().ID, Handle: "Sable", Kind: db.CoachKindPlayer},
 		SessionDate:   "2026-08-12",
 		FocusItems:    focus,
 		Notes:         notes,
