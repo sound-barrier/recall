@@ -2276,6 +2276,40 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/coach/players/{id}/notes:
+    get:
+      operationId: ListCoachPlayerNotes
+      tags: [Coaching]
+      summary: Every note ever written about one coached identity, newest first
+      description: |
+        The dossier's "Read every note". No match context travels — the
+        match key is the label (a dated capture key, or a replay code) —
+        because the coach's store keeps only the notes, never the loaned
+        matches they were about.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: The roster row's id, from GET /api/v1/coach/players.
+      responses:
+        "200":
+          description: The identity's notes, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CoachNoteSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/coach/players:
     get:
       operationId: ListCoachPlayers
@@ -5246,6 +5280,36 @@ components:
         accepted_at:
           type: string
           description: When the player accepted the note (RFC3339).
+
+    CoachNoteSummary:
+      type: object
+      description: |
+        One stored coach note, as the dossier lists it — the note itself
+        plus its match KEY, which doubles as the display label.
+      required: [note_id, match_key, kind, text, focus_tags, extra_tags, updated_at]
+      properties:
+        note_id:
+          type: string
+        match_key:
+          type: string
+        kind:
+          $ref: "#/components/schemas/CoachNoteKindEnum"
+        text:
+          type: string
+        focus_tags:
+          type: array
+          items:
+            type: string
+        extra_tags:
+          type: array
+          items:
+            type: string
+        match_clock:
+          type: string
+          description: MM:SS into the match; absent when the note names none.
+        updated_at:
+          type: string
+          description: RFC3339 of the last save.
 
     CoachPlayerSummary:
       type: object

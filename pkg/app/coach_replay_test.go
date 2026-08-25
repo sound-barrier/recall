@@ -172,3 +172,40 @@ func TestExportCoachNotes_ATeamReviewIsPageOnly(t *testing.T) {
 		t.Fatalf("ExportCoachNotes(team) = %v, want ErrTeamPageOnly", err)
 	}
 }
+
+// The dossier's "Read every note": everything ever written about one
+// coached identity, newest first, replay notes included.
+func TestListCoachPlayerNotes_ReadsTheDossierNewestFirst(t *testing.T) {
+	a, _ := openReplaySession(t, "a1b2c3", "d4e5f6")
+	if _, err := a.SetCoachSessionPlayer("Sable", ""); err != nil {
+		t.Fatalf("SetCoachSessionPlayer: %v", err)
+	}
+	if _, err := a.PutCoachNote("replay-A1B2C3", coach.NoteInput{Kind: "note", Text: "first"}); err != nil {
+		t.Fatalf("PutCoachNote: %v", err)
+	}
+	if _, err := a.PutCoachNote("replay-D4E5F6", coach.NoteInput{Kind: "note", Text: "second"}); err != nil {
+		t.Fatalf("PutCoachNote: %v", err)
+	}
+	roster, err := a.ListCoachPlayers()
+	if err != nil || len(roster) != 1 {
+		t.Fatalf("roster = %v, %v", roster, err)
+	}
+
+	notes, err := a.ListCoachPlayerNotes(roster[0].ID)
+	if err != nil {
+		t.Fatalf("ListCoachPlayerNotes: %v", err)
+	}
+	if len(notes) != 2 {
+		t.Fatalf("notes = %d, want 2", len(notes))
+	}
+	if notes[0].UpdatedAt < notes[1].UpdatedAt {
+		t.Fatalf("not newest first: %q then %q", notes[0].UpdatedAt, notes[1].UpdatedAt)
+	}
+}
+
+func TestListCoachPlayerNotes_UnknownPlayerIsNotFound(t *testing.T) {
+	a, _ := coachApp(t)
+	if _, err := a.ListCoachPlayerNotes(999); !errors.Is(err, db.ErrCoachPlayerUnknown) {
+		t.Fatalf("ListCoachPlayerNotes(999) = %v, want ErrCoachPlayerUnknown", err)
+	}
+}

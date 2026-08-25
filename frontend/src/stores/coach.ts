@@ -281,13 +281,20 @@ export const useCoachStore = defineStore('coach', () => {
   // focus list, same autosave, same export — so it reuses this whole store
   // rather than getting one of its own. The only differences are where the
   // corpus comes from and that it can grow, which is these three functions.
-  async function openFromReplayCodes(codes: string[]): Promise<void> {
+  async function openFromReplayCodes(
+    codes: string[],
+    as?: { handle: string; kind: 'player' | 'team' },
+  ): Promise<void> {
     if (tourOpen.value) {
       useAppStore().setError(TOUR_CONFLICT_REASON)
       return
     }
     try {
       setCoachSessionData(await OpenCoachReplaySession(codes))
+      // Pre-addressed (the dossier's door): the identity is confirmed
+      // before the room renders, so "Who is this?" never has to ask about
+      // someone the coach already knows.
+      if (as) setCoachSessionData(await SetCoachSessionPlayer(as.handle, as.kind))
       setCoachSessionResume(true)
       suspendCoachNarrow()
       await useAppStore().goToView('reviews')
