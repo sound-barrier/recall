@@ -79,3 +79,18 @@ describe('CoachObservedContext', () => {
     expect(screen.getByLabelText('Map')).toHaveValue('numbani')
   })
 })
+
+// A team watched the replay together — there is no single hero to name,
+// and asking for one would invite inventing data about somebody.
+describe('CoachObservedContext — team lens', () => {
+  it('drops the hero field and keeps map, result and date', () => {
+    render(CoachObservedContext, {
+      props: { record: recordOf(), sessionDate: '2026-08-15', subjectKind: 'team' },
+    })
+    expect(screen.queryByLabelText('Hero')).toBeNull()
+    expect(screen.getByLabelText('Map')).toBeInTheDocument()
+    expect(screen.getByLabelText('Result')).toBeInTheDocument()
+    expect(screen.getByLabelText('Date')).toBeInTheDocument()
+  })
+})
+

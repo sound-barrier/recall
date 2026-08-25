@@ -462,14 +462,16 @@ const codesOpen = ref(false)
       </div>
       <ul v-if="roster.length" class="reviews-waiting" aria-label="Players you have coached">
         <ReviewLedgerRow v-for="p in roster" :key="p.id" quiet>
+          <span v-if="p.kind === 'team'" class="badge">TEAM</span>
           {{ rosterLine(p) }}<template v-if="p.focus_items?.length">
             — {{ p.focus_items.join(' · ') }}
           </template>
         </ReviewLedgerRow>
       </ul>
       <p v-if="roster.length" class="reviews-empty">
-        Your notes stay with you, filed by player. Open their next bundle
-        and the notes resurface — a second session builds on the first.
+        Your notes stay with you, filed by player or team. Open their next
+        bundle — or their next codes — and the notes resurface: a second
+        session builds on the first.
       </p>
       <p v-else class="reviews-empty">
         No one has sent you a bundle yet — when a player shares their

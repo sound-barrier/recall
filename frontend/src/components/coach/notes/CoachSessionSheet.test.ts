@@ -114,3 +114,12 @@ describe('CoachSessionSheet', () => {
     expect(screen.getByRole('button', { name: /Save a web page/ })).toBeDisabled()
   })
 })
+
+describe('CoachSessionSheet — a team session', () => {
+  it('drops the notes file and addresses the page to the team', () => {
+    renderSheet({ player: { handle: 'Sound Barrier', kind: 'team' } })
+    expect(screen.queryByRole('button', { name: /Export notes file/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /Save a web page — for the team/ })).toBeInTheDocument()
+  })
+})
+

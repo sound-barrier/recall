@@ -81,7 +81,7 @@ const emit = defineEmits<{
   'copy-replay': [matchKey: string]
   'remove-frame': [matchKey: string]
   'update-focus-items': [items: FocusItem[]]
-  'confirm-player': [handle: string]
+  'confirm-player': [handle: string, kind: 'player' | 'team']
   export: []
   'export-sheet': []
   end: []
@@ -143,9 +143,9 @@ const correcting = ref(false)
 const askingWho = computed(() => unconfirmed.value || correcting.value)
 watch(() => props.player.handle, () => { correcting.value = false })
 
-function confirmPlayer(handle: string): void {
+function confirmPlayer(handle: string, kind: 'player' | 'team'): void {
   correcting.value = false
-  emit('confirm-player', handle)
+  emit('confirm-player', handle, kind)
 }
 
 function step(key: string | null): void {
@@ -166,6 +166,7 @@ function step(key: string | null): void {
       <slot name="reel">
         <CoachReel
           :handle="player.handle"
+          :subject-kind="player.kind ?? 'player'"
           :days="room.reelDays.value"
           :selected-key="room.activeKey.value"
           :notes="api.notes()"
@@ -190,6 +191,7 @@ function step(key: string | null): void {
       <slot name="desk">
         <CoachDesk
           :session-date="observedDate"
+          :subject-kind="player.kind ?? 'player'"
           :record="room.selectedRecord.value"
           :reel-empty="room.frames.value.length === 0"
           :handle="player.handle"

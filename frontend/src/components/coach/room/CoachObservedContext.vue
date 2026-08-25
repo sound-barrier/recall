@@ -25,11 +25,13 @@ import { useOWData } from '@/composables/shared/useOWData'
 // pre-filled field the coach can correct is a far better trade than a match
 // that is everywhere.
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   record: MatchRecord
   /** Today, as the session reckons it — the date a blank field falls back to. */
   sessionDate: string
-}>()
+  /** A team watched the replay together — there is no single hero to name. */
+  subjectKind?: 'player' | 'team'
+}>(), { subjectKind: 'player' })
 
 const emit = defineEmits<{ update: [context: ObservedContext] }>()
 
@@ -93,7 +95,7 @@ function commit(): void {
         </datalist>
       </div>
 
-      <div class="observed-field">
+      <div v-if="subjectKind !== 'team'" class="observed-field">
         <label class="eyebrow" :for="`observed-hero-${record.match_key}`">Hero</label>
         <input
           :id="`observed-hero-${record.match_key}`"

@@ -193,7 +193,7 @@ describe('CoachRoomView — who is this?', () => {
     const view = renderRoom({ player: ANONYMOUS })
     await fireEvent.update(handleField(), 'Wren')
     await fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
-    expect(view.emitted('confirm-player')).toEqual([['Wren']])
+    expect(view.emitted('confirm-player')).toEqual([['Wren', 'player']])
   })
 
   it('will not take a note that has nowhere to be saved', async () => {
@@ -220,7 +220,7 @@ describe('CoachRoomView — who is this?', () => {
     await fireEvent.update(handleField(), 'Wren')
     await fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
 
-    expect(view.emitted('confirm-player')).toEqual([['Wren']])
+    expect(view.emitted('confirm-player')).toEqual([['Wren', 'player']])
   })
 
   it('keeps the editor writable while a confirmed handle is corrected', async () => {

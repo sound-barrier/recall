@@ -256,6 +256,6 @@ describe('ReviewsIndex — the coach roster', () => {
     expect(rows[0]).toHaveTextContent(/Sable · 12 notes · last session/)
     expect(rows[0]).toHaveTextContent(/Ult economy first/)
     expect(rows[1]).toHaveTextContent('Kestrel · 1 note')
-    expect(screen.getByText(/Open their next bundle and the notes resurface/)).toBeInTheDocument()
+    expect(screen.getByText(/Open their next\s+bundle — or their next codes — and the notes resurface/)).toBeInTheDocument()
   })
 })
