@@ -11,6 +11,7 @@ import (
 
 	"recall/pkg/bundle"
 	"recall/pkg/coach"
+	"recall/pkg/db"
 	"recall/pkg/match"
 	"recall/pkg/parser"
 )
@@ -53,7 +54,7 @@ func identityOf(s *coach.Session) sessionIdentity {
 func TestOpenSession_UsesTheBundleIdentity(t *testing.T) {
 	got := identityOf(openSeededSession(t, sharePlayer()))
 	want := sessionIdentity{
-		Player:            coach.Player{ID: sharePlayer().ID, Handle: "Sable", Message: sharePlayer().Message},
+		Player:            coach.Player{ID: sharePlayer().ID, Handle: "Sable", Message: sharePlayer().Message, Kind: db.CoachKindPlayer},
 		HandleFromBundle:  true,
 		MatchCount:        4,
 		ExportedAtStamped: true,
@@ -90,8 +91,9 @@ func TestSession_PlayerRefIsResolvedByTheApp(t *testing.T) {
 
 func TestOpenSession_FlagsAMissingIdentity(t *testing.T) {
 	s := openSeededSession(t, nil)
-	if s.Player != (coach.Player{}) {
-		t.Errorf("Player = %+v, want empty for a plain bundle", s.Player)
+	// Kind is never empty on the wire — a plain bundle is a nameless PLAYER.
+	if s.Player != (coach.Player{Kind: db.CoachKindPlayer}) {
+		t.Errorf("Player = %+v, want a nameless player for a plain bundle", s.Player)
 	}
 	if s.HandleFromBundle {
 		t.Error("HandleFromBundle = true for a bundle with no player block")

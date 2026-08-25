@@ -56,9 +56,12 @@ func nextID[T any](rows []T, idOf func(T) int64) int64 {
 	return maxID + 1
 }
 
-func (f *Fake) EnsureCoachPlayer(playerID, handle string) (db.CoachPlayer, error) {
+func (f *Fake) EnsureCoachPlayer(playerID, handle, kind string) (db.CoachPlayer, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if kind != db.CoachKindPlayer && kind != db.CoachKindTeam {
+		return db.CoachPlayer{}, fmt.Errorf("%w: %q", db.ErrCoachKindInvalid, kind)
+	}
 	if playerID != "" {
 		if i := slices.IndexFunc(f.CoachPlayers, func(p db.CoachPlayer) bool { return p.PlayerID == playerID }); i >= 0 {
 			return f.CoachPlayers[i], nil
@@ -68,7 +71,7 @@ func (f *Fake) EnsureCoachPlayer(playerID, handle string) (db.CoachPlayer, error
 	// only when there is exactly one — two would make the backfill a guess
 	// that hands one player's notes to another. Anonymous lookups take the
 	// earliest handle match.
-	matches := idLessHandleMatches(f.CoachPlayers, handle, playerID)
+	matches := idLessHandleMatches(f.CoachPlayers, handle, playerID, kind)
 	if playerID != "" && len(matches) > 1 {
 		return db.CoachPlayer{}, fmt.Errorf("%w: %q", db.ErrCoachHandleAmbiguous, handle)
 	}
@@ -79,19 +82,23 @@ func (f *Fake) EnsureCoachPlayer(playerID, handle string) (db.CoachPlayer, error
 		}
 		return f.CoachPlayers[i], nil
 	}
-	p := db.CoachPlayer{PlayerID: playerID, Handle: handle,
+	p := db.CoachPlayer{PlayerID: playerID, Handle: handle, Kind: kind,
 		ID: nextID(f.CoachPlayers, func(p db.CoachPlayer) int64 { return p.ID })}
 	f.CoachPlayers = append(f.CoachPlayers, p)
 	return p, nil
 }
 
 // idLessHandleMatches indexes the rows EnsureCoachPlayer may resolve a handle
-// to: every handle match for an anonymous lookup, only the id-less ones when a
-// player id is in hand.
-func idLessHandleMatches(players []db.CoachPlayer, handle, playerID string) []int {
+// to: every same-kind handle match for an anonymous lookup, only the id-less
+// ones when a player id is in hand. Kind joins both branches — a team and a
+// player may share a handle, and the adopt is a player-only mechanism.
+func idLessHandleMatches(players []db.CoachPlayer, handle, playerID, kind string) []int {
 	var out []int
 	for i, p := range players {
-		if strings.EqualFold(p.Handle, handle) && (playerID == "" || p.PlayerID == "") {
+		if !strings.EqualFold(p.Handle, handle) || p.Kind != kind {
+			continue
+		}
+		if playerID == "" || p.PlayerID == "" {
 			out = append(out, i)
 		}
 	}
@@ -445,7 +452,7 @@ func (f *Fake) LoadCoachPlayers() ([]db.CoachPlayerSummary, error) {
 	defer f.mu.Unlock()
 	out := make([]db.CoachPlayerSummary, 0, len(f.CoachPlayers))
 	for _, p := range f.CoachPlayers {
-		row := db.CoachPlayerSummary{ID: p.ID, Handle: p.Handle}
+		row := db.CoachPlayerSummary{ID: p.ID, Handle: p.Handle, Kind: p.Kind}
 		for _, n := range f.CoachNotes[p.ID] {
 			row.NoteCount++
 			if n.UpdatedAt > row.LastNoteAt {

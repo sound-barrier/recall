@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
 
 	"recall/pkg/app"
 	"recall/pkg/coach"
@@ -113,13 +114,24 @@ func handleCloseCoachSession(a *app.App) http.HandlerFunc {
 // about and echoes the re-hydrated view — correcting the handle can switch
 // to a different player's notes, so the whole view is the answer.
 func handleSetCoachSessionPlayer(a *app.App) http.HandlerFunc {
+	type body struct {
+		Handle string `json:"handle"`
+		// Kind is optional; "" means player. Only a codes session may say
+		// team — the app refuses it on a bundle.
+		Kind string `json:"kind"`
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		handle, err := decodeRequiredString(r, "handle")
-		if err != nil {
-			writeProblem(w, r, probInvalidBody, err.Error())
+		var b body
+		if err := json.NewDecoder(r.Body).Decode(&b); err != nil {
+			writeProblem(w, r, probInvalidBody, `body must be {"handle":"...", "kind"?: "player"|"team"}`)
 			return
 		}
-		view, err := a.SetCoachSessionPlayer(handle)
+		b.Handle = strings.TrimSpace(b.Handle)
+		if b.Handle == "" {
+			writeProblem(w, r, probInvalidBody, `body must be {"handle":"...", "kind"?: "player"|"team"}`)
+			return
+		}
+		view, err := a.SetCoachSessionPlayer(b.Handle, b.Kind)
 		if writeError(w, r, err) {
 			return
 		}
@@ -520,6 +532,7 @@ func decodeDecisions(r *http.Request) ([]coachreturn.Verdict, error) {
 type coachPlayerSummaryWire struct {
 	ID         int64    `json:"id"`
 	Handle     string   `json:"handle"`
+	Kind       string   `json:"kind"`
 	NoteCount  int      `json:"note_count"`
 	LastNoteAt string   `json:"last_note_at,omitempty"`
 	FocusItems []string `json:"focus_items,omitempty"`
@@ -536,7 +549,7 @@ func handleListCoachPlayers(a *app.App) http.HandlerFunc {
 		wire := make([]coachPlayerSummaryWire, 0, len(roster))
 		for _, p := range roster {
 			wire = append(wire, coachPlayerSummaryWire{
-				ID: p.ID, Handle: p.Handle, NoteCount: p.NoteCount,
+				ID: p.ID, Handle: p.Handle, Kind: p.Kind, NoteCount: p.NoteCount,
 				LastNoteAt: p.LastNoteAt, FocusItems: p.FocusItems,
 			})
 		}

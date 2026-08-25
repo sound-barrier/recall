@@ -70,6 +70,9 @@ var (
 	// ErrHandleRequired — the session has no confirmed player handle yet
 	// (409).
 	ErrHandleRequired = errors.New("coach: the player's handle must be confirmed first")
+	// ErrBundleNamesPlayer — a team identity was offered to a bundle session
+	// (409). The manifest IS the identity; a team review starts from codes.
+	ErrBundleNamesPlayer = errors.New("coach: a bundle names its player — a team review starts from replay codes")
 	// ErrMatchNotInSession — the match key is not in the open session's
 	// corpus (404).
 	ErrMatchNotInSession = errors.New("coach: match is not in this session")

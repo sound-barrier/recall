@@ -113,7 +113,7 @@ func TestCoachSession_AnonymousBundleNeedsAHandleFirst(t *testing.T) {
 	if err := a.PutCoachFocusItems(nil); !errors.Is(err, coach.ErrHandleRequired) {
 		t.Errorf("PutCoachFocusItems before a handle = %v, want coach.ErrHandleRequired", err)
 	}
-	confirmed, err := a.SetCoachSessionPlayer("  Kestrel  ")
+	confirmed, err := a.SetCoachSessionPlayer("  Kestrel  ", "")
 	mustNoErr(t, err)
 	if confirmed.Player.Handle != "Kestrel" {
 		t.Errorf("confirmed handle = %q, want the trimmed %q", confirmed.Player.Handle, "Kestrel")
@@ -136,7 +136,7 @@ func TestCoachSession_CorrectingTheHandleKeepsTheNotes(t *testing.T) {
 	if _, err := a.PutCoachNote(playerMatchRialto, writtenNote()); err != nil {
 		t.Fatalf("PutCoachNote: %v", err)
 	}
-	view, err := a.SetCoachSessionPlayer("Sable#2187")
+	view, err := a.SetCoachSessionPlayer("Sable#2187", "")
 	mustNoErr(t, err)
 	if len(view.Notes) != 1 {
 		t.Errorf("notes after a rename = %+v, want the one already written", view.Notes)
@@ -155,7 +155,7 @@ func TestCoachSession_RejectsAnUnusableHandle(t *testing.T) {
 		"over-long":  strings.Repeat("x", 65),
 		"whitespace": "\t\n",
 	} {
-		if _, err := a.SetCoachSessionPlayer(handle); !errors.Is(err, coach.ErrHandleInvalid) {
+		if _, err := a.SetCoachSessionPlayer(handle, ""); !errors.Is(err, coach.ErrHandleInvalid) {
 			t.Errorf("SetCoachSessionPlayer(%s) = %v, want coach.ErrHandleInvalid", name, err)
 		}
 	}
@@ -182,7 +182,7 @@ func TestCoachSession_NoteSurfaceNeedsASession(t *testing.T) {
 	isolateInstall(t)
 	a := app.NewWithStore(dbtest.New())
 	_, noteErr := a.PutCoachNote(playerMatchRialto, writtenNote())
-	_, playerErr := a.SetCoachSessionPlayer("Sable")
+	_, playerErr := a.SetCoachSessionPlayer("Sable", "")
 	_, matchesErr := a.GetCoachSessionMatches()
 	_, _, exportErr := a.ExportCoachNotes(testSheet)
 	for name, err := range map[string]error{

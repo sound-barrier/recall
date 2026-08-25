@@ -45,10 +45,15 @@ export function GetCoachSessionMatches(): Promise<MatchRecord[]> {
 }
 
 // The bundle suggests a player, the coach confirms (or corrects) one. The
-// echoed view carries THAT player's notes, which is how work from an
-// earlier session resurfaces.
-export function SetCoachSessionPlayer(handle: string): Promise<CoachSessionView> {
-  return unwrap(sdk.setCoachSessionPlayer({ body: { handle } }))
+// echoed view carries THAT identity's notes, which is how work from an
+// earlier session resurfaces. kind widens the answer for codes sessions:
+// 'team' files the whole session under a group name (a bundle refuses it —
+// the manifest already named its player).
+export function SetCoachSessionPlayer(
+  handle: string,
+  kind: 'player' | 'team' = 'player',
+): Promise<CoachSessionView> {
+  return unwrap(sdk.setCoachSessionPlayer({ body: { handle, kind } }))
 }
 
 // The second door onto a session: replay codes rather than a bundle. Each

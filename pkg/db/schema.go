@@ -50,6 +50,9 @@ var additiveColumns = []struct{ table, column, ddl string }{
 	// pre-existing rank row with a NULL in a column the loader scans into a plain
 	// string — the exact breakage backfillLegacyNulls exists to repair.
 	{"rank_screenshots", "modifiers_raw", "TEXT NOT NULL DEFAULT ''"},
+	// Every row that predates teams was a player — the constant default IS
+	// the backfill, same shape as modifiers_raw above.
+	{"coach_players", "kind", "TEXT NOT NULL DEFAULT 'player'"},
 }
 
 // ensureAdditiveColumns adds any additiveColumns missing from an already-created

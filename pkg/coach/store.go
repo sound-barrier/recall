@@ -13,7 +13,7 @@ import (
 // per player. The received half lives behind ReturnStore — a session never
 // touches it, and the split keeps that provable.
 type NoteStore interface {
-	EnsureCoachPlayer(playerID, handle string) (db.CoachPlayer, error)
+	EnsureCoachPlayer(playerID, handle, kind string) (db.CoachPlayer, error)
 	RenameCoachPlayer(id int64, handle string) error
 	UpsertCoachNote(n db.CoachNote) (db.CoachNote, error)
 	DeleteCoachNote(playerRef int64, matchKey string) error

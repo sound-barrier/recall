@@ -809,7 +809,15 @@ export type CoachPlayer = {
      * The player's optional note to their coach.
      */
     message: string;
+    kind: CoachIdentityKindEnum;
 };
+
+/**
+ * Who a coached name names. A `team` is a codes-session identity for
+ * a group — one shared review filed under the team's name.
+ *
+ */
+export type CoachIdentityKindEnum = 'player' | 'team';
 
 /**
  * `note` carries text and/or tags; `reviewed_only` is the "I looked
@@ -1233,11 +1241,12 @@ export type MatchCoachNote = {
 };
 
 /**
- * One roster row — a player this user has coached.
+ * One roster row — a player or team this user has coached.
  */
 export type CoachPlayerSummary = {
     id: number;
     handle: string;
+    kind: CoachIdentityKindEnum;
     note_count: number;
     /**
      * RFC3339 of the newest note; absent when none written.
@@ -4684,6 +4693,14 @@ export type SetCoachSessionPlayerData = {
          * The display handle the coach confirmed.
          */
         handle: string;
+        /**
+         * Who the name names. Omitted means `player`. `team` files
+         * the whole session's notes under a group name — allowed
+         * only in a replay-codes session; a bundle already names
+         * its player (409).
+         *
+         */
+        kind?: CoachIdentityKindEnum;
     };
     path?: never;
     query?: never;
@@ -4700,7 +4717,10 @@ export type SetCoachSessionPlayerErrors = {
      */
     404: ProblemDetails;
     /**
-     * More than one id-less player goes by that handle.
+     * More than one id-less player goes by that handle — or `team`
+     * was offered to a bundle session, whose manifest already names
+     * its player.
+     *
      */
     409: unknown;
     /**

@@ -194,6 +194,9 @@ var defaultProblems = []errStatus{
 	// and confirming the handle by hand — which is why it sits here rather
 	// than on either handler.
 	{db.ErrCoachHandleAmbiguous, probConflict},
+	// A bundle names its player; only a codes session can be a team review.
+	{coach.ErrBundleNamesPlayer, probConflict},
+	{db.ErrCoachKindInvalid, probInvalidBody},
 }
 
 // writeError writes err to w as an RFC 9457 problem and reports whether it wrote

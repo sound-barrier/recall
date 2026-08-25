@@ -247,8 +247,8 @@ describe('ReviewsIndex — the coach roster', () => {
   it('lists players with counts, day, and focus list; pluralizes honestly', () => {
     renderShelf({
       roster: [
-        { id: 2, handle: 'Sable', note_count: 12, last_note_at: '2026-08-14T20:00:00Z', focus_items: ['Ult economy first.'] },
-        { id: 1, handle: 'Kestrel', note_count: 1 },
+        { id: 2, handle: 'Sable', kind: 'player', note_count: 12, last_note_at: '2026-08-14T20:00:00Z', focus_items: ['Ult economy first.'] },
+        { id: 1, handle: 'Kestrel', kind: 'player', note_count: 1 },
       ],
     })
     const rows = within(screen.getByRole('list', { name: 'Players you have coached' })).getAllByRole('listitem')
