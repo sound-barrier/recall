@@ -36,6 +36,7 @@ export const qk = {
   focus: ['focus'] as const,
   shares: ['shares'] as const,
   coachPlayers: ['coach-players'] as const,
+  coachPlayerNotes: (id: number) => ['coach-player-notes', id] as const,
   system: {
     referenceData: ['system', 'reference-data'] as const,
     version:       ['system', 'version'] as const,

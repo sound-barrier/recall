@@ -1241,6 +1241,28 @@ export type MatchCoachNote = {
 };
 
 /**
+ * One stored coach note, as the dossier lists it — the note itself
+ * plus its match KEY, which doubles as the display label.
+ *
+ */
+export type CoachNoteSummary = {
+    note_id: string;
+    match_key: string;
+    kind: CoachNoteKindEnum;
+    text: string;
+    focus_tags: Array<string>;
+    extra_tags: Array<string>;
+    /**
+     * MM:SS into the match; absent when the note names none.
+     */
+    match_clock?: string;
+    /**
+     * RFC3339 of the last save.
+     */
+    updated_at: string;
+};
+
+/**
  * One roster row — a player or team this user has coached.
  */
 export type CoachPlayerSummary = {
@@ -4398,6 +4420,44 @@ export type RunDatabaseMaintenanceResponses = {
 };
 
 export type RunDatabaseMaintenanceResponse = RunDatabaseMaintenanceResponses[keyof RunDatabaseMaintenanceResponses];
+
+export type ListCoachPlayerNotesData = {
+    body?: never;
+    path: {
+        /**
+         * The roster row's id, from GET /api/v1/coach/players.
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/api/v1/coach/players/{id}/notes';
+};
+
+export type ListCoachPlayerNotesErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type ListCoachPlayerNotesError = ListCoachPlayerNotesErrors[keyof ListCoachPlayerNotesErrors];
+
+export type ListCoachPlayerNotesResponses = {
+    /**
+     * The identity's notes, newest first.
+     */
+    200: Array<CoachNoteSummary>;
+};
+
+export type ListCoachPlayerNotesResponse = ListCoachPlayerNotesResponses[keyof ListCoachPlayerNotesResponses];
 
 export type ListCoachPlayersData = {
     body?: never;

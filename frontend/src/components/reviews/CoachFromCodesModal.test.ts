@@ -76,6 +76,6 @@ describe('CoachFromCodesModal', () => {
       await fireEvent.click(addBtn())
     }
     await fireEvent.click(startBtn())
-    expect(open).toHaveBeenCalledWith(['A1B2C3', 'D4E5F6'])
+    expect(open).toHaveBeenCalledWith(['A1B2C3', 'D4E5F6'], undefined)
   })
 })

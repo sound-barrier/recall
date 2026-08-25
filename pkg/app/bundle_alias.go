@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
+	"slices"
 	"strings"
 
 	"recall/pkg/bundle"
@@ -148,6 +150,32 @@ func (a *App) ListShareExports() ([]db.ShareExport, error) {
 // most recently touched first. The Reviews tab's 03 section.
 func (a *App) ListCoachPlayers() ([]db.CoachPlayerSummary, error) {
 	return a.store.LoadCoachPlayers()
+}
+
+// ListCoachPlayerNotes reads every note ever written about one coached
+// identity, newest first — the dossier's "Read every note". The roster is
+// the existence check: it is tiny, and reusing it keeps the store surface
+// unchanged. db.ErrCoachPlayerUnknown for a ref the roster does not carry.
+func (a *App) ListCoachPlayerNotes(playerRef int64) ([]db.CoachNote, error) {
+	roster, err := a.store.LoadCoachPlayers()
+	if err != nil {
+		return nil, err
+	}
+	if !slices.ContainsFunc(roster, func(p db.CoachPlayerSummary) bool { return p.ID == playerRef }) {
+		return nil, db.ErrCoachPlayerUnknown
+	}
+	byKey, err := a.store.LoadCoachNotes(playerRef)
+	if err != nil {
+		return nil, err
+	}
+	notes := slices.Collect(maps.Values(byKey))
+	slices.SortFunc(notes, func(x, y db.CoachNote) int {
+		if c := strings.Compare(y.UpdatedAt, x.UpdatedAt); c != 0 {
+			return c
+		}
+		return strings.Compare(x.MatchKey, y.MatchKey)
+	})
+	return notes, nil
 }
 
 // exportBundle is the shared aggregate-then-pack tail of both export modes.

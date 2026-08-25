@@ -20,12 +20,23 @@ import { useCoachStore } from '@/stores/coach'
 const coach = useCoachStore()
 const open = defineModel<boolean>({ required: true })
 
+// Pre-addressed: the dossier's "Review new codes for X" opens this door
+// already knowing who the session is about, so the room never has to ask.
+const props = withDefaults(defineProps<{
+  preset?: { handle: string; kind: 'player' | 'team' } | null
+}>(), { preset: null })
+
+const emit = defineEmits<{ closed: [] }>()
+
 const draft = ref('')
 const codes = ref<string[]>([])
 const busy = ref(false)
 
 watch(open, (isOpen) => {
-  if (!isOpen) return
+  if (!isOpen) {
+    emit('closed')
+    return
+  }
   draft.value = ''
   codes.value = []
   busy.value = false
@@ -52,7 +63,7 @@ function removeCode(code: string): void {
 async function startReview(): Promise<void> {
   if (!canOpen.value) return
   busy.value = true
-  await coach.openFromReplayCodes(codes.value)
+  await coach.openFromReplayCodes(codes.value, props.preset ?? undefined)
   busy.value = false
   open.value = false
 }
@@ -81,6 +92,9 @@ useModalFocusTrap(open, {
       <h2 id="coach-codes-title" class="sheet-fixed coach-codes-title">
         Use a replay code
       </h2>
+      <p v-if="preset" class="eyebrow sheet-fixed coach-codes-for">
+        for {{ preset.handle }}
+      </p>
       <p class="sheet-lede">
         Add the codes you were given. Recall can't show anything from a code —
         you'll watch each replay in Overwatch and fill in what you saw
@@ -157,6 +171,10 @@ useModalFocusTrap(open, {
   line-height: 1;
   color: var(--text);
   text-transform: uppercase;
+}
+
+.coach-codes-for {
+  margin: 0.3rem 0 0;
 }
 
 .coach-codes-check {

@@ -16,5 +16,7 @@ defineProps<{ quiet?: boolean }>()
     <slot name="eyebrow" />
     <span class="reviews-waiting-line"><slot /></span>
     <slot name="action" />
+    <!-- Full-width content under the row's line — the roster's dossier. -->
+    <slot name="below" />
   </li>
 </template>
