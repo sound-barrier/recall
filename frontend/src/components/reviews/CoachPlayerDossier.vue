@@ -79,8 +79,9 @@ const subLine = computed(() => {
           <span class="dossier-note-from">
             <span class="dossier-note-key">{{ matchKeyLabel(n.match_key) }}</span>
             <span v-if="n.match_clock" class="dossier-note-clock">at {{ n.match_clock }}</span>
+            <span v-if="n.moment_count" class="dossier-note-clock">{{ n.moment_count }} moment{{ n.moment_count === 1 ? '' : 's' }}</span>
           </span>
-          <p class="dossier-note-text">
+          <p v-if="n.text || (n.kind === 'reviewed_only' && !n.moment_count)" class="dossier-note-text">
             {{ n.kind === 'reviewed_only' ? 'Reviewed — nothing to add.' : n.text }}
           </p>
           <span v-if="n.focus_tags.length" class="dossier-note-tags">{{ n.focus_tags.join(' · ') }}</span>
@@ -93,6 +94,10 @@ const subLine = computed(() => {
 <style scoped>
 .dossier {
   display: grid;
+
+  /* The row is a wrapping flex line — without a full-width basis the
+     panel shrink-wraps beside the door button instead of below it. */
+  flex: 1 1 100%;
   gap: 0.35rem;
   padding: 0.9rem 1rem 1rem;
   margin: 0.35rem 0 0.2rem;

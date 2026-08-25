@@ -533,14 +533,15 @@ func decodeDecisions(r *http.Request) ([]coachreturn.Verdict, error) {
 // "Read every note". No match context travels: the key is the label
 // (a dated capture key, or a replay code).
 type coachNoteSummaryWire struct {
-	NoteID     string   `json:"note_id"`
-	MatchKey   string   `json:"match_key"`
-	Kind       string   `json:"kind"`
-	Text       string   `json:"text"`
-	FocusTags  []string `json:"focus_tags"`
-	ExtraTags  []string `json:"extra_tags"`
-	MatchClock string   `json:"match_clock,omitempty"`
-	UpdatedAt  string   `json:"updated_at"`
+	NoteID      string   `json:"note_id"`
+	MatchKey    string   `json:"match_key"`
+	Kind        string   `json:"kind"`
+	Text        string   `json:"text"`
+	FocusTags   []string `json:"focus_tags"`
+	ExtraTags   []string `json:"extra_tags"`
+	MatchClock  string   `json:"match_clock,omitempty"`
+	MomentCount int      `json:"moment_count"`
+	UpdatedAt   string   `json:"updated_at"`
 }
 
 // handleListCoachPlayerNotes reads one coached identity's whole file of

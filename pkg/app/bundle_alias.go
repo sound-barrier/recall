@@ -152,11 +152,18 @@ func (a *App) ListCoachPlayers() ([]db.CoachPlayerSummary, error) {
 	return a.store.LoadCoachPlayers()
 }
 
+// CoachPlayerNote is one dossier row: the stored note plus how many
+// moments hang off it — content the note text cannot show.
+type CoachPlayerNote struct {
+	db.CoachNote
+	MomentCount int
+}
+
 // ListCoachPlayerNotes reads every note ever written about one coached
 // identity, newest first — the dossier's "Read every note". The roster is
 // the existence check: it is tiny, and reusing it keeps the store surface
 // unchanged. db.ErrCoachPlayerUnknown for a ref the roster does not carry.
-func (a *App) ListCoachPlayerNotes(playerRef int64) ([]db.CoachNote, error) {
+func (a *App) ListCoachPlayerNotes(playerRef int64) ([]CoachPlayerNote, error) {
 	roster, err := a.store.LoadCoachPlayers()
 	if err != nil {
 		return nil, err
@@ -168,8 +175,18 @@ func (a *App) ListCoachPlayerNotes(playerRef int64) ([]db.CoachNote, error) {
 	if err != nil {
 		return nil, err
 	}
-	notes := slices.Collect(maps.Values(byKey))
-	slices.SortFunc(notes, func(x, y db.CoachNote) int {
+	// Moments are content the note text cannot show — a reviewed_only note
+	// with twelve moments is a match the coach annotated in detail, and a
+	// list that said "nothing to add" over it would lie.
+	momentsByNote, err := a.store.LoadCoachNoteMoments(playerRef)
+	if err != nil {
+		return nil, err
+	}
+	notes := make([]CoachPlayerNote, 0, len(byKey))
+	for n := range maps.Values(byKey) {
+		notes = append(notes, CoachPlayerNote{CoachNote: n, MomentCount: len(momentsByNote[n.NoteID])})
+	}
+	slices.SortFunc(notes, func(x, y CoachPlayerNote) int {
 		if c := strings.Compare(y.UpdatedAt, x.UpdatedAt); c != 0 {
 			return c
 		}

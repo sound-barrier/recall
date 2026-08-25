@@ -91,8 +91,9 @@ test.describe('film room — earlier notes', () => {
     // A dated key reads as its day; a replay key reads as its code.
     await expect(filmRoom(page).getByText(/May 2/)).toBeVisible()
     await expect(filmRoom(page).getByText('Z9Y8X7')).toBeVisible()
-    // Notes WITH frames stay on their frames, not in the drawer.
-    await expect(filmRoom(page).getByText(/Late peel on B/)).toHaveCount(0)
+    // Notes WITH frames stay on their frames, not in the drawer. Scoped to
+    // the drawer: the note also lives in the desk's own editor, rightly.
+    await expect(filmRoom(page).locator('.orphan-drawer').getByText(/Late peel on B/)).toHaveCount(0)
   })
 })
 
