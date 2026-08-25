@@ -16,12 +16,33 @@
 # fallback for callers without it.
 set -euo pipefail
 
+# Retry a network step. add-apt-repository talks to Launchpad, apt-get talks
+# to the mirrors, and both answer for themselves: a Launchpad 500
+# ("GPGKeyTemporarilyNotFoundError") took a dependabot PR's whole CI red for
+# an outage that was over by the time anyone looked. Three tries with a
+# widening gap turns that minute into a non-event; a genuinely broken source
+# still fails, just three times slower.
+retry() {
+  local attempt
+  for attempt in 1 2 3; do
+    if "$@"; then
+      return 0
+    fi
+    if [ "$attempt" -lt 3 ]; then
+      echo "::warning::'$*' failed (attempt $attempt/3) — retrying in $((attempt * 15))s"
+      sleep "$((attempt * 15))"
+    fi
+  done
+  echo "::error::'$*' failed three times — the package source is down or wrong, not flaky."
+  return 1
+}
+
 pin="${TESSERACT_VERSION:-$(grep -E '^TESSERACT_VERSION' mise.toml | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)}"
 expected_mm=$(printf '%s' "$pin" | cut -d. -f1-2)
 
-sudo add-apt-repository -y ppa:alex-p/tesseract-ocr5
-sudo apt-get update -y
-sudo apt-get install -y --no-install-recommends tesseract-ocr
+retry sudo add-apt-repository -y ppa:alex-p/tesseract-ocr5
+retry sudo apt-get update -y
+retry sudo apt-get install -y --no-install-recommends tesseract-ocr
 
 installed=$(tesseract --version 2>&1 | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
 installed_mm=$(printf '%s' "$installed" | cut -d. -f1-2)
