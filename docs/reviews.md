@@ -248,7 +248,32 @@ player's *identity* for that match, so a mistyped code produces a review
 they can never be matched to.
 
 You will be asked who you are coaching, exactly as you are for a bundle
-that did not name anyone. Nothing you write is saved until you answer.
+that did not name anyone. Nothing you write is saved until you answer —
+and if you have coached them before, their name is one keystroke away:
+the prompt suggests the names on your roster, and picking a known one
+files these notes with that player's existing history instead of
+starting a second file over a typo.
+
+#### Or a whole team
+
+The same prompt has a second answer: **A team.** Choose it when the
+codes belong to matches *several* of your players were in, give the
+team a name, and the whole session files under it — one shared review
+about the team's play, not anyone's individual game. Three things
+follow from that shape:
+
+- The **What you saw** panel asks for the map, result and date but not
+  a hero — a team review names no single player's pick.
+- The review travels as the **web page only**: *Save a web page — for
+  the team* writes one file anyone can open, and there is no notes
+  file to export, because that file is a per-player artifact that
+  lands notes on one person's matches.
+- The team sits on your roster like a player does, marked **TEAM**,
+  with its own standing focus list — the next codes session for the
+  same team picks the name from the prompt and continues the file.
+
+A bundle can never be a team: it was exported by one player, and their
+manifest is the identity.
 
 Two things are different in this room, both because Recall has never
 seen these matches:
@@ -325,10 +350,26 @@ so if they run Recall, send the file.
 
 **2 · End session** hands their records back and lands you on the
 Reviews tab with a notice naming what ended (and where the notes file
-went, if you exported one). Your notes stay with you — the roster under
-*For someone else* lists every player you have coached, and reopening
-the same player's bundle later brings the notes back, so a second
-session builds on the first.
+went, if you exported one). Your notes stay with you, filed by player
+or team.
+
+### The roster and the dossier
+
+Under *For someone else*, the roster lists everyone you have coached —
+and each row is a door. **Open their dossier** shows the standing
+what-to-work-on list and two ways back in: **Read every note** lists
+everything you have ever written about them (labeled by the match's
+day, or by its replay code — the matches themselves left with their
+sessions, only your words stay), and **Review new codes for them**
+opens the codes door already knowing who it is for, so the room never
+asks.
+
+Inside a session, the same continuity shows up as a quiet drawer under
+the desk: **Earlier notes about {them}** — the notes you wrote in
+previous sessions about matches that are not in today's corpus. They
+were always saved and always exported; now they are also visible while
+you work. A second session builds on the first, and you can see it
+doing so.
 
 ## What you're working on
 
