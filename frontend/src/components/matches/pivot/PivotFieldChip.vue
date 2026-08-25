@@ -25,6 +25,7 @@ export interface FilterOption {
 </script>
 
 <script setup lang="ts">
+// eslint-disable-next-line no-restricted-syntax -- vue-eslint-parser merges this SFC's two <script> blocks into ONE Program, so this block's first import reads as following the other block's statements; the split exists because a type cannot be exported from <script setup> (frontend/CLAUDE.md).
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 // A draggable field tile. Mouse users drag it between shelves; keyboard

@@ -17,13 +17,6 @@ import MatchesMembersList from '@/components/matches/list/MatchesMembersList.vue
 import MatchesListToolbar from '@/components/matches/list/MatchesListToolbar.vue'
 import { matchesToCSV } from '@/match/export/match-csv'
 import { seasonWindowToLocalDates } from '@/match/match-season-helpers'
-// NarrowPopover is the heavyweight authoring surface (the search +
-// combobox + range pickers + active-clause range etc.). Lazy-load
-// it so MatchesView's initial chunk doesn't carry its ~30K of
-// bytes. The popover only mounts (v-if inside the child) when the
-// user clicks "Narrow this set", so the deferred fetch is invisible
-// in practice. Regression covered by MatchesView.lazy-views.test.ts.
-const NarrowPopover = defineAsyncComponent(() => import('@/components/matches/narrow/NarrowPopover.vue'))
 // Statically imported (it's tiny and renders collapsed): the heavy
 // ECharts dependency stays lazy because the <TrendChart> *inside*
 // TrendsSection is the defineAsyncComponent, loaded only on expand.
@@ -39,6 +32,14 @@ import { useSelfReviewStore } from '@/stores/selfReview'
 import { useUiStore } from '@/stores/ui'
 import { IS_WAILS } from '@/platform'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
+
+// NarrowPopover is the heavyweight authoring surface (the search +
+// combobox + range pickers + active-clause range etc.). Lazy-load
+// it so MatchesView's initial chunk doesn't carry its ~30K of
+// bytes. The popover only mounts (v-if inside the child) when the
+// user clicks "Narrow this set", so the deferred fetch is invisible
+// in practice. Regression covered by MatchesView.lazy-views.test.ts.
+const NarrowPopover = defineAsyncComponent(() => import('@/components/matches/narrow/NarrowPopover.vue'))
 
 // Matches page — "set workspace" layout.
 //

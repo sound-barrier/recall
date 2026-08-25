@@ -33,8 +33,9 @@ import { usePersistedRef, parseBoolish, serializeBoolish } from '@/composables/s
 // whole tour controller into the initial JS chunk; consumers already
 // inside this file (and other lazy-loaded tour code) keep the
 // transitive import.
-export { ONBOARDING_COMPLETED_KEY } from '@/composables/shared/storageKeys'
 import { ONBOARDING_COMPLETED_KEY, ONBOARDING_RESUME_KEY } from '@/composables/shared/storageKeys'
+
+export { ONBOARDING_COMPLETED_KEY }
 
 export type OnboardingViewId = 'settings' | 'ingest' | 'matches' | 'unknown'
 export type CalloutPlacement = 'auto' | 'top' | 'bottom' | 'left' | 'right'

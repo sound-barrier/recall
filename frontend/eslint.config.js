@@ -145,10 +145,29 @@ export default tseslint.config(
     files: ['src/**/*.{ts,vue}'],
     ignores: ['src/**/*.test.ts'],
     rules: {
-      'no-restricted-syntax': ['error', {
-        selector: "CallExpression[callee.property.name='click'][callee.object.callee.property.name=/^(querySelector|getElementById|querySelectorAll)$/]",
-        message: 'Drive the app by writing state, not by clicking a control you found in the DOM (root CLAUDE.md; TECHNICAL_DEBT.md section 13). If no state seam exists, add one.',
-      }],
+      'no-restricted-syntax': ['error',
+        {
+          selector: "CallExpression[callee.property.name='click'][callee.object.callee.property.name=/^(querySelector|getElementById|querySelectorAll)$/]",
+          message: 'Drive the app by writing state, not by clicking a control you found in the DOM (root CLAUDE.md; TECHNICAL_DEBT.md section 13). If no state seam exists, add one.',
+        },
+        // An unbroken import block, enforced. AppMasthead.vue shipped a
+        // `const { openRepo } = useExternalLinks()` sitting ABOVE that
+        // composable's own import — harmless at runtime (ESM hoists) but a
+        // merge-blocking CodeQL alert (js/use-before-declaration), and CodeQL
+        // runs after push while this runs in `task lint`.
+        //
+        // The adjacent-sibling `+` is deliberate: `~` reports every later
+        // import (14 findings for one defect), `+` reports exactly one per
+        // boundary. The escape is an annotated
+        // `eslint-disable-next-line no-restricted-syntax -- <reason>`, which
+        // reportUnusedDisableDirectives keeps honest; the one sanctioned
+        // reason today is an SFC with two <script> blocks, which
+        // vue-eslint-parser merges into a single Program.
+        {
+          selector: 'Program > :not(ImportDeclaration) + ImportDeclaration',
+          message: 'The import block must not be interrupted — move the statement below the last import (CodeQL js/use-before-declaration shipped exactly this way in AppMasthead.vue).',
+        },
+      ],
     },
   },
   {
