@@ -99,7 +99,7 @@ func (a *App) adoptSessionPlayer(s *coach.Session) error {
 	if s.Player.Handle == "" {
 		return nil
 	}
-	p, err := a.store.EnsureCoachPlayer(s.Player.ID, s.Player.Handle)
+	p, err := a.store.EnsureCoachPlayer(s.Player.ID, s.Player.Handle, db.CoachKindPlayer)
 	if err != nil {
 		return fmt.Errorf("coach: resolve player: %w", err)
 	}
@@ -143,11 +143,18 @@ func (a *App) CloseCoachSession() error {
 // The handle is a display label: when the bundle minted a stable player
 // id, the row is found by that id and renamed; when it did not, the handle
 // itself is the identity, so typing a different one switches to that
-// player — and either way the notes for the resolved player re-hydrate.
-func (a *App) SetCoachSessionPlayer(handle string) (coach.SessionView, error) {
+// player — and either way the notes for the resolved identity re-hydrate.
+//
+// kind widens the answer: a codes session may be confirmed as a TEAM (one
+// shared review filed under the group's name). "" means player. A bundle
+// session refuses a team — the manifest already named its player.
+func (a *App) SetCoachSessionPlayer(handle, kind string) (coach.SessionView, error) {
 	handle, err := validateCoachHandle(handle)
 	if err != nil {
 		return coach.SessionView{}, err
+	}
+	if kind == "" {
+		kind = db.CoachKindPlayer
 	}
 	a.coachMu.Lock()
 	defer a.coachMu.Unlock()
@@ -155,7 +162,10 @@ func (a *App) SetCoachSessionPlayer(handle string) (coach.SessionView, error) {
 	if s == nil {
 		return coach.SessionView{}, coach.ErrNoSession
 	}
-	p, err := a.store.EnsureCoachPlayer(s.Player.ID, handle)
+	if kind == db.CoachKindTeam && s.Source != coach.SessionFromReplay {
+		return coach.SessionView{}, coach.ErrBundleNamesPlayer
+	}
+	p, err := a.store.EnsureCoachPlayer(s.Player.ID, handle, kind)
 	if err != nil {
 		return coach.SessionView{}, fmt.Errorf("coach: resolve player: %w", err)
 	}
@@ -165,6 +175,7 @@ func (a *App) SetCoachSessionPlayer(handle string) (coach.SessionView, error) {
 		}
 	}
 	s.Player.Handle = handle
+	s.Player.Kind = kind
 	s.SetPlayerRef(p.ID)
 	return a.coachViewLocked(time.Now())
 }

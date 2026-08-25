@@ -775,7 +775,7 @@ describe('coach store — confirming the player', () => {
     await coach.setPlayerHandle('Wren')
     await settle()
 
-    expect(api.SetCoachSessionPlayer).toHaveBeenCalledWith('Wren')
+    expect(api.SetCoachSessionPlayer).toHaveBeenCalledWith('Wren', 'player')
     expect(coach.player?.handle).toBe('Wren')
     expect(coach.needsPlayerHandle).toBe(false)
   })
@@ -809,6 +809,32 @@ describe('coach store — confirming the player', () => {
     }))
   })
 
+  // Same handle, other KIND: the server re-keys to a different roster row
+  // — a team named Aria and a player named Aria are two files of notes —
+  // so the drafts must re-hydrate. The identity token carries kind for
+  // exactly this: without it, the player's drafts stayed in the editor
+  // over the team's session and could be saved into the team's file.
+  it("re-hydrates when the same name is confirmed as the other kind", async () => {
+    api.OpenCoachReplaySession = vi.fn(async () => sessionView({
+      player: { id: '', handle: 'Aria', message: '', kind: 'player' },
+      source: 'replay', exported_at: '', notes: [RESURFACED],
+    }))
+    api.SetCoachSessionPlayer = vi.fn(async (_h: string, kind?: string) => sessionView({
+      player: { id: '', handle: 'Aria', message: '', kind: kind ?? 'player' },
+      source: 'replay', exported_at: '', notes: [],
+    }))
+    setApiBacking(api)
+    const coach = useCoachStore()
+    await coach.openFromReplayCodes(['A1B2C3'])
+    await settle()
+    expect(coach.notes[MATCH_A]).toBeTruthy()
+
+    await coach.setPlayerHandle('Aria', 'team')
+    await settle()
+
+    expect(coach.notes).toEqual({})
+  })
+
   it("re-hydrates from the corrected player's own notes", async () => {
     api.OpenCoachBundle = vi.fn(async () => sessionView({
       player: { id: '', handle: 'unknown', message: '' }, notes: [RESURFACED],
@@ -822,7 +848,7 @@ describe('coach store — confirming the player', () => {
     await coach.setPlayerHandle('Wren')
     await settle()
 
-    expect(api.SetCoachSessionPlayer).toHaveBeenCalledWith('Wren')
+    expect(api.SetCoachSessionPlayer).toHaveBeenCalledWith('Wren', 'player')
     expect(coach.player?.handle).toBe('Wren')
     expect(coach.notes).toEqual({})
   })

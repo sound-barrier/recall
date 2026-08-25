@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
 
 	"recall/pkg/app"
 	"recall/pkg/coach"
@@ -47,6 +48,7 @@ func registerCoachRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("PUT /api/v1/coach/session/matches/{match_key}/context", handleSetCoachSessionMatchContext(a))
 	apiMux.HandleFunc("GET /api/v1/coach/session/matches", handleGetCoachSessionMatches(a))
 	apiMux.HandleFunc("GET /api/v1/coach/players", handleListCoachPlayers(a))
+	apiMux.HandleFunc("GET /api/v1/coach/players/{id}/notes", handleListCoachPlayerNotes(a))
 	apiMux.HandleFunc("PUT /api/v1/coach/session/notes/{match_key}", handlePutCoachNote(a))
 	apiMux.HandleFunc("DELETE /api/v1/coach/session/notes/{match_key}", handleDeleteCoachNote(a))
 	apiMux.HandleFunc("PUT /api/v1/coach/session/notes/{match_key}/moments/{moment_id}", handlePutCoachMoment(a))
@@ -113,13 +115,24 @@ func handleCloseCoachSession(a *app.App) http.HandlerFunc {
 // about and echoes the re-hydrated view — correcting the handle can switch
 // to a different player's notes, so the whole view is the answer.
 func handleSetCoachSessionPlayer(a *app.App) http.HandlerFunc {
+	type body struct {
+		Handle string `json:"handle"`
+		// Kind is optional; "" means player. Only a codes session may say
+		// team — the app refuses it on a bundle.
+		Kind string `json:"kind"`
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		handle, err := decodeRequiredString(r, "handle")
-		if err != nil {
-			writeProblem(w, r, probInvalidBody, err.Error())
+		var b body
+		if err := json.NewDecoder(r.Body).Decode(&b); err != nil {
+			writeProblem(w, r, probInvalidBody, `body must be {"handle":"...", "kind"?: "player"|"team"}`)
 			return
 		}
-		view, err := a.SetCoachSessionPlayer(handle)
+		b.Handle = strings.TrimSpace(b.Handle)
+		if b.Handle == "" {
+			writeProblem(w, r, probInvalidBody, `body must be {"handle":"...", "kind"?: "player"|"team"}`)
+			return
+		}
+		view, err := a.SetCoachSessionPlayer(b.Handle, b.Kind)
 		if writeError(w, r, err) {
 			return
 		}
@@ -516,10 +529,51 @@ func decodeDecisions(r *http.Request) ([]coachreturn.Verdict, error) {
 	return out, nil
 }
 
+// coachNoteSummaryWire is one stored note on the wire — the dossier's
+// "Read every note". No match context travels: the key is the label
+// (a dated capture key, or a replay code).
+type coachNoteSummaryWire struct {
+	NoteID      string   `json:"note_id"`
+	MatchKey    string   `json:"match_key"`
+	Kind        string   `json:"kind"`
+	Text        string   `json:"text"`
+	FocusTags   []string `json:"focus_tags"`
+	ExtraTags   []string `json:"extra_tags"`
+	MatchClock  string   `json:"match_clock,omitempty"`
+	MomentCount int      `json:"moment_count"`
+	UpdatedAt   string   `json:"updated_at"`
+}
+
+// handleListCoachPlayerNotes reads one coached identity's whole file of
+// notes, newest first.
+func handleListCoachPlayerNotes(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, ok := idFromPath(w, r, "player id")
+		if !ok {
+			return
+		}
+		notes, err := a.ListCoachPlayerNotes(id)
+		if writeError(w, r, err) {
+			return
+		}
+		wire := make([]coachNoteSummaryWire, 0, len(notes))
+		for _, n := range notes {
+			wire = append(wire, coachNoteSummaryWire{
+				NoteID: n.NoteID, MatchKey: n.MatchKey, Kind: n.Kind, Text: n.Text,
+				FocusTags:  append([]string{}, n.FocusTags...),
+				ExtraTags:  append([]string{}, n.ExtraTags...),
+				MatchClock: n.MatchClock, UpdatedAt: n.UpdatedAt,
+			})
+		}
+		writeJSON(w, r, wire, nil)
+	}
+}
+
 // coachPlayerSummaryWire is one roster row on the wire.
 type coachPlayerSummaryWire struct {
 	ID         int64    `json:"id"`
 	Handle     string   `json:"handle"`
+	Kind       string   `json:"kind"`
 	NoteCount  int      `json:"note_count"`
 	LastNoteAt string   `json:"last_note_at,omitempty"`
 	FocusItems []string `json:"focus_items,omitempty"`
@@ -536,7 +590,7 @@ func handleListCoachPlayers(a *app.App) http.HandlerFunc {
 		wire := make([]coachPlayerSummaryWire, 0, len(roster))
 		for _, p := range roster {
 			wire = append(wire, coachPlayerSummaryWire{
-				ID: p.ID, Handle: p.Handle, NoteCount: p.NoteCount,
+				ID: p.ID, Handle: p.Handle, Kind: p.Kind, NoteCount: p.NoteCount,
 				LastNoteAt: p.LastNoteAt, FocusItems: p.FocusItems,
 			})
 		}

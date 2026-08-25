@@ -30,6 +30,7 @@ import {
   seedCoachOwnMatches,
   type CoachSessionMock,
   type CoachSessionMockOptions,
+  RESURFACED_NOTES,
 } from '../_coach'
 import { seedProfiles, silenceParseEvents } from '../_theme-matrix'
 
@@ -55,6 +56,46 @@ async function openRoom(page: Page, opts: CoachSessionMockOptions = {}): Promise
   await enterFilmRoom(page)
   return session
 }
+
+test.describe('film room — earlier notes', () => {
+  // The session already re-loads every note ever written about the player —
+  // but a note about a match not in TODAY'S corpus had no frame on the
+  // reel, so prior-session work was invisible exactly when it mattered.
+  test('notes without a frame shelve in a drawer under the desk', async ({ page }) => {
+    const ORPHANS = [
+      {
+        note_id: 'c1d2e3f4-0a1b-4c2d-9e3f-4a5b6c7d8e9f',
+        match_key: 'match-2026-05-02T21-15-00',
+        kind: 'note' as const,
+        text: 'Same first-fight overreach as Dorado — this is the pattern.',
+        focus_tags: ['positioning'], extra_tags: [], match_clock: '',
+        updated_at: '2026-05-02T22:00:00Z',
+      },
+      {
+        note_id: 'd2e3f4a5-1b2c-4d3e-8f4a-5b6c7d8e9f0a',
+        match_key: 'replay-Z9Y8X7',
+        kind: 'note' as const,
+        text: 'Ult count was never spoken.',
+        focus_tags: [], extra_tags: [], match_clock: '',
+        updated_at: '2026-05-01T22:00:00Z',
+      },
+    ]
+    await openRoom(page, { notes: [...RESURFACED_NOTES, ...ORPHANS] })
+
+    const drawer = filmRoom(page).getByText(/Earlier notes about Sable/)
+    await expect(drawer).toBeVisible()
+    await expect(filmRoom(page).getByText('2 from before this corpus')).toBeVisible()
+
+    await drawer.click()
+    await expect(filmRoom(page).getByText(/Same first-fight overreach/)).toBeVisible()
+    // A dated key reads as its day; a replay key reads as its code.
+    await expect(filmRoom(page).getByText(/May 2/)).toBeVisible()
+    await expect(filmRoom(page).getByText('Z9Y8X7')).toBeVisible()
+    // Notes WITH frames stay on their frames, not in the drawer. Scoped to
+    // the drawer: the note also lives in the desk's own editor, rightly.
+    await expect(filmRoom(page).locator('.orphan-drawer').getByText(/Late peel on B/)).toHaveCount(0)
+  })
+})
 
 test.describe('film room — reel', () => {
   test("groups the reel by the player's day and clocks frames in the player's zone", async ({ page }) => {

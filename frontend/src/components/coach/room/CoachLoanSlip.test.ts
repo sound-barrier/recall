@@ -169,3 +169,31 @@ describe('CoachLoanSlip — a bundle that named nobody', () => {
     expect(button.title).toMatch(/who this review is about/i)
   })
 })
+
+// A team session is page-only: the notes FILE is a per-player artifact
+// with an addressee, and a team has none. The page is the hand-over.
+describe('CoachLoanSlip — a team session', () => {
+  const team = () => renderSlip({
+    player: { id: '', handle: 'Sound Barrier', message: '', kind: 'team' },
+    source: 'replay',
+    exported_at: '',
+  })
+  const teamSlip = () =>
+    screen.getByRole('region', { name: 'Coaching session: reviewing Sound Barrier' })
+
+  it('speaks team: the eyebrow, the corpus, the page', () => {
+    team()
+    expect(screen.getByText('Coaching session · team')).toBeInTheDocument()
+    expect(within(teamSlip()).getByText(/6 replays/)).toBeInTheDocument()
+    expect(within(teamSlip()).getByRole('button', { name: /Save a web page — for the team/ })).toBeInTheDocument()
+  })
+
+  it('offers no notes file — the page leads alone', () => {
+    team()
+    expect(within(teamSlip()).queryByRole('button', { name: /Export notes file/ })).toBeNull()
+    // No dangling step numbers: with no "1 ·" left, End drops its "2 ·".
+    expect(within(teamSlip()).getByRole('button', { name: 'End session' })).toBeInTheDocument()
+    expect(within(teamSlip()).queryByRole('button', { name: /2 · End session/ })).toBeNull()
+  })
+})
+

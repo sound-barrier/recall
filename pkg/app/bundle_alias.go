@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
+	"slices"
 	"strings"
 
 	"recall/pkg/bundle"
@@ -148,6 +150,49 @@ func (a *App) ListShareExports() ([]db.ShareExport, error) {
 // most recently touched first. The Reviews tab's 03 section.
 func (a *App) ListCoachPlayers() ([]db.CoachPlayerSummary, error) {
 	return a.store.LoadCoachPlayers()
+}
+
+// CoachPlayerNote is one dossier row: the stored note plus how many
+// moments hang off it — content the note text cannot show.
+type CoachPlayerNote struct {
+	db.CoachNote
+	MomentCount int
+}
+
+// ListCoachPlayerNotes reads every note ever written about one coached
+// identity, newest first — the dossier's "Read every note". The roster is
+// the existence check: it is tiny, and reusing it keeps the store surface
+// unchanged. db.ErrCoachPlayerUnknown for a ref the roster does not carry.
+func (a *App) ListCoachPlayerNotes(playerRef int64) ([]CoachPlayerNote, error) {
+	roster, err := a.store.LoadCoachPlayers()
+	if err != nil {
+		return nil, err
+	}
+	if !slices.ContainsFunc(roster, func(p db.CoachPlayerSummary) bool { return p.ID == playerRef }) {
+		return nil, db.ErrCoachPlayerUnknown
+	}
+	byKey, err := a.store.LoadCoachNotes(playerRef)
+	if err != nil {
+		return nil, err
+	}
+	// Moments are content the note text cannot show — a reviewed_only note
+	// with twelve moments is a match the coach annotated in detail, and a
+	// list that said "nothing to add" over it would lie.
+	momentsByNote, err := a.store.LoadCoachNoteMoments(playerRef)
+	if err != nil {
+		return nil, err
+	}
+	notes := make([]CoachPlayerNote, 0, len(byKey))
+	for n := range maps.Values(byKey) {
+		notes = append(notes, CoachPlayerNote{CoachNote: n, MomentCount: len(momentsByNote[n.NoteID])})
+	}
+	slices.SortFunc(notes, func(x, y CoachPlayerNote) int {
+		if c := strings.Compare(y.UpdatedAt, x.UpdatedAt); c != 0 {
+			return c
+		}
+		return strings.Compare(x.MatchKey, y.MatchKey)
+	})
+	return notes, nil
 }
 
 // exportBundle is the shared aggregate-then-pack tail of both export modes.

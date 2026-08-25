@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref, useTemplateRef } from 'vue'
+import { computed, onMounted, ref, useTemplateRef } from 'vue'
+
+import type { KnownIdentity } from '@/components/coach/room/coach-room-props'
 
 // "Bundle suggests, coach confirms." A share-with-a-coach export names its
 // player; a plain one does not, and until the coach says who this is, every
@@ -16,12 +18,53 @@ const props = withDefaults(defineProps<{
   unconfirmed?: boolean
   /** Where the corpus came from — a codes coach has no bundle to be told about. */
   source?: 'bundle' | 'replay'
-}>(), { handle: '', unconfirmed: false, source: 'bundle' })
+  /** The session's CURRENT kind — the fork must state it, not reset it. */
+  kind?: 'player' | 'team'
+  /** Roster names — a known name is an existing file of notes to land on. */
+  knownIdentities?: KnownIdentity[]
+}>(), {
+  handle: '', unconfirmed: false, source: 'bundle', kind: 'player',
+  knownIdentities: () => [],
+})
 
 const emit = defineEmits<{
-  confirm: [handle: string]
+  confirm: [handle: string, kind: 'player' | 'team']
   cancel: []
 }>()
+
+// The fork: six characters can belong to a TEAM — one shared review filed
+// under the group's name. Codes only; a bundle already named its player,
+// so the fork never renders there and the emit pins kind to player.
+// Seeded from the SESSION's kind: a correction that reopened this prompt
+// used to reset the fork to player, and confirming a typo fix then
+// silently re-filed a whole team review under a fresh player row.
+const kind = ref<'player' | 'team'>(props.kind)
+const forked = computed(() => props.source === 'replay')
+const noun = computed(() => (forked.value && kind.value === 'team' ? 'team' : 'player'))
+
+// The typeahead: the roster's names of the fork's kind. Picking one lands
+// on that identity's existing notes — which is the point: a codes session
+// about someone the coach already knows must not fork a second row on a
+// typo, because a split history is what the whole dossier stands on.
+const suggestions = computed(() =>
+  props.knownIdentities
+    .filter((k) => k.kind === (forked.value ? kind.value : 'player'))
+    .map((k) => k.handle))
+
+function pickKind(next: 'player' | 'team'): void {
+  kind.value = next
+  handleField.value?.focus()
+}
+
+// The pair moves like a radio group: arrows move AND select.
+function onKindArrow(e: KeyboardEvent): void {
+  if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return
+  e.preventDefault()
+  const next = kind.value === 'player' ? 'team' : 'player'
+  kind.value = next
+  const sel = `[data-kind="${next}"]`
+  ;(e.currentTarget as HTMLElement).querySelector<HTMLButtonElement>(sel)?.focus()
+}
 
 const typed = ref(props.handle)
 const handleField = useTemplateRef<HTMLInputElement>('handleField')
@@ -33,7 +76,7 @@ onMounted(() => handleField.value?.focus())
 function confirm(): void {
   const next = typed.value.trim()
   if (next === '') return
-  emit('confirm', next)
+  emit('confirm', next, forked.value ? kind.value : 'player')
 }
 </script>
 
@@ -42,11 +85,41 @@ function confirm(): void {
     <h3 id="coach-identity-title" class="identity-title">
       Who is this?
     </h3>
+    <div
+      v-if="forked"
+      class="identity-kind"
+      role="radiogroup"
+      aria-label="Who this review is about"
+      @keydown="onKindArrow"
+    >
+      <button
+        type="button"
+        class="paper-chip"
+        role="radio"
+        data-kind="player"
+        :aria-checked="kind === 'player'"
+        :tabindex="kind === 'player' ? 0 : -1"
+        @click="pickKind('player')"
+      >
+        One player
+      </button>
+      <button
+        type="button"
+        class="paper-chip"
+        role="radio"
+        data-kind="team"
+        :aria-checked="kind === 'team'"
+        :tabindex="kind === 'team' ? 0 : -1"
+        @click="pickKind('team')"
+      >
+        A team
+      </button>
+    </div>
     <p class="identity-copy">
       <template v-if="unconfirmed && source === 'replay'">
         Nothing said who these codes are about. Notes are filed under the
         name you give here and come back the next time you review this
-        player — nothing can be saved until then.
+        {{ noun }} — nothing can be saved until then.
       </template>
       <template v-else-if="unconfirmed">
         This bundle did not say who it belongs to. Notes are filed under the
@@ -64,7 +137,7 @@ function confirm(): void {
 
     <form class="identity-form" @submit.prevent="confirm">
       <label class="eyebrow ink identity-label" for="coach-identity-handle">
-        Player handle
+        {{ noun === 'team' ? 'Team name' : 'Player handle' }}
       </label>
       <div class="identity-row">
         <input
@@ -75,8 +148,12 @@ function confirm(): void {
           class="identity-input"
           autocomplete="off"
           spellcheck="false"
-          placeholder="Their handle"
+          :placeholder="noun === 'team' ? 'The team\'s name' : 'Their handle'"
+          :list="suggestions.length ? 'coach-identity-known' : undefined"
         >
+        <datalist v-if="suggestions.length" id="coach-identity-known">
+          <option v-for="name in suggestions" :key="name" :value="name" />
+        </datalist>
         <button type="submit" class="paper-btn primary" :disabled="typed.trim() === ''">
           Confirm
         </button>
@@ -84,6 +161,10 @@ function confirm(): void {
           Keep {{ handle }}
         </button>
       </div>
+      <p v-if="suggestions.length" class="identity-hint">
+        A name you have coached before files these notes with their
+        existing history.
+      </p>
     </form>
   </section>
 </template>
@@ -113,6 +194,18 @@ function confirm(): void {
   font-size: var(--type-lg);
   line-height: 1.5;
   color: var(--ink-dim);
+}
+
+.identity-hint {
+  margin: 0.35rem 0 0;
+  font-size: var(--type-2xs);
+  color: var(--ink-faint);
+}
+
+.identity-kind {
+  display: flex;
+  gap: 0.35rem;
+  margin: 0.15rem 0 0.35rem;
 }
 
 .identity-form {

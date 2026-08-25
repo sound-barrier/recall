@@ -22,10 +22,10 @@ const (
 
 func ensurePlayer(t *testing.T, s db.Store, playerID, handle string) db.CoachPlayer {
 	t.Helper()
-	p, err := s.EnsureCoachPlayer(playerID, handle)
+	p, err := s.EnsureCoachPlayer(playerID, handle, db.CoachKindPlayer)
 	mustNoErr(t, err)
 	if p.ID == 0 {
-		t.Fatalf("EnsureCoachPlayer(%q, %q) returned a zero id", playerID, handle)
+		t.Fatalf("EnsureCoachPlayer(%q, %q, db.CoachKindPlayer) returned a zero id", playerID, handle)
 	}
 	return p
 }

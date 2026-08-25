@@ -29,6 +29,7 @@ const CODE_B = 'D4E5F6'
 interface ReplaySessionState {
   codes: string[]
   handle: string
+  kind: string
   notes: Record<string, unknown>[]
   /** What the coach said they saw, per match key — the REAL server folds
    *  this into the corpus on refresh, and the folding is what once made
@@ -38,7 +39,7 @@ interface ReplaySessionState {
 
 function view(state: ReplaySessionState) {
   return {
-    player: { id: '', handle: state.handle, message: '' },
+    player: { id: '', handle: state.handle, message: '', kind: state.kind || 'player' },
     exported_at: '',
     session_date: '2026-08-15',
     match_count: state.codes.length,
@@ -65,7 +66,7 @@ function matchesOf(state: ReplaySessionState) {
 async function mockReplaySession(
   page: Page,
 ): Promise<{ opened: () => string[]; context: () => Record<string, string> | null; contextCalls: () => number }> {
-  const state: ReplaySessionState = { codes: [], handle: '', notes: [], contextByKey: {} }
+  const state: ReplaySessionState = { codes: [], handle: '', kind: '', notes: [], contextByKey: {} }
   let opened: string[] = []
   let context: Record<string, string> | null = null
   let contextCalls = 0
@@ -83,8 +84,9 @@ async function mockReplaySession(
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(view(state)) })
   })
   await page.route('**/api/v1/coach/session/player', async (route: Route) => {
-    const body = JSON.parse(route.request().postData() ?? '{}') as { handle: string }
+    const body = JSON.parse(route.request().postData() ?? '{}') as { handle: string; kind?: string }
     state.handle = body.handle
+    state.kind = body.kind ?? 'player'
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(view(state)) })
   })
   await page.route('**/api/v1/coach/session/matches', async (route: Route) => {
@@ -248,6 +250,77 @@ test.describe('coaching from replay codes', () => {
     await expect.poll(() => mock.context()?.hero).toBe('Ana')
     await expect.poll(() => mock.context()?.map).toBe('Ilios')
   })
+
+  // The prompt offers the roster: a codes session about someone the coach
+  // already knows should land on their existing file, not fork a second
+  // row on a typo. The suggestions follow the fork's kind.
+  test('the prompt suggests known names, filtered by the fork', async ({ page }) => {
+    await page.route('**/api/v1/coach/players', async (route: Route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify([
+          { id: 2, handle: 'Sable', kind: 'player', note_count: 3 },
+          { id: 3, handle: 'Wren', kind: 'player', note_count: 1 },
+          { id: 1, handle: 'Sound Barrier', kind: 'team', note_count: 2 },
+        ]),
+      })
+    })
+    await mockReplaySession(page)
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Reviews/ }).click()
+    await page.getByRole('button', { name: /Use a replay code/ }).click()
+    await addCode(page, CODE_A)
+    await page.getByRole('button', { name: 'Start review' }).click()
+
+    const prompt = identityPrompt(page)
+    await expect(prompt).toBeVisible()
+    // Player fork: the two player names, not the team.
+    await expect(prompt.locator('datalist option')).toHaveCount(2)
+    await expect(prompt.locator('datalist option[value="Sable"]')).toHaveCount(1)
+    await expect(prompt.locator('datalist option[value="Sound Barrier"]')).toHaveCount(0)
+    // Team fork: only the team.
+    await prompt.getByRole('radio', { name: 'A team' }).click()
+    await expect(prompt.locator('datalist option')).toHaveCount(1)
+    await expect(prompt.locator('datalist option[value="Sound Barrier"]')).toHaveCount(1)
+  })
+
+  // The identity prompt's fork: six characters can belong to a TEAM, and the
+  // chosen shape is one shared review under the group's name — page-only.
+  // The session then speaks team: the slip drops the notes-file button (the
+  // file is a per-player artifact), the sheet reviews the team, and the
+  // observed-context panel stops asking for a single hero.
+  test('a team review: the fork, the voice, and the page-only slip', async ({ page }) => {
+    await mockReplaySession(page)
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Reviews/ }).click()
+    await page.getByRole('button', { name: /Use a replay code/ }).click()
+    await addCode(page, CODE_A)
+    await page.getByRole('button', { name: 'Start review' }).click()
+
+    // The prompt asks WHO — and, for codes, WHAT.
+    const prompt = identityPrompt(page)
+    await expect(prompt).toBeVisible()
+    await prompt.getByRole('radio', { name: 'A team' }).click()
+    await prompt.getByRole('textbox', { name: 'Team name' }).fill('Sound Barrier')
+    await prompt.getByRole('button', { name: 'Confirm' }).click()
+
+    // Team voice on the slip: the group's name, no notes-file button, the
+    // page leads and says who it is for.
+    const slip = page.getByRole('region', { name: /Coaching session/ })
+    await expect(slip.getByText('Sound Barrier')).toBeVisible()
+    await expect(slip.getByRole('button', { name: /Export notes file/ })).toHaveCount(0)
+    await expect(slip.getByRole('button', { name: /Save a web page — for the team/ })).toBeVisible()
+
+    // The sheet reviews the team by name.
+    await expect(page.getByRole('heading', { name: /Reviewing Sound Barrier/i })).toBeVisible()
+
+    // The observed-context panel drops its single-hero field in team voice.
+    const observed = page.getByRole('region', { name: new RegExp(`What you saw in ${CODE_A}`) })
+    await expect(observed).toBeVisible()
+    await expect(observed.getByRole('combobox', { name: 'Map' })).toBeVisible()
+    await expect(observed.getByRole('combobox', { name: 'Hero' })).toHaveCount(0)
+  })
+
 
   // The flow wears ONE name — the button's — through the dialog too, and a
   // codes session closes the doors into history that never arrived: the

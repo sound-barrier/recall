@@ -16,18 +16,27 @@ const (
 	coachNoteParentColumn   = "coach_note_id"
 )
 
-func (s *SQLStore) EnsureCoachPlayer(playerID, handle string) (CoachPlayer, error) {
+func (s *SQLStore) EnsureCoachPlayer(playerID, handle, kind string) (CoachPlayer, error) {
+	if kind != CoachKindPlayer && kind != CoachKindTeam {
+		return CoachPlayer{}, fmt.Errorf("%w: %q", ErrCoachKindInvalid, kind)
+	}
+	// A team never carries a player_id — the id is minted by a PLAYER's
+	// share export. Refusing the pair keeps adoption a player-only
+	// mechanism in every implementation.
+	if kind == CoachKindTeam && playerID != "" {
+		return CoachPlayer{}, fmt.Errorf("%w: a team never carries a player id", ErrCoachKindInvalid)
+	}
 	tx, err := s.db.Begin()
 	if err != nil {
 		return CoachPlayer{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	p, found, err := findOrAdoptCoachPlayer(tx, playerID, handle)
+	p, found, err := findOrAdoptCoachPlayer(tx, playerID, handle, kind)
 	if err != nil {
 		return CoachPlayer{}, err
 	}
 	if !found {
-		if p, err = insertCoachPlayer(tx, playerID, handle); err != nil {
+		if p, err = insertCoachPlayer(tx, playerID, handle, kind); err != nil {
 			return CoachPlayer{}, err
 		}
 	}
@@ -44,7 +53,11 @@ func (s *SQLStore) EnsureCoachPlayer(playerID, handle string) (CoachPlayer, erro
 // two id-less rows go by that handle, this refuses rather than picking one,
 // because the backfill would attribute one player's notes to another and the
 // next share-back export would hand them over.
-func findOrAdoptCoachPlayer(tx *sql.Tx, playerID, handle string) (CoachPlayer, bool, error) {
+// Kind joins the handle branch: a team named Aria and a player named Aria
+// are two different files of notes. The id branch is untouched — only
+// players carry a player_id (a team is a codes-only identity), and the
+// adopt below is likewise a player-only mechanism.
+func findOrAdoptCoachPlayer(tx *sql.Tx, playerID, handle, kind string) (CoachPlayer, bool, error) {
 	if playerID != "" {
 		p, found, err := selectCoachPlayer(tx, `WHERE player_id = ?`, playerID)
 		if err != nil || found {
@@ -60,7 +73,7 @@ func findOrAdoptCoachPlayer(tx *sql.Tx, playerID, handle string) (CoachPlayer, b
 		p.PlayerID = playerID
 		return p, true, nil
 	}
-	return selectCoachPlayer(tx, `WHERE handle = ? ORDER BY id LIMIT 1`, handle)
+	return selectCoachPlayer(tx, `WHERE handle = ? AND kind = ? ORDER BY id LIMIT 1`, handle, kind)
 }
 
 // selectSoleIDLessPlayer reads the one id-less row under a handle, or reports
@@ -69,8 +82,9 @@ func findOrAdoptCoachPlayer(tx *sql.Tx, playerID, handle string) (CoachPlayer, b
 // a stable, plausible answer.
 func selectSoleIDLessPlayer(tx *sql.Tx, handle string) (CoachPlayer, bool, error) {
 	rows, err := tx.Query(
-		`SELECT id, player_id, handle FROM coach_players
-		  WHERE handle = ? AND player_id IS NULL ORDER BY id LIMIT 2`, handle)
+		`SELECT id, player_id, handle, kind FROM coach_players
+		  WHERE handle = ? AND player_id IS NULL AND kind = 'player'
+		  ORDER BY id LIMIT 2`, handle)
 	if err != nil {
 		return CoachPlayer{}, false, fmt.Errorf("find coach player: %w", err)
 	}
@@ -80,7 +94,7 @@ func selectSoleIDLessPlayer(tx *sql.Tx, handle string) (CoachPlayer, bool, error
 	for rows.Next() {
 		var p CoachPlayer
 		var playerID sql.NullString
-		if err := rows.Scan(&p.ID, &playerID, &p.Handle); err != nil {
+		if err := rows.Scan(&p.ID, &playerID, &p.Handle, &p.Kind); err != nil {
 			return CoachPlayer{}, false, fmt.Errorf("scan coach player: %w", err)
 		}
 		p.PlayerID = playerID.String
@@ -101,11 +115,11 @@ func selectSoleIDLessPlayer(tx *sql.Tx, handle string) (CoachPlayer, bool, error
 // selectCoachPlayer reads one row by the given predicate; (zero, false, nil)
 // when none matches. The handle column is declared COLLATE NOCASE, so the
 // handle predicates compare case-insensitively without spelling it out.
-func selectCoachPlayer(tx *sql.Tx, where string, arg any) (CoachPlayer, bool, error) {
+func selectCoachPlayer(tx *sql.Tx, where string, args ...any) (CoachPlayer, bool, error) {
 	var p CoachPlayer
 	var playerID sql.NullString
 	// #nosec G202 -- where is one of the constant predicates above.
-	err := tx.QueryRow(`SELECT id, player_id, handle FROM coach_players `+where, arg).Scan(&p.ID, &playerID, &p.Handle)
+	err := tx.QueryRow(`SELECT id, player_id, handle, kind FROM coach_players `+where, args...).Scan(&p.ID, &playerID, &p.Handle, &p.Kind)
 	if errors.Is(err, sql.ErrNoRows) {
 		return CoachPlayer{}, false, nil
 	}
@@ -116,13 +130,13 @@ func selectCoachPlayer(tx *sql.Tx, where string, arg any) (CoachPlayer, bool, er
 	return p, true, nil
 }
 
-func insertCoachPlayer(tx *sql.Tx, playerID, handle string) (CoachPlayer, error) {
-	p := CoachPlayer{PlayerID: playerID, Handle: handle}
+func insertCoachPlayer(tx *sql.Tx, playerID, handle, kind string) (CoachPlayer, error) {
+	p := CoachPlayer{PlayerID: playerID, Handle: handle, Kind: kind}
 	// An empty player_id is stored as NULL so the UNIQUE constraint tolerates
 	// any number of anonymous players.
 	err := tx.QueryRow(
-		`INSERT INTO coach_players (player_id, handle) VALUES (?, ?) RETURNING id`,
-		sql.NullString{String: playerID, Valid: playerID != ""}, handle,
+		`INSERT INTO coach_players (player_id, handle, kind) VALUES (?, ?, ?) RETURNING id`,
+		sql.NullString{String: playerID, Valid: playerID != ""}, handle, kind,
 	).Scan(&p.ID)
 	if err != nil {
 		return CoachPlayer{}, fmt.Errorf("insert coach player: %w", err)
@@ -437,6 +451,7 @@ func (s *SQLStore) LoadCoachPlayers() ([]CoachPlayerSummary, error) {
 		SELECT
 			p.id,
 			p.handle,
+			p.kind,
 			COUNT(n.id),
 			COALESCE(MAX(n.updated_at), '')
 		FROM coach_players AS p
@@ -450,7 +465,7 @@ func (s *SQLStore) LoadCoachPlayers() ([]CoachPlayerSummary, error) {
 	out := []CoachPlayerSummary{}
 	for rows.Next() {
 		var r CoachPlayerSummary
-		if err := rows.Scan(&r.ID, &r.Handle, &r.NoteCount, &r.LastNoteAt); err != nil {
+		if err := rows.Scan(&r.ID, &r.Handle, &r.Kind, &r.NoteCount, &r.LastNoteAt); err != nil {
 			return nil, fmt.Errorf("scan coach player summary: %w", err)
 		}
 		out = append(out, r)

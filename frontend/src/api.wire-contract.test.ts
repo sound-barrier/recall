@@ -179,7 +179,7 @@ const COACH: WireCase[] = [
   { name: 'GetCoachSessionMatches', call: () => api.GetCoachSessionMatches(), method: 'GET',    path: '/api/v1/coach/session/matches' },
   {
     name: 'SetCoachSessionPlayer', method: 'PUT', path: '/api/v1/coach/session/player',
-    call: () => api.SetCoachSessionPlayer('Sable'), body: { handle: 'Sable' },
+    call: () => api.SetCoachSessionPlayer('Sable'), body: { handle: 'Sable', kind: 'player' },
   },
   {
     name: 'PutCoachNote', method: 'PUT', path: `/api/v1/coach/session/notes/${KEY}`,

@@ -79,3 +79,36 @@ describe('CoachObservedContext', () => {
     expect(screen.getByLabelText('Map')).toHaveValue('numbani')
   })
 })
+
+// A team watched the replay together — there is no single hero to name,
+// and asking for one would invite inventing data about somebody.
+describe('CoachObservedContext — team lens', () => {
+  // Not just hidden — DROPPED: a hero typed before a kind correction would
+  // otherwise ride along invisibly on every later commit and surface in
+  // the team's exported page as an invented single-hero datum.
+  it('never commits a hero for a team, even one left in the draft', async () => {
+    const view = render(CoachObservedContext, {
+      props: {
+        record: recordOf({ hero: 'ana' }),
+        sessionDate: '2026-08-15',
+        subjectKind: 'team',
+      },
+    })
+    await fireEvent.update(screen.getByLabelText('Map'), 'Ilios')
+    await fireEvent.change(screen.getByLabelText('Map'))
+    const last = (view.emitted('update') as unknown[][]).at(-1)![0] as Record<string, unknown>
+    expect(last.map).toBe('Ilios')
+    expect('hero' in last).toBe(false)
+  })
+
+  it('drops the hero field and keeps map, result and date', () => {
+    render(CoachObservedContext, {
+      props: { record: recordOf(), sessionDate: '2026-08-15', subjectKind: 'team' },
+    })
+    expect(screen.queryByLabelText('Hero')).toBeNull()
+    expect(screen.getByLabelText('Map')).toBeInTheDocument()
+    expect(screen.getByLabelText('Result')).toBeInTheDocument()
+    expect(screen.getByLabelText('Date')).toBeInTheDocument()
+  })
+})
+

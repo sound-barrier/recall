@@ -6,6 +6,7 @@ import type {
   CoachMoment,
   CoachMomentInput,
   CoachNoteInput,
+  CoachNoteSummary,
   CoachPlayerSummary,
   FocusItem,
   SelfReview,
@@ -46,6 +47,12 @@ export function SetSelfReviewFocusItems(reviewID: string, items: FocusItem[]): P
 /** The coach's roster — every player this user has coached, newest work first. */
 export function ListCoachPlayers(): Promise<CoachPlayerSummary[]> {
   return unwrap(sdk.listCoachPlayers())
+}
+
+// The dossier's "Read every note" — one coached identity's whole file,
+// newest first. The match KEY doubles as the display label.
+export function ListCoachPlayerNotes(id: number): Promise<CoachNoteSummary[]> {
+  return unwrap(sdk.listCoachPlayerNotes({ path: { id } }))
 }
 
 /** The sent ledger — every share-with-a-coach export, newest first. */

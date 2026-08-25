@@ -123,7 +123,12 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # type is now a compile error rather than an empty column or a garbage row.
 #
 # Measured 355512B; ~1KB headroom, per the sizing convention here.
-: "${MAX_INITIAL_JS_BYTES:=356500}"
+# 2026-08: 356500 -> 358000 -- the coaching S-campaign's EAGER surface: the
+# coach store's kind threading + the roster/dossier invalidation hooks
+# (the query module was already eager via the sitting store; only the
+# store's own code grew). Everything visible -- the fork, the dossier, the
+# drawer -- is lazy. Measured 356830B.
+: "${MAX_INITIAL_JS_BYTES:=358000}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
@@ -324,7 +329,10 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # confirms on the return sheet, the draft stash + fold cue in the send
 # dialog, disclosures/undo/autogrow in the film room, the codes modal's
 # restyle). Nothing eager moved -- initial JS stands. Measured 2160078B.
-: "${MAX_TOTAL_JS_BYTES:=2166000}"
+# 2026-08: 2166000 -> 2174000 -- the coaching S-campaign's lazy chunks: the
+# identity fork + typeahead, the player dossier and its notes query, the
+# earlier-notes drawer, the team-voice branches. Measured 2168268B.
+: "${MAX_TOTAL_JS_BYTES:=2174000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
@@ -365,7 +373,9 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # 2026-08: 419000 -> 423000 -- the same campaign's scoped styles: verdict
 # chips, the sticky fold cue, the numbers disclosure, visible blocked-reason
 # lines, the codes dialog joining the send dialog's grammar. Measured 421518B.
-: "${MAX_TOTAL_CSS_BYTES:=423000}"
+# 2026-08: 423000 -> 427000 -- the same campaign's scoped styles: the
+# dossier panel, the orphan drawer, the fork row. Measured 424565B.
+: "${MAX_TOTAL_CSS_BYTES:=427000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never

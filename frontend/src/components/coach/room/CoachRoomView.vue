@@ -4,12 +4,13 @@ import { computed, ref, useTemplateRef, watch } from 'vue'
 import type { ObservedContext } from '@/api-client'
 import CoachDesk from '@/components/coach/room/CoachDesk.vue'
 import CoachIdentityPrompt from '@/components/coach/room/CoachIdentityPrompt.vue'
+import CoachOrphanNotes from '@/components/coach/room/CoachOrphanNotes.vue'
 import { playerClockOwner } from '@/match/match-time-helpers'
 import CoachAddCode from '@/components/coach/reel/CoachAddCode.vue'
 import CoachReel from '@/components/coach/reel/CoachReel.vue'
 import CoachSessionSheet from '@/components/coach/notes/CoachSessionSheet.vue'
 import {
-  DEFAULT_COACH_LABELS, type CoachLabels, type CoachPlayerView, type CoachSaveState,
+  DEFAULT_COACH_LABELS, type CoachLabels, type CoachPlayerView, type KnownIdentity, type CoachSaveState,
   type RoomApi, type RoomVoice,
 } from '@/components/coach/room/coach-room-props'
 import { useCoachReelKeyboard } from '@/composables/coach/useCoachReelKeyboard'
@@ -27,6 +28,8 @@ import { FOCUS_SAVE_KEY, notesSummaryLine, type CoachNoteDraft } from '@/match/c
 
 const props = withDefaults(defineProps<{
   player: CoachPlayerView
+  /** Roster names for the identity prompt — a known name is an existing file. */
+  knownIdentities?: KnownIdentity[]
   /**
    * The corpus under review and the four ways to change it, as one bundle.
    * Two stores drive this room and both expose exactly this shape.
@@ -62,6 +65,7 @@ const props = withDefaults(defineProps<{
   /** Whether the desk may take its match out of the set (a sitting's affordance). */
   removableFrames?: boolean
 }>(), {
+  knownIdentities: () => [],
   moments: () => ({}),
   selectedKey: '',
   focusItems: () => [],
@@ -81,7 +85,7 @@ const emit = defineEmits<{
   'copy-replay': [matchKey: string]
   'remove-frame': [matchKey: string]
   'update-focus-items': [items: FocusItem[]]
-  'confirm-player': [handle: string]
+  'confirm-player': [handle: string, kind: 'player' | 'team']
   export: []
   'export-sheet': []
   end: []
@@ -119,6 +123,24 @@ const { onReelKeydown } = useCoachReelKeyboard({
   reel: reelColumn,
 })
 
+// The notes the session carries but cannot frame — see CoachOrphanNotes.
+const orphanNotes = computed(() => {
+  const framed = new Set(room.frames.value.map((f) => f.match_key))
+  const momentsByKey = props.api.moments()
+  return Object.entries(props.api.notes())
+    .filter(([key]) => !framed.has(key))
+    .map(([matchKey, draft]) => ({
+      matchKey,
+      kind: draft.kind,
+      text: draft.text,
+      focusTags: draft.focusTags,
+      momentCount: momentsByKey[matchKey]?.length ?? 0,
+    }))
+})
+const orphanHeading = computed(() => (props.voice === 'your'
+  ? 'Your earlier notes'
+  : `Earlier notes about ${playerClockOwner(props.player.handle)}`))
+
 const notesLine = computed(() =>
   notesSummaryLine(props.api.notes(), props.coachName, props.api.moments()))
 
@@ -143,9 +165,9 @@ const correcting = ref(false)
 const askingWho = computed(() => unconfirmed.value || correcting.value)
 watch(() => props.player.handle, () => { correcting.value = false })
 
-function confirmPlayer(handle: string): void {
+function confirmPlayer(handle: string, kind: 'player' | 'team'): void {
   correcting.value = false
-  emit('confirm-player', handle)
+  emit('confirm-player', handle, kind)
 }
 
 function step(key: string | null): void {
@@ -166,6 +188,7 @@ function step(key: string | null): void {
       <slot name="reel">
         <CoachReel
           :handle="player.handle"
+          :subject-kind="player.kind ?? 'player'"
           :days="room.reelDays.value"
           :selected-key="room.activeKey.value"
           :notes="api.notes()"
@@ -180,8 +203,10 @@ function step(key: string | null): void {
     <div class="coach-room-desk">
       <CoachIdentityPrompt
         v-if="askingWho"
-        :key="player.handle"
+        :key="`${player.handle}|${player.kind ?? 'player'}`"
         :handle="player.handle"
+        :kind="player.kind ?? 'player'"
+        :known-identities="knownIdentities"
         :unconfirmed="unconfirmed"
         :source="api.sessionSource?.() ?? 'bundle'"
         @confirm="confirmPlayer"
@@ -190,6 +215,7 @@ function step(key: string | null): void {
       <slot name="desk">
         <CoachDesk
           :session-date="observedDate"
+          :subject-kind="player.kind ?? 'player'"
           :record="room.selectedRecord.value"
           :reel-empty="room.frames.value.length === 0"
           :handle="player.handle"
@@ -214,6 +240,7 @@ function step(key: string | null): void {
           @next="step(room.nextKey.value)"
         />
       </slot>
+      <CoachOrphanNotes :notes="orphanNotes" :heading="orphanHeading" />
     </div>
 
     <div class="coach-room-sheet">

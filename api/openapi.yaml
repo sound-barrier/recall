@@ -2276,6 +2276,40 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/coach/players/{id}/notes:
+    get:
+      operationId: ListCoachPlayerNotes
+      tags: [Coaching]
+      summary: Every note ever written about one coached identity, newest first
+      description: |
+        The dossier's "Read every note". No match context travels — the
+        match key is the label (a dated capture key, or a replay code) —
+        because the coach's store keeps only the notes, never the loaned
+        matches they were about.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: The roster row's id, from GET /api/v1/coach/players.
+      responses:
+        "200":
+          description: The identity's notes, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CoachNoteSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/coach/players:
     get:
       operationId: ListCoachPlayers
@@ -2643,6 +2677,13 @@ paths:
                   minLength: 1
                   maxLength: 64
                   description: The display handle the coach confirmed.
+                kind:
+                  $ref: "#/components/schemas/CoachIdentityKindEnum"
+                  description: |
+                    Who the name names. Omitted means `player`. `team` files
+                    the whole session's notes under a group name — allowed
+                    only in a replay-codes session; a bundle already names
+                    its player (409).
               example:
                 handle: Sable
       responses:
@@ -2657,7 +2698,10 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
-          description: More than one id-less player goes by that handle.
+          description: |
+            More than one id-less player goes by that handle — or `team`
+            was offered to a bundle session, whose manifest already names
+            its player.
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -4737,7 +4781,7 @@ components:
         follow the player across a handle change. A bundle from a build
         that predates the identity, or an anonymous export, carries an
         empty id and the handle IS the identity.
-      required: [id, handle, message]
+      required: [id, handle, message, kind]
       properties:
         id:
           type: string
@@ -4750,6 +4794,15 @@ components:
         message:
           type: string
           description: The player's optional note to their coach.
+        kind:
+          $ref: "#/components/schemas/CoachIdentityKindEnum"
+
+    CoachIdentityKindEnum:
+      type: string
+      enum: [player, team]
+      description: |
+        Who a coached name names. A `team` is a codes-session identity for
+        a group — one shared review filed under the team's name.
 
     CoachNoteKindEnum:
       type: string
@@ -5228,16 +5281,54 @@ components:
           type: string
           description: When the player accepted the note (RFC3339).
 
+    CoachNoteSummary:
+      type: object
+      description: |
+        One stored coach note, as the dossier lists it — the note itself
+        plus its match KEY, which doubles as the display label.
+      required: [note_id, match_key, kind, text, focus_tags, extra_tags, moment_count, updated_at]
+      properties:
+        note_id:
+          type: string
+        match_key:
+          type: string
+        kind:
+          $ref: "#/components/schemas/CoachNoteKindEnum"
+        text:
+          type: string
+        focus_tags:
+          type: array
+          items:
+            type: string
+        extra_tags:
+          type: array
+          items:
+            type: string
+        match_clock:
+          type: string
+          description: MM:SS into the match; absent when the note names none.
+        moment_count:
+          type: integer
+          description: |
+            Moments hanging off this note — content the text cannot show.
+            A reviewed_only note with moments is a match annotated in
+            detail, not "nothing to add".
+        updated_at:
+          type: string
+          description: RFC3339 of the last save.
+
     CoachPlayerSummary:
       type: object
-      description: One roster row — a player this user has coached.
-      required: [id, handle, note_count]
+      description: One roster row — a player or team this user has coached.
+      required: [id, handle, kind, note_count]
       properties:
         id:
           type: integer
           format: int64
         handle:
           type: string
+        kind:
+          $ref: "#/components/schemas/CoachIdentityKindEnum"
         note_count:
           type: integer
         last_note_at:

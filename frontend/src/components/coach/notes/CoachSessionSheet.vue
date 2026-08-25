@@ -67,10 +67,12 @@ const emit = defineEmits<{
       <button
         type="button"
         class="paper-btn sheet-change"
-        title="The bundle only suggested this name — file the notes under a different player"
+        :title="player.kind === 'team'
+          ? 'Correct the team\'s name — the notes re-file under it'
+          : 'The bundle only suggested this name — file the notes under a different player'"
         @click="emit('change-player')"
       >
-        Change player
+        {{ player.kind === 'team' ? 'Change team' : 'Change player' }}
       </button>
     </div>
     <blockquote v-if="player.message" class="sheet-message">
@@ -93,6 +95,7 @@ const emit = defineEmits<{
 
     <footer class="sheet-actions">
       <button
+        v-if="player.kind !== 'team'"
         type="button"
         class="paper-btn primary"
         :disabled="!canExport"
@@ -111,11 +114,11 @@ const emit = defineEmits<{
         :title="canExport ? undefined : exportReason"
         @click="emit('export-sheet')"
       >
-        Save a web page — read-only
+        {{ player.kind === 'team' ? 'Save a web page — for the team' : 'Save a web page — read-only' }}
       </button>
       <!-- Routes through the same armed question the loan slip asks. -->
       <button type="button" class="paper-btn" @click="emit('end')">
-        {{ endArmed ? endArmedLabel : '2 · End session' }}
+        {{ endArmed ? endArmedLabel : (player.kind === 'team' ? 'End session' : '2 · End session') }}
       </button>
       <button
         v-if="endArmed"

@@ -809,7 +809,15 @@ export type CoachPlayer = {
      * The player's optional note to their coach.
      */
     message: string;
+    kind: CoachIdentityKindEnum;
 };
+
+/**
+ * Who a coached name names. A `team` is a codes-session identity for
+ * a group — one shared review filed under the team's name.
+ *
+ */
+export type CoachIdentityKindEnum = 'player' | 'team';
 
 /**
  * `note` carries text and/or tags; `reviewed_only` is the "I looked
@@ -1233,11 +1241,41 @@ export type MatchCoachNote = {
 };
 
 /**
- * One roster row — a player this user has coached.
+ * One stored coach note, as the dossier lists it — the note itself
+ * plus its match KEY, which doubles as the display label.
+ *
+ */
+export type CoachNoteSummary = {
+    note_id: string;
+    match_key: string;
+    kind: CoachNoteKindEnum;
+    text: string;
+    focus_tags: Array<string>;
+    extra_tags: Array<string>;
+    /**
+     * MM:SS into the match; absent when the note names none.
+     */
+    match_clock?: string;
+    /**
+     * Moments hanging off this note — content the text cannot show.
+     * A reviewed_only note with moments is a match annotated in
+     * detail, not "nothing to add".
+     *
+     */
+    moment_count: number;
+    /**
+     * RFC3339 of the last save.
+     */
+    updated_at: string;
+};
+
+/**
+ * One roster row — a player or team this user has coached.
  */
 export type CoachPlayerSummary = {
     id: number;
     handle: string;
+    kind: CoachIdentityKindEnum;
     note_count: number;
     /**
      * RFC3339 of the newest note; absent when none written.
@@ -4390,6 +4428,44 @@ export type RunDatabaseMaintenanceResponses = {
 
 export type RunDatabaseMaintenanceResponse = RunDatabaseMaintenanceResponses[keyof RunDatabaseMaintenanceResponses];
 
+export type ListCoachPlayerNotesData = {
+    body?: never;
+    path: {
+        /**
+         * The roster row's id, from GET /api/v1/coach/players.
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/api/v1/coach/players/{id}/notes';
+};
+
+export type ListCoachPlayerNotesErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type ListCoachPlayerNotesError = ListCoachPlayerNotesErrors[keyof ListCoachPlayerNotesErrors];
+
+export type ListCoachPlayerNotesResponses = {
+    /**
+     * The identity's notes, newest first.
+     */
+    200: Array<CoachNoteSummary>;
+};
+
+export type ListCoachPlayerNotesResponse = ListCoachPlayerNotesResponses[keyof ListCoachPlayerNotesResponses];
+
 export type ListCoachPlayersData = {
     body?: never;
     path?: never;
@@ -4684,6 +4760,14 @@ export type SetCoachSessionPlayerData = {
          * The display handle the coach confirmed.
          */
         handle: string;
+        /**
+         * Who the name names. Omitted means `player`. `team` files
+         * the whole session's notes under a group name — allowed
+         * only in a replay-codes session; a bundle already names
+         * its player (409).
+         *
+         */
+        kind?: CoachIdentityKindEnum;
     };
     path?: never;
     query?: never;
@@ -4700,7 +4784,10 @@ export type SetCoachSessionPlayerErrors = {
      */
     404: ProblemDetails;
     /**
-     * More than one id-less player goes by that handle.
+     * More than one id-less player goes by that handle — or `team`
+     * was offered to a bundle session, whose manifest already names
+     * its player.
+     *
      */
     409: unknown;
     /**

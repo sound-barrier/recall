@@ -11,6 +11,14 @@ import type { CoachNoteDraft } from '@/match/coach/coach-notes'
 export interface CoachPlayerView {
   handle: string
   message?: string
+  /** 'team' files the whole session under a group name (codes only). */
+  kind?: 'player' | 'team'
+}
+
+/** One roster name for the identity prompt's typeahead. */
+export interface KnownIdentity {
+  handle: string
+  kind: 'player' | 'team'
 }
 
 /** Where the note autosave stands; the editor speaks it through a role=status line. */

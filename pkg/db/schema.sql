@@ -659,10 +659,14 @@ CREATE TABLE IF NOT EXISTS user_match_rank_modifiers (
 -- incoming id finds more than one id-less row under a handle — the adopt
 -- backfills the id, so a wrong pick attributes one player's notes to another
 -- and exports them to them.
+-- kind separates a TEAM (a shared review filed under a group name, from a
+-- codes session) from a player. A team and a player may share a handle —
+-- they are different files of notes — so kind joins the handle lookup.
 CREATE TABLE IF NOT EXISTS coach_players (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   player_id TEXT UNIQUE,
-  handle TEXT NOT NULL COLLATE NOCASE
+  handle TEXT NOT NULL COLLATE NOCASE,
+  kind TEXT NOT NULL DEFAULT 'player' CHECK (kind IN ('player', 'team'))
 ) STRICT;
 -- statement-end
 

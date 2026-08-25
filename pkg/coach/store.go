@@ -13,7 +13,7 @@ import (
 // per player. The received half lives behind ReturnStore — a session never
 // touches it, and the split keeps that provable.
 type NoteStore interface {
-	EnsureCoachPlayer(playerID, handle string) (db.CoachPlayer, error)
+	EnsureCoachPlayer(playerID, handle, kind string) (db.CoachPlayer, error)
 	RenameCoachPlayer(id int64, handle string) error
 	UpsertCoachNote(n db.CoachNote) (db.CoachNote, error)
 	DeleteCoachNote(playerRef int64, matchKey string) error
@@ -81,6 +81,9 @@ func ExportNotes(s *Session, notes []Note, focus []FocusItem, coachName, recallV
 	if s.Player.Handle == "" {
 		return NotesFile{}, ErrHandleRequired
 	}
+	if s.Player.Kind == db.CoachKindTeam {
+		return NotesFile{}, ErrTeamPageOnly
+	}
 	if len(notes) == 0 && len(focus) == 0 {
 		return NotesFile{}, ErrNothingToExport
 	}
@@ -94,7 +97,7 @@ func ExportNotes(s *Session, notes []Note, focus []FocusItem, coachName, recallV
 		CoachName:     coachName,
 		// The message is the player's note TO the coach; it has no place
 		// in the file traveling back.
-		Player:      Player{ID: s.Player.ID, Handle: s.Player.Handle},
+		Player:      Player{ID: s.Player.ID, Handle: s.Player.Handle, Kind: s.Player.Kind},
 		SessionDate: SessionDate(now),
 		FocusItems:  focus,
 		Notes:       notes,

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/vue-query'
-import { toValue, type MaybeRefOrGetter } from 'vue'
+import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 
-import { ListCoachPlayers, ListSelfReviews, ListShareExports, type SelfReview } from '@/api-client'
+import { ListCoachPlayerNotes, ListCoachPlayers, ListSelfReviews, ListShareExports, type SelfReview } from '@/api-client'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 
@@ -34,6 +34,28 @@ export function useCoachPlayersQuery(enabled: MaybeRefOrGetter<boolean>) {
     queryFn: ListCoachPlayers,
     enabled: () => toValue(enabled),
   }, getQueryClient())
+}
+
+// One coached identity's whole file of notes — fetched when their dossier
+// asks for it, cached per identity like any other server state.
+export function useCoachPlayerNotesQuery(id: MaybeRefOrGetter<number>, enabled: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: computed(() => qk.coachPlayerNotes(toValue(id))),
+    queryFn: () => ListCoachPlayerNotes(toValue(id)),
+    enabled: () => toValue(enabled),
+  }, getQueryClient())
+}
+
+// The roster and every dossier file go stale together: a session writes
+// notes, may mint a new identity, and ends — after which "Read every
+// note" showing the pre-session file would betray the one surface whose
+// whole point is continuity.
+export async function invalidateCoachRoster(): Promise<void> {
+  const qc = getQueryClient()
+  await Promise.all([
+    qc.invalidateQueries({ queryKey: qk.coachPlayers }),
+    qc.invalidateQueries({ queryKey: qk.coachPlayerNotesAll }),
+  ])
 }
 
 // Mark the shelf stale after a write that changes what it lists. Invalidate,

@@ -19,6 +19,9 @@ const coach = useCoachStore()
 // better than a masthead that reads "reviewing" and then stops.
 const handle = computed(() =>
   (coach.needsPlayerHandle ? playerClockOwner('') : coach.player?.handle ?? ''))
+// A team session speaks team: the eyebrow says so, the corpus is replays,
+// and the per-player notes FILE has no addressee — the page leads alone.
+const isTeam = computed(() => coach.player?.kind === 'team')
 const label = computed(() => `Coaching session: reviewing ${handle.value}`)
 
 // The export date is the PLAYER's — "exported Aug 22" alone read as the
@@ -26,7 +29,9 @@ const label = computed(() => `Coaching session: reviewing ${handle.value}`)
 const loanLine = computed(() => {
   const count = coach.session?.match_count ?? 0
   const exported = formatLocalFromUTC(coach.session?.exported_at)
-  const matches = `${count} match${count === 1 ? '' : 'es'}`
+  const matches = isTeam.value
+    ? `${count} replay${count === 1 ? '' : 's'}`
+    : `${count} match${count === 1 ? '' : 'es'}`
   return exported ? `${matches} · ${handle.value} exported ${exported}` : matches
 })
 
@@ -54,7 +59,7 @@ const requestEnd = () => coach.requestEndSession()
 <template>
   <section class="paper coach-slip" :aria-label="label">
     <p class="eyebrow ink coach-slip-eyebrow">
-      Coaching session
+      {{ isTeam ? 'Coaching session · team' : 'Coaching session' }}
     </p>
     <p class="coach-slip-handle">
       {{ handle }}
@@ -80,6 +85,7 @@ const requestEnd = () => coach.requestEndSession()
     </p>
     <div class="coach-slip-actions">
       <button
+        v-if="!isTeam"
         type="button"
         class="paper-btn coach-slip-btn"
         :disabled="!canExport"
@@ -101,7 +107,7 @@ const requestEnd = () => coach.requestEndSession()
         :title="exportTitle"
         @click="coach.exportSheet()"
       >
-        Save a web page — read-only
+        {{ isTeam ? 'Save a web page — for the team' : 'Save a web page — read-only' }}
       </button>
       <!--
         The receipt: the export used to succeed in silence, on the one action
@@ -123,7 +129,7 @@ const requestEnd = () => coach.requestEndSession()
         title="Discard the loaned records and go back to your own history"
         @click="requestEnd"
       >
-        2 · End session
+        {{ isTeam ? 'End session' : '2 · End session' }}
       </button>
       <!--
         The armed state offers both answers. It used to replace the button in

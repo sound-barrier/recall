@@ -4,6 +4,8 @@ import { storeToRefs } from 'pinia'
 
 import CoachFromCodesModal from '@/components/reviews/CoachFromCodesModal.vue'
 import FocusBand from '@/components/reviews/FocusBand.vue'
+import type { CoachPlayerSummary } from '@/api-client'
+import CoachPlayerDossier from '@/components/reviews/CoachPlayerDossier.vue'
 import ReviewLedgerRow from '@/components/reviews/ReviewLedgerRow.vue'
 import SelfReviewCard from '@/components/reviews/SelfReviewCard.vue'
 import { formatPlayerDay, localDay } from '@/match/coach/coach-time'
@@ -173,6 +175,15 @@ function openBundle(): void {
 // Most reviews start with a code in chat, not a zip in an email, so the
 // two doors sit side by side rather than one being buried.
 const codesOpen = ref(false)
+// The dossier open under one roster row, and the identity a codes session
+// opens pre-addressed to — the dossier's "Review new codes for X".
+const dossierFor = ref<number | null>(null)
+const codesFor = ref<{ handle: string; kind: 'player' | 'team' } | null>(null)
+
+function reviewCodesFor(p: CoachPlayerSummary): void {
+  codesFor.value = { handle: p.handle, kind: p.kind as 'player' | 'team' }
+  codesOpen.value = true
+}
 </script>
 
 <template>
@@ -462,14 +473,33 @@ const codesOpen = ref(false)
       </div>
       <ul v-if="roster.length" class="reviews-waiting" aria-label="Players you have coached">
         <ReviewLedgerRow v-for="p in roster" :key="p.id" quiet>
+          <span v-if="p.kind === 'team'" class="badge">TEAM</span>
           {{ rosterLine(p) }}<template v-if="p.focus_items?.length">
             — {{ p.focus_items.join(' · ') }}
+          </template>
+          <template #action>
+            <button
+              type="button"
+              class="btn ghost"
+              :aria-expanded="dossierFor === p.id"
+              @click="dossierFor = dossierFor === p.id ? null : p.id"
+            >
+              {{ dossierFor === p.id ? `Close ${p.handle}'s dossier` : `Open ${p.handle}'s dossier →` }}
+            </button>
+          </template>
+          <template #below>
+            <CoachPlayerDossier
+              v-if="dossierFor === p.id"
+              :player="p"
+              @review-codes="reviewCodesFor(p)"
+            />
           </template>
         </ReviewLedgerRow>
       </ul>
       <p v-if="roster.length" class="reviews-empty">
-        Your notes stay with you, filed by player. Open their next bundle
-        and the notes resurface — a second session builds on the first.
+        Your notes stay with you, filed by player or team. Open their next
+        bundle — or their next codes — and the notes resurface: a second
+        session builds on the first.
       </p>
       <p v-else class="reviews-empty">
         No one has sent you a bundle yet — when a player shares their
@@ -478,7 +508,7 @@ const codesOpen = ref(false)
     </div>
   </div>
 
-  <CoachFromCodesModal v-model="codesOpen" />
+  <CoachFromCodesModal v-model="codesOpen" :preset="codesFor" @closed="codesFor = null" />
 </template>
 
 <style scoped src="./reviews-index.css"></style>

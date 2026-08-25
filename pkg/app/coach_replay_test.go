@@ -6,6 +6,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/coach"
+	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
 )
 
@@ -25,7 +26,7 @@ func openReplaySession(t *testing.T, codes ...string) (*app.App, *dbtest.Fake) {
 func TestOpenCoachReplaySession_LetsACoachWriteAboutAReplay(t *testing.T) {
 	a, _ := openReplaySession(t, "a1b2c3")
 
-	if _, err := a.SetCoachSessionPlayer("Sable"); err != nil {
+	if _, err := a.SetCoachSessionPlayer("Sable", ""); err != nil {
 		t.Fatalf("SetCoachSessionPlayer: %v", err)
 	}
 	note, err := a.PutCoachNote("replay-A1B2C3", coach.NoteInput{
@@ -88,7 +89,7 @@ func TestAddCoachSessionReplayCode_GrowsTheReel(t *testing.T) {
 
 func TestSetCoachSessionMatchContext_RidesToThePlayerInTheNote(t *testing.T) {
 	a, _ := openReplaySession(t, "A1B2C3")
-	if _, err := a.SetCoachSessionPlayer("Sable"); err != nil {
+	if _, err := a.SetCoachSessionPlayer("Sable", ""); err != nil {
 		t.Fatalf("SetCoachSessionPlayer: %v", err)
 	}
 	if _, err := a.SetCoachSessionMatchContext("replay-A1B2C3", coach.ObservedContext{
@@ -119,5 +120,92 @@ func TestSetCoachSessionMatchContext_RefusesWithNoSession(t *testing.T) {
 	a, _ := coachApp(t)
 	if _, err := a.SetCoachSessionMatchContext("replay-A1B2C3", coach.ObservedContext{}); !errors.Is(err, coach.ErrNoSession) {
 		t.Errorf("err = %v, want ErrNoSession", err)
+	}
+}
+
+// A team is a codes-only identity: the session carries it like a player, the
+// desk and sheet speak in its name, and everything written files under it.
+func TestSetCoachSessionPlayer_ATeamRidesAReplaySession(t *testing.T) {
+	a, _ := openReplaySession(t, "a1b2c3")
+
+	view, err := a.SetCoachSessionPlayer("Sound Barrier", db.CoachKindTeam)
+	if err != nil {
+		t.Fatalf("SetCoachSessionPlayer(team): %v", err)
+	}
+	if view.Player.Kind != db.CoachKindTeam {
+		t.Fatalf("view.Player.Kind = %q, want team", view.Player.Kind)
+	}
+}
+
+// A bundle names its player — the manifest IS the identity — so a coach
+// cannot re-file a bundle session under a team. The refusal is the API's,
+// not just a hidden control: the correction path goes through here too.
+func TestSetCoachSessionPlayer_ATeamOnABundleIsRefused(t *testing.T) {
+	a, _ := coachApp(t)
+	if _, err := a.OpenCoachSession(shareBundle(t)); err != nil {
+		t.Fatalf("OpenCoachSession: %v", err)
+	}
+
+	_, err := a.SetCoachSessionPlayer("Sound Barrier", db.CoachKindTeam)
+
+	if !errors.Is(err, coach.ErrBundleNamesPlayer) {
+		t.Fatalf("SetCoachSessionPlayer(team on bundle) = %v, want ErrBundleNamesPlayer", err)
+	}
+}
+
+// The chosen team shape is page-only: the notes FILE is a per-player
+// artifact — import attributes purely by handle, so a team's shared review
+// would land as a per-player return on anyone whose handle matches the
+// team name. The backend refuses, not just the hidden button.
+func TestExportCoachNotes_ATeamReviewIsPageOnly(t *testing.T) {
+	a, _ := openReplaySession(t, "a1b2c3")
+	if _, err := a.SetCoachSessionPlayer("Sound Barrier", db.CoachKindTeam); err != nil {
+		t.Fatalf("SetCoachSessionPlayer(team): %v", err)
+	}
+	if _, err := a.SetCoachingSettings("Ordo", ""); err != nil {
+		t.Fatalf("SetCoachingSettings: %v", err)
+	}
+
+	_, _, err := a.ExportCoachNotes([]byte("<html></html>"))
+
+	if !errors.Is(err, coach.ErrTeamPageOnly) {
+		t.Fatalf("ExportCoachNotes(team) = %v, want ErrTeamPageOnly", err)
+	}
+}
+
+// The dossier's "Read every note": everything ever written about one
+// coached identity, newest first, replay notes included.
+func TestListCoachPlayerNotes_ReadsTheDossierNewestFirst(t *testing.T) {
+	a, _ := openReplaySession(t, "a1b2c3", "d4e5f6")
+	if _, err := a.SetCoachSessionPlayer("Sable", ""); err != nil {
+		t.Fatalf("SetCoachSessionPlayer: %v", err)
+	}
+	if _, err := a.PutCoachNote("replay-A1B2C3", coach.NoteInput{Kind: "note", Text: "first"}); err != nil {
+		t.Fatalf("PutCoachNote: %v", err)
+	}
+	if _, err := a.PutCoachNote("replay-D4E5F6", coach.NoteInput{Kind: "note", Text: "second"}); err != nil {
+		t.Fatalf("PutCoachNote: %v", err)
+	}
+	roster, err := a.ListCoachPlayers()
+	if err != nil || len(roster) != 1 {
+		t.Fatalf("roster = %v, %v", roster, err)
+	}
+
+	notes, err := a.ListCoachPlayerNotes(roster[0].ID)
+	if err != nil {
+		t.Fatalf("ListCoachPlayerNotes: %v", err)
+	}
+	if len(notes) != 2 {
+		t.Fatalf("notes = %d, want 2", len(notes))
+	}
+	if notes[0].UpdatedAt < notes[1].UpdatedAt {
+		t.Fatalf("not newest first: %q then %q", notes[0].UpdatedAt, notes[1].UpdatedAt)
+	}
+}
+
+func TestListCoachPlayerNotes_UnknownPlayerIsNotFound(t *testing.T) {
+	a, _ := coachApp(t)
+	if _, err := a.ListCoachPlayerNotes(999); !errors.Is(err, db.ErrCoachPlayerUnknown) {
+		t.Fatalf("ListCoachPlayerNotes(999) = %v, want ErrCoachPlayerUnknown", err)
 	}
 }

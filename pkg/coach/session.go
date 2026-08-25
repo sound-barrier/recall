@@ -18,6 +18,9 @@ type Player struct {
 	ID      string `json:"id"`
 	Handle  string `json:"handle"`
 	Message string `json:"message"`
+	// Kind is db.CoachKindPlayer or db.CoachKindTeam. A bundle always names
+	// a player; only a codes session can be confirmed as a team.
+	Kind string `json:"kind"`
 }
 
 // Session is one open coaching session: the player's bundle rendered to
@@ -90,8 +93,9 @@ func OpenSession(payload []byte, now time.Time) (*Session, error) {
 		RecallVersion: contents.Manifest.RecallVersion,
 		Source:        SessionFromBundle,
 	}
+	s.Player.Kind = db.CoachKindPlayer
 	if p := contents.Manifest.Player; p != nil {
-		s.Player = Player{ID: p.ID, Handle: p.Handle, Message: p.Message}
+		s.Player = Player{ID: p.ID, Handle: p.Handle, Message: p.Message, Kind: db.CoachKindPlayer}
 		s.HandleFromBundle = p.Handle != ""
 	}
 	s.setRecords(BuildRecords(contents.Data))

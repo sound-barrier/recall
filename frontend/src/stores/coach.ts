@@ -18,6 +18,7 @@ import {
   clearCoachSessionData, refreshCoachSessionMatches, setCoachSessionData,
   setCoachSessionResume, useCoachSessionMatchesQuery, useCoachSessionQuery,
 } from '@/queries/coach'
+import { invalidateCoachRoster } from '@/queries/selfReview'
 import { useAppStore } from '@/stores/app'
 
 // The COACH's side of the coaching loop. A session is a loan: the player's
@@ -152,7 +153,10 @@ export const useCoachStore = defineStore('coach', () => {
   let hydratedFor = ''
   function identityOf(view: CoachSessionView | null): string {
     if (!view) return ''
-    return [view.player.id, view.player.handle, view.exported_at].join('|')
+    // kind is part of the identity: a team named Aria and a player named
+    // Aria are two roster rows, and confirming the other kind re-keys the
+    // notes server-side exactly like a corrected handle does.
+    return [view.player.id, view.player.handle, view.player.kind, view.exported_at].join('|')
   }
 
   watch(session, (view) => {
@@ -278,19 +282,38 @@ export const useCoachStore = defineStore('coach', () => {
   // focus list, same autosave, same export — so it reuses this whole store
   // rather than getting one of its own. The only differences are where the
   // corpus comes from and that it can grow, which is these three functions.
-  async function openFromReplayCodes(codes: string[]): Promise<void> {
+  async function openFromReplayCodes(
+    codes: string[],
+    as?: { handle: string; kind: 'player' | 'team' },
+  ): Promise<void> {
     if (tourOpen.value) {
       useAppStore().setError(TOUR_CONFLICT_REASON)
       return
     }
     try {
       setCoachSessionData(await OpenCoachReplaySession(codes))
-      setCoachSessionResume(true)
-      suspendCoachNarrow()
-      await useAppStore().goToView('reviews')
     } catch (e) {
       useAppStore().setErrorFromRaw(String(e))
+      return
     }
+    // Pre-addressed (the dossier's door): the identity is confirmed before
+    // the room renders, so "Who is this?" never has to ask about someone
+    // the coach already knows. Its OWN catch: the session is open either
+    // way, and a failed PUT must not skip the open's tail — an unsuspended
+    // narrow filters the loaned corpus into an arbitrary subset, and an
+    // unset resume flag makes a reload boot into "no session" while the
+    // server still holds one.
+    if (as) {
+      try {
+        setCoachSessionData(await SetCoachSessionPlayer(as.handle, as.kind))
+        void invalidateCoachRoster()
+      } catch (e) {
+        useAppStore().setErrorFromRaw(String(e))
+      }
+    }
+    setCoachSessionResume(true)
+    suspendCoachNarrow()
+    await useAppStore().goToView('reviews')
   }
 
   // Codes arrive one at a time over voice chat, so the reel grows mid-session.
@@ -336,6 +359,9 @@ export const useCoachStore = defineStore('coach', () => {
     // Removes the session AND the corpus nested under it; the hydration
     // watch clears the room's own refs as the session goes null.
     clearCoachSessionData()
+    // The session's writes are durable now: the roster row (possibly brand
+    // new) and its dossier file must re-read on next look.
+    void invalidateCoachRoster()
     restoreCoachNarrow()
     // Ending is a landing, not a vanish act: the session lived in the
     // Reviews tab, so that is where its end is announced — with the notes
@@ -379,9 +405,10 @@ export const useCoachStore = defineStore('coach', () => {
    */
   const needsPlayerHandle = computed(() => sessionActive.value && playerHandle.value === '')
 
+
   // The bundle suggests a player, the coach confirms one. The echoed view
   // carries THAT player's notes — which is why the room re-hydrates.
-  async function setPlayerHandle(handle: string): Promise<void> {
+  async function setPlayerHandle(handle: string, kind: 'player' | 'team' = 'player'): Promise<void> {
     // Naming or correcting the player re-keys the notes server-side, so the
     // hydration watch drops every draft and reloads. Whatever is still in
     // the debounce has to land first — otherwise clicking "Change player"
@@ -390,7 +417,10 @@ export const useCoachStore = defineStore('coach', () => {
     // surfaces are blocked until a handle exists, so nothing is queued.
     await flushSaves()
     try {
-      setCoachSessionData(await SetCoachSessionPlayer(handle))
+      setCoachSessionData(await SetCoachSessionPlayer(handle, kind))
+      // A confirm can mint a brand-new identity — the roster and the
+      // typeahead must learn it without a restart.
+      void invalidateCoachRoster()
     } catch (e) {
       useAppStore().setErrorFromRaw(String(e))
     }
