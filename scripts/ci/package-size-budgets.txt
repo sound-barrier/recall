@@ -459,10 +459,11 @@ frontend/src/components/app                   15
 
 # frontend/src/components/coach/room — the film room's surfaces: the desk, the
 # nav strip, the match card and its hero split, the identity prompt, the loan
-# slip, the observed-context form, the session rule. One room, one reason to
-# change. Its sibling notes/ was the pair that DID carry two concerns, and the
-# shared sheet family moved out to components/sheet/.
-frontend/src/components/coach/room            12
+# slip, the observed-context form, the session rule, and (13, 2026-08-25) the
+# earlier-notes drawer — CoachOrphanNotes, shelving the notes the session
+# carries but cannot frame. One room, one reason to change; the same
+# responsibility spelled one concern wider.
+frontend/src/components/coach/room            13
 
 # frontend/src/composables/app — what App.vue wires: boot, keyboard, menus,
 # palette, first-run, server events, the two toasts, the tour bridge, external

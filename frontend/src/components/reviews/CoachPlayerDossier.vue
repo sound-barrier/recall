@@ -3,8 +3,7 @@ import { computed, ref } from 'vue'
 
 import type { CoachPlayerSummary } from '@/api-client'
 import { useCoachPlayerNotesQuery } from '@/queries/selfReview'
-import { captureParts, formatPlayerDay, localDay } from '@/match/coach/coach-time'
-import { parseMatchKey } from '@/match/match-key'
+import { localDay, matchKeyLabel } from '@/match/coach/coach-time'
 import { pluralize } from '@/match/match-label-helpers'
 
 // The dossier — one coached identity's continuity, on paper. Everything
@@ -34,15 +33,6 @@ const subLine = computed(() => {
   return `${count}${last}`
 })
 
-// The match KEY is the label: a dated capture key reads as its day, a
-// replay key reads as its code. No match context is stored coach-side —
-// the loaned matches left with their sessions.
-function noteLabel(matchKey: string): string {
-  const captured = captureParts(matchKey)
-  if (captured) return formatPlayerDay(captured.date)
-  const parsed = parseMatchKey(matchKey)
-  return parsed.kind === 'replay' ? parsed.body : matchKey
-}
 </script>
 
 <template>
@@ -87,7 +77,7 @@ function noteLabel(matchKey: string): string {
       <ul v-else class="dossier-note-list">
         <li v-for="n in notes" :key="n.note_id" class="dossier-note">
           <span class="dossier-note-from">
-            <span class="dossier-note-key">{{ noteLabel(n.match_key) }}</span>
+            <span class="dossier-note-key">{{ matchKeyLabel(n.match_key) }}</span>
             <span v-if="n.match_clock" class="dossier-note-clock">at {{ n.match_clock }}</span>
           </span>
           <p class="dossier-note-text">
