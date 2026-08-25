@@ -9,7 +9,7 @@ import CoachAddCode from '@/components/coach/reel/CoachAddCode.vue'
 import CoachReel from '@/components/coach/reel/CoachReel.vue'
 import CoachSessionSheet from '@/components/coach/notes/CoachSessionSheet.vue'
 import {
-  DEFAULT_COACH_LABELS, type CoachLabels, type CoachPlayerView, type CoachSaveState,
+  DEFAULT_COACH_LABELS, type CoachLabels, type CoachPlayerView, type KnownIdentity, type CoachSaveState,
   type RoomApi, type RoomVoice,
 } from '@/components/coach/room/coach-room-props'
 import { useCoachReelKeyboard } from '@/composables/coach/useCoachReelKeyboard'
@@ -27,6 +27,8 @@ import { FOCUS_SAVE_KEY, notesSummaryLine, type CoachNoteDraft } from '@/match/c
 
 const props = withDefaults(defineProps<{
   player: CoachPlayerView
+  /** Roster names for the identity prompt — a known name is an existing file. */
+  knownIdentities?: KnownIdentity[]
   /**
    * The corpus under review and the four ways to change it, as one bundle.
    * Two stores drive this room and both expose exactly this shape.
@@ -62,6 +64,7 @@ const props = withDefaults(defineProps<{
   /** Whether the desk may take its match out of the set (a sitting's affordance). */
   removableFrames?: boolean
 }>(), {
+  knownIdentities: () => [],
   moments: () => ({}),
   selectedKey: '',
   focusItems: () => [],
@@ -184,6 +187,7 @@ function step(key: string | null): void {
         :key="`${player.handle}|${player.kind ?? 'player'}`"
         :handle="player.handle"
         :kind="player.kind ?? 'player'"
+        :known-identities="knownIdentities"
         :unconfirmed="unconfirmed"
         :source="api.sessionSource?.() ?? 'bundle'"
         @confirm="confirmPlayer"

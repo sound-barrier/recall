@@ -61,3 +61,32 @@ describe('CoachIdentityPrompt — correcting a team', () => {
   })
 })
 
+// The typeahead offers the roster's names OF THE FORK'S KIND — a split
+// history is what the dossier stands on, so a known name must be one
+// keystroke away and a team name must never suggest itself for a player.
+describe('CoachIdentityPrompt — the typeahead', () => {
+  const KNOWN = [
+    { handle: 'Sable', kind: 'player' as const },
+    { handle: 'Sound Barrier', kind: 'team' as const },
+  ]
+
+  it('filters suggestions by the fork', async () => {
+    renderPrompt({ knownIdentities: KNOWN })
+    // eslint-disable-next-line testing-library/no-node-access -- a native datalist has no ARIA role to query
+    let options = [...document.querySelectorAll('datalist option')].map((o) => o.getAttribute('value'))
+    expect(options).toEqual(['Sable'])
+
+    await fireEvent.click(screen.getByRole('radio', { name: 'A team' }))
+    // eslint-disable-next-line testing-library/no-node-access -- a native datalist has no ARIA role to query
+    options = [...document.querySelectorAll('datalist option')].map((o) => o.getAttribute('value'))
+    expect(options).toEqual(['Sound Barrier'])
+  })
+
+  it('renders no datalist and no hint over an empty roster', () => {
+    renderPrompt()
+    // eslint-disable-next-line testing-library/no-node-access -- a native datalist has no ARIA role to query
+    expect(document.querySelector('datalist')).toBeNull()
+    expect(screen.queryByText(/existing history/)).toBeNull()
+  })
+})
+
