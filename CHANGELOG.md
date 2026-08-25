@@ -1,5 +1,140 @@
 # Changelog
 
+## [0.32.0](https://github.com/sound-barrier/recall/compare/v0.31.0...v0.32.0) (2026-08-25)
+
+
+### ⚠ BREAKING CHANGES
+
+* **parser:** parser.ScreenshotType is now the TYPE; the classifier is parser.Classify. db.Store.DeleteScreenshotSiblings and match.Record.SourceTypes take the named type. The wire format is unchanged -- a named string type marshals identically, so source_types and screenshot_type are byte-for-byte what they were, golden fixtures included.
+* **db:** a database holding two matches with one replay code will not open. Wipe it, per the pre-1.0 rule.
+* **coachreturn:** coachreturn.Stage and coachreturn.Decide take a MatchMaker seam, and the Store interface requires LoadAnnotations. A replay note is no longer reported as an orphan.
+* **coach:** POST /api/v1/coach/session/export now requires a `sheet_html` body, and coach.WriteNotesArchive takes the page as an argument. Go no longer renders it — it puts the bytes in the zip, bounds them at 8 MiB, and declines to parse them exactly as before.
+* **coach:** CoachSessionView gains a required `source` field (bundle | replay). CoachMatchContext gains `replay_code`, which is load-bearing for a replay note: the player may not have the match, and that context is the only thing identifying what it is about.
+* **coach:** coach.IsTrackedMatchKey is now coach.IsReviewableMatchKey and admits replay- keys. A notes archive whose replay note lacks a matching match.replay_code is rejected with ErrNotesMalformed.
+* **match:** MatchRecord.source gains a fourth value, `replay`. Clients switching on the enum must handle it. MatchProvenanceBadge is the cautionary case: it collapsed anything it did not recognize to 'ocr', so without the new variant a coach-created match would have announced itself as "Parsed from screenshots" — a straight lie about the one match kind whose numbers somebody else typed.
+* **match:** replay_code is validated on write. The manual-match form and the match journal accepted 12 and 32 characters; both now accept six, and the API answers 400 where it used to accept anything.
+* **coach:** split the player's inbox out of the coach's desk
+
+### Features
+
+* **coach:** a roster row can be a team ([a7dc57f](https://github.com/sound-barrier/recall/commit/a7dc57f614e45331385a7f3880f8bb5998a30f5f))
+* **coach:** open a session from replay codes ([b486df0](https://github.com/sound-barrier/recall/commit/b486df0b56d376d85b1133be1a631360f2c1e725))
+* **coachreturn:** match on replay code, else create the match ([3247b22](https://github.com/sound-barrier/recall/commit/3247b22761272fbb9923a5dec5a13eccec24e00e))
+* **coach:** the codes door can open for a team ([3c38852](https://github.com/sound-barrier/recall/commit/3c388520bf758eb81aa8dcc3616c3c5c4c1ad2c9))
+* **coach:** the identity prompt knows who you have coached ([6219283](https://github.com/sound-barrier/recall/commit/621928318fc1b91fc59aee37a8acedf9cc1e9d5c))
+* **coach:** the review page is built where the styles are ([8d07bbd](https://github.com/sound-barrier/recall/commit/8d07bbda7d9b3da4f6e7fc4c03c35f2783e1c8e2))
+* **coach:** the room shelves what it cannot frame ([d1a74d1](https://github.com/sound-barrier/recall/commit/d1a74d100e47f7734a52ae0bcac8fb170c0e8e95))
+* **coach:** the roster becomes a door — the player dossier ([8739c4e](https://github.com/sound-barrier/recall/commit/8739c4eca5f39bf311bca31b5d3ba9f066346a77))
+* **match:** a replay- match-key kind ([e104e30](https://github.com/sound-barrier/recall/commit/e104e305df1d71abb71a7fdd22e4bc81b2d25176))
+* **match:** pin the replay code to six characters ([22d5ab7](https://github.com/sound-barrier/recall/commit/22d5ab70e77654e2c5e9f2c8451270a4cdc1531f))
+* **parser:** name the screenshot type so a seventh cannot slip through ([1464411](https://github.com/sound-barrier/recall/commit/1464411cfe8941a9246ffeca451d54ab80901875))
+
+
+### Bug Fixes
+
+* **applog:** fold the line breaks a stdlib log line carries ([7dffb75](https://github.com/sound-barrier/recall/commit/7dffb7526756337a48c516233ca4e3e06a3664ec))
+* **ci:** pin action-download-artifact back to v21 ([d75e102](https://github.com/sound-barrier/recall/commit/d75e10229f9c124de48dd3b6f040b67861f7b451))
+* **ci:** retry the PPA install, and un-interleave the masthead imports ([704e745](https://github.com/sound-barrier/recall/commit/704e7451ed8e7d4cfe3aa3c22778585cf1f12632))
+* **ci:** the doc-path gate mis-parsed the task catalog under colour ([4c5d457](https://github.com/sound-barrier/recall/commit/4c5d4578877172681d37b95c40684e5b91473f63))
+* **coach:** a team file can neither exist nor masquerade ([2ca4fbf](https://github.com/sound-barrier/recall/commit/2ca4fbf00ded4d64ab646a0e244215f172a0ee02))
+* **coach:** correcting a team keeps it a team ([d0bd22a](https://github.com/sound-barrier/recall/commit/d0bd22aedf0a5773a96379f7fd8d41e3a8bc12ca))
+* **coach:** escape user values in the new refusals ([66a758b](https://github.com/sound-barrier/recall/commit/66a758b2212c5cdd64a0446e5c0d24d1c8f32793))
+* **coach:** keep the End protection when the page saves over a failed note ([e2b6807](https://github.com/sound-barrier/recall/commit/e2b6807a3b155fe839fe8a8df174fef5f69ac9d3))
+* **coach:** keep the observed-context editor alive, quiet the desk card ([24803cd](https://github.com/sound-barrier/recall/commit/24803cd307798ec3b3a199713575d4c2f4b9c04c))
+* **coach:** make the armed Finish agree with the banner it cites ([c5b7c9a](https://github.com/sound-barrier/recall/commit/c5b7c9aeaca66ede34e0edb4578d6f8fff8c8202))
+* **coach:** make the return sheet's verdicts visible, reachable, honest ([0db1997](https://github.com/sound-barrier/recall/commit/0db1997672088b1ae727da73b5d192f884dcd230))
+* **coach:** name the codes door once, and make its session tell the truth ([37d6579](https://github.com/sound-barrier/recall/commit/37d6579825b3b029ae0c1c431a50cd258d646ba5))
+* **coach:** take a match clock as digits, and show it once ([eaa3ecd](https://github.com/sound-barrier/recall/commit/eaa3ecd65589c91c1f717b68981d617902910e3a))
+* **coach:** the dossier tells the whole truth, and stays fresh ([0446b82](https://github.com/sound-barrier/recall/commit/0446b82baccb10dc84c2aaacdb66e74a18abd53e))
+* **db:** no migration for the replay-code index; refuse duplicates ([80948f5](https://github.com/sound-barrier/recall/commit/80948f510b4ae3ad4056447b250e1b7e073af186))
+* **profiles:** do not invalidate the profile list before a reload ([84fca8a](https://github.com/sound-barrier/recall/commit/84fca8a6788428a54b61e60f2d97168accd2f1b6))
+* **reviews:** let the draft survive every retry path, not just one ([de69d0a](https://github.com/sound-barrier/recall/commit/de69d0afed68aae27402802b7b87442bf2f94b4f))
+* **reviews:** make the send dialog honest about its fold, its draft, its doors ([c66a3fc](https://github.com/sound-barrier/recall/commit/c66a3fc88acc08ab0b71cb24cef6f4cef3cdc025))
+* **reviews:** one focus-list save key, not two that happen to match ([1d8abdd](https://github.com/sound-barrier/recall/commit/1d8abddd38f7124b89bd7eae2b929f8f6ba40a09))
+* **reviews:** put the writing surface where a 720-tall window can see it ([586f09e](https://github.com/sound-barrier/recall/commit/586f09e709700af20d07ae1685be1d3dda982550))
+* **reviews:** remount the room per sitting, finish the backup stem ([7102b7d](https://github.com/sound-barrier/recall/commit/7102b7dde09fa09b7cc84f95b38db909213cacf7))
+* **settings:** put coaching settings in the query cache ([7d821db](https://github.com/sound-barrier/recall/commit/7d821dbeb488c5cb2cf44e2178f5ae02718d46f8))
+* **themes:** keep the danger fill under the pointer ([065d043](https://github.com/sound-barrier/recall/commit/065d04390fe1e9c5f50983f58b8d4289642e3da9))
+* **themes:** stop the legibility theme being the least legible ([41ce40c](https://github.com/sound-barrier/recall/commit/41ce40c00e065ebfc606ee7776ab4864c3ae30c1))
+
+
+### Performance
+
+* **reviews:** keep a nine-line helper out of the entry chunk ([6822366](https://github.com/sound-barrier/recall/commit/68223661f271e6c78e0c536f38bbbcfb7d0afa74))
+
+
+### Refactors
+
+* **api:** name the return-status enum like its three siblings ([e961663](https://github.com/sound-barrier/recall/commit/e961663fefcec3779e1ce4a77cd56ea3296e9adb))
+* **api:** split the wire surface along the seams already in it ([3f888fc](https://github.com/sound-barrier/recall/commit/3f888fc262f6ccd24b6b91edaa412a898df49f44))
+* **coach:** a note may name a replay match ([ebc3515](https://github.com/sound-barrier/recall/commit/ebc35157df9e58005f55df33c62cf8a4a681509a))
+* **coach:** give the room's corpus a name instead of ten props ([26a74c1](https://github.com/sound-barrier/recall/commit/26a74c1ee3dd9f6b63023a6f972aac6a40a7b566))
+* **coach:** name the three status vocabularies ([e9aeb2b](https://github.com/sound-barrier/recall/commit/e9aeb2b7536e4eb915b522b35ca0070c1a7a55b8))
+* **coach:** split the player's inbox out of the coach's desk ([8824ac9](https://github.com/sound-barrier/recall/commit/8824ac964402b26a8632983e2985e5b6ce71c1e1))
+* **coach:** three Go cleanups, and a spike that settled a fourth ([9725f19](https://github.com/sound-barrier/recall/commit/9725f19a60481322d53eb7ef80cf86dfe7060a44))
+* **components:** components render, the layer under them fetches ([7b0615d](https://github.com/sound-barrier/recall/commit/7b0615d25db2d38229ae5444ab795ccf6885c14b))
+* **dashboard:** break the widget-registry import cycle ([74c3abe](https://github.com/sound-barrier/recall/commit/74c3abebe48dfd16cedb13ee9f4d8e33880880b4))
+* **dashboard:** delete the Phase 1 legacy-attr shim ([0cb6eea](https://github.com/sound-barrier/recall/commit/0cb6eeadffe5fdfb65434e0d4b749d8a73379cc1))
+* **db:** extract the fake's kind guards ([8e6f450](https://github.com/sound-barrier/recall/commit/8e6f4503838811f41a1ddf576132ec6103281e7d))
+* **db:** give a self-review moment one addressable shape ([5c4cf1f](https://github.com/sound-barrier/recall/commit/5c4cf1fa8b65fc1f88e6596def2c5bd81464425d))
+* **matchedit:** share one rule for placing a moment ([356dae3](https://github.com/sound-barrier/recall/commit/356dae33922cc58a6ab56df02217e89b462b5784))
+* **matches:** move useMatchClock to the feature that reads it ([26ecfb6](https://github.com/sound-barrier/recall/commit/26ecfb6600ec2917b1cf39b39ee866d6a8f78cdc))
+* **matches:** one open-state for the narrow panel ([d687bfb](https://github.com/sound-barrier/recall/commit/d687bfb7c7f66c0b7f830e309f1169fb71dd423e))
+* **matches:** one registry for click-to-filter, not two if-chains ([ea8a8a6](https://github.com/sound-barrier/recall/commit/ea8a8a683524a545199553ea7b82265184b2e1f4))
+* **pivot:** make an unhandled aggregation a compile error ([a2b00fd](https://github.com/sound-barrier/recall/commit/a2b00fd189c941913d43d9e98c34ad78686e0c63))
+* **queries:** un-export invalidateProfiles, now that it has one caller ([aaedff9](https://github.com/sound-barrier/recall/commit/aaedff945b0243fa6b9fbc775b11745a581c18d8))
+* **reviews:** take the index below the file ceiling, in three cuts ([25d4663](https://github.com/sound-barrier/recall/commit/25d46638e63ff7784834405061995384e23d0e2a))
+* **settings:** every section reads the stores it renders ([f5a0c50](https://github.com/sound-barrier/recall/commit/f5a0c507a0a3840ec43a4c068c8274bb5f01c696))
+* **settings:** one probe chip instead of three ([e7ccb1b](https://github.com/sound-barrier/recall/commit/e7ccb1b31d5b24a004704babcd15261a40c13dc3))
+* **stores:** finish untangling the module graph ([5e88233](https://github.com/sound-barrier/recall/commit/5e8823302d505eaa3e89c20dae9a66521100db39))
+* **stores:** point the shell and the cache the same way ([17224b8](https://github.com/sound-barrier/recall/commit/17224b8ea5218470a583b954b132192167b7e673))
+
+
+### Documentation
+
+* catalogue the post-restructure debt ([6f61a4f](https://github.com/sound-barrier/recall/commit/6f61a4f2c191ae751ccfe99ee5978b186f91d851))
+* close seven ledger sections, re-argue the three that remain ([92cefd4](https://github.com/sound-barrier/recall/commit/92cefd4858c6d3d55a983d7fca5d926fc06684a1))
+* close the last three ledger sections ([fa72d58](https://github.com/sound-barrier/recall/commit/fa72d5885dd1b0a8f03827744284d21e54384a9e))
+* coaching from a replay code ([ba94a9c](https://github.com/sound-barrier/recall/commit/ba94a9ceae388472c9a7cc3de7f18af3548c0f3a))
+* **pkg:** fix three citations that outlived what they pointed at ([bf4aa7d](https://github.com/sound-barrier/recall/commit/bf4aa7d8408cdea8defe9fcbf4d86230170fa25c))
+* **reviews:** rewrite the coached flow the manual was lying about ([2f9a311](https://github.com/sound-barrier/recall/commit/2f9a3113388ae27d3640893a503935745ed734e3))
+* **reviews:** teams, the dossier, and the visible second session ([ee2e3a3](https://github.com/sound-barrier/recall/commit/ee2e3a34d8fe03a4935d6979d522e5e73adf34c5))
+* split the standards by language, three ways ([562bec7](https://github.com/sound-barrier/recall/commit/562bec7ddfec990e97fadf9c18c7b22f3cdc03dd))
+* stop telling people to run a build system we deleted ([933ec3a](https://github.com/sound-barrier/recall/commit/933ec3aed58ce8d6334d0993300efe84134405d5))
+
+
+### Build & Packaging
+
+* **bundle:** ratchet the budgets for the coaching S-campaign ([13381bc](https://github.com/sound-barrier/recall/commit/13381bc24f6a4b444b41d1c4a52c6a2c6c66e7ac))
+* **ci:** bump the JS bundle budgets for the extracted boundaries ([2d5258f](https://github.com/sound-barrier/recall/commit/2d5258fb5dc8df1394b3dbe22ae965ffda6ef106))
+* **deps-dev:** Bump the npm-deps group in /frontend with 2 updates ([e6413c5](https://github.com/sound-barrier/recall/commit/e6413c5ce50c77eb0f5739b397451630dd9e4de7))
+* **deps-dev:** Bump vue-tsc in /frontend in the npm-deps group ([c02cd8d](https://github.com/sound-barrier/recall/commit/c02cd8d9c2352e50908b7c5029c9463252a06f92))
+* **deps:** Bump the actions group with 5 updates ([e5de88d](https://github.com/sound-barrier/recall/commit/e5de88d8ca94407c6072bbc147048018cf775e58))
+* **deps:** let majors arrive, in their own PR ([af3fa04](https://github.com/sound-barrier/recall/commit/af3fa04d723f7097ed5829341ea8462bad3879e3))
+* **deps:** take the safe half of the actions group bump ([7906d19](https://github.com/sound-barrier/recall/commit/7906d19fa251ca906caa29c6ea9ff60020b0086a))
+* **lint:** close the gap between "task lint green" and CI green ([c0bd2f2](https://github.com/sound-barrier/recall/commit/c0bd2f2011e2a624633f25c1f60e92c3138f1fa9))
+* **lint:** gate export_test.go against dead re-exports ([af38959](https://github.com/sound-barrier/recall/commit/af38959a86290c9b7d8983d70cea6bf040998edc))
+* **lint:** gate the interrupted import block locally ([3870716](https://github.com/sound-barrier/recall/commit/387071688256864e3b30f1947dd7df6fa4a58624))
+* **lint:** gate the module graph and duplication ([5f059a0](https://github.com/sound-barrier/recall/commit/5f059a036e4a82101c6b1550dfe0e82889d98622))
+* **lint:** re-baseline the duplication ratchet, and say why it moved ([fb1c5eb](https://github.com/sound-barrier/recall/commit/fb1c5eb5c998e9742f499d8449102fcbd8306341))
+* **lint:** stop a default arm from satisfying exhaustive ([0d5c025](https://github.com/sound-barrier/recall/commit/0d5c025b74e7ba627123a37dcaddb03ec7a10a89))
+* track the rules files instead of hiding them ([520fe89](https://github.com/sound-barrier/recall/commit/520fe89ad8e4330a2c2a6a1c233eefa23126b915))
+
+
+### CI
+
+* gate the standards files against the repo they describe ([ae37236](https://github.com/sound-barrier/recall/commit/ae372364f5d90b7aaeb796c97997e422f9bed748))
+* run the two new gates in the lint job ([010a2d6](https://github.com/sound-barrier/recall/commit/010a2d692d57e1b0aa254ddc1d50706833f39560))
+
+
+### Tests
+
+* **app:** pin the cheatsheet to the bindings it describes ([90bb3ad](https://github.com/sound-barrier/recall/commit/90bb3ad5a1fc70bca262a67370b4811bc82f0c66))
+* **coach:** follow the export reason to 'this review' ([0c7afd4](https://github.com/sound-barrier/recall/commit/0c7afd45ad6606a3433ff6a8fab6b16679166a14))
+* **db:** make the Fake ask for the focus vocabulary, not copy it ([9d4d2c3](https://github.com/sound-barrier/recall/commit/9d4d2c30b955ff60c7900afdbc4e58d934ba2d43))
+* **e2e:** retire the audit's capture rig ([88bd73e](https://github.com/sound-barrier/recall/commit/88bd73e5443fe12ea179fde1be51ede4e6d410a0))
+* **notes:** gate the note search on a hydrated editor ([6316e75](https://github.com/sound-barrier/recall/commit/6316e753eeeb8cc41524f23b6fa8669cee2ca93d))
+
 ## [0.31.0](https://github.com/sound-barrier/recall/compare/v0.30.2...v0.31.0) (2026-08-21)
 
 
