@@ -129,7 +129,7 @@ const requestEnd = () => coach.requestEndSession()
         title="Discard the loaned records and go back to your own history"
         @click="requestEnd"
       >
-        2 · End session
+        {{ isTeam ? 'End session' : '2 · End session' }}
       </button>
       <!--
         The armed state offers both answers. It used to replace the button in

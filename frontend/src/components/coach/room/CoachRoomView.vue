@@ -181,8 +181,9 @@ function step(key: string | null): void {
     <div class="coach-room-desk">
       <CoachIdentityPrompt
         v-if="askingWho"
-        :key="player.handle"
+        :key="`${player.handle}|${player.kind ?? 'player'}`"
         :handle="player.handle"
+        :kind="player.kind ?? 'player'"
         :unconfirmed="unconfirmed"
         :source="api.sessionSource?.() ?? 'bundle'"
         @confirm="confirmPlayer"

@@ -191,6 +191,9 @@ describe('CoachLoanSlip — a team session', () => {
   it('offers no notes file — the page leads alone', () => {
     team()
     expect(within(teamSlip()).queryByRole('button', { name: /Export notes file/ })).toBeNull()
+    // No dangling step numbers: with no "1 ·" left, End drops its "2 ·".
+    expect(within(teamSlip()).getByRole('button', { name: 'End session' })).toBeInTheDocument()
+    expect(within(teamSlip()).queryByRole('button', { name: /2 · End session/ })).toBeNull()
   })
 })
 

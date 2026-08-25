@@ -68,6 +68,10 @@ const replayCode = computed(() => props.record.annotation?.replay_code ?? '')
 
 function commit(): void {
   const { result, ...rest } = draft.value
+  // A team names no single hero — and not just in the FORM: a hero typed
+  // before a kind correction would otherwise ride invisibly on every later
+  // commit and surface in the exported page as invented data.
+  if (props.subjectKind === 'team') delete rest.hero
   emit('update', result === '' ? rest : { ...rest, result })
 }
 </script>

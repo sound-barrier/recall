@@ -16,7 +16,9 @@ const props = withDefaults(defineProps<{
   unconfirmed?: boolean
   /** Where the corpus came from — a codes coach has no bundle to be told about. */
   source?: 'bundle' | 'replay'
-}>(), { handle: '', unconfirmed: false, source: 'bundle' })
+  /** The session's CURRENT kind — the fork must state it, not reset it. */
+  kind?: 'player' | 'team'
+}>(), { handle: '', unconfirmed: false, source: 'bundle', kind: 'player' })
 
 const emit = defineEmits<{
   confirm: [handle: string, kind: 'player' | 'team']
@@ -26,7 +28,10 @@ const emit = defineEmits<{
 // The fork: six characters can belong to a TEAM — one shared review filed
 // under the group's name. Codes only; a bundle already named its player,
 // so the fork never renders there and the emit pins kind to player.
-const kind = ref<'player' | 'team'>('player')
+// Seeded from the SESSION's kind: a correction that reopened this prompt
+// used to reset the fork to player, and confirming a typo fix then
+// silently re-filed a whole team review under a fresh player row.
+const kind = ref<'player' | 'team'>(props.kind)
 const forked = computed(() => props.source === 'replay')
 const noun = computed(() => (forked.value && kind.value === 'team' ? 'team' : 'player'))
 
