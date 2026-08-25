@@ -152,3 +152,23 @@ func TestSetCoachSessionPlayer_ATeamOnABundleIsRefused(t *testing.T) {
 		t.Fatalf("SetCoachSessionPlayer(team on bundle) = %v, want ErrBundleNamesPlayer", err)
 	}
 }
+
+// The chosen team shape is page-only: the notes FILE is a per-player
+// artifact — import attributes purely by handle, so a team's shared review
+// would land as a per-player return on anyone whose handle matches the
+// team name. The backend refuses, not just the hidden button.
+func TestExportCoachNotes_ATeamReviewIsPageOnly(t *testing.T) {
+	a, _ := openReplaySession(t, "a1b2c3")
+	if _, err := a.SetCoachSessionPlayer("Sound Barrier", db.CoachKindTeam); err != nil {
+		t.Fatalf("SetCoachSessionPlayer(team): %v", err)
+	}
+	if _, err := a.SetCoachingSettings("Ordo", ""); err != nil {
+		t.Fatalf("SetCoachingSettings: %v", err)
+	}
+
+	_, _, err := a.ExportCoachNotes([]byte("<html></html>"))
+
+	if !errors.Is(err, coach.ErrTeamPageOnly) {
+		t.Fatalf("ExportCoachNotes(team) = %v, want ErrTeamPageOnly", err)
+	}
+}
