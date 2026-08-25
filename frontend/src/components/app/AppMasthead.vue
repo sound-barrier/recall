@@ -11,9 +11,6 @@ import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
 import { useSelfReviewStore } from '@/stores/selfReview'
 import { useWhatsNew } from '@/composables/app/useWhatsNew'
-const { openRepo } = useExternalLinks()
-
-const WhatsNewStrip = defineAsyncComponent(() => import('@/components/app/WhatsNewStrip.vue'))
 import { useCoachReturnsStore } from '@/stores/coachReturns'
 import { useMatchesStore } from '@/stores/matches'
 import { useParseStore } from '@/stores/parse'
@@ -28,6 +25,10 @@ import MastheadWatchDot from '@/components/app/masthead/MastheadWatchDot.vue'
 import ProfileSwitcher from '@/components/app/masthead/ProfileSwitcher.vue'
 import AppMenuButton from '@/components/app/AppMenuButton.vue'
 import CoachSessionRule from '@/components/coach/room/CoachSessionRule.vue'
+
+const WhatsNewStrip = defineAsyncComponent(() => import('@/components/app/WhatsNewStrip.vue'))
+
+const { openRepo } = useExternalLinks()
 
 // The session chrome is bytes nobody pays for outside a session: the slip
 // and the nav strip are their own chunks, fetched when a bundle opens. The
