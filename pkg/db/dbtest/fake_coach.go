@@ -56,14 +56,23 @@ func nextID[T any](rows []T, idOf func(T) int64) int64 {
 	return maxID + 1
 }
 
+// coachKindError mirrors the SQL store's kind guards: a kind outside the
+// closed set, or an id paired with a team (adoption is player-only).
+func coachKindError(playerID, kind string) error {
+	if kind != db.CoachKindPlayer && kind != db.CoachKindTeam {
+		return fmt.Errorf("%w: %q", db.ErrCoachKindInvalid, kind)
+	}
+	if kind == db.CoachKindTeam && playerID != "" {
+		return fmt.Errorf("%w: a team never carries a player id", db.ErrCoachKindInvalid)
+	}
+	return nil
+}
+
 func (f *Fake) EnsureCoachPlayer(playerID, handle, kind string) (db.CoachPlayer, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if kind != db.CoachKindPlayer && kind != db.CoachKindTeam {
-		return db.CoachPlayer{}, fmt.Errorf("%w: %q", db.ErrCoachKindInvalid, kind)
-	}
-	if kind == db.CoachKindTeam && playerID != "" {
-		return db.CoachPlayer{}, fmt.Errorf("%w: a team never carries a player id", db.ErrCoachKindInvalid)
+	if err := coachKindError(playerID, kind); err != nil {
+		return db.CoachPlayer{}, err
 	}
 	if playerID != "" {
 		if i := slices.IndexFunc(f.CoachPlayers, func(p db.CoachPlayer) bool { return p.PlayerID == playerID }); i >= 0 {
