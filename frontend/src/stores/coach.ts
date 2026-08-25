@@ -405,6 +405,7 @@ export const useCoachStore = defineStore('coach', () => {
    */
   const needsPlayerHandle = computed(() => sessionActive.value && playerHandle.value === '')
 
+
   // The bundle suggests a player, the coach confirms one. The echoed view
   // carries THAT player's notes — which is why the room re-hydrates.
   async function setPlayerHandle(handle: string, kind: 'player' | 'team' = 'player'): Promise<void> {
