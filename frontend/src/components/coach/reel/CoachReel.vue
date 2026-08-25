@@ -26,7 +26,9 @@ const props = withDefaults(defineProps<{
    * and there is no note to give about your own clock.
    */
   voice?: RoomVoice
-}>(), { labels: () => DEFAULT_COACH_LABELS, voice: 'their' })
+  /** 'team' names a codes corpus — the frames are replays, not matches. */
+  subjectKind?: 'player' | 'team'
+}>(), { labels: () => DEFAULT_COACH_LABELS, voice: 'their', subjectKind: 'player' })
 
 const emit = defineEmits<{ select: [matchKey: string] }>()
 
@@ -35,7 +37,8 @@ const reelTitle = computed(() => (yours.value ? 'Your matches' : 'The reel'))
 const reelLabel = computed(() => {
   if (yours.value) return 'Your matches'
   const owner = playerClockOwner(props.handle)
-  return `${owner}'s matches — times in ${owner}'s clock`
+  const corpus = props.subjectKind === 'team' ? 'replays' : 'matches'
+  return `${owner}'s ${corpus} — times in ${owner}'s clock`
 })
 const emptyLine = computed(() => (yours.value
   ? 'None of the matches in this review are in your history any more.'

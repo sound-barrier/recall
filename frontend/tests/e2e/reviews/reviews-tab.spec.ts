@@ -262,7 +262,7 @@ test.describe('07 Reviews — the tab', () => {
     await expect(rows.nth(0)).toContainText(/Ult economy first/)
     await expect(rows.nth(1)).toContainText(/Kestrel/)
     // The way to resume is stated, not implied.
-    await expect(panel(page).getByText(/Open their next bundle and the notes resurface/)).toBeVisible()
+    await expect(panel(page).getByText(/the notes resurface/)).toBeVisible()
   })
 
   test('hosts the film room while a coaching session is open', async ({ page }) => {

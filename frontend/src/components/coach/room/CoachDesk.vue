@@ -39,6 +39,8 @@ const props = withDefaults(defineProps<{
   labels?: CoachLabels
   /** Whose matches these are — the card's possessives follow it. */
   voice?: RoomVoice
+  /** 'team' widens the observed-context lens: no single hero to ask about. */
+  subjectKind?: 'player' | 'team'
   /** The open sitting, whose own block the card must not quote back. */
   omitReviewId?: string
   /**
@@ -56,6 +58,7 @@ const props = withDefaults(defineProps<{
   hasNext: false,
   labels: () => DEFAULT_COACH_LABELS,
   voice: 'their',
+  subjectKind: 'player',
   omitReviewId: '',
   removable: 'none',
   // Empty means "this corpus was parsed, not typed" — which is what keeps
@@ -128,6 +131,7 @@ function onRemoveFrame(): void {
         v-if="sessionDate && record.annotation?.replay_code"
         :record="record"
         :session-date="sessionDate"
+        :subject-kind="subjectKind"
         @update="(ctx: ObservedContext) => emit('update-context', ctx)"
       />
       <!-- Real DOM order, not CSS order — the tab order must match what

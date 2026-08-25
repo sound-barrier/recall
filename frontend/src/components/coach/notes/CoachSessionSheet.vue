@@ -93,6 +93,7 @@ const emit = defineEmits<{
 
     <footer class="sheet-actions">
       <button
+        v-if="player.kind !== 'team'"
         type="button"
         class="paper-btn primary"
         :disabled="!canExport"
@@ -111,7 +112,7 @@ const emit = defineEmits<{
         :title="canExport ? undefined : exportReason"
         @click="emit('export-sheet')"
       >
-        Save a web page — read-only
+        {{ player.kind === 'team' ? 'Save a web page — for the team' : 'Save a web page — read-only' }}
       </button>
       <!-- Routes through the same armed question the loan slip asks. -->
       <button type="button" class="paper-btn" @click="emit('end')">
