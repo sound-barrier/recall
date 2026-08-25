@@ -98,3 +98,18 @@ export function localDay(rfc3339: string): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return formatPlayerDay(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`)
 }
+
+/**
+ * A match key rendered as a label: a dated capture key reads as its
+ * player-day, a replay key reads as its code, anything else as itself.
+ * The coach's store keeps only notes — the loaned matches leave with
+ * their sessions — so on every surface listing stored notes, the key is
+ * all there is to say where one belongs.
+ */
+export function matchKeyLabel(matchKey: string): string {
+  const captured = captureParts(matchKey)
+  if (captured) return formatPlayerDay(captured.date)
+  const replay = /^replay-(.+)$/.exec(matchKey)
+  return replay?.[1] ?? matchKey
+}
+

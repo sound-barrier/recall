@@ -4,6 +4,7 @@ import { computed, ref, useTemplateRef, watch } from 'vue'
 import type { ObservedContext } from '@/api-client'
 import CoachDesk from '@/components/coach/room/CoachDesk.vue'
 import CoachIdentityPrompt from '@/components/coach/room/CoachIdentityPrompt.vue'
+import CoachOrphanNotes from '@/components/coach/room/CoachOrphanNotes.vue'
 import { playerClockOwner } from '@/match/match-time-helpers'
 import CoachAddCode from '@/components/coach/reel/CoachAddCode.vue'
 import CoachReel from '@/components/coach/reel/CoachReel.vue'
@@ -122,6 +123,17 @@ const { onReelKeydown } = useCoachReelKeyboard({
   reel: reelColumn,
 })
 
+// The notes the session carries but cannot frame — see CoachOrphanNotes.
+const orphanNotes = computed(() => {
+  const framed = new Set(room.frames.value.map((f) => f.match_key))
+  return Object.entries(props.api.notes())
+    .filter(([key]) => !framed.has(key))
+    .map(([matchKey, draft]) => ({ matchKey, kind: draft.kind, text: draft.text }))
+})
+const orphanHeading = computed(() => (props.voice === 'your'
+  ? 'Your earlier notes'
+  : `Earlier notes about ${playerClockOwner(props.player.handle)}`))
+
 const notesLine = computed(() =>
   notesSummaryLine(props.api.notes(), props.coachName, props.api.moments()))
 
@@ -221,6 +233,7 @@ function step(key: string | null): void {
           @next="step(room.nextKey.value)"
         />
       </slot>
+      <CoachOrphanNotes :notes="orphanNotes" :heading="orphanHeading" />
     </div>
 
     <div class="coach-room-sheet">
