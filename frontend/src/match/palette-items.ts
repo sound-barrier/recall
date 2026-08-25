@@ -1,11 +1,11 @@
 import type { MatchRecord } from '@/api-client'
+import { TAB_LABELS, TAB_ORDER } from '@/composables/shared/keyboard/useTabKeyboardNav'
+import { matchTime } from '@/match/match-time-helpers'
 
 // Only what the corpus actually reads. Narrow on purpose: a full MatchRecord
 // would force every caller and every fixture to satisfy fields this never
 // touches.
 type PaletteRecord = Pick<MatchRecord, 'match_key' | 'data'>
-import { TAB_LABELS, TAB_ORDER } from '@/composables/shared/keyboard/useTabKeyboardNav'
-import { matchTime } from '@/match/match-time-helpers'
 
 /**
  * The command palette's searchable corpus.
