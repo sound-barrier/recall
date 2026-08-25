@@ -19,7 +19,12 @@ version: 2
 # where a broken release usually gets pulled, not to run months behind:
 #   patch  3d  — usually the fix for someone else's bad afternoon
 #   minor  7d  — carries new code; one weekend of other people's CI
-#   major      — n/a here, majors are ignored (see each `ignore` block)
+#   major      — same window, but its OWN grouped PR per ecosystem (see the
+#                `*-major` groups). A major arriving alone is a major you
+#                read; one folded into a five-update patch PR is one you
+#                merge by reflex — dawidd6/action-download-artifact v21->v23
+#                rode in exactly that way, onto a release whose own upstream
+#                issue says to revert it.
 
 updates:
   # Go modules — updates go.mod deps and the `go X.Y` toolchain directive.
@@ -31,15 +36,17 @@ updates:
     groups:
       go-deps:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
+      # Majors ride alone. `ignore` used to sit here and was the wrong tool:
+      # it does not surface a major "with clear context", it suppresses the
+      # PR outright, so a major only ever arrived if someone went looking.
+      go-deps-major:
+        patterns: ["*"]
+        update-types: ["major"]
     cooldown:
       default-days: 7
       semver-minor-days: 7
       semver-patch-days: 3
-    # Major version bumps require deliberate review — keep them out of the
-    # grouped weekly PR so they surface individually with clear context.
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
 
   # npm (Vue frontend) — Vue, Vite, typescript-eslint, vue-tsc, vitest, etc.
   - package-ecosystem: "npm"
@@ -50,13 +57,17 @@ updates:
     groups:
       npm-deps:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
+      # Majors ride alone. `ignore` used to sit here and was the wrong tool:
+      # it does not surface a major "with clear context", it suppresses the
+      # PR outright, so a major only ever arrived if someone went looking.
+      npm-deps-major:
+        patterns: ["*"]
+        update-types: ["major"]
     cooldown:
       default-days: 7
       semver-minor-days: 7
       semver-patch-days: 3
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
 
   # GitHub Actions workflow pins (setup-go, setup-node, checkout, etc.)
   - package-ecosystem: "github-actions"
@@ -67,6 +78,13 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
+      # Majors ride alone. `ignore` used to sit here and was the wrong tool:
+      # it does not surface a major "with clear context", it suppresses the
+      # PR outright, so a major only ever arrived if someone went looking.
+      actions-major:
+        patterns: ["*"]
+        update-types: ["major"]
     # github-actions supports `default-days` only — the semver-*-days keys
     # are not available for this ecosystem, so one flat window it is. These
     # are SHA pins (scripts/ci/check-action-pins.sh enforces that), which
