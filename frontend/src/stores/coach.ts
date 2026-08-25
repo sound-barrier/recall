@@ -381,7 +381,7 @@ export const useCoachStore = defineStore('coach', () => {
 
   // The bundle suggests a player, the coach confirms one. The echoed view
   // carries THAT player's notes — which is why the room re-hydrates.
-  async function setPlayerHandle(handle: string): Promise<void> {
+  async function setPlayerHandle(handle: string, kind: 'player' | 'team' = 'player'): Promise<void> {
     // Naming or correcting the player re-keys the notes server-side, so the
     // hydration watch drops every draft and reloads. Whatever is still in
     // the debounce has to land first — otherwise clicking "Change player"
@@ -390,7 +390,7 @@ export const useCoachStore = defineStore('coach', () => {
     // surfaces are blocked until a handle exists, so nothing is queued.
     await flushSaves()
     try {
-      setCoachSessionData(await SetCoachSessionPlayer(handle))
+      setCoachSessionData(await SetCoachSessionPlayer(handle, kind))
     } catch (e) {
       useAppStore().setErrorFromRaw(String(e))
     }

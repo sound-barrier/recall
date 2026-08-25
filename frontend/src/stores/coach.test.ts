@@ -775,7 +775,7 @@ describe('coach store — confirming the player', () => {
     await coach.setPlayerHandle('Wren')
     await settle()
 
-    expect(api.SetCoachSessionPlayer).toHaveBeenCalledWith('Wren')
+    expect(api.SetCoachSessionPlayer).toHaveBeenCalledWith('Wren', 'player')
     expect(coach.player?.handle).toBe('Wren')
     expect(coach.needsPlayerHandle).toBe(false)
   })
@@ -822,7 +822,7 @@ describe('coach store — confirming the player', () => {
     await coach.setPlayerHandle('Wren')
     await settle()
 
-    expect(api.SetCoachSessionPlayer).toHaveBeenCalledWith('Wren')
+    expect(api.SetCoachSessionPlayer).toHaveBeenCalledWith('Wren', 'player')
     expect(coach.player?.handle).toBe('Wren')
     expect(coach.notes).toEqual({})
   })

@@ -6,6 +6,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/coach"
+	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
 )
 
@@ -25,7 +26,7 @@ func openReplaySession(t *testing.T, codes ...string) (*app.App, *dbtest.Fake) {
 func TestOpenCoachReplaySession_LetsACoachWriteAboutAReplay(t *testing.T) {
 	a, _ := openReplaySession(t, "a1b2c3")
 
-	if _, err := a.SetCoachSessionPlayer("Sable"); err != nil {
+	if _, err := a.SetCoachSessionPlayer("Sable", ""); err != nil {
 		t.Fatalf("SetCoachSessionPlayer: %v", err)
 	}
 	note, err := a.PutCoachNote("replay-A1B2C3", coach.NoteInput{
@@ -88,7 +89,7 @@ func TestAddCoachSessionReplayCode_GrowsTheReel(t *testing.T) {
 
 func TestSetCoachSessionMatchContext_RidesToThePlayerInTheNote(t *testing.T) {
 	a, _ := openReplaySession(t, "A1B2C3")
-	if _, err := a.SetCoachSessionPlayer("Sable"); err != nil {
+	if _, err := a.SetCoachSessionPlayer("Sable", ""); err != nil {
 		t.Fatalf("SetCoachSessionPlayer: %v", err)
 	}
 	if _, err := a.SetCoachSessionMatchContext("replay-A1B2C3", coach.ObservedContext{
@@ -119,5 +120,35 @@ func TestSetCoachSessionMatchContext_RefusesWithNoSession(t *testing.T) {
 	a, _ := coachApp(t)
 	if _, err := a.SetCoachSessionMatchContext("replay-A1B2C3", coach.ObservedContext{}); !errors.Is(err, coach.ErrNoSession) {
 		t.Errorf("err = %v, want ErrNoSession", err)
+	}
+}
+
+// A team is a codes-only identity: the session carries it like a player, the
+// desk and sheet speak in its name, and everything written files under it.
+func TestSetCoachSessionPlayer_ATeamRidesAReplaySession(t *testing.T) {
+	a, _ := openReplaySession(t, "a1b2c3")
+
+	view, err := a.SetCoachSessionPlayer("Sound Barrier", db.CoachKindTeam)
+	if err != nil {
+		t.Fatalf("SetCoachSessionPlayer(team): %v", err)
+	}
+	if view.Player.Kind != db.CoachKindTeam {
+		t.Fatalf("view.Player.Kind = %q, want team", view.Player.Kind)
+	}
+}
+
+// A bundle names its player — the manifest IS the identity — so a coach
+// cannot re-file a bundle session under a team. The refusal is the API's,
+// not just a hidden control: the correction path goes through here too.
+func TestSetCoachSessionPlayer_ATeamOnABundleIsRefused(t *testing.T) {
+	a, _ := coachApp(t)
+	if _, err := a.OpenCoachSession(shareBundle(t)); err != nil {
+		t.Fatalf("OpenCoachSession: %v", err)
+	}
+
+	_, err := a.SetCoachSessionPlayer("Sound Barrier", db.CoachKindTeam)
+
+	if !errors.Is(err, coach.ErrBundleNamesPlayer) {
+		t.Fatalf("SetCoachSessionPlayer(team on bundle) = %v, want ErrBundleNamesPlayer", err)
 	}
 }

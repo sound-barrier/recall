@@ -386,7 +386,7 @@ func TestListCoachPlayers_RosterRoundTrip(t *testing.T) {
 	store := dbtest.New()
 	_, mux := newTestApp(t, store)
 
-	sable, err := store.EnsureCoachPlayer("uuid-sable", "Sable")
+	sable, err := store.EnsureCoachPlayer("uuid-sable", "Sable", db.CoachKindPlayer)
 	if err != nil {
 		t.Fatalf("EnsureCoachPlayer: %v", err)
 	}

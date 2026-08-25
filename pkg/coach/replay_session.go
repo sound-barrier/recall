@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"recall/pkg/db"
 	"recall/pkg/match"
 	"recall/pkg/parser"
 )
@@ -64,6 +65,10 @@ func OpenReplaySession(codes []string, now time.Time) (*Session, error) {
 	s := &Session{
 		OpenedAt: now.UTC().Format(time.RFC3339),
 		Source:   SessionFromReplay,
+		// Provisional until the room's "Who is this?" is answered — the
+		// wire never carries an empty kind, and player is the fork's
+		// default answer.
+		Player: Player{Kind: db.CoachKindPlayer},
 	}
 	recs := make([]match.Record, 0, len(canonical))
 	for _, code := range canonical {

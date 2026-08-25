@@ -16,7 +16,7 @@ import { seedQuery } from '@/test-utils/queryTestUtils'
 // open and a room that cannot write is not a room.
 
 const SESSION: CoachSessionView = {
-  player: { id: 'sable-id', handle: 'Sable', message: '' },
+  player: { id: 'sable-id', handle: 'Sable', message: '', kind: 'player' as const },
   exported_at: '2026-08-14T18:30:00Z', session_date: '2026-08-15', match_count: 1,
   coach_name: 'Ordo', focus_items: [], notes: [], handle_from_bundle: true,
   source: 'bundle' as const,

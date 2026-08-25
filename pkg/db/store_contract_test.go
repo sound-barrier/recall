@@ -666,9 +666,9 @@ func TestStoreContract_LoadCoachPlayersRoster(t *testing.T) {
 	for _, impl := range storeImpls {
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
-			sable, err := s.EnsureCoachPlayer("uuid-sable", "Sable")
+			sable, err := s.EnsureCoachPlayer("uuid-sable", "Sable", db.CoachKindPlayer)
 			mustNoErr(t, err)
-			vex, err := s.EnsureCoachPlayer("uuid-vex", "Vex")
+			vex, err := s.EnsureCoachPlayer("uuid-vex", "Vex", db.CoachKindPlayer)
 			mustNoErr(t, err)
 			seedRosterNotes(t, s, sable.ID, vex.ID)
 
@@ -721,7 +721,7 @@ func TestStoreContract_FocusItemsRoundTrip(t *testing.T) {
 	for _, impl := range storeImpls {
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
-			player, err := s.EnsureCoachPlayer("uuid-sable", "Sable")
+			player, err := s.EnsureCoachPlayer("uuid-sable", "Sable", db.CoachKindPlayer)
 			mustNoErr(t, err)
 
 			// The coach's authored list: order is the slice's order.
@@ -865,7 +865,7 @@ func TestStoreContract_ReplacingAListKeepsEachItemsBirthday(t *testing.T) {
 	for _, impl := range storeImpls {
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
-			player, err := s.EnsureCoachPlayer("uuid-birthday", "Sable")
+			player, err := s.EnsureCoachPlayer("uuid-birthday", "Sable", db.CoachKindPlayer)
 			mustNoErr(t, err)
 			mustNoErr(t, s.SetCoachFocusItems(player.ID, []db.FocusItem{
 				{ItemID: "b-1", Text: "first", CreatedAt: "2026-01-01T00:00:00Z"},

@@ -363,6 +363,8 @@ type CoachPlayer struct {
 	ID       int64
 	PlayerID string
 	Handle   string
+	// Kind is CoachKindPlayer or CoachKindTeam.
+	Kind string
 }
 
 // CoachNote is one coach-authored note against one of a player's matches.
@@ -424,6 +426,7 @@ func (m CoachNoteMoment) MomentSlot() (id string, order int) { return m.MomentID
 type CoachPlayerSummary struct {
 	ID         int64
 	Handle     string
+	Kind       string
 	NoteCount  int
 	LastNoteAt string
 	// FocusItems is what this coach told that player to work on, in order —

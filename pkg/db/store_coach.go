@@ -18,9 +18,19 @@ import (
 // Sentinels for a reference that names a row that does not exist. Every
 // coach method taking a foreign id reports it this way so the HTTP layer
 // can map errors.Is(err, …) to a 404 without inspecting SQLite errors.
+// The two kinds a coach_players row can be. A team is a codes-session
+// identity for a group — it rides every per-player mechanism unchanged,
+// which is the whole design.
+const (
+	CoachKindPlayer = "player"
+	CoachKindTeam   = "team"
+)
+
 var (
 	// ErrCoachPlayerUnknown reports a playerRef no coach_players row carries.
 	ErrCoachPlayerUnknown = errors.New("coach player not found")
+	// ErrCoachKindInvalid reports a kind outside player/team.
+	ErrCoachKindInvalid = errors.New("coach: kind must be player or team")
 	// ErrCoachHandleAmbiguous reports more than one id-less player row under
 	// one handle, where adopting either would be a guess. handle is not a key
 	// and cannot be — two people do use the same name — so the coach has to
@@ -57,7 +67,7 @@ type CoachStore interface {
 	// A handle-only row later met with a player_id adopts it (backfill), so
 	// a coach's earlier notes follow the player through an upgrade. A
 	// second player_id sharing a handle is a different player.
-	EnsureCoachPlayer(playerID, handle string) (CoachPlayer, error)
+	EnsureCoachPlayer(playerID, handle, kind string) (CoachPlayer, error)
 	// LoadCoachPlayers is the roster: every player this user has coached,
 	// with note count, the newest note stamp, and the stored summary —
 	// most recently touched first.
