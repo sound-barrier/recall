@@ -120,6 +120,9 @@ describe('CoachSessionSheet — a team session', () => {
     renderSheet({ player: { handle: 'Sound Barrier', kind: 'team' } })
     expect(screen.queryByRole('button', { name: /Export notes file/ })).toBeNull()
     expect(screen.getByRole('button', { name: /Save a web page — for the team/ })).toBeInTheDocument()
+    // No dangling step numbers, and the correction door speaks team.
+    expect(screen.getByRole('button', { name: 'End session' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Change team' })).toBeInTheDocument()
   })
 })
 

@@ -45,3 +45,19 @@ describe('CoachIdentityPrompt — the fork', () => {
     expect(screen.getByRole('radio', { name: 'A team' })).toHaveAttribute('aria-checked', 'true')
   })
 })
+
+// The correction path: a team session re-opens the prompt to fix a typo in
+// the NAME — the fork must show the session's actual kind, or confirming
+// silently re-files the whole review under a fresh player row.
+describe('CoachIdentityPrompt — correcting a team', () => {
+  it('seeds the fork from the session and keeps team on confirm', async () => {
+    const view = renderPrompt({ unconfirmed: false, handle: 'Sound Barrier', kind: 'team' })
+    expect(screen.getByRole('radio', { name: 'A team' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByLabelText('Team name')).toBeInTheDocument()
+
+    await fireEvent.update(screen.getByLabelText('Team name'), 'Sound Barrier EU')
+    await fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+    expect(view.emitted('confirm')?.at(-1)).toEqual(['Sound Barrier EU', 'team'])
+  })
+})
+
