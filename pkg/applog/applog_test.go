@@ -38,6 +38,44 @@ func TestInit_RouteStdlibLogThroughSlog(t *testing.T) {
 	}
 }
 
+// net/http's panic recovery writes a whole goroutine stack through
+// log.Printf (RunServer's http.Server sets no ErrorLog), and parser.Reload
+// returns an errors.Join whose Error() is newline-separated. Those line
+// breaks are also the bytes CWE-117 forges a second entry with, so the
+// writer folds them: one record, frames still separated, no raw break left
+// for a line-oriented reader to mistake for a new entry.
+func TestSlogWriter_FoldsTheLineBreaksInsideOneLine(t *testing.T) {
+	var buf bytes.Buffer
+	prevDefault := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prevDefault) })
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
+
+	w := applog.NewSlogWriter(slog.LevelInfo)
+	stack := "http: panic serving 127.0.0.1:52344: boom\ngoroutine 42 [running]:\r\nnet/http.(*conn).serve.func1()\n"
+	n, err := w.Write([]byte(stack))
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	if n != len(stack) {
+		t.Fatalf("Write returned %d, want %d — the writer must report the whole line consumed", n, len(stack))
+	}
+
+	got := buf.String()
+	// Folded, not fused: the frames stay legible with a separator between
+	// them (Scrub-style deletion would read "boomgoroutine").
+	if !strings.Contains(got, "boom | goroutine 42 [running]: | net/http.") {
+		t.Errorf("line breaks were not folded into one readable record; got %q", got)
+	}
+	// One record, and no break survives in any form the handler had to
+	// escape — which is what denies the forgery its bytes.
+	if strings.Count(strings.TrimRight(got, "\n"), "\n") != 0 {
+		t.Errorf("more than one record emitted; got %q", got)
+	}
+	if strings.Contains(got, `\n`) || strings.Contains(got, `\r`) {
+		t.Errorf("a raw line break reached the handler and was escaped; got %q", got)
+	}
+}
+
 func TestSubsystem_TagsLogger(t *testing.T) {
 	var buf bytes.Buffer
 	prev := slog.Default()
