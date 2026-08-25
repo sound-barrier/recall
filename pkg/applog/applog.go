@@ -49,7 +49,8 @@ func Init() io.Writer {
 }
 
 // logSetup routes stdlib log.Printf through slog so existing call
-// sites (~28 across pkg/) keep working without a sweep. The stdlib
+// sites (four across pkg/, plus net/http's own panic recovery) keep
+// working without a sweep. The stdlib
 // level is INFO — slog distinguishes Warn / Error via its own API,
 // but stdlib has no level, so INFO is the right floor.
 func logSetup() {
@@ -103,7 +104,7 @@ type slogWriter struct {
 }
 
 func (s slogWriter) Write(p []byte) (int, error) {
-	msg := strings.TrimRight(string(p), "\n")
+	msg := foldLineBreaks(strings.TrimRight(string(p), "\n"))
 	slog.Default().Log(context.Background(), s.level, msg)
 	return len(p), nil
 }
