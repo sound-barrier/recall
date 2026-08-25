@@ -251,6 +251,39 @@ test.describe('coaching from replay codes', () => {
     await expect.poll(() => mock.context()?.map).toBe('Ilios')
   })
 
+  // The prompt offers the roster: a codes session about someone the coach
+  // already knows should land on their existing file, not fork a second
+  // row on a typo. The suggestions follow the fork's kind.
+  test('the prompt suggests known names, filtered by the fork', async ({ page }) => {
+    await page.route('**/api/v1/coach/players', async (route: Route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify([
+          { id: 2, handle: 'Sable', kind: 'player', note_count: 3 },
+          { id: 3, handle: 'Wren', kind: 'player', note_count: 1 },
+          { id: 1, handle: 'Sound Barrier', kind: 'team', note_count: 2 },
+        ]),
+      })
+    })
+    await mockReplaySession(page)
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Reviews/ }).click()
+    await page.getByRole('button', { name: /Use a replay code/ }).click()
+    await addCode(page, CODE_A)
+    await page.getByRole('button', { name: 'Start review' }).click()
+
+    const prompt = identityPrompt(page)
+    await expect(prompt).toBeVisible()
+    // Player fork: the two player names, not the team.
+    await expect(prompt.locator('datalist option')).toHaveCount(2)
+    await expect(prompt.locator('datalist option[value="Sable"]')).toHaveCount(1)
+    await expect(prompt.locator('datalist option[value="Sound Barrier"]')).toHaveCount(0)
+    // Team fork: only the team.
+    await prompt.getByRole('radio', { name: 'A team' }).click()
+    await expect(prompt.locator('datalist option')).toHaveCount(1)
+    await expect(prompt.locator('datalist option[value="Sound Barrier"]')).toHaveCount(1)
+  })
+
   // The identity prompt's fork: six characters can belong to a TEAM, and the
   // chosen shape is one shared review under the group's name — page-only.
   // The session then speaks team: the slip drops the notes-file button (the

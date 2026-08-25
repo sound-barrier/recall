@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useCoachPlayersQuery } from '@/queries/selfReview'
 
 import { useMatchActions } from '@/composables/matches/useMatchActions'
 import { useOWData } from '@/composables/shared/useOWData'
@@ -48,6 +49,14 @@ const coachLabels: CoachLabels = { map: mapDisplayName, hero: heroDisplayName }
 
 const roomOpen = computed(() => sessionActive.value && coachStore.player !== null)
 
+// The roster, for the identity prompt's typeahead: a codes session about
+// someone the coach already knows should land on their existing file, not
+// fork a second row on a typo. Views own queries; the room stays
+// presentational and receives names.
+const rosterQuery = useCoachPlayersQuery(() => roomOpen.value)
+const knownIdentities = computed(() =>
+  (rosterQuery.data.value ?? []).map((p) => ({ handle: p.handle, kind: p.kind })))
+
 // The player's own sitting. The room's identity is nominal here — the reel
 // and the card speak in the viewer's voice, and nobody is asked who this
 // bundle is about — but the room needs SOME handle to consider itself
@@ -75,6 +84,7 @@ const { onCopyReplayCode: copyReplayCode } = useMatchActions()
     <CoachRoomView
       v-if="roomOpen && coachStore.player"
       :player="coachStore.player"
+      :known-identities="knownIdentities"
       :api="coachStore.roomApi"
       :coach-name="coachStore.coachName"
       :can-export="coachStore.canExportNotes"

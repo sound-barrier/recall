@@ -15,6 +15,12 @@ export interface CoachPlayerView {
   kind?: 'player' | 'team'
 }
 
+/** One roster name for the identity prompt's typeahead. */
+export interface KnownIdentity {
+  handle: string
+  kind: 'player' | 'team'
+}
+
 /** Where the note autosave stands; the editor speaks it through a role=status line. */
 export type CoachSaveState = 'idle' | 'saving' | 'saved' | 'error'
 

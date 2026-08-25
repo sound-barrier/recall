@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, useTemplateRef } from 'vue'
 
+import type { KnownIdentity } from '@/components/coach/room/coach-room-props'
+
 // "Bundle suggests, coach confirms." A share-with-a-coach export names its
 // player; a plain one does not, and until the coach says who this is, every
 // note the server is asked to keep comes back 409. So the room asks — here,
@@ -18,7 +20,12 @@ const props = withDefaults(defineProps<{
   source?: 'bundle' | 'replay'
   /** The session's CURRENT kind — the fork must state it, not reset it. */
   kind?: 'player' | 'team'
-}>(), { handle: '', unconfirmed: false, source: 'bundle', kind: 'player' })
+  /** Roster names — a known name is an existing file of notes to land on. */
+  knownIdentities?: KnownIdentity[]
+}>(), {
+  handle: '', unconfirmed: false, source: 'bundle', kind: 'player',
+  knownIdentities: () => [],
+})
 
 const emit = defineEmits<{
   confirm: [handle: string, kind: 'player' | 'team']
@@ -34,6 +41,15 @@ const emit = defineEmits<{
 const kind = ref<'player' | 'team'>(props.kind)
 const forked = computed(() => props.source === 'replay')
 const noun = computed(() => (forked.value && kind.value === 'team' ? 'team' : 'player'))
+
+// The typeahead: the roster's names of the fork's kind. Picking one lands
+// on that identity's existing notes — which is the point: a codes session
+// about someone the coach already knows must not fork a second row on a
+// typo, because a split history is what the whole dossier stands on.
+const suggestions = computed(() =>
+  props.knownIdentities
+    .filter((k) => k.kind === (forked.value ? kind.value : 'player'))
+    .map((k) => k.handle))
 
 function pickKind(next: 'player' | 'team'): void {
   kind.value = next
@@ -133,7 +149,11 @@ function confirm(): void {
           autocomplete="off"
           spellcheck="false"
           :placeholder="noun === 'team' ? 'The team\'s name' : 'Their handle'"
+          :list="suggestions.length ? 'coach-identity-known' : undefined"
         >
+        <datalist v-if="suggestions.length" id="coach-identity-known">
+          <option v-for="name in suggestions" :key="name" :value="name" />
+        </datalist>
         <button type="submit" class="paper-btn primary" :disabled="typed.trim() === ''">
           Confirm
         </button>
@@ -141,6 +161,10 @@ function confirm(): void {
           Keep {{ handle }}
         </button>
       </div>
+      <p v-if="suggestions.length" class="identity-hint">
+        A name you have coached before files these notes with their
+        existing history.
+      </p>
     </form>
   </section>
 </template>
@@ -170,6 +194,12 @@ function confirm(): void {
   font-size: var(--type-lg);
   line-height: 1.5;
   color: var(--ink-dim);
+}
+
+.identity-hint {
+  margin: 0.35rem 0 0;
+  font-size: var(--type-2xs);
+  color: var(--ink-faint);
 }
 
 .identity-kind {
