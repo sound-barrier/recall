@@ -126,9 +126,16 @@ const { onReelKeydown } = useCoachReelKeyboard({
 // The notes the session carries but cannot frame — see CoachOrphanNotes.
 const orphanNotes = computed(() => {
   const framed = new Set(room.frames.value.map((f) => f.match_key))
+  const momentsByKey = props.api.moments()
   return Object.entries(props.api.notes())
     .filter(([key]) => !framed.has(key))
-    .map(([matchKey, draft]) => ({ matchKey, kind: draft.kind, text: draft.text }))
+    .map(([matchKey, draft]) => ({
+      matchKey,
+      kind: draft.kind,
+      text: draft.text,
+      focusTags: draft.focusTags,
+      momentCount: momentsByKey[matchKey]?.length ?? 0,
+    }))
 })
 const orphanHeading = computed(() => (props.voice === 'your'
   ? 'Your earlier notes'

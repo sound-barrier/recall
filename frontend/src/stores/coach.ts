@@ -18,6 +18,7 @@ import {
   clearCoachSessionData, refreshCoachSessionMatches, setCoachSessionData,
   setCoachSessionResume, useCoachSessionMatchesQuery, useCoachSessionQuery,
 } from '@/queries/coach'
+import { invalidateCoachRoster } from '@/queries/selfReview'
 import { useAppStore } from '@/stores/app'
 
 // The COACH's side of the coaching loop. A session is a loan: the player's
@@ -291,16 +292,28 @@ export const useCoachStore = defineStore('coach', () => {
     }
     try {
       setCoachSessionData(await OpenCoachReplaySession(codes))
-      // Pre-addressed (the dossier's door): the identity is confirmed
-      // before the room renders, so "Who is this?" never has to ask about
-      // someone the coach already knows.
-      if (as) setCoachSessionData(await SetCoachSessionPlayer(as.handle, as.kind))
-      setCoachSessionResume(true)
-      suspendCoachNarrow()
-      await useAppStore().goToView('reviews')
     } catch (e) {
       useAppStore().setErrorFromRaw(String(e))
+      return
     }
+    // Pre-addressed (the dossier's door): the identity is confirmed before
+    // the room renders, so "Who is this?" never has to ask about someone
+    // the coach already knows. Its OWN catch: the session is open either
+    // way, and a failed PUT must not skip the open's tail — an unsuspended
+    // narrow filters the loaned corpus into an arbitrary subset, and an
+    // unset resume flag makes a reload boot into "no session" while the
+    // server still holds one.
+    if (as) {
+      try {
+        setCoachSessionData(await SetCoachSessionPlayer(as.handle, as.kind))
+        void invalidateCoachRoster()
+      } catch (e) {
+        useAppStore().setErrorFromRaw(String(e))
+      }
+    }
+    setCoachSessionResume(true)
+    suspendCoachNarrow()
+    await useAppStore().goToView('reviews')
   }
 
   // Codes arrive one at a time over voice chat, so the reel grows mid-session.
@@ -346,6 +359,9 @@ export const useCoachStore = defineStore('coach', () => {
     // Removes the session AND the corpus nested under it; the hydration
     // watch clears the room's own refs as the session goes null.
     clearCoachSessionData()
+    // The session's writes are durable now: the roster row (possibly brand
+    // new) and its dossier file must re-read on next look.
+    void invalidateCoachRoster()
     restoreCoachNarrow()
     // Ending is a landing, not a vanish act: the session lived in the
     // Reviews tab, so that is where its end is announced — with the notes
@@ -401,6 +417,9 @@ export const useCoachStore = defineStore('coach', () => {
     await flushSaves()
     try {
       setCoachSessionData(await SetCoachSessionPlayer(handle, kind))
+      // A confirm can mint a brand-new identity — the roster and the
+      // typeahead must learn it without a restart.
+      void invalidateCoachRoster()
     } catch (e) {
       useAppStore().setErrorFromRaw(String(e))
     }

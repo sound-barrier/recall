@@ -19,7 +19,7 @@ const WEEKDAYS_SHORT = WEEKDAYS_FULL.map((d) => d.slice(0, 3))
 // throughout (URL-safe).
 const CAPTURE_KEY = /^match-(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-\d{2}/
 
-export function captureParts(matchKey: string | undefined): { date: string; time: string } | null {
+function captureParts(matchKey: string | undefined): { date: string; time: string } | null {
   const m = (matchKey ?? '').match(CAPTURE_KEY)
   if (!m) return null
   return { date: m[1]!, time: `${m[2]!}:${m[3]!}` }

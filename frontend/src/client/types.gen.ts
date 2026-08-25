@@ -1257,6 +1257,13 @@ export type CoachNoteSummary = {
      */
     match_clock?: string;
     /**
+     * Moments hanging off this note — content the text cannot show.
+     * A reviewed_only note with moments is a match annotated in
+     * detail, not "nothing to add".
+     *
+     */
+    moment_count: number;
+    /**
      * RFC3339 of the last save.
      */
     updated_at: string;

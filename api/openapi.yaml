@@ -5286,7 +5286,7 @@ components:
       description: |
         One stored coach note, as the dossier lists it — the note itself
         plus its match KEY, which doubles as the display label.
-      required: [note_id, match_key, kind, text, focus_tags, extra_tags, updated_at]
+      required: [note_id, match_key, kind, text, focus_tags, extra_tags, moment_count, updated_at]
       properties:
         note_id:
           type: string
@@ -5307,6 +5307,12 @@ components:
         match_clock:
           type: string
           description: MM:SS into the match; absent when the note names none.
+        moment_count:
+          type: integer
+          description: |
+            Moments hanging off this note — content the text cannot show.
+            A reviewed_only note with moments is a match annotated in
+            detail, not "nothing to add".
         updated_at:
           type: string
           description: RFC3339 of the last save.

@@ -7,10 +7,13 @@ import { matchKeyLabel } from '@/match/coach/coach-time'
 // most wants to see what they said last time. A quiet drawer shelves
 // them under the desk; the reel stays today's corpus only.
 
-export interface OrphanNote {
+interface OrphanNote {
   matchKey: string
   kind: string
   text: string
+  focusTags: string[]
+  /** Moments the coach marked on this match — content the text can't show. */
+  momentCount: number
 }
 
 defineProps<{
@@ -28,10 +31,13 @@ defineProps<{
     </summary>
     <ul class="orphan-list">
       <li v-for="n in notes" :key="n.matchKey" class="orphan-note">
-        <span class="orphan-key">{{ matchKeyLabel(n.matchKey) }}</span>
-        <p class="orphan-text">
+        <span class="orphan-key">{{ matchKeyLabel(n.matchKey) }}
+          <template v-if="n.momentCount"> · {{ n.momentCount }} moment{{ n.momentCount === 1 ? '' : 's' }}</template>
+        </span>
+        <p v-if="n.text || (n.kind === 'reviewed_only' && !n.momentCount)" class="orphan-text">
           {{ n.kind === 'reviewed_only' ? 'Reviewed — nothing to add.' : n.text }}
         </p>
+        <span v-if="n.focusTags.length" class="orphan-tags">{{ n.focusTags.join(' · ') }}</span>
       </li>
     </ul>
   </details>
@@ -96,5 +102,13 @@ defineProps<{
   margin: 0;
   font-size: var(--type-sm);
   color: var(--text-dim);
+}
+
+.orphan-tags {
+  font-family: var(--mono);
+  font-size: var(--type-3xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
 }
 </style>

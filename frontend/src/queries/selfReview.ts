@@ -46,6 +46,18 @@ export function useCoachPlayerNotesQuery(id: MaybeRefOrGetter<number>, enabled: 
   }, getQueryClient())
 }
 
+// The roster and every dossier file go stale together: a session writes
+// notes, may mint a new identity, and ends — after which "Read every
+// note" showing the pre-session file would betray the one surface whose
+// whole point is continuity.
+export async function invalidateCoachRoster(): Promise<void> {
+  const qc = getQueryClient()
+  await Promise.all([
+    qc.invalidateQueries({ queryKey: qk.coachPlayers }),
+    qc.invalidateQueries({ queryKey: qk.coachPlayerNotesAll }),
+  ])
+}
+
 // Mark the shelf stale after a write that changes what it lists. Invalidate,
 // not refetch: the list is gated on the Reviews tab being on screen, and a
 // refetch of a DISABLED query is silently skipped — a note removed from the
