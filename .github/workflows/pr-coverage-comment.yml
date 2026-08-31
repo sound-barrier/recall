@@ -62,7 +62,7 @@ jobs:
       # coverage/junit still uploaded) is still found.
       - name: Download unit coverage (Go)
         if: steps.pr.outputs.number != ''
-        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
+        uses: dawidd6/action-download-artifact@d63b86af1b34672e53c440b1b83979861906bad7  # v24
         with:
           workflow: ci.yml
           commit: ${{ github.event.workflow_run.head_sha }}
@@ -73,7 +73,7 @@ jobs:
 
       - name: Download unit coverage (frontend)
         if: steps.pr.outputs.number != ''
-        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
+        uses: dawidd6/action-download-artifact@d63b86af1b34672e53c440b1b83979861906bad7  # v24
         with:
           workflow: ci.yml
           commit: ${{ github.event.workflow_run.head_sha }}
@@ -84,7 +84,7 @@ jobs:
 
       - name: Download unit-test results (JUnit)
         if: steps.pr.outputs.number != ''
-        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
+        uses: dawidd6/action-download-artifact@d63b86af1b34672e53c440b1b83979861906bad7  # v24
         with:
           workflow: ci.yml
           commit: ${{ github.event.workflow_run.head_sha }}
@@ -96,7 +96,7 @@ jobs:
       # main's most-recent coverage as the Δ baseline (latest CI run on main).
       - name: Download main's coverage baseline (Go)
         if: steps.pr.outputs.number != ''
-        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
+        uses: dawidd6/action-download-artifact@d63b86af1b34672e53c440b1b83979861906bad7  # v24
         with:
           workflow: ci.yml
           branch: main
@@ -106,7 +106,7 @@ jobs:
 
       - name: Download main's coverage baseline (frontend)
         if: steps.pr.outputs.number != ''
-        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
+        uses: dawidd6/action-download-artifact@d63b86af1b34672e53c440b1b83979861906bad7  # v24
         with:
           workflow: ci.yml
           branch: main
@@ -118,7 +118,7 @@ jobs:
       # because e2e.yml has completed (this workflow ran on its completion).
       - name: Download integration coverage (Go)
         if: steps.pr.outputs.number != ''
-        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
+        uses: dawidd6/action-download-artifact@d63b86af1b34672e53c440b1b83979861906bad7  # v24
         with:
           workflow: e2e.yml
           commit: ${{ github.event.workflow_run.head_sha }}
@@ -129,7 +129,7 @@ jobs:
 
       - name: Download integration coverage (frontend)
         if: steps.pr.outputs.number != ''
-        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
+        uses: dawidd6/action-download-artifact@d63b86af1b34672e53c440b1b83979861906bad7  # v24
         with:
           workflow: e2e.yml
           commit: ${{ github.event.workflow_run.head_sha }}
@@ -142,7 +142,7 @@ jobs:
       # e2e.yml run on main). Mirrors the unit baseline above.
       - name: Download main's e2e coverage baseline (Go)
         if: steps.pr.outputs.number != ''
-        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
+        uses: dawidd6/action-download-artifact@d63b86af1b34672e53c440b1b83979861906bad7  # v24
         with:
           workflow: e2e.yml
           branch: main
@@ -152,7 +152,7 @@ jobs:
 
       - name: Download main's e2e coverage baseline (frontend)
         if: steps.pr.outputs.number != ''
-        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
+        uses: dawidd6/action-download-artifact@d63b86af1b34672e53c440b1b83979861906bad7  # v24
         with:
           workflow: e2e.yml
           branch: main
