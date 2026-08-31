@@ -6,10 +6,10 @@ import * as sdk from '@/client/sdk.gen'
 
 // ─── Screenshots suppress-list ─────────────────────────────────────────────
 
-// Permanently ignore a screenshot — backs the Unknown tab's "Delete
-// forever" affordance. Adds the filename to the suppress-list AND wipes
-// the matching unmatched-/ambiguous- rows. The on-disk file is NOT
-// deleted. Idempotent.
+// Permanently ignore a screenshot — backs the Unknown tab's Dismiss
+// affordance. Adds the filename to the suppress-list AND wipes the
+// file's own rows (a match with sibling screenshots survives minus this
+// file). The on-disk file is NOT deleted. Idempotent.
 export function IgnoreScreenshot(filename: string): Promise<void> {
   return unwrapVoid(sdk.ignoreScreenshot({ path: { filename } }))
 }

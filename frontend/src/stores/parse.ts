@@ -48,7 +48,7 @@ export const useParseStore = defineStore('parse', () => {
   const { parse } = parseRun
 
   // ── Ignored screenshots ───────────────────────────────────────────
-  // The "Delete forever" / un-ignore triage surface; onRunParseFromIgnored
+  // The Dismiss / un-ignore triage surface; onRunParseFromIgnored
   // re-runs the parse (this store's own `parse`) so re-included files land.
   const {
     ignoredScreenshots,
