@@ -12,9 +12,8 @@ The tab surfaces two kinds of records:
    matched one or more existing matches in a time window short
    enough that "this could be the same match or a different match
    with identical stats" is genuinely ambiguous — or a fresh
-   capture's full scoreboard stat line exactly duplicated a match
-   from the past week (almost certainly a re-screenshot; flagged
-   **Possible duplicate**). See
+   capture duplicated a match you already have (almost certainly a
+   re-screenshot; flagged **Possible duplicate**). See
    [Needs your review (ambiguous attribution)](#needs-your-review-ambiguous-attribution)
    below.
 2. **Unknown maps** — records where the map couldn't be parsed at
@@ -240,16 +239,27 @@ repro; crop or blur them before uploading if you'd like.
 Two situations land a capture here. If two matches share the same
 hero, map, and `(eliminations, assists, deaths)` triple inside a
 30-minute window, Recall can't tell them apart from the
-screenshots alone. And if a freshly parsed match's **entire**
-scoreboard stat line — eliminations, assists, deaths, damage,
-healing, AND mitigation — exactly equals a match already in your
-history from the past 7 days, it is almost certainly a
-re-screenshot of the same match (identical damage numbers don't
-happen twice by accident); the new capture is flagged **Possible
-duplicate** instead of silently becoming a second match. Rather
-than guess — which can silently merge two distinct matches into
-one record, or double-count one match as two — the resolver hands
-the call back to you.
+screenshots alone. Two further checks look for a match you
+already have, and either one flags the new capture **Possible
+duplicate** instead of silently letting it become a second match:
+
+- **Identical combat stat line.** A freshly parsed match's
+  **entire** scoreboard line — eliminations, assists, deaths,
+  damage, healing, AND mitigation — exactly equals a match in
+  your history from the past 7 days. Identical damage numbers
+  don't happen twice by accident.
+- **Same match, re-captured.** Both matches report the same
+  played-at instant, map, result, final score, hero and game
+  length. The instant comes from the scoreboard's own date and
+  finish time, so it says when the MATCH ended rather than when
+  the screenshot was taken — which is what lets this one work
+  with no scoreboard shot on either side, where the stat-line
+  check has nothing to compare. There is no time limit on it: a
+  folder re-imported months later is still the same match.
+
+Rather than guess — which can silently merge two distinct matches
+into one record, or double-count one match as two — the resolver
+hands the call back to you.
 
 Ambiguous records appear at the top of the Unknown tab under the
 **"Needs your review — N"** subheading. Each card shows:
@@ -260,8 +270,9 @@ Ambiguous records appear at the top of the Unknown tab under the
   candidate you'll see its key, hero / map / date headline, and
   how far apart in time it is from the ambiguous screenshot
   (e.g. *"12 min apart"*, *"3 h apart"*). Duplicate candidates
-  carry an explicit *"Possible duplicate — identical combat stat
-  line"* label.
+  carry a label naming which check found them — *"Possible
+  duplicate — identical combat stat line"* or *"Possible
+  duplicate — same match, re-captured"*.
 - An **Attach to this match** button per candidate — worded
   **Same match — merge screenshots** for duplicate candidates.
 - A **Treat as new match** escape hatch (**Different match — keep
@@ -270,13 +281,20 @@ Ambiguous records appear at the top of the Unknown tab under the
   the row becomes its own standalone match instead of joining
   any candidate.
 
-One edge worth knowing about the duplicate check: it compares the
-full scoreboard line from your TEAMS screenshot, so a re-capture
-that includes only the post-match summary (no scoreboard shot on
-one side or the other) won't be flagged. It also runs at the end
-of each parse run — in the rare case where a duplicate set's
-summary lands in one watcher run and its scoreboard in the next,
-the pairing across runs isn't re-checked.
+Once you answer, Recall remembers. Choosing **Different match —
+keep separate** records the verdict, and both matches carry a
+**Possible duplicate of** chip from then on, each naming the
+other — click it to open the twin and check the call. Choosing
+**Same match** leaves no chip, because the two are one match now.
+
+Two edges worth knowing. Both checks run at the END of each parse
+run, so in the rare case where a duplicate set's summary lands in
+one watcher run and its scoreboard in the next, the pairing across
+runs isn't re-checked. And the played-at instant is worked out
+using the timezone of the machine that parsed the screenshot — so
+a folder re-imported on a machine set to a different zone will not
+be caught by the second check. It errs toward missing a duplicate
+rather than flagging a real match.
 
 Clicking **Attach** rewrites every parent row carrying the
 ambiguous sentinel (the original screenshot AND any siblings

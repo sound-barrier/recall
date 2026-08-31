@@ -42,11 +42,22 @@ func (st *parseRunState) sweepNewMatchDuplicates() {
 	for k := range st.preRunKeys {
 		surviving[k] = struct{}{}
 	}
+	// Built ONCE. The one-shot form re-reads the whole snapshot per
+	// question, which on a first import — where every key is run-created —
+	// is quadratic: 18 seconds on a 5 000-match corpus, spent after the
+	// progress bar already read 100 %, in a loop that reports nothing and
+	// cannot be canceled.
+	//
+	// Rebuilt after each demotion, because a demote rewrites keys in the
+	// snapshot and the index describes the snapshot as it was.
+	scan := correlate.NewDuplicateScan(st.snap)
 	for _, c := range created {
-		cands := filterCandidateKeys(correlate.FindDuplicateCandidates(c.key, st.snap), surviving)
+		cands := filterCandidateKeys(scan.CandidatesFor(c.key), surviving)
 		if len(cands) == 0 || !st.demoteDuplicate(c, cands) {
 			surviving[c.key] = struct{}{}
+			continue
 		}
+		scan = correlate.NewDuplicateScan(st.snap)
 	}
 }
 

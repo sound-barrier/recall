@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"testing"
+	"time"
 
 	"recall/pkg/db"
 	"recall/pkg/match"
@@ -202,8 +203,18 @@ func recapSummaryResult() *parser.MatchResult {
 
 // seedRecapturedOriginal seeds a SUMMARY-only original — deliberately no
 // TEAMS row, which is what makes the stat-line sweep blind to it.
-func seedRecapturedOriginal(fake *fakeStore) {
-	instant := "2026-05-11T00:04:00Z"
+//
+// The instant is DERIVED, not written down. The re-capture's instant is
+// recomputed by the real parse path from time.Local, so a hard-coded Z
+// string agrees with it in exactly one timezone — and this test passed on a
+// UTC-6 laptop while failing on CI, which runs UTC.
+func seedRecapturedOriginal(t *testing.T, fake *fakeStore) {
+	t.Helper()
+	at, ok := match.LocalWallClockToUTC("2026-05-10", "18:04", time.Local)
+	if !ok {
+		t.Skip("host cannot convert the wall clock")
+	}
+	instant := at.Format(time.RFC3339)
 	fake.Summaries = append(fake.Summaries, db.SummaryRow{
 		Filename: recapOrigFile, MatchKey: recapOrigKey,
 		Map: "rialto", Hero: "lucio", Result: "victory", FinalScore: "3-1",
@@ -213,7 +224,7 @@ func seedRecapturedOriginal(fake *fakeStore) {
 
 func TestDuplicateSweep_SummaryOnlyRecapture_Demoted(t *testing.T) {
 	a, fake := newParseReadyApp(t)
-	seedRecapturedOriginal(fake)
+	seedRecapturedOriginal(t, fake)
 	stubParse(t, func(progress parser.ProgressFunc) error {
 		progress(1, 1, recapDupFile, recapSummaryResult(), nil)
 		return nil
@@ -243,7 +254,7 @@ func TestDuplicateSweep_SummaryOnlyRecapture_Demoted(t *testing.T) {
 // game, and demoting it would cost the user a real match.
 func TestDuplicateSweep_DifferentInstant_StaysTracked(t *testing.T) {
 	a, fake := newParseReadyApp(t)
-	seedRecapturedOriginal(fake)
+	seedRecapturedOriginal(t, fake)
 	stubParse(t, func(progress parser.ProgressFunc) error {
 		res := recapSummaryResult()
 		res.FinishedAt = "18:05"

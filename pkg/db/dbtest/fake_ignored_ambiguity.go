@@ -2,6 +2,7 @@ package dbtest
 
 import (
 	"cmp"
+	"fmt"
 	"maps"
 	"slices"
 	"sort"
@@ -105,6 +106,9 @@ func (f *Fake) ApplyAmbiguity(filename string, cands []db.AmbiguousCandidate) er
 	if f.AmbiguityErr != nil {
 		return f.AmbiguityErr
 	}
+	if err := assertCandidateReasons(cands); err != nil {
+		return err
+	}
 	if f.Ambiguous == nil {
 		f.Ambiguous = map[string][]db.AmbiguousCandidate{}
 	}
@@ -125,6 +129,9 @@ func (f *Fake) LoadAmbiguousCandidatesFor(filename string) ([]db.AmbiguousCandid
 func (f *Fake) DemoteMatchToAmbiguous(matchKey, ambiguousMatchKey, filename string, cands []db.AmbiguousCandidate) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if err := assertCandidateReasons(cands); err != nil {
+		return false, err
+	}
 	rewritten := rekeyRows(f.Summaries, matchKey, ambiguousMatchKey) +
 		rekeyRows(f.Teams, matchKey, ambiguousMatchKey) +
 		rekeyRows(f.Personals, matchKey, ambiguousMatchKey) +
@@ -138,6 +145,22 @@ func (f *Fake) DemoteMatchToAmbiguous(matchKey, ambiguousMatchKey, filename stri
 	}
 	f.Ambiguous[filename] = append([]db.AmbiguousCandidate(nil), cands...)
 	return true, nil
+}
+
+// validCandidateReasons mirrors the CHECK on ambiguous_candidates.reason.
+// Without it the Fake accepts a reason SQLite refuses, so a third producer
+// added without its schema entry passes every unit test and fails only in
+// production — inside DemoteMatchToAmbiguous, whose error the sweep logs
+// and swallows, leaving the duplicate flag silently missing.
+var validCandidateReasons = map[string]bool{"": true, "duplicate_stats": true, "same_instant": true}
+
+func assertCandidateReasons(cands []db.AmbiguousCandidate) error {
+	for _, c := range cands {
+		if !validCandidateReasons[c.Reason] {
+			return fmt.Errorf("ambiguous_candidates.reason %q violates the schema CHECK", c.Reason)
+		}
+	}
+	return nil
 }
 
 func (f *Fake) ResolveAmbiguous(filename, ambiguousMatchKey, newMatchKey string) (bool, error) {

@@ -5984,7 +5984,10 @@ components:
             existing match's within 7 days. The `match_key` carries
             the `ambiguous-<filename>` sentinel and the `candidates`
             array lists the possible matches the user can pick from
-            in the Unknown tab.
+            in the Unknown tab. Candidates come from three producers —
+            the per-file resolver, the stat-line duplicate sweep, and
+            the re-capture sweep — and each row names its own in
+            `reason`.
         candidates:
           type: array
           description: |
