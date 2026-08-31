@@ -67,3 +67,38 @@ func (s *SQLStore) ClearIgnoredScreenshots() error {
 	_, err := s.db.Exec(`DELETE FROM ignored_screenshots`)
 	return err
 }
+
+// Reference-gap acknowledgements — the hidden_matches pattern applied to
+// the Unknown tab's gap warnings: presence IS the acknowledged state,
+// both writes idempotent (re-acknowledging refreshes the timestamp).
+
+func (s *SQLStore) AcknowledgeReferenceGap(matchKey string) error {
+	_, err := s.db.Exec(
+		`INSERT INTO acknowledged_reference_gaps (match_key) VALUES (?)
+		 ON CONFLICT(match_key) DO UPDATE SET acknowledged_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`,
+		matchKey,
+	)
+	return err
+}
+
+func (s *SQLStore) UnacknowledgeReferenceGap(matchKey string) error {
+	_, err := s.db.Exec(`DELETE FROM acknowledged_reference_gaps WHERE match_key = ?`, matchKey)
+	return err
+}
+
+func (s *SQLStore) LoadAcknowledgedReferenceGaps() (map[string]bool, error) {
+	rows, err := s.db.Query(`SELECT match_key FROM acknowledged_reference_gaps`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := map[string]bool{}
+	for rows.Next() {
+		var k string
+		if err := rows.Scan(&k); err != nil {
+			return nil, err
+		}
+		out[k] = true
+	}
+	return out, rows.Err()
+}

@@ -309,6 +309,67 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/matches/{match_key}/reference-gap-acknowledgement:
+    parameters:
+      - $ref: "#/components/parameters/MatchKey"
+    put:
+      operationId: AcknowledgeReferenceGap
+      tags: [Matches]
+      summary: Dismiss a match's reference-data-gap warning
+      description: |
+        Records that the user acknowledged this match's reference-data
+        gap (an OCR'd hero/map name the shipped roster doesn't know).
+        The match and its rows are untouched — a future reference-data
+        update can still resolve the raw name — so this hides the
+        Unknown tab's WARNING only: the aggregator sets
+        `MatchRecord.reference_gap_acknowledged = true` and the gap
+        section moves the card behind its "N acknowledged" disclosure.
+
+        The acknowledgement itself is the resource, so PUT carries no
+        body and DELETE restores the warning. PUT requires the match to
+        exist (404 otherwise — an acknowledgement nothing backs would
+        strand forever); both verbs are idempotent.
+      responses:
+        "204":
+          description: Warning acknowledged.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: >-
+            A coaching session holds the database read-only; end the
+            session first.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: UnacknowledgeReferenceGap
+      tags: [Matches]
+      summary: Restore a match's reference-data-gap warning
+      description: |
+        Removes the acknowledgement so the Unknown tab warns about this
+        match's reference-data gap again. Idempotent on matches that
+        weren't acknowledged.
+      responses:
+        "204":
+          description: Warning restored (or was never acknowledged).
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: >-
+            A coaching session holds the database read-only; end the
+            session first.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/matches/{match_key}/pin:
     parameters:
       - $ref: "#/components/parameters/MatchKey"
@@ -5832,6 +5893,15 @@ components:
             `PUT /api/v1/matches/{match_key}/visibility`. Omitted (or
             false) for normal records. The per-screenshot parent rows
             are untouched — only the aggregator hides the surface.
+        reference_gap_acknowledged:
+          type: boolean
+          description: |
+            True iff the user dismissed this match's reference-data-gap
+            warning via
+            `PUT /api/v1/matches/{match_key}/reference-gap-acknowledgement`.
+            The match is untouched — the Unknown tab just moves its gap
+            card behind the "N acknowledged" disclosure. Omitted (or
+            false) otherwise.
         reviewed_by:
           type: string
           enum: [self, coach]

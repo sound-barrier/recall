@@ -24,6 +24,8 @@ import {
   BulkSetMatchPlayMode,
   BulkSetMatchQueue,
   ResolveAmbiguousMatch,
+  AcknowledgeReferenceGap,
+  UnacknowledgeReferenceGap,
   IgnoreScreenshot,
   type CoachMomentBody,
 } from '@/api-client'
@@ -345,6 +347,17 @@ export function useMatchActions() {
     if (!guardWrite()) return
     try { await ResolveAmbiguousMatch(ambiguousKey, resolvedTo); await reload() } catch (e) { onError(String(e)) }
   }
+  // Acknowledge (or restore) a reference-gap warning — a narrow match
+  // edit: only the records list changes, nothing folder-side.
+  async function onSetReferenceGapAcknowledged(matchKey: string, acked: boolean) {
+    if (!guardWrite()) return
+    try {
+      await (acked ? AcknowledgeReferenceGap(matchKey) : UnacknowledgeReferenceGap(matchKey))
+      await reload()
+    } catch (e) {
+      onError(String(e))
+    }
+  }
   // Dismiss — suppress every file a card carries, sequentially: each
   // PUT is idempotent, so a partial failure surfaces the first error and
   // re-clicking Dismiss is a clean retry over the survivors. The reloads
@@ -387,6 +400,7 @@ export function useMatchActions() {
     onBulkPlayMode,
     onBulkQueue,
     onResolveAmbiguous,
+    onSetReferenceGapAcknowledged,
     onDismissFiles,
   }
 }

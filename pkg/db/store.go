@@ -150,6 +150,14 @@ type Store interface {
 	UnhideMatch(matchKey string) error
 	LoadHiddenKeys() (map[string]bool, error)
 
+	// Reference-gap acknowledgements — presence-is-state sidecar for the
+	// Unknown tab's gap warnings: acknowledging hides the WARNING while
+	// the match and its rows stay (a future reference-data update can
+	// still resolve it). Both writes idempotent.
+	AcknowledgeReferenceGap(matchKey string) error
+	UnacknowledgeReferenceGap(matchKey string) error
+	LoadAcknowledgedReferenceGaps() (map[string]bool, error)
+
 	// Pinned matches — same presence-is-state sidecar as hidden.
 	PinMatch(matchKey string) error
 	UnpinMatch(matchKey string) error

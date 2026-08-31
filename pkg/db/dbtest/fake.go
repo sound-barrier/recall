@@ -27,6 +27,9 @@ type Fake struct {
 	Annotations map[string]db.Annotation
 	Hidden      map[string]bool
 	Pinned      map[string]bool
+	// AckedReferenceGaps mirrors acknowledged_reference_gaps: match keys
+	// whose Unknown-tab gap warning the user dismissed.
+	AckedReferenceGaps map[string]bool
 
 	// UserMatchData maps match_key → the per-match user override layer
 	// (inline edits + hand-entered matches). Absence = pure OCR / no match.
@@ -381,6 +384,7 @@ func (f *Fake) Clear() error {
 	f.Annotations = nil
 	f.UserMatchData = nil
 	f.Hidden = nil
+	f.AckedReferenceGaps = nil
 	f.Reviews = nil
 	f.Queues = nil
 	f.PlayModes = nil
@@ -484,6 +488,7 @@ func (f *Fake) HardDeleteMatch(matchKey string) error {
 	f.Ranks = dropByMatchKey(f.Ranks, matchKey)
 	f.Unknowns = dropByMatchKey(f.Unknowns, matchKey)
 	delete(f.Hidden, matchKey)
+	delete(f.AckedReferenceGaps, matchKey)
 	delete(f.Annotations, matchKey)
 	delete(f.Reviews, matchKey)
 	delete(f.UserMatchData, matchKey)

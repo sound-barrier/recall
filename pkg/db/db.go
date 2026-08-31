@@ -60,6 +60,7 @@ var matchKeyTables = []string{
 	"unknown_screenshots",
 	"ambiguous_candidates",
 	"hidden_matches",
+	"acknowledged_reference_gaps",
 	"pinned_matches",
 	"match_annotations",
 	"match_moments",

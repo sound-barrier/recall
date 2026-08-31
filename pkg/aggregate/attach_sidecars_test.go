@@ -55,6 +55,20 @@ func TestAttachHidden_FlipsOnlyListedKeys(t *testing.T) {
 	}
 }
 
+// AttachReferenceGapAcks flips the warning-dismissed flag only for keys
+// in the acknowledged set — the AttachHidden shape.
+func TestAttachReferenceGapAcks_FlipsOnlyListedKeys(t *testing.T) {
+	recs := []match.Record{{MatchKey: "match-1"}, {MatchKey: "match-2"}}
+	aggregate.AttachReferenceGapAcks(recs, map[string]bool{"match-2": true})
+
+	if recs[0].ReferenceGapAcknowledged {
+		t.Error("recs[0].ReferenceGapAcknowledged = true, want false")
+	}
+	if !recs[1].ReferenceGapAcknowledged {
+		t.Error("recs[1].ReferenceGapAcknowledged = false, want true")
+	}
+}
+
 // AttachAnnotations grafts the full annotation (scalars + member/tag lists) onto
 // the matching record.
 func TestAttachAnnotations_GraftsFullAnnotation(t *testing.T) {

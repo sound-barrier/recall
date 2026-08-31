@@ -48,11 +48,15 @@ import (
 type Sidecars struct {
 	Annotations map[string]db.Annotation
 	Hidden      map[string]bool
-	Reviews     map[string]db.ReviewState
-	Pinned      map[string]bool
-	CoachNotes  map[string][]db.MatchCoachNote
-	Moments     map[string][]db.MatchMoment
-	SelfReviews map[string][]db.SelfReviewNoteOnMatch
+	// AckedRefGaps: match keys whose reference-data-gap warning the user
+	// dismissed — the streamed match-updated shape must carry the flag or
+	// a re-parse would flash the warning card back until the refetch.
+	AckedRefGaps map[string]bool
+	Reviews      map[string]db.ReviewState
+	Pinned       map[string]bool
+	CoachNotes   map[string][]db.MatchCoachNote
+	Moments      map[string][]db.MatchMoment
+	SelfReviews  map[string][]db.SelfReviewNoteOnMatch
 }
 
 func MatchKey(key string, snap db.Screenshots, sc Sidecars) (match.Record, bool) {
@@ -97,6 +101,9 @@ func appendViewsForKey[T any](vs []ScreenshotView, rows []T, key string, keyOf f
 func attachMatchSidecars(rec *match.Record, key string, snap db.Screenshots, sc Sidecars) {
 	if a, ok := sc.Annotations[key]; ok {
 		rec.Annotation = annotationFromRow(a)
+	}
+	if sc.AckedRefGaps[key] {
+		rec.ReferenceGapAcknowledged = true
 	}
 	if sc.Hidden[key] {
 		rec.Hidden = true

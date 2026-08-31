@@ -55,6 +55,12 @@ type Record struct {
 	// FilterRail "Hidden · N" toggle so the user can unhide.
 	Hidden bool `json:"hidden,omitempty"`
 
+	// True iff the user acknowledged this match's reference-data gap
+	// warning (an OCR'd hero/map the shipped roster doesn't know). The
+	// match itself is untouched — the Unknown tab just stops warning,
+	// behind an "N acknowledged" disclosure. Omitted when false.
+	ReferenceGapAcknowledged bool `json:"reference_gap_acknowledged,omitempty"`
+
 	// Review status — "self" (user reviewed the VOD themselves),
 	// "coach" (a coach reviewed it), or "" (not reviewed; field
 	// omitted from JSON). Drives the 3-state toggle at the top of

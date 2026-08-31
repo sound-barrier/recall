@@ -149,6 +149,20 @@ func AttachHidden(recs []match.Record, hidden map[string]bool) {
 	}
 }
 
+// AttachReferenceGapAcks flips `ReferenceGapAcknowledged` on every
+// record whose match_key is in the acknowledged set — the AttachHidden
+// shape for the Unknown tab's gap warnings.
+func AttachReferenceGapAcks(recs []match.Record, acked map[string]bool) {
+	if len(acked) == 0 {
+		return
+	}
+	for i := range recs {
+		if acked[recs[i].MatchKey] {
+			recs[i].ReferenceGapAcknowledged = true
+		}
+	}
+}
+
 // sidesOrEmpty guarantees a non-nil slice. `leavers` / `throwers` are required
 // on the MatchAnnotation schema, and Go marshals a nil slice as `null` — which
 // violates `type: array` and trips schemathesis's response_schema_conformance.

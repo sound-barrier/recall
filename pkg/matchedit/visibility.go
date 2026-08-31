@@ -32,6 +32,31 @@ func Unhide(s db.Store, matchKey string) error {
 	return s.UnhideMatch(matchKey)
 }
 
+// AcknowledgeReferenceGap dismisses a match's reference-data-gap
+// warning on the Unknown tab. The match and its rows are untouched — a
+// future reference-data update can still resolve the raw hero/map — so
+// this hides the WARNING only, restorably. Requires the match to exist
+// (an acknowledgement for a key nothing backs would strand forever).
+// Idempotent: re-acknowledging refreshes the timestamp.
+func AcknowledgeReferenceGap(s db.Store, matchKey string) error {
+	if matchKey == "" {
+		return ErrMatchKeyRequired
+	}
+	if err := AssertMatchExists(s, matchKey); err != nil {
+		return err
+	}
+	return s.AcknowledgeReferenceGap(matchKey)
+}
+
+// UnacknowledgeReferenceGap restores the warning. Idempotent on
+// matches that weren't acknowledged.
+func UnacknowledgeReferenceGap(s db.Store, matchKey string) error {
+	if matchKey == "" {
+		return ErrMatchKeyRequired
+	}
+	return s.UnacknowledgeReferenceGap(matchKey)
+}
+
 // Pin stars a match — the list renders pinned matches in a leading
 // section above the date groups. Idempotent.
 func Pin(s db.Store, matchKey string) error {
