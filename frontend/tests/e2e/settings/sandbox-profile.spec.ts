@@ -35,7 +35,7 @@ test.describe('the sample profile is a sandbox', () => {
     // Run Parse also disables (honestly) when the folder has nothing new —
     // pin a pending count so the only question left is the write gate.
     await page.route('**/api/v1/screenshots/pending-count', (r: Route) =>
-      r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ count: 3 }) }))
+      r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ count: 3, parked: 0 }) }))
     await page.route('**/api/v1/profiles', async (route: Route) => {
       if (route.request().method() !== 'GET') {
         await route.fallback()

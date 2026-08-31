@@ -87,7 +87,7 @@ test.describe('parse button — empty-folder copy + ghost style', () => {
       }),
     }))
     await page.route('**/api/v1/screenshots/pending-count', async (r) => r.fulfill({
-      status: 200, contentType: 'application/json', body: JSON.stringify({ count: 0 }),
+      status: 200, contentType: 'application/json', body: JSON.stringify({ count: 0, parked: 0 }),
     }))
 
     await page.goto('/')

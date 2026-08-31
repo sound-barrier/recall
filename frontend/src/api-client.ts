@@ -144,6 +144,7 @@ export const SetScreenshotsDir = bind('SetScreenshotsDir')
 export const SetTesseractPath = bind('SetTesseractPath')
 export const SetWatchEnabled = bind('SetWatchEnabled')
 export const SwitchProfile = bind('SwitchProfile')
+export const RetryFailedFile = bind('RetryFailedFile')
 export const UnignoreScreenshot = bind('UnignoreScreenshot')
 export const UpdateMatchData = bind('UpdateMatchData')
 

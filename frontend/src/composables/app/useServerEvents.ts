@@ -42,7 +42,7 @@ export function useServerEvents() {
     parseProgress,
     parseLog,
     watchActivity,
-    onParseComplete: () => parseStore.finishParseRun('complete'),
+    onParseComplete: (summary) => parseStore.finishParseRun('complete', summary),
     onParseCanceled: () => parseStore.finishParseRun('canceled'),
     // The backend probes Tesseract in the background after boot (so a
     // cold-boot Defender scan can't stall startup); push each result into

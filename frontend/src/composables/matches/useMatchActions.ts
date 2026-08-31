@@ -27,6 +27,7 @@ import {
   AcknowledgeReferenceGap,
   UnacknowledgeReferenceGap,
   IgnoreScreenshot,
+  RetryFailedFile,
   type CoachMomentBody,
 } from '@/api-client'
 import { getQueryClient } from '@/queries/client'
@@ -132,6 +133,11 @@ export function useMatchActions() {
   const reload = () => getQueryClient().refetchQueries({ queryKey: qk.matches })
   const reloadCluster = () => matchesStore.load()
   const reloadIgnored = () => parseStore.loadIgnored()
+  // Retry touches only the two folder-side ledgers — no record changed.
+  const reloadFolderLedgers = async () => {
+    await getQueryClient().refetchQueries({ queryKey: qk.failedFiles })
+    await getQueryClient().refetchQueries({ queryKey: qk.pendingCount })
+  }
   const setError = (message: string) => appStore.setError(message)
   const onError = (raw: string) => appStore.setErrorFromRaw(raw)
 
@@ -358,6 +364,19 @@ export function useMatchActions() {
       onError(String(e))
     }
   }
+  // Retry a parked failure: deleting the failure record resets the
+  // attempt count, so the file leaves the parked tally and re-enters
+  // the pending count on the spot.
+  async function onRetryFailedFile(filename: string) {
+    if (!guardWrite()) return
+    try {
+      await RetryFailedFile(filename)
+      await reloadFolderLedgers()
+    } catch (e) {
+      onError(String(e))
+    }
+  }
+
   // Dismiss — suppress every file a card carries, sequentially: each
   // PUT is idempotent, so a partial failure surfaces the first error and
   // re-clicking Dismiss is a clean retry over the survivors. The reloads
@@ -402,5 +421,6 @@ export function useMatchActions() {
     onResolveAmbiguous,
     onSetReferenceGapAcknowledged,
     onDismissFiles,
+    onRetryFailedFile,
   }
 }

@@ -70,7 +70,7 @@ async function routeBackend(page: Page, active: () => ActiveParse) {
   })
   await page.route('**/api/v1/settings/screenshots-folder', (r: Route) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ path: '/srv/recall' }) }))
   await page.route('**/api/v1/settings/tesseract', (r: Route) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ found: true, path: '/usr/bin/tesseract', version: '5.3.0', error: '' }) }))
-  await page.route('**/api/v1/screenshots/pending-count', (r: Route) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ count: 5 }) }))
+  await page.route('**/api/v1/screenshots/pending-count', (r: Route) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ count: 5, parked: 0 }) }))
 }
 
 const panel = '.parse-progress-panel'

@@ -4,7 +4,7 @@ import type { MatchRecord } from '@/api-client'
 import { ParseScreenshots, ReParseAll, CancelParse } from '@/api-client'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
-import type { ParseProgressEvent, WatchActivityEvent } from '@/components/ingest/parse-progress'
+import type { ParseProgressEvent, ParseRunSummary, WatchActivityEvent } from '@/components/ingest/parse-progress'
 import { currentSessionSummary, type SessionSummary } from '@/match/dossier/match-momentum-helpers'
 import { profileScopedKey } from '@/composables/profile/profileStorage'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
@@ -63,6 +63,17 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
     sessionToast.value = null
   }
   const parseLog = ref<ParseProgressEvent[]>([])
+  // End-of-run outcome toast: the run's own tally off the
+  // parse-complete payload ("4 read · 2 failed to read"), shown from
+  // any tab because the watcher can finish a run anywhere. Muted in a
+  // coach session like every other run-side voice; absent when the
+  // event carried no summary (legacy shape / missed event). The token
+  // restarts the toast timer per run.
+  const parseOutcome = ref<(ParseRunSummary & { token: number }) | null>(null)
+  function dismissParseOutcome(token: number) {
+    if (parseOutcome.value?.token !== token) return
+    parseOutcome.value = null
+  }
   // Wall-clock of the last successful manual parse → Settings "Last run · X".
   const lastParsedAt = ref<number | null>(null)
 
@@ -173,29 +184,42 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
   // ── Parse-run terminal transitions ────────────────────────────────
   // The store owns the state, so it owns the transitions; useServerEvents
   // merely wires the parse-complete / parse-canceled events to these.
-  async function finishParseRun(outcome: 'complete' | 'canceled') {
+  // The two run-side toasts a completed run raises: the session tally
+  // (when the fresh batch forms an active session that wasn't
+  // dismissed) and the outcome report (when the event carried one).
+  // Both stay silent during a coach session.
+  function raiseRunToasts(fresh: MatchRecord[], summary?: ParseRunSummary) {
+    const session = sessionActive.value ? null : currentSessionSummary(fresh)
+    currentSession.value = session
+    const dismissed = session !== null && session.startedAt === dismissedSessionStart.value
+    sessionToast.value = session && !dismissed ? { ...session, token: Date.now() } : null
+    parseOutcome.value = summary && !sessionActive.value
+      ? { ...summary, token: Date.now() }
+      : null
+  }
+
+  function announceCompletion(matchCount: number, failed: number) {
+    const failedClause = failed > 0 ? ` ${failed} file${failed === 1 ? '' : 's'} failed to read.` : ''
+    announceParse(`Parse complete. ${matchCount} match${matchCount === 1 ? '' : 'es'} loaded.${failedClause}`)
+  }
+
+  async function finishParseRun(outcome: 'complete' | 'canceled', summary?: ParseRunSummary) {
     await deps.load()
     // Read the fresh records straight from the cache — the observer's
     // reactive ref updates a notification tick later than the refetch
     // resolves, and the session summary must see the new batch.
     const fresh = getQueryClient().getQueryData<MatchRecord[]>(qk.matches) ?? []
     if (outcome === 'complete') {
-      const session = sessionActive.value ? null : currentSessionSummary(fresh)
-      currentSession.value = session
-      const dismissed = session !== null && session.startedAt === dismissedSessionStart.value
-      sessionToast.value = session && !dismissed ? { ...session, token: Date.now() } : null
+      raiseRunToasts(fresh, summary)
       lastParsedAt.value = Date.now()
       try { localStorage.setItem(profileScopedKey('lastParsedAt'), String(lastParsedAt.value)) } catch (_) { /* non-fatal */ }
+      announceCompletion(fresh.length, summary?.files_failed ?? 0)
+    } else {
+      announceParse('Parse canceled.')
     }
     parseBusy.value = false
     parseProgress.value = null
     cancelingParse.value = false
-    if (outcome === 'complete') {
-      const n = fresh.length
-      announceParse(`Parse complete. ${n} match${n === 1 ? '' : 'es'} loaded.`)
-    } else {
-      announceParse('Parse canceled.')
-    }
   }
 
   // ── Parse-stream recovery surface ─────────────────────────────────
@@ -227,6 +251,8 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
     sessionToast,
     currentSession,
     dismissSessionToast,
+    parseOutcome,
+    dismissParseOutcome,
     parseLog,
     lastParsedAt,
     restoreLastParsedAt,
