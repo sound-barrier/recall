@@ -3,6 +3,8 @@ import { computed, onMounted, nextTick, ref } from 'vue'
 import type { ExclusionReason, MatchRecord } from '@/api-client'
 import { type SearchClause } from '@/match/search-query'
 import { REPLAY_CODE_LENGTH, toReplayCodeDraft } from '@/match/replay-code'
+import { replayCodeIsLikelyDead } from '@/match/match-season-helpers'
+import { useOWData } from '@/composables/shared/useOWData'
 import MatchExclusionChooser from '@/components/matches/detail/MatchExclusionChooser.vue'
 import CoachCueStrip from '@/components/coach/notes/CoachCueStrip.vue'
 import CoachNoteBlock from '@/components/coach/notes/CoachNoteBlock.vue'
@@ -128,6 +130,13 @@ function onCopyReplay() {
 // player's own writing surface, and neither state may write to it. The
 // coach's own notes are written in the Film Room, not here.
 const { writesLocked, lockReason, lockedTitle } = useWriteGate()
+
+// A stored code the game will refuse. Only asked when there IS a code —
+// "likely expired" under an empty field would be noise about nothing.
+const { seasons } = useOWData()
+const replayCodeStale = computed(() =>
+  Boolean(props.record.annotation?.replay_code)
+  && replayCodeIsLikelyDead(props.record, seasons.value, Date.now()))
 
 // The coach-received layer — one block per coach and session — and the
 // player's own sitting blocks, one per sitting, alongside (never merged
@@ -332,6 +341,14 @@ onMounted(() => {
             @blur="commitAnnotation('replay')"
             @keydown.enter.prevent="commitAnnotation('replay')"
           >
+          <!-- The code is still six valid characters; only the game knows
+               it is dead. Saying so HERE, beside the field, is the whole
+               point: the alternative is finding out at the moment you sat
+               down to watch. -->
+          <p v-if="replayCodeStale" class="journal-hint journal-hint-stale">
+            Likely expired — this match is from an earlier season, and OW
+            retires replay codes at rollover.
+          </p>
         </div>
 
         <div

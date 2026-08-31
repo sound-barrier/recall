@@ -91,3 +91,4 @@ a folder silently regrows what it just shed.
 | 2026-08-31 | dismiss-and-parse-accounting | `frontend/tests/e2e/match` | 23 → 24 | match-exclusion-reason.spec.ts — one spec per user-visible affordance, and this one is the only place the schema → wire → narrow → both tally sites chain is proven whole.
 | 2026-08-31 | dismiss-and-parse-accounting | `frontend/tests/e2e/match` | 24 → 25 | match-duplicate-link.spec.ts — the stored keep-separate verdict and the chip that navigates to the twin; one spec per user-visible affordance.
 | 2026-08-31 | dismiss-and-parse-accounting | `pkg/db` | 33 → 34 | store_duplicate_link.go — the "keep separate" verdict, one sidecar concern in one file, like every other sidecar in this package.
+| 2026-08-31 | dismiss-and-parse-accounting | `frontend/tests/e2e/match` | 25 → 26 | replay-code-shelf-life.spec.ts — a stored code from a past season says so; one spec per user-visible affordance.

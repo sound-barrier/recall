@@ -64,3 +64,51 @@ export function seasonForMatch(
   }
   return null
 }
+
+// currentSeason is the season `nowMs` falls in.
+//
+// With a fallback that matters: seasons.yaml carries an ESTIMATED end for
+// the live season, and estimates run out. Once now is past the last window,
+// the newest season that has already STARTED is the honest answer — better
+// than "no current season", which would gray every replay code in the app
+// on the day an estimate expired.
+//
+// null only when nothing has started yet, or the roster carries no seasons.
+export function currentSeason(seasons: Season[], nowMs: number): Season | null {
+  let newestStarted: Season | null = null
+  let newestStartMs = -Infinity
+  for (const s of seasons) {
+    const startBound = Date.parse(s.start)
+    const endBound = Date.parse(s.end)
+    if (Number.isNaN(startBound)) continue
+    if (!Number.isNaN(endBound) && inSeasonWindow(nowMs, { startMs: startBound, endMs: endBound })) {
+      return s
+    }
+    if (startBound <= nowMs && startBound > newestStartMs) {
+      newestStarted = s
+      newestStartMs = startBound
+    }
+  }
+  return newestStarted
+}
+
+// replayCodeIsLikelyDead reports whether a match's replay code has almost
+// certainly expired: OW retires codes at season rollover, so a code from any
+// season but the current one will be refused by the game.
+//
+// "Likely", and false whenever we cannot tell. A code we cannot place on the
+// season axis, or a roster with no seasons to compare against, is a gap in
+// what WE know — and telling a player their only code is useless, wrongly,
+// costs them the review. The failure this exists to prevent is the opposite
+// one: finding out at the moment they sat down to watch.
+export function replayCodeIsLikelyDead(
+  rec: Pick<MatchRecord, 'match_key' | 'data'>,
+  seasons: Season[],
+  nowMs: number,
+): boolean {
+  const live = currentSeason(seasons, nowMs)
+  if (!live) return false
+  const own = seasonForMatch(rec, seasons)
+  if (!own) return false
+  return own.name !== live.name
+}
