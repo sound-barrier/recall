@@ -257,13 +257,13 @@ type Store interface {
 	// (attempts+1, refreshed error/last_failed_at, preserved
 	// first_failed_at); RemoveFailedFile is the idempotent delete the
 	// success path, Dismiss, and Retry call; ListFailedFiles returns
-	// rows most recently failed first. LoadFailedFilenames(minAttempts)
-	// is the parked-set loader: filenames at or past the app layer's
-	// attempt cap, which normal runs skip.
+	// rows most recently failed first. LoadFailedFilenames(dirID,
+	// minAttempts) is the parked-set loader: one folder's filenames at
+	// or past the app layer's attempt cap, which normal runs skip.
 	RecordFailedFile(filename string, dirID int64, errMsg string) error
 	RemoveFailedFile(filename string) error
 	ListFailedFiles() ([]FailedFileRow, error)
-	LoadFailedFilenames(minAttempts int) (map[string]bool, error)
+	LoadFailedFilenames(dirID int64, minAttempts int) (map[string]bool, error)
 
 	// All-Heroes-screenshots surface — recognized-but-unstored skip list.
 	// The PERSONAL "All Heroes" aggregate view carries no data worth

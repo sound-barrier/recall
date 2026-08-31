@@ -26,13 +26,14 @@ func (f *Fake) RecordFailedFile(filename string, dirID int64, errMsg string) err
 	return nil
 }
 
-// LoadFailedFilenames mirrors SQLStore: filenames at or past minAttempts.
-func (f *Fake) LoadFailedFilenames(minAttempts int) (map[string]bool, error) {
+// LoadFailedFilenames mirrors SQLStore: one folder's filenames at or
+// past minAttempts.
+func (f *Fake) LoadFailedFilenames(dirID int64, minAttempts int) (map[string]bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	out := map[string]bool{}
 	for name, row := range f.FailedFiles {
-		if row.Attempts >= minAttempts {
+		if row.ScreenshotsDirID == dirID && row.Attempts >= minAttempts {
 			out[name] = true
 		}
 	}

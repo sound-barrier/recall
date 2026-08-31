@@ -9,6 +9,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/db"
+	"recall/pkg/db/dbtest"
 	"recall/pkg/parser"
 )
 
@@ -191,8 +192,12 @@ func TestApp_ParseScreenshots_FailedFileRetriedBelowCap(t *testing.T) {
 // never do.
 func TestApp_ParseScreenshots_FileParksAtAttemptCap(t *testing.T) {
 	a, fake := newParseReadyApp(t)
+	dirID, err := fake.EnsureScreenshotsDir(app.SettingsOf(a).ScreenshotsDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for range 3 {
-		if err := fake.RecordFailedFile("corrupt.png", 1, "boom"); err != nil {
+		if err := fake.RecordFailedFile("corrupt.png", dirID, "boom"); err != nil {
 			t.Fatalf("seed: %v", err)
 		}
 	}
@@ -312,9 +317,13 @@ func TestApp_ParseScreenshots_EmitsARunSummary(t *testing.T) {
 func TestApp_RetryFailedFile_RestoresTheFileToPending(t *testing.T) {
 	a, fake := newParseReadyApp(t)
 	dir := app.SettingsOf(a).ScreenshotsDir
+	dirID, err := fake.EnsureScreenshotsDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	writeFile(t, dir, "stuck.png", []byte("stuck"))
 	for range 3 {
-		if err := fake.RecordFailedFile("stuck.png", 1, "boom"); err != nil {
+		if err := fake.RecordFailedFile("stuck.png", dirID, "boom"); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -339,21 +348,20 @@ func TestApp_RetryFailedFile_RestoresTheFileToPending(t *testing.T) {
 // it must be true only for hard failures (no parent row stored). A
 // degraded file accrues attempts too, but it stored what it read and
 // already left the pending set; labeling it parked would lie and its
-// Retry would change nothing.
+// Retry would change nothing. The stored-ness check is scoped to the
+// ROW'S OWN dir: a same-named capture stored in a different folder is a
+// different screenshot and must not mask this one's parked state.
 func TestApp_GetFailedFiles_MarksParkedOnlyForHardFailures(t *testing.T) {
 	a, fake := newParseReadyApp(t)
-	for range 3 {
-		if err := fake.RecordFailedFile("hard.png", 1, "boom"); err != nil {
-			t.Fatalf("seed: %v", err)
-		}
-		if err := fake.RecordFailedFile("degraded.png", 1, "cell OCR failed"); err != nil {
-			t.Fatalf("seed: %v", err)
-		}
+	const dirID = int64(2)
+	seedAppFailures(t, fake, dirID, map[string]int{
+		"hard.png": 3, "degraded.png": 3, "cross-dir.png": 3, "young.png": 1,
+	})
+	fake.Personals = []db.PersonalRow{
+		{Filename: "degraded.png", MatchKey: "k", ScreenshotsDirID: dirID},
+		// Same basename stored under ANOTHER dir — must not mask.
+		{Filename: "cross-dir.png", MatchKey: "k2", ScreenshotsDirID: dirID + 5},
 	}
-	if err := fake.RecordFailedFile("young.png", 1, "boom"); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-	fake.Personals = []db.PersonalRow{{Filename: "degraded.png", MatchKey: "k"}}
 
 	rows, err := a.GetFailedFiles()
 	if err != nil {
@@ -363,13 +371,74 @@ func TestApp_GetFailedFiles_MarksParkedOnlyForHardFailures(t *testing.T) {
 	for _, r := range rows {
 		parked[r.Filename] = r.Parked
 	}
-	if !parked["hard.png"] {
-		t.Error("hard.png at the cap with no stored row must be parked")
+	want := map[string]bool{
+		"hard.png":      true,  // at the cap, no stored row
+		"degraded.png":  false, // stored a row in its own dir
+		"cross-dir.png": true,  // stored only in another dir — masks nothing
+		"young.png":     false, // below the cap
 	}
-	if parked["degraded.png"] {
-		t.Error("degraded.png stored a row — it is not parked, whatever its attempts")
+	for f, w := range want {
+		if parked[f] != w {
+			t.Errorf("parked[%s] = %v, want %v", f, parked[f], w)
+		}
 	}
-	if parked["young.png"] {
-		t.Error("young.png is below the cap — not parked")
+}
+
+// seedAppFailures records attempts[f] failures per filename under dirID.
+func seedAppFailures(t *testing.T, fake *dbtest.Fake, dirID int64, attempts map[string]int) {
+	t.Helper()
+	for f, n := range attempts {
+		for range n {
+			if err := fake.RecordFailedFile(f, dirID, "boom"); err != nil {
+				t.Fatalf("seed %s: %v", f, err)
+			}
+		}
+	}
+}
+
+// The ledger reconciles AFTER the writes, so one run moves a file's
+// attempt count by exactly one, whatever combination of degraded
+// warnings and write failures the run produced. Pre-fix, a degraded
+// parse whose insert then failed recorded twice (cap 3 became 2), and
+// a clean parse whose insert failed first RESET the count via
+// reconcile's RemoveFailedFile.
+func TestApp_ParseScreenshots_OneRunMovesAttemptsByOne(t *testing.T) {
+	a, fake := newParseReadyApp(t)
+	fake.UpsertErr = errors.New("database is locked")
+	stubParse(t, func(progress parser.ProgressFunc) error {
+		res := &parser.MatchResult{
+			Hero:     "kiriko",
+			Warnings: []string{"personal_r0c2 OCR failed"},
+		}
+		progress(1, 1, "victim.png", res, nil)
+		return nil
+	})
+
+	if err := a.ParseScreenshots(); err != nil {
+		t.Fatalf("ParseScreenshots: %v", err)
+	}
+	if got := fake.FailedFiles["victim.png"].Attempts; got != 1 {
+		t.Errorf("attempts = %d, want 1 — a degraded parse plus an insert failure is one run", got)
+	}
+}
+
+func TestApp_ParseScreenshots_InsertFailureDoesNotResetAttempts(t *testing.T) {
+	a, fake := newParseReadyApp(t)
+	for range 2 {
+		if err := fake.RecordFailedFile("victim.png", 1, "boom"); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+	fake.UpsertErr = errors.New("database is locked")
+	stubParse(t, func(progress parser.ProgressFunc) error {
+		progress(1, 1, "victim.png", &parser.MatchResult{Result: "victory", Map: "rialto", Hero: "lucio"}, nil)
+		return nil
+	})
+
+	if err := a.ParseScreenshots(); err != nil {
+		t.Fatalf("ParseScreenshots: %v", err)
+	}
+	if got := fake.FailedFiles["victim.png"].Attempts; got != 3 {
+		t.Errorf("attempts = %d, want 3 — a clean parse that failed to store must not reset the count", got)
 	}
 }

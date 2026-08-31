@@ -23,10 +23,16 @@ func (s *SQLStore) RecordFailedFile(filename string, dirID int64, errMsg string)
 	return err
 }
 
-// LoadFailedFilenames returns the filenames with attempts >= minAttempts
-// — the parked-set loader for the parse skip set's hot path.
-func (s *SQLStore) LoadFailedFilenames(minAttempts int) (map[string]bool, error) {
-	rows, err := s.db.Query(`SELECT filename FROM failed_files WHERE attempts >= ?`, minAttempts)
+// LoadFailedFilenames returns one folder's filenames with attempts >=
+// minAttempts — the parked-set loader for the parse skip set's hot path.
+// Dir-scoped for the same reason the parsed skip set is: filename is a
+// basename, and a failure recorded while a different folder was watched
+// must not park a same-named capture in this one.
+func (s *SQLStore) LoadFailedFilenames(dirID int64, minAttempts int) (map[string]bool, error) {
+	rows, err := s.db.Query(
+		`SELECT filename FROM failed_files WHERE screenshots_dir_id = ? AND attempts >= ?`,
+		dirID, minAttempts,
+	)
 	if err != nil {
 		return nil, err
 	}
