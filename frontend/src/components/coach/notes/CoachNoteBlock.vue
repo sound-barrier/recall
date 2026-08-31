@@ -107,7 +107,7 @@ function reopenSitting() {
           <span v-if="moment.focus_tag" class="paper-chip cnb-moment-tag">
             {{ focusTagLabel(moment.focus_tag) }}
           </span>
-          {{ moment.text }}
+          <NoteProse :text="moment.text" inline />
         </span>
       </li>
     </ol>

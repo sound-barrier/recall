@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { renderMarkdown, renderMarkdownWithHits } from '@/match/markdown/render-markdown'
+import { renderInlineMarkdown, renderMarkdown, renderMarkdownWithHits } from '@/match/markdown/render-markdown'
 
 // A note's prose, rendered. Every surface that READS a note goes through
 // this one component, so `v-html` appears in exactly one file in the app
@@ -19,14 +19,26 @@ const props = defineProps<{
   text: string
   /** Search terms to light, if the surface showing this note has a search. */
   highlight?: readonly string[]
+  /**
+   * A CAPTION rather than prose — a moment beside its clock, a focus item
+   * beside its bullet. Same grammar and same escaping, but inline only: a
+   * caption must not grow a paragraph, a heading, or a list. Captions carry
+   * no search highlighting today, so the two options do not combine.
+   */
+  inline?: boolean
 }>()
 
-const html = computed(() => (props.highlight?.length
-  ? renderMarkdownWithHits(props.text, props.highlight)
-  : renderMarkdown(props.text)))
+const html = computed(() => {
+  if (props.inline) return renderInlineMarkdown(props.text)
+  return props.highlight?.length
+    ? renderMarkdownWithHits(props.text, props.highlight)
+    : renderMarkdown(props.text)
+})
 </script>
 
 <template>
   <!-- eslint-disable-next-line vue/no-v-html -- renderMarkdown escapes first and emits a fixed tag set; see the note above -->
-  <div class="note-prose" v-html="html" />
+  <span v-if="inline" class="note-inline" v-html="html" />
+  <!-- eslint-disable-next-line vue/no-v-html -- same escaper, same fixed tag set -->
+  <div v-else class="note-prose" v-html="html" />
 </template>

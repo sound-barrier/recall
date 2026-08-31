@@ -48,4 +48,12 @@ describe('FocusNowWidget', () => {
     await new Promise((r) => setTimeout(r, 0))
     expect(screen.getByText(/finish a review, or open a coach's notes/i)).toBeInTheDocument()
   })
+
+  it('renders emphasis a coach wrote, rather than literal asterisks', async () => {
+    // Same grammar as the note it came from — the item is coach-written text
+    // reaching the player, and it should read the way the coach wrote it.
+    seed([entry({ item_id: '1', text: '**stop** dying on the flank', source: 'coach', coach_name: 'Ordo' })])
+    expect(await screen.findByText('stop')).toBeInTheDocument()
+    expect(screen.queryByText(/\*\*stop\*\*/)).not.toBeInTheDocument()
+  })
 })

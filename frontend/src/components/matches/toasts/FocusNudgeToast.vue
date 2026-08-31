@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { FocusEntry } from '@/api'
+import NoteProse from '@/components/coach/notes/NoteProse.vue'
 
 // What to work on, said while you are in a session — the one moment the
 // list is worth anything, because it is the only moment you can still act
@@ -36,7 +37,7 @@ const emit = defineEmits<{
       </p>
       <ol class="focus-nudge-list">
         <li v-for="item in items" :key="item.item_id" class="focus-nudge-item">
-          {{ item.text }}
+          <NoteProse :text="item.text" inline />
           <span v-if="item.source === 'coach'" class="focus-nudge-from">
             — {{ item.coach_name || 'your coach' }}
           </span>

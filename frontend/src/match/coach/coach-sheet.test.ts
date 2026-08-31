@@ -204,3 +204,33 @@ describe('toSheetInput — folding the session into the document', () => {
     expect(out.notes[0]!.moments).toEqual([])
   })
 })
+
+describe('buildCoachSheet — a moment takes the same grammar as a note', () => {
+  it("renders the coach's emphasis rather than shipping literal asterisks", () => {
+    // This page is what the PLAYER opens. A note beside it renders markdown,
+    // so a moment that did not would arrive looking like a typo.
+    const html = buildCoachSheet(input({
+      notes: [noteOf({ moments: [{ matchClock: '02:30', text: '**do not** peek there' }] })],
+    }), CSS)
+    expect(html).toContain('<strong>do not</strong> peek there')
+    expect(html).not.toContain('**do not**')
+  })
+
+  it('escapes a moment before it emphasizes it', () => {
+    const html = buildCoachSheet(input({
+      notes: [noteOf({ moments: [{ matchClock: '02:30', text: '<script>x</script>' }] })],
+    }), CSS)
+    expect(html).not.toContain('<script>x</script>')
+    expect(html).toContain('&lt;script&gt;')
+  })
+
+  it('keeps a caption from growing block structure inside its row', () => {
+    // The moment renders inside a <li> beside its clock; a <p> or a nested
+    // <ul> there would be markup the row was never shaped for.
+    const html = buildCoachSheet(input({
+      notes: [noteOf({ moments: [{ matchClock: '02:30', text: '- not a list' }] })],
+    }), CSS)
+    expect(html).toContain('- not a list')
+    expect(html).not.toContain('<ul><li>not a list')
+  })
+})

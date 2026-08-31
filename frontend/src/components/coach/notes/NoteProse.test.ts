@@ -58,3 +58,35 @@ describe('NoteProse', () => {
     expect(() => render(NoteProse, { props: { text: '' } })).not.toThrow()
   })
 })
+
+// Captions — a moment beside its clock — take the same grammar as prose but
+// not its block structure. They render through this same component so v-html
+// stays in exactly one file.
+describe('NoteProse — inline mode', () => {
+  it('renders emphasis without wrapping it in a paragraph', () => {
+    const { container } = render(NoteProse, { props: { text: '**do not** peek', inline: true } })
+    expect(screen.getByText('do not')).toBeInTheDocument()
+    // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access -- the claim is that no block wrapper was produced; absence has no TL query
+    expect(container.querySelector('p')).toBeNull()
+  })
+
+  it('escapes a caption exactly as it escapes prose', () => {
+    const raw = '<img src=x onerror="window.pwned = true">'
+    const { container } = render(NoteProse, { props: { text: raw, inline: true } })
+    expect(screen.getByText(raw)).toBeInTheDocument()
+    // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access -- asserting no <img> was produced
+    expect(container.querySelector('img')).toBeNull()
+    expect((window as unknown as { pwned?: boolean }).pwned).toBeUndefined()
+  })
+
+  it('does not let a caption starting with a dash become a list', () => {
+    render(NoteProse, { props: { text: '- not a list', inline: true } })
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0)
+    expect(screen.getByText('- not a list')).toBeInTheDocument()
+  })
+
+  it('still renders blocks when inline is not asked for', () => {
+    render(NoteProse, { props: { text: '- a\n- b' } })
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+  })
+})

@@ -167,3 +167,22 @@ describe('CoachNoteBlock — a block from your own review', () => {
     expect(remove).toHaveBeenCalledWith('sitting-1', MATCH_KEY)
   })
 })
+
+describe('CoachNoteBlock — moment grammar', () => {
+  it("renders a coach's emphasis in a moment rather than literal asterisks", () => {
+    // The note beside it renders markdown; a moment that did not would reach
+    // the player as `**do not** peek there`, which reads as a typo.
+    renderBlock(coachNote({
+      moments: [{ moment_id: 'm1', match_clock: '03:23', text: '**do not** peek there' }],
+    }))
+    expect(screen.getByText('do not')).toBeInTheDocument()
+    expect(screen.queryByText(/\*\*do not\*\*/)).not.toBeInTheDocument()
+  })
+
+  it('escapes a moment the same way it escapes a note', () => {
+    renderBlock(coachNote({
+      moments: [{ moment_id: 'm1', match_clock: '03:23', text: '<img src=x onerror="window.pwned = true">' }],
+    }))
+    expect((window as unknown as { pwned?: boolean }).pwned).toBeUndefined()
+  })
+})
