@@ -21,8 +21,8 @@ func (s *SQLStore) ApplyAmbiguity(filename string, cands []AmbiguousCandidate) e
 	}
 	for _, c := range cands {
 		if _, err := tx.Exec(
-			`INSERT INTO ambiguous_candidates (filename, match_key, distance_seconds) VALUES (?,?,?)`,
-			filename, c.MatchKey, c.DistanceSeconds,
+			`INSERT INTO ambiguous_candidates (filename, match_key, distance_seconds, reason) VALUES (?,?,?,?)`,
+			filename, c.MatchKey, c.DistanceSeconds, c.Reason,
 		); err != nil {
 			return err
 		}
@@ -35,7 +35,7 @@ func (s *SQLStore) ApplyAmbiguity(filename string, cands []AmbiguousCandidate) e
 // screenshot isn't ambiguous (no row in the table).
 func (s *SQLStore) LoadAmbiguousCandidatesFor(filename string) ([]AmbiguousCandidate, error) {
 	rows, err := s.db.Query(
-		`SELECT match_key, distance_seconds FROM ambiguous_candidates
+		`SELECT match_key, distance_seconds, reason FROM ambiguous_candidates
 		WHERE filename = ? ORDER BY distance_seconds ASC`,
 		filename,
 	)
@@ -46,7 +46,7 @@ func (s *SQLStore) LoadAmbiguousCandidatesFor(filename string) ([]AmbiguousCandi
 	out := make([]AmbiguousCandidate, 0)
 	for rows.Next() {
 		var c AmbiguousCandidate
-		if err := rows.Scan(&c.MatchKey, &c.DistanceSeconds); err != nil {
+		if err := rows.Scan(&c.MatchKey, &c.DistanceSeconds, &c.Reason); err != nil {
 			return nil, err
 		}
 		out = append(out, c)
@@ -125,8 +125,8 @@ func (s *SQLStore) DemoteMatchToAmbiguous(matchKey, ambiguousMatchKey, filename 
 	}
 	for _, c := range cands {
 		if _, err := tx.Exec(
-			`INSERT INTO ambiguous_candidates (filename, match_key, distance_seconds) VALUES (?,?,?)`,
-			filename, c.MatchKey, c.DistanceSeconds,
+			`INSERT INTO ambiguous_candidates (filename, match_key, distance_seconds, reason) VALUES (?,?,?,?)`,
+			filename, c.MatchKey, c.DistanceSeconds, c.Reason,
 		); err != nil {
 			return false, err
 		}
@@ -140,7 +140,7 @@ func (s *SQLStore) DemoteMatchToAmbiguous(matchKey, ambiguousMatchKey, filename 
 // per-file lookups.
 func loadAllAmbiguousCandidates(q querier) (map[string][]AmbiguousCandidate, error) {
 	rows, err := q.Query(
-		`SELECT filename, match_key, distance_seconds FROM ambiguous_candidates
+		`SELECT filename, match_key, distance_seconds, reason FROM ambiguous_candidates
 		ORDER BY filename, distance_seconds ASC`,
 	)
 	if err != nil {
@@ -151,7 +151,7 @@ func loadAllAmbiguousCandidates(q querier) (map[string][]AmbiguousCandidate, err
 	for rows.Next() {
 		var filename string
 		var c AmbiguousCandidate
-		if err := rows.Scan(&filename, &c.MatchKey, &c.DistanceSeconds); err != nil {
+		if err := rows.Scan(&filename, &c.MatchKey, &c.DistanceSeconds, &c.Reason); err != nil {
 			return nil, err
 		}
 		out[filename] = append(out[filename], c)

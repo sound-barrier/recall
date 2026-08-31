@@ -44,6 +44,11 @@ func TestEnsureAdditiveColumns_AddsMissingColumnIdempotently(t *testing.T) {
 	_, err = d.Exec(`CREATE TABLE coach_players (
 		id INTEGER PRIMARY KEY, player_id TEXT UNIQUE, handle TEXT NOT NULL)`)
 	mustNoErr(t, err)
+	// An "old" ambiguous_candidates from when the reason was derived.
+	_, err = d.Exec(`CREATE TABLE ambiguous_candidates (
+		filename TEXT NOT NULL, match_key TEXT NOT NULL,
+		distance_seconds INTEGER NOT NULL, PRIMARY KEY (filename, match_key))`)
+	mustNoErr(t, err)
 
 	if has, err := db.ColumnExists(d, "summary_screenshots", "played_at_utc"); err != nil || has {
 		t.Fatalf("precondition: column should be absent (has=%v err=%v)", has, err)

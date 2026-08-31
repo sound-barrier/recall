@@ -193,49 +193,52 @@ func TestAggregateMatchKey_AttachesSidecarsAndFoldsUnknown(t *testing.T) {
 	}
 }
 
-// The candidate Reason is derived from distance: beyond the 30-min EAD
-// cap a candidate can only come from the duplicate sweep; at or below
-// it, the reason stays empty (window / EAD ambiguity).
-func TestAttachAmbiguity_DerivesDuplicateReasonFromDistance(t *testing.T) {
+// The candidate Reason is STAMPED by whichever producer proposed the
+// candidate and stored with it; aggregate only carries it through. It used
+// to be derived from distance, which stopped working when a third producer
+// (the re-capture sweep) started landing anywhere on that axis.
+func TestAttachAmbiguity_CarriesTheStoredReason(t *testing.T) {
 	sentinel := match.NewAmbiguousMatchKey("dup.png").String()
 	recs := []match.Record{
 		{MatchKey: sentinel, SourceFiles: []string{"dup.png"}},
 		{MatchKey: "match-orig", SourceFiles: []string{"orig.png"}},
 	}
+	// The 720s row is the case the old derivation could not express: a
+	// re-capture sitting inside the EAD bridge's window, where distance
+	// alone reads as a near-miss.
 	aggregate.AttachAmbiguity(recs, map[string][]db.AmbiguousCandidate{
 		"dup.png": {
-			{MatchKey: "match-orig", DistanceSeconds: 11321},
-			{MatchKey: "match-other", DistanceSeconds: 720},
+			{MatchKey: "match-orig", DistanceSeconds: 11321, Reason: "duplicate_stats"},
+			{MatchKey: "match-other", DistanceSeconds: 720, Reason: "same_instant"},
+			{MatchKey: "match-near", DistanceSeconds: 90},
 		},
 	})
-	if len(recs[0].Candidates) != 2 {
-		t.Fatalf("expected 2 candidates, got %+v", recs[0].Candidates)
+	if len(recs[0].Candidates) != 3 {
+		t.Fatalf("expected 3 candidates, got %+v", recs[0].Candidates)
 	}
-	if got := recs[0].Candidates[0].Reason; got != "duplicate_stats" {
-		t.Errorf("11321s candidate reason = %q, want duplicate_stats", got)
-	}
-	if got := recs[0].Candidates[1].Reason; got != "" {
-		t.Errorf("720s candidate reason = %q, want empty", got)
+	for i, want := range []string{"duplicate_stats", "same_instant", ""} {
+		if got := recs[0].Candidates[i].Reason; got != want {
+			t.Errorf("candidate %d reason = %q, want %q", i, got, want)
+		}
 	}
 }
 
-// The single-key aggregate path (attachMatchSidecars via
-// MatchKey) derives the same reason — pins both candidate-
-// building sites.
-func TestAggregateMatchKey_DerivesDuplicateReasonFromDistance(t *testing.T) {
+// The single-key aggregate path (attachMatchSidecars via MatchKey) carries
+// the same stored reason — pins both candidate-building sites.
+func TestAggregateMatchKey_CarriesTheStoredReason(t *testing.T) {
 	sentinel := match.NewAmbiguousMatchKey("dup.png").String()
 	snap := db.Screenshots{
 		Teams: []db.TeamsRow{{Filename: "dup.png", MatchKey: sentinel, Eliminations: 1}},
 		AmbiguousCandidates: map[string][]db.AmbiguousCandidate{
-			"dup.png": {{MatchKey: "match-orig", DistanceSeconds: 11321}},
+			"dup.png": {{MatchKey: "match-orig", DistanceSeconds: 720, Reason: "same_instant"}},
 		},
 	}
 	rec, ok := aggregate.MatchKey(sentinel, snap, aggregate.Sidecars{})
 	if !ok {
 		t.Fatal("expected the sentinel record to aggregate")
 	}
-	if len(rec.Candidates) != 1 || rec.Candidates[0].Reason != "duplicate_stats" {
-		t.Errorf("candidates = %+v, want one with reason duplicate_stats", rec.Candidates)
+	if len(rec.Candidates) != 1 || rec.Candidates[0].Reason != "same_instant" {
+		t.Errorf("candidates = %+v, want one with reason same_instant", rec.Candidates)
 	}
 }
 

@@ -14,6 +14,7 @@ import {
   formatFinishedAt,
   screenshotURL,
   highlightSubstring,
+  duplicateEvidence,
   isDuplicateCandidate,
   hasDuplicateCandidate,
   previousAnnotatedRecord,
@@ -475,14 +476,25 @@ describe('row formatters', () => {
 })
 
 describe('duplicate-candidate predicates', () => {
-  it('isDuplicateCandidate keys on reason === "duplicate_stats"', () => {
+  it('isDuplicateCandidate covers every producer that means "same match"', () => {
     expect(isDuplicateCandidate({ reason: 'duplicate_stats' })).toBe(true)
+    expect(isDuplicateCandidate({ reason: 'same_instant' })).toBe(true)
     expect(isDuplicateCandidate({})).toBe(false)
     expect(isDuplicateCandidate({ reason: '' })).toBe(false)
   })
 
+  // The two producers found the same thing by different evidence, and the
+  // user resolving it deserves to know which — a stat line that matched is
+  // a different kind of claim from a clock that did.
+  it('duplicateEvidence names what was actually compared', () => {
+    expect(duplicateEvidence({ reason: 'duplicate_stats' })).toBe('identical combat stat line')
+    expect(duplicateEvidence({ reason: 'same_instant' })).toBe('same match, re-captured')
+    expect(duplicateEvidence({})).toBe('')
+  })
+
   it('hasDuplicateCandidate scans the candidate list and tolerates its absence', () => {
     expect(hasDuplicateCandidate({ candidates: [{ match_key: 'm', distance_seconds: 11321, reason: 'duplicate_stats' }] })).toBe(true)
+    expect(hasDuplicateCandidate({ candidates: [{ match_key: 'm', distance_seconds: 720, reason: 'same_instant' }] })).toBe(true)
     expect(hasDuplicateCandidate({ candidates: [{ match_key: 'm', distance_seconds: 720 }] })).toBe(false)
     expect(hasDuplicateCandidate({})).toBe(false)
   })

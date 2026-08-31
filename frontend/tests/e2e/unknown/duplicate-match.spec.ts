@@ -120,6 +120,38 @@ test.describe('duplicate capture — flagged for triage via Unknown tab', () => 
     await expect(page.locator('button.candidate-fresh')).toHaveText(/Different match — keep separate/)
   })
 
+  // The second producer: a match re-captured with no TEAMS shot on either
+  // side, caught on the match's own played-at identity instead of its stat
+  // line. Same triage, different evidence — and the user resolving it is
+  // owed the difference, because "your stats matched" and "your clock
+  // matched" are not the same claim about the same screenshot.
+  test('a same-instant re-capture says what actually matched', async ({ page }) => {
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      const recaptured = duplicateRecord()
+      recaptured.candidates[0]!.reason = 'same_instant'
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([originalRecord(), recaptured]),
+      })
+    })
+
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
+
+    const card = page.locator('.ambiguous-card').first()
+    await expect(card.locator('.duplicate-badge')).toContainText(/Possible duplicate/i)
+
+    await card.locator('.unknown-card-head').click()
+    const row = page.locator('.candidate-row').first()
+    await expect(row.locator('.candidate-duplicate-label')).toContainText(/same match, re-captured/i)
+    await expect(row.locator('.candidate-duplicate-label')).not.toContainText(/stat line/i)
+    // The merge / keep-separate pair reads the same: the evidence differs,
+    // the decision in front of the user does not.
+    await expect(row.locator('button.candidate-attach')).toHaveText(/Same match — merge screenshots/)
+    await expect(page.locator('button.candidate-fresh')).toHaveText(/Different match — keep separate/)
+  })
+
   test('merge PUTs the original key to /resolution and the card disappears', async ({ page }) => {
     let putBody: Record<string, unknown> | null = null
     let putCount = 0

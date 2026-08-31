@@ -1768,17 +1768,22 @@ export type AmbiguousCandidate = {
      */
     distance_seconds: number;
     /**
-     * Why the candidate was proposed. `duplicate_stats` means the
-     * end-of-parse duplicate sweep found the capture's full TEAMS
-     * stat line (eliminations, assists, deaths, damage, healing,
-     * mitigation) exactly equal to this candidate match's, 30
-     * minutes to 7 days apart — almost certainly a re-capture of
-     * the same match. Omitted for ordinary EAD-bridge /
-     * timestamp-window ambiguity. Derived from `distance_seconds`
-     * server-side, never stored.
+     * Which producer proposed the candidate, and therefore what
+     * evidence it found. `duplicate_stats`: the end-of-parse
+     * duplicate sweep found the capture's full TEAMS stat line
+     * (eliminations, assists, deaths, damage, healing, mitigation)
+     * exactly equal to this candidate match's, 30 minutes to 7 days
+     * apart. `same_instant`: the re-capture sweep found the same
+     * played-at instant, map, result and final score — the case
+     * with no TEAMS shot to fingerprint, at any capture distance.
+     * Both mean "almost certainly the match you already have".
+     * Omitted for ordinary EAD-bridge / timestamp-window ambiguity.
+     * Stamped by its producer and stored on the candidate row;
+     * `distance_seconds` no longer identifies it, because the
+     * re-capture sweep overlaps the EAD bridge's window.
      *
      */
-    reason?: 'duplicate_stats';
+    reason?: 'duplicate_stats' | 'same_instant';
     /**
      * One source file from the candidate match (its earliest
      * screenshot) so the picker UI can render a thumbnail next
