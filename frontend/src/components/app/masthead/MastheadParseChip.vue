@@ -59,9 +59,14 @@ const pct = computed(() => {
   >
     <span class="mpc-dot" aria-hidden="true" />
     <span class="mpc-label">PARSING</span>
+    <!-- progressbar is name-from-author-only: the "3 / 8" inside contributes
+         nothing to the name, and the wrapping button's aria-label names the
+         button, not this. Identity-only, per the meter convention — the
+         numbers ride aria-valuenow/max. -->
     <span
       class="mpc-counter"
       role="progressbar"
+      aria-label="Screenshots parsed"
       :aria-valuemin="0"
       :aria-valuemax="total"
       :aria-valuenow="done"

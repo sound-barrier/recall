@@ -10,6 +10,7 @@ import { computed } from 'vue'
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
 import { perfVsRankSchema, type PerfVsRankConfig } from '@/dashboard/widget-schemas'
+import type { ClimbVerdict } from '@/match/dossier/match-baseline-helpers'
 
 const dossier = useDossier()
 const { config } = useWidgetConfig<PerfVsRankConfig>('perf-vs-rank', perfVsRankSchema)
@@ -20,13 +21,13 @@ const result = dossier.perfVsRank(() => ({
 
 // The verdict IS the value — the number alone ("+1.4σ") answers a question
 // nobody asked.
-const VERDICT_TEXT: Record<string, string> = {
+const VERDICT_TEXT: Record<ClimbVerdict, string> = {
   deflation: 'Playing above your baseline, rank flat',
   lucky: 'Rank climbed on a below-baseline week',
   matched: 'Rank is following the play',
   unknown: 'Not enough to say',
 }
-const verdict = computed(() => VERDICT_TEXT[result.value.verdict] ?? VERDICT_TEXT.unknown)
+const verdict = computed(() => VERDICT_TEXT[result.value.verdict])
 
 const tint = computed(() => {
   if (result.value.verdict === 'deflation') return 'tint-down'

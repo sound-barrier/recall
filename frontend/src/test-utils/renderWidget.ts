@@ -172,7 +172,13 @@ function fakeDossier(over: DossierOverride): MatchesDossier {
     velocity:            wrapQuery(over.velocity, {
       perSession: null, perWeek: null, sessions: 0, readCount: 0,
     } as ClimbVelocity),
-    lossQualityBreakdown: wrapQuery(over.lossQualityBreakdown, { rows: [] as BreakdownEntry[], unscored: 0 }),
+    lossQualityBreakdown: wrapQuery(over.lossQualityBreakdown, {
+      // The real helper maps a fixed ['close','normal','stomp'] tuple, so it
+      // ALWAYS returns three rows. An empty array is a shape production
+      // cannot produce, and a fake that invents one buys false coverage.
+      rows: (['close', 'normal', 'stomp'] as const).map((key) => ({ key, total: 0, winrate: 0, share: 0 })),
+      unscored: 0,
+    }),
     withWhomBreakdown:   wrapQuery(over.withWhomBreakdown, [] as BreakdownEntry[]),
     topHeroesByMinutes:  wrapQuery(over.topHeroesByMinutes, [] as HeroBreakdownEntry[]),
     mostPlayedHero:      wrapQuery(over.mostPlayedHero, null),
