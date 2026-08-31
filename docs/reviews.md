@@ -127,7 +127,15 @@ so none of that can happen.
 The dialog opens in place, over the Reviews tab, and shows a manifest —
 one row per match, each with its replay code or the gap where one should
 be — so you see exactly what is going to another human before anything
-leaves.
+leaves. Every row has an **×**: the set is yours whatever put it there,
+and dropping a match is the fastest answer to one that is missing a code.
+
+If you would rather not pick at all, **Or start from** offers two
+proposals: *Everything since your last send*, and *Recent losses on what
+you're working on* — the second reads your open focus items and finds
+the losses on the heroes and maps they name. Either one replaces the set
+in one click and stays fully editable. Neither ever suggests a match
+without a replay code, or one you have hidden.
 
 - **Your handle (required)** — the name your coach knows you by. The
   bundle is stamped with it; that stamp is what makes their Recall open
@@ -264,10 +272,14 @@ follow from that shape:
 
 - The **What you saw** panel asks for the map, result and date but not
   a hero — a team review names no single player's pick.
-- The review travels as the **web page only**: *Save a web page — for
-  the team* writes one file anyone can open, and there is no notes
-  file to export, because that file is a per-player artifact that
-  lands notes on one person's matches.
+- The review travels **either way**, both addressed to the team.
+  *Save a web page — for the team* writes one file anyone can open;
+  *Export notes file — for the team* writes the archive a captain who
+  runs Recall can import. On their side it lands as the team's: no
+  "this was written about somebody else" warning, the focus items join
+  their list, and every block they accept is signed *"— Ordo · for
+  Sound Barrier · 2026-08-15"* so it never reads as a note about them
+  personally.
 - The team sits on your roster like a player does, marked **TEAM**,
   with its own standing focus list — the next codes session for the
   same team picks the name from the prompt and continues the file.
@@ -305,6 +317,21 @@ Compare and Elo tabs from the strip under the masthead, and come back
 with **← Back to the film room** (or `g r`). A replay-code session has
 no history to step into, and the strip says so instead of offering
 empty rooms.
+
+Beside the sheet, the **stat rail** answers the question you keep
+having: is this how they usually play this hero, on this map? It reads
+their winrate and average E·A·D on both, out of the corpus already on
+loan, and it follows the frame as you walk the reel — so you never step
+out to Matches mid-review. When a bucket is too small to mean anything
+it says *too few to read* rather than showing you 100% off two games,
+which on a six-match bundle is the common case. A replay-code session
+has no rail: those frames arrive as codes with no history behind them.
+
+Replay codes have a shelf life, and the room says so. OW retires them at
+season rollover, so a code from an earlier season is marked **likely
+expired** where it is stored — and if *every* code in a bundle predates
+the current season, the loan slip tells you before you spend the sitting
+finding out one frame at a time.
 
 ### 3. Mark moments while you watch
 
@@ -363,6 +390,13 @@ day, or by its replay code — the matches themselves left with their
 sessions, only your words stay), and **Review new codes for them**
 opens the codes door already knowing who it is for, so the room never
 asks.
+
+The dossier also lists your **sessions** with them: the day each one
+opened, how many matches it covered, and what their focus list said when
+you handed it back — which is what makes "what changed since last time"
+answerable. A sitting you opened and walked away from reads *never
+ended* rather than vanishing, because it happened, and how often the two
+of you meet is the point of the list.
 
 Inside a session, the same continuity shows up as a quiet drawer under
 the desk: **Earlier notes about {them}** — the notes you wrote in

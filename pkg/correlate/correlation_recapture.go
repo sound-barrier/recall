@@ -94,10 +94,3 @@ type stampedIdentity struct {
 	identity summaryIdentity
 	ts       time.Time
 }
-
-// FindRecapturedMatches returns existing tracked matches whose SUMMARY
-// identity exactly equals one of newKey's, with no conflicting signature.
-// One-shot form; the sweep goes through DuplicateScan.
-func FindRecapturedMatches(newKey string, snap db.Screenshots) []db.AmbiguousCandidate {
-	return NewDuplicateScan(snap).recaptureCandidates(newKey)
-}

@@ -95,3 +95,5 @@ a folder silently regrows what it just shed.
 | 2026-08-31 | dismiss-and-parse-accounting | `frontend/src/components/coach/room` | 13 → 14 | CoachStatRail — the player's tendencies on the frame's own hero and map, read out of the loaned corpus; one more surface of the one room.
 | 2026-08-31 | dismiss-and-parse-accounting | `pkg/db` | 34 → 35 | store_coach_sessions.go — the coach's own sittings, coach-AUTHORED like store_coach_notes.go beside it.
 | 2026-08-31 | dismiss-and-parse-accounting | `pkg/db/dbtest` | 12 → 13 | fake_coach_sessions.go — the Fake's half of the same family; this count tracks pkg/db's by construction.
+| 2026-08-31 | dismiss-and-parse-accounting | `frontend/src/styles` | 21 → 20 | toasts.css moved to `components/shared/`. Every toast is lazily loaded, so routing the family through app.css put its chrome in the initial stylesheet; a sibling the toast components import is the same one definition in the chunks that use it.
+| 2026-08-31 | dismiss-and-parse-accounting | `frontend/src/components/matches/detail` | 16 → 17 | match-choosers.css — the shared chooser chip family, moved out of styles/buttons.css for the same reason as the toasts.

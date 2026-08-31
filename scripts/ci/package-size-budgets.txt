@@ -411,7 +411,7 @@ frontend/src/components/elo                   20
 # collapse made, and the one this directory exists to hold. A shared surface
 # raised from any tab by a background parse cannot live in any single
 # feature's scoped block.
-frontend/src/styles                           21
+frontend/src/styles                           20
 
 # frontend/src/components/settings — one component per Settings tab section,
 # plus the small widgets those sections share between them. Ratcheted down from
@@ -434,8 +434,13 @@ frontend/src/components/settings              16
 # 15 -> 16: MatchExclusionChooser. The panel already held one chooser for
 # what happened to a match (who left, who threw); this is the second, for why
 # it should not count. Same responsibility spelled one concern wider — they
-# share a chip family in buttons.css and sit in the same journal.
-frontend/src/components/matches/detail        16
+# share a chip family and sit in the same journal.
+# 16 -> 17: match-choosers.css, that shared chip family. It spent one
+# commit in styles/buttons.css, which app.css imports — which put 1.5 KB of
+# detail-panel chrome in the INITIAL stylesheet for every user who never
+# opens a match. A sibling both choosers import is one definition in the
+# chunk that uses it.
+frontend/src/components/matches/detail        17
 
 # frontend/src — the app root: App.vue, main.ts, the seam family that remains
 # at this level (api-client, api-platform, api-error, api-unwrap), the

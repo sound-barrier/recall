@@ -79,3 +79,5 @@ const emit = defineEmits<{
   align-self: flex-end;
 }
 </style>
+
+<style src="@/components/shared/toasts.css"></style>

@@ -25,9 +25,8 @@ const DuplicateMatchWindow = 7 * 24 * time.Hour
 // third producer made deriving it from distance untenable.
 const ReasonDuplicateStats = "duplicate_stats"
 
-// FindDuplicateCandidates is the end-of-parse sweep's single entry point:
-// every way this package knows to say "you already have this match",
-// merged into one ranked list.
+// The end-of-parse sweep's merge policy, applied by
+// DuplicateScan.CandidatesFor.
 //
 // Two producers, deliberately not folded into one. The stat-line
 // fingerprint compares six independent numbers off the TEAMS scoreboard
@@ -41,13 +40,6 @@ const ReasonDuplicateStats = "duplicate_stats"
 // one the Unknown tab's copy was written for. (Their distances can differ
 // by seconds — one is measured between TEAMS filenames, the other between
 // SUMMARY filenames — which moves nothing but the "N h apart" text.)
-//
-// This is the ONE-SHOT form, for a single question. The sweep asks the
-// same question of every match a run created, and must build a
-// DuplicateScan once and reuse it — see that type for why.
-func FindDuplicateCandidates(newKey string, snap db.Screenshots) []db.AmbiguousCandidate {
-	return NewDuplicateScan(snap).CandidatesFor(newKey)
-}
 
 // sortCandidates puts the closest capture first, with match_key breaking
 // ties — the order the Unknown tab's picker renders.
@@ -91,14 +83,6 @@ func (l statLine) meaningful() bool {
 type stampedLine struct {
 	line statLine
 	ts   time.Time
-}
-
-// FindDuplicateMatches returns existing tracked matches whose TEAMS stat
-// line exactly equals one of newKey's, between the EAD bridge's outer cap
-// and DuplicateMatchWindow away, with no conflicting SUMMARY signature.
-// One-shot form; the sweep goes through DuplicateScan.
-func FindDuplicateMatches(newKey string, snap db.Screenshots) []db.AmbiguousCandidate {
-	return NewDuplicateScan(snap).statLineCandidates(newKey)
 }
 
 // summarySignature folds a match's SUMMARY-borne identity fields

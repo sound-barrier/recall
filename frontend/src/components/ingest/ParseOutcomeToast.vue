@@ -102,3 +102,5 @@ function onViewFailed(token: number) {
   flex-shrink: 0;
 }
 </style>
+
+<style src="@/components/shared/toasts.css"></style>

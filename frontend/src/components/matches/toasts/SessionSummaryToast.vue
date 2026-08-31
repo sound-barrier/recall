@@ -147,3 +147,5 @@ const movement = computed(() => {
   color: var(--accent-text);
 }
 </style>
+
+<style src="@/components/shared/toasts.css"></style>

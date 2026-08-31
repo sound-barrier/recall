@@ -51,6 +51,7 @@ Role          [tank] [support] [dps]
 Result        [victory] [defeat] [draw]
 Tags          [#stack] [#stream] [#review] …
 Leavers       [Include] [Drop from tally] [Hide entirely]
+Excluded      [Count them] [Drop from tally] [Hide entirely]
 With a leaver  [You left] [Teammate] [Enemy]
 With a thrower [You threw] [Teammate] [Enemy]
 
@@ -160,9 +161,10 @@ To require a meaningful play duration, set a **Min play time** or
 **Result** is one row with three chips: victory, defeat, draw.
 
 **Tags** lists every annotation tag in your corpus. The
-conventional three are `stack`, `stream`, `placement`, but any tag
-the user added via the detail panel surfaces here. Multi-select
-with OR-within semantics ("any of these tags").
+conventional two are `stack` and `stream`, but any tag the user
+added via the detail panel surfaces here. Multi-select with
+OR-within semantics ("any of these tags"). (`placement` used to be
+the third; it is an exclusion REASON now — see below.)
 
 **Leavers** is a segmented control governing how leaver-tagged
 matches count. Three modes:
@@ -173,6 +175,29 @@ matches count. Three modes:
   the leaves but the dossier W/L/D and winrate skip them.
 - **Hide entirely** — drop leaver-tagged matches from the leaves
   list and the dossier.
+
+**Excluded matches** is the same three-way control over matches you
+gave a reason not to count — a placement, an MMR adjustment, a game
+lost to your own connection. Mark one in the match journal under
+*Doesn't count*.
+
+The default here is **Drop from tally**, not Include, and that is
+deliberate: writing the reason down IS the instruction, so the control
+exists to override it rather than to switch it on.
+
+- **Count them** — the match counts like any other. Use it when you
+  want the raw record.
+- **Drop from tally** (default) — the match stays in the list and out
+  of every win rate: the dossier's Record tile, the masthead, the
+  play-mode and role splits.
+- **Hide entirely** — drop it from the list too.
+
+An excluded match is still a match you PLAYED, so it stays in "matches
+played", time-on-hero and the map counts. Only the win rates skip it.
+
+You can search for one directly: `excluded:placement`,
+`excluded:mmr_adjustment`, `excluded:outage`. The reason also travels
+in the CSV export and in a bundle you send a coach.
 
 **With a leaver** and **With a thrower** are separate chip rows
 that scope the *set* by which side was disrupted — You / Teammate

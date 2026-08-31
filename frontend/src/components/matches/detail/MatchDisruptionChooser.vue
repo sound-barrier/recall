@@ -75,3 +75,5 @@ function toggle(side: DisruptionSide) {
     </button>
   </div>
 </template>
+
+<style src="./match-choosers.css"></style>

@@ -46,7 +46,7 @@ func newSnap(origKey string) db.Screenshots {
 
 func TestFindDuplicateMatches_IdenticalStatLineHoursApart_Flags(t *testing.T) {
 	origKey := "match-2026-05-10T18-05-22"
-	cands := correlate.FindDuplicateMatches(dupNewKey, newSnap(origKey))
+	cands := correlate.NewDuplicateScan(newSnap(origKey)).CandidatesFor(dupNewKey)
 	if len(cands) != 1 {
 		t.Fatalf("expected 1 duplicate candidate, got %d (%+v)", len(cands), cands)
 	}
@@ -61,7 +61,7 @@ func TestFindDuplicateMatches_IdenticalStatLineHoursApart_Flags(t *testing.T) {
 func TestFindDuplicateMatches_BeyondSevenDays_NoFlag(t *testing.T) {
 	snap := newSnap("match-2026-05-02T18-05-22")
 	snap.Teams[0].Filename = "Overwatch 2 Screenshot 2026.05.02 - 18.05.22.11.png"
-	if cands := correlate.FindDuplicateMatches(dupNewKey, snap); cands != nil {
+	if cands := correlate.NewDuplicateScan(snap).CandidatesFor(dupNewKey); cands != nil {
 		t.Errorf("expected no flag beyond 7 days, got %+v", cands)
 	}
 }
@@ -71,7 +71,7 @@ func TestFindDuplicateMatches_InsideEADWindow_NoFlag(t *testing.T) {
 	// must stay out so existing correlation behavior is untouched.
 	snap := newSnap("match-2026-05-10T20-54-03")
 	snap.Teams[0].Filename = "Overwatch 2 Screenshot 2026.05.10 - 20.54.03.11.png"
-	if cands := correlate.FindDuplicateMatches(dupNewKey, snap); cands != nil {
+	if cands := correlate.NewDuplicateScan(snap).CandidatesFor(dupNewKey); cands != nil {
 		t.Errorf("expected no flag inside the 30-min EAD zone, got %+v", cands)
 	}
 }
@@ -80,7 +80,7 @@ func TestFindDuplicateMatches_JustPastEADWindow_Flags(t *testing.T) {
 	// 31 min apart — the first minute the sweep owns.
 	snap := newSnap("match-2026-05-10T20-43-03")
 	snap.Teams[0].Filename = "Overwatch 2 Screenshot 2026.05.10 - 20.43.03.11.png"
-	cands := correlate.FindDuplicateMatches(dupNewKey, snap)
+	cands := correlate.NewDuplicateScan(snap).CandidatesFor(dupNewKey)
 	if len(cands) != 1 || cands[0].DistanceSeconds != 1860 {
 		t.Errorf("expected 31-min duplicate flagged, got %+v", cands)
 	}
@@ -101,7 +101,7 @@ func TestFindDuplicateMatches_MapConflict_NoFlag(t *testing.T) {
 			MatchKey: dupNewKey, Map: "kings row",
 		},
 	}
-	if cands := correlate.FindDuplicateMatches(dupNewKey, snap); cands != nil {
+	if cands := correlate.NewDuplicateScan(snap).CandidatesFor(dupNewKey); cands != nil {
 		t.Errorf("expected map conflict to block the flag, got %+v", cands)
 	}
 }
@@ -120,7 +120,7 @@ func TestFindDuplicateMatches_MatchingSummaries_StillFlags(t *testing.T) {
 			MatchKey: dupNewKey, Map: "rialto", Hero: "lucio", Date: "2026-05-10",
 		},
 	}
-	cands := correlate.FindDuplicateMatches(dupNewKey, snap)
+	cands := correlate.NewDuplicateScan(snap).CandidatesFor(dupNewKey)
 	if len(cands) != 1 || cands[0].MatchKey != origKey {
 		t.Errorf("expected agreeing summaries to still flag, got %+v", cands)
 	}
@@ -133,7 +133,7 @@ func TestFindDuplicateMatches_ZeroDamage_NoFlag(t *testing.T) {
 	for i := range snap.Teams {
 		snap.Teams[i].Damage, snap.Teams[i].Healing, snap.Teams[i].Mitigation = 0, 0, 0
 	}
-	if cands := correlate.FindDuplicateMatches(dupNewKey, snap); cands != nil {
+	if cands := correlate.NewDuplicateScan(snap).CandidatesFor(dupNewKey); cands != nil {
 		t.Errorf("expected zero-damage rows to never flag, got %+v", cands)
 	}
 }
@@ -143,7 +143,7 @@ func TestFindDuplicateMatches_AllZeroEAD_NoFlag(t *testing.T) {
 	for i := range snap.Teams {
 		snap.Teams[i].Eliminations, snap.Teams[i].Assists, snap.Teams[i].Deaths = 0, 0, 0
 	}
-	if cands := correlate.FindDuplicateMatches(dupNewKey, snap); cands != nil {
+	if cands := correlate.NewDuplicateScan(snap).CandidatesFor(dupNewKey); cands != nil {
 		t.Errorf("expected all-zero E/A/D rows to never flag, got %+v", cands)
 	}
 }
@@ -155,7 +155,7 @@ func TestFindDuplicateMatches_ZeroButEqualHealingMitigation_Flags(t *testing.T) 
 	for i := range snap.Teams {
 		snap.Teams[i].Healing, snap.Teams[i].Mitigation = 0, 0
 	}
-	cands := correlate.FindDuplicateMatches(dupNewKey, snap)
+	cands := correlate.NewDuplicateScan(snap).CandidatesFor(dupNewKey)
 	if len(cands) != 1 {
 		t.Errorf("expected zero-but-equal healing/mitigation to flag, got %+v", cands)
 	}
@@ -164,7 +164,7 @@ func TestFindDuplicateMatches_ZeroButEqualHealingMitigation_Flags(t *testing.T) 
 func TestFindDuplicateMatches_OneFieldDiffers_NoFlag(t *testing.T) {
 	snap := newSnap("match-2026-05-10T18-05-22")
 	snap.Teams[0].Damage++
-	if cands := correlate.FindDuplicateMatches(dupNewKey, snap); cands != nil {
+	if cands := correlate.NewDuplicateScan(snap).CandidatesFor(dupNewKey); cands != nil {
 		t.Errorf("expected a single differing field to block the flag, got %+v", cands)
 	}
 }
@@ -173,7 +173,7 @@ func TestFindDuplicateMatches_UntrackedCandidateKey_NoFlag(t *testing.T) {
 	// Sentinel-keyed rows (ambiguous-/unmatched-) are pending triage
 	// themselves and must never be offered as duplicate targets.
 	snap := newSnap("ambiguous-c29tZWZpbGU")
-	if cands := correlate.FindDuplicateMatches(dupNewKey, snap); cands != nil {
+	if cands := correlate.NewDuplicateScan(snap).CandidatesFor(dupNewKey); cands != nil {
 		t.Errorf("expected non-tracked candidate keys to be skipped, got %+v", cands)
 	}
 }
@@ -182,7 +182,7 @@ func TestFindDuplicateMatches_OwnRowsOnly_NoFlag(t *testing.T) {
 	// Both equal rows belong to the new match itself (multi-capture of
 	// one set) — nothing to flag against.
 	snap := newSnap(dupNewKey)
-	if cands := correlate.FindDuplicateMatches(dupNewKey, snap); cands != nil {
+	if cands := correlate.NewDuplicateScan(snap).CandidatesFor(dupNewKey); cands != nil {
 		t.Errorf("expected own-key rows to be excluded, got %+v", cands)
 	}
 }
@@ -198,7 +198,7 @@ func TestFindDuplicateMatches_DedupesPerKeyKeepingMinDistance(t *testing.T) {
 		Eliminations: 17, Assists: 16, Deaths: 11,
 		Damage: 12843, Healing: 9021, Mitigation: 3310,
 	})
-	cands := correlate.FindDuplicateMatches(dupNewKey, snap)
+	cands := correlate.NewDuplicateScan(snap).CandidatesFor(dupNewKey)
 	if len(cands) != 1 {
 		t.Fatalf("expected 1 deduped candidate, got %d (%+v)", len(cands), cands)
 	}
@@ -224,7 +224,7 @@ func TestFindDuplicateMatches_MultipleCandidates_SortedByDistanceThenKey(t *test
 	farther.MatchKey = "match-2026-05-10T17-05-22"
 	snap.Teams = append(snap.Teams, tiedAfter, farther)
 
-	cands := correlate.FindDuplicateMatches(dupNewKey, snap)
+	cands := correlate.NewDuplicateScan(snap).CandidatesFor(dupNewKey)
 	if len(cands) != 3 {
 		t.Fatalf("expected 3 candidates, got %d (%+v)", len(cands), cands)
 	}
@@ -269,7 +269,7 @@ func TestCandidateReason_StampedByItsProducer(t *testing.T) {
 		// can ever sit to the boundary.
 		snap := newSnap("match-2026-05-10T20-44-02")
 		snap.Teams[0].Filename = "Overwatch 2 Screenshot 2026.05.10 - 20.44.02.11.png"
-		cands := correlate.FindDuplicateMatches(dupNewKey, snap)
+		cands := correlate.NewDuplicateScan(snap).CandidatesFor(dupNewKey)
 		if len(cands) != 1 {
 			t.Fatalf("expected one duplicate candidate, got %+v", cands)
 		}
@@ -285,7 +285,7 @@ func TestCandidateReason_StampedByItsProducer(t *testing.T) {
 	t.Run("the stat-line sweep stays silent at the EAD cap", func(t *testing.T) {
 		snap := newSnap("match-2026-05-10T20-44-03")
 		snap.Teams[0].Filename = "Overwatch 2 Screenshot 2026.05.10 - 20.44.03.11.png"
-		if cands := correlate.FindDuplicateMatches(dupNewKey, snap); len(cands) != 0 {
+		if cands := correlate.NewDuplicateScan(snap).CandidatesFor(dupNewKey); len(cands) != 0 {
 			t.Errorf("sweep proposed %+v at the 1800s cap; that distance belongs to the EAD bridge", cands)
 		}
 	})
@@ -299,7 +299,7 @@ func TestCandidateReason_SurvivesInsideTheEADWindow(t *testing.T) {
 	snap := recapSnap("match-2026-05-10T21-02-03")
 	snap.Summaries[0].Filename = "Overwatch 2 Screenshot 2026.05.10 - 21.02.03.11.png"
 
-	cands := correlate.FindRecapturedMatches(recapNewKey, snap)
+	cands := correlate.NewDuplicateScan(snap).CandidatesFor(recapNewKey)
 	if len(cands) != 1 {
 		t.Fatalf("expected one re-capture candidate, got %+v", cands)
 	}

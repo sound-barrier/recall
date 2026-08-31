@@ -16,11 +16,12 @@ import (
 // canceled. DuplicateScan parses and indexes once; the benchmarks below
 // are the evidence, and this test is the part that can fail.
 //
-// A prepared scan must answer EXACTLY what the one-shot form answers. It is
-// the same two producers over the same fingerprints, and an index that
-// quietly disagreed would be a wrong triage decision rather than a slow
-// one.
-func TestDuplicateScan_AgreesWithTheOneShotForm(t *testing.T) {
+// The sweep REUSES one scan across every key it judges, which is the whole
+// point — so a scan that answered differently on its second question than
+// on its first would be a wrong triage decision rather than a slow one.
+// Compared against a fresh scan per key: same answer, every time, whatever
+// the index has been asked before.
+func TestDuplicateScan_AnswersTheSameWhetherOrNotItIsReused(t *testing.T) {
 	snap := benchCorpusWithTeams(200)
 	// A real duplicate to find, not just a corpus of misses: the same
 	// identity and stat line as an existing match, hours later.
@@ -31,10 +32,10 @@ func TestDuplicateScan_AgreesWithTheOneShotForm(t *testing.T) {
 	scan := correlate.NewDuplicateScan(snap)
 	found := 0
 	for _, s := range snap.Summaries {
-		want := correlate.FindDuplicateCandidates(s.MatchKey, snap)
+		want := correlate.NewDuplicateScan(snap).CandidatesFor(s.MatchKey)
 		got := scan.CandidatesFor(s.MatchKey)
 		if !reflect.DeepEqual(want, got) {
-			t.Fatalf("%s: indexed = %+v, one-shot = %+v", s.MatchKey, got, want)
+			t.Fatalf("%s: reused scan = %+v, fresh scan = %+v", s.MatchKey, got, want)
 		}
 		found += len(got)
 	}
@@ -76,7 +77,7 @@ func BenchmarkSweepWithTeams(b *testing.B) {
 	b.Run("oneshot/n=5000", func(b *testing.B) {
 		for b.Loop() {
 			for _, s := range snap.Summaries {
-				correlate.FindDuplicateCandidates(s.MatchKey, snap)
+				correlate.NewDuplicateScan(snap).CandidatesFor(s.MatchKey)
 			}
 		}
 	})
@@ -96,7 +97,7 @@ func BenchmarkSweepSummaryOnly(b *testing.B) {
 		b.Run(fmt.Sprintf("oneshot/n=%d", n), func(b *testing.B) {
 			for b.Loop() {
 				for _, s := range snap.Summaries {
-					correlate.FindDuplicateCandidates(s.MatchKey, snap)
+					correlate.NewDuplicateScan(snap).CandidatesFor(s.MatchKey)
 				}
 			}
 		})

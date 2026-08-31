@@ -11,7 +11,6 @@
 @import url('./badges.css');
 
 /* After buttons + badges: a toast is chrome built out of both. */
-@import url('./toasts.css');
 @import url('./paper.css');
 
 /* After paper: a note renders ON the paper surface in the film room, so the

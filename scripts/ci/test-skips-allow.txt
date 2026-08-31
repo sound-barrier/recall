@@ -54,3 +54,8 @@ pkg/parser/integration_test.go:157:		t.Skipf("no golden file at %s (run with REC
 # suppression — the DST conversion assertions need a real DST zone.
 pkg/match/match_time_test.go:17:		t.Skipf("no America/Denver zoneinfo: %v", err)
 pkg/app/parse_played_at_utc_test.go:44:		t.Skip("host cannot convert the wall clock")
+# Same guard, same reason: the duplicate sweep's SUMMARY-only fixture derives
+# its instant the way the parse path does (LocalWallClockToUTC), because a
+# hard-coded Z string agreed with it in exactly one timezone — green on a
+# UTC-6 laptop and red on CI.
+pkg/app/duplicate_sweep_test.go:215:		t.Skip("host cannot convert the wall clock")

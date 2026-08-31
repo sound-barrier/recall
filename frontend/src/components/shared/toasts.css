@@ -1,3 +1,10 @@
+/* The bottom-right toast family. Imported by the toast components as a
+   sibling rather than through app.css: every toast is lazily loaded, so
+   routing this through the index put their chrome in the INITIAL
+   stylesheet for every user, including the ones who never see a toast.
+   One definition either way — that was the point of collapsing seven
+   copies into it — and now in the chunks that actually use it. */
+
 /* The toast family — every transient report Recall raises in the
    bottom-right corner.
  *

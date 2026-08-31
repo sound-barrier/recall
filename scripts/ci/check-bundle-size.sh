@@ -134,7 +134,20 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # and the Run Parse copy states. The outcome toast itself is a lazy
 # overlay chunk; only the lifecycle plumbing rides the entry graph.
 # Measured 358152B.
-: "${MAX_INITIAL_JS_BYTES:=360000}"
+# 2026-08: 360000 -> 362000 -- the seven-feature wave's eager slice, which is
+# almost entirely the matches store and its helpers: the exclusion-reason
+# predicate threaded through countsInTally and every dossier base, the
+# duplicate link on the record, setShareKeys/dropShareKey on the share
+# composable, and the ListCoachPlayerSessions binding. Everything the user
+# SEES is lazy -- the chooser, the chip, the rail, the suggestions and the
+# dossier's session list all ride view or overlay chunks. Two regressions
+# found while measuring went the other way: the annotation-chooser family
+# and the whole toast family had been routed through app.css, which put
+# 5.0KB of chrome for six lazily-loaded toasts and a detail-panel control
+# in the INITIAL stylesheet; both are sibling stylesheets in their own
+# chunks now, and initial CSS came in UNDER its unchanged budget.
+# Measured 360811B.
+: "${MAX_INITIAL_JS_BYTES:=362000}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
@@ -342,7 +355,13 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # lazy chunks: the ParseOutcomeToast overlay, the Unknown tab's Dismiss
 # extension (every-file loop + the ambiguous card's zone), the ref-gap
 # acknowledge disclosure, the parked badge + Retry. Measured 2175021B.
-: "${MAX_TOTAL_JS_BYTES:=2177000}"
+# 2026-08: 2177000 -> 2191000 -- the seven-feature wave, all of it in lazy
+# chunks: the exclusion chooser and its narrow control, the duplicate chip
+# on both row renderers, the replay-code staleness note and the loan-slip
+# warning, the film-room stat rail and its kernel, the send dialog's two
+# suggestions plus per-row removal, the dossier's session list, and the
+# team notes file's addressee. Measured 2188972B.
+: "${MAX_TOTAL_JS_BYTES:=2191000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
