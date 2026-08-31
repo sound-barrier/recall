@@ -61,7 +61,7 @@ describe('UnknownFailedSection', () => {
     expect(screen.getByText('corrupt.png')).toBeInTheDocument()
     expect(screen.getByText(/decoding image: png: invalid format/)).toBeInTheDocument()
     expect(screen.getByText(/6 attempts/)).toBeInTheDocument()
-    expect(screen.getByText(/retried on every parse run/i)).toBeInTheDocument()
+    expect(screen.getByText(/retried on\s+the next few parse runs/i)).toBeInTheDocument()
   })
 
   it('the bundle button calls the export and reports the saved name', async () => {
@@ -80,12 +80,12 @@ describe('UnknownFailedSection', () => {
     expect(screen.queryByText(/Saved/)).not.toBeInTheDocument()
   })
 
-  it('two-click Delete forever fires IgnoreScreenshot only on confirm', async () => {
+  it('two-click Dismiss fires IgnoreScreenshot only on confirm', async () => {
     renderWith([row()])
 
-    await user().click(screen.getByRole('button', { name: 'Permanently ignore corrupt.png' }))
-    const armed = screen.getByRole('button', { name: 'Confirm permanently ignoring corrupt.png' })
-    expect(armed).toHaveTextContent(/Confirm delete\?/i)
+    await user().click(screen.getByRole('button', { name: 'Dismiss corrupt.png' }))
+    const armed = screen.getByRole('button', { name: 'Confirm dismissing corrupt.png' })
+    expect(armed).toHaveTextContent(/Confirm dismiss\?/i)
     expect(IgnoreScreenshot).not.toHaveBeenCalled()
 
     await user().click(armed)

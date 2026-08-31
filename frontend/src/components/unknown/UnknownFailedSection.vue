@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import type { FailedFile } from '@/api-client'
 import { screenshotURL } from '@/match/match-helpers'
 import { formatParsedAt } from '@/match/match-time-helpers'
+import { useArmedAction } from '@/composables/unknown/useArmedAction'
 import { useDiagnosticBundle } from '@/composables/ingest/useDiagnosticBundle'
 import { useHoverThumbnail } from '@/composables/shared/media/useHoverThumbnail'
 import { useParseStore } from '@/stores/parse'
@@ -13,13 +14,13 @@ import { useMatchActions } from '@/composables/matches/useMatchActions'
 // outright. These have NO MatchRecord (nothing was stored), so they ride
 // the failed-files ledger instead of the records array. Each row shows
 // the filename, the parser's error verbatim, and the attempt tally —
-// plus the same two-click "Delete forever" suppression the unmatched
-// cards use. Failed files are re-attempted on every parse run; the
-// section copy says so, because that's why the run counter keeps
-// including them.
+// plus the same two-click Dismiss suppression the unmatched cards use.
+// Failed files retry on the next few parse runs, then park at the
+// repeated-failure cap; the section copy says so, because that's what
+// keeps the run counter honest.
 
 const parseStore = useParseStore()
-const { onIgnoreScreenshot } = useMatchActions()
+const { onDismissFiles } = useMatchActions()
 
 const failedFiles = computed(() => parseStore.failedFiles)
 
@@ -33,39 +34,11 @@ const {
   exportBundle: onSaveDiagnosticBundle,
 } = useDiagnosticBundle()
 
-// "Delete forever" arm/disarm — the UnknownUnmatchedSection pattern,
-// keyed by filename (failed rows have no match_key).
-const IGNORE_ARM_MS = 3000
-const armedIgnore = ref<Set<string>>(new Set())
-const armTimers: Record<string, ReturnType<typeof setTimeout>> = {}
+// Dismiss arm/disarm — keyed by filename (failed rows have no match_key).
+const { trigger: triggerDismiss, isArmed: isDismissArmed } = useArmedAction()
 
-function disarmIgnore(filename: string) {
-  const t = armTimers[filename]
-  if (t !== undefined) {
-    clearTimeout(t)
-    delete armTimers[filename]
-  }
-  if (armedIgnore.value.has(filename)) {
-    const next = new Set(armedIgnore.value)
-    next.delete(filename)
-    armedIgnore.value = next
-  }
-}
-
-function onIgnoreClick(row: FailedFile) {
-  if (!armedIgnore.value.has(row.filename)) {
-    const next = new Set(armedIgnore.value)
-    next.add(row.filename)
-    armedIgnore.value = next
-    armTimers[row.filename] = setTimeout(() => disarmIgnore(row.filename), IGNORE_ARM_MS)
-    return
-  }
-  disarmIgnore(row.filename)
-  void onIgnoreScreenshot(row.filename)
-}
-
-function isIgnoreArmed(filename: string): boolean {
-  return armedIgnore.value.has(filename)
+function onDismissClick(row: FailedFile) {
+  triggerDismiss(row.filename, () => { void onDismissFiles([row.filename]) })
 }
 
 // Cursor-anchored hover thumbnail, same peek the unmatched cards give.
@@ -77,7 +50,7 @@ const { hoveredSrc, thumbX, thumbY, showThumb, onHover, onMove, onLeave } = useH
   canShow: () => true,
 })
 
-// "Delete forever" suppresses the file and wipes its row — a write.
+// Dismiss suppresses the file and wipes its row — a write.
 const { writesLocked, lockReason } = useWriteGate()
 </script>
 
@@ -99,9 +72,10 @@ const { writesLocked, lockReason } = useWriteGate()
         </button>
       </div>
       <p class="failed-blurb">
-        Recall could not read these screenshots at all — they are retried on every parse run.
-        Delete one forever to stop retrying it, or save a diagnostic bundle
-        (these images + logs + version info) to attach to a bug report.
+        Recall could not read these screenshots at all — each is retried on
+        the next few parse runs. Dismiss one to stop trying, or save a
+        diagnostic bundle (these images + logs + version info) to attach
+        to a bug report.
       </p>
       <p v-if="bundleSavedAs" class="failed-bundle-saved" role="status">
         ✓ Saved {{ bundleSavedAs }}
@@ -130,16 +104,16 @@ const { writesLocked, lockReason } = useWriteGate()
           <button
             type="button"
             class="unknown-delete-btn"
-            :class="{ armed: isIgnoreArmed(row.filename) }"
-            :aria-label="isIgnoreArmed(row.filename)
-              ? `Confirm permanently ignoring ${row.filename}`
-              : `Permanently ignore ${row.filename}`"
+            :class="{ armed: isDismissArmed(row.filename) }"
+            :aria-label="isDismissArmed(row.filename)
+              ? `Confirm dismissing ${row.filename}`
+              : `Dismiss ${row.filename}`"
             :data-failed-ignore="row.filename"
             :disabled="writesLocked"
             :title="lockReason || undefined"
-            @click="onIgnoreClick(row)"
+            @click="onDismissClick(row)"
           >
-            {{ isIgnoreArmed(row.filename) ? 'Confirm delete?' : 'Delete forever' }}
+            {{ isDismissArmed(row.filename) ? 'Confirm dismiss?' : 'Dismiss' }}
           </button>
         </div>
       </div>

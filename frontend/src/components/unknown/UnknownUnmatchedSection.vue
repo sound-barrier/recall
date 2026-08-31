@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import type { MatchRecord } from '@/api-client'
 import { detectScreenshotSlots, screenshotURL } from '@/match/match-helpers'
 import { formatParsedAt } from '@/match/match-time-helpers'
+import { useArmedAction } from '@/composables/unknown/useArmedAction'
 import { useHoverThumbnail } from '@/composables/shared/media/useHoverThumbnail'
 import type { CardStateApi } from '@/types/cardState'
 import { useMatchesStore } from '@/stores/matches'
@@ -12,13 +13,13 @@ import { useMatchActions } from '@/composables/matches/useMatchActions'
 
 // The Unmatched section: cards for records with no parsed map (corrupted shot or
 // a non-OW PNG in the watched folder). Each card shows a slot-chip strip + a field
-// diagnostic + (on expand) source previews / parsed stats + a two-click "Delete
-// forever". A cursor-anchored hover thumbnail (mouse) / long-press peek (touch)
+// diagnostic + (on expand) source previews / parsed stats + a two-click Dismiss.
+// A cursor-anchored hover thumbnail (mouse) / long-press peek (touch)
 // gives a lower-friction triage glance. Card-expand/preview state comes from the
 // parent via the cardState prop; the card chrome lives in the global unknown.css.
 const props = defineProps<{ cardState: CardStateApi }>()
 
-// "Delete forever" suppresses the file and wipes its row — a write. And
+// Dismiss suppresses the card's files and wipes their rows — a write. And
 // design rule 8: a coaching session loans records, never files, so every
 // /_screenshot/ URL below would resolve against the COACH's own disk under
 // the player's filenames. The strip says so instead of asking for bytes.
@@ -26,49 +27,28 @@ const { writesLocked, lockReason, sessionActive } = useWriteGate()
 
 const matchesStore = useMatchesStore()
 const uiStore = useUiStore()
-const { onIgnoreScreenshot } = useMatchActions()
+const { onDismissFiles } = useMatchActions()
 const preloadScreenshot = uiStore.preview.preload
 const openLightbox = uiStore.preview.openLightbox
 
 const unknownRecords = computed(() => matchesStore.unknownRecords)
 
-// "Delete forever" arm/disarm — mirrors DashboardEditBanner's destructive-confirm
-// pattern. First click on a card's button flips it to an armed "Confirm delete?"
-// state with a 3 s auto-disarm timer; the second click within that window fires
-// the ignore. Keyed by match_key so concurrent arms on multiple cards don't collide.
-const IGNORE_ARM_MS = 3000
-const armedIgnore = ref<Set<string>>(new Set())
-const armTimers: Record<string, ReturnType<typeof setTimeout>> = {}
+// Dismiss arm/disarm — keyed by match_key so concurrent arms on multiple
+// cards don't collide. A card is dismissed whole: EVERY source file it
+// carries joins the suppress-list, or a two-screenshot card would come
+// straight back on the surviving file.
+const { trigger: triggerDismiss, isArmed: isDismissArmed } = useArmedAction()
 
-function disarmIgnore(matchKey: string) {
-  const t = armTimers[matchKey]
-  if (t !== undefined) {
-    clearTimeout(t)
-    delete armTimers[matchKey]
-  }
-  if (armedIgnore.value.has(matchKey)) {
-    const next = new Set(armedIgnore.value)
-    next.delete(matchKey)
-    armedIgnore.value = next
-  }
+function onDismissClick(rec: MatchRecord) {
+  const files = rec.source_files ?? []
+  if (files.length === 0) return
+  triggerDismiss(rec.match_key, () => { void onDismissFiles(files) })
 }
 
-function onIgnoreClick(rec: MatchRecord) {
-  const filename = rec.source_files?.[0]
-  if (!filename) return
-  if (!armedIgnore.value.has(rec.match_key)) {
-    const next = new Set(armedIgnore.value)
-    next.add(rec.match_key)
-    armedIgnore.value = next
-    armTimers[rec.match_key] = setTimeout(() => disarmIgnore(rec.match_key), IGNORE_ARM_MS)
-    return
-  }
-  disarmIgnore(rec.match_key)
-  void onIgnoreScreenshot(filename)
-}
-
-function isIgnoreArmed(matchKey: string): boolean {
-  return armedIgnore.value.has(matchKey)
+function dismissLabel(rec: MatchRecord): string {
+  const files = rec.source_files ?? []
+  const what = files.length === 1 ? (files[0] ?? '') : `${files.length} screenshots of ${rec.match_key}`
+  return isDismissArmed(rec.match_key) ? `Confirm dismissing ${what}` : `Dismiss ${what}`
 }
 
 // Hover-preview state for the Unknown card list. Mouseenter on a collapsed card
@@ -323,29 +303,29 @@ function onCardHeadClick(rec: MatchRecord) {
             </div>
           </div>
 
-          <!-- "Delete forever" — destructive action zone. Two-click confirm: first
-               click arms (red 3 s timer), second click fires IgnoreScreenshot. The
-               file stays on disk; future parse runs skip it via the
-               ignored_screenshots suppress-list, and the unmatched-<filename> match
-               row gets wiped in lockstep so the card disappears immediately. -->
+          <!-- Dismiss — destructive action zone. Two-click confirm: first
+               click arms (red 3 s timer), second click suppresses every file
+               the card carries. The files stay on disk; future parse runs
+               skip them via the ignored_screenshots suppress-list, and each
+               file's own rows get wiped in lockstep so the card disappears
+               immediately. -->
           <div v-if="rec.source_files?.length" class="unknown-delete-zone">
             <button
               type="button"
               class="unknown-delete-btn"
-              :class="{ armed: isIgnoreArmed(rec.match_key) }"
-              :aria-label="isIgnoreArmed(rec.match_key)
-                ? `Confirm permanently ignoring ${rec.source_files[0]}`
-                : `Permanently ignore ${rec.source_files[0]}`"
+              :class="{ armed: isDismissArmed(rec.match_key) }"
+              :aria-label="dismissLabel(rec)"
               :data-ignore-btn="rec.match_key"
               :disabled="writesLocked"
               :title="lockReason || undefined"
-              @click="onIgnoreClick(rec)"
+              @click="onDismissClick(rec)"
             >
-              {{ isIgnoreArmed(rec.match_key) ? 'Confirm delete?' : 'Delete forever' }}
+              {{ isDismissArmed(rec.match_key) ? 'Confirm dismiss?' : 'Dismiss' }}
             </button>
             <span class="unknown-delete-hint">
-              Recall will skip this file on future parses. The file
-              stays on disk.
+              Recall will skip these files on future parses. The files stay
+              on disk — restore them anytime in Settings → Advanced →
+              Manage ignored files.
             </span>
           </div>
         </div>

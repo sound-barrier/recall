@@ -120,13 +120,29 @@ describe('useMatchActions — post-mutation reload scope', () => {
     expect(api.GetNewScreenshotCount).toHaveBeenCalledTimes(1)
   })
 
-  // Suppressing a file leaves the pending count AND the failure ledger, so
-  // this one also refreshes the ignore list itself.
-  it('ignoring a screenshot refreshes the suppress list and the whole cluster', async () => {
-    const { onIgnoreScreenshot } = await boot()
-    await onIgnoreScreenshot('2026-08-01_scoreboard.png')
+  // Suppressing files leaves the pending count AND the failure ledger, so
+  // this one also refreshes the ignore list itself — once, however many
+  // files the card carried, and one PUT per file in card order.
+  it('dismissing a card suppresses every file and refreshes the whole cluster once', async () => {
+    const { onDismissFiles } = await boot()
+    await onDismissFiles(['2026-08-01_scoreboard.png', '2026-08-01_teams.png'])
 
-    expect(api.IgnoreScreenshot).toHaveBeenCalledWith('2026-08-01_scoreboard.png')
+    expect(api.IgnoreScreenshot).toHaveBeenNthCalledWith(1, '2026-08-01_scoreboard.png')
+    expect(api.IgnoreScreenshot).toHaveBeenNthCalledWith(2, '2026-08-01_teams.png')
+    expect(api.GetIgnoredScreenshots).toHaveBeenCalledTimes(1)
+    expect(api.GetNewScreenshotCount).toHaveBeenCalledTimes(1)
+  })
+
+  // A mid-loop failure still reloads — the card shrinks to its surviving
+  // files and a re-click retries cleanly over them.
+  it('a mid-loop dismiss failure surfaces the error and still reloads', async () => {
+    api.IgnoreScreenshot
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('store exploded'))
+    const { onDismissFiles } = await boot()
+    await onDismissFiles(['ok.png', 'boom.png'])
+
+    expect(api.IgnoreScreenshot).toHaveBeenCalledTimes(2)
     expect(api.GetIgnoredScreenshots).toHaveBeenCalledTimes(1)
     expect(api.GetNewScreenshotCount).toHaveBeenCalledTimes(1)
   })
@@ -367,7 +383,7 @@ describe('useMatchActions — the write gate', () => {
     await actions.onHideMatches(['k1'])
     await actions.onBulkTag(['k1'], 'tilted')
     await actions.onMoveMatches(['k1'], 'other')
-    await actions.onIgnoreScreenshot('a.png')
+    await actions.onDismissFiles(['a.png'])
     await actions.onResolveAmbiguous('ambiguous-a.png', 'k1')
 
     for (const call of Object.values(api)) {

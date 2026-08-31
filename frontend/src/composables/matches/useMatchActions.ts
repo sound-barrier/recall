@@ -345,12 +345,22 @@ export function useMatchActions() {
     if (!guardWrite()) return
     try { await ResolveAmbiguousMatch(ambiguousKey, resolvedTo); await reload() } catch (e) { onError(String(e)) }
   }
-  // "Delete forever" — suppress the filename + wipe the unmatched row.
-  // Suppressing a file DOES reach the wider cluster (it leaves the
-  // pending count and the failure ledger), so this one reloads all three.
-  async function onIgnoreScreenshot(filename: string) {
+  // Dismiss — suppress every file a card carries, sequentially: each
+  // PUT is idempotent, so a partial failure surfaces the first error and
+  // re-clicking Dismiss is a clean retry over the survivors. The reloads
+  // run either way (self-healing refetch), and reach the wider cluster
+  // because a dismissal leaves the pending count and the failure ledger,
+  // not just the records list.
+  async function onDismissFiles(filenames: string[]) {
     if (!guardWrite()) return
-    try { await IgnoreScreenshot(filename); await reloadIgnored(); await reloadCluster() } catch (e) { onError(String(e)) }
+    try {
+      for (const f of filenames) await IgnoreScreenshot(f)
+    } catch (e) {
+      onError(String(e))
+    } finally {
+      await reloadIgnored()
+      await reloadCluster()
+    }
   }
 
   return {
@@ -377,6 +387,6 @@ export function useMatchActions() {
     onBulkPlayMode,
     onBulkQueue,
     onResolveAmbiguous,
-    onIgnoreScreenshot,
+    onDismissFiles,
   }
 }

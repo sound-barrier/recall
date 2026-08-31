@@ -138,7 +138,7 @@ watch(
               <span class="setting-help-mark" aria-hidden="true">?</span>
               <span class="setting-help-label">About ignored screenshots</span>
               <span class="setting-help-pop" role="tooltip">
-                "Delete forever" on the Unknown tab adds a file to this list. Files on the list are skipped on every future Parse run. Open the panel to bring them back.
+                Dismiss on the Unknown tab adds a file to this list. Files on the list are skipped on every future Parse run. Open the panel to bring them back.
               </span>
             </span>
           </h4>

@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 
 import type { MatchRecord } from '@/api-client'
 import { screenshotURL, hasDuplicateCandidate } from '@/match/match-helpers'
+import { useArmedAction } from '@/composables/unknown/useArmedAction'
 import UnknownCandidatePicker from '@/components/unknown/UnknownCandidatePicker.vue'
 import UnknownFailedSection from '@/components/unknown/UnknownFailedSection.vue'
 import UnknownReferenceGapSection from '@/components/unknown/UnknownReferenceGapSection.vue'
@@ -38,14 +39,26 @@ const matchesStore = useMatchesStore()
 // Design rule 8: a coaching session loans records, never files, so no
 // /_screenshot/ URL is built from one — it would resolve against the
 // COACH's own disk under the player's filenames.
-const { sessionActive } = useWriteGate()
+const { sessionActive, writesLocked, lockReason } = useWriteGate()
 
 const appStore = useAppStore()
 const uiStore = useUiStore()
-const { onResolveAmbiguous } = useMatchActions()
+const { onResolveAmbiguous, onDismissFiles } = useMatchActions()
 const goToView = appStore.goToView
 const preloadScreenshot = uiStore.preview.preload
 const openLightbox = uiStore.preview.openLightbox
+
+// Dismiss on an ambiguous card — junk the resolver keeps offering
+// candidates for should be dismissible right here, not by resolving it
+// into a match first. Same two-click confirm + write gate as the other
+// sections; a write, so a coaching session locks it.
+const { trigger: triggerDismiss, isArmed: isDismissArmed } = useArmedAction()
+
+function onDismissAmbiguous(rec: MatchRecord) {
+  const files = rec.source_files ?? []
+  if (files.length === 0) return
+  triggerDismiss(rec.match_key, () => { void onDismissFiles(files) })
+}
 
 const unknownExpanded = ref<Record<string, boolean>>({})
 const cardState: CardStateApi = {
@@ -210,6 +223,28 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
                 </div>
               </div>
               <UnknownCandidatePicker :rec="rec" @pick="onPickCandidate(rec, $event)" />
+
+              <div v-if="rec.source_files?.length" class="unknown-delete-zone">
+                <button
+                  type="button"
+                  class="unknown-delete-btn"
+                  :class="{ armed: isDismissArmed(rec.match_key) }"
+                  :aria-label="isDismissArmed(rec.match_key)
+                    ? `Confirm dismissing ${rec.source_files[0]}`
+                    : `Dismiss ${rec.source_files[0]}`"
+                  :data-ignore-btn="rec.match_key"
+                  :disabled="writesLocked"
+                  :title="lockReason || undefined"
+                  @click="onDismissAmbiguous(rec)"
+                >
+                  {{ isDismissArmed(rec.match_key) ? 'Confirm dismiss?' : 'Dismiss' }}
+                </button>
+                <span class="unknown-delete-hint">
+                  Not a match worth keeping? Recall will skip this file on
+                  future parses. It stays on disk — restore it anytime in
+                  Settings → Advanced → Manage ignored files.
+                </span>
+              </div>
             </div>
           </template>
         </article>

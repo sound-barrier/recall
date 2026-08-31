@@ -4,7 +4,7 @@
  * Screenshots whose OCR attempt failed have no MatchRecord at all, so
  * they ride a dedicated ledger (GET /api/v1/screenshots/failed) instead
  * of the records array. The section lists each failure with its error,
- * attempt count, and the same two-click "Delete forever" suppression the
+ * attempt count, and the same two-click Dismiss suppression the
  * unmatched cards use (PUT /api/v1/screenshots/{file}/ignore). Failed
  * files are retried on every parse run — the copy says so.
  */
@@ -37,7 +37,7 @@ test.describe('Unknown tab — failed files', () => {
     })
   })
 
-  test('lists each failure with error and attempts; Delete forever suppresses it', async ({ page }) => {
+  test('lists each failure with error and attempts; Dismiss suppresses it', async ({ page }) => {
     let ignoreHits = 0
     let ignored = false
     await page.route('**/api/v1/screenshots/failed', async (route: Route) => {
@@ -61,11 +61,11 @@ test.describe('Unknown tab — failed files', () => {
     await expect(section).toContainText(/6 attempts/i)
     // The retry semantic is stated so the standing "N remaining" count
     // makes sense.
-    await expect(section).toContainText(/retried on every parse run/i)
+    await expect(section).toContainText(/retried on\s+the next few parse runs/i)
 
     const btn = page.locator('[data-failed-ignore="corrupt.png"]')
     await btn.click()
-    await expect(btn).toHaveText(/Confirm delete\?/i)
+    await expect(btn).toHaveText(/Confirm dismiss\?/i)
     expect(ignoreHits).toBe(0)
     await btn.click()
     await expect.poll(() => ignoreHits).toBe(1)

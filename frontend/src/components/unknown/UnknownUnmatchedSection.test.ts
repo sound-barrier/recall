@@ -11,13 +11,13 @@ import type { MatchRecord } from '@/api'
 import type { CardStateApi } from '@/types/cardState'
 import { resetWriteGate, setWritesLocked } from '@/test-utils/writeGateStub'
 
-// "Delete forever" is a write and the screenshot strip goes quiet during a
+// Dismiss is a write and the screenshot strip goes quiet during a
 // coaching session; both read the gate, stubbed here so these cases pin the
 // SECTION's contract rather than the gate's.
 vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/writeGateStub'))
 
 // The Unmatched triage card: a diagnostic strip over whatever the parser
-// salvaged, an expandable source/stats block, a two-click "Delete forever"
+// salvaged, an expandable source/stats block, a two-click Dismiss
 // with a 3 s auto-disarm, and a long-press peek for touch. The destructive
 // path and the long-press guard are the two places a regression is
 // expensive — an armed button that never disarms deletes a screenshot on a
@@ -86,8 +86,8 @@ const card       = (idx = 0) => document.querySelectorAll('.unknown-card')[idx] 
 const hoverThumb = () => document.querySelector('.unknown-hover-thumb')
 /* eslint-enable testing-library/no-node-access */
 
-const deleteBtn = (file: string) => screen.getByRole('button', { name: `Permanently ignore ${file}` })
-const armedBtn = (file: string) => screen.getByRole('button', { name: `Confirm permanently ignoring ${file}` })
+const deleteBtn = (file: string) => screen.getByRole('button', { name: `Dismiss ${file}` })
+const armedBtn = (file: string) => screen.getByRole('button', { name: `Confirm dismissing ${file}` })
 
 describe('UnknownUnmatchedSection — the card at a glance', () => {
   it('renders nothing at all when there is nothing unmatched', () => {
@@ -210,24 +210,36 @@ describe('UnknownUnmatchedSection — expanded card', () => {
     renderWith([{ match_key: 'unmatched-none', source_files: [], data: {} }])
     await fireEvent.click(cardHead())
     expect(screen.queryByText('Source Files')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Permanently ignore/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Dismiss/ })).not.toBeInTheDocument()
   })
 })
 
-describe('UnknownUnmatchedSection — two-click Delete forever', () => {
-  it('arms on the first click and only ignores on the second', async () => {
+describe('UnknownUnmatchedSection — two-click Dismiss', () => {
+  it('arms on the first click and only dismisses on the second', async () => {
     renderWith([unmatched('a.png')])
     await fireEvent.click(cardHead())
 
     await fireEvent.click(deleteBtn('a.png'))
     const armed = armedBtn('a.png')
-    expect(armed).toHaveTextContent('Confirm delete?')
+    expect(armed).toHaveTextContent('Confirm dismiss?')
     expect(IgnoreScreenshot).not.toHaveBeenCalled()
 
     await fireEvent.click(armed)
     expect(IgnoreScreenshot).toHaveBeenCalledWith('a.png')
     // Disarmed again — the button is no longer a live confirm.
-    expect(deleteBtn('a.png')).toHaveTextContent('Delete forever')
+    expect(deleteBtn('a.png')).toHaveTextContent('Dismiss')
+  })
+
+  it('dismisses EVERY source file a multi-screenshot card carries', async () => {
+    renderWith([{ match_key: 'match-2026-05-10T22-21-11', source_files: ['a.png', 'b.png'], data: {} }])
+    await fireEvent.click(cardHead())
+
+    const btn = screen.getByRole('button', { name: 'Dismiss 2 screenshots of match-2026-05-10T22-21-11' })
+    await fireEvent.click(btn)
+    await fireEvent.click(screen.getByRole('button', { name: 'Confirm dismissing 2 screenshots of match-2026-05-10T22-21-11' }))
+
+    expect(IgnoreScreenshot).toHaveBeenNthCalledWith(1, 'a.png')
+    expect(IgnoreScreenshot).toHaveBeenNthCalledWith(2, 'b.png')
   })
 
   it('disarms itself after the 3 s window so a stale click cannot delete', async () => {
@@ -240,7 +252,7 @@ describe('UnknownUnmatchedSection — two-click Delete forever', () => {
     vi.advanceTimersByTime(3000)
     await nextTick()
 
-    expect(deleteBtn('a.png')).toHaveTextContent('Delete forever')
+    expect(deleteBtn('a.png')).toHaveTextContent('Dismiss')
     // The next click re-arms rather than firing the deletion.
     await fireEvent.click(deleteBtn('a.png'))
     expect(IgnoreScreenshot).not.toHaveBeenCalled()
@@ -255,7 +267,7 @@ describe('UnknownUnmatchedSection — two-click Delete forever', () => {
     await fireEvent.click(deleteBtn('a.png'))
 
     expect(armedBtn('a.png')).toBeInTheDocument()
-    expect(deleteBtn('b.png')).toHaveTextContent('Delete forever')
+    expect(deleteBtn('b.png')).toHaveTextContent('Dismiss')
 
     await fireEvent.click(deleteBtn('b.png'))
     expect(IgnoreScreenshot).not.toHaveBeenCalled()

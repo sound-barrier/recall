@@ -13,7 +13,7 @@ import { useWriteGate } from '@/composables/shared/useWriteGate'
 // Restore button emits `restore` so App.vue can call UnignoreScreenshot
 // + reload; bulk "Re-enable all" emits `restore-all` after a 2-step
 // arm/confirm (mirrors the destructive-confirm pattern on the Unknown
-// tab's "Delete forever" button + Settings → Clear Database).
+// tab's Dismiss button + Settings → Clear Database).
 //
 // On any successful restore (per-row or bulk) the panel shows an
 // inline "Run Parse now" link. We don't auto-fire Parse — the user
@@ -224,7 +224,7 @@ function onBackdropClick(e: MouseEvent) {
         </header>
 
         <p v-if="screenshots.length === 0" class="ignored-empty">
-          Nothing ignored. Files you mark as <em>Delete forever</em> on the Unknown tab show up here so you can bring them back.
+          Nothing ignored. Files you <em>Dismiss</em> on the Unknown tab show up here so you can bring them back.
         </p>
 
         <template v-else>

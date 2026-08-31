@@ -1,7 +1,7 @@
 /**
  * Restore-from-Settings round-trip.
  *
- * The "Delete forever" affordance on the Unknown tab shipped without
+ * The Dismiss affordance on the Unknown tab shipped without
  * any undo path. Settings → Advanced now exposes:
  *   1. A Manage button that opens IgnoredFilesPanel — per-file Restore
  *      + bulk "Re-enable all" with a 2-step arm.
