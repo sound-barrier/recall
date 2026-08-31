@@ -27,6 +27,13 @@ type Store interface {
 	// the old-type row beside the new one. Idempotent.
 	DeleteScreenshotSiblings(filename string, keepType parser.ScreenshotType) error
 
+	// DeleteScreenshotRows removes filename's rows from every screenshot
+	// table (children CASCADE) and its pending candidate set, returning —
+	// sorted — the match keys left with zero parent rows so the caller
+	// can hard-delete them. The Dismiss path's store half: siblings and
+	// the dedup registry survive. Idempotent on absent filenames.
+	DeleteScreenshotRows(filename string) ([]string, error)
+
 	// EnsureScreenshotsDir inserts a screenshots_dirs row for path if
 	// one doesn't exist and returns its id. Idempotent — repeated calls
 	// with the same path return the same id. Empty path returns the
@@ -49,14 +56,6 @@ type Store interface {
 	// LoadFilenamesForDir is LoadAllFilenames scoped to one screenshots
 	// folder — what the parse skip set needs, since filename is a basename.
 	LoadFilenamesForDir(dirID int64) (map[string]bool, error)
-
-	// LookupMatchKeysForFilename returns every distinct match_key
-	// referenced by `filename` across the five parent tables. Used by
-	// App.IgnoreScreenshot to wipe the actual match the user clicked
-	// on — match-<ts> when the parser failed to extract a map and the
-	// row surfaces on the Unknown tab. Returns an empty slice for
-	// filenames not in the DB.
-	LookupMatchKeysForFilename(filename string) ([]string, error)
 
 	// LoadAll bulk-reads every row across all 10 tables and returns
 	// them grouped by parent type with children already attached.

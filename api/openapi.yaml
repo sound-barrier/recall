@@ -1061,11 +1061,13 @@ paths:
       summary: Permanently ignore a screenshot
       description: |
         Adds `filename` to the suppress-list backing the Unknown
-        tab's "Delete forever" affordance. Future parse runs skip
-        this file. Also wipes any `unmatched-<filename>` or
-        `ambiguous-<filename>` match rows so the row disappears from
-        the result set immediately, not just on the next parse. The
-        on-disk file is **not** deleted.
+        tab's Dismiss affordance. Future parse runs skip this file.
+        Only the file's own rows leave the corpus: a match with
+        other screenshots survives minus this file, while a match
+        this was the last screenshot of is fully removed (sidecars
+        included) so the card disappears from the result set
+        immediately, not just on the next parse. The on-disk file
+        is **not** deleted.
 
         Idempotent: ignoring an already-ignored filename refreshes
         the timestamp. PUT (not POST) — the operation has no body

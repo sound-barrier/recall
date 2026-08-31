@@ -86,16 +86,6 @@ func dropByMatchKey[T parentRow](rows []T, matchKey string) []T {
 	return kept
 }
 
-// keysForFilename adds the match key of every row carrying filename into
-// the accumulator set.
-func keysForFilename[T parentRow](rows []T, filename string, seen map[string]bool) {
-	for _, r := range rows {
-		if rowFilename(r) == filename {
-			seen[rowMatchKey(r)] = true
-		}
-	}
-}
-
 func hasMatchKey[T parentRow](rows []T, key string) bool {
 	for _, r := range rows {
 		if rowMatchKey(r) == key {

@@ -2,7 +2,6 @@ package matchedit_test
 
 import (
 	"errors"
-	"reflect"
 	"slices"
 	"testing"
 
@@ -18,12 +17,11 @@ func TestIgnoreScreenshot_RejectsEmptyFilename(t *testing.T) {
 	}
 }
 
-func TestIgnoreScreenshot_AddsToSetAndWipesBothKeyShapes(t *testing.T) {
-	// Seed an unmatched- row AND an ambiguous- row pointing at the
-	// same filename. IgnoreScreenshot must wipe both via
-	// HardDeleteMatch so the Unknown card disappears immediately.
-	// The sentinel keys are now base64url-encoded, so build them via the
-	// constructors rather than hand-concatenating the filename.
+func TestIgnoreScreenshot_WipesOnlyKeysTheFileEmptied(t *testing.T) {
+	// Two files, two keys. Ignoring sb.png must hard-delete ONLY the key
+	// its own rows emptied — another file's key is another file's match,
+	// even when that key is the ambiguous- shape of sb.png's name (the
+	// old sentinel-fallback wipe deleted it purely by name).
 	encU := match.NewUnmatchedMatchKey("sb.png").String()
 	encA := match.NewAmbiguousMatchKey("sb.png").String()
 	fake := &dbtest.Fake{
@@ -41,10 +39,36 @@ func TestIgnoreScreenshot_AddsToSetAndWipesBothKeyShapes(t *testing.T) {
 		t.Errorf("filename not added to ignore set; got=%v", got)
 	}
 
-	// Both candidate keys went through HardDeleteMatch.
-	wantCalls := []string{encU, encA}
-	if !reflect.DeepEqual(fake.HardDeleteCalls, wantCalls) {
-		t.Errorf("HardDeleteCalls = %v, want %v", fake.HardDeleteCalls, wantCalls)
+	if want := []string{encU}; !slices.Equal(fake.HardDeleteCalls, want) {
+		t.Errorf("HardDeleteCalls = %v, want %v", fake.HardDeleteCalls, want)
+	}
+	if len(fake.Teams) != 1 || fake.Teams[0].Filename != "sb2.png" {
+		t.Errorf("Teams = %+v, want only sb2.png's row to survive", fake.Teams)
+	}
+}
+
+// The sibling-resurrection bug: dismissing one file of a multi-screenshot
+// match used to hard-delete the whole match AND its siblings' dedup
+// registrations, so the siblings re-OCR'd on the next run and the match
+// came back. The new contract: the match survives minus the dismissed
+// file, and HardDeleteMatch never fires.
+func TestIgnoreScreenshot_LeavesSiblingScreenshotsAndTheMatch(t *testing.T) {
+	const key = "match-2026-05-10T22-21-11"
+	fake := &dbtest.Fake{
+		Summaries: []db.SummaryRow{{Filename: "a.png", MatchKey: key}},
+		Teams:     []db.TeamsRow{{Filename: "b.png", MatchKey: key}},
+	}
+
+	mustNoErr(t, matchedit.IgnoreScreenshot(fake, "a.png"))
+
+	if len(fake.HardDeleteCalls) != 0 {
+		t.Errorf("HardDeleteCalls = %v, want none — b.png still carries the match", fake.HardDeleteCalls)
+	}
+	if len(fake.Summaries) != 0 {
+		t.Errorf("Summaries = %+v, want a.png's row gone", fake.Summaries)
+	}
+	if len(fake.Teams) != 1 || fake.Teams[0].Filename != "b.png" {
+		t.Errorf("Teams = %+v, want b.png's row untouched", fake.Teams)
 	}
 }
 

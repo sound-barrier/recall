@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"slices"
 
 	"recall/pkg/parser"
 )
@@ -52,6 +53,67 @@ func (s *SQLStore) DeleteScreenshotSiblings(filename string, keepType parser.Scr
 		return err
 	}
 	return tx.Commit()
+}
+
+// DeleteScreenshotRows removes filename's rows from every screenshot
+// table (parents + the all_heroes registry; children CASCADE) plus the
+// file's own pending candidate set, in one transaction, and returns —
+// sorted — the match keys the delete left with zero parent rows. The
+// caller decides those keys' fate: the Dismiss path hard-deletes them so
+// no sidecar strands on a dead key, while a key another file still backs
+// is not returned and its match survives minus this file.
+//
+// Deliberately does NOT touch ingested_files: duplicate_of carries
+// ON DELETE CASCADE, so removing a canonical's registration would
+// silently unregister every byte-identical copy, which would re-enter
+// the pending set and resurrect the dismissed content under a filename
+// the ignore list has never heard of. Ignored + still-registered is the
+// correct pair.
+//
+// Idempotent; a filename absent everywhere returns no keys and no error.
+func (s *SQLStore) DeleteScreenshotRows(filename string) ([]string, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	keys := map[string]bool{}
+	for _, t := range parentTables {
+		if err := collectMatchKeys(tx, t, filename, keys); err != nil {
+			return nil, err
+		}
+	}
+	for _, t := range append(append([]string{}, parentTables...), "all_heroes_screenshots") {
+		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
+		if _, err := tx.Exec(`DELETE FROM `+t+` WHERE filename = ?`, filename); err != nil {
+			return nil, err
+		}
+	}
+	if _, err := tx.Exec(`DELETE FROM ambiguous_candidates WHERE filename = ?`, filename); err != nil {
+		return nil, err
+	}
+	orphans, err := orphanedKeys(tx, keys)
+	if err != nil {
+		return nil, err
+	}
+	return orphans, tx.Commit()
+}
+
+// orphanedKeys returns, sorted, the keys with no remaining parent rows.
+func orphanedKeys(tx *sql.Tx, keys map[string]bool) ([]string, error) {
+	out := []string{}
+	for key := range keys {
+		none, err := matchKeyHasNoRows(tx, key)
+		if err != nil {
+			return nil, err
+		}
+		if none {
+			out = append(out, key)
+		}
+	}
+	slices.Sort(out)
+	return out, nil
 }
 
 // deleteSiblingRows removes filename's rows from every screenshot table
