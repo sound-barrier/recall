@@ -15,8 +15,12 @@ export function GetMatchResults(): Promise<MatchRecord[]> {
   return unwrap(sdk.getMatchResults())
 }
 
-export function GetNewScreenshotCount(): Promise<number> {
-  return unwrap(sdk.getPendingScreenshotCount()).then(d => d.count)
+export type PendingScreenshots = { count: number; parked: number }
+
+// Count of screenshots the next parse run will OCR, plus the on-disk
+// files parked after repeated failures (skipped by normal runs).
+export function GetNewScreenshotCount(): Promise<PendingScreenshots> {
+  return unwrap(sdk.getPendingScreenshotCount())
 }
 
 // List the suppress-list with timestamps. Sorted most-recently-ignored

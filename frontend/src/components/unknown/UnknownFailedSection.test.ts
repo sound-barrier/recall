@@ -16,7 +16,7 @@ import type { FailedFile } from '@/api'
 vi.mock('@/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api')>()),
   GetMatchResults:        vi.fn(async () => []),
-  GetNewScreenshotCount:  vi.fn(async () => 0),
+  GetNewScreenshotCount:  vi.fn(async () => ({ count: 0, parked: 0 })),
   GetFailedFiles:         vi.fn(async () => []),
   GetIgnoredScreenshots:  vi.fn(async () => []),
   IgnoreScreenshot:       vi.fn(async () => undefined),
@@ -31,6 +31,7 @@ const row = (over: Partial<FailedFile> = {}): FailedFile => ({
   filename: 'corrupt.png',
   error: 'decoding image: png: invalid format',
   attempts: 6,
+  parked: false,
   first_failed_at: '2026-07-01T20:00:00Z',
   last_failed_at: '2026-07-06T21:30:00Z',
   ...over,

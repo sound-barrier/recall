@@ -253,15 +253,17 @@ type Store interface {
 	ClearIgnoredScreenshots() error
 
 	// Failed-file ledger — per-file OCR failure records for the Unknown
-	// tab's "Failed to read" triage section. NOT a skip list: failed
-	// files are re-attempted on every run. RecordFailedFile upserts
+	// tab's "Failed to read" triage section. RecordFailedFile upserts
 	// (attempts+1, refreshed error/last_failed_at, preserved
 	// first_failed_at); RemoveFailedFile is the idempotent delete the
-	// success path and "Delete forever" call; ListFailedFiles returns
-	// rows most recently failed first.
+	// success path, Dismiss, and Retry call; ListFailedFiles returns
+	// rows most recently failed first. LoadFailedFilenames(minAttempts)
+	// is the parked-set loader: filenames at or past the app layer's
+	// attempt cap, which normal runs skip.
 	RecordFailedFile(filename string, dirID int64, errMsg string) error
 	RemoveFailedFile(filename string) error
 	ListFailedFiles() ([]FailedFileRow, error)
+	LoadFailedFilenames(minAttempts int) (map[string]bool, error)
 
 	// All-Heroes-screenshots surface — recognized-but-unstored skip list.
 	// The PERSONAL "All Heroes" aggregate view carries no data worth

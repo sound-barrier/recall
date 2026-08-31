@@ -139,10 +139,10 @@ describe('GET success', () => {
     expect(result[0]?.match_key).toBe('match:x')
   })
 
-  it('unwraps the {count} envelope to a number', async () => {
-    stubFetch(jsonReply(200, { count: 7 }))
-    const n = await GetNewScreenshotCount()
-    expect(n).toBe(7)
+  it('returns the pending/parked pair as-is', async () => {
+    stubFetch(jsonReply(200, { count: 7, parked: 2 }))
+    const p = await GetNewScreenshotCount()
+    expect(p).toEqual({ count: 7, parked: 2 })
   })
 
   it('unwraps the {version} envelope to a string', async () => {

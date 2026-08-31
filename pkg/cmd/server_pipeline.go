@@ -82,7 +82,7 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 	})
 
 	apiMux.HandleFunc("GET /api/v1/screenshots/pending-count", func(w http.ResponseWriter, r *http.Request) {
-		count, err := a.GetNewScreenshotCount()
-		writeJSON(w, r, map[string]int{"count": count}, err)
+		pending, err := a.GetNewScreenshotCount()
+		writeJSON(w, r, pending, err)
 	})
 }

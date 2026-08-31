@@ -116,10 +116,12 @@ type Fake struct {
 	UnhideCalls     []string
 	HardDeleteCalls []string
 
-	// Error injection. When non-nil, Upsert* methods return UpsertErr
-	// and LoadAll returns LoadErr (after acquiring the mutex).
-	UpsertErr error
-	LoadErr   error
+	// Error injection. When non-nil, Upsert* methods return UpsertErr,
+	// LoadAll returns LoadErr, and ApplyAmbiguity returns AmbiguityErr
+	// (each after acquiring the mutex).
+	UpsertErr    error
+	LoadErr      error
+	AmbiguityErr error
 }
 
 // New returns an empty Fake. Tests that need fixtures can mutate the

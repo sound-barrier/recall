@@ -17,7 +17,7 @@ import type { MatchRecord } from '@/api-client'
 // paid two wasted GETs per edit.
 const api = vi.hoisted(() => ({
   GetMatchResults:        vi.fn(async () => [] as unknown[]),
-  GetNewScreenshotCount:  vi.fn(async () => 0),
+  GetNewScreenshotCount:  vi.fn(async () => ({ count: 0, parked: 0 })),
   GetFailedFiles:         vi.fn(async () => []),
   GetIgnoredScreenshots:  vi.fn(async () => []),
   SetMatchPin:            vi.fn(async () => undefined),

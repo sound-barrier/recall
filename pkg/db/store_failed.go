@@ -2,10 +2,13 @@ package db
 
 // Failed-file ledger — per-file OCR failure records backing the Unknown
 // tab's "Failed to read" triage section and the diagnostic bundle. A row
-// exists while the file's most recent parse attempt failed. NOT a skip
-// list: the parse loop re-attempts failed files on every run; ignoring
-// ("Delete forever") is the user's suppression lever, and a later
-// successful parse removes the row.
+// exists while the file's most recent parse attempt failed; a later
+// successful parse removes it, and Dismiss removes it. MOSTLY not a skip
+// list: the parse loop re-attempts a failed file on the next few runs,
+// but once attempts reaches the app layer's cap the file is PARKED —
+// LoadFailedFilenames(cap) feeds it into the normal run's skip set so
+// the pending count stops promising work that will fail again. Re-parse
+// All bypasses the cap; Retry (deleting the row) resets it.
 
 func (s *SQLStore) RecordFailedFile(filename string, dirID int64, errMsg string) error {
 	_, err := s.db.Exec(
@@ -18,6 +21,25 @@ func (s *SQLStore) RecordFailedFile(filename string, dirID int64, errMsg string)
 		filename, dirID, errMsg,
 	)
 	return err
+}
+
+// LoadFailedFilenames returns the filenames with attempts >= minAttempts
+// — the parked-set loader for the parse skip set's hot path.
+func (s *SQLStore) LoadFailedFilenames(minAttempts int) (map[string]bool, error) {
+	rows, err := s.db.Query(`SELECT filename FROM failed_files WHERE attempts >= ?`, minAttempts)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := map[string]bool{}
+	for rows.Next() {
+		var f string
+		if err := rows.Scan(&f); err != nil {
+			return nil, err
+		}
+		out[f] = true
+	}
+	return out, rows.Err()
 }
 
 func (s *SQLStore) RemoveFailedFile(filename string) error {

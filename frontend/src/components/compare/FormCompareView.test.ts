@@ -106,7 +106,7 @@ function seed(records: MatchRecord[], seasons: OWData['seasons'] = []) {
   setActivePinia(pinia)
   seedQuery(qk.system.referenceData, { ...OW_DATA, seasons })
   seedQuery(qk.matches, records)
-  seedQuery(qk.pendingCount, 0)
+  seedQuery(qk.pendingCount, { count: 0, parked: 0 })
   seedQuery(qk.failedFiles, [])
 }
 

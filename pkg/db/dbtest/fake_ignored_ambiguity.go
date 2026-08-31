@@ -102,6 +102,9 @@ func (f *Fake) ClearIgnoredScreenshots() error {
 func (f *Fake) ApplyAmbiguity(filename string, cands []db.AmbiguousCandidate) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.AmbiguityErr != nil {
+		return f.AmbiguityErr
+	}
 	if f.Ambiguous == nil {
 		f.Ambiguous = map[string][]db.AmbiguousCandidate{}
 	}

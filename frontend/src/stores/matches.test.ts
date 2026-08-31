@@ -58,7 +58,7 @@ function setHappyDefaults() {
   api.GetWatchEnabled.mockResolvedValue(true)
   api.GetTesseractStatus.mockResolvedValue(tess())
   api.GetExitOnClose.mockResolvedValue(false)
-  api.GetNewScreenshotCount.mockResolvedValue(3)
+  api.GetNewScreenshotCount.mockResolvedValue({ count: 3, parked: 0 })
   api.GetDataLocation.mockResolvedValue(DATA_LOC)
   api.ListCoachReturns.mockResolvedValue([])
   api.GetCoachSessionMatches.mockResolvedValue([rec('loan-1')])

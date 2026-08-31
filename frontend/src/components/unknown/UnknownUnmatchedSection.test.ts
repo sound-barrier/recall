@@ -26,7 +26,7 @@ vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/wr
 vi.mock('@/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api')>()),
   GetMatchResults:       vi.fn(async () => []),
-  GetNewScreenshotCount: vi.fn(async () => 0),
+  GetNewScreenshotCount: vi.fn(async () => ({ count: 0, parked: 0 })),
   GetFailedFiles:        vi.fn(async () => []),
   GetIgnoredScreenshots: vi.fn(async () => []),
   IgnoreScreenshot:      vi.fn(async () => undefined),
