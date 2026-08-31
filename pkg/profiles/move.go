@@ -216,37 +216,24 @@ func movePhase1Ambiguity(targetStore db.Store, snap db.Screenshots, movedShots m
 // natural next step (existing read paths stay unchanged).
 func loadMoveSource(src db.Store) (moveSource, error) {
 	var out moveSource
-	snap, err := src.LoadAll()
-	if err != nil {
-		return moveSource{}, fmt.Errorf("move: load source: %w", err)
-	}
-	out.snap = snap
-	if out.annotations, err = src.LoadAnnotations(); err != nil {
-		return moveSource{}, fmt.Errorf("move: load annotations: %w", err)
-	}
-	if out.hidden, err = src.LoadHiddenKeys(); err != nil {
-		return moveSource{}, fmt.Errorf("move: load hidden keys: %w", err)
-	}
-	if out.ackedGaps, err = src.LoadAcknowledgedReferenceGaps(); err != nil {
-		return moveSource{}, fmt.Errorf("move: load reference-gap acks: %w", err)
-	}
-	if out.pinned, err = src.LoadPinnedKeys(); err != nil {
-		return moveSource{}, fmt.Errorf("move: load pinned keys: %w", err)
-	}
-	if out.reviews, err = src.LoadReviews(); err != nil {
-		return moveSource{}, fmt.Errorf("move: load reviews: %w", err)
-	}
-	if out.coachNotes, err = src.LoadMatchCoachNotes(); err != nil {
-		return moveSource{}, fmt.Errorf("move: load coach notes: %w", err)
-	}
-	if out.moments, err = src.LoadMatchMoments(); err != nil {
-		return moveSource{}, fmt.Errorf("move: load match moments: %w", err)
-	}
-	if out.selfReviews, err = src.LoadSelfReviews(); err != nil {
-		return moveSource{}, fmt.Errorf("move: load self reviews: %w", err)
-	}
-	if out.matchKeys, err = src.LoadMatchKeys(); err != nil {
-		return moveSource{}, fmt.Errorf("move: load match keys: %w", err)
+	for _, load := range []struct {
+		what string
+		fn   func() error
+	}{
+		{"source", func() (err error) { out.snap, err = src.LoadAll(); return }},
+		{"annotations", func() (err error) { out.annotations, err = src.LoadAnnotations(); return }},
+		{"hidden keys", func() (err error) { out.hidden, err = src.LoadHiddenKeys(); return }},
+		{"reference-gap acks", func() (err error) { out.ackedGaps, err = src.LoadAcknowledgedReferenceGaps(); return }},
+		{"pinned keys", func() (err error) { out.pinned, err = src.LoadPinnedKeys(); return }},
+		{"reviews", func() (err error) { out.reviews, err = src.LoadReviews(); return }},
+		{"coach notes", func() (err error) { out.coachNotes, err = src.LoadMatchCoachNotes(); return }},
+		{"match moments", func() (err error) { out.moments, err = src.LoadMatchMoments(); return }},
+		{"self reviews", func() (err error) { out.selfReviews, err = src.LoadSelfReviews(); return }},
+		{"match keys", func() (err error) { out.matchKeys, err = src.LoadMatchKeys(); return }},
+	} {
+		if err := load.fn(); err != nil {
+			return moveSource{}, fmt.Errorf("move: load %s: %w", load.what, err)
+		}
 	}
 	return out, nil
 }
