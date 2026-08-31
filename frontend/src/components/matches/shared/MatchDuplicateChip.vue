@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAppStore } from '@/stores/app'
 import { useUiStore } from '@/stores/ui'
 
 // "Possible duplicate of →" — the verdict the user already reached, on both
@@ -16,6 +17,7 @@ const props = defineProps<{
 }>()
 
 const ui = useUiStore()
+const app = useAppStore()
 
 // The key is a timestamp, and the whole point of following the link is to
 // compare — so the chip says WHEN, which is the thing that made the two
@@ -25,10 +27,15 @@ function label(key: string): string {
 }
 
 // revealMatch resets the narrow when the twin is filtered out of the
-// current set: a link the user can see and not follow would be worse than
-// no link, and the twin is by construction a match they own.
+// current set. It still reports false for one case the reset cannot
+// answer: a HIDDEN twin, which the narrow drops unconditionally. Hiding
+// one of a pair is a perfectly reasonable thing to do — it is often the
+// answer to "these are the same match" — so the chip stays and says why
+// it cannot go there, rather than becoming a button that does nothing.
 function open(key: string) {
-  ui.revealMatch(key)
+  if (!ui.revealMatch(key)) {
+    app.setError(`${key} is hidden. Show hidden matches to open it.`)
+  }
 }
 </script>
 

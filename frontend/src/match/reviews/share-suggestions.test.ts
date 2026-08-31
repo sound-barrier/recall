@@ -10,6 +10,7 @@ interface RecOpts {
   hero?: string
   map?: string
   code?: string
+  hidden?: boolean
 }
 
 function rec(o: RecOpts): MatchRecord {
@@ -24,6 +25,7 @@ function rec(o: RecOpts): MatchRecord {
       finished_at: '20:00',
     },
     ...(o.code === undefined ? {} : { annotation: { leavers: [], throwers: [], replay_code: o.code } }),
+    ...(o.hidden ? { hidden: true } : {}),
   } as unknown as MatchRecord
 }
 
@@ -47,6 +49,21 @@ describe('shareSuggestions', () => {
       records: withGap, alreadySent: [], focusText: [], names: NAMES,
     })
     expect(since?.keys).not.toContain('gap')
+  })
+
+  // The bundle carries these matches WHOLE — screenshots, journal notes,
+  // tags, BattleTags. Every other door into the dialog resolves its keys
+  // from the narrowed set, which drops hidden records; a suggestion reads
+  // the raw corpus, so it is the one door that could put a match the user
+  // soft-deleted in front of a coach.
+  it('never suggests a match the user hid', () => {
+    const withHidden = [...corpus, rec({
+      key: 'hid', date: '2026-05-06', result: 'defeat', code: 'HID111', hidden: true,
+    })]
+    const [since] = shareSuggestions({
+      records: withHidden, alreadySent: [], focusText: [], names: NAMES,
+    })
+    expect(since?.keys).not.toContain('hid')
   })
 
   describe('everything since the last send', () => {

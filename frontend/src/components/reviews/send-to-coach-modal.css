@@ -29,11 +29,21 @@
   color: var(--text-dim);
 }
 
+/* A disclosure, not a footnote — it reads as the quiet text it was and
+   behaves as the button every row's Remove needs it to be. */
 .send-to-coach-more {
+  appearance: none;
   margin: 0.35rem 0 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
   font-size: var(--type-xs);
   color: var(--text-dim);
+  text-align: left;
+  cursor: pointer;
 }
+
+.send-to-coach-more:hover { color: var(--text); }
 
 .send-to-coach-blocked {
   margin: 0.6rem 0 0;

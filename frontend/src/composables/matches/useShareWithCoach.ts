@@ -121,9 +121,23 @@ export function useShareWithCoach(deps: ShareWithCoachDeps) {
     shareOrigin.value = origin
   }
 
-  /** Drop one match from the set on screen; the rest of the dialog follows. */
+  /**
+   * Drop one match from the set on screen; the rest of the dialog follows.
+   *
+   * Removing the LAST one closes the dialog rather than emptying it.
+   * requestShare refuses to OPEN over nothing for a reason — "an empty
+   * dialog is a dead end, not a decision" — and arriving at that same state
+   * by subtraction is no better: a manifest of nothing, a subject line
+   * about a match that is no longer there, and a disabled Send whose only
+   * escape is Cancel.
+   */
   function dropShareKey(matchKey: string): void {
-    setShareKeys(shareKeys.value.filter((k) => k !== matchKey), shareOrigin.value)
+    const rest = shareKeys.value.filter((k) => k !== matchKey)
+    if (rest.length === 0) {
+      closeShare()
+      return
+    }
+    setShareKeys(rest, shareOrigin.value)
   }
 
   function closeShare(): void {

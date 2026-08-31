@@ -80,6 +80,7 @@ func seedFullMatch(t *testing.T, s db.Store, key, filename string) {
 	mustNoErr(t, s.SetMatchQueue(key, "role"))
 	mustNoErr(t, s.SetMatchPlayMode(key, "competitive"))
 	mustNoErr(t, s.HideMatch(key))
+	mustNoErr(t, s.LinkDuplicateMatches(key, "match-2026-01-01T09-00-00"))
 	mapName := "dorado"
 	mustNoErr(t, s.UpsertUserMatchData(db.UserMatchData{MatchKey: key, Map: &mapName}))
 	_, err := s.UpsertMatchCoachNote(db.MatchCoachNote{
@@ -216,6 +217,12 @@ func assertClearedSurfaces(t *testing.T, s db.Store) {
 	}
 	if reviews, _ := s.LoadSelfReviews(); len(reviews) != 0 {
 		t.Errorf("self reviews survived Clear: %v", reviews)
+	}
+	// Match keys are deterministic, so a Clear that left these behind would
+	// have the same two cards claim a duplicate again after a re-parse — a
+	// judgment the wipe was supposed to erase, resurrected.
+	if links, _ := s.LoadAllDuplicateLinks(); len(links) != 0 {
+		t.Errorf("duplicate links survived Clear: %v", links)
 	}
 }
 
