@@ -43,9 +43,12 @@ type FailedFile struct {
 
 // RetryFailedFile deletes filename's failure row — the Retry on a
 // parked card. The row IS the attempt count, so deleting it resets the
-// cap and the file re-enters the pending count and the next run on the
-// spot. Idempotent on absent rows; write-gated like every other
-// mutation while a coach session holds the DB read-only.
+// cap; a PARKED (unstored) file re-enters the pending count and the
+// next run on the spot, while a stored file (degraded, or the ambiguity
+// leg) merely loses its triage entry — it stays in the skip set until a
+// Re-parse All, which is why the UI offers Retry only on parked rows.
+// Idempotent on absent rows; write-gated like every other mutation
+// while a coach session holds the DB read-only.
 func (a *App) RetryFailedFile(filename string) error {
 	if err := a.assertNoCoachSession(); err != nil {
 		return err

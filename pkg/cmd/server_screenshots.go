@@ -36,13 +36,15 @@ func validateScreenshotFilename(name string) (string, error) {
 }
 
 // registerScreenshotRoutes attaches the /api/v1/screenshots/... HTTP
-// surface. Currently scoped to the suppress-list backing the
-// "Delete forever" affordance:
+// surface — the suppress-list backing the Unknown tab's Dismiss, plus
+// the failure ledger's read and Retry:
 //
 //   - PUT    /api/v1/screenshots/{filename}/ignore   → add to set
 //   - DELETE /api/v1/screenshots/{filename}/ignore   → remove from set
+//   - DELETE /api/v1/screenshots/{filename}/failure  → Retry (delete the failure record)
 //   - GET    /api/v1/screenshots/ignored             → list (filename + ignored_at)
 //   - DELETE /api/v1/screenshots/ignored             → bulk truncate
+//   - GET    /api/v1/screenshots/failed              → the OCR-failure ledger
 //
 // The image-binary handler at `/_screenshot/{filename}` is a separate
 // path (predates the /api/v1 prefix), not part of this resource

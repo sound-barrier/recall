@@ -26,10 +26,13 @@ export type DbHealth = {
  * desktop event bus in Wails mode) — the finished run's own tally,
  * so the end-of-run report can say "X read · Y failed to read"
  * without inferring it from a refetched ledger. `files_parsed`
- * counts files that stored rows (degraded parses included);
- * `files_failed` counts files that stored nothing (OCR, insert, or
- * ambiguity-write failure). A canceled run emits `parse-canceled`
- * instead and carries no summary.
+ * counts files whose writes all landed (degraded parses included);
+ * `files_failed` counts files whose run failed somewhere — OCR or
+ * insert failure (nothing stored), or an ambiguity-write failure
+ * (rows stored, candidate record lost). A canceled run emits
+ * `parse-canceled` instead and carries no summary; a client that
+ * reconnects after missing the event gets no replay — treat the
+ * summary as a toast, not durable state.
  *
  */
 export type ParseRunSummary = {
@@ -3255,6 +3258,10 @@ export type UnignoreScreenshotErrors = {
      */
     400: ProblemDetails;
     /**
+     * A coaching session holds the database read-only; end the session first.
+     */
+    409: ProblemDetails;
+    /**
      * Unhandled server-side error.
      */
     500: ProblemDetails;
@@ -3291,6 +3298,10 @@ export type IgnoreScreenshotErrors = {
      * Malformed request body or query parameters.
      */
     400: ProblemDetails;
+    /**
+     * A coaching session holds the database read-only; end the session first.
+     */
+    409: ProblemDetails;
     /**
      * Unhandled server-side error.
      */
