@@ -226,3 +226,44 @@
      label below AA. The ghost surface IS the disabled look. */
   opacity: 1;
 }
+
+/* Proposals sit above the manifest they would replace, reading as a way to
+   start rather than a control on the set already there. */
+.send-to-coach-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.6rem;
+}
+
+.send-to-coach-suggest {
+  appearance: none;
+  padding: 0.2rem 0.6rem;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  font-size: var(--type-2xs);
+  cursor: pointer;
+}
+
+.send-to-coach-suggest:hover:not(:disabled) {
+  color: var(--accent-text);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.send-to-coach-drop {
+  appearance: none;
+  margin-left: auto;
+  padding: 0 0.3rem;
+  background: transparent;
+  border: 0;
+  color: var(--text-faint);
+  font-size: var(--type-sm);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.send-to-coach-drop:hover:not(:disabled) { color: var(--loss); }
