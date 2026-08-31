@@ -26,6 +26,12 @@ import type { RankNow } from '@/match/trends/match-trends-helpers'
 import type { FormDelta, RateSample, LeaverRate, SessionIndexBreakdown } from '@/match/dossier/match-momentum-helpers'
 import type { TiltEpisodes } from '@/match/elo/elo-streaks'
 import type { HeroCountBucket, HeroPoolAnalysis } from '@/match/dossier/match-hero-pool-helpers'
+import type { BaselineDelta, PerformanceVsRank, ClimbVelocity } from '@/match/dossier/match-baseline-helpers'
+
+// Nothing read either side — the shape every baseline widget must survive.
+const EMPTY_BASELINE: BaselineDelta = {
+  recentRate: null, baselineRate: null, sigma: null, pValue: null, recentN: 0, baselineN: 0,
+}
 
 // Empty pool analysis for widgets that don't seed heroPool.
 const EMPTY_POOL: HeroPoolAnalysis = {
@@ -106,6 +112,14 @@ type DossierOverride = {
   // Query helpers — climb-form widgets.
   formDelta?:          FormDelta
   lossStreakRecovery?: RateSample
+  // Query helpers — baseline / climb widgets. Each reports null rather than
+  // zero when nothing was read, so a test that omits these gets the
+  // honest-empty branch, not a fake stalled climb.
+  rollingBaseline?:     BaselineDelta
+  perfVsRank?:          PerformanceVsRank
+  velocity?:            ClimbVelocity
+  // Query helper — loss quality (takes no opts; wrapQuery tolerates that).
+  lossQualityBreakdown?: { rows: BreakdownEntry[]; unscored: number }
 }
 
 function fakeDossier(over: DossierOverride): MatchesDossier {
@@ -151,6 +165,14 @@ function fakeDossier(over: DossierOverride): MatchesDossier {
       deltaPts: null,
     } as FormDelta),
     lossStreakRecovery:  wrapQuery(over.lossStreakRecovery, { winrate: null, sample: 0 } as RateSample),
+    rollingBaseline:     wrapQuery(over.rollingBaseline, EMPTY_BASELINE),
+    perfVsRank:          wrapQuery(over.perfVsRank, {
+      delta: EMPTY_BASELINE, netPercent: null, readCount: 0, readOf: 0, verdict: 'unknown',
+    } as PerformanceVsRank),
+    velocity:            wrapQuery(over.velocity, {
+      perSession: null, perWeek: null, sessions: 0, readCount: 0,
+    } as ClimbVelocity),
+    lossQualityBreakdown: wrapQuery(over.lossQualityBreakdown, { rows: [] as BreakdownEntry[], unscored: 0 }),
     withWhomBreakdown:   wrapQuery(over.withWhomBreakdown, [] as BreakdownEntry[]),
     topHeroesByMinutes:  wrapQuery(over.topHeroesByMinutes, [] as HeroBreakdownEntry[]),
     mostPlayedHero:      wrapQuery(over.mostPlayedHero, null),
