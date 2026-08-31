@@ -72,14 +72,17 @@ func (a *App) emitCoachSessionChanged(active bool) {
 	a.SSEHub.BroadcastData("coach-session-changed", string(data))
 }
 
-// emitParseComplete notifies the Wails frontend that a parse run finished.
-// Gated by the !serveronly build tag so the v3 application import is absent
-// from server-only binaries.
-func (a *App) emitParseComplete(matchCount int) {
-	emitEvent("parse-complete")
+// emitParseComplete notifies the Wails frontend that a parse run finished,
+// carrying the run's summary. Terminal event → BroadcastTerminal, so a
+// slow SSE consumer's full buffer can't drop it (the spinner would
+// strand). Gated by the !serveronly build tag so the v3 application
+// import is absent from server-only binaries.
+func (a *App) emitParseComplete(s ParseRunSummary) {
+	data, _ := json.Marshal(s)
+	emitEvent("parse-complete", s)
 	// Also broadcast via SSE when the Wails binary is run with --server.
-	a.SSEHub.Broadcast("parse-complete")
-	notifyParseComplete(matchCount)
+	a.SSEHub.BroadcastTerminal("parse-complete", string(data))
+	notifyParseComplete(s.MatchesUpdated)
 }
 
 // parseCompleteNotifier posts a native "parse complete" desktop notification.

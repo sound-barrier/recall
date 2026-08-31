@@ -1,6 +1,10 @@
 package app
 
-import "fmt"
+import (
+	"fmt"
+
+	"recall/pkg/matchedit"
+)
 
 // parkedAttemptCap is how many failed parse attempts a file gets before
 // normal runs stop retrying it (it is PARKED — skipped by the run and
@@ -35,6 +39,24 @@ type FailedFile struct {
 	Parked        bool   `json:"parked"`
 	FirstFailedAt string `json:"first_failed_at"`
 	LastFailedAt  string `json:"last_failed_at"`
+}
+
+// RetryFailedFile deletes filename's failure row — the Retry on a
+// parked card. The row IS the attempt count, so deleting it resets the
+// cap and the file re-enters the pending count and the next run on the
+// spot. Idempotent on absent rows; write-gated like every other
+// mutation while a coach session holds the DB read-only.
+func (a *App) RetryFailedFile(filename string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
+	if filename == "" {
+		return matchedit.ErrIgnoreFilenameRequired
+	}
+	if err := a.store.RemoveFailedFile(filename); err != nil {
+		return fmt.Errorf("remove failed file %s: %w", filename, err)
+	}
+	return nil
 }
 
 // GetFailedFiles returns the OCR-failure ledger, most recently failed

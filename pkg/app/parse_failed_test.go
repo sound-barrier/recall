@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -257,6 +258,80 @@ func TestApp_ParseScreenshots_AmbiguityErrorRecordsFailedFile(t *testing.T) {
 	}
 	if !strings.HasPrefix(row.Error, "ambiguity: ") {
 		t.Errorf("ledger error = %q, want the ambiguity: prefix naming the stage", row.Error)
+	}
+}
+
+// The end-of-run report: parse-complete carries the run's own tally, so
+// the UI can say "2 read · 1 failed to read" without inferring it from a
+// refetched ledger that can't tell this run's failures from standing
+// degraded rows. Degraded counts as parsed — it stored what it read.
+func TestApp_ParseScreenshots_EmitsARunSummary(t *testing.T) {
+	a, _ := newParseReadyApp(t)
+	a.SSEHub = app.NewSSEHub()
+	events := a.SSEHub.Subscribe()
+	stubParse(t, func(progress parser.ProgressFunc) error {
+		progress(1, 3, "clean.png", &parser.MatchResult{Result: "victory", Map: "rialto", Hero: "lucio"}, nil)
+		progress(2, 3, "degraded.png", &parser.MatchResult{
+			Hero:     "kiriko",
+			Warnings: []string{"personal_r0c2 OCR failed"},
+		}, nil)
+		progress(3, 3, "corrupt.png", nil, errors.New("decoding image: png: invalid format"))
+		return nil
+	})
+
+	if err := a.ParseScreenshots(); err != nil {
+		t.Fatalf("ParseScreenshots: %v", err)
+	}
+
+	for {
+		select {
+		case msg := <-events:
+			if msg.Event != "parse-complete" {
+				continue
+			}
+			var s struct {
+				FilesParsed    int `json:"files_parsed"`
+				FilesFailed    int `json:"files_failed"`
+				MatchesUpdated int `json:"matches_updated"`
+			}
+			if err := json.Unmarshal([]byte(msg.Data), &s); err != nil {
+				t.Fatalf("parse-complete carried no JSON summary: %q (%v)", msg.Data, err)
+			}
+			if s.FilesParsed != 2 || s.FilesFailed != 1 {
+				t.Errorf("summary = %+v, want files_parsed 2 (degraded counts) · files_failed 1", s)
+			}
+			return
+		default:
+			t.Fatal("no parse-complete event observed")
+		}
+	}
+}
+
+// Retry is DELETE on the failure row: attempts reset to nothing and the
+// file re-enters the pending count on the spot.
+func TestApp_RetryFailedFile_RestoresTheFileToPending(t *testing.T) {
+	a, fake := newParseReadyApp(t)
+	dir := app.SettingsOf(a).ScreenshotsDir
+	writeFile(t, dir, "stuck.png", []byte("stuck"))
+	for range 3 {
+		if err := fake.RecordFailedFile("stuck.png", 1, "boom"); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := a.RetryFailedFile("stuck.png"); err != nil {
+		t.Fatalf("RetryFailedFile: %v", err)
+	}
+
+	if _, still := fake.FailedFiles["stuck.png"]; still {
+		t.Error("retry must delete the failure row")
+	}
+	p, err := a.GetNewScreenshotCount()
+	if err != nil {
+		t.Fatalf("GetNewScreenshotCount: %v", err)
+	}
+	if p.Count != 1 || p.Parked != 0 {
+		t.Errorf("counts after retry = %+v, want the file back in Count", p)
 	}
 }
 

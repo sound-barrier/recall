@@ -47,11 +47,13 @@ func (a *App) emitCoachSessionChanged(active bool) {
 	a.SSEHub.BroadcastData("coach-session-changed", string(data))
 }
 
-// emitParseComplete is a no-op in server mode — the SSE hub handles
-// parse-complete notifications instead of the Wails event bus. The match count
-// drives the desktop native notification only, so server mode ignores it.
-func (a *App) emitParseComplete(int) {
-	a.SSEHub.Broadcast("parse-complete")
+// emitParseComplete broadcasts the run summary to SSE subscribers —
+// server mode has no Wails event bus and no desktop notification.
+// Terminal event → BroadcastTerminal, so a slow consumer's full buffer
+// can't drop it (the spinner would strand).
+func (a *App) emitParseComplete(s ParseRunSummary) {
+	data, _ := json.Marshal(s)
+	a.SSEHub.BroadcastTerminal("parse-complete", string(data))
 }
 
 // emitParseCanceled is the SSE-only sibling of the Wails twin in

@@ -87,9 +87,28 @@ func registerScreenshotRoutes(apiMux *http.ServeMux, a *app.App) {
 		writeJSON(w, r, out, err)
 	})
 
+	// DELETE: Retry — the screenshot's failure record is the resource
+	// (sibling shape to /ignore; a "failed/{filename}" path would be
+	// ambiguous with "{filename}/ignore" under ServeMux precedence),
+	// and deleting it resets the attempt count so a parked file
+	// re-enters the pending set. 204 even on absent rows, the
+	// UnhideMatch shape.
+	apiMux.HandleFunc("DELETE /api/v1/screenshots/{filename}/failure", func(w http.ResponseWriter, r *http.Request) {
+		filename, err := validateScreenshotFilename(r.PathValue("filename"))
+		if err != nil {
+			writeProblem(w, r, probInvalidBody, err.Error())
+			return
+		}
+		if writeError(w, r, a.RetryFailedFile(filename),
+			errStatus{app.ErrIgnoreFilenameRequired, probInvalidBody}) {
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	// GET: the OCR-failure ledger backing the Unknown tab's "Failed to
-	// read" triage section. Read-only — suppression reuses the ignore
-	// endpoints above, and a later successful parse clears rows itself.
+	// read" triage section. Suppression reuses the ignore endpoints
+	// above, and a later successful parse clears rows itself.
 	apiMux.HandleFunc("GET /api/v1/screenshots/failed", func(w http.ResponseWriter, r *http.Request) {
 		out, err := a.GetFailedFiles()
 		writeJSON(w, r, out, err)
