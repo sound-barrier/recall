@@ -244,6 +244,50 @@ describe('terminal transitions', () => {
     expect(run.parseAnnouncement.value).toBe('Parse complete. 1 match loaded.')
   })
 
+  // The run summary raises the outcome toast state and extends the
+  // announcement — with the singular/plural clause done properly.
+  it('a run summary raises parseOutcome and appends the failure clause', async () => {
+    bootSettings(tess())
+    const run = newRun(loadWith([rec('m-1', 5, 'victory')]))
+
+    await run.finishParseRun('complete', { files_parsed: 4, files_failed: 2, matches_updated: 3 })
+
+    expect(run.parseOutcome.value).toMatchObject({ files_parsed: 4, files_failed: 2 })
+    expect(run.parseAnnouncement.value).toBe('Parse complete. 1 match loaded. 2 files failed to read.')
+  })
+
+  it('a single failure announces in the singular', async () => {
+    bootSettings(tess())
+    const run = newRun(loadWith([]))
+
+    await run.finishParseRun('complete', { files_parsed: 1, files_failed: 1, matches_updated: 1 })
+
+    expect(run.parseAnnouncement.value).toBe('Parse complete. 0 matches loaded. 1 file failed to read.')
+  })
+
+  it('a summary-less completion raises no outcome toast', async () => {
+    bootSettings(tess())
+    const run = newRun(loadWith([rec('m-1', 5, 'victory')]))
+
+    await run.finishParseRun('complete')
+
+    expect(run.parseOutcome.value).toBeNull()
+  })
+
+  it('dismissParseOutcome honors only the live token', async () => {
+    bootSettings(tess())
+    const run = newRun(loadWith([]))
+    await run.finishParseRun('complete', { files_parsed: 1, files_failed: 0, matches_updated: 0 })
+    const token = run.parseOutcome.value?.token
+    if (token === undefined) throw new Error('outcome not raised')
+
+    run.dismissParseOutcome(token - 1)
+    expect(run.parseOutcome.value).not.toBeNull()
+
+    run.dismissParseOutcome(token)
+    expect(run.parseOutcome.value).toBeNull()
+  })
+
   it('completes on an empty database without inventing a session', async () => {
     bootSettings(tess())
     // Nothing landed in the cache — a first run over a folder with no

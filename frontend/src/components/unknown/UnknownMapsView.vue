@@ -51,13 +51,21 @@ const openLightbox = uiStore.preview.openLightbox
 // Dismiss on an ambiguous card — junk the resolver keeps offering
 // candidates for should be dismissible right here, not by resolving it
 // into a match first. Same two-click confirm + write gate as the other
-// sections; a write, so a coaching session locks it.
+// sections; a write, so a coaching session locks it. Dismissal is
+// card-whole (every source file), and the label says so when the group
+// carries more than one.
 const { trigger: triggerDismiss, isArmed: isDismissArmed } = useArmedAction()
 
 function onDismissAmbiguous(rec: MatchRecord) {
   const files = rec.source_files ?? []
   if (files.length === 0) return
   triggerDismiss(rec.match_key, () => { void onDismissFiles(files) })
+}
+
+function ambiguousDismissLabel(rec: MatchRecord): string {
+  const files = rec.source_files ?? []
+  const what = files.length === 1 ? (files[0] ?? '') : `${files.length} screenshots of this group`
+  return isDismissArmed(rec.match_key) ? `Confirm dismissing ${what}` : `Dismiss ${what}`
 }
 
 const unknownExpanded = ref<Record<string, boolean>>({})
@@ -229,9 +237,7 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
                   type="button"
                   class="unknown-delete-btn"
                   :class="{ armed: isDismissArmed(rec.match_key) }"
-                  :aria-label="isDismissArmed(rec.match_key)
-                    ? `Confirm dismissing ${rec.source_files[0]}`
-                    : `Dismiss ${rec.source_files[0]}`"
+                  :aria-label="ambiguousDismissLabel(rec)"
                   :data-ignore-btn="rec.match_key"
                   :disabled="writesLocked"
                   :title="lockReason || undefined"
@@ -240,8 +246,8 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
                   {{ isDismissArmed(rec.match_key) ? 'Confirm dismiss?' : 'Dismiss' }}
                 </button>
                 <span class="unknown-delete-hint">
-                  Not a match worth keeping? Recall will skip this file on
-                  future parses. It stays on disk — restore it anytime in
+                  Not a match worth keeping? Recall will skip these files on
+                  future parses. They stay on disk — restore them anytime in
                   Settings → Advanced → Manage ignored files.
                 </span>
               </div>

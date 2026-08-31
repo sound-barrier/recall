@@ -6,7 +6,7 @@
  * of the records array. The section lists each failure with its error,
  * attempt count, and the same two-click Dismiss suppression the
  * unmatched cards use (PUT /api/v1/screenshots/{file}/ignore). Failed
- * files are retried on every parse run — the copy says so.
+ * files retry on the next few parse runs, then park — the copy says so.
  */
 import type { Route } from '@playwright/test'
 
@@ -17,6 +17,7 @@ const failedRows = () => ([
     filename: 'corrupt.png',
     error: 'decoding image: png: invalid format',
     attempts: 6,
+    parked: false,
     first_failed_at: '2026-07-01T20:00:00Z',
     last_failed_at: '2026-07-06T21:30:00Z',
   },
@@ -24,6 +25,7 @@ const failedRows = () => ([
     filename: 'menu-shot.png',
     error: 'could not locate the highlighted (lighter blue) row in the teams',
     attempts: 3,
+    parked: false,
     first_failed_at: '2026-07-02T20:00:00Z',
     last_failed_at: '2026-07-06T21:31:00Z',
   },

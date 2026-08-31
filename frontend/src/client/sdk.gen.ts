@@ -29,7 +29,7 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
  * rebuild.
  *
  * The optional `keep_ignored=true` query param preserves the
- * Unknown-tab "Delete forever" suppress list across the wipe
+ * Unknown-tab Dismiss suppress list across the wipe
  * (Settings → Advanced surfaces this as a "Keep suppress-list"
  * checkbox). Default-off matches the historical factory-reset
  * semantic.

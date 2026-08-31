@@ -22,7 +22,7 @@ type QueueState struct {
 }
 
 // IgnoredRow is one row of ignored_screenshots — a filename the user
-// chose to "Delete forever" on the Unknown tab. `IgnoredAt` is the
+// chose to Dismiss on the Unknown tab. `IgnoredAt` is the
 // server-assigned timestamp the Settings panel renders so users can
 // distinguish recent ignores from old ones.
 // IngestedFile is one content-hash registry row (see ingested_files in

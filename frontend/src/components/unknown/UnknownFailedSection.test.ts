@@ -11,7 +11,7 @@ import { ExportDiagnosticBundle, IgnoreScreenshot } from '@/api'
 import type { FailedFile } from '@/api'
 
 // The section reads matchesStore.failedFiles directly and suppresses via
-// useMatchActions' onIgnoreScreenshot. Keep '@/api' real except the calls
+// useMatchActions' onDismissFiles. Keep '@/api' real except the calls
 // the store's reload paths + the ignore action would hit.
 vi.mock('@/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api')>()),

@@ -108,7 +108,7 @@ func (a *App) GetMatchByKey(matchKey string) (match.Record, error) {
 }
 
 // ClearDatabase deletes every row across every per-type table. The
-// `keepIgnored` opt-out preserves the Unknown-tab "Delete forever"
+// `keepIgnored` opt-out preserves the Unknown-tab Dismiss
 // suppress list across the wipe (Store.Clear unconditionally truncates
 // `ignored_screenshots` — this method snapshots the list, calls Clear,
 // then re-inserts so the suppress list survives without threading an

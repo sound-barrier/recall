@@ -1,13 +1,19 @@
-import { ref } from 'vue'
+import { onScopeDispose, ref } from 'vue'
 
-// Two-click destructive confirm — the DashboardEditBanner Reset pattern,
-// shared by the Unknown tab's Dismiss buttons (unmatched cards, failed
-// rows, ambiguous cards). The first trigger arms the key for windowMs
-// and auto-disarms; a second trigger inside the window disarms and
-// fires. Keyed, so concurrent arms on sibling cards don't collide.
+// Two-click destructive confirm, shared by the Unknown tab's Dismiss
+// buttons (unmatched cards, failed rows, ambiguous cards). The first
+// trigger arms the key for windowMs and auto-disarms; a second trigger
+// inside the window disarms and fires. Keyed, so concurrent arms on
+// sibling cards don't collide; instances are independent, so two
+// sections can never cross-arm each other's keys.
 export function useArmedAction(windowMs = 3000) {
   const armed = ref<Set<string>>(new Set())
   const timers: Record<string, ReturnType<typeof setTimeout>> = {}
+
+  // Unmounting mid-arm must not leave a timer poking a dead ref.
+  onScopeDispose(() => {
+    for (const t of Object.values(timers)) clearTimeout(t)
+  })
 
   function disarm(key: string) {
     const t = timers[key]

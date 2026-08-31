@@ -69,7 +69,7 @@ function recognizingRelease(rec: MatchRecord): { version: string; url: string; n
        updated YAML. -->
   <div v-if="referenceGapRecords.length > 0" id="section-reference-gaps" class="unknown-list reference-gap-section">
     <h3 class="needs-review-heading" data-refgap-heading>
-      Reference data gaps — {{ activeGaps.length }}
+      Reference data gaps — {{ activeGaps.length > 0 ? activeGaps.length : 'all acknowledged' }}
     </h3>
     <p class="needs-review-desc">
       The parser captured an OCR'd hero or map name in these records but couldn't match it to the canonical roster shipped with this Recall release. They'll be picked up automatically on the next launch after a YAML update.
@@ -192,8 +192,10 @@ function recognizingRelease(rec: MatchRecord): { version: string; url: string; n
   align-self: flex-start;
 }
 
-/* Acknowledged cards read as settled — dimmed, not gone. */
+/* Acknowledged cards read as settled: the accent bar goes quiet.
+   Deliberately NOT an opacity dim — the card holds small text and a
+   live control, and composited text at 60% opacity fell below AA. */
 .refgap-acked-card {
-  opacity: 0.6;
+  border-left-color: var(--border-soft);
 }
 </style>

@@ -1,7 +1,7 @@
 /**
  * Unknown tab — Dismiss on every card.
  *
- * Two-click confirm pattern (mirrors DashboardEditBanner's Reset):
+ * Two-click confirm pattern (the shared useArmedAction shape):
  *   - first click arms the button to "Confirm dismiss?" + red fill
  *   - second click within 3 s fires PUT /api/v1/screenshots/{file}/ignore
  *     for EVERY file the card carries → 204s + records reload

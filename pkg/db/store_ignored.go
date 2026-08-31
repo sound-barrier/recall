@@ -1,7 +1,7 @@
 package db
 
 // Ignored screenshots — per-file suppress list backing the Unknown
-// tab's "Delete forever" affordance. Presence in ignored_screenshots
+// tab's Dismiss affordance. Presence in ignored_screenshots
 // IS the ignored state; no boolean column anywhere. Add/Remove are
 // idempotent — ignoring an already-ignored filename refreshes the
 // timestamp; un-ignoring a non-ignored one is a no-op.
