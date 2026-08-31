@@ -103,4 +103,13 @@ describe('MastheadParseChip', () => {
       vi.useRealTimers()
     }
   })
+
+  it('names its progress meter, which cannot borrow the button s name', () => {
+    // role="progressbar" is name-from-author-only: the "3 / 8" text inside it
+    // contributes nothing, and the parent button's aria-label does not name a
+    // descendant. Without its own label this is an axe aria-progressbar-name
+    // failure — the same defect the climb-rate tile carried.
+    render(MastheadParseChip, { props: { parseProgress: evt({ done: 3, total: 8 }) } })
+    expect(screen.getByRole('progressbar')).toHaveAccessibleName(/screenshot/i)
+  })
 })

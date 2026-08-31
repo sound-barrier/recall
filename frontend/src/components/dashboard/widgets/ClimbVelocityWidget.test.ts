@@ -40,10 +40,8 @@ describe('ClimbVelocityWidget', () => {
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
   })
 
-  it('drops the per-session clause when only the weekly rate is known', () => {
-    renderWidget(ClimbVelocityWidget, {
-      dossier: { velocity: { perSession: null, perWeek: 6, sessions: 0, readCount: 4 } },
-    })
-    expect(screen.getByText('4 readings')).toBeInTheDocument()
-  })
+  // NOTE: the widget also handles perSession === null while readCount > 0, but
+  // climbVelocity cannot produce it — read > 0 means `recent` is non-empty,
+  // every member is timed, and sessionCount is then at least 1. Asserting that
+  // branch would buy coverage on a state the app never reaches.
 })

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/vue'
 import CoachCueStrip from '@/components/coach/notes/CoachCueStrip.vue'
 import type { CoachMoment } from '@/match/coach/coach-moments'
@@ -14,6 +14,10 @@ function renderStrip(props: Record<string, unknown> = {}) {
 }
 
 describe('CoachCueStrip', () => {
+  // Restore here rather than at the end of the one test that stubs: a throw
+  // before its mockRestore would leave crypto stubbed for the whole file.
+  afterEach(() => { vi.restoreAllMocks() })
+
   it('invites a first moment instead of showing an empty axis', () => {
     renderStrip()
     expect(screen.getByText(/No moments yet/)).toBeInTheDocument()
@@ -54,7 +58,6 @@ describe('CoachCueStrip', () => {
     expect((emitted('update') as CoachMoment[][])[0]![0]).toEqual(
       expect.objectContaining({ momentId: '11111111-2222-3333-4444-555555555555', text: '' }),
     )
-    uuid.mockRestore()
   })
 
   it('relays a row removal with the id of the row that asked', async () => {

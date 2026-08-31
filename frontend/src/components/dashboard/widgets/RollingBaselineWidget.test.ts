@@ -45,7 +45,9 @@ describe('RollingBaselineWidget', () => {
     renderWidget(RollingBaselineWidget, {
       dossier: {
         rollingBaseline: {
-          recentRate: 0.66, baselineRate: null, sigma: null, pValue: null, recentN: 3, baselineN: 1,
+          // baselineRate is null iff baselineN is 0 — winrateVsBaseline's own
+          // rule; a fake that pairs null with n=1 mirrors nothing.
+          recentRate: 0.66, baselineRate: 0.5, sigma: null, pValue: null, recentN: 3, baselineN: 1,
         },
       },
     })
