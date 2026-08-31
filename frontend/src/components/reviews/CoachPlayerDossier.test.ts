@@ -93,6 +93,64 @@ describe('CoachPlayerDossier', () => {
     expect(read).toHaveAttribute('aria-expanded', 'true')
   })
 
+  // Every note ever written, labeled by the match's own identity — a dated
+  // capture reads as its day, a replay key as its code, because the matches
+  // themselves left with their sessions and only the words stay.
+  describe('the note list', () => {
+    function note(over: Record<string, unknown> = {}) {
+      return {
+        note_id: 'n-1', match_key: 'match-2026-08-13T22-30-00', kind: 'note',
+        text: 'Hold the high ground until their dive commits.',
+        focus_tags: ['positioning'], extra_tags: [], match_clock: '06:40',
+        updated_at: '2026-08-14T20:00:00Z',
+        ...over,
+      }
+    }
+
+    async function openNotes(notes: unknown[]) {
+      setActivePinia(createPinia())
+      seedQuery(qk.coachPlayerSessions(PLAYER.id), [])
+      seedQuery(qk.coachPlayerNotes(PLAYER.id), notes)
+      render(CoachPlayerDossier, { props: { player: PLAYER } })
+      await userEvent.click(screen.getByRole('button', { name: 'Read every note' }))
+    }
+
+    it('carries the words, the clock and the tags', async () => {
+      await openNotes([note()])
+      expect(dossier()).toHaveTextContent(/Hold the high ground/)
+      expect(dossier()).toHaveTextContent('06:40')
+      expect(dossier()).toHaveTextContent('positioning')
+    })
+
+    it('reads a replay key as its code', async () => {
+      await openNotes([note({ match_key: 'replay-A1B2C3', match_clock: '' })])
+      expect(dossier()).toHaveTextContent('A1B2C3')
+    })
+
+    // A match looked at and left without words is still a fact about the
+    // sitting; printing nothing there would read as a note that failed to
+    // save.
+    it('says a reviewed-only match was reviewed', async () => {
+      await openNotes([note({ kind: 'reviewed_only', text: '', focus_tags: [] })])
+      expect(dossier()).toHaveTextContent(/Reviewed — nothing to add/)
+    })
+
+    it('counts the moments on a note that carries them', async () => {
+      await openNotes([note({ moment_count: 3 })])
+      expect(dossier()).toHaveTextContent('3 moments')
+    })
+
+    it('counts one moment in the singular', async () => {
+      await openNotes([note({ moment_count: 1 })])
+      expect(dossier()).toHaveTextContent(/1 moment(?!s)/)
+    })
+
+    it('says the file is empty rather than showing an empty list', async () => {
+      await openNotes([])
+      expect(dossier()).toHaveTextContent(/Nothing written yet/)
+    })
+  })
+
   it('says so plainly when nobody has been written about yet', () => {
     renderDossier([], { ...PLAYER, note_count: 0, last_note_at: undefined, focus_items: [] })
     expect(dossier()).toHaveTextContent(/0 notes/)
