@@ -38,7 +38,7 @@ import { createMatch, manual, parseGolden, reset, stageGolden, unstageGolden } f
 const EXPECTED_HEADER =
   'match_key,date,finished_at,game_length,map,game_mode,playlist,play_mode,queue_type,result,' +
   'final_score,role,hero,heroes_played,eliminations,assists,deaths,damage,healing,mitigation,' +
-  'rank,level,reviewed_by,source,leavers,throwers,note,replay_code,members,tags'
+  'rank,level,reviewed_by,source,leavers,throwers,note,replay_code,members,tags,exclusion_reason'
 
 // The full override set we apply to the parsed match. Every value is a
 // distinctive in-range sentinel so its presence in the CSV is unambiguous.

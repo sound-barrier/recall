@@ -122,3 +122,5 @@ const headline = computed(() => {
   border-color: var(--accent);
 }
 </style>
+
+<style src="@/components/shared/toasts.css"></style>

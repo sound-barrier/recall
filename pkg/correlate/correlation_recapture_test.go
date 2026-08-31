@@ -59,7 +59,7 @@ func recapSnap(origKey string) db.Screenshots {
 
 func TestFindRecapturedMatches_SameInstantAndResult_Flags(t *testing.T) {
 	origKey := "match-2026-05-10T18-05-22"
-	cands := correlate.FindRecapturedMatches(recapNewKey, recapSnap(origKey))
+	cands := correlate.NewDuplicateScan(recapSnap(origKey)).CandidatesFor(recapNewKey)
 	if len(cands) != 1 {
 		t.Fatalf("expected 1 re-capture candidate, got %d (%+v)", len(cands), cands)
 	}
@@ -79,7 +79,7 @@ func TestFindRecapturedMatches_SameInstantAndResult_Flags(t *testing.T) {
 func TestFindRecapturedMatches_MonthApart_StillFlags(t *testing.T) {
 	snap := recapSnap("match-2026-04-10T18-05-22")
 	snap.Summaries[0].Filename = "Overwatch 2 Screenshot 2026.04.10 - 18.05.22.11.png"
-	if cands := correlate.FindRecapturedMatches(recapNewKey, snap); len(cands) != 1 {
+	if cands := correlate.NewDuplicateScan(snap).CandidatesFor(recapNewKey); len(cands) != 1 {
 		t.Fatalf("expected the flag to survive a month, got %d (%+v)", len(cands), cands)
 	}
 }
@@ -87,7 +87,7 @@ func TestFindRecapturedMatches_MonthApart_StillFlags(t *testing.T) {
 func TestFindRecapturedMatches_DifferentInstant_NoFlag(t *testing.T) {
 	snap := recapSnap("match-2026-05-10T18-05-22")
 	snap.Summaries[0].PlayedAtUTC = new("2026-05-11T00:05:00Z")
-	if cands := correlate.FindRecapturedMatches(recapNewKey, snap); cands != nil {
+	if cands := correlate.NewDuplicateScan(snap).CandidatesFor(recapNewKey); cands != nil {
 		t.Errorf("one minute apart is two matches, got %+v", cands)
 	}
 }
@@ -97,7 +97,7 @@ func TestFindRecapturedMatches_DifferentInstant_NoFlag(t *testing.T) {
 func TestFindRecapturedMatches_SameInstantDifferentResult_NoFlag(t *testing.T) {
 	snap := recapSnap("match-2026-05-10T18-05-22")
 	snap.Summaries[0].Result = "defeat"
-	if cands := correlate.FindRecapturedMatches(recapNewKey, snap); cands != nil {
+	if cands := correlate.NewDuplicateScan(snap).CandidatesFor(recapNewKey); cands != nil {
 		t.Errorf("expected no flag on a conflicting result, got %+v", cands)
 	}
 }
@@ -105,7 +105,7 @@ func TestFindRecapturedMatches_SameInstantDifferentResult_NoFlag(t *testing.T) {
 func TestFindRecapturedMatches_SameInstantDifferentMap_NoFlag(t *testing.T) {
 	snap := recapSnap("match-2026-05-10T18-05-22")
 	snap.Summaries[0].Map = "hanaoka"
-	if cands := correlate.FindRecapturedMatches(recapNewKey, snap); cands != nil {
+	if cands := correlate.NewDuplicateScan(snap).CandidatesFor(recapNewKey); cands != nil {
 		t.Errorf("expected no flag on a conflicting map, got %+v", cands)
 	}
 }
@@ -117,7 +117,7 @@ func TestFindRecapturedMatches_NoInstant_NoFlag(t *testing.T) {
 	snap := recapSnap("match-2026-05-10T18-05-22")
 	snap.Summaries[0].PlayedAtUTC = nil
 	snap.Summaries[1].PlayedAtUTC = nil
-	if cands := correlate.FindRecapturedMatches(recapNewKey, snap); cands != nil {
+	if cands := correlate.NewDuplicateScan(snap).CandidatesFor(recapNewKey); cands != nil {
 		t.Errorf("expected no flag without an instant, got %+v", cands)
 	}
 }
@@ -126,7 +126,7 @@ func TestFindRecapturedMatches_NoInstant_NoFlag(t *testing.T) {
 // the user can be sent to.
 func TestFindRecapturedMatches_UntrackedCandidate_NoFlag(t *testing.T) {
 	snap := recapSnap("ambiguous-2026-05-10T18-05-22")
-	if cands := correlate.FindRecapturedMatches(recapNewKey, snap); cands != nil {
+	if cands := correlate.NewDuplicateScan(snap).CandidatesFor(recapNewKey); cands != nil {
 		t.Errorf("expected no flag toward an untracked key, got %+v", cands)
 	}
 }
@@ -152,7 +152,7 @@ func TestFindDuplicateCandidates_BothProducersOneKey_Deduped(t *testing.T) {
 		},
 	}
 
-	cands := correlate.FindDuplicateCandidates(recapNewKey, snap)
+	cands := correlate.NewDuplicateScan(snap).CandidatesFor(recapNewKey)
 	if len(cands) != 1 {
 		t.Fatalf("expected the pair offered once, got %d (%+v)", len(cands), cands)
 	}
@@ -165,7 +165,7 @@ func TestFindDuplicateCandidates_BothProducersOneKey_Deduped(t *testing.T) {
 // Neither producer subsumes the other: with no TEAMS rows at all, only the
 // re-capture sweep can speak, and the merged entry point must still report.
 func TestFindDuplicateCandidates_SummaryOnly_StillReports(t *testing.T) {
-	cands := correlate.FindDuplicateCandidates(recapNewKey, recapSnap("match-2026-05-10T18-05-22"))
+	cands := correlate.NewDuplicateScan(recapSnap("match-2026-05-10T18-05-22")).CandidatesFor(recapNewKey)
 	if len(cands) != 1 || cands[0].Reason != correlate.ReasonSameInstant {
 		t.Fatalf("expected one same_instant candidate, got %+v", cands)
 	}
@@ -184,7 +184,7 @@ func TestFindDuplicateCandidates_SummaryOnly_StillReports(t *testing.T) {
 func TestFindRecapturedMatches_SameInstantDifferentHero_NoFlag(t *testing.T) {
 	snap := recapSnap("match-2026-05-10T18-05-22")
 	snap.Summaries[0].Hero = "juno"
-	if cands := correlate.FindRecapturedMatches(recapNewKey, snap); cands != nil {
+	if cands := correlate.NewDuplicateScan(snap).CandidatesFor(recapNewKey); cands != nil {
 		t.Errorf("expected no flag on a conflicting hero, got %+v", cands)
 	}
 }
@@ -193,7 +193,7 @@ func TestFindRecapturedMatches_SameInstantDifferentLength_NoFlag(t *testing.T) {
 	snap := recapSnap("match-2026-05-10T18-05-22")
 	snap.Summaries[0].GameLength = "07:12"
 	snap.Summaries[1].GameLength = "14:38"
-	if cands := correlate.FindRecapturedMatches(recapNewKey, snap); cands != nil {
+	if cands := correlate.NewDuplicateScan(snap).CandidatesFor(recapNewKey); cands != nil {
 		t.Errorf("expected no flag on a conflicting game length, got %+v", cands)
 	}
 }

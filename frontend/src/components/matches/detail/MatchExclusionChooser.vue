@@ -76,3 +76,5 @@ function toggle(reason: Exclude<ExclusionReason, ''>) {
     </button>
   </div>
 </template>
+
+<style src="./match-choosers.css"></style>

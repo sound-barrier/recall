@@ -1,0 +1,88 @@
+/* Annotation choosers — the chip row the expanded card uses to record a
+   judgment about a match: who left, who threw, and why the match should not
+   count. One family, because they are one visual concept; a component adds
+   `dis-chooser` + `dis-chip` and keeps no chrome of its own.
+
+   It lived scoped inside MatchDisruptionChooser until the exclusion chooser
+   needed the same look — a scoped block cannot be shared, only copied. It
+   then spent a commit in styles/buttons.css, which app.css imports, which
+   put 1.5 KB of detail-panel chrome in the INITIAL stylesheet for every
+   user who never opens a match. A sibling both components import keeps the
+   one definition and keeps it in the lazy chunk where it belongs.
+
+   The chips reuse the .badge visual vocabulary but carry their own classes
+   so they stay independent of the filter chips above. */
+.dis-chooser {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.85rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px dashed var(--border);
+}
+
+.dis-chooser-label { margin-right: 0.4rem; }
+
+.dis-chip {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.6rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-size: var(--type-sm);
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color var(--duration-fast) ease, background var(--duration-fast) ease, border-color var(--duration-fast) ease, transform var(--duration-fast) ease;
+}
+
+.dis-chip:hover {
+  color: var(--text);
+  border-color: var(--text-faint);
+  transform: translateY(-1px);
+}
+
+.dis-chip.active {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.dis-chip.dis-clear {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-size: var(--type-2xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.dis-chip.dis-clear:hover {
+  color: var(--loss);
+  border-color: var(--loss-line);
+  background: var(--loss-soft);
+}
+
+.dis-chip-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--type-lg);
+  line-height: 1;
+}
+
+/* Your side of the scoreboard reads as a loss-tinted problem; the enemy's
+   reads as a win-tinted one. Same convention as the leaf-row stamp. */
+.dis-chip-glyph.dis-self  { color: var(--loss); }
+.dis-chip-glyph.dis-team  { color: var(--loss); }
+.dis-chip-glyph.dis-enemy { color: var(--win); }
+.dis-chip.active .dis-chip-glyph { color: var(--accent-text); }
+
+@media (prefers-reduced-motion: reduce) {
+  .dis-chip { transition: none; }
+  .dis-chip:hover { transform: none; }
+}

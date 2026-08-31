@@ -57,3 +57,5 @@ const emit = defineEmits<{
   color: var(--loss);
 }
 </style>
+
+<style src="@/components/shared/toasts.css"></style>
