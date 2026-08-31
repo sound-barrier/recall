@@ -48,9 +48,9 @@ func validateScreenshotFilename(name string) (string, error) {
 // path (predates the /api/v1 prefix), not part of this resource
 // family.
 func registerScreenshotRoutes(apiMux *http.ServeMux, a *app.App) {
-	// PUT: idempotent ignore. Wipes the matching unmatched- /
-	// ambiguous- match rows in lockstep so the row disappears from
-	// the result set immediately, not just on the next parse.
+	// PUT: idempotent ignore. Removes the file's own rows in lockstep,
+	// so a match it was the last screenshot of disappears from the
+	// result set immediately — and one with siblings survives.
 	apiMux.HandleFunc("PUT /api/v1/screenshots/{filename}/ignore", func(w http.ResponseWriter, r *http.Request) {
 		filename, err := validateScreenshotFilename(r.PathValue("filename"))
 		if err != nil {

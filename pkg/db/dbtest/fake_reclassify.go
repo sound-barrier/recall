@@ -55,6 +55,7 @@ func (f *Fake) DeleteScreenshotRows(filename string) ([]string, error) {
 	f.Unknowns = deleteByFilename(f.Unknowns, filename, collect)
 	delete(f.AllHeroes, filename)
 	delete(f.Ambiguous, filename)
+	f.scrubDeadKeyCandidatesLocked(touched)
 	orphans := []string{}
 	for key := range touched {
 		if !f.matchKeyHasRowsLocked(key) {

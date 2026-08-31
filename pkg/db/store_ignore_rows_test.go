@@ -113,6 +113,33 @@ func TestStoreContract_DeleteScreenshotRows_DropsTheFilesOwnCandidateSet(t *test
 	}
 }
 
+// The dead-key invariant must hold INSIDE the delete's own transaction:
+// candidates referencing a key the delete emptied go with it, so a crash
+// before the caller's follow-up HardDeleteMatch can't leave a pending
+// screenshot resolvable onto a dead key.
+func TestStoreContract_DeleteScreenshotRows_DropsCandidatesReferencingAnEmptiedKey(t *testing.T) {
+	const key = "match-20260101120000"
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			mustNoErr(t, s.UpsertSummary(db.SummaryRow{Filename: "solo.png", MatchKey: key}))
+			mustNoErr(t, s.UpsertUnknown(db.UnknownRow{Filename: "pending.png", MatchKey: "ambiguous-cGVuZGluZy5wbmc"}))
+			mustNoErr(t, s.ApplyAmbiguity("pending.png", []db.AmbiguousCandidate{
+				{MatchKey: key, DistanceSeconds: 90},
+			}))
+
+			_, err := s.DeleteScreenshotRows("solo.png")
+			mustNoErr(t, err)
+
+			cands, err := s.LoadAmbiguousCandidatesFor("pending.png")
+			mustNoErr(t, err)
+			if len(cands) != 0 {
+				t.Errorf("candidates still reference the emptied key: %+v", cands)
+			}
+		})
+	}
+}
+
 func TestStoreContract_DeleteScreenshotRows_ClearsAllHeroesRegistration(t *testing.T) {
 	for _, impl := range storeImpls {
 		t.Run(impl.name, func(t *testing.T) {
