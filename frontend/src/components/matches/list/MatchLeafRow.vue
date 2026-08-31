@@ -21,6 +21,7 @@ import {
   formatUnknownMapLabel,
 } from '@/match/match-label-helpers'
 import { disruptionLabel, disruptionTint } from '@/match/dossier/match-disruption'
+import MatchDuplicateChip from '@/components/matches/shared/MatchDuplicateChip.vue'
 import { highlightTermsFor, type SearchClause } from '@/match/search-query'
 import HighlightedText from '@/components/matches/shared/HighlightedText.vue'
 import MatchProvenanceBadge from '@/components/matches/shared/MatchProvenanceBadge.vue'
@@ -282,6 +283,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
         :aria-label="disruptionLabel('throwers', rec.annotation.throwers)"
         :title="disruptionLabel('throwers', rec.annotation.throwers)"
       >T</span>
+      <MatchDuplicateChip v-if="rec.duplicate_of?.length" :duplicate-of="rec.duplicate_of" />
       <span
         v-for="t in rec.annotation?.tags ?? []"
         :key="t"

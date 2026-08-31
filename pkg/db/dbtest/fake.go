@@ -90,6 +90,10 @@ type Fake struct {
 	// without going through the resolver / write path.
 	Ambiguous map[string][]db.AmbiguousCandidate
 
+	// DuplicateLinks maps a match to the one it was judged separate from —
+	// one row per pair, read from both ends like the SQL table.
+	DuplicateLinks map[string]string
+
 	// Coach-AUTHORED family (survives Clear): players this user has
 	// coached, their notes keyed player id → match_key, and the per-player
 	// session summary. Coach-RECEIVED family (wiped like match history):
@@ -499,7 +503,36 @@ func (f *Fake) HardDeleteMatch(matchKey string) error {
 	delete(f.MatchMoments, matchKey)
 	f.dropCoachLayerForKey(matchKey)
 	f.dropSelfReviewMembershipForKey(matchKey)
+	// Both ends, mirroring the SQL delete: a half-link points a chip at a
+	// match that is gone.
+	delete(f.DuplicateLinks, matchKey)
+	for key, of := range f.DuplicateLinks {
+		if of == matchKey {
+			delete(f.DuplicateLinks, key)
+		}
+	}
 	return nil
+}
+
+func (f *Fake) LinkDuplicateMatches(matchKey, duplicateOf string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.DuplicateLinks == nil {
+		f.DuplicateLinks = map[string]string{}
+	}
+	f.DuplicateLinks[matchKey] = duplicateOf
+	return nil
+}
+
+func (f *Fake) LoadAllDuplicateLinks() (map[string][]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := map[string][]string{}
+	for key, of := range f.DuplicateLinks {
+		out[key] = append(out[key], of)
+		out[of] = append(out[of], key)
+	}
+	return out, nil
 }
 
 // forgetIngestedFiles mirrors the SQL store: the deleted match's own files

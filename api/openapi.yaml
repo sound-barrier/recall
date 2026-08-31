@@ -5993,6 +5993,18 @@ components:
             `distance_seconds` ascending.
           items:
             $ref: "#/components/schemas/AmbiguousCandidate"
+        duplicate_of:
+          type: array
+          description: |
+            Match keys this match was judged SEPARATE from — a sweep
+            proposed them as the same match and the user chose "keep
+            separate". Symmetric: both matches name each other, so the
+            reader of either card can see the judgment was already made
+            and jump to the other to check it. Absent for the
+            overwhelming majority nobody ever had to decide about.
+          items:
+            type: string
+          example: ["match-2026-05-10T18-05-22"]
         coach_notes:
           type: array
           description: |

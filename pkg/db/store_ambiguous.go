@@ -172,6 +172,14 @@ func loadAllAmbiguousCandidates(q querier) (map[string][]AmbiguousCandidate, err
 //
 // The cascading children come along on their parents' ON UPDATE CASCADE.
 func renameMatchKey(tx *sql.Tx, from, to string) error {
+	for _, c := range secondaryMatchKeyColumns {
+		// #nosec G202 -- table and column names come from a hard-coded registry.
+		if _, err := tx.Exec(
+			`UPDATE OR REPLACE `+c.table+` SET `+c.column+` = ? WHERE `+c.column+` = ?`, to, from,
+		); err != nil {
+			return fmt.Errorf("rename match key in %s.%s: %w", c.table, c.column, err)
+		}
+	}
 	for _, table := range matchKeyTables {
 		// #nosec G202 -- table names come from a hard-coded registry.
 		if _, err := tx.Exec(

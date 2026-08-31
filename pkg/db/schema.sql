@@ -471,6 +471,25 @@ CREATE TABLE IF NOT EXISTS ambiguous_candidates (
 CREATE INDEX IF NOT EXISTS idx_ambig_cand_match_key ON ambiguous_candidates (match_key);
 -- statement-end
 
+-- A "keep separate" verdict on a possible duplicate. The judgment used to
+-- live nowhere: resolving the ambiguity deleted the candidate rows, so the
+-- next time the user met either card they had to make the same call again
+-- with nothing to show they had already made it.
+--
+-- BOTH columns name a match, and only one of them is called match_key.
+-- The rename registry keys on that name, so duplicate_of needs its own
+-- entry in secondaryMatchKeyColumns or a resolve strands it — see db.go.
+-- The link is read from both ends: "these two look like the same match"
+-- is not a claim about one of them.
+CREATE TABLE IF NOT EXISTS duplicate_matches (
+  match_key TEXT PRIMARY KEY,
+  duplicate_of TEXT NOT NULL,
+  judged_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
+-- statement-end
+CREATE INDEX IF NOT EXISTS idx_duplicate_matches_of ON duplicate_matches (duplicate_of);
+-- statement-end
+
 CREATE TABLE IF NOT EXISTS match_reviews (
   match_key TEXT PRIMARY KEY,
   reviewed_by TEXT NOT NULL CHECK (reviewed_by IN ('self', 'coach')),

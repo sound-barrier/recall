@@ -57,6 +57,10 @@ type Sidecars struct {
 	CoachNotes   map[string][]db.MatchCoachNote
 	Moments      map[string][]db.MatchMoment
 	SelfReviews  map[string][]db.SelfReviewNoteOnMatch
+	// DuplicateLinks: per match key, the matches it was judged separate
+	// from. Already symmetric when it arrives — the store reads each
+	// stored row from both ends.
+	DuplicateLinks map[string][]string
 }
 
 func MatchKey(key string, snap db.Screenshots, sc Sidecars) (match.Record, bool) {
@@ -93,12 +97,25 @@ func appendViewsForKey[T any](vs []ScreenshotView, rows []T, key string, keyOf f
 	return vs
 }
 
-// attachMatchSidecars decorates rec with the per-key annotation, hidden
-// flag, pinned flag, review state, coach-received note blocks, and
-// ambiguous-attribution candidates. Annotations and coach notes go
-// through the same converters as the bulk Attach* pass so the two read
-// paths cannot disagree.
+// attachMatchSidecars decorates rec with everything stored BESIDE the
+// screenshot rows for this key. Split in two by what the fields are, not
+// by how many there are: the user's own marks on the match, then the
+// writing about it and the links out of it.
+//
+// Both halves go through the same converters as the bulk Attach* pass, so
+// the two read paths cannot disagree.
 func attachMatchSidecars(rec *match.Record, key string, snap db.Screenshots, sc Sidecars) {
+	attachMatchMarks(rec, key, sc)
+	attachMatchWriting(rec, key, sc)
+	if of, ok := sc.DuplicateLinks[key]; ok {
+		rec.DuplicateOf = of
+	}
+	attachMatchAmbiguity(rec, key, snap.AmbiguousCandidates)
+}
+
+// attachMatchMarks applies what the user said ABOUT the match: their
+// annotation, the flags they set, and the review state.
+func attachMatchMarks(rec *match.Record, key string, sc Sidecars) {
 	if a, ok := sc.Annotations[key]; ok {
 		rec.Annotation = annotationFromRow(a)
 	}
@@ -115,6 +132,13 @@ func attachMatchSidecars(rec *match.Record, key string, snap db.Screenshots, sc 
 		rec.ReviewedBy = st.ReviewedBy
 		rec.ReviewedAt = st.ReviewedAt
 	}
+}
+
+// attachMatchWriting applies the prose families — a coach's returned
+// blocks, the player's own moments, and their review sittings. Kept apart
+// from the marks above because these are somebody's words and each has its
+// own converter and its own attribution.
+func attachMatchWriting(rec *match.Record, key string, sc Sidecars) {
 	if rows, ok := sc.CoachNotes[key]; ok {
 		rec.CoachNotes = coachNotesFromRows(rows)
 	}
@@ -124,7 +148,6 @@ func attachMatchSidecars(rec *match.Record, key string, snap db.Screenshots, sc 
 	if rows, ok := sc.SelfReviews[key]; ok {
 		rec.SelfReviewNotes = selfReviewNotesFromRows(rows)
 	}
-	attachMatchAmbiguity(rec, key, snap.AmbiguousCandidates)
 }
 
 // attachMatchAmbiguity flags an ambiguous-sentinel key and attaches its

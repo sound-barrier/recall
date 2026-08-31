@@ -71,8 +71,13 @@ func (s *SQLStore) HardDeleteMatch(matchKey string) error {
 		// player wrote about it there cascades off the membership row. The
 		// review itself stays — it is a fact about the sitting, not the match.
 		`DELETE FROM self_review_matches WHERE match_key = ?`,
+		// Both ends: a link whose other half is gone would point a chip at a
+		// match that no longer exists — a dead end the user cannot act on.
+		`DELETE FROM duplicate_matches WHERE match_key = ? OR duplicate_of = ?`,
 	} {
-		if _, err := tx.Exec(q, matchKey); err != nil {
+		// One query names the key twice (duplicate_matches reads from both
+		// ends); the rest name it once and ignore the spare.
+		if _, err := tx.Exec(q, matchKey, matchKey); err != nil {
 			return err
 		}
 	}

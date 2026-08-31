@@ -187,6 +187,22 @@ func (f *Fake) renameMatchKey(from, to string) {
 	}
 	f.renameInSelfReviews(from, to)
 	f.renameInCandidates(from, to)
+	f.renameInDuplicateLinks(from, to)
+}
+
+// The duplicate link names a match on BOTH sides, and only one of them is
+// spelled match_key — so both move, or a card goes on pointing at a key
+// nothing will look up again.
+func (f *Fake) renameInDuplicateLinks(from, to string) {
+	if of, ok := f.DuplicateLinks[from]; ok {
+		delete(f.DuplicateLinks, from)
+		f.DuplicateLinks[to] = of
+	}
+	for key, of := range f.DuplicateLinks {
+		if of == from {
+			f.DuplicateLinks[key] = to
+		}
+	}
 }
 
 // A sitting names its members by key and files its notes under the same, so

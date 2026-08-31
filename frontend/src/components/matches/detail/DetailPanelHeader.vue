@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import MatchDuplicateChip from '@/components/matches/shared/MatchDuplicateChip.vue'
 import type { MatchRecord } from '@/api-client'
 import MatchProvenanceBadge from '@/components/matches/shared/MatchProvenanceBadge.vue'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
@@ -100,6 +101,10 @@ const emit = defineEmits<{
         class="detail-title-result"
         :class="`result-${record.data?.result || 'unknown'}`"
       >{{ record.data?.result || 'unknown' }}</span>
+      <!-- Beside the title, because the reader is here to decide something
+           about THIS match and whether it is really its own match is the
+           first question. -->
+      <MatchDuplicateChip v-if="record.duplicate_of?.length" :duplicate-of="record.duplicate_of" />
     </div>
 
     <button

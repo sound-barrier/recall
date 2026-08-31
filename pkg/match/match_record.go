@@ -98,6 +98,14 @@ type Record struct {
 	Ambiguous  bool                   `json:"ambiguous,omitempty"`
 	Candidates []AmbiguousAttribution `json:"candidates,omitempty"`
 
+	// DuplicateOf names the matches this one was judged SEPARATE from,
+	// after a sweep proposed them as the same match and the user said no.
+	// Symmetric — both cards name each other — so the reader of either one
+	// can see the judgment was already made, and jump to the other to check
+	// it. Empty for the overwhelming majority nobody ever had to decide
+	// about.
+	DuplicateOf []string `json:"duplicate_of,omitempty"`
+
 	// CoachNotes is the coach-received layer: every accepted coach note on
 	// this match, oldest first. Empty for matches no coach has written about.
 	CoachNotes []CoachNote `json:"coach_notes,omitempty"`
