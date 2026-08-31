@@ -27,7 +27,7 @@ func TestDataV2_UserLayerFieldsAreDisclosedInTheShareDialog(t *testing.T) {
 	// beside the phrase the share dialog uses for it.
 	disclosed := map[string]string{
 		"UserMatchData": "each match's JSON data (manual entries and your edits)",
-		"Annotations":   "your notes, the tags and squads, replay codes, and who you marked as leaving or throwing",
+		"Annotations":   "your notes, the tags and squads, replay codes, why a match does not count, and who you marked as leaving or throwing",
 		"Reviews":       "which matches you marked reviewed",
 		"Queues":        "which matches you marked reviewed",
 		"PlayModes":     "each match's JSON data (manual entries and your edits)",

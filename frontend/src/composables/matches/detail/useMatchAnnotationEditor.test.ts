@@ -68,6 +68,24 @@ describe('commitAnnotation saved pulse', () => {
     expect(editor.savedFlash.value).toBe('')
   })
 
+  // The reason chooser is a write like any other cell's, so it owes the
+  // user the same receipt. It shipped without one because it did not go
+  // through commitAnnotation — which is the argument for the pulse living
+  // in one place rather than inside that one function.
+  it('pulses for the exclusion chooser too', async () => {
+    const editor = useMatchAnnotationEditor(rec, () => Promise.resolve(true), () => [], () => [])
+    void editor.setExclusionReason('placement')
+    await flushMicrotasks()
+    expect(editor.savedFlash.value).toBe('exclusion')
+  })
+
+  it('does not pulse when the exclusion write fails', async () => {
+    const editor = useMatchAnnotationEditor(rec, () => Promise.resolve(false), () => [], () => [])
+    void editor.setExclusionReason('placement')
+    await flushMicrotasks()
+    expect(editor.savedFlash.value).toBe('')
+  })
+
   it('still pulses for a void (fire-and-forget) callback', async () => {
     const editor = useMatchAnnotationEditor(rec, () => undefined, () => [], () => [])
     editor.commitAnnotation('tags')

@@ -20,7 +20,7 @@ var seedAnnotationSides = map[string]bool{"self": true, "team": true, "enemy": t
 // annotationTally counts which annotation kinds appeared across the
 // corpus so the coverage assertion reads as one call.
 type annotationTally struct {
-	members, notes, tags, replays, leavers, throwers int
+	members, notes, tags, replays, leavers, throwers, exclusions int
 }
 
 func (c *annotationTally) observe(a db.Annotation) {
@@ -42,6 +42,9 @@ func (c *annotationTally) observe(a db.Annotation) {
 	if len(a.Throwers) > 0 {
 		c.throwers++
 	}
+	if a.ExclusionReason != "" {
+		c.exclusions++
+	}
 }
 
 // assertEveryKindSeeded checks each annotation kind appears at least
@@ -58,6 +61,7 @@ func (c *annotationTally) assertEveryKindSeeded(t *testing.T) {
 		{"replay-code", c.replays},
 		{"leaver", c.leavers},
 		{"thrower", c.throwers},
+		{"exclusion-reason", c.exclusions},
 	} {
 		if kind.n == 0 {
 			t.Errorf("no %s annotations seeded", kind.name)
@@ -80,7 +84,7 @@ func assertSides(t *testing.T, kind string, sides []string) {
 func assertNotContentFree(t *testing.T, a db.Annotation) {
 	t.Helper()
 	if a.Note == "" && a.ReplayCode == "" && len(a.Leavers) == 0 && len(a.Throwers) == 0 &&
-		len(a.Members) == 0 && len(a.Tags) == 0 {
+		len(a.Members) == 0 && len(a.Tags) == 0 && a.ExclusionReason == "" {
 		t.Errorf("content-free annotation for %s", a.MatchKey)
 	}
 }

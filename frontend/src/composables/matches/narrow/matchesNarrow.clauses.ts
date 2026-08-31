@@ -269,13 +269,21 @@ export const NARROW_CLAUSES: readonly ClauseSpec[] = [
     clear: (s) => { s.leaverHandling.value = 'include' },
   },
   {
-    // Only 'hide' narrows the SET; 'exclude-tally' is the tally's
-    // business (countsInTally), and the row stays on the list — which
-    // is the whole point of marking a reason instead of hiding.
+    // `restricts` here means "the user overrode the default", not "rows
+    // were removed" — which is why it reads !== the default rather than
+    // === 'hide'. Only 'hide' narrows the SET; 'exclude-tally' is the
+    // tally's business (countsInTally) and leaves the row on the list,
+    // and 'include' widens the tally instead. But all three change what
+    // the numbers mean, so all three have to reach the active-chip rail:
+    // the leaver clause can spell this !== 'include' because 'include'
+    // IS its default, and a handling override the user cannot see or
+    // clear is worse than one that never existed.
     id: 'exclusion',
-    restricts: (s) => s.exclusionHandling.value === 'hide',
+    restricts: (s) => s.exclusionHandling.value !== 'exclude-tally',
     passes: (r, s) => matchesExclusionHandling(r, s.exclusionHandling.value),
-    label: () => 'excluded matches hidden',
+    label: (s) => (s.exclusionHandling.value === 'hide'
+      ? 'excluded matches hidden'
+      : 'excluded matches counted'),
     clear: (s) => { s.exclusionHandling.value = 'exclude-tally' },
   },
   {

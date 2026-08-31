@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  countsInTally,
   tallyWLD,
   formatToHundredths,
   formatKda,
@@ -196,5 +197,30 @@ describe('kdaRatio + formatKda', () => {
     expect(formatKda(10)).toBe('10')
     expect(formatKda(10 / 3)).toBe('3.33')
     expect(formatKda(null)).toBe('')
+  })
+})
+
+// A match a coach's review created is real — the player played it — but its
+// result is what the coach typed while watching a replay. It must never move
+// the player's own win rate. The dossier has always dropped it at the mouth;
+// the masthead tallied it, so the two readouts disagreed about the same set.
+describe('countsInTally — replay provenance', () => {
+  const replay = { source: 'replay', data: { result: 'defeat' } }
+  const own = { source: 'ocr', data: { result: 'victory' } }
+
+  it('drops a replay-sourced match when asked', () => {
+    expect(countsInTally(replay, { skipReplay: true })).toBe(false)
+    expect(countsInTally(own, { skipReplay: true })).toBe(true)
+  })
+
+  // Opt-in, not automatic: the coach's own room tallies exactly these
+  // matches, and there the replay result IS the subject.
+  it('counts it by default, for the surfaces whose subject it is', () => {
+    expect(countsInTally(replay)).toBe(true)
+  })
+
+  it('tallyWLD honors it', () => {
+    expect(tallyWLD([own, replay], { skipReplay: true })).toEqual({ w: 1, l: 0, d: 0 })
+    expect(tallyWLD([own, replay])).toEqual({ w: 1, l: 1, d: 0 })
   })
 })

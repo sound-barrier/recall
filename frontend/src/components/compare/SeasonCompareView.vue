@@ -73,8 +73,11 @@ const recordsB = computed<MatchRecord[]>(() =>
 )
 
 const leaverHandling = matchesStore.matchesNarrow.leaverHandling
-const dossierA = useMatchesDossier(recordsA, leaverHandling, { heroRole: ow.heroRole, weekStart })
-const dossierB = useMatchesDossier(recordsB, leaverHandling, { heroRole: ow.heroRole, weekStart })
+// Threaded beside leaverHandling, never one without the other — both
+// are the user saying which matches their record is made of.
+const exclusionHandling = matchesStore.matchesNarrow.exclusionHandling
+const dossierA = useMatchesDossier(recordsA, leaverHandling, { exclusionHandling, heroRole: ow.heroRole, weekStart })
+const dossierB = useMatchesDossier(recordsB, leaverHandling, { exclusionHandling, heroRole: ow.heroRole, weekStart })
 
 const topHeroA = dossierA.topByCount({ getter: (r) => r.data?.hero || undefined, limit: 1 })
 const topHeroB = dossierB.topByCount({ getter: (r) => r.data?.hero || undefined, limit: 1 })

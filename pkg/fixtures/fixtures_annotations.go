@@ -50,9 +50,12 @@ func (fx *Fixture) appendAnnotationSeeds(seed int64) {
 	}
 }
 
-// rollAnnotation rolls each annotation field independently at a realistic rate.
-// Stacked games (~20%) carry both the friends' BattleTags and the conventional
-// `stack` tag; the rest are sprinkled so the demo exercises every markup kind.
+// rollAnnotation rolls each annotation field independently at a realistic
+// rate. Stacked games (~20%) carry both the friends' BattleTags and the
+// conventional `stack` tag; the rest are sprinkled so the demo exercises
+// every markup kind. The two clusters that need more than one roll of their
+// own — the disruption sides and the exclusion reason — are their own
+// functions, so this one stays a readable list of rates.
 func rollAnnotation(rng *rand.Rand, matchKey string) db.Annotation {
 	ann := db.Annotation{MatchKey: matchKey}
 	if rng.Float64() < 0.20 {
@@ -61,9 +64,6 @@ func rollAnnotation(rng *rand.Rand, matchKey string) db.Annotation {
 	}
 	if rng.Float64() < 0.05 {
 		ann.Tags = append(ann.Tags, "stream")
-	}
-	if rng.Float64() < 0.03 {
-		ann.Tags = append(ann.Tags, "placement")
 	}
 	if rng.Float64() < 0.05 {
 		ann.Tags = append(ann.Tags, annotationCustomTags[rng.Intn(len(annotationCustomTags))])
@@ -74,18 +74,45 @@ func rollAnnotation(rng *rand.Rand, matchKey string) db.Annotation {
 	if rng.Float64() < 0.04 {
 		ann.ReplayCode = replayCode(rng)
 	}
-	if rng.Float64() < 0.04 {
-		ann.Leavers = []string{annotationSides[rng.Intn(len(annotationSides))]}
+	ann.ExclusionReason = rollExclusionReason(rng)
+	ann.Leavers, ann.Throwers = rollDisruptionSides(rng)
+	return ann
+}
+
+// rollExclusionReason picks why a match should not count, or "" for the
+// overwhelming majority that simply do.
+//
+// A placement used to be spelled as a TAG here. It is a REASON now — the tag
+// said "this happened", the reason says "and it does not count", which is
+// the whole point of the field. One roll picks among the three by weight,
+// because a match has at most one reason.
+func rollExclusionReason(rng *rand.Rand) string {
+	switch r := rng.Float64(); {
+	case r < 0.03:
+		return "placement"
+	case r < 0.04:
+		return "mmr_adjustment"
+	case r < 0.045:
+		return "outage"
+	default:
+		return ""
 	}
-	// Throwers are rarer than leavers and occasionally land on both teams at
-	// once — the case the old single-value column couldn't represent.
+}
+
+// rollDisruptionSides picks who left and who threw. Throwers are rarer than
+// leavers and occasionally land on both teams at once — the case the old
+// single-value column could not represent.
+func rollDisruptionSides(rng *rand.Rand) (leavers, throwers []string) {
+	if rng.Float64() < 0.04 {
+		leavers = []string{annotationSides[rng.Intn(len(annotationSides))]}
+	}
 	if rng.Float64() < 0.03 {
-		ann.Throwers = []string{annotationSides[rng.Intn(len(annotationSides))]}
+		throwers = []string{annotationSides[rng.Intn(len(annotationSides))]}
 		if rng.Float64() < 0.15 {
-			ann.Throwers = []string{"team", "enemy"}
+			throwers = []string{"team", "enemy"}
 		}
 	}
-	return ann
+	return leavers, throwers
 }
 
 // pickFriends draws 1–4 distinct BattleTags from the friend pool.

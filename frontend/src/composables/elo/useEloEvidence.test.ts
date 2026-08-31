@@ -4,7 +4,7 @@ import { setActivePinia, createPinia } from 'pinia'
 
 import type { MatchRecord } from '@/api-client'
 import { useEloEvidence } from '@/composables/elo/useEloEvidence'
-import type { LeaverHandling } from '@/composables/matches/dossier/useMatchesDossier.types'
+import type { ExclusionHandling, LeaverHandling } from '@/composables/matches/dossier/useMatchesDossier.types'
 
 let seq = 0
 interface Opts {
@@ -58,9 +58,11 @@ function corpus(): MatchRecord[] {
 
 function evidenceFrom(records: MatchRecord[]) {
   const leaverHandling = ref<LeaverHandling>('include')
+  const exclusionHandling = ref<ExclusionHandling>('exclude-tally')
   return useEloEvidence({
     trackRecs: computed(() => records),
     leaverHandling,
+    exclusionHandling,
     heroRole: () => 'support',
   })
 }

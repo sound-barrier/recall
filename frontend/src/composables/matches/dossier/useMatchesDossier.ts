@@ -113,6 +113,21 @@ export function useMatchesDossier(
   // review-coverage and role splits, which are about the player's OWN
   // history. `records` is used exactly once, on the line above.
 
+  // A match the user gave a reason not to count is still a match they
+  // PLAYED. Volume and record-keeping are different questions about the
+  // same row, and the dossier has to answer both: a placement belongs in
+  // "how much did I play on Lucio" and out of "how did I do on Lucio".
+  //
+  // So the rule is not a base the widgets read INSTEAD of countedRecords
+  // — it is a predicate they ask before incrementing a win or a loss.
+  // Anything that reports a RECORD asks it; anything that reports volume
+  // does not. Getting that split wrong in either direction puts two
+  // numbers that disagree on one screen, with no user action, because
+  // 'exclude-tally' is the default.
+  const countsTowardRecord = (r: MatchRecord) => countsInTally(r, {
+    skipExcluded: (exclusionHandling?.value ?? 'exclude-tally') === 'exclude-tally',
+  })
+
   // 'exclude-tally' drops the marked records from the KPIs (W/L/D +
   // winrate) only. The leaves list still shows them — the user asked
   // for "drop from tally" not "hide". 'hide' is upstream of this
@@ -164,6 +179,7 @@ export function useMatchesDossier(
         : '—'
       const b = buckets[mode]
       b.total++
+      if (!countsTowardRecord(r)) continue
       if (r.data?.result === 'victory') b.w++
       else if (r.data?.result === 'defeat') b.l++
     }
@@ -337,8 +353,10 @@ export function useMatchesDossier(
       support: { total: 0, w: 0, l: 0 },
     }
     for (const r of countedRecords.value) {
+      const counted = countsTowardRecord(r)
       for (const role of matchRoleSet(r, heroRole)) {
         counts[role].total++
+        if (!counted) continue
         if (r.data?.result === 'victory') counts[role].w++
         else if (r.data?.result === 'defeat') counts[role].l++
       }

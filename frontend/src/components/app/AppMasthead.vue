@@ -86,11 +86,15 @@ const tabBadge = computed<Partial<Record<string, { count: number; unit: string }
 }))
 
 const activeFilterCount = matchesNarrow.activeClauseCount
-// W/L/D across the currently-narrowed set — same source + leaver rule the
-// MatchesView dossier's Record KPI tile uses, so the two stay in lockstep.
+// W/L/D across the currently-narrowed set — the same three rules the
+// MatchesView dossier's Record KPI tile applies, so the two stay in
+// lockstep. skipReplay is the one that was missing: the dossier drops a
+// coach's replay match at its mouth, and a masthead that counted it
+// reported a different record for the same set.
 const wld = computed(() => tallyWLD(matchesNarrow.narrowedRecords.value, {
   skipLeavers: matchesNarrow.leaverHandling.value === 'exclude-tally',
   skipExcluded: matchesNarrow.exclusionHandling.value === 'exclude-tally',
+  skipReplay: true,
 }))
 
 // Decisive games only — the house convention, because a draw is not a loss.

@@ -208,9 +208,10 @@ function onSend(): void {
              human. The dialog this replaced learned that the hard way. -->
         <p class="send-to-coach-warn">
           The bundle carries these matches whole — your journal notes, moments,
-          tags, squads, BattleTags, replay codes and any reviews a coach has
-          already sent back. It is signed with your handle. Send it only to
-          someone you mean to show all of that.
+          tags, squads, BattleTags, replay codes, why you marked a match as not
+          counting, and any reviews a coach has already sent back. It is signed
+          with your handle. Send it only to someone you mean to show all of
+          that.
         </p>
 
         <label class="send-to-coach-field-label" for="send-to-coach-filename">

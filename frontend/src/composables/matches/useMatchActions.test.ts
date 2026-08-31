@@ -235,6 +235,19 @@ describe('useMatchActions — annotation write shape', () => {
     expect(api.DeleteMatchAnnotation).not.toHaveBeenCalled()
   })
 
+  // Every write on this row is a full-row PUT, so each one has to carry
+  // the fields it is not editing. Two of them did not learn the exclusion
+  // reason, and each was a silent way to un-exclude a match: tagging one,
+  // and clicking a leaver chip six inches from the reason's own chooser.
+  it('a bulk tag carries every other annotation field through', async () => {
+    const existing: Partial<Annotation> = { note: 'kept', exclusion_reason: 'outage' }
+    const { onBulkTag } = await boot([rec('k1', {}, existing)])
+    await onBulkTag(['k1'], 'smurf')
+
+    expect(api.SetMatchAnnotation).toHaveBeenCalledWith('k1',
+      expect.objectContaining({ tags: ['smurf'], note: 'kept', exclusion_reason: 'outage' }))
+  })
+
   // The editor's "saved ✓" pulse is a persistence receipt keyed on this
   // boolean — a failed write that reported true would show a false receipt.
   it('reports the outcome so the editor can withhold its saved pulse', async () => {
@@ -250,10 +263,16 @@ describe('useMatchActions — annotation write shape', () => {
   })
 
   it('setting one disruption side carries every other annotation field through', async () => {
-    const existing: Partial<Annotation> = { throwers: ['enemy'], note: 'kept', replay_code: 'AB12CD', members: ['Ana'], tags: ['stack'] }
+    const existing: Partial<Annotation> = {
+      throwers: ['enemy'], note: 'kept', replay_code: 'AB12CD',
+      members: ['Ana'], tags: ['stack'], exclusion_reason: 'placement',
+    }
     const { onSetDisruptionAnnotation } = await boot([rec('k1', {}, existing)])
     await onSetDisruptionAnnotation('k1', 'leavers', ['team'])
 
+    // Exact, not objectContaining: the assertion has to FAIL when the
+    // annotation grows a field this write forgets, which is exactly what
+    // it did not do when exclusion_reason landed.
     expect(api.SetMatchAnnotation).toHaveBeenCalledWith('k1', {
       leavers: ['team'],
       throwers: ['enemy'],
@@ -261,6 +280,7 @@ describe('useMatchActions — annotation write shape', () => {
       replay_code: 'AB12CD',
       members: ['Ana'],
       tags: ['stack'],
+      exclusion_reason: 'placement',
     })
   })
 

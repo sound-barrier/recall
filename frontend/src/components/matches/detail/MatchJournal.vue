@@ -379,7 +379,10 @@ onMounted(() => {
       <!-- Tags — three quick-add toggles for the conventional vocabulary,
              a chip list of currently-applied custom tags, and a free-form
              input. Backspace on an empty input removes the last chip. -->
-      <div class="journal-cell journal-cell-exclusion">
+      <div
+        class="journal-cell journal-cell-exclusion"
+        :class="{ saved: savedFlash === 'exclusion', filled: Boolean(record.annotation?.exclusion_reason) }"
+      >
         <MatchExclusionChooser
           :current="(record.annotation?.exclusion_reason ?? '') as ExclusionReason"
           :writes-locked="writesLocked"

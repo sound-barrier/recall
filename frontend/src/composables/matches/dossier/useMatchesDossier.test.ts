@@ -10,6 +10,7 @@ import {
   DEFAULT_TIME_OF_DAY_BUCKET_COUNT,
   DEFAULT_TOP_BY_COUNT_LIMIT,
   DEFAULT_TOP_HEROES_LIMIT,
+  type ExclusionHandling,
   type LeaverHandling,
   type MapRoleCell,
 } from '@/composables/matches/dossier/useMatchesDossier'
@@ -53,6 +54,7 @@ interface RecOpts {
   map?: string
   hero?: string
   leavers?: ('self' | 'team' | 'enemy')[]
+  exclusionReason?: string
   members?: string[]
   modifiers?: string[]
   reviewedBy?: 'self' | 'coach'
@@ -68,8 +70,11 @@ const REC_BASE = {
 } as const
 
 function annotationValue(opts: RecOpts): Record<string, unknown> | undefined {
-  if (!(opts.leavers?.length || opts.members)) return undefined
-  return { leavers: opts.leavers ?? [], throwers: [], members: opts.members ?? [] }
+  if (!(opts.leavers?.length || opts.members || opts.exclusionReason)) return undefined
+  return {
+    leavers: opts.leavers ?? [], throwers: [], members: opts.members ?? [],
+    ...(opts.exclusionReason ? { exclusion_reason: opts.exclusionReason } : {}),
+  }
 }
 
 function rec(opts: RecOpts): MatchRecord {
@@ -736,6 +741,36 @@ describe('useMatchesDossier', () => {
     })
   })
 
+  // A match the user marked as not counting is still a match they PLAYED.
+  // Volume and record-keeping are different questions, and the dossier has
+  // to answer both about the same match: it belongs in "how much did I
+  // play" and out of "how did I do". Get this wrong in one direction and
+  // the Win-rate KPI disagrees with the widget beside it on the same
+  // screen, with no user action — `exclude-tally` is the DEFAULT.
+  describe('an excluded match: played, but not counted', () => {
+    const corpus = () => ref([
+      rec({ key: 'a', result: 'victory', hero: 'lucio' }),
+      rec({ key: 'b', result: 'victory', hero: 'lucio' }),
+      rec({ key: 'c', result: 'defeat', hero: 'lucio', exclusionReason: 'placement' }),
+    ])
+    const heroRole = () => 'support'
+
+    it('leaves the play-mode winrate but stays in its share', () => {
+      const { playModeBreakdown } = useMatchesDossier(corpus(), ref<LeaverHandling>('include'), { heroRole })
+      const unset = playModeBreakdown.value.find((b) => b.key === '—')
+      expect(unset?.winrate).toBe(100)
+      expect(unset?.total).toBe(3)
+    })
+
+    it('counts everywhere once the user says to count them', () => {
+      const exclusionHandling = ref<ExclusionHandling>('include')
+      const { playModeBreakdown, winrate } = useMatchesDossier(
+        corpus(), ref<LeaverHandling>('include'), { heroRole, exclusionHandling })
+      expect(winrate.value).toBe(67)
+      expect(playModeBreakdown.value.find((b) => b.key === '—')?.winrate).toBe(67)
+    })
+  })
+
   describe('topRoles', () => {
     // Typed lookup helper — closed-shape object so accesses stay
     // non-nullable under noUncheckedIndexedAccess (a plain
@@ -768,6 +803,7 @@ describe('useMatchesDossier', () => {
       heroes?: string[]
       result?: 'victory' | 'defeat' | 'draw'
       leavers?: ('self' | 'team' | 'enemy')[]
+      exclusionReason?: string
     }): MatchRecord {
       return {
         match_key: opts.key ?? `m-${Math.random()}`,
@@ -781,10 +817,29 @@ describe('useMatchesDossier', () => {
           date: '2026-05-10', finished_at: '14:00',
           heroes_played: (opts.heroes ?? []).map((h) => ({ hero: h, percent_played: 50, play_time: '05:00' })),
         },
-        annotation: opts.leavers?.length ? { leavers: opts.leavers, throwers: [] } : undefined,
+        annotation: (opts.leavers?.length || opts.exclusionReason)
+          ? {
+            leavers: opts.leavers ?? [], throwers: [],
+            ...(opts.exclusionReason ? { exclusion_reason: opts.exclusionReason } : {}),
+          }
+          : undefined,
         parsed_at: '2026-05-10T14:00:00Z',
       } as unknown as MatchRecord
     }
+
+    // Same split as the KPI: a placement is a support match they played,
+    // and not a support match they lost.
+    it('an excluded match stays in the role count and leaves its winrate', () => {
+      const records = ref([
+        roleRec({ primary: 'support', heroes: ['lucio'], result: 'victory' }),
+        roleRec({ primary: 'support', heroes: ['lucio'], result: 'victory' }),
+        roleRec({ primary: 'support', heroes: ['lucio'], result: 'defeat', exclusionReason: 'placement' }),
+      ])
+      const { topRoles } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include'), { heroRole }))
+      const by = byKey(topRoles.value)
+      expect(by.support.total).toBe(3)
+      expect(by.support.winrate).toBe(100)
+    })
 
     it('counts every match in exactly one role when matches are role-locked', () => {
       const records = ref([
