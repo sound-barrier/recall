@@ -188,6 +188,7 @@ function onCardHeadClick(rec: MatchRecord) {
       :selection="selection"
       row-noun="card"
       select-all-label="Select all unmatched"
+      region-label="Unmatched screenshots bulk actions"
       :total-rows="unknownRecords.length"
     />
     <article
@@ -214,7 +215,7 @@ function onCardHeadClick(rec: MatchRecord) {
             :aria-checked="selection.isSelected(rec.match_key) ? 'true' : 'false'"
             :aria-label="selectLabel(rec)"
             :disabled="writesLocked"
-            :title="lockReason"
+            :title="lockReason || undefined"
             @click.stop="selection.toggleSelected(rec.match_key)"
           >
             <span class="leaf-checkbox-glyph" aria-hidden="true">{{ selection.isSelected(rec.match_key) ? '✓' : '' }}</span>

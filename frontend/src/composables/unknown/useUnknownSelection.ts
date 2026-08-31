@@ -1,4 +1,6 @@
-import { computed, ref, type ComputedRef, type Ref } from 'vue'
+import { computed, onScopeDispose, ref, watch, type ComputedRef, type Ref } from 'vue'
+
+import { ARM_WINDOW_MS } from '@/composables/unknown/useArmedAction'
 
 /**
  * One row a section can tick.
@@ -19,8 +21,7 @@ export interface UnknownSelectableRow {
  *
  * A one-file row is best identified by its filename — that is what the user
  * is looking at. A multi-file card has no single filename to answer to, so it
- * falls back to the key it is already labeled by on screen. Shared by all
- * three sections so a checkbox and its card never disagree.
+ * falls back to the key it is already labeled by on screen.
  */
 export function unknownRowLabel(files: readonly string[], key: string): string {
   return files.length === 1 ? (files[0] ?? key) : key
@@ -53,15 +54,37 @@ export function useUnknownSelection(opts: UseUnknownSelectionOptions) {
   // dismisses another.
   const armed = ref(false)
 
+  // A row carrying no files cannot be dismissed — the per-card path hides its
+  // button outright — so it is not selectable either. Counting one would arm a
+  // confirm over a card that then quietly survives the sweep.
+  const selectable = (r: UnknownSelectableRow) => r.files.length > 0
+
   const selectedRows: ComputedRef<UnknownSelectableRow[]> = computed(() =>
-    opts.rows().filter((r) => selectedIds.value.has(r.id)),
+    opts.rows().filter((r) => selectable(r) && selectedIds.value.has(r.id)),
   )
   const selectedCount = computed(() => selectedRows.value.length)
   const selectedFiles = computed(() => [...new Set(selectedRows.value.flatMap((r) => r.files))])
 
+  let armTimer: ReturnType<typeof setTimeout> | undefined
+  onScopeDispose(() => { clearTimeout(armTimer) })
+
+  // The armed confirm is about a FILE SET, and the ids are only half of what
+  // determines it: a parse run can merge a new screenshot into a ticked match
+  // under the same key, growing what Confirm would suppress without the user
+  // touching anything. Watching the files themselves is what makes the
+  // invariant true rather than merely stated.
+  // flush: 'sync' because the disarm has to happen AT the change, not a tick
+  // later: a deferred run would land after the next requestDismiss() and
+  // silently un-arm a confirm the user had just raised.
+  watch(() => selectedFiles.value.join('\u0000'), () => {
+    armed.value = false
+    clearTimeout(armTimer)
+  }, { flush: 'sync' })
+
   function replaceSelection(next: Set<string>) {
     selectedIds.value = next
     armed.value = false
+    clearTimeout(armTimer)
   }
 
   function isSelected(id: string): boolean {
@@ -70,7 +93,7 @@ export function useUnknownSelection(opts: UseUnknownSelectionOptions) {
 
   function setSelected(id: string, on: boolean) {
     const next = new Set(selectedIds.value)
-    if (on) next.add(id)
+    if (on && opts.rows().some((r) => r.id === id && selectable(r))) next.add(id)
     else next.delete(id)
     replaceSelection(next)
   }
@@ -84,19 +107,26 @@ export function useUnknownSelection(opts: UseUnknownSelectionOptions) {
   }
 
   function selectAll() {
-    replaceSelection(new Set(opts.rows().map((r) => r.id)))
+    replaceSelection(new Set(opts.rows().filter(selectable).map((r) => r.id)))
   }
 
   function requestDismiss() {
     if (selectedCount.value === 0) return
     armed.value = true
+    clearTimeout(armTimer)
+    // Auto-disarm, exactly like the per-card button. This is the ONE control
+    // here that suppresses many files at once, so it should be no braver than
+    // its single-card sibling.
+    armTimer = setTimeout(() => { armed.value = false }, ARM_WINDOW_MS)
   }
 
   function cancelDismiss() {
     armed.value = false
+    clearTimeout(armTimer)
   }
 
   function commitDismiss() {
+    clearTimeout(armTimer)
     const files = selectedFiles.value
     if (files.length === 0) {
       // Every ticked row went away between arming and confirming. Collapse

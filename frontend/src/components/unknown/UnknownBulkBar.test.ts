@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/vue'
+import { nextTick } from 'vue'
 import UnknownBulkBar from '@/components/unknown/UnknownBulkBar.vue'
 import { useUnknownSelection, type UnknownSelectableRow } from '@/composables/unknown/useUnknownSelection'
 import { setWritesLocked, resetWriteGate, STUB_LOCK_REASON } from '@/test-utils/writeGateStub'
@@ -25,6 +26,7 @@ function renderBar(opts: {
       selection,
       rowNoun: opts.rowNoun ?? 'card',
       selectAllLabel: 'Select all unmatched',
+      regionLabel: 'Unmatched screenshots bulk actions',
       totalRows: rows.length,
     },
   })
@@ -114,7 +116,31 @@ describe('UnknownBulkBar', () => {
   })
 
   it('is a landmark named for the section it acts on', () => {
+    // Its own prop, not one derived by string-stripping the select-all label:
+    // that produced lowercase fragments and would have renamed the landmark
+    // whenever anyone reworded a button.
     renderBar({ tick: ['a'] })
-    expect(screen.getByRole('region', { name: 'unmatched bulk actions' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Unmatched screenshots bulk actions' })).toBeInTheDocument()
+  })
+
+  it('follows a selection that changes after it is on screen', async () => {
+    // Every other case here ticks before render, so a snapshot-instead-of-ref
+    // refactor would leave them all green.
+    const { selection } = renderBar()
+    expect(screen.queryByRole('region')).not.toBeInTheDocument()
+    selection.setSelected('a', true)
+    await nextTick()
+    expect(screen.getByRole('button', { name: 'Dismiss 1 card (1 screenshot)' })).toBeInTheDocument()
+    selection.setSelected('b', true)
+    await nextTick()
+    expect(screen.getByRole('button', { name: 'Dismiss 2 cards (3 screenshots)' })).toBeInTheDocument()
+  })
+
+  it('collapses when the last ticked row is unticked after mount', async () => {
+    const { selection } = renderBar({ tick: ['a'] })
+    expect(screen.getByRole('region')).toBeInTheDocument()
+    selection.setSelected('a', false)
+    await nextTick()
+    expect(screen.queryByRole('region')).not.toBeInTheDocument()
   })
 })

@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  formatPlayModeLabel,
-  formatQueueTypeLabel,
-  formatUnknownHeroLabel,
-  formatUnknownMapLabel,
-  pluralize,
-} from '@/match/match-label-helpers'
+import { dismissFailureMessage, formatPlayModeLabel, formatQueueTypeLabel, formatUnknownHeroLabel, formatUnknownMapLabel, pluralize } from '@/match/match-label-helpers'
 import { isHeroUnknown, isMapUnknown } from '@/match/match-helpers'
 
 // ─── formatPlayModeLabel / formatQueueTypeLabel ──────────────────────
@@ -108,5 +102,22 @@ describe('pluralize — one decision, spelled once', () => {
   it('defaults the plural to a trailing s', () => {
     expect(pluralize(1, 'note')).toBe('1 note')
     expect(pluralize(3, 'note')).toBe('3 notes')
+  })
+})
+
+describe('dismissFailureMessage', () => {
+  it('keeps the cause when exactly one file failed', () => {
+    // With a single cause the cause is the useful part.
+    expect(dismissFailureMessage(1, ['a.png: 500 store exploded']))
+      .toBe('Could not dismiss 1 of 1 screenshot — a.png: 500 store exploded')
+  })
+
+  it('leads with the count when a sweep only partly landed', () => {
+    // "1 of 40" says both that most of it worked and that something is left.
+    expect(dismissFailureMessage(40, ['a.png: x', 'b.png: y'])).toBe('Could not dismiss 2 of 40 screenshots')
+  })
+
+  it('counts the attempt, not the failures, in the denominator', () => {
+    expect(dismissFailureMessage(3, ['a: x'])).toContain('of 3 screenshots')
   })
 })

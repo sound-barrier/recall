@@ -3,6 +3,7 @@ import { computed } from 'vue'
 
 import type { UnknownSelectionApi } from '@/composables/unknown/useUnknownSelection'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
+import { pluralize } from '@/match/match-label-helpers'
 
 // The contextual bar over one Unknown-tab section, up while that section has
 // anything ticked.
@@ -21,6 +22,13 @@ const props = defineProps<{
   rowNoun: 'card' | 'screenshot'
   /** Names the section on its select-all, since three of these can be on screen. */
   selectAllLabel: string
+  /**
+   * The landmark's name. Its own prop rather than derived from
+   * selectAllLabel: stripping "Select all " off that produced lowercase
+   * fragments ("needing review bulk actions") and would have silently
+   * renamed the landmark if anyone reworded the button.
+   */
+  regionLabel: string
   /** How many rows the section is showing, so select-all can hide when done. */
   totalRows: number
 }>()
@@ -29,13 +37,11 @@ const { writesLocked, lockedTitle } = useWriteGate()
 
 const { selectedCount, selectedFiles, armed } = props.selection
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
-
 // The noun phrase both the armed and unarmed labels are built from, so the two
 // can never drift apart.
 const target = computed(() => (props.rowNoun === 'screenshot'
-  ? plural(selectedFiles.value.length, 'screenshot')
-  : `${plural(selectedCount.value, 'card')} (${plural(selectedFiles.value.length, 'screenshot')})`))
+  ? pluralize(selectedFiles.value.length, 'screenshot')
+  : `${pluralize(selectedCount.value, 'card')} (${pluralize(selectedFiles.value.length, 'screenshot')})`))
 </script>
 
 <template>
@@ -43,7 +49,7 @@ const target = computed(() => (props.rowNoun === 'screenshot'
     v-if="selectedCount > 0"
     class="unknown-bulk-bar"
     role="region"
-    :aria-label="`${selectAllLabel.replace(/^Select all /, '')} bulk actions`"
+    :aria-label="regionLabel"
   >
     <span class="ubb-glyph" aria-hidden="true">▣</span>
     <span class="ubb-count">{{ selectedCount }} selected</span>
@@ -95,7 +101,10 @@ const target = computed(() => (props.rowNoun === 'screenshot'
   align-items: center;
   gap: 0.6rem;
   flex-wrap: wrap;
-  margin: 0 0 0.75rem;
+
+  /* No margin: the bar is a flex child of .unknown-list, whose own gap
+     already separates it from the first card. A margin here would stack on
+     top of that gap. */
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--accent);
   border-radius: var(--radius);
@@ -145,11 +154,22 @@ const target = computed(() => (props.rowNoun === 'screenshot'
   color: var(--loss);
 }
 
-/* Armed is the moment of consequence — it fills rather than tinting, so the
-   confirm cannot be mistaken for the button that armed it. */
+/* Armed is the moment of consequence, so it gains weight — but by tint and a
+   solid edge, NOT by filling with --loss and writing on top of it. Under the
+   dark themes --loss is a light pink (#f9a) tuned to be read as TEXT on a
+   surface; --primary-text-on-danger is #fff everywhere except high-contrast,
+   so white-on-fill lands at 2.02:1 there. The tinted pairing is the one
+   themes.css states it tuned to clear AA on double-layered composites. */
 .ubb-dismiss.armed {
-  background: var(--loss);
+  /* A clean base, not a tint. --loss-soft over the bar's own --surface-3
+     composites to #d6c3bc under Day, where --loss lands at 4.04:1 — the
+     double-tinted case .claude/rules/a11y.md names. Sitting the armed button
+     on --surface makes the pair the one the tokens actually guarantee, and
+     the weight comes from a doubled edge instead of a fill. */
+  background: var(--surface);
   border-color: var(--loss);
-  color: var(--primary-text-on-danger);
+  color: var(--loss);
+  font-weight: 700;
+  box-shadow: 0 0 0 1px var(--loss) inset;
 }
 </style>

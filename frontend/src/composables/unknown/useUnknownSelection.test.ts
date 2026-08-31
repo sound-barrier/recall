@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
-import { ref } from 'vue'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { nextTick, ref } from 'vue'
 import { useUnknownSelection, type UnknownSelectableRow } from '@/composables/unknown/useUnknownSelection'
 
 const ROWS: UnknownSelectableRow[] = [
@@ -16,6 +16,8 @@ function setup(initial: UnknownSelectableRow[] = ROWS) {
 }
 
 describe('useUnknownSelection', () => {
+  afterEach(() => { vi.useRealTimers() })
+
   it('starts empty', () => {
     const { sel } = setup()
     expect(sel.selectedCount.value).toBe(0)
@@ -145,5 +147,77 @@ describe('useUnknownSelection', () => {
     ])
     sel.selectAll()
     expect(sel.selectedFiles.value).toEqual(['shared.png', 'own.png'])
+  })
+
+  it('disarms when a parse run grows the file set under a ticked row', () => {
+    // The confirm is about a FILE SET, and the ids are only half of what
+    // decides it: a SUMMARY screenshot merging into a ticked match under the
+    // same key would otherwise add a file to a confirm already on screen.
+    const { sel, rows } = setup([{ id: 'k', files: ['a.png'] }])
+    sel.toggleSelected('k')
+    sel.requestDismiss()
+    expect(sel.armed.value).toBe(true)
+    rows.value = [{ id: 'k', files: ['a.png', 'brand-new.png'] }]
+    return nextTick().then(() => {
+      expect(sel.armed.value).toBe(false)
+    })
+  })
+
+  it('disarms when a ticked row loses a file', () => {
+    const { sel, rows } = setup([{ id: 'k', files: ['a.png', 'b.png'] }])
+    sel.toggleSelected('k')
+    sel.requestDismiss()
+    rows.value = [{ id: 'k', files: ['a.png'] }]
+    return nextTick().then(() => {
+      expect(sel.armed.value).toBe(false)
+    })
+  })
+
+  it('stays armed while nothing about the file set moved', () => {
+    const { sel, rows } = setup([{ id: 'k', files: ['a.png'] }, { id: 'other', files: ['z.png'] }])
+    sel.toggleSelected('k')
+    sel.requestDismiss()
+    // A change to a row nobody ticked is not a change to the confirm.
+    rows.value = [{ id: 'k', files: ['a.png'] }, { id: 'other', files: ['z.png', 'z2.png'] }]
+    return nextTick().then(() => {
+      expect(sel.armed.value).toBe(true)
+    })
+  })
+
+  it('auto-disarms after the shared window, like the per-card button', () => {
+    vi.useFakeTimers()
+    const { sel, onDismissFiles } = setup()
+    sel.toggleSelected('a')
+    sel.requestDismiss()
+    expect(sel.armed.value).toBe(true)
+    vi.advanceTimersByTime(3100)
+    expect(sel.armed.value).toBe(false)
+    expect(onDismissFiles).not.toHaveBeenCalled()
+  })
+
+  it('keeps the selection when the confirm times out', () => {
+    // Disarming is not cancelling: the ticks are still the user's.
+    vi.useFakeTimers()
+    const { sel } = setup()
+    sel.toggleSelected('a')
+    sel.requestDismiss()
+    vi.advanceTimersByTime(3100)
+    expect(sel.selectedCount.value).toBe(1)
+  })
+
+  it('refuses to tick a row carrying no files', () => {
+    // The per-card path hides its button outright for these; counting one
+    // would arm a confirm over a card that then quietly survives the sweep.
+    const { sel } = setup([{ id: 'empty', files: [] }])
+    sel.setSelected('empty', true)
+    expect(sel.selectedCount.value).toBe(0)
+    expect(sel.isSelected('empty')).toBe(false)
+  })
+
+  it('skips file-less rows on select-all', () => {
+    const { sel } = setup([{ id: 'a', files: ['a.png'] }, { id: 'empty', files: [] }])
+    sel.selectAll()
+    expect(sel.selectedCount.value).toBe(1)
+    expect(sel.selectedFiles.value).toEqual(['a.png'])
   })
 })
