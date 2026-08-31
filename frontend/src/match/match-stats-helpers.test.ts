@@ -51,7 +51,7 @@ describe('tallyWLD', () => {
     // Default behavior counts everything.
     expect(tallyWLD(recs)).toEqual({ w: 2, l: 2, d: 0 })
     // With skipAnnotated the two annotated matches drop out.
-    expect(tallyWLD(recs, true)).toEqual({ w: 1, l: 1, d: 0 })
+    expect(tallyWLD(recs, { skipLeavers: true })).toEqual({ w: 1, l: 1, d: 0 })
   })
 
   it('a null annotation does not count as annotated for skipAnnotated', () => {
@@ -59,7 +59,7 @@ describe('tallyWLD', () => {
       { data: { result: 'victory' }, annotation: null },
       { data: { result: 'defeat' }, annotation: { leavers: [] } }, // empty leaver = no annotation
     ]
-    expect(tallyWLD(recs, true)).toEqual({ w: 1, l: 1, d: 0 })
+    expect(tallyWLD(recs, { skipLeavers: true })).toEqual({ w: 1, l: 1, d: 0 })
   })
 })
 

@@ -4,6 +4,13 @@
 
 export type LeaverHandling = 'include' | 'exclude-tally' | 'hide'
 
+/** How the set treats matches the user marked as not counting — a
+ *  placement, an MMR adjustment, a game lost to their own connection.
+ *  Same three states as the leaver rule so there is one vocabulary, but
+ *  the DEFAULT is 'exclude-tally': giving a reason is itself the
+ *  instruction to stop counting it. */
+export type ExclusionHandling = 'include' | 'exclude-tally' | 'hide'
+
 export interface WinLossDraw {
   w: number
   l: number

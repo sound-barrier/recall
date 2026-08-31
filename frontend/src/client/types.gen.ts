@@ -181,6 +181,25 @@ export type ActiveParse = {
 export type DisruptionSides = Array<'self' | 'team' | 'enemy'>;
 
 /**
+ * WHY a match should not count toward the win rate. A closed
+ * vocabulary because a filter reads it back — free text would mean
+ * nothing to the tally.
+ *
+ * - `placement`: a placement / calibration game, where the result
+ * says more about the ladder than about the play.
+ * - `mmr_adjustment`: a rank correction the system applied.
+ * - `outage`: lost to the user's own connection or a server
+ * problem, not to the other team.
+ *
+ * `""` is the ordinary case — this match counts — and is what the
+ * overwhelming majority of matches carry. Marking a reason is
+ * itself the instruction to drop the match from the tally; the
+ * client can still override in either direction.
+ *
+ */
+export type ExclusionReasonEnum = '' | 'placement' | 'mmr_adjustment' | 'outage';
+
+/**
  * Queue format the match was played in. The single-set
  * `PUT /matches/{match_key}/queue` endpoint only accepts
  * non-empty values; revert to "queue not set" via the matching
@@ -1799,6 +1818,7 @@ export type MatchAnnotation = {
      * Free-text per-match commentary.
      */
     note?: string;
+    exclusion_reason?: ExclusionReasonEnum;
     /**
      * Overwatch six-character replay ID, uppercased. May carry a legacy value that predates the format rule.
      */
@@ -2689,6 +2709,10 @@ export type SetMatchAnnotationData = {
          * Free-text per-match commentary. `null` = empty.
          */
         note?: string;
+        /**
+         * Why this match should not count toward the win rate. Setting it is the instruction to drop the match from the tally; `""` returns it to counting. Unknown values are refused with 400.
+         */
+        exclusion_reason?: ExclusionReasonEnum;
         /**
          * Overwatch six-character replay ID, stored uppercased. Accepted in either case; normalized to uppercase before it is written, because a replay code identifies one match and needs one spelling. `null` or `""` = empty.
          */

@@ -583,6 +583,13 @@ paths:
                 note:
                   type: string
                   description: Free-text per-match commentary. `null` = empty.
+                exclusion_reason:
+                  $ref: "#/components/schemas/ExclusionReasonEnum"
+                  description: >-
+                    Why this match should not count toward the win rate.
+                    Setting it is the instruction to drop the match from the
+                    tally; `""` returns it to counting. Unknown values are
+                    refused with 400.
                 replay_code:
                   type: string
                   # Deliberately NOT \s around the code: ECMA-262 \s is Unicode and
@@ -4206,6 +4213,25 @@ components:
         array (or an omitted field) means "not tagged"; order is not
         significant and duplicates are collapsed server-side.
 
+    ExclusionReasonEnum:
+      type: string
+      enum: ["", "placement", "mmr_adjustment", "outage"]
+      description: |
+        WHY a match should not count toward the win rate. A closed
+        vocabulary because a filter reads it back — free text would mean
+        nothing to the tally.
+
+        - `placement`: a placement / calibration game, where the result
+          says more about the ladder than about the play.
+        - `mmr_adjustment`: a rank correction the system applied.
+        - `outage`: lost to the user's own connection or a server
+          problem, not to the other team.
+
+        `""` is the ordinary case — this match counts — and is what the
+        overwhelming majority of matches carry. Marking a reason is
+        itself the instruction to drop the match from the tally; the
+        client can still override in either direction.
+
     QueueTypeEnum:
       type: string
       enum: ["role", "open"]
@@ -6093,6 +6119,8 @@ components:
         note:
           type: string
           description: Free-text per-match commentary.
+        exclusion_reason:
+          $ref: "#/components/schemas/ExclusionReasonEnum"
         replay_code:
           type: string
           # No `pattern` here on purpose. Codes stored before the format was

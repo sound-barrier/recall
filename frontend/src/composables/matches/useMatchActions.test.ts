@@ -224,6 +224,17 @@ describe('useMatchActions — annotation write shape', () => {
     expect(api.DeleteMatchAnnotation).not.toHaveBeenCalled()
   })
 
+  // The reason a match doesn't count is the whole annotation for a placement
+  // nobody wrote a note about — a Go/TS pair that has to agree on what
+  // "empty" means, or the reason round-trips into a DELETE.
+  it('a reason alone is content', async () => {
+    const { onSetMatchAnnotation } = await boot([rec('k1')])
+    await onSetMatchAnnotation('k1', { ...EMPTY, exclusion_reason: 'placement' })
+
+    expect(api.SetMatchAnnotation).toHaveBeenCalledWith('k1', expect.objectContaining({ exclusion_reason: 'placement' }))
+    expect(api.DeleteMatchAnnotation).not.toHaveBeenCalled()
+  })
+
   // The editor's "saved ✓" pulse is a persistence receipt keyed on this
   // boolean — a failed write that reported true would show a false receipt.
   it('reports the outcome so the editor can withhold its saved pulse', async () => {

@@ -17,7 +17,7 @@ vi.stubGlobal('localStorage', {
 })
 import { useNarrowPresets } from '@/composables/matches/narrow/useNarrowPresets'
 import type { MatchesNarrowState, ReviewedByPick, QueuePick, PlayModePick, SourcePick, LeaverPick, ThrowerPick, PresetRange } from '@/composables/matches/narrow/matchesNarrow.types'
-import type { LeaverHandling } from '@/composables/matches/dossier/useMatchesDossier'
+import type { ExclusionHandling, LeaverHandling } from '@/composables/matches/dossier/useMatchesDossier'
 
 function buildState(): MatchesNarrowState {
   return {
@@ -44,6 +44,7 @@ function buildState(): MatchesNarrowState {
     customToTime:      ref(''),
     pickedSeason:      ref(''),
     leaverHandling:    ref<LeaverHandling>('include'),
+  exclusionHandling: ref<ExclusionHandling>('exclude-tally'),
     minPlayMinutes:    ref(0),
     minPlayPercent:    ref(0),
     includeUnknown:    ref(false),

@@ -40,20 +40,21 @@ function parsePlayTimeMinutes(s: string): number {
 const lc = (s: string | undefined) => (s ?? '').toLowerCase()
 const lcJoin = (xs: string[] | undefined) => (xs ?? []).join(' ').toLowerCase()
 
-// The per-field surfaces a SCOPED clause matches against. Disruption
-// sides are searchable ONLY through their scoped tokens (`leaver:team`,
-// `thrower:enemy`). They stay out of the bare-token blob on purpose: the
-// values are three generic words, and folding them in would make a
-// search for "self" or "team" match on a tag the user wasn't thinking
-// about.
+// The per-field surfaces a SCOPED clause matches against. Disruption sides
+// and exclusion reasons are searchable ONLY through their scoped tokens
+// (`leaver:team`, `thrower:enemy`, `excluded:placement`). They stay out of
+// the bare-token blob on purpose: the values are generic words, and folding
+// them in would make a search for "self", "team" or "placement" match on a
+// tag the user wasn't thinking about.
 function scopedSurfaces(ann: MatchRecord['annotation']): Record<SearchField, string> {
   return {
-    note:    lc(ann?.note),
-    tag:     lcJoin(ann?.tags),
-    member:  lcJoin(ann?.members),
-    replay:  lc(ann?.replay_code),
-    leaver:  lcJoin(ann?.leavers),
-    thrower: lcJoin(ann?.throwers),
+    note:     lc(ann?.note),
+    tag:      lcJoin(ann?.tags),
+    member:   lcJoin(ann?.members),
+    replay:   lc(ann?.replay_code),
+    leaver:   lcJoin(ann?.leavers),
+    thrower:  lcJoin(ann?.throwers),
+    excluded: lc(ann?.exclusion_reason),
   }
 }
 
@@ -333,6 +334,13 @@ export function matchesPickedSeason(
 export function matchesLeaverHandling(r: MatchRecord, mode: 'include' | 'exclude-tally' | 'hide'): boolean {
   if (mode !== 'hide') return true
   return !r.annotation?.leavers?.length
+}
+
+// The exclusion twin. Same three modes, same rule: only 'hide' takes the
+// row off the list — 'exclude-tally' leaves it visible and uncounted.
+export function matchesExclusionHandling(r: MatchRecord, mode: 'include' | 'exclude-tally' | 'hide'): boolean {
+  if (mode !== 'hide') return true
+  return !r.annotation?.exclusion_reason
 }
 
 // matchesPoolSide gates a match against the Hero Pool band's In-pool /

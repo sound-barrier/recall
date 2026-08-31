@@ -21,6 +21,17 @@ import (
 // carries something.
 var validDisruptionSides = map[string]bool{"self": true, "team": true, "enemy": true}
 
+// validExclusionReasons is the closed vocabulary of "why this match should
+// not count". Closed because a FILTER reads it back: free text would leave
+// the tally unable to tell a placement from a typo. The empty string is the
+// ordinary case — this match counts — and is not listed here; callers treat
+// blank as "no reason given" before validating.
+var validExclusionReasons = map[string]bool{
+	"placement":      true,
+	"mmr_adjustment": true,
+	"outage":         true,
+}
+
 // ErrInvalidLeaver is returned by SetAnnotation when a leaver side isn't
 // one of the three allowed values. HTTP handlers map this to 400 (user-input
 // error) rather than 500.
@@ -29,6 +40,11 @@ var ErrInvalidLeaver = errors.New("invalid leaver: each side must be 'self', 'te
 // ErrInvalidThrower is the thrower-side twin of ErrInvalidLeaver. Separate
 // sentinels so the 400's message names the field the user actually got wrong.
 var ErrInvalidThrower = errors.New("invalid thrower: each side must be 'self', 'team', or 'enemy'")
+
+// ErrInvalidExclusionReason is returned when the reason isn't one the
+// filter knows. HTTP handlers map it to 400, like the disruption sides.
+var ErrInvalidExclusionReason = errors.New(
+	"invalid exclusion reason: must be 'placement', 'mmr_adjustment', or 'outage'")
 
 // ErrEmptyAnnotation is returned by SetAnnotation when the input carries no
 // content after trimming. PUT /annotation is upsert-only; clearing an annotation
@@ -60,11 +76,15 @@ type AnnotationInput struct {
 	Note       string
 	ReplayCode string
 	Members    []string
-	// Free-form user tags. `stack`, `stream`, `placement` are the
-	// conventional three (quick-add toggles in the inline editor);
-	// the user can add anything. Normalized via normalizeTags before
-	// reaching the store (lowercased + trimmed + deduped).
+	// Free-form user tags. `stack` and `stream` are the conventional
+	// quick-add toggles in the inline editor; the user can add anything.
+	// Normalized via normalizeTags before reaching the store (lowercased
+	// + trimmed + deduped).
 	Tags []string
+	// ExclusionReason is one of validExclusionReasons, or "" for a match
+	// that counts. `placement` used to be spelled as a TAG; the reason
+	// supersedes it, because only this field reaches the tally.
+	ExclusionReason string
 }
 
 // SetAnnotation upserts a per-match annotation. It is upsert-only: an
@@ -146,15 +166,33 @@ func normalizeAnnotation(in AnnotationInput) (db.Annotation, error) {
 	if err != nil {
 		return db.Annotation{}, err
 	}
+	reason, err := normalizeExclusionReason(in.ExclusionReason)
+	if err != nil {
+		return db.Annotation{}, err
+	}
 	return db.Annotation{
-		MatchKey:   in.MatchKey,
-		Leavers:    leavers,
-		Throwers:   throwers,
-		Note:       strings.TrimSpace(in.Note),
-		ReplayCode: code,
-		Members:    normalizeMembers(in.Members),
-		Tags:       normalizeTags(in.Tags),
+		MatchKey:        in.MatchKey,
+		Leavers:         leavers,
+		Throwers:        throwers,
+		Note:            strings.TrimSpace(in.Note),
+		ReplayCode:      code,
+		Members:         normalizeMembers(in.Members),
+		Tags:            normalizeTags(in.Tags),
+		ExclusionReason: reason,
 	}, nil
+}
+
+// normalizeExclusionReason lowercases + trims, treats blank as "counts
+// normally", and refuses anything outside the vocabulary.
+func normalizeExclusionReason(raw string) (string, error) {
+	reason := strings.ToLower(strings.TrimSpace(raw))
+	if reason == "" {
+		return "", nil
+	}
+	if !validExclusionReasons[reason] {
+		return "", ErrInvalidExclusionReason
+	}
+	return reason, nil
 }
 
 // normalizeReplayCode canonicalizes a replay code, treating blank as
@@ -197,7 +235,8 @@ func assertReplayCodeFree(s db.Store, matchKey, code string) error {
 // content at all — the upsert-only rule's rejection case.
 func annotationIsEmpty(a db.Annotation) bool {
 	return len(a.Leavers) == 0 && len(a.Throwers) == 0 && a.Note == "" &&
-		a.ReplayCode == "" && len(a.Members) == 0 && len(a.Tags) == 0
+		a.ReplayCode == "" && len(a.Members) == 0 && len(a.Tags) == 0 &&
+		a.ExclusionReason == ""
 }
 
 // normalizeSides trims, drops empties, dedupes, and validates every side

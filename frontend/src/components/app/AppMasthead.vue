@@ -88,10 +88,10 @@ const tabBadge = computed<Partial<Record<string, { count: number; unit: string }
 const activeFilterCount = matchesNarrow.activeClauseCount
 // W/L/D across the currently-narrowed set — same source + leaver rule the
 // MatchesView dossier's Record KPI tile uses, so the two stay in lockstep.
-const wld = computed(() => tallyWLD(
-  matchesNarrow.narrowedRecords.value,
-  matchesNarrow.leaverHandling.value === 'exclude-tally',
-))
+const wld = computed(() => tallyWLD(matchesNarrow.narrowedRecords.value, {
+  skipLeavers: matchesNarrow.leaverHandling.value === 'exclude-tally',
+  skipExcluded: matchesNarrow.exclusionHandling.value === 'exclude-tally',
+}))
 
 // Decisive games only — the house convention, because a draw is not a loss.
 // Null rather than 0 when nothing was decided: an all-draws set has no rate

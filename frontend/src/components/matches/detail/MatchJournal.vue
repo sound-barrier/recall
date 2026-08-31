@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, nextTick, ref } from 'vue'
-import type { MatchRecord } from '@/api-client'
+import type { ExclusionReason, MatchRecord } from '@/api-client'
 import { type SearchClause } from '@/match/search-query'
 import { REPLAY_CODE_LENGTH, toReplayCodeDraft } from '@/match/replay-code'
+import MatchExclusionChooser from '@/components/matches/detail/MatchExclusionChooser.vue'
 import CoachCueStrip from '@/components/coach/notes/CoachCueStrip.vue'
 import CoachNoteBlock from '@/components/coach/notes/CoachNoteBlock.vue'
 import { coachBlockView, selfBlockView } from '@/match/coach/note-block-view'
@@ -151,6 +152,7 @@ const {
   tagDraft,
   savedFlash,
   NAMED_TAGS,
+  setExclusionReason,
   hasAnyNote,
   isEditingNote,
   noteFieldRef,
@@ -377,6 +379,15 @@ onMounted(() => {
       <!-- Tags — three quick-add toggles for the conventional vocabulary,
              a chip list of currently-applied custom tags, and a free-form
              input. Backspace on an empty input removes the last chip. -->
+      <div class="journal-cell journal-cell-exclusion">
+        <MatchExclusionChooser
+          :current="(record.annotation?.exclusion_reason ?? '') as ExclusionReason"
+          :writes-locked="writesLocked"
+          :lock-reason="lockReason || ''"
+          @set-exclusion="setExclusionReason"
+        />
+      </div>
+
       <div
         class="journal-cell journal-cell-tags"
         :class="{ saved: savedFlash === 'tags', filled: tagDraft.length > 0 }"

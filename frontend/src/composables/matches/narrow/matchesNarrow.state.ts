@@ -1,5 +1,5 @@
 import { computed, ref, type Ref } from 'vue'
-import type { LeaverHandling } from '@/composables/matches/dossier/useMatchesDossier'
+import type { ExclusionHandling, LeaverHandling } from '@/composables/matches/dossier/useMatchesDossier'
 import type {
   CreateMatchesNarrowStateOptions,
   MatchesNarrowState,
@@ -42,6 +42,9 @@ export function createMatchesNarrowState(opts: CreateMatchesNarrowStateOptions =
     customToTime:     ref(''),
     pickedSeason:     ref(''),
     leaverHandling:   ref<LeaverHandling>('include'),
+    // Defaults to dropping, not including: marking WHY a match doesn't
+    // count is itself the instruction to stop counting it.
+    exclusionHandling: ref<ExclusionHandling>('exclude-tally'),
     minPlayMinutes:   ref(0),
     minPlayPercent:   ref(0),
     includeUnknown:   ref(false),

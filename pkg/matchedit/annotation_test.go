@@ -309,3 +309,28 @@ func TestSetAnnotation_KeepingItsOwnCodeIsNotACollision(t *testing.T) {
 		t.Fatalf("re-saving a match's own code: %v", err)
 	}
 }
+
+// The exclusion reason is a closed vocabulary: an unrecognized one is a
+// user-input error (400), not a silently stored string that would then
+// mean nothing to the filter reading it back.
+func TestSetAnnotation_RejectsAnUnknownExclusionReason(t *testing.T) {
+	fake := seeded("match-1")
+	err := matchedit.SetAnnotation(fake, matchedit.AnnotationInput{
+		MatchKey: "match-1", ExclusionReason: "because i said so",
+	})
+	if !errors.Is(err, matchedit.ErrInvalidExclusionReason) {
+		t.Errorf("got %v, want ErrInvalidExclusionReason", err)
+	}
+}
+
+// An annotation whose only content is the reason is a real annotation —
+// "this was a placement" is the whole thing the user wanted to say.
+func TestSetAnnotation_AReasonAloneIsContent(t *testing.T) {
+	fake := seeded("match-1")
+	mustNoErr(t, matchedit.SetAnnotation(fake, matchedit.AnnotationInput{
+		MatchKey: "match-1", ExclusionReason: "mmr_adjustment",
+	}))
+	if got := fake.Annotations["match-1"].ExclusionReason; got != "mmr_adjustment" {
+		t.Errorf("stored reason = %q, want mmr_adjustment", got)
+	}
+}

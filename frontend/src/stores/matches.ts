@@ -213,8 +213,7 @@ export const useMatchesStore = defineStore('matches', () => {
   const dossier = useMatchesDossier(
     matchesNarrow.narrowedRecords,
     matchesNarrow.leaverHandling,
-    heroRole,
-    weekStart,
+    { exclusionHandling: matchesNarrow.exclusionHandling, heroRole, weekStart },
   )
   // A second aggregation over the UNFILTERED records (ignores the narrow), so
   // widgets/bands can size their structure stably — provided alongside the
@@ -223,8 +222,7 @@ export const useMatchesStore = defineStore('matches', () => {
   const fullDossier = useMatchesDossier(
     records,
     matchesNarrow.leaverHandling,
-    heroRole,
-    weekStart,
+    { exclusionHandling: matchesNarrow.exclusionHandling, heroRole, weekStart },
   )
   // Per-band "narrow minus self" aggregations: each reads everything EXCEPT its
   // own filter dimension, so a band reflects the OTHER bands' picks (they
@@ -233,14 +231,12 @@ export const useMatchesStore = defineStore('matches', () => {
   const geographyDossier = useMatchesDossier(
     matchesNarrow.narrowedExceptMapsRoles,
     matchesNarrow.leaverHandling,
-    heroRole,
-    weekStart,
+    { exclusionHandling: matchesNarrow.exclusionHandling, heroRole, weekStart },
   )
   const heroModeDossier = useMatchesDossier(
     matchesNarrow.narrowedExceptHeroesGameModes,
     matchesNarrow.leaverHandling,
-    heroRole,
-    weekStart,
+    { exclusionHandling: matchesNarrow.exclusionHandling, heroRole, weekStart },
   )
 
   // Export flows for the Matches set — the bundle-export modal + the flat CSV

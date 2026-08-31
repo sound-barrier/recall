@@ -71,8 +71,8 @@ const recordsA = computed<MatchRecord[]>(() => pair.value.a.filter(conditionPred
 const recordsB = computed<MatchRecord[]>(() => pair.value.b.filter(conditionPredicate(condB.value, ow.heroRole)))
 
 const leaverHandling = matchesStore.matchesNarrow.leaverHandling
-const dossierA = useMatchesDossier(recordsA, leaverHandling, ow.heroRole, weekStart)
-const dossierB = useMatchesDossier(recordsB, leaverHandling, ow.heroRole, weekStart)
+const dossierA = useMatchesDossier(recordsA, leaverHandling, { heroRole: ow.heroRole, weekStart })
+const dossierB = useMatchesDossier(recordsB, leaverHandling, { heroRole: ow.heroRole, weekStart })
 const topHeroA = dossierA.topByCount({ getter: (r) => r.data?.hero || undefined, limit: 1 })
 const topHeroB = dossierB.topByCount({ getter: (r) => r.data?.hero || undefined, limit: 1 })
 

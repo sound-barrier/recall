@@ -162,13 +162,17 @@ type AmbiguousAttribution struct {
 // be disrupted on both teams at once. They are always present on the wire (no
 // omitempty) so clients can read `.length` without a nil check.
 type Annotation struct {
-	Leavers     []string `json:"leavers"`
-	Throwers    []string `json:"throwers"`
-	Note        string   `json:"note,omitempty"`
-	ReplayCode  string   `json:"replay_code,omitempty"`
-	Members     []string `json:"members,omitempty"`
-	Tags        []string `json:"tags,omitempty"`
-	AnnotatedAt string   `json:"annotated_at,omitempty"`
+	Leavers    []string `json:"leavers"`
+	Throwers   []string `json:"throwers"`
+	Note       string   `json:"note,omitempty"`
+	ReplayCode string   `json:"replay_code,omitempty"`
+	Members    []string `json:"members,omitempty"`
+	Tags       []string `json:"tags,omitempty"`
+	// Why this match should not count toward the win rate — "placement",
+	// "mmr_adjustment" or "outage". Absent for the matches that count,
+	// which is nearly all of them.
+	ExclusionReason string `json:"exclusion_reason,omitempty"`
+	AnnotatedAt     string `json:"annotated_at,omitempty"`
 }
 
 // CoachNote is one accepted coach note on this match — the coach-received

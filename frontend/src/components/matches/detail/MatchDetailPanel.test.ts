@@ -397,20 +397,20 @@ describe('MatchDetailPanel — match notes / journal block', () => {
     // awaited keystrokes, which no real user's blur would interleave with.
     await fireEvent.update(ta, '  draft text  ')
     await leaveWriter(ta)
-    expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leavers: [], throwers: [], note: 'draft text', replay_code: '', members: [], tags: [] })
+    expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leavers: [], throwers: [], note: 'draft text', replay_code: '', members: [], tags: [], exclusion_reason: '' })
   })
 
   it('writes the annotation on replay-code Enter', async () => {
     const { key } = renderPanel()
     await user().type(screen.getByLabelText('Replay code'), '7H1K9P{Enter}')
-    expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leavers: [], throwers: [], note: '', replay_code: '7H1K9P', members: [], tags: [] })
+    expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leavers: [], throwers: [], note: '', replay_code: '7H1K9P', members: [], tags: [], exclusion_reason: '' })
   })
 
   it('Enter on the member input adds a chip and writes the new list', async () => {
     renderPanel()
     await user().type(screen.getByPlaceholderText(/Add BattleTag/), 'Apollo#11234{Enter}')
     expect(memberChips()).toEqual(['Apollo#11234'])
-    expect(lastAnnotation()).toEqual({ leavers: [], throwers: [], note: '', replay_code: '', members: ['Apollo#11234'], tags: [] })
+    expect(lastAnnotation()).toEqual({ leavers: [], throwers: [], note: '', replay_code: '', members: ['Apollo#11234'], tags: [], exclusion_reason: '' })
   })
 
   it('comma key also commits the member chip', async () => {
@@ -426,7 +426,7 @@ describe('MatchDetailPanel — match notes / journal block', () => {
     renderPanel({ record: rec })
     expect(memberChips()).toHaveLength(2)
     await user().click(screen.getByLabelText('Remove Apollo#1 from group'))
-    expect(lastAnnotation()).toEqual({ leavers: [], throwers: [], note: '', replay_code: '', members: ['Cheese#5'], tags: [] })
+    expect(lastAnnotation()).toEqual({ leavers: [], throwers: [], note: '', replay_code: '', members: ['Cheese#5'], tags: [], exclusion_reason: '' })
   })
 
   it('Backspace on empty member input removes the last chip', async () => {
@@ -437,7 +437,7 @@ describe('MatchDetailPanel — match notes / journal block', () => {
     const memberInput = screen.getByPlaceholderText(/Add BattleTag/)
     expect(memberInput).toHaveValue('')
     await user().type(memberInput, '{Backspace}')
-    expect(lastAnnotation()).toEqual({ leavers: [], throwers: [], note: '', replay_code: '', members: ['Apollo#1'], tags: [] })
+    expect(lastAnnotation()).toEqual({ leavers: [], throwers: [], note: '', replay_code: '', members: ['Apollo#1'], tags: [], exclusion_reason: '' })
   })
 
   it('Backspace with text in the input does NOT remove a chip', async () => {

@@ -201,6 +201,7 @@ var defaultProblems = []errStatus{
 	// A team review travels as the page — the archive has no addressee.
 	{coach.ErrTeamPageOnly, probConflict},
 	{db.ErrCoachKindInvalid, probInvalidBody},
+	{app.ErrInvalidExclusionReason, probInvalidBody},
 }
 
 // writeError writes err to w as an RFC 9457 problem and reports whether it wrote

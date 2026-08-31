@@ -69,7 +69,7 @@ function record(opts: RecOpts = {}): MatchRecord {
 }
 
 function snapshotOf(records: MatchRecord[], extras?: Parameters<typeof buildSeasonMetrics>[2]['extras']) {
-  const dossier = useMatchesDossier(ref(records), ref('include'), resolvers.heroRole, ref(1))
+  const dossier = useMatchesDossier(ref(records), ref('include'), { heroRole: resolvers.heroRole, weekStart: ref(1) })
   return buildSeasonMetrics(dossier, records, { topHero: null, ow: resolvers, extras })
 }
 

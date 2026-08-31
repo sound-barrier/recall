@@ -167,6 +167,15 @@ describe('matchesSearch — disruption tokens', () => {
     annotation: { leavers: ['team'], throwers: ['enemy'] },
   } as unknown as Partial<MatchRecord>)
 
+  it('matches a scoped excluded: clause against the exclusion reason', () => {
+    const placement = rec({
+      annotation: { exclusion_reason: 'placement' } as MatchRecord['annotation'],
+    })
+    expect(matchesSearch(placement, [{ field: 'excluded', value: 'placement' }])).toBe(true)
+    expect(matchesSearch(placement, [{ field: 'excluded', value: 'outage' }])).toBe(false)
+    expect(matchesSearch(tagged, [{ field: 'excluded', value: 'placement' }])).toBe(false)
+  })
+
   it('matches a scoped leaver: / thrower: clause', () => {
     expect(matchesSearch(tagged, [{ field: 'leaver', value: 'team' }])).toBe(true)
     expect(matchesSearch(tagged, [{ field: 'leaver', value: 'enemy' }])).toBe(false)

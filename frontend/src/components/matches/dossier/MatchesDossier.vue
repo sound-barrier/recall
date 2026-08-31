@@ -34,6 +34,7 @@ const {
   pickedReviewedBy,
   pickedSources,
   leaverHandling,
+  exclusionHandling,
   minPlayMinutes,
   minPlayPercent,
   includeUnknown,
@@ -141,6 +142,15 @@ function sourceLabel(source: string): string {
         <span class="chip-key">Leavers</span>
         <span class="chip-val">{{ leaverHandling === 'hide' ? 'hidden' : 'no tally' }}</span>
         <button class="chip-x" aria-label="Reset leavers" @click="leaverHandling = 'include'">
+          ×
+        </button>
+      </li>
+      <!-- Default handling is drop-from-tally, so the chip marks an OVERRIDE
+             in either direction, not "a filter is on". -->
+      <li v-if="exclusionHandling !== 'exclude-tally'" class="active-chip">
+        <span class="chip-key">Excluded</span>
+        <span class="chip-val">{{ exclusionHandling === 'hide' ? 'hidden' : 'counted' }}</span>
+        <button class="chip-x" aria-label="Reset excluded matches" @click="exclusionHandling = 'exclude-tally'">
           ×
         </button>
       </li>

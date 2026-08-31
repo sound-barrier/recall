@@ -25,18 +25,45 @@ function hasLeaver(r: { annotation?: { leavers?: string[] | null } | null }): bo
   return !!r.annotation?.leavers?.length
 }
 
+/** A match the user marked as not counting — a placement, an MMR
+ *  adjustment, a game lost to their own connection. */
+function hasExclusionReason(r: { annotation?: { exclusion_reason?: string | null } | null }): boolean {
+  return !!r.annotation?.exclusion_reason
+}
+
+/** What a tally is being asked to skip. Two independent reasons a match
+ *  can sit out of the win rate while staying on the list. */
+export interface TallyHandling {
+  skipLeavers?: boolean
+  skipExcluded?: boolean
+}
+
+/** THE rule for whether a match counts. One predicate, because the
+ *  masthead and the dossier both answer this question and a second copy
+ *  is how they came to disagree. */
+export function countsInTally(
+  r: {
+    annotation?: { leavers?: string[] | null; exclusion_reason?: string | null } | null
+  },
+  handling: TallyHandling = {},
+): boolean {
+  if (handling.skipLeavers && hasLeaver(r)) return false
+  if (handling.skipExcluded && hasExclusionReason(r)) return false
+  return true
+}
+
 export function tallyWLD(
   records: {
     data?: { result?: string | null } | null
-    annotation?: { leavers?: string[] | null } | null
+    annotation?: { leavers?: string[] | null; exclusion_reason?: string | null } | null
   }[],
-  skipAnnotated = false,
+  handling: TallyHandling = {},
 ): WLDTally {
   let w = 0
   let l = 0
   let d = 0
   for (const r of records) {
-    if (skipAnnotated && hasLeaver(r)) continue
+    if (!countsInTally(r, handling)) continue
     const result = (r.data?.result ?? '').toLowerCase()
     if (result === 'victory') w++
     else if (result === 'defeat') l++

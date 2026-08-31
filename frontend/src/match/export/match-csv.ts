@@ -60,6 +60,7 @@ const COLUMNS: readonly CsvColumn[] = [
   { header: 'replay_code',   get: (r) => r.annotation?.replay_code },
   { header: 'members',       get: (r) => (r.annotation?.members ?? []).join('; ') },
   { header: 'tags',          get: (r) => (r.annotation?.tags ?? []).join('; ') },
+  { header: 'exclusion_reason', get: (r) => r.annotation?.exclusion_reason },
 ]
 
 // The export's column headers, in order. Exported so callers (and tests)

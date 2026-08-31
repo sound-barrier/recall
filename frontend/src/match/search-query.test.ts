@@ -104,6 +104,11 @@ describe('disruption tokens', () => {
     ])
   })
 
+  it('recognizes excluded: in both singular and plural', () => {
+    expect(parseSearchQuery('excluded:placement')).toEqual([{ field: 'excluded', value: 'placement' }])
+    expect(parseSearchQuery('exclusion:outage')).toEqual([{ field: 'excluded', value: 'outage' }])
+  })
+
   it('leaves a bare "leaver" as an untyped token', () => {
     expect(parseSearchQuery('leaver')).toEqual([{ field: null, value: 'leaver' }])
   })

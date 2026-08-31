@@ -4,6 +4,7 @@ import type { LeaverPick, MatchesNarrowState, SourcePick, ThrowerPick } from '@/
 import {
   matchesDateRange,
   matchesHero,
+  matchesExclusionHandling,
   matchesLeaverHandling,
   matchesMembers,
   matchesModifiers,
@@ -32,7 +33,7 @@ import {
 
 export type ClauseId = 'search' | 'dateRange' | 'maps' | 'gameModes' | 'roles'
   | 'results' | 'heroes' | 'tags' | 'members' | 'reviewedBy' | 'queues'
-  | 'playModes' | 'sources' | 'leaver' | 'leaverSide' | 'throwerSide' | 'modifiers' | 'ranks'
+  | 'playModes' | 'sources' | 'leaver' | 'exclusion' | 'leaverSide' | 'throwerSide' | 'modifiers' | 'ranks'
   | 'sinceAnchor' | 'minPlay' | 'includeUnknown' | 'season' | 'poolSide' | 'reviewSet'
 
 // Per-pass inputs the predicates need beyond the raw state: the parsed
@@ -266,6 +267,16 @@ export const NARROW_CLAUSES: readonly ClauseSpec[] = [
     passes: (r, s) => matchesLeaverHandling(r, s.leaverHandling.value),
     label: () => 'leaver handling',
     clear: (s) => { s.leaverHandling.value = 'include' },
+  },
+  {
+    // Only 'hide' narrows the SET; 'exclude-tally' is the tally's
+    // business (countsInTally), and the row stays on the list — which
+    // is the whole point of marking a reason instead of hiding.
+    id: 'exclusion',
+    restricts: (s) => s.exclusionHandling.value === 'hide',
+    passes: (r, s) => matchesExclusionHandling(r, s.exclusionHandling.value),
+    label: () => 'excluded matches hidden',
+    clear: (s) => { s.exclusionHandling.value = 'exclude-tally' },
   },
   {
     id: 'leaverSide',

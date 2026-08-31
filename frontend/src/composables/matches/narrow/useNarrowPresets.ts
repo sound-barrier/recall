@@ -1,6 +1,6 @@
 import { ref, onMounted } from 'vue'
 import type { MatchesNarrowState, ReviewedByPick, QueuePick, PlayModePick, SourcePick, LeaverPick, ThrowerPick, PresetRange } from '@/composables/matches/narrow/matchesNarrow.types'
-import type { LeaverHandling } from '@/composables/matches/dossier/useMatchesDossier'
+import type { ExclusionHandling, LeaverHandling } from '@/composables/matches/dossier/useMatchesDossier'
 
 // Saved-set / preset feature.
 //
@@ -39,6 +39,7 @@ interface SerializedNarrow {
   customToTime:      string
   pickedSeason:      string
   leaverHandling:    LeaverHandling
+  exclusionHandling: ExclusionHandling
   minPlayMinutes:    number
   minPlayPercent:    number
   includeUnknown:    boolean
@@ -75,6 +76,7 @@ function serialize(state: MatchesNarrowState): SerializedNarrow {
     customToTime:      state.customToTime.value,
     pickedSeason:      state.pickedSeason.value,
     leaverHandling:    state.leaverHandling.value,
+    exclusionHandling: state.exclusionHandling.value,
     minPlayMinutes:    state.minPlayMinutes.value,
     minPlayPercent:    state.minPlayPercent.value,
     includeUnknown:    state.includeUnknown.value,
@@ -82,33 +84,47 @@ function serialize(state: MatchesNarrowState): SerializedNarrow {
   }
 }
 
+// A preset saved before a dimension existed carries nothing for it. Both
+// helpers RESET that dimension to its empty value rather than leaving the
+// live pick in place: applying a preset must land the set the user saved,
+// never a merge of it with whatever happened to be on screen.
+//
+// They also keep `apply` a flat list of assignments. Spelled inline, the
+// fallbacks read as eleven separate decisions and the function fails the
+// complexity gate — one idea, stated once, is both cheaper and truer.
+function savedSet<T>(saved: T[] | undefined): Set<T> {
+  return new Set(saved ?? [])
+}
+
+function savedOr<T>(saved: T | undefined, empty: T): T {
+  return saved ?? empty
+}
+
 function apply(state: MatchesNarrowState, s: SerializedNarrow): void {
   state.searchText.value        = s.searchText
-  state.pickedMaps.value        = new Set(s.pickedMaps)
-  state.pickedGameModes.value    = new Set(s.pickedGameModes)
-  state.pickedHeroes.value      = new Set(s.pickedHeroes)
-  state.pickedRoles.value       = new Set(s.pickedRoles)
-  state.pickedResults.value     = new Set(s.pickedResults)
-  state.pickedTags.value        = new Set(s.pickedTags)
-  state.pickedMembers.value     = new Set(s.pickedMembers ?? [])
-  state.pickedReviewedBy.value  = new Set(s.pickedReviewedBy)
-  state.pickedQueues.value      = new Set(s.pickedQueues)
-  state.pickedPlayModes.value   = new Set(s.pickedPlayModes)
-  state.pickedSources.value     = new Set(s.pickedSources ?? [])
-  // `?? []` also RESETS the dimension for presets saved before it existed —
-  // leaving the live picks in place would apply a merged half-preset.
-  state.pickedLeavers.value     = new Set(s.pickedLeavers ?? [])
-  state.pickedThrowers.value    = new Set(s.pickedThrowers ?? [])
-  state.pickedModifiers.value   = new Set(s.pickedModifiers ?? [])
-  state.pickedRanks.value       = new Set(s.pickedRanks ?? [])
+  state.pickedMaps.value        = savedSet(s.pickedMaps)
+  state.pickedGameModes.value   = savedSet(s.pickedGameModes)
+  state.pickedHeroes.value      = savedSet(s.pickedHeroes)
+  state.pickedRoles.value       = savedSet(s.pickedRoles)
+  state.pickedResults.value     = savedSet(s.pickedResults)
+  state.pickedTags.value        = savedSet(s.pickedTags)
+  state.pickedMembers.value     = savedSet(s.pickedMembers)
+  state.pickedReviewedBy.value  = savedSet(s.pickedReviewedBy)
+  state.pickedQueues.value      = savedSet(s.pickedQueues)
+  state.pickedPlayModes.value   = savedSet(s.pickedPlayModes)
+  state.pickedSources.value     = savedSet(s.pickedSources)
+  state.pickedLeavers.value     = savedSet(s.pickedLeavers)
+  state.pickedThrowers.value    = savedSet(s.pickedThrowers)
+  state.pickedModifiers.value   = savedSet(s.pickedModifiers)
+  state.pickedRanks.value       = savedSet(s.pickedRanks)
   state.pickedRange.value       = s.pickedRange
   state.customFrom.value        = s.customFrom
   state.customTo.value          = s.customTo
-  // `?? ''` resets the time bounds for presets saved before they existed.
-  state.customFromTime.value    = s.customFromTime ?? ''
-  state.customToTime.value      = s.customToTime ?? ''
-  state.pickedSeason.value      = s.pickedSeason ?? ''
+  state.customFromTime.value    = savedOr(s.customFromTime, '')
+  state.customToTime.value      = savedOr(s.customToTime, '')
+  state.pickedSeason.value      = savedOr(s.pickedSeason, '')
   state.leaverHandling.value    = s.leaverHandling
+  state.exclusionHandling.value = savedOr(s.exclusionHandling, 'exclude-tally')
   state.minPlayMinutes.value    = s.minPlayMinutes
   state.minPlayPercent.value    = s.minPlayPercent
   state.includeUnknown.value    = s.includeUnknown

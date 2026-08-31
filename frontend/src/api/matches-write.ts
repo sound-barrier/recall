@@ -26,11 +26,17 @@ export interface MatchAnnotationInput {
   note?:        string
   replay_code?: string
   members?:     string[]
-  // Free-form match labels — `stack`, `stream`, `placement` are the three
-  // conventional ones surfaced as quick-add toggles in the inline editor.
-  // Server lowercases + dedupes; any string is accepted.
+  // Free-form match labels — `stack` and `stream` are the conventional
+  // ones surfaced as quick-add toggles in the inline editor. Server
+  // lowercases + dedupes; any string is accepted.
   tags?:        string[]
+  // Why this match should not count toward the win rate: 'placement',
+  // 'mmr_adjustment', 'outage', or '' for the matches that do count.
+  exclusion_reason?: ExclusionReason
 }
+
+/** The closed vocabulary the tally reads back. */
+export type ExclusionReason = '' | 'placement' | 'mmr_adjustment' | 'outage'
 
 // Always sends the full six-field row so partial inputs from the frontend
 // (note-only edit, members-only edit) don't accidentally null fields the
@@ -45,6 +51,7 @@ export function SetMatchAnnotation(matchKey: string, input: MatchAnnotationInput
       replay_code: input.replay_code ?? '',
       members:     input.members ?? [],
       tags:        input.tags ?? [],
+      exclusion_reason: input.exclusion_reason ?? '',
     },
   }))
 }

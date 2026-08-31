@@ -350,6 +350,7 @@ describe('writers', () => {
     expect(new URL(req.url).pathname).toBe('/api/v1/matches/match%3Ax/annotation')
     expect(JSON.parse(await req.text())).toEqual({
       leavers: [], throwers: [], note: 'just a note', replay_code: '', members: [], tags: [],
+      exclusion_reason: '',
     })
   })
 
@@ -360,6 +361,7 @@ describe('writers', () => {
     await SetMatchAnnotation('match:x', { leavers: ['team', 'self'] })
     expect(JSON.parse(await lastRequest(spy).text())).toEqual({
       leavers: ['team', 'self'], throwers: [], note: '', replay_code: '', members: [], tags: [],
+      exclusion_reason: '',
     })
   })
 })
