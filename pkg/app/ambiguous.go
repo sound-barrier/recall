@@ -96,8 +96,13 @@ func (a *App) rememberKeepSeparate(resolvedTo string, cands []db.AmbiguousCandid
 			continue
 		}
 		if err := a.store.LinkDuplicateMatches(resolvedTo, c.MatchKey); err != nil {
+			// Scrubbed: resolvedTo arrives in the PUT body and the candidate
+			// key is minted from a filename on disk, so both are strings a
+			// user chose. CR/LF in either would forge a second log entry
+			// (CWE-117) — the reason applog.Scrub exists.
 			applog.Subsystem("parse").Error("keep-separate: link failed",
-				"match_key", resolvedTo, "duplicate_of", c.MatchKey, "err", err)
+				"match_key", applog.Scrub(resolvedTo),
+				"duplicate_of", applog.Scrub(c.MatchKey), "err", err)
 		}
 		return
 	}
