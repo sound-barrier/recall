@@ -184,22 +184,6 @@ func (f *Fake) LoadAllFilenames() (map[string]bool, error) {
 	return out, nil
 }
 
-func (f *Fake) LookupMatchKeysForFilename(filename string) ([]string, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	seen := map[string]bool{}
-	keysForFilename(f.Summaries, filename, seen)
-	keysForFilename(f.Teams, filename, seen)
-	keysForFilename(f.Personals, filename, seen)
-	keysForFilename(f.Ranks, filename, seen)
-	keysForFilename(f.Unknowns, filename, seen)
-	out := make([]string, 0, len(seen))
-	for k := range seen {
-		out = append(out, k)
-	}
-	return out, nil
-}
-
 // staleKeys adds the match keys of rows older than current to seen. Generic so
 // the five parent tables share one branch instead of five copies.
 func staleKeys[T any](rows []T, current int, seen map[string]struct{}, read func(T) (key string, gen int)) {

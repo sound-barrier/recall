@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"recall/pkg/db"
-	"recall/pkg/match"
 )
 
 // ErrIgnoreFilenameRequired is the typed sentinel HTTP handlers
@@ -13,29 +12,22 @@ import (
 var ErrIgnoreFilenameRequired = errors.New("filename is required")
 
 // IgnoreScreenshot adds `filename` to the suppress-list backing the
-// Unknown tab's "Delete forever" affordance. Future parse runs skip
-// any file whose name matches. Also wipes the matching match row
-// (and its hidden / annotation / review side-tables) so the row
-// disappears from the result set immediately, not just on the next
-// parse — the user clicked "Delete forever," they expect the row
-// gone now.
+// Unknown tab's Dismiss affordance. Future parse runs skip any file
+// whose name matches; the file on disk is untouched, and the Settings
+// "Manage ignored files" panel can restore it.
 //
-// The wipe targets THREE shapes of match_key:
-//
-//  1. `unmatched-<filename>` — the parser couldn't read a timestamp.
-//  2. `ambiguous-<filename>` — the resolver tied between candidates.
-//  3. `match-<timestamp>` — a tracked match whose OCR failed to extract
-//     a map (so the aggregator surfaces it on the Unknown tab via the
-//     `!data.map` filter). The match_key isn't derivable from the
-//     filename alone, so we look up every match_key that references
-//     `filename` across the five parent tables and wipe those too.
-//
-// Without case 3, an Unknown card whose underlying match_key is
-// `match-<ts>` never disappeared — the suppress-list row went in but
-// the source row stayed, so the next reload re-rendered the card.
+// Only the file's OWN contribution leaves the corpus. Its rows across
+// the screenshot tables go (DeleteScreenshotRows), and any match key
+// those rows were the last backing of is fully hard-deleted so no
+// sidecar — annotation, review, hidden flag — strands on a dead key.
+// A match with sibling screenshots survives minus this file: dismissing
+// one bad screenshot of a good match must not delete the match, and
+// must not unregister the siblings' dedup rows (which would re-OCR
+// them on the next run and resurrect the match — the bug the previous
+// wipe-every-key-the-filename-touches contract shipped).
 //
 // Idempotent: ignoring an already-ignored filename refreshes the
-// timestamp; wiping a non-existent matchKey is a no-op.
+// timestamp; a filename with no rows anywhere just joins the list.
 func IgnoreScreenshot(s db.Store, filename string) error {
 	if filename == "" {
 		return ErrIgnoreFilenameRequired
@@ -48,28 +40,11 @@ func IgnoreScreenshot(s db.Store, filename string) error {
 	if err := s.RemoveFailedFile(filename); err != nil {
 		return fmt.Errorf("clear failed-file row for %s: %w", filename, err)
 	}
-	// Deduplicate so a tracked-match lookup that returns the same key
-	// we already had in the hard-coded fallback list doesn't call
-	// HardDeleteMatch twice (harmless but noisier in tests + audit
-	// logs). Build the set, then iterate it in a stable order so
-	// failure messages stay reproducible.
-	tracked, err := s.LookupMatchKeysForFilename(filename)
+	orphans, err := s.DeleteScreenshotRows(filename)
 	if err != nil {
-		return fmt.Errorf("lookup match keys for %s: %w", filename, err)
+		return fmt.Errorf("delete screenshot rows for %s: %w", filename, err)
 	}
-	seen := map[string]bool{}
-	keys := make([]string, 0, 2+len(tracked))
-	for _, k := range append([]string{
-		match.NewUnmatchedMatchKey(filename).String(),
-		match.NewAmbiguousMatchKey(filename).String(),
-	}, tracked...) {
-		if seen[k] {
-			continue
-		}
-		seen[k] = true
-		keys = append(keys, k)
-	}
-	for _, key := range keys {
+	for _, key := range orphans {
 		if err := s.HardDeleteMatch(key); err != nil {
 			return fmt.Errorf("hard delete match for %s: %w", key, err)
 		}

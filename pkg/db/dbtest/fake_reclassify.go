@@ -38,6 +38,33 @@ func (f *Fake) DeleteScreenshotSiblings(filename string, keepType parser.Screens
 	return nil
 }
 
+// DeleteScreenshotRows mirrors SQLStore's contract: drop filename's rows
+// from every screenshot surface (including the AllHeroes registry) and
+// its own pending candidate set — never IngestedFiles, whose cascade
+// would unregister byte-identical copies — returning, sorted, the keys
+// left with no parent rows.
+func (f *Fake) DeleteScreenshotRows(filename string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	touched := map[string]bool{}
+	collect := func(key string) { touched[key] = true }
+	f.Summaries = deleteByFilename(f.Summaries, filename, collect)
+	f.Teams = deleteByFilename(f.Teams, filename, collect)
+	f.Personals = deleteByFilename(f.Personals, filename, collect)
+	f.Ranks = deleteByFilename(f.Ranks, filename, collect)
+	f.Unknowns = deleteByFilename(f.Unknowns, filename, collect)
+	delete(f.AllHeroes, filename)
+	delete(f.Ambiguous, filename)
+	orphans := []string{}
+	for key := range touched {
+		if !f.matchKeyHasRowsLocked(key) {
+			orphans = append(orphans, key)
+		}
+	}
+	slices.Sort(orphans)
+	return orphans, nil
+}
+
 // scrubDeadKeyCandidatesLocked mirrors SQLStore: candidates referencing
 // a key with no remaining parent rows must go (HardDeleteMatch's
 // dead-key invariant). Caller holds f.mu.
