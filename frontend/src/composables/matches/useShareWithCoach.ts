@@ -20,7 +20,7 @@ import { invalidateShareExports } from '@/queries/selfReview'
 // surface, same host (the matches store), same shape.
 
 /** How the set going out was chosen — the dialog says so out loud. */
-export type ShareOrigin = 'row' | 'selection' | 'narrow' | 'last-session'
+export type ShareOrigin = 'row' | 'selection' | 'narrow' | 'last-session' | 'suggested'
 
 export interface ShareSubmission {
   handle: string
@@ -51,6 +51,7 @@ const SUBJECT: Record<ShareOrigin, (n: number) => string> = {
   selection: (n) => `${n} match${n === 1 ? '' : 'es'} you ticked`,
   narrow: (n) => `${n} match${n === 1 ? '' : 'es'} — everything showing on Matches`,
   'last-session': (n) => `Your last session — ${n} match${n === 1 ? '' : 'es'}`,
+  suggested: (n) => `${n} match${n === 1 ? '' : 'es'} — suggested, yours to edit`,
 }
 
 export function useShareWithCoach(deps: ShareWithCoachDeps) {
@@ -102,6 +103,27 @@ export function useShareWithCoach(deps: ShareWithCoachDeps) {
     shareOrigin.value = origin
     shareOpen.value = true
     openToken += 1
+  }
+
+  /**
+   * Replace the set the OPEN dialog is about, without reopening it.
+   *
+   * requestShare is the door; this is the correction. A suggestion the user
+   * cannot edit afterward is a decision taken away from them, so applying
+   * one and dropping a row from the manifest are the same operation, and
+   * both land here. Everything downstream — the manifest, the gaps, the
+   * subject, the refusal — re-derives from the keys, which is the whole
+   * reason four entry points never grew four copies of this logic.
+   */
+  function setShareKeys(matchKeys: readonly string[], origin: ShareOrigin): void {
+    if (deps.sessionActive() || !shareOpen.value) return
+    shareKeys.value = [...matchKeys]
+    shareOrigin.value = origin
+  }
+
+  /** Drop one match from the set on screen; the rest of the dialog follows. */
+  function dropShareKey(matchKey: string): void {
+    setShareKeys(shareKeys.value.filter((k) => k !== matchKey), shareOrigin.value)
   }
 
   function closeShare(): void {
@@ -168,6 +190,8 @@ export function useShareWithCoach(deps: ShareWithCoachDeps) {
     shareOpen,
     shareKeys,
     shareDraft,
+    setShareKeys,
+    dropShareKey,
     stashShareDraft,
     shareOrigin,
     shareBusy,

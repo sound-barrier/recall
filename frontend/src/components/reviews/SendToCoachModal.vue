@@ -3,6 +3,10 @@ import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch 
 import { storeToRefs } from 'pinia'
 
 import { useCoachingSettingsQuery } from '@/queries/settings'
+import { useFocusQuery } from '@/queries/focus'
+import { useShareExportsQuery } from '@/queries/selfReview'
+import { useOWData } from '@/composables/shared/useOWData'
+import { shareSuggestions } from '@/match/reviews/share-suggestions'
 import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
 import { useMatchesStore } from '@/stores/matches'
 
@@ -23,6 +27,29 @@ const {
   shareOpen, shareBusy, shareManifest, shareMissing,
   shareSummary, shareSubject, shareBlocked,
 } = storeToRefs(matches)
+
+// What to send, proposed. Both sources are gated on THIS DIALOG rather than
+// on the Reviews tab: three of the four doors into here are elsewhere, and
+// a suggestion that only appears from one of them is worse than none.
+const focusQuery = useFocusQuery(() => shareOpen.value)
+const sharesQuery = useShareExportsQuery(() => shareOpen.value)
+const ow = useOWData()
+
+const suggestions = computed(() => shareSuggestions({
+  records: matches.records,
+  alreadySent: (sharesQuery.data.value ?? []).flatMap((s) => s.match_keys),
+  // Not the DONE ones — a finished item is not what the player is working
+  // on, and suggesting losses against it would be reviewing yesterday.
+  focusText: (focusQuery.data.value ?? [])
+    .filter((f) => f.status !== 'done')
+    .map((f) => f.text),
+  // The roster's own keys, which are the normalized forms the records
+  // store — so a name written any way in a focus item still matches.
+  names: {
+    heroes: [...ow.heroIndex.value.keys()],
+    maps: [...ow.mapIndex.value.keys()],
+  },
+}))
 
 const handle = ref('')
 const message = ref('')
@@ -241,6 +268,23 @@ function onSend(): void {
         <p class="send-to-coach-summary">
           {{ shareSummary }}
         </p>
+        <!-- Proposals, not decisions: applying one REPLACES the set, and
+             every row below it stays removable. Shown only while there is
+             something to propose — an empty suggestion strip would be a
+             standing reminder of a feature that never fires. -->
+        <div v-if="suggestions.length" class="send-to-coach-suggestions">
+          <span class="eyebrow send-to-coach-suggest-label">Or start from</span>
+          <button
+            v-for="s in suggestions"
+            :key="s.id"
+            type="button"
+            class="send-to-coach-suggest"
+            :disabled="shareBusy"
+            @click="matches.setShareKeys(s.keys, 'suggested')"
+          >
+            {{ s.label }}
+          </button>
+        </div>
         <!-- One row per match, so a gap is a match with a name rather than a
              number in a warning box. Capped, because the set can be the whole
              narrow: the point of the list is to make the gaps nameable, and
@@ -255,6 +299,19 @@ function onSend(): void {
             <span class="send-to-coach-row-label">{{ row.label }}</span>
             <span v-if="row.replayCode" class="send-to-coach-code">{{ row.replayCode }}</span>
             <span v-else class="send-to-coach-gap">no replay code</span>
+            <!-- The set is the user's, whatever put it there. Removing a
+                 match here is also the fastest answer to a missing replay
+                 code: send the rest now. -->
+            <button
+              type="button"
+              class="send-to-coach-drop"
+              :disabled="shareBusy"
+              :aria-label="`Remove ${row.label} from this send`"
+              title="Remove from this send"
+              @click="matches.dropShareKey(row.matchKey)"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
           </li>
         </ul>
         <p v-if="hiddenManifestCount > 0" class="send-to-coach-more">
