@@ -44,6 +44,13 @@ func TestEnsureAdditiveColumns_AddsMissingColumnIdempotently(t *testing.T) {
 	_, err = d.Exec(`CREATE TABLE coach_players (
 		id INTEGER PRIMARY KEY, player_id TEXT UNIQUE, handle TEXT NOT NULL)`)
 	mustNoErr(t, err)
+	// "Old" coach tables from before the team notes file had an addressee.
+	_, err = d.Exec(`CREATE TABLE coach_returns (
+		id INTEGER PRIMARY KEY, content_hash TEXT UNIQUE, player_handle TEXT NOT NULL)`)
+	mustNoErr(t, err)
+	_, err = d.Exec(`CREATE TABLE match_coach_notes (
+		id INTEGER PRIMARY KEY, note_id TEXT UNIQUE, match_key TEXT NOT NULL)`)
+	mustNoErr(t, err)
 	// An "old" ambiguous_candidates from when the reason was derived.
 	_, err = d.Exec(`CREATE TABLE ambiguous_candidates (
 		filename TEXT NOT NULL, match_key TEXT NOT NULL,

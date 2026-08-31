@@ -59,6 +59,14 @@ describe('CoachNoteBlock', () => {
     expect(screen.getByText(/Ordo · 2026-08-14/)).toBeInTheDocument()
   })
 
+  // A team review arrives on every member's matching game. Signed only
+  // "— Ordo · 2026-08-14" it reads as a note about the reader personally,
+  // which is the one thing a team review is not.
+  it('says who a team review was written for', () => {
+    renderBlock(coachNote({ for_team: 'Sound Barrier' }))
+    expect(screen.getByText(/Ordo · for Sound Barrier · 2026-08-14/)).toBeInTheDocument()
+  })
+
   it('says the match was reviewed by the coach', () => {
     renderBlock()
     expect(screen.getByText('Reviewed by coach')).toBeInTheDocument()

@@ -511,3 +511,42 @@ func TestDecide_AcceptKeepsAReviewedOnlyNotesMoments(t *testing.T) {
 		t.Errorf("moments should land in reading order, got %q first", block.Moments[0].MatchClock)
 	}
 }
+
+// A TEAM notes file names the team, not the player. The mismatch warning
+// exists to stop a stranger's homework landing on your list — but a file
+// addressed to the team you play for is your coach talking to you, and
+// treating it as somebody else's cost the captain every focus item in it.
+func TestStage_ATeamFileIsNotAMismatch(t *testing.T) {
+	st := seededStore(t)
+	f := validNotesFile()
+	f.Player.Handle = "Sound Barrier"
+	f.Player.Kind = db.CoachKindTeam
+
+	sheet := stageReturn(t, st, writeNotes(t, f), "Sable")
+
+	if sheet.PlayerMismatch {
+		t.Error("a team file read as a mismatch: the handle names the team, not the player")
+	}
+	// And the items land, which the mismatch would have silently prevented.
+	items, err := st.LoadReceivedFocusItems()
+	if err != nil {
+		t.Fatalf("LoadReceivedFocusItems: %v", err)
+	}
+	if len(items) == 0 {
+		t.Error("no focus items landed from the team file")
+	}
+}
+
+// A PLAYER file addressed to somebody else still warns — the widening is
+// about the team case only.
+func TestStage_APlayerFileForSomebodyElseStillWarns(t *testing.T) {
+	st := seededStore(t)
+	f := validNotesFile()
+	f.Player.Handle = "Wren"
+
+	sheet := stageReturn(t, st, writeNotes(t, f), "Sable")
+
+	if !sheet.PlayerMismatch {
+		t.Error("a file about another PLAYER must still warn")
+	}
+}

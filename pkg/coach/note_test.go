@@ -131,7 +131,7 @@ func TestNote_JSONShape(t *testing.T) {
 
 func TestMatchCoachNoteFromNote_CarriesCoachAndSession(t *testing.T) {
 	n := coach.Note{NoteID: "id-1", MatchKey: "match-2026-08-01T18-30-00", Kind: "note", Text: "t", FocusTags: []string{"comms"}, ExtraTags: []string{"tempo"}, MatchClock: "01:02"}
-	got := coach.MatchCoachNoteFromNote(n, "Ordo", "2026-08-14")
+	got := coach.MatchCoachNoteFromNote(n, "Ordo", "2026-08-14", "")
 	want := db.MatchCoachNote{NoteID: "id-1", MatchKey: "match-2026-08-01T18-30-00", CoachName: "Ordo", SessionDate: "2026-08-14", Text: "t", MatchClock: "01:02", FocusTags: []string{"comms"}, ExtraTags: []string{"tempo"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v, want %+v", got, want)

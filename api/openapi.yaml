@@ -5497,6 +5497,13 @@ components:
         session_date:
           type: string
           description: The coach's session date (YYYY-MM-DD).
+        for_team:
+          type: string
+          description: |
+            The team this review was written for, when the coach addressed
+            it to one. Absent on an ordinary per-player note — a team review
+            that reads as a personal note has lost what made it one.
+          example: "Sound Barrier"
         text:
           type: string
         match_clock:

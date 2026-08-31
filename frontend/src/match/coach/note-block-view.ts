@@ -40,7 +40,12 @@ export function coachBlockView(note: MatchCoachNote): NoteBlockView {
     matchClock: note.match_clock ?? '',
     moments: note.moments ?? [],
     tags: [...(note.focus_tags ?? []), ...(note.extra_tags ?? [])],
-    sign: `— ${note.coach_name} · ${note.session_date}`,
+    // A team review arrives on every member's matching game. Signed only
+    // with the coach and the date it reads as a note about the reader
+    // personally, which is the one thing a team review is not.
+    sign: note.for_team
+      ? `— ${note.coach_name} · for ${note.for_team} · ${note.session_date}`
+      : `— ${note.coach_name} · ${note.session_date}`,
     removeLabel: 'Remove this note',
     armedRemoveLabel: 'Remove this note — moments go with it',
     removal: { kind: 'coach', id: note.id },

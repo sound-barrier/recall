@@ -450,8 +450,13 @@ type CoachPlayerSummary struct {
 // match — one per (coach, session) — and are never merged into the user's
 // own annotation.
 type MatchCoachNote struct {
-	ID          int64
-	NoteID      string
+	ID     int64
+	NoteID string
+	// ForTeam names the team a block was written for, when the review was
+	// addressed to one. Empty for an ordinary per-player file — a team
+	// review that reads as a personal note has lost what made it a team
+	// review.
+	ForTeam     string
 	MatchKey    string
 	CoachName   string
 	SessionDate string
@@ -484,9 +489,13 @@ type CoachReturn struct {
 	ContentHash  string
 	CoachName    string
 	PlayerHandle string
-	SessionDate  string
-	NotesJSON    []byte
-	ImportedAt   string
+	// Kind says whether PlayerHandle names a player or a TEAM. Without it
+	// the sheet cannot tell "this is addressed to your team" from "this is
+	// about somebody else" — and the two want opposite answers.
+	Kind        string
+	SessionDate string
+	NotesJSON   []byte
+	ImportedAt  string
 	// Decisions is keyed by note_id; a note with no entry is undecided.
 	Decisions map[string]CoachDecision
 }

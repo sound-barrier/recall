@@ -161,7 +161,7 @@ func acceptNote(st Store, f coach.NotesFile, n coach.Note, create MatchMaker) er
 	// kind check alone threw the whole payload away on accept, silently, and
 	// then reported the note accepted.
 	if n.Kind != coach.KindReviewedOnly || len(n.Moments) > 0 {
-		if _, err := st.UpsertMatchCoachNote(coach.MatchCoachNoteFromNote(n, f.CoachName, f.SessionDate)); err != nil {
+		if _, err := st.UpsertMatchCoachNote(coach.MatchCoachNoteFromNote(n, f.CoachName, f.SessionDate, teamAddressee(f))); err != nil {
 			return fmt.Errorf("coach: accept note %s: %w", n.NoteID, err)
 		}
 	}
@@ -208,4 +208,15 @@ func skipNote(st Store, n coach.Note) error {
 		return fmt.Errorf("coach: remove block for %s: %w", n.NoteID, err)
 	}
 	return nil
+}
+
+// teamAddressee is the team a notes file was written for, or "" for an
+// ordinary per-player file. The block the player keeps carries it so a team
+// review does not read on their match as a note about them personally,
+// which is the one thing it is not.
+func teamAddressee(f coach.NotesFile) string {
+	if f.Player.Kind == db.CoachKindTeam {
+		return f.Player.Handle
+	}
+	return ""
 }

@@ -188,12 +188,15 @@ describe('CoachLoanSlip — a team session', () => {
     expect(within(teamSlip()).getByRole('button', { name: /Save a web page — for the team/ })).toBeInTheDocument()
   })
 
-  it('offers no notes file — the page leads alone', () => {
+  // A team review used to be page-only, which left a captain who runs
+  // Recall with nothing to import: they could read the coach's words in a
+  // browser and then retype them. The file carries the addressee now, so
+  // both hand-over routes are open and the steps number the same way they
+  // do for a player.
+  it('offers the notes file too, addressed to the team', () => {
     team()
-    expect(within(teamSlip()).queryByRole('button', { name: /Export notes file/ })).toBeNull()
-    // No dangling step numbers: with no "1 ·" left, End drops its "2 ·".
-    expect(within(teamSlip()).getByRole('button', { name: 'End session' })).toBeInTheDocument()
-    expect(within(teamSlip()).queryByRole('button', { name: /2 · End session/ })).toBeNull()
+    expect(within(teamSlip()).getByRole('button', { name: /Export notes file — for the team/ })).toBeInTheDocument()
+    expect(within(teamSlip()).getByRole('button', { name: '2 · End session' })).toBeInTheDocument()
   })
 })
 

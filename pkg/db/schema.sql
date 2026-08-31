@@ -830,7 +830,12 @@ CREATE TABLE IF NOT EXISTS match_coach_notes (
   session_date TEXT NOT NULL,
   text TEXT NOT NULL,
   match_clock TEXT NOT NULL DEFAULT '',
-  accepted_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+  accepted_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  -- The team a block was written for, when the review was addressed to one.
+  -- Empty for an ordinary per-player file. Carried so the block the player
+  -- keeps can say who it was FOR — a team review that reads as a personal
+  -- note has lost the one thing that made it a team review.
+  for_team TEXT NOT NULL DEFAULT ''
 ) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_match_coach_notes_match_key ON match_coach_notes (match_key);
@@ -903,6 +908,10 @@ CREATE TABLE IF NOT EXISTS coach_returns (
   content_hash TEXT NOT NULL UNIQUE,
   coach_name TEXT NOT NULL,
   player_handle TEXT NOT NULL,
+  -- Whether player_handle names a player or a TEAM. A team file is
+  -- addressed to the team you play for, which is your coach talking to
+  -- you; a player file with a different handle is somebody else's.
+  kind TEXT NOT NULL DEFAULT 'player' CHECK (kind IN ('player', 'team')),
   session_date TEXT NOT NULL,
   notes_json TEXT NOT NULL,
   imported_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))

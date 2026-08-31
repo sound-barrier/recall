@@ -198,8 +198,6 @@ var defaultProblems = []errStatus{
 	{db.ErrCoachPlayerUnknown, probNotFound},
 	// A bundle names its player; only a codes session can be a team review.
 	{coach.ErrBundleNamesPlayer, probConflict},
-	// A team review travels as the page — the archive has no addressee.
-	{coach.ErrTeamPageOnly, probConflict},
 	{db.ErrCoachKindInvalid, probInvalidBody},
 	{app.ErrInvalidExclusionReason, probInvalidBody},
 }

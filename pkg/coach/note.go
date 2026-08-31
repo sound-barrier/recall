@@ -194,12 +194,13 @@ func NoteFromCoachNote(n db.CoachNote, ctx *MatchContext) Note {
 // MatchCoachNoteFromNote builds the coach-received block the player's
 // store accepts for a note, attributed to the coach and session it came
 // from. The store stamps ID and AcceptedAt.
-func MatchCoachNoteFromNote(n Note, coachName, sessionDate string) db.MatchCoachNote {
+func MatchCoachNoteFromNote(n Note, coachName, sessionDate, forTeam string) db.MatchCoachNote {
 	return db.MatchCoachNote{
 		NoteID:      n.NoteID,
 		MatchKey:    n.MatchKey,
 		CoachName:   coachName,
 		SessionDate: sessionDate,
+		ForTeam:     forTeam,
 		Text:        n.Text,
 		MatchClock:  n.MatchClock,
 		FocusTags:   nonNilTags(n.FocusTags),

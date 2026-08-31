@@ -57,6 +57,8 @@ var additiveColumns = []struct{ table, column, ddl string }{
 	// column existed described a match that counts, which is ''.
 	{"match_annotations", "exclusion_reason", "TEXT NOT NULL DEFAULT '' CHECK (exclusion_reason IN ('', 'placement', 'mmr_adjustment', 'outage'))"},
 	{"ambiguous_candidates", "reason", "TEXT NOT NULL DEFAULT '' CHECK (reason IN ('', 'duplicate_stats', 'same_instant'))"},
+	{"coach_returns", "kind", "TEXT NOT NULL DEFAULT 'player' CHECK (kind IN ('player', 'team'))"},
+	{"match_coach_notes", "for_team", "TEXT NOT NULL DEFAULT ''"},
 }
 
 // ensureAdditiveColumns adds any additiveColumns missing from an already-created

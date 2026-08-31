@@ -190,14 +190,18 @@ type Annotation struct {
 // user's words and the coach's words stay separately attributed, and blocks
 // accumulate (one per coach and session) rather than replace.
 type CoachNote struct {
-	ID          int64    `json:"id"`
-	NoteID      string   `json:"note_id"`
-	CoachName   string   `json:"coach_name"`
-	SessionDate string   `json:"session_date"`
-	Text        string   `json:"text"`
-	MatchClock  string   `json:"match_clock,omitempty"`
-	FocusTags   []string `json:"focus_tags"`
-	ExtraTags   []string `json:"extra_tags,omitempty"`
+	ID          int64  `json:"id"`
+	NoteID      string `json:"note_id"`
+	CoachName   string `json:"coach_name"`
+	SessionDate string `json:"session_date"`
+	// ForTeam names the team the review was written for, when it was
+	// addressed to one. Absent on an ordinary per-player note — a team
+	// review that reads as a personal note has lost what made it one.
+	ForTeam    string   `json:"for_team,omitempty"`
+	Text       string   `json:"text"`
+	MatchClock string   `json:"match_clock,omitempty"`
+	FocusTags  []string `json:"focus_tags"`
+	ExtraTags  []string `json:"extra_tags,omitempty"`
 	// Moments are the coach's timestamped observations, in reading order.
 	// omitempty so an unmarked note carries no empty array into every match
 	// payload.
