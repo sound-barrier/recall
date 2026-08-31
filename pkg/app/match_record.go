@@ -40,7 +40,7 @@ func (a *App) GetNewScreenshotCount() (PendingScreenshots, error) {
 	if err != nil {
 		return PendingScreenshots{}, err
 	}
-	skip, err := a.parsedSkipSet(dirID, false)
+	skip, parked, err := a.parsedSkipSet(dirID, false)
 	if err != nil {
 		return PendingScreenshots{}, err
 	}
@@ -51,16 +51,16 @@ func (a *App) GetNewScreenshotCount() (PendingScreenshots, error) {
 		}
 		return PendingScreenshots{}, err
 	}
-	return PendingScreenshots{Count: len(pending), Parked: a.parkedOnDisk(dir)}, nil
+	return PendingScreenshots{Count: len(pending), Parked: parkedOnDisk(dir, parked)}, nil
 }
 
 // parkedOnDisk counts the parked filenames still present in dir. Parked
 // files sit inside the skip set, so the pending scan never sees them; a
 // per-file stat over the (small) parked set is the honest existence
 // check — a parked row whose file was deleted counts nowhere.
-func (a *App) parkedOnDisk(dir string) int {
+func parkedOnDisk(dir string, parked map[string]bool) int {
 	n := 0
-	for f := range a.parkedSet() {
+	for f := range parked {
 		if _, err := os.Stat(filepath.Join(dir, f)); err == nil {
 			n++
 		}

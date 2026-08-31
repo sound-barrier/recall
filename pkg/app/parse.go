@@ -101,7 +101,7 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	if err != nil {
 		return err
 	}
-	parsed, err := a.parsedSkipSet(dirID, force)
+	parsed, _, err := a.parsedSkipSet(dirID, force)
 	if err != nil {
 		return err
 	}
@@ -188,13 +188,19 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 // folder counted as already parsed and was silently never ingested — no
 // row, no failed entry, nothing on the Unknown tab, and missing from the
 // pending count too, so nothing ever said so.
-func (a *App) parsedSkipSet(dirID int64, force bool) (map[string]bool, error) {
-	parsed := map[string]bool{}
+// The second return is the PARKED subset the skip absorbed: this
+// folder's cap-reached failures that would otherwise be pending —
+// stored files (a degraded parse kept its rows) are excluded, so every
+// surface that says "parked" (the skip here, the pending count's
+// breakdown, the wire flag on a failed row) answers with one semantic.
+// Empty on a force run, which re-attempts parked files.
+func (a *App) parsedSkipSet(dirID int64, force bool) (skip, parked map[string]bool, err error) {
+	skip = map[string]bool{}
+	parked = map[string]bool{}
 	if !force {
-		var err error
-		parsed, err = a.store.LoadFilenamesForDir(dirID)
+		skip, err = a.store.LoadFilenamesForDir(dirID)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		// All-Heroes screens carry no stored parent row, so LoadAllFilenames
 		// misses them; union their recognized-skip list here so a normal
@@ -203,28 +209,26 @@ func (a *App) parsedSkipSet(dirID int64, force bool) (map[string]bool, error) {
 		// reconsider it.
 		recognized, _ := a.store.LoadAllHeroesFilenames()
 		for f := range recognized {
-			parsed[f] = true
+			skip[f] = true
 		}
-		for f := range a.parkedSet() {
-			parsed[f] = true
+		// Best-effort like the other suppression loads: a load error means
+		// an empty set, and the files simply retry this run.
+		capReached, _ := a.store.LoadFailedFilenames(dirID, parkedAttemptCap)
+		for f := range capReached {
+			if !skip[f] {
+				parked[f] = true
+			}
+			skip[f] = true
 		}
 	}
 	ignored, _ := a.store.LoadIgnoredFilenames()
 	for f := range ignored {
-		parsed[f] = true
+		skip[f] = true
 	}
 	for f := range a.standingDuplicates() {
-		parsed[f] = true
+		skip[f] = true
 	}
-	return parsed, nil
-}
-
-// parkedSet loads the filenames whose failure count reached the cap.
-// Best-effort like the other suppression loads: an error means an empty
-// set, and the files simply retry this run.
-func (a *App) parkedSet() map[string]bool {
-	parked, _ := a.store.LoadFailedFilenames(parkedAttemptCap)
-	return parked
+	return skip, parked, nil
 }
 
 // parseRunState accumulates per-file outcomes across one Parse batch so the
@@ -276,7 +280,8 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 	// progress event so the user sees an accurate file count. Record the
 	// failure in the ledger so the Unknown tab can triage it — a UX
 	// nicety, not a correctness invariant, so a store error only logs.
-	// The ledger is NOT a skip list: the file is re-attempted next run.
+	// The file is re-attempted next run, until the ledger row reaches
+	// parkedAttemptCap and normal runs park it.
 	if parseErr != nil || result == nil {
 		errMsg := "parser returned no result"
 		if parseErr != nil {
@@ -289,7 +294,6 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 		a.emitParseProgress(ev)
 		return
 	}
-	st.reconcileFailureLedger(filename, result)
 
 	key, ambigCands := correlate.ResolveMatchKey(filename, result, st.snap)
 	ev.MatchKey = key
@@ -315,6 +319,11 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 		return
 	}
 	st.filesParsed++
+	// Only now, with every write landed, does the ledger reconcile — so
+	// one run moves a file's attempt count by exactly one: a degraded
+	// parse whose insert then failed must not record twice, and a clean
+	// parse whose insert failed must not RESET the standing count.
+	st.reconcileFailureLedger(filename, result)
 	// Mirror both writes onto the carried snapshot so the NEXT file
 	// correlates against this one, exactly as the per-file reload did.
 	st.applyToSnapshot(filename, key, ev.Type, result)
@@ -328,9 +337,10 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 }
 
 // recordLeakedFailure ledgers a file whose parse succeeded but whose
-// write failed. It stored nothing, so without a row it would sit
-// silently in the pending set forever — retried every run, never parked,
-// and invisible to the Failed section. Ledger writes stay best-effort.
+// write failed — the insert leg stored nothing (silently pending until
+// the ledger parks it), the ambiguity leg stored its rows but lost the
+// candidate write. Without a row, neither would surface in the Failed
+// section. Ledger writes stay best-effort.
 func (st *parseRunState) recordLeakedFailure(filename, msg string) {
 	if err := st.app.store.RecordFailedFile(filename, st.dirID, msg); err != nil {
 		applog.Subsystem("parse").Warn("record failed file", "filename", filename, "err", err)

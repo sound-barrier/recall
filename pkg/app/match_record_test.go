@@ -81,30 +81,45 @@ func TestApp_GetNewScreenshotCount(t *testing.T) {
 // Parked files leave Count — the button must stop promising work that
 // will fail again — and surface in Parked instead, but only while the
 // file is still on disk: a parked row whose file was deleted counts
-// nowhere.
+// nowhere. Parked answers with ONE semantic across every surface: a
+// degraded file at the cap stored rows and was never pending, so it is
+// not parked here either; a failure recorded under a different folder
+// is that folder's problem, not this one's.
 func TestApp_GetNewScreenshotCount_SeparatesParkedFiles(t *testing.T) {
 	a, fake := newParseReadyApp(t)
 	dir := app.SettingsOf(a).ScreenshotsDir
+	dirID, err := fake.EnsureScreenshotsDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	writeFile(t, dir, "new.png", []byte("new"))
 	writeFile(t, dir, "stuck.png", []byte("stuck"))
+	writeFile(t, dir, "degraded.png", []byte("degraded"))
+	writeFile(t, dir, "otherdir.png", []byte("otherdir"))
 	for range 3 {
-		if err := fake.RecordFailedFile("stuck.png", 1, "boom"); err != nil {
-			t.Fatal(err)
+		for _, f := range []string{"stuck.png", "gone.png", "degraded.png"} {
+			if err := fake.RecordFailedFile(f, dirID, "boom"); err != nil {
+				t.Fatal(err)
+			}
 		}
-		if err := fake.RecordFailedFile("gone.png", 1, "boom"); err != nil {
+		if err := fake.RecordFailedFile("otherdir.png", dirID+5, "boom"); err != nil {
 			t.Fatal(err)
 		}
 	}
+	// degraded.png stored what it read — out of the pending set already.
+	fake.Personals = []db.PersonalRow{{Filename: "degraded.png", MatchKey: "k", ScreenshotsDirID: dirID}}
 
 	p, err := a.GetNewScreenshotCount()
 	if err != nil {
 		t.Fatalf("GetNewScreenshotCount: %v", err)
 	}
-	if p.Count != 1 {
-		t.Errorf("Count = %d, want 1 — only new.png is pending", p.Count)
+	// new.png pending; otherdir.png's failures belong to another folder,
+	// so here it is simply a new file.
+	if p.Count != 2 {
+		t.Errorf("Count = %d, want 2 (new.png + otherdir.png)", p.Count)
 	}
 	if p.Parked != 1 {
-		t.Errorf("Parked = %d, want 1 — stuck.png is on disk, gone.png is not", p.Parked)
+		t.Errorf("Parked = %d, want 1 — stuck.png only (gone.png off disk, degraded.png stored, otherdir.png another folder's failure)", p.Parked)
 	}
 }
 

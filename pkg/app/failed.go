@@ -67,14 +67,22 @@ func (a *App) GetFailedFiles() ([]FailedFile, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list failed files: %w", err)
 	}
-	// Parked is derived, not stored: at the cap AND stored nothing — a
-	// degraded row has parent rows, so it never reads as parked.
-	stored, err := a.store.LoadAllFilenames()
-	if err != nil {
-		return nil, fmt.Errorf("load stored filenames: %w", err)
-	}
+	// Parked is derived, not stored: at the cap AND stored nothing in
+	// the ROW'S OWN dir — a degraded row has parent rows there, so it
+	// never reads as parked, while a same-named capture stored under a
+	// different folder is a different screenshot and masks nothing.
+	storedByDir := map[int64]map[string]bool{}
 	out := make([]FailedFile, len(rows))
 	for i, r := range rows {
+		stored, ok := storedByDir[r.ScreenshotsDirID]
+		if !ok {
+			var err error
+			stored, err = a.store.LoadFilenamesForDir(r.ScreenshotsDirID)
+			if err != nil {
+				return nil, fmt.Errorf("load stored filenames: %w", err)
+			}
+			storedByDir[r.ScreenshotsDirID] = stored
+		}
 		out[i] = FailedFile{
 			Filename:      r.Filename,
 			Error:         r.Error,

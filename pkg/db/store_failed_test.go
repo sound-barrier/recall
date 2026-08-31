@@ -129,27 +129,47 @@ func TestSQLStore_PruneScreenshotsDirs_KeepsFailedOnlyDir(t *testing.T) {
 	}
 }
 
-// The parked-set loader: the skip set asks for filenames at or past the
-// attempt cap, and both implementations must draw the line identically.
-func TestStoreContract_LoadFailedFilenames_FiltersByMinAttempts(t *testing.T) {
+// seedFailures records n failures for filename under dirID.
+func seedFailures(t *testing.T, s db.Store, filename string, dirID int64, n int) {
+	t.Helper()
+	for range n {
+		if err := s.RecordFailedFile(filename, dirID, "boom"); err != nil {
+			t.Fatalf("record %s: %v", filename, err)
+		}
+	}
+}
+
+// mustEnsureDir is EnsureScreenshotsDir with the error folded into t.
+func mustEnsureDir(t *testing.T, s db.Store, path string) int64 {
+	t.Helper()
+	id, err := s.EnsureScreenshotsDir(path)
+	if err != nil {
+		t.Fatalf("ensure dir %s: %v", path, err)
+	}
+	return id
+}
+
+// The parked-set loader: the skip set asks for one folder's filenames at
+// or past the attempt cap, and both implementations must draw both lines
+// — the cap and the dir scope — identically. filename is a basename, so
+// a failure recorded while a DIFFERENT folder was watched must not park
+// a same-named capture in this one.
+func TestStoreContract_LoadFailedFilenames_FiltersByDirAndMinAttempts(t *testing.T) {
 	for _, impl := range storeImpls {
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
-			if err := s.RecordFailedFile("once.png", 1, "boom"); err != nil {
-				t.Fatalf("record: %v", err)
-			}
-			for range 3 {
-				if err := s.RecordFailedFile("thrice.png", 1, "boom"); err != nil {
-					t.Fatalf("record: %v", err)
-				}
-			}
+			dirID := mustEnsureDir(t, s, "/screens/main")
+			otherID := mustEnsureDir(t, s, "/screens/other")
+			seedFailures(t, s, "once.png", dirID, 1)
+			seedFailures(t, s, "thrice.png", dirID, 3)
+			seedFailures(t, s, "elsewhere.png", otherID, 3)
 
-			got, err := s.LoadFailedFilenames(3)
+			got, err := s.LoadFailedFilenames(dirID, 3)
 			if err != nil {
 				t.Fatalf("LoadFailedFilenames: %v", err)
 			}
-			if got["once.png"] || !got["thrice.png"] || len(got) != 1 {
-				t.Errorf("LoadFailedFilenames(3) = %v, want exactly thrice.png", got)
+			if got["once.png"] || got["elsewhere.png"] || !got["thrice.png"] || len(got) != 1 {
+				t.Errorf("LoadFailedFilenames(dir, 3) = %v, want exactly thrice.png", got)
 			}
 		})
 	}
