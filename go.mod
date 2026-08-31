@@ -5,7 +5,7 @@ go 1.27.0
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/fsnotify/fsnotify v1.10.1
-	github.com/wailsapp/wails/v3 v3.0.0-beta.10
+	github.com/wailsapp/wails/v3 v3.0.0-beta.12
 	golang.org/x/sys v0.47.0
 	golang.org/x/text v0.41.0
 	gopkg.in/yaml.v3 v3.0.1
