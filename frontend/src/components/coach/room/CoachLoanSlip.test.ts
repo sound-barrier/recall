@@ -200,3 +200,47 @@ describe('CoachLoanSlip — a team session', () => {
   })
 })
 
+
+// OW retires replay codes at season rollover. A coach who opens a bundle,
+// reads the slip and only discovers at the first frame that nothing will
+// load has spent the sitting's opening on a dead end.
+describe('CoachLoanSlip — replay codes past their season', () => {
+  const SEASONS = [
+    { name: 'S1', chapter: 'C', number: 1, start: '2020-01-10T19:00:00Z', end: '2020-03-14T19:00:00Z' },
+    { name: 'S2', chapter: 'C', number: 2, start: '2020-03-14T19:00:00Z', end: '2099-06-16T19:00:00Z' },
+  ]
+
+  function loaned(playedAt: string, code = 'DEAD01') {
+    return {
+      match_key: `match-${playedAt}`,
+      source_files: [],
+      data: { map: 'rialto', result: 'victory', played_at_utc: playedAt },
+      annotation: { leavers: [], throwers: [], replay_code: code },
+    }
+  }
+
+  function renderWithCorpus(records: unknown[]) {
+    seedQuery(qk.system.referenceData, { heroes: [], maps: [], seasons: SEASONS })
+    seedQuery(qk.coach.matches, records)
+    return renderSlip()
+  }
+
+  it('warns when every code in the bundle predates the current season', async () => {
+    renderWithCorpus([loaned('2020-02-01T20:00:00Z'), loaned('2020-02-02T20:00:00Z', 'DEAD02')])
+    expect(await within(slip()).findByText(/predates the current season/i)).toBeInTheDocument()
+  })
+
+  // One live code makes the sitting worth having, and a warning that fired
+  // on a mixed bundle would train the coach to ignore it.
+  it('stays quiet when even one code is still live', () => {
+    renderWithCorpus([loaned('2020-02-01T20:00:00Z'), loaned('2026-05-01T20:00:00Z', 'LIVE01')])
+    expect(within(slip()).queryByText(/predates the current season/i)).toBeNull()
+  })
+
+  it('stays quiet when the bundle carries no codes at all', () => {
+    renderWithCorpus([{
+      match_key: 'm1', source_files: [], data: { map: 'rialto', played_at_utc: '2020-02-01T20:00:00Z' },
+    }])
+    expect(within(slip()).queryByText(/predates the current season/i)).toBeNull()
+  })
+})
