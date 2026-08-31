@@ -60,6 +60,7 @@ function annotationHasContent(input: MatchAnnotationInput): boolean {
   return hasItem(input.leavers) || hasItem(input.throwers)
     || Boolean(input.note?.trim()) || Boolean(input.replay_code?.trim())
     || hasItem(input.members) || hasItem(input.tags)
+    || Boolean(input.exclusion_reason)
 }
 
 async function writeAnnotation(matchKey: string, input: MatchAnnotationInput): Promise<void> {

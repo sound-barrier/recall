@@ -180,13 +180,14 @@ func sidesOrEmpty(s []string) []string {
 // compile error, so both go through here.
 func annotationFromRow(a db.Annotation) *match.Annotation {
 	return &match.Annotation{
-		Leavers:     sidesOrEmpty(a.Leavers),
-		Throwers:    sidesOrEmpty(a.Throwers),
-		Note:        a.Note,
-		ReplayCode:  a.ReplayCode,
-		Members:     a.Members,
-		Tags:        a.Tags,
-		AnnotatedAt: a.AnnotatedAt,
+		Leavers:         sidesOrEmpty(a.Leavers),
+		Throwers:        sidesOrEmpty(a.Throwers),
+		Note:            a.Note,
+		ReplayCode:      a.ReplayCode,
+		Members:         a.Members,
+		Tags:            a.Tags,
+		ExclusionReason: a.ExclusionReason,
+		AnnotatedAt:     a.AnnotatedAt,
 	}
 }
 

@@ -1,5 +1,5 @@
 import type { ComputedRef, Ref } from 'vue'
-import type { LeaverHandling } from '@/composables/matches/dossier/useMatchesDossier'
+import type { ExclusionHandling, LeaverHandling } from '@/composables/matches/dossier/useMatchesDossier'
 
 // Filter-dimension types for the Matches narrow panel. Extracted from
 // useMatchesNarrow so the predicates / presets / state factory share one type
@@ -108,6 +108,7 @@ export interface MatchesNarrowState {
   // not stored, so a preset survives a seasons.yaml update.
   pickedSeason:      Ref<string>
   leaverHandling:    Ref<LeaverHandling>
+  exclusionHandling: Ref<ExclusionHandling>
   minPlayMinutes:    Ref<number>
   minPlayPercent:    Ref<number>
   includeUnknown:    Ref<boolean>

@@ -36,6 +36,10 @@ func TestEnsureAdditiveColumns_AddsMissingColumnIdempotently(t *testing.T) {
 		_, err = d.Exec(`CREATE TABLE ` + tbl + ` (id INTEGER PRIMARY KEY, filename TEXT)`)
 		mustNoErr(t, err)
 	}
+	// An "old" match_annotations without exclusion_reason.
+	_, err = d.Exec(`CREATE TABLE match_annotations (
+		match_key TEXT PRIMARY KEY, note TEXT, replay_code TEXT)`)
+	mustNoErr(t, err)
 	// An "old" coach_players without kind, for the team-kind entry.
 	_, err = d.Exec(`CREATE TABLE coach_players (
 		id INTEGER PRIMARY KEY, player_id TEXT UNIQUE, handle TEXT NOT NULL)`)

@@ -27,10 +27,12 @@ var (
 	ErrInvalidReplayCode = matchedit.ErrInvalidReplayCode
 	ErrReplayCodeTaken   = matchedit.ErrReplayCodeTaken
 	ErrInvalidThrower    = matchedit.ErrInvalidThrower
-	ErrEmptyAnnotation   = matchedit.ErrEmptyAnnotation
-	ErrInvalidPlayMode   = matchedit.ErrInvalidPlayMode
-	ErrInvalidQueueType  = matchedit.ErrInvalidQueueType
-	ErrInvalidReviewedBy = matchedit.ErrInvalidReviewedBy
+	// ErrInvalidExclusionReason maps an unknown "why it doesn't count" to a 400.
+	ErrInvalidExclusionReason = matchedit.ErrInvalidExclusionReason
+	ErrEmptyAnnotation        = matchedit.ErrEmptyAnnotation
+	ErrInvalidPlayMode        = matchedit.ErrInvalidPlayMode
+	ErrInvalidQueueType       = matchedit.ErrInvalidQueueType
+	ErrInvalidReviewedBy      = matchedit.ErrInvalidReviewedBy
 
 	// ErrIgnoreFilenameRequired maps "missing filename in URL" to a 400.
 	ErrIgnoreFilenameRequired = matchedit.ErrIgnoreFilenameRequired

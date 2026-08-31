@@ -793,7 +793,7 @@ describe('useMatchesDossier', () => {
         roleRec({ primary: 'support', heroes: ['lucio']     }),
         roleRec({ primary: 'dps',     heroes: ['tracer']    }),
       ])
-      const { topRoles } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole))
+      const { topRoles } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include'), { heroRole }))
       const by = byKey(topRoles.value)
       expect(by.tank.total).toBe(2)
       expect(by.support.total).toBe(1)
@@ -811,7 +811,7 @@ describe('useMatchesDossier', () => {
         roleRec({ heroes: ['reinhardt', 'lucio'] }),
         roleRec({ heroes: ['roadhog',   'tracer'] }),
       ])
-      const { topRoles } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole))
+      const { topRoles } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include'), { heroRole }))
       const by = byKey(topRoles.value)
       expect(by.tank).toMatchObject({ total: 2, share: 100 })
       expect(by.support).toMatchObject({ total: 1, share: 50 })
@@ -827,7 +827,7 @@ describe('useMatchesDossier', () => {
         roleRec({ heroes: ['tracer'] }),
         roleRec({ heroes: ['roadhog'] }),
       ])
-      const { topRoles } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole))
+      const { topRoles } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include'), { heroRole }))
       expect(topRoles.value.map((r) => r.key)).toEqual(['support', 'tank', 'dps'])
     })
 
@@ -846,7 +846,7 @@ describe('useMatchesDossier', () => {
       const records = ref([
         roleRec({ primary: 'support', heroes: ['lucio', 'mystery-hero'] }),
       ])
-      const { topRoles } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole))
+      const { topRoles } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include'), { heroRole }))
       const by = byKey(topRoles.value)
       // Only support counted; the unknown hero contributes nothing.
       expect(by.support.total).toBe(1)
@@ -856,7 +856,7 @@ describe('useMatchesDossier', () => {
 
     it('returns zero shares for an empty corpus without dividing by zero', () => {
       const records = ref<MatchRecord[]>([])
-      const { topRoles } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole))
+      const { topRoles } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include'), { heroRole }))
       for (const r of topRoles.value) {
         expect(r.total).toBe(0)
         expect(r.share).toBe(0)
@@ -872,7 +872,7 @@ describe('useMatchesDossier', () => {
         roleRec({ heroes: ['reinhardt'], result: 'victory' }),
         roleRec({ heroes: ['lucio'],     result: 'defeat',  leavers: ['self'] }),
       ])
-      const { topRoles } = legacy(useMatchesDossier(records, ref<LeaverHandling>('exclude-tally'), heroRole))
+      const { topRoles } = legacy(useMatchesDossier(records, ref<LeaverHandling>('exclude-tally'), { heroRole }))
       const by = byKey(topRoles.value)
       expect(by.tank.total).toBe(1)
       expect(by.support.total).toBe(1)
@@ -886,7 +886,7 @@ describe('useMatchesDossier', () => {
         roleRec({ heroes: ['reinhardt'], result: 'draw' }),
         roleRec({ heroes: ['tracer'],    result: 'defeat' }),
       ])
-      const { topRoles } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole))
+      const { topRoles } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include'), { heroRole }))
       const by = byKey(topRoles.value)
       // 2W / 1L on tank (draw excluded) → 67%
       expect(by.tank.winrate).toBe(67)
@@ -940,7 +940,7 @@ describe('useMatchesDossier', () => {
         mrRec({ map: 'rialto', role: 'support', heroes: ['lucio'], result: 'defeat' }),
         mrRec({ map: 'rialto', role: 'support', heroes: ['lucio'], result: 'draw' }),
       ])
-      const { mapRoleCounts } = useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole)
+      const { mapRoleCounts } = useMatchesDossier(records, ref<LeaverHandling>('include'), { heroRole })
       // 2W / 1L / 1D → total 4, winrate 2/3 = 67% (draw excluded).
       expect(find(mapRoleCounts().value, 'rialto', 'support')).toMatchObject({
         wins: 2, losses: 1, draws: 1, total: 4, winrate: 67,
@@ -951,7 +951,7 @@ describe('useMatchesDossier', () => {
       const records = ref([
         mrRec({ map: 'rialto', heroes: ['reinhardt', 'lucio'], result: 'victory' }),
       ])
-      const { mapRoleCounts } = useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole)
+      const { mapRoleCounts } = useMatchesDossier(records, ref<LeaverHandling>('include'), { heroRole })
       // One match, two roles → two cells on rialto, each total 1.
       expect(find(mapRoleCounts().value, 'rialto', 'tank')?.total).toBe(1)
       expect(find(mapRoleCounts().value, 'rialto', 'support')?.total).toBe(1)
@@ -962,7 +962,7 @@ describe('useMatchesDossier', () => {
         mrRec({ map: 'rialto', role: 'tank', heroes: ['reinhardt'] }),
         mrRec({ map: 'ilios', role: 'tank', heroes: ['reinhardt'] }),
       ])
-      const { mapRoleCounts } = useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole)
+      const { mapRoleCounts } = useMatchesDossier(records, ref<LeaverHandling>('include'), { heroRole })
       expect(find(mapRoleCounts().value, 'rialto', 'tank')?.total).toBe(1)
       expect(find(mapRoleCounts().value, 'ilios', 'tank')?.total).toBe(1)
     })
@@ -972,13 +972,13 @@ describe('useMatchesDossier', () => {
         mrRec({ map: undefined, role: 'tank', heroes: ['reinhardt'] }),
         mrRec({ map: '', role: 'tank', heroes: ['reinhardt'] }),
       ])
-      const { mapRoleCounts } = useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole)
+      const { mapRoleCounts } = useMatchesDossier(records, ref<LeaverHandling>('include'), { heroRole })
       expect(mapRoleCounts().value).toHaveLength(0)
     })
 
     it('recomputes when the narrowed record set changes', () => {
       const records = ref([mrRec({ map: 'rialto', role: 'tank', heroes: ['reinhardt'] })])
-      const { mapRoleCounts } = useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole)
+      const { mapRoleCounts } = useMatchesDossier(records, ref<LeaverHandling>('include'), { heroRole })
       const mrc = mapRoleCounts()
       expect(find(mrc.value, 'rialto', 'tank')?.total).toBe(1)
       records.value = [
@@ -994,7 +994,7 @@ describe('useMatchesDossier', () => {
         mrRec({ map: 'rialto', role: 'tank', heroes: ['reinhardt'], date: isoDaysAgo(400) }), // > 12 months
         mrRec({ map: 'rialto', role: 'tank', heroes: ['reinhardt'], date: undefined }), // undated
       ])
-      const { mapRoleCounts } = useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole)
+      const { mapRoleCounts } = useMatchesDossier(records, ref<LeaverHandling>('include'), { heroRole })
       // windowMonths 0 (default) = all-time → every record, dated or not.
       expect(find(mapRoleCounts({ windowMonths: 0 }).value, 'rialto', 'tank')?.total).toBe(3)
       // 1-month window keeps only the recent one (old + undated drop out).
@@ -1378,7 +1378,7 @@ describe('useMatchesDossier', () => {
         on('2026-05-13'),
       ])
       const ws = ref<0 | 1 | 2 | 3 | 4 | 5 | 6>(0)
-      const { dayOfWeekBuckets } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include'), undefined, ws))
+      const { dayOfWeekBuckets } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include'), { weekStart: ws }))
       expect(dayOfWeekBuckets.value[0]!.winrate).toBe(50) // Sun
       expect(dayOfWeekBuckets.value[0]!.decisive).toBe(2)
       expect(dayOfWeekBuckets.value[3]!.winrate).toBeNull() // Wed — played, undecided
@@ -1393,7 +1393,7 @@ describe('useMatchesDossier', () => {
       const records = ref([on('2026-05-10'), on('2026-05-12'), on('2026-05-13'), on('2026-05-13')])
       // weekStart = 0 (Sunday-led)
       const ws = ref<0 | 1 | 2 | 3 | 4 | 5 | 6>(0)
-      const { dayOfWeekBuckets } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include'), undefined, ws))
+      const { dayOfWeekBuckets } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include'), { weekStart: ws }))
       // Sun, Mon, Tue, Wed, Thu, Fri, Sat
       expect(dayOfWeekBuckets.value.map((b) => b.label)).toEqual(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'])
       expect(dayOfWeekBuckets.value[0]!.count).toBe(1) // Sun
@@ -1637,7 +1637,7 @@ describe('useMatchesDossier — query-helper parameterization', () => {
     it('override beats the dossier-level weekStart ref', () => {
       const records = ref<MatchRecord[]>([])
       const ws = ref<WeekStart>(0) // global = Sunday
-      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'), undefined, ws)
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'), { weekStart: ws })
       // No override → first label is Sun
       expect(dossier.dayOfWeekBuckets().value[0]!.label).toBe('Sun')
       // Override to Mon-start → first label is Mon

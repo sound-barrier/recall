@@ -60,12 +60,13 @@ func replaceChildSet(tx *sql.Tx, table, column, matchKey string, values []string
 // upsertAnnotationSQL stamps annotated_at from the bound instant, falling
 // back to the server clock when it is empty; the conflict clause reuses that
 // same computed value via `excluded`.
-const upsertAnnotationSQL = `INSERT INTO match_annotations (match_key, note, replay_code, annotated_at)
-		 VALUES (?, ?, ?, ` + suppliedInstantOrNow + `)
+const upsertAnnotationSQL = `INSERT INTO match_annotations (match_key, note, replay_code, exclusion_reason, annotated_at)
+		 VALUES (?, ?, ?, ?, ` + suppliedInstantOrNow + `)
 		 ON CONFLICT(match_key) DO UPDATE SET
-		   note         = excluded.note,
-		   replay_code  = excluded.replay_code,
-		   annotated_at = excluded.annotated_at`
+		   note             = excluded.note,
+		   replay_code      = excluded.replay_code,
+		   exclusion_reason = excluded.exclusion_reason,
+		   annotated_at     = excluded.annotated_at`
 
 // SetAnnotation upserts the annotation and stamps annotated_at with the
 // server clock. The instant is the store's to assign on this path: the
@@ -90,7 +91,7 @@ func (s *SQLStore) setAnnotation(a Annotation, annotatedAt string) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 	// The parent row must land first — every child list FKs to it.
-	if _, err := tx.Exec(upsertAnnotationSQL, a.MatchKey, a.Note, a.ReplayCode, annotatedAt); err != nil {
+	if _, err := tx.Exec(upsertAnnotationSQL, a.MatchKey, a.Note, a.ReplayCode, a.ExclusionReason, annotatedAt); err != nil {
 		return err
 	}
 	for _, set := range []struct {
@@ -149,7 +150,7 @@ func (s *SQLStore) attachChildSet(out map[string]Annotation, table, column strin
 
 func (s *SQLStore) LoadAnnotations() (map[string]Annotation, error) {
 	rows, err := s.db.Query(
-		`SELECT match_key, COALESCE(note, ''), COALESCE(replay_code, ''), annotated_at
+		`SELECT match_key, COALESCE(note, ''), COALESCE(replay_code, ''), exclusion_reason, annotated_at
 		 FROM match_annotations`,
 	)
 	if err != nil {
@@ -159,7 +160,7 @@ func (s *SQLStore) LoadAnnotations() (map[string]Annotation, error) {
 	out := make(map[string]Annotation)
 	for rows.Next() {
 		var a Annotation
-		if err := rows.Scan(&a.MatchKey, &a.Note, &a.ReplayCode, &a.AnnotatedAt); err != nil {
+		if err := rows.Scan(&a.MatchKey, &a.Note, &a.ReplayCode, &a.ExclusionReason, &a.AnnotatedAt); err != nil {
 			return nil, fmt.Errorf("load annotations: %w", err)
 		}
 		out[a.MatchKey] = a

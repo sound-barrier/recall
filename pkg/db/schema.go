@@ -53,6 +53,9 @@ var additiveColumns = []struct{ table, column, ddl string }{
 	// Every row that predates teams was a player — the constant default IS
 	// the backfill, same shape as modifiers_raw above.
 	{"coach_players", "kind", "TEXT NOT NULL DEFAULT 'player' CHECK (kind IN ('player', 'team'))"},
+	// Same constant-default shape: every annotation written before the
+	// column existed described a match that counts, which is ''.
+	{"match_annotations", "exclusion_reason", "TEXT NOT NULL DEFAULT '' CHECK (exclusion_reason IN ('', 'placement', 'mmr_adjustment', 'outage'))"},
 }
 
 // ensureAdditiveColumns adds any additiveColumns missing from an already-created

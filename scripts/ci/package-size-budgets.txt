@@ -247,7 +247,11 @@ frontend/tests/e2e/dossier                    24
 # transport chain from keystroke to PUT body is the part no unit test reaches:
 # a field that shows one code while the database stores another is exactly the
 # bug this proves absent.
-frontend/tests/e2e/match                      23
+# 23 -> 24: match-exclusion-reason.spec.ts. A reason that a match doesn't
+# count has to survive schema, wire, narrow and two tally sites; the failure
+# this proves absent is the masthead and the dossier disagreeing about a
+# win rate, which no unit test on either one alone can see.
+frontend/tests/e2e/match                      24
 
 # frontend/tests/e2e/matches — the Matches view around the list: grouping and
 # sorting, collapse/expand, infinite scroll and scroll affordances, bulk mode
@@ -411,7 +415,11 @@ frontend/src/components/settings              16
 # frontend/src/components/matches/detail — the match detail panel's sections
 # (header, expanded card, journal, status choosers, lightbox). Under the
 # ceiling, registered for the same reason as settings.
-frontend/src/components/matches/detail        15
+# 15 -> 16: MatchExclusionChooser. The panel already held one chooser for
+# what happened to a match (who left, who threw); this is the second, for why
+# it should not count. Same responsibility spelled one concern wider — they
+# share a chip family in buttons.css and sit in the same journal.
+frontend/src/components/matches/detail        16
 
 # frontend/src — the app root: App.vue, main.ts, the seam family that remains
 # at this level (api-client, api-platform, api-error, api-unwrap), the

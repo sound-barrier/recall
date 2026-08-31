@@ -195,6 +195,12 @@ const CASE_BY_ID: Record<ClauseId, ClauseCase> = {
     drops: rec(ann({ leavers: ['team'] })),
     label: 'leaver handling',
   },
+  exclusion: {
+    arrange: (s) => { s.exclusionHandling.value = 'hide' },
+    keeps: rec(),
+    drops: rec(ann({ exclusion_reason: 'placement' })),
+    label: 'excluded matches hidden',
+  },
   leaverSide: {
     arrange: (s) => { s.pickedLeavers.value = new Set(['team']) },
     keeps: rec(ann({ leavers: ['team'] })),
@@ -315,7 +321,7 @@ describe('chip counting', () => {
   // loses a per-pick count is visible in the diff.
   it('only the single-toggle clauses use the default chip count', () => {
     const single = NARROW_CLAUSES.filter((c) => !c.chips).map((c) => c.id)
-    expect(single.sort()).toEqual(['dateRange', 'leaver', 'poolSide', 'reviewSet', 'search', 'season', 'sinceAnchor'])
+    expect(single.sort()).toEqual(['dateRange', 'exclusion', 'leaver', 'poolSide', 'reviewSet', 'search', 'season', 'sinceAnchor'])
   })
 
   it('a picked-set clause counts one chip PER pick, not one for the clause', () => {

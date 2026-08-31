@@ -36,7 +36,7 @@ export interface EloEvidenceOpts {
 }
 
 export function useEloEvidence(opts: EloEvidenceOpts) {
-  const dossier = useMatchesDossier(opts.trackRecs, opts.leaverHandling, opts.heroRole)
+  const dossier = useMatchesDossier(opts.trackRecs, opts.leaverHandling, { heroRole: opts.heroRole })
 
   const items = computed<EvidenceItem[]>(() => {
     const out: (EvidenceItem | null)[] = [

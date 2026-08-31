@@ -118,7 +118,7 @@ export function useMatchesNarrow(
     pickedQueues, pickedPlayModes, pickedSources,
     pickedLeavers, pickedThrowers, pickedModifiers, pickedRanks,
     pickedRange, customFrom, customTo, customFromTime, customToTime, pickedSeason,
-    leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
+    leaverHandling, exclusionHandling, minPlayMinutes, minPlayPercent, includeUnknown,
     anchorKey, sinceAnchorActive, poolFilter, reviewSetFilter,
   } = state
 
@@ -213,6 +213,7 @@ export function useMatchesNarrow(
     customToTime.value        = ''
     pickedSeason.value        = ''
     leaverHandling.value      = 'include'
+    exclusionHandling.value   = 'exclude-tally'
     minPlayMinutes.value      = 0
     minPlayPercent.value      = 0
     includeUnknown.value      = false
@@ -406,7 +407,7 @@ export function useMatchesNarrow(
     pickedLeavers, pickedThrowers, pickedModifiers, pickedRanks,
     pickedRange, customFrom, customTo, customFromTime, customToTime, pickedSeason,
     pickSeason,
-    leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
+    leaverHandling, exclusionHandling, minPlayMinutes, minPlayPercent, includeUnknown,
     anchorKey, sinceAnchorActive, poolFilter, reviewSetFilter,
     // Actions
     pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickMember, pickReviewedBy, pickQueue, pickPlayMode, pickSource, pickRange,

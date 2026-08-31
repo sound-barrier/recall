@@ -100,6 +100,14 @@ describe('matchesToCSV — cell values', () => {
     expect(cells[MATCH_CSV_HEADERS.indexOf('queue_type')]).toBe('role')
   })
 
+  it('carries why a match does not count in its own column', () => {
+    const excluded = rec({
+      annotation: { exclusion_reason: 'mmr_adjustment' },
+    } as Partial<MatchRecord>)
+    const cells = lines(matchesToCSV([excluded], noRole))[1]!.split(',')
+    expect(cells[MATCH_CSV_HEADERS.indexOf('exclusion_reason')]).toBe('mmr_adjustment')
+  })
+
   it('renders missing / undefined fields as empty cells, never "undefined"', () => {
     const bare = { match_key: 'm-bare', source_files: [], data: {} } as unknown as MatchRecord
     const csv = matchesToCSV([bare], noRole)

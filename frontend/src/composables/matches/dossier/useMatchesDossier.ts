@@ -1,11 +1,12 @@
 import { computed, type Ref } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { formatPlayMinutes, parseGameLengthMinutes, type WeekStart } from '@/match/match-time-helpers'
-import { formatToHundredths } from '@/match/match-stats-helpers'
+import { countsInTally, formatToHundredths } from '@/match/match-stats-helpers'
 import { useDossierQueries } from '@/composables/matches/dossier/useMatchesDossierQueries'
 import { useMatchesTrends } from '@/composables/matches/trends/useMatchesTrends'
 import { useMatchesMomentum } from '@/composables/matches/dossier/useMatchesMomentum'
 import {
+  type ExclusionHandling,
   type LeaverHandling,
   type WinLossDraw,
   type BreakdownEntry,
@@ -78,12 +79,23 @@ function matchRoleSet(r: MatchRecord, heroRole: HeroRoleResolver | undefined): S
 // the precomputed-refs design is moot at this corpus size (≤ 50k
 // records is the obsessive case).
 
+/** Everything beyond the record set and the leaver rule. An options
+ *  object rather than a growing positional list — the parameter cap is
+ *  four, and this composable had already reached it. */
+export interface DossierOptions {
+  /** How to treat matches the user marked as not counting. Defaults to
+   *  dropping them from the tally: marking one IS that instruction. */
+  exclusionHandling?: Readonly<Ref<ExclusionHandling>>
+  heroRole?: HeroRoleResolver
+  weekStart?: Readonly<Ref<WeekStart>>
+}
+
 export function useMatchesDossier(
   records: Readonly<Ref<MatchRecord[]>>,
   leaverHandling: Readonly<Ref<LeaverHandling>>,
-  heroRole?: HeroRoleResolver,
-  weekStart?: Readonly<Ref<WeekStart>>,
+  opts: DossierOptions = {},
 ) {
+  const { exclusionHandling, heroRole, weekStart } = opts
   // A match a coach's review created is REAL — the player played it — but
   // its result is what the coach typed while watching a replay, not what the
   // player recorded. So it stays in the Matches list, where it carries the
@@ -101,17 +113,20 @@ export function useMatchesDossier(
   // review-coverage and role splits, which are about the player's OWN
   // history. `records` is used exactly once, on the line above.
 
-  // 'exclude-tally' drops leaver-annotated records from the KPIs
-  // (W/L/D + winrate) only. The leaves list still shows them — the
-  // user explicitly asked for "drop from tally" not "hide". 'hide'
-  // is upstream of this composable: the caller is expected to have
-  // already filtered those rows out of `records`.
-  const tallyRecords = computed(() => {
-    if (leaverHandling.value === 'exclude-tally') {
-      return countedRecords.value.filter((r) => !r.annotation?.leavers?.length)
-    }
-    return countedRecords.value
-  })
+  // 'exclude-tally' drops the marked records from the KPIs (W/L/D +
+  // winrate) only. The leaves list still shows them — the user asked
+  // for "drop from tally" not "hide". 'hide' is upstream of this
+  // composable: the caller is expected to have already filtered those
+  // rows out of `records`.
+  //
+  // Two independent marks reach this: a leaver on the match, and a
+  // reason the user gave for why it should not count. countsInTally is
+  // the single predicate the masthead reads too — a second copy of this
+  // rule is how the two readouts came to disagree.
+  const tallyRecords = computed(() => countedRecords.value.filter((r) => countsInTally(r, {
+    skipLeavers: leaverHandling.value === 'exclude-tally',
+    skipExcluded: (exclusionHandling?.value ?? 'exclude-tally') === 'exclude-tally',
+  })))
 
   const wld = computed<WinLossDraw>(() => {
     let w = 0, l = 0, d = 0

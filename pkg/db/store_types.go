@@ -81,8 +81,12 @@ type Annotation struct {
 	// toggles in the inline editor); the user can add anything.
 	// Normalized to lowercase + trimmed at the app layer before
 	// reaching SQL, so `Stack` and `stack` collapse to one row.
-	Tags        []string
-	AnnotatedAt string
+	Tags []string
+	// ExclusionReason says why this match should not count toward the win
+	// rate — one of the closed vocabulary the schema constrains, or "" for
+	// the overwhelming majority that simply count.
+	ExclusionReason string
+	AnnotatedAt     string
 }
 
 // SummaryRow holds one parsed SUMMARY screenshot. Match identity is

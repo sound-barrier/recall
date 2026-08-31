@@ -24,6 +24,7 @@ import NarrowChipFacet from '@/components/matches/narrow/NarrowChipFacet.vue'
 import NarrowTimeScope from '@/components/matches/narrow/NarrowTimeScope.vue'
 import NarrowRefinement from '@/components/matches/narrow/NarrowRefinement.vue'
 import NarrowSinceAnchor from '@/components/matches/narrow/NarrowSinceAnchor.vue'
+import NarrowExclusionHandling from '@/components/matches/narrow/NarrowExclusionHandling.vue'
 import NarrowLeaverHandling from '@/components/matches/narrow/NarrowLeaverHandling.vue'
 // Shared np-section / np-chip chrome for the panel + its facet children.
 import './narrow.css'
@@ -228,7 +229,7 @@ onUnmounted(() => {
                 type="search"
                 class="np-search-input"
                 placeholder="text · or field:value"
-                title="Bare text searches map / hero / note / tags / teammates. Scoped tokens: note: tag: member: replay: leaver: thrower:"
+                title="Bare text searches map / hero / note / tags / teammates. Scoped tokens: note: tag: member: replay: leaver: thrower: excluded:"
                 autocomplete="off"
                 spellcheck="false"
               >
@@ -383,6 +384,7 @@ onUnmounted(() => {
               />
 
               <NarrowLeaverHandling :narrow="narrow" />
+              <NarrowExclusionHandling :narrow="narrow" />
 
               <!-- With a leaver — scope the SET to matches that carried a
                    leaver, by side. Distinct from the handling control

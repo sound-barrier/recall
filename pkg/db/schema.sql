@@ -303,10 +303,17 @@ CREATE TABLE IF NOT EXISTS rank_sr (
 ) STRICT;
 -- statement-end
 
+-- exclusion_reason says WHY a match should not count toward the win rate:
+-- a placement, an MMR adjustment, a game lost to the user's own connection.
+-- It is a closed vocabulary because a filter reads it back — free text would
+-- mean nothing to the tally. '' is "counts normally", which is almost every
+-- match, so it is the default rather than a NULL to test for.
 CREATE TABLE IF NOT EXISTS match_annotations (
   match_key TEXT PRIMARY KEY,
   note TEXT,
   replay_code TEXT,
+  exclusion_reason TEXT NOT NULL DEFAULT ''
+    CHECK (exclusion_reason IN ('', 'placement', 'mmr_adjustment', 'outage')),
   annotated_at TEXT DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
 ) STRICT;
 -- statement-end

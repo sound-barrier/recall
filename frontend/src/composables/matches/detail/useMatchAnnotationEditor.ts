@@ -1,5 +1,5 @@
 import { ref, computed, watch, nextTick } from 'vue'
-import type { MatchRecord, MatchAnnotationInput } from '@/api-client'
+import type { ExclusionReason, MatchRecord, MatchAnnotationInput } from '@/api-client'
 import { notePlainText } from '@/match/markdown/note-blocks'
 import { highlightTermsFor, type SearchClause } from '@/match/search-query'
 
@@ -34,9 +34,12 @@ const tagDraft        = ref<string[]>(record().annotation?.tags ?? [])
 // pulse can render without stomping on the active editor's value.
 const savedFlash      = ref<'' | 'note' | 'replay' | 'members' | 'tags'>('')
 
-// The three conventional tags. Order here is presentation order in
-// the quick-add row; the user can still add anything via free-form.
-const NAMED_TAGS = ['stack', 'stream', 'placement'] as const
+// The conventional tags. Order here is presentation order in the
+// quick-add row; the user can still add anything via free-form.
+// `placement` used to sit here too — it now has its own field, because
+// only the exclusion reason reaches the win rate. Existing
+// `tag:placement` rows keep working as ordinary tags.
+const NAMED_TAGS = ['stack', 'stream'] as const
 
 watch(
   () => record().annotation,
@@ -177,6 +180,21 @@ function exitNoteEditMode() {
 // annotation fields so the unified setter doesn't accidentally null
 // something the user typed in another input. Leaver is read from the
 // existing annotation (the chooser owns that field independently).
+// Setting or clearing the reason a match doesn't count. It carries the
+// rest of the drafts like every other field write, so an in-flight note
+// is never lost to a chip click.
+function setExclusionReason(reason: ExclusionReason) {
+  return emitAnnotation({
+    leavers:     record().annotation?.leavers ?? [],
+    throwers:    record().annotation?.throwers ?? [],
+    note:        noteDraft.value.trim(),
+    replay_code: replayDraft.value.trim(),
+    members:     memberDraft.value,
+    tags:        tagDraft.value,
+    exclusion_reason: reason,
+  })
+}
+
 function commitAnnotation(field: 'note' | 'replay' | 'members' | 'tags') {
   // A full-state commit persists any applied-but-unconfirmed members/tags
   // too (every field write carries all drafts), so an in-flight apply is
@@ -190,6 +208,7 @@ function commitAnnotation(field: 'note' | 'replay' | 'members' | 'tags') {
     replay_code: replayDraft.value.trim(),
     members:     memberDraft.value,
     tags:        tagDraft.value,
+    exclusion_reason: (record().annotation?.exclusion_reason ?? '') as ExclusionReason,
   })
   // The pulse is a persistence receipt: it fires when the write resolves,
   // and never on a reported failure (the action surfaces its own error).
@@ -421,6 +440,7 @@ function onTagKeydown(e: KeyboardEvent) {
     tagDraft,
     savedFlash,
     NAMED_TAGS,
+    setExclusionReason,
     hasAnyNote,
     isEditingNote,
     noteFieldRef,

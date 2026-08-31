@@ -187,12 +187,13 @@ func decodeAnnotationInput(w http.ResponseWriter, r *http.Request, matchKey stri
 		return app.AnnotationInput{}, false
 	}
 	var body struct {
-		Leavers    []*string `json:"leavers"`
-		Throwers   []*string `json:"throwers"`
-		Note       string    `json:"note"`
-		ReplayCode string    `json:"replay_code"`
-		Members    []*string `json:"members"`
-		Tags       []*string `json:"tags"`
+		Leavers         []*string `json:"leavers"`
+		Throwers        []*string `json:"throwers"`
+		Note            string    `json:"note"`
+		ReplayCode      string    `json:"replay_code"`
+		Members         []*string `json:"members"`
+		Tags            []*string `json:"tags"`
+		ExclusionReason string    `json:"exclusion_reason"`
 	}
 	if err := json.Unmarshal(raw, &body); err != nil {
 		writeProblem(w, r, probInvalidBody, "invalid JSON body")
@@ -219,13 +220,14 @@ func decodeAnnotationInput(w http.ResponseWriter, r *http.Request, matchKey stri
 		*f.out = v
 	}
 	return app.AnnotationInput{
-		MatchKey:   matchKey,
-		Leavers:    leavers,
-		Throwers:   throwers,
-		Note:       body.Note,
-		ReplayCode: body.ReplayCode,
-		Members:    members,
-		Tags:       tags,
+		MatchKey:        matchKey,
+		Leavers:         leavers,
+		Throwers:        throwers,
+		Note:            body.Note,
+		ReplayCode:      body.ReplayCode,
+		Members:         members,
+		Tags:            tags,
+		ExclusionReason: body.ExclusionReason,
 	}, true
 }
 

@@ -114,5 +114,6 @@ func replayCode(rng *rand.Rand) string {
 // layer's ErrEmptyAnnotation guard).
 func annotationHasContent(a db.Annotation) bool {
 	return len(a.Leavers) > 0 || len(a.Throwers) > 0 || a.Note != "" ||
-		a.ReplayCode != "" || len(a.Members) > 0 || len(a.Tags) > 0
+		a.ReplayCode != "" || len(a.Members) > 0 || len(a.Tags) > 0 ||
+		a.ExclusionReason != ""
 }
