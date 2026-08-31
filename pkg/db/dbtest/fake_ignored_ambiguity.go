@@ -168,6 +168,7 @@ func (f *Fake) renameMatchKey(from, to string) {
 	rekeyRows(f.Unknowns, from, to)
 
 	rekeyBool(f.Hidden, from, to)
+	rekeyBool(f.AckedReferenceGaps, from, to)
 	rekeyBool(f.Pinned, from, to)
 	rekeyMap(f.Reviews, from, to)
 	rekeyMap(f.Queues, from, to)

@@ -67,6 +67,7 @@ func seedFullMatch(t *testing.T, s db.Store, key string) {
 	mustNoErr(t, s.UpsertUnknown(db.UnknownRow{Filename: key + "-unknown.png", MatchKey: key}))
 	mustNoErr(t, s.SetAnnotation(db.Annotation{MatchKey: key, Note: "smurf lobby"}))
 	mustNoErr(t, s.HideMatch(key))
+	mustNoErr(t, s.AcknowledgeReferenceGap(key))
 	mustNoErr(t, s.PinMatch(key))
 	mustNoErr(t, s.SetReview(key, "coach"))
 	mustNoErr(t, s.SetMatchQueue(key, "role"))
@@ -99,6 +100,8 @@ func sidecarPresence(t *testing.T, s db.Store, key string) map[string]bool {
 	mustNoErr(t, err)
 	hidden, err := s.LoadHiddenKeys()
 	mustNoErr(t, err)
+	ackedGaps, err := s.LoadAcknowledgedReferenceGaps()
+	mustNoErr(t, err)
 	pinned, err := s.LoadPinnedKeys()
 	mustNoErr(t, err)
 	reviews, err := s.LoadReviews()
@@ -124,6 +127,7 @@ func sidecarPresence(t *testing.T, s db.Store, key string) map[string]bool {
 	return map[string]bool{
 		"annotation":       hasAnnotation,
 		"hidden":           hidden[key],
+		"reference_gap_ack": ackedGaps[key],
 		"pinned":           pinned[key],
 		"review":           hasReview,
 		"user_data":        hasUserData,
