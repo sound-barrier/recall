@@ -48,10 +48,10 @@ function onViewFailed(token: number) {
 </script>
 
 <template>
-  <Transition name="parse-outcome">
+  <Transition name="toast">
     <div
       v-if="state"
-      class="parse-outcome-toast"
+      class="toast toast-notice parse-outcome-toast"
       role="status"
       aria-live="polite"
     >
@@ -71,7 +71,7 @@ function onViewFailed(token: number) {
       </button>
       <button
         type="button"
-        class="pot-dismiss"
+        class="toast-close"
         aria-label="Dismiss parse outcome"
         @click="state && emit('dismiss', state.token)"
       >
@@ -82,28 +82,11 @@ function onViewFailed(token: number) {
 </template>
 
 <style scoped>
+/* Rung: the top of the ladder. All four notices can fire off one
+   completed parse, and the focus nudge renders later at the same
+   z-index — an 8rem outcome toast would be painted over. */
 .parse-outcome-toast {
-  position: fixed;
-  right: 1rem;
-
-  /* The bottom-right toast ladder, floor up: tilt nudge 1rem, session
-     tally 4.5rem, focus nudge 8.5rem, THIS at 13rem. All four can fire
-     off the same completed parse, so sharing a rung is not a rare
-     collision — the focus nudge renders later in AppOverlays and would
-     paint straight over an 8rem outcome toast. */
   bottom: 13rem;
-  z-index: 1200;
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  padding: 0.55rem 0.75rem;
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--radius-md);
-  box-shadow: 0 12px 32px color-mix(in srgb, var(--bg) 55%, transparent);
-  font-size: var(--type-md);
-  color: var(--text);
 }
 
 .pot-copy strong {
@@ -117,34 +100,5 @@ function onViewFailed(token: number) {
 
 .pot-view {
   flex-shrink: 0;
-}
-
-.pot-dismiss {
-  appearance: none;
-  border: 1px solid var(--border-soft);
-  background: transparent;
-  color: var(--text-dim);
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
-}
-
-.pot-dismiss:hover,
-.pot-dismiss:focus-visible {
-  color: var(--text);
-  border-color: var(--border-strong);
-}
-
-.parse-outcome-enter-active,
-.parse-outcome-leave-active {
-  transition: opacity var(--duration-prompt) ease, transform var(--duration-prompt) ease;
-}
-
-.parse-outcome-enter-from,
-.parse-outcome-leave-to {
-  opacity: 0;
-  transform: translateY(0.4rem);
 }
 </style>

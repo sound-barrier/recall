@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { useContextualCallout } from '@/composables/onboarding/useContextualCallout'
 import ContextualCallout from '@/components/onboarding/ContextualCallout.vue'
+import UnknownReferenceGapCard from '@/components/unknown/UnknownReferenceGapCard.vue'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
@@ -75,57 +76,16 @@ function recognizingRelease(rec: MatchRecord): { version: string; url: string; n
       The parser captured an OCR'd hero or map name in these records but couldn't match it to the canonical roster shipped with this Recall release. They'll be picked up automatically on the next launch after a YAML update.
       <a class="unknown-section-link" href="https://github.com/sound-barrier/recall/releases/latest" target="_blank" rel="noopener noreferrer">View latest release ↗</a>
     </p>
-    <article
+    <UnknownReferenceGapCard
       v-for="rec in activeGaps"
       :key="rec.match_key"
-      class="unknown-card reference-gap-card"
-      :data-reference-gap-key="rec.match_key"
-    >
-      <div class="unknown-card-head">
-        <div class="unknown-head-lhs">
-          <span class="unknown-key-block">
-            <span class="unknown-key mono">{{ rec.source_files?.[0] ?? rec.match_key }}</span>
-            <span class="unknown-src-count">
-              <template v-if="rec.data?.hero_raw">Unknown hero: <code>{{ rec.data.hero_raw }}</code></template>
-              <template v-if="rec.data?.hero_raw && rec.data?.map_raw">  ·  </template>
-              <template v-if="rec.data?.map_raw">Unknown map: <code>{{ rec.data.map_raw }}</code></template>
-            </span>
-          </span>
-        </div>
-        <div class="unknown-head-rhs">
-          <!-- One click, no armed confirm: the action only hides the
-               warning and the disclosure below restores it. -->
-          <button
-            type="button"
-            class="unknown-delete-btn"
-            :aria-label="`Dismiss the warning for ${rec.match_key}`"
-            :disabled="writesLocked"
-            :title="lockReason || 'The match keeps its data; a future update can still fix it.'"
-            @click="onSetReferenceGapAcknowledged(rec.match_key, true)"
-          >
-            Dismiss
-          </button>
-        </div>
-      </div>
-      <p
-        v-if="recognizingRelease(rec)"
-        class="reference-gap-fix"
-        :data-fix-cta-key="rec.match_key"
-      >
-        <span class="eyebrow accent fix-eyebrow">Fixed in</span>
-        <a
-          class="fix-link"
-          :href="recognizingRelease(rec)!.url"
-          target="_blank"
-          rel="noopener noreferrer"
-          :title="`Open release page for v${recognizingRelease(rec)!.version}`"
-        >v{{ recognizingRelease(rec)!.version }} ↗</a>
-        <span class="fix-copy">
-          — will recognize
-          <code>{{ recognizingRelease(rec)!.name }}</code>
-        </span>
-      </p>
-    </article>
+      :rec="rec"
+      :acknowledged="false"
+      :recognizing="recognizingRelease(rec)"
+      :writes-locked="writesLocked"
+      :lock-reason="lockReason"
+      @acknowledge="onSetReferenceGapAcknowledged(rec.match_key, $event)"
+    />
 
     <template v-if="ackedGaps.length > 0">
       <button
@@ -136,39 +96,16 @@ function recognizingRelease(rec: MatchRecord): { version: string; url: string; n
       >
         {{ ackedGaps.length }} acknowledged — {{ showAcked ? 'hide' : 'show' }}
       </button>
-      <template v-if="showAcked">
-        <article
-          v-for="rec in ackedGaps"
-          :key="rec.match_key"
-          class="unknown-card reference-gap-card refgap-acked-card"
-          :data-reference-gap-key="rec.match_key"
-        >
-          <div class="unknown-card-head">
-            <div class="unknown-head-lhs">
-              <span class="unknown-key-block">
-                <span class="unknown-key mono">{{ rec.source_files?.[0] ?? rec.match_key }}</span>
-                <span class="unknown-src-count">
-                  <template v-if="rec.data?.hero_raw">Unknown hero: <code>{{ rec.data.hero_raw }}</code></template>
-                  <template v-if="rec.data?.hero_raw && rec.data?.map_raw">  ·  </template>
-                  <template v-if="rec.data?.map_raw">Unknown map: <code>{{ rec.data.map_raw }}</code></template>
-                </span>
-              </span>
-            </div>
-            <div class="unknown-head-rhs">
-              <button
-                type="button"
-                class="btn"
-                :aria-label="`Show the warning for ${rec.match_key} again`"
-                :disabled="writesLocked"
-                :title="lockReason || undefined"
-                @click="onSetReferenceGapAcknowledged(rec.match_key, false)"
-              >
-                Show again
-              </button>
-            </div>
-          </div>
-        </article>
-      </template>
+      <UnknownReferenceGapCard
+        v-for="rec in (showAcked ? ackedGaps : [])"
+        :key="rec.match_key"
+        :rec="rec"
+        :acknowledged="true"
+        :recognizing="null"
+        :writes-locked="writesLocked"
+        :lock-reason="lockReason"
+        @acknowledge="onSetReferenceGapAcknowledged(rec.match_key, $event)"
+      />
     </template>
   </div>
 
@@ -190,12 +127,5 @@ function recognizingRelease(rec: MatchRecord): { version: string; url: string; n
 <style scoped>
 .refgap-acked-toggle {
   align-self: flex-start;
-}
-
-/* Acknowledged cards read as settled: the accent bar goes quiet.
-   Deliberately NOT an opacity dim — the card holds small text and a
-   live control, and composited text at 60% opacity fell below AA. */
-.refgap-acked-card {
-  border-left-color: var(--border-soft);
 }
 </style>

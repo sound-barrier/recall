@@ -23,10 +23,10 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <Transition name="focus-nudge">
+  <Transition name="toast">
     <aside
       v-if="visible"
-      class="focus-nudge-toast"
+      class="toast toast-notice toast-notice-stacked focus-nudge-toast"
       role="status"
       aria-live="polite"
       aria-label="What to focus on this session"
@@ -44,7 +44,7 @@ const emit = defineEmits<{
       </ol>
       <button
         type="button"
-        class="focus-nudge-dismiss"
+        class="toast-dismiss focus-nudge-dismiss"
         @click="emit('dismiss')"
       >
         Got it
@@ -54,30 +54,9 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
-/* The bottom-right toast ladder, from the floor up: the tilt nudge at
-   1rem, the session tally at 4.5rem, this at 8.5rem, the parse-outcome
-   report at 13rem. All four fire off the same completed parse, so
-   sharing a rung is not a rare collision — it is the normal case, and
-   the tilt nudge (rendered later at the same z-index) would have
-   covered this one outright. */
+/* Rung: above the session tally, below the parse outcome. */
 .focus-nudge-toast {
-  position: fixed;
-  right: 1rem;
   bottom: 8.5rem;
-  z-index: 1200;
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  align-items: flex-start;
-  max-width: min(420px, 92vw);
-  padding: 0.7rem 0.85rem;
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--radius-md);
-  box-shadow: 0 12px 32px color-mix(in srgb, var(--bg) 55%, transparent);
-  font-size: var(--type-md);
-  color: var(--text);
 }
 
 .focus-nudge-head {
@@ -97,36 +76,6 @@ const emit = defineEmits<{
 }
 
 .focus-nudge-dismiss {
-  appearance: none;
   align-self: flex-end;
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  padding: 0.3rem 0.6rem;
-  background: transparent;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  color: var(--text);
-  cursor: pointer;
-  transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
-}
-
-.focus-nudge-dismiss:hover,
-.focus-nudge-dismiss:focus-visible {
-  border-color: var(--accent);
-  color: var(--accent-text);
-}
-
-.focus-nudge-enter-active,
-.focus-nudge-leave-active {
-  transition: opacity var(--duration-prompt) ease, transform var(--duration-prompt) ease;
-}
-
-.focus-nudge-enter-from,
-.focus-nudge-leave-to {
-  opacity: 0;
-  transform: translateY(8px);
 }
 </style>

@@ -1,0 +1,233 @@
+/* The toast family — every transient report Recall raises in the
+   bottom-right corner.
+ *
+ * Seven components had grown their own copy of this chrome (shell, glyph,
+ * action button, dismiss, enter/leave transition), in two drifting variants,
+ * until the duplication ratchet failed the build. Same remedy as the
+ * `.eyebrow` collapse: ONE family here, and a component keeps only its own
+ * LAYOUT — in practice its rung on the ladder, and whatever content it holds.
+ *
+ * Two variants, because they are genuinely different objects:
+ *
+ *   .toast-undo    an action you can still reverse — sits close to the
+ *                  content it undoes (z-index 110), wide, with a glyph,
+ *                  a name and a primary button.
+ *   .toast-notice  a report — sits above everything (z-index 1200) because
+ *                  it can be raised from any tab by a background parse.
+ *
+ * The rungs are assigned in the components, floor up: tilt nudge 1rem,
+ * session tally 4.5rem, focus nudge 8.5rem, parse outcome 13rem. They all
+ * fire off the same completed parse, so sharing a rung is the normal case,
+ * not a rare collision. */
+
+.toast {
+  position: fixed;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--accent);
+  color: var(--text);
+  isolation: isolate;
+}
+
+/* ── The undo bar ─────────────────────────────────────────────────── */
+
+.toast-undo {
+  right: 1.4rem;
+  z-index: 110;
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 0.85rem 0.75rem;
+  min-width: 280px;
+  max-width: min(420px, 92vw);
+  border-radius: var(--radius);
+  box-shadow: 0 24px 48px -24px rgb(var(--shadow-rgb) / 50%);
+}
+
+.toast-glyph {
+  font-size: var(--type-2xl);
+  color: var(--text-faint);
+  line-height: 1;
+}
+
+/* The marked variant: a stamped confirmation rather than a passive icon. */
+.toast-glyph-mark {
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--accent-text);
+}
+
+.toast-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.toast-name {
+  font-family: var(--display);
+  font-style: italic;
+  font-size: var(--type-xl);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toast-sub {
+  font-family: var(--mono);
+  font-size: var(--type-sm);
+  color: var(--text-dim);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+
+.toast-action {
+  appearance: none;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--surface);
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: var(--type-2xs);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--duration-fast) ease;
+}
+
+.toast-action:hover {
+  background: color-mix(in srgb, var(--accent) 80%, var(--text));
+}
+
+.toast-action:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* The undo bar's bare × — no border, sized to sit beside the name. */
+.toast-close-plain {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: var(--type-xl);
+  cursor: pointer;
+  padding: 0.15rem 0.3rem;
+  line-height: 1;
+  transition: color var(--duration-fast) ease;
+}
+
+.toast-close-plain:hover {
+  color: var(--text);
+}
+
+.toast-close-plain:focus-visible {
+  outline: none;
+  color: var(--accent-text);
+}
+
+/* ── The notice ───────────────────────────────────────────────────── */
+
+.toast-notice {
+  right: 1rem;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--bg) 55%, transparent);
+  font-size: var(--type-md);
+}
+
+/* A notice that stacks its lines instead of running them across. */
+.toast-notice-stacked {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+  max-width: min(420px, 92vw);
+  padding: 0.7rem 0.85rem;
+}
+
+/* A labeled dismissal — "Got it" / "Dismiss", where the toast asked
+   something of the reader and deserves a word back. */
+.toast-dismiss {
+  appearance: none;
+  font-family: var(--mono);
+  font-size: var(--type-2xs);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.6rem;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  color: var(--text);
+  cursor: pointer;
+  transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+.toast-dismiss:hover,
+.toast-dismiss:focus-visible {
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
+
+/* The notice's × — a square target, for a toast that merely reported. */
+.toast-close {
+  appearance: none;
+  border: 1px solid var(--border-soft);
+  background: transparent;
+  color: var(--text-dim);
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+.toast-close:hover,
+.toast-close:focus-visible {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+/* ── Motion ───────────────────────────────────────────────────────── */
+
+.toast-enter-active,
+.toast-leave-active {
+  transition: opacity var(--duration-prompt) ease, transform var(--duration-prompt) ease;
+}
+
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(0.4rem);
+}
+
+.toast-undo-enter-active,
+.toast-undo-leave-active {
+  transition: opacity var(--duration-med) ease,
+              transform var(--duration-relaxed) cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.toast-undo-enter-from,
+.toast-undo-leave-to {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-enter-active,
+  .toast-leave-active,
+  .toast-undo-enter-active,
+  .toast-undo-leave-active {
+    transition: none;
+  }
+}
