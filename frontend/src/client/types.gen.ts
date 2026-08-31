@@ -22,6 +22,23 @@ export type DbHealth = {
 };
 
 /**
+ * Payload of the `parse-complete` event (SSE in server mode, the
+ * desktop event bus in Wails mode) — the finished run's own tally,
+ * so the end-of-run report can say "X read · Y failed to read"
+ * without inferring it from a refetched ledger. `files_parsed`
+ * counts files that stored rows (degraded parses included);
+ * `files_failed` counts files that stored nothing (OCR, insert, or
+ * ambiguity-write failure). A canceled run emits `parse-canceled`
+ * instead and carries no summary.
+ *
+ */
+export type ParseRunSummary = {
+    files_parsed: number;
+    files_failed: number;
+    matches_updated: number;
+};
+
+/**
  * Payload of the `parse-progress` event (SSE in server mode, the
  * desktop event bus in Wails mode) — fired per OCR'd file during a
  * parse run. `match_key` is the resolved key for the just-inserted
@@ -3290,6 +3307,47 @@ export type IgnoreScreenshotResponses = {
 };
 
 export type IgnoreScreenshotResponse = IgnoreScreenshotResponses[keyof IgnoreScreenshotResponses];
+
+export type RetryFailedFileData = {
+    body?: never;
+    path: {
+        /**
+         * Screenshot filename whose failure record to delete.
+         * URL-encoded (the filename can contain spaces and dashes from
+         * the Overwatch capture format).
+         *
+         */
+        filename: string;
+    };
+    query?: never;
+    url: '/api/v1/screenshots/{filename}/failure';
+};
+
+export type RetryFailedFileErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * A coaching session holds the database read-only; end the session first.
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type RetryFailedFileError = RetryFailedFileErrors[keyof RetryFailedFileErrors];
+
+export type RetryFailedFileResponses = {
+    /**
+     * Failure record deleted (or was already absent).
+     */
+    204: void;
+};
+
+export type RetryFailedFileResponse = RetryFailedFileResponses[keyof RetryFailedFileResponses];
 
 export type ClearIgnoredScreenshotsData = {
     body?: never;

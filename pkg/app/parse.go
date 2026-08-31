@@ -48,6 +48,18 @@ type ParseProgressEvent struct {
 	MapCorrections  int `json:"map_corrections,omitempty"`
 }
 
+// ParseRunSummary rides the parse-complete event: the run's own tally,
+// so the end-of-run report can say "X read · Y failed to read" without
+// inferring it from a refetched ledger (which cannot tell this run's
+// failures from standing degraded rows). FilesParsed counts files that
+// stored rows — degraded included; FilesFailed counts files that stored
+// nothing (OCR, insert, or ambiguity-write failure).
+type ParseRunSummary struct {
+	FilesParsed    int `json:"files_parsed"`
+	FilesFailed    int `json:"files_failed"`
+	MatchesUpdated int `json:"matches_updated"`
+}
+
 // validateParsePreconditions runs the cheap up-front checks (dir
 // configured + readable, tesseract present) so both the sync and async
 // entry points fail fast BEFORE claiming the run slot or spawning a
@@ -142,7 +154,11 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	// drives parseBusy off this (not a held-open request), and the watcher
 	// no longer emits it separately. The distinct-match count feeds the desktop
 	// native notification (no-op in server mode).
-	a.emitParseComplete(len(st.matchesUpdated))
+	a.emitParseComplete(ParseRunSummary{
+		FilesParsed:    st.filesParsed,
+		FilesFailed:    st.filesFailed,
+		MatchesUpdated: len(st.matchesUpdated),
+	})
 	return nil
 }
 
@@ -220,6 +236,12 @@ type parseRunState struct {
 	matchesUpdated  map[string]struct{}
 	heroCorrections int
 	mapCorrections  int
+	// Run tally for the parse-complete summary: parsed counts every file
+	// that stored rows (degraded included — it stored what it read);
+	// failed counts every file that stored nothing (OCR failure, insert
+	// failure, ambiguity-write failure).
+	filesParsed int
+	filesFailed int
 	// Run-scoped correlation snapshot + sidecars: loaded once at run
 	// start, patched in-memory after each insert (parse_snapshot.go).
 	snap     db.Screenshots
@@ -263,6 +285,7 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 		if err := a.store.RecordFailedFile(filename, st.dirID, errMsg); err != nil {
 			applog.Subsystem("parse").Warn("record failed file", "filename", filename, "err", err)
 		}
+		st.filesFailed++
 		a.emitParseProgress(ev)
 		return
 	}
@@ -277,6 +300,7 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 	if err := a.insertParsed(filename, key, ev.Type, st.dirID, result); err != nil {
 		ev.Error = "insert: " + err.Error()
 		st.recordLeakedFailure(filename, ev.Error)
+		st.filesFailed++
 		a.emitParseProgress(ev)
 		return
 	}
@@ -286,9 +310,11 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 	if err := a.store.ApplyAmbiguity(filename, ambigCands); err != nil {
 		ev.Error = "ambiguity: " + err.Error()
 		st.recordLeakedFailure(filename, ev.Error)
+		st.filesFailed++
 		a.emitParseProgress(ev)
 		return
 	}
+	st.filesParsed++
 	// Mirror both writes onto the carried snapshot so the NEXT file
 	// correlates against this one, exactly as the per-file reload did.
 	st.applyToSnapshot(filename, key, ev.Type, result)

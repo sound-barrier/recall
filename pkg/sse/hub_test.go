@@ -256,3 +256,32 @@ func TestHub_Subscribe_IsConcurrencySafe(t *testing.T) {
 		}
 	}
 }
+
+// BroadcastTerminal is Broadcast's with-payload sibling: the run summary
+// riding parse-complete must survive a full buffer exactly like the
+// bare terminal event, payload intact.
+func TestHub_BroadcastTerminal_PayloadSurvivesFullBuffer(t *testing.T) {
+	h := sse.NewHub()
+	ch := h.Subscribe()
+
+	for i := range cap(ch) + 4 {
+		h.BroadcastData("parse-progress", `{"done":`+string(rune('0'+i%10))+`}`)
+	}
+
+	h.BroadcastTerminal("parse-complete", `{"files_parsed":9,"files_failed":1}`)
+
+	for {
+		select {
+		case m := <-ch:
+			if m.Event != "parse-complete" {
+				continue
+			}
+			if m.Data != `{"files_parsed":9,"files_failed":1}` {
+				t.Fatalf("terminal payload mangled: %q", m.Data)
+			}
+			return
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("parse-complete was dropped on a full buffer — the spinner would strand")
+		}
+	}
+}

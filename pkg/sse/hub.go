@@ -101,6 +101,18 @@ func (h *Hub) BroadcastData(event, data string) {
 	h.send(Msg{event, data}, false)
 }
 
+// BroadcastTerminal sends an event with a JSON data payload and the
+// evict-and-deliver guarantee of Broadcast — for terminal events whose
+// payload matters (parse-complete carrying its run summary): nothing
+// supersedes a terminal event, so dropping it on a slow consumer would
+// strand that client's UI mid-run. Nil-safe; see `Broadcast`.
+func (h *Hub) BroadcastTerminal(event, data string) {
+	if h == nil {
+		return
+	}
+	h.send(Msg{event, data}, true)
+}
+
 func (h *Hub) send(msg Msg, guaranteed bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()

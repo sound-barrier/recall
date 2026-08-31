@@ -1110,6 +1110,57 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/screenshots/{filename}/failure:
+    parameters:
+      - name: filename
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 200
+          # Same defense-in-depth constraint as the /ignore family: no
+          # path separators or NUL, so the filename can never become a
+          # traversal-capable path component.
+          pattern: '^[^/\\\x00]{1,200}$'
+        example: "corrupt.png"
+        description: |
+          Screenshot filename whose failure record to delete.
+          URL-encoded (the filename can contain spaces and dashes from
+          the Overwatch capture format).
+    delete:
+      operationId: RetryFailedFile
+      tags: [Pipeline]
+      summary: Retry a failed screenshot
+      description: |
+        Deletes `filename`'s failure record. The record carries the
+        attempt count, so deleting it un-parks a file the repeated-
+        failure cap had removed from the pending count — the file
+        re-enters `GET /screenshots/pending-count` and the next parse
+        run immediately. (The path is `{filename}/failure`, a sibling
+        of `{filename}/ignore` — a `failed/{filename}` shape would be
+        ambiguous with the ignore routes under Go's mux precedence.)
+
+        Idempotent: deleting an absent record is a 204 no-op. On a
+        DEGRADED file (one that stored rows) this clears the triage
+        entry without changing the pending count — the file was never
+        pending.
+      responses:
+        "204":
+          description: Failure record deleted (or was already absent).
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: >-
+            A coaching session holds the database read-only; end the
+            session first.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/screenshots/ignored:
     get:
       operationId: GetIgnoredScreenshots
@@ -3748,7 +3799,7 @@ paths:
                   data: {"match_key":"match-2026-05-10T21-29-28","source_files":["...png"],"data":{...}}
 
                   event: parse-complete
-                  data: {}
+                  data: {"files_parsed":4,"files_failed":1,"matches_updated":3}
           # The per-event payload contracts. Not expressible as response
           # content (SSE is one text stream), so they hang off a vendor
           # extension — which also marks the schemas as referenced for
@@ -3756,6 +3807,8 @@ paths:
           x-event-payloads:
             parse-progress:
               $ref: "#/components/schemas/ParseProgressEvent"
+            parse-complete:
+              $ref: "#/components/schemas/ParseRunSummary"
             match-updated:
               $ref: "#/components/schemas/MatchRecord"
             tesseract-status:
@@ -3901,6 +3954,29 @@ components:
           format: int64
         checked_at:
           type: string
+
+    ParseRunSummary:
+      type: object
+      description: |
+        Payload of the `parse-complete` event (SSE in server mode, the
+        desktop event bus in Wails mode) — the finished run's own tally,
+        so the end-of-run report can say "X read · Y failed to read"
+        without inferring it from a refetched ledger. `files_parsed`
+        counts files that stored rows (degraded parses included);
+        `files_failed` counts files that stored nothing (OCR, insert, or
+        ambiguity-write failure). A canceled run emits `parse-canceled`
+        instead and carries no summary.
+      required: [files_parsed, files_failed, matches_updated]
+      properties:
+        files_parsed:
+          type: integer
+          minimum: 0
+        files_failed:
+          type: integer
+          minimum: 0
+        matches_updated:
+          type: integer
+          minimum: 0
 
     ParseProgressEvent:
       type: object

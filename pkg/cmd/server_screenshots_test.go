@@ -219,6 +219,40 @@ func TestGetScreenshotsFailed_ReturnsLedgerRows(t *testing.T) {
 	}
 }
 
+// DELETE /api/v1/screenshots/{filename}/failure — Retry: deleting the
+// failure row resets attempts and restores the file to the pending set.
+func TestDeleteScreenshotsFailed_RemovesRowAndReturns204(t *testing.T) {
+	fs := dbtest.New()
+	_ = fs.RecordFailedFile("stuck.png", 1, "boom")
+	_, mux := newTestApp(t, fs)
+
+	rec := del(t, mux, "/api/v1/screenshots/stuck.png/failure")
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", rec.Code)
+	}
+	if _, still := fs.FailedFiles["stuck.png"]; still {
+		t.Errorf("failure row survived DELETE; got=%v", fs.FailedFiles)
+	}
+}
+
+func TestDeleteScreenshotsFailed_NotPresent_StillReturns204(t *testing.T) {
+	_, mux := newTestApp(t, dbtest.New())
+	rec := del(t, mux, "/api/v1/screenshots/never-failed.png/failure")
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204 (idempotent)", rec.Code)
+	}
+}
+
+func TestDeleteScreenshotsFailed_RejectsPathSeparators(t *testing.T) {
+	_, mux := newTestApp(t, dbtest.New())
+	for _, encoded := range []string{"foo%2Fbar.png", "foo%5Cbar.png", "foo%00bar.png"} {
+		rec := del(t, mux, "/api/v1/screenshots/"+encoded+"/failure")
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("encoded=%q: status = %d, want 400", encoded, rec.Code)
+		}
+	}
+}
+
 func TestGetScreenshotsFailed_EmptyIsEmptyArray(t *testing.T) {
 	_, mux := newTestApp(t, dbtest.New())
 	rec := get(t, mux, "/api/v1/screenshots/failed")

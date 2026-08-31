@@ -34,12 +34,22 @@ func TestApp_GetMatchByKey(t *testing.T) {
 	}
 }
 
-func TestApp_GetNewScreenshotCount(t *testing.T) {
-	// No screenshots dir configured → zero counts, no error.
-	if p, err := app.NewWithStore(dbtest.New()).GetNewScreenshotCount(); err != nil || p.Count != 0 || p.Parked != 0 {
+// The count feeds a button label, so an unset or vanished folder reports
+// zero rather than erroring — an unreachable folder is the parse's error
+// to report, not the count's.
+func TestApp_GetNewScreenshotCount_EmptyStates(t *testing.T) {
+	if p, err := app.NewWithStore(dbtest.New()).GetNewScreenshotCount(); err != nil || p != (app.PendingScreenshots{}) {
 		t.Errorf("unset dir: got (%+v, %v), want zero counts, nil", p, err)
 	}
 
+	a := app.NewWithStore(dbtest.New())
+	app.SettingsOf(a).ScreenshotsDir = filepath.Join(t.TempDir(), "gone")
+	if p, err := a.GetNewScreenshotCount(); err != nil || p != (app.PendingScreenshots{}) {
+		t.Errorf("vanished dir: got (%+v, %v), want zero counts, nil", p, err)
+	}
+}
+
+func TestApp_GetNewScreenshotCount(t *testing.T) {
 	// A dir of 3 images + a non-image; one image is already parsed → 2 new.
 	dir := t.TempDir()
 	for _, f := range []string{"a.png", "b.jpg", "c.png", "notes.txt"} {
@@ -65,14 +75,6 @@ func TestApp_GetNewScreenshotCount(t *testing.T) {
 	}
 	if p.Count != 2 {
 		t.Errorf("got %d new screenshots, want 2 (b.jpg + c.png; a.png parsed, notes.txt non-image)", p.Count)
-	}
-
-	// A configured folder that has since moved or unmounted reports 0, not an
-	// error — the count feeds a button label, and an unreachable folder is the
-	// parse's error to report, not the count's.
-	app.SettingsOf(a).ScreenshotsDir = filepath.Join(dir, "gone")
-	if p, err := a.GetNewScreenshotCount(); err != nil || p.Count != 0 || p.Parked != 0 {
-		t.Errorf("vanished dir: got (%+v, %v), want zero counts, nil", p, err)
 	}
 }
 
