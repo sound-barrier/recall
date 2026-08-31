@@ -141,7 +141,7 @@ function onArrow(e: KeyboardEvent) {
           <span v-if="moment.focus_tag" class="paper-chip return-card-moment-tag">
             {{ focusTagLabel(moment.focus_tag) }}
           </span>
-          {{ moment.text }}
+          <NoteProse :text="moment.text" inline />
         </span>
       </li>
     </ol>

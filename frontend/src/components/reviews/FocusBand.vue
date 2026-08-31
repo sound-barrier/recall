@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, useTemplateRef } from 'vue'
+import NoteProse from '@/components/coach/notes/NoteProse.vue'
 
 import type { FocusEntry } from '@/api-client'
 import { formatPlayerDay } from '@/match/coach/coach-time'
@@ -99,7 +100,7 @@ async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
       <li v-for="e in active" :key="e.item_id" class="focus-band-row">
         <div class="focus-band-text">
           <p class="focus-band-line">
-            {{ e.text }}
+            <NoteProse :text="e.text" inline />
           </p>
           <button
             v-if="e.source_id"
@@ -159,7 +160,7 @@ async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
         <li v-for="e in retired" :key="e.item_id" class="focus-band-row">
           <div class="focus-band-text">
             <p class="focus-band-line">
-              {{ e.text }}
+              <NoteProse :text="e.text" inline />
             </p>
             <p class="focus-band-from">
               {{ provenance(e) }}

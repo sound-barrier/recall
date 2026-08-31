@@ -103,6 +103,25 @@ function renderBlock(block: Block, topLevel: number): string {
   }
 }
 
+/**
+ * Inline-only markdown, for the short captions that are not prose.
+ *
+ * A moment is one line beside a clock, and a focus item is one line beside a
+ * bullet. They want the same emphasis a note gets — a coach writing
+ * `**do not** peek there` should not reach the player as literal asterisks —
+ * but not block structure: renderMarkdown would put a `<p>` inside the span
+ * the caption renders into, and would turn a caption that happens to start
+ * with a dash into a list.
+ *
+ * Same escaper and same inline lexer as the block renderer, so the two can
+ * never disagree about what `~~*a*~~` nests to. Safe to v-html for the same
+ * reason renderMarkdown is: the text is escaped before any markup is emitted,
+ * and the tag vocabulary is fixed and attribute-free.
+ */
+export function renderInlineMarkdown(source: string): string {
+  return source.split('\n').map((line) => inline(escapeHTML(line))).join('<br>')
+}
+
 /** Render a note's markdown to the fixed HTML vocabulary. Safe to v-html. */
 export function renderMarkdown(source: string): string {
   const blocks = blocksOf(source)

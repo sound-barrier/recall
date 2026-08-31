@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import NoteProse from '@/components/coach/notes/NoteProse.vue'
 import { storeToRefs } from 'pinia'
 
 import CoachReturnCard from '@/components/coach/inbox/CoachReturnCard.vue'
@@ -150,7 +151,7 @@ useModalFocusTrap(open, {
                disagree with their coach — they still have to hear it. -->
           <ul class="return-focus-list">
             <li v-for="item in focusItems" :key="item.item_id">
-              {{ item.text }}
+              <NoteProse :text="item.text" inline />
             </li>
           </ul>
           <p class="return-focus-note">

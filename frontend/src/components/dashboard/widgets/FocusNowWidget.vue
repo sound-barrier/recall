@@ -11,6 +11,7 @@
 // PLAYER, not an aggregation over the narrowed set, so narrowing to last
 // Tuesday's Ana games must not change what you are working on.
 import { computed } from 'vue'
+import NoteProse from '@/components/coach/notes/NoteProse.vue'
 
 import { activeFocus } from '@/match/reviews/focus-items'
 import { useFocusQuery } from '@/queries/focus'
@@ -29,7 +30,7 @@ const failed = computed(() => query.isError.value)
   </header>
   <ol v-if="items.length" class="focus-now-list">
     <li v-for="item in items" :key="item.item_id" class="focus-now-item">
-      <span class="focus-now-text">{{ item.text }}</span>
+      <span class="focus-now-text"><NoteProse :text="item.text" inline /></span>
       <span class="focus-now-from">{{ item.source === 'coach' ? (item.coach_name || 'your coach') : 'you' }}</span>
     </li>
   </ol>

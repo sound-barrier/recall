@@ -1,4 +1,4 @@
-import { escapeHTML, renderMarkdown } from '@/match/markdown/render-markdown'
+import { escapeHTML, renderInlineMarkdown, renderMarkdown } from '@/match/markdown/render-markdown'
 
 /**
  * The page a coach hands over.
@@ -89,8 +89,12 @@ function matchLine(note: SheetNote): string {
 function momentsBlock(moments: SheetMoment[]): string {
   if (moments.length === 0) return ''
   const rows = moments
+    // The moment takes the same grammar the note beside it does — inline
+    // only, since it renders inside this <li> next to its clock and a block
+    // renderer would put a <p> (or a whole list) there. renderInlineMarkdown
+    // escapes first, so this is no less safe than the escapeHTML it replaces.
     .map((m) => `<li><span class="sheet-clock">${escapeHTML(m.matchClock)}</span>`
-      + `<span class="sheet-moment-text">${escapeHTML(m.text)}</span></li>`)
+      + `<span class="sheet-moment-text">${renderInlineMarkdown(m.text)}</span></li>`)
     .join('')
   return `<ul class="sheet-moments">${rows}</ul>`
 }
@@ -118,7 +122,7 @@ function noteBlock(note: SheetNote): string {
 
 function focusBlock(items: { text: string }[]): string {
   if (items.length === 0) return ''
-  const rows = items.map((i) => `<li>${escapeHTML(i.text)}</li>`).join('')
+  const rows = items.map((i) => `<li>${renderInlineMarkdown(i.text)}</li>`).join('')
   return `<section class="sheet-focus">`
     + `<h2 class="sheet-h2">What to work on</h2>`
     + `<ol class="sheet-focus-list">${rows}</ol>`

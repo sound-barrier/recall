@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-import { renderMarkdown, renderMarkdownWithHits } from '@/match/markdown/render-markdown'
+import { renderInlineMarkdown, renderMarkdown, renderMarkdownWithHits } from '@/match/markdown/render-markdown'
 
 // The SHARED table, read straight from where the Go renderer reads it. Two
 // implementations of one grammar only stay honest if a single fixture pins
@@ -65,5 +65,46 @@ describe('renderMarkdownWithHits — the frontend-only sibling', () => {
     expect(renderMarkdownWithHits('<script>x</script>', ['script']))
       .toContain('&lt;<mark class="note-hit">script</mark>&gt;')
     expect(renderMarkdownWithHits('a & b', ['&'])).toContain('<mark class="note-hit">&amp;</mark>')
+  })
+})
+
+// ── inline-only rendering, for captions ─────────────────────────────────
+//
+// A moment is one line beside a clock: it wants emphasis, not block
+// structure. Rendering it through renderMarkdown would put a <p> inside the
+// <li>'s span.
+describe('renderInlineMarkdown', () => {
+  it('renders emphasis without wrapping it in a block', () => {
+    expect(renderInlineMarkdown('**do not** peek there')).toBe('<strong>do not</strong> peek there')
+  })
+
+  it('escapes before it emphasizes', () => {
+    expect(renderInlineMarkdown('<img src=x onerror=y> *late*'))
+      .toBe('&lt;img src=x onerror=y&gt; <em>late</em>')
+  })
+
+  it('nests the way the block renderer does', () => {
+    expect(renderInlineMarkdown('~~*a*~~')).toBe('<del><em>a</em></del>')
+  })
+
+  it('keeps a second line as a break, not a paragraph', () => {
+    expect(renderInlineMarkdown('first\nsecond')).toBe('first<br>second')
+  })
+
+  it('leaves a plain caption exactly as it was', () => {
+    expect(renderInlineMarkdown('no off-angle')).toBe('no off-angle')
+  })
+
+  it('renders an empty caption as nothing', () => {
+    expect(renderInlineMarkdown('')).toBe('')
+  })
+
+  it('does not turn a leading dash into a list', () => {
+    // Block structure is exactly what a caption must not grow.
+    expect(renderInlineMarkdown('- not a list')).toBe('- not a list')
+  })
+
+  it('does not turn a leading hash into a heading', () => {
+    expect(renderInlineMarkdown('# not a heading')).toBe('# not a heading')
   })
 })
