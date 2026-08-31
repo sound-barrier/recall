@@ -64,17 +64,6 @@ function onDismissAmbiguous(rec: MatchRecord) {
   triggerDismiss(rec.match_key, () => { void onDismissFiles(files) })
 }
 
-// Bulk dismiss for this section. Same verb as the per-card button, applied
-// wider, so it carries the same two-click confirm — and its own selection,
-// separate from the unmatched and failed sections'.
-const selection = useUnknownSelection({
-  rows: () => ambiguousList.value.map((r) => ({ id: r.match_key, files: r.source_files ?? [] })),
-  onDismissFiles: (files) => { void onDismissFiles(files) },
-})
-
-function ambiguousSelectLabel(rec: MatchRecord): string {
-  return `Select ${unknownRowLabel(rec.source_files ?? [], rec.match_key)}`
-}
 
 function ambiguousDismissLabel(rec: MatchRecord): string {
   const files = rec.source_files ?? []
@@ -95,6 +84,18 @@ const cardState: CardStateApi = {
 }
 
 const ambiguousList = computed(() => matchesStore.ambiguousRecords)
+
+// Bulk dismiss for this section. Same verb as the per-card button, applied
+// wider, so it carries the same two-click confirm — and its own selection,
+// separate from the unmatched and failed sections'.
+const selection = useUnknownSelection({
+  rows: () => ambiguousList.value.map((r) => ({ id: r.match_key, files: r.source_files ?? [] })),
+  onDismissFiles: (files) => { void onDismissFiles(files) },
+})
+
+function ambiguousSelectLabel(rec: MatchRecord): string {
+  return `Select ${unknownRowLabel(rec.source_files ?? [], rec.match_key)}`
+}
 // Template-facing aliases for the store getters (the template referenced the
 // former props by bare name).
 const unknownRecords = computed(() => matchesStore.unknownRecords)
@@ -189,6 +190,7 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
           :selection="selection"
           row-noun="card"
           select-all-label="Select all needing review"
+          region-label="Needs your review bulk actions"
           :total-rows="ambiguousList.length"
         />
         <article
@@ -207,7 +209,7 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
                 :aria-checked="selection.isSelected(rec.match_key) ? 'true' : 'false'"
                 :aria-label="ambiguousSelectLabel(rec)"
                 :disabled="writesLocked"
-                :title="lockReason"
+                :title="lockReason || undefined"
                 @click.stop="selection.toggleSelected(rec.match_key)"
               >
                 <span class="leaf-checkbox-glyph" aria-hidden="true">{{ selection.isSelected(rec.match_key) ? '✓' : '' }}</span>

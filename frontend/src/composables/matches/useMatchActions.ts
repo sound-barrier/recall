@@ -1,4 +1,5 @@
 import { computed } from 'vue'
+import { dismissFailureMessage } from '@/match/match-label-helpers'
 
 import {
   DeleteMatchMoment,
@@ -382,22 +383,31 @@ export function useMatchActions() {
     }
   }
 
-  // Dismiss — suppress every file a card carries, sequentially: each
-  // PUT is idempotent, so a partial failure surfaces the first error and
-  // re-clicking Dismiss is a clean retry over the survivors. The reloads
-  // run either way (self-healing refetch), and reach the wider cluster
-  // because a dismissal leaves the pending count and the failure ledger,
-  // not just the records list.
+  // Dismiss — suppress every file a card carries, sequentially: each PUT is
+  // idempotent and there is no bulk route, so this is the shape the API
+  // leaves. It does NOT abort on the first failure. That was defensible
+  // while the only caller was a single card passing one or two filenames and
+  // a re-click was a clean retry; the bulk bar can pass a whole folder and
+  // clears the ticks as it fires, so an early return would abandon the rest
+  // with no way back to them. Every file gets its attempt, and the error
+  // names how many did not land rather than only the first one's words.
+  //
+  // The reloads run either way (self-healing refetch), and reach the wider
+  // cluster because a dismissal leaves the pending count and the failure
+  // ledger, not just the records list.
   async function onDismissFiles(filenames: string[]) {
     if (!guardWrite()) return
-    try {
-      for (const f of filenames) await IgnoreScreenshot(f)
-    } catch (e) {
-      onError(String(e))
-    } finally {
-      await reloadIgnored()
-      await reloadCluster()
+    const failures: string[] = []
+    for (const f of filenames) {
+      try {
+        await IgnoreScreenshot(f)
+      } catch (e) {
+        failures.push(`${f}: ${String(e)}`)
+      }
     }
+    if (failures.length > 0) onError(dismissFailureMessage(filenames.length, failures))
+    await reloadIgnored()
+    await reloadCluster()
   }
 
   return {

@@ -6,7 +6,13 @@ import { onScopeDispose, ref } from 'vue'
 // inside the window disarms and fires. Keyed, so concurrent arms on
 // sibling cards don't collide; instances are independent, so two
 // sections can never cross-arm each other's keys.
-export function useArmedAction(windowMs = 3000) {
+/**
+ * How long a destructive confirm stays armed. Shared with the bulk bar so the
+ * two-click rule is one decision rather than two that can drift.
+ */
+export const ARM_WINDOW_MS = 3000
+
+export function useArmedAction(windowMs = ARM_WINDOW_MS) {
   const armed = ref<Set<string>>(new Set())
   const timers: Record<string, ReturnType<typeof setTimeout>> = {}
 

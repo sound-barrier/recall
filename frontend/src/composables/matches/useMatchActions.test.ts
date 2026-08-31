@@ -133,20 +133,36 @@ describe('useMatchActions — post-mutation reload scope', () => {
     expect(api.GetNewScreenshotCount).toHaveBeenCalledTimes(1)
   })
 
-  // A mid-loop failure aborts the loop — files AFTER the failed one are
-  // NOT attempted this pass — but still reloads, so the card shrinks to
-  // its survivors and a re-click retries cleanly over exactly them.
-  it('a mid-loop dismiss failure aborts the remainder, surfaces the error, and still reloads', async () => {
+  // A mid-loop failure no longer abandons the rest. This USED to abort, which
+  // was defensible while the only caller was a single card passing one or two
+  // filenames and a re-click was a clean retry over the survivors. The bulk
+  // bar can pass a whole folder and clears the ticks as it fires, so an early
+  // return would strand files the user can no longer see selected.
+  it('keeps going after a mid-loop dismiss failure, so no file is silently abandoned', async () => {
     api.IgnoreScreenshot
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(new Error('store exploded'))
     const { onDismissFiles } = await boot()
-    await onDismissFiles(['ok.png', 'boom.png', 'never-reached.png'])
+    await onDismissFiles(['ok.png', 'boom.png', 'still-tried.png'])
 
-    expect(api.IgnoreScreenshot).toHaveBeenCalledTimes(2)
-    expect(api.IgnoreScreenshot).not.toHaveBeenCalledWith('never-reached.png')
+    expect(api.IgnoreScreenshot).toHaveBeenCalledTimes(3)
+    expect(api.IgnoreScreenshot).toHaveBeenCalledWith('still-tried.png')
     expect(api.GetIgnoredScreenshots).toHaveBeenCalledTimes(1)
     expect(api.GetNewScreenshotCount).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports how many of the attempted files did not land', async () => {
+    // The count is the point: "1 of 3" says most of it worked AND that
+    // something is still sitting there.
+    api.IgnoreScreenshot
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('store exploded'))
+    const app = useAppStore()
+    const setError = vi.spyOn(app, 'setErrorFromRaw')
+    const { onDismissFiles } = await boot()
+    await onDismissFiles(['ok.png', 'boom.png', 'fine.png'])
+
+    expect(setError).toHaveBeenCalledWith(expect.stringContaining('Could not dismiss 1 of 3 screenshots'))
   })
 
   // Every remaining status/data write must stay NARROW. A handler that

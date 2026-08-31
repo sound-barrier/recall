@@ -97,6 +97,7 @@ const { writesLocked, lockReason } = useWriteGate()
       :selection="selection"
       row-noun="screenshot"
       select-all-label="Select all failed"
+      region-label="Failed screenshots bulk actions"
       :total-rows="failedFiles.length"
     />
 
@@ -117,7 +118,7 @@ const { writesLocked, lockReason } = useWriteGate()
             :aria-checked="selection.isSelected(row.filename) ? 'true' : 'false'"
             :aria-label="`Select ${row.filename}`"
             :disabled="writesLocked"
-            :title="lockReason"
+            :title="lockReason || undefined"
             @click.stop="selection.toggleSelected(row.filename)"
           >
             <span class="leaf-checkbox-glyph" aria-hidden="true">{{ selection.isSelected(row.filename) ? '✓' : '' }}</span>

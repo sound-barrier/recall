@@ -77,4 +77,25 @@ for (const theme of THEMES) {
     const results = await runAx(page)
     expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([])
   })
+
+  // The Unknown tab's bulk bar, which the matrix above never reaches either:
+  // it is `v-if="selectedCount > 0"`, so a sweep that ticks nothing never
+  // renders it, and its whole chrome — the count line, the armed destructive
+  // fill — would ship uncontrasted in all four themes.
+  test(`a11y: Unknown bulk bar, armed (${theme} theme) has no axe violations`, async ({ page }) => {
+    await openView(page, 'tab-unknown', theme)
+    const box = page.getByRole('checkbox').first()
+    await expect(box).toBeVisible()
+    await box.click()
+
+    // Armed as well as raised: the confirm is a filled destructive button, a
+    // different color pairing from the one that armed it.
+    const dismiss = page.getByRole('button', { name: /^Dismiss / })
+    await expect(dismiss).toBeVisible()
+    await dismiss.click()
+    await expect(page.getByRole('button', { name: /^Confirm dismissing / })).toBeVisible()
+
+    const results = await runAx(page)
+    expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([])
+  })
 }

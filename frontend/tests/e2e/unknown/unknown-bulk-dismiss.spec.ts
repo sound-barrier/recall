@@ -20,6 +20,7 @@
 import type { Route } from '@playwright/test'
 
 import { test, expect } from '../_fixtures'
+import { mockCoachSession, pinSessionResume } from '../_coach'
 
 const card = (key: string, files: string[]) => ({
   match_key: key,
@@ -64,6 +65,11 @@ test.describe('Unknown tab — bulk dismiss', () => {
 
     await page.getByRole('checkbox', { name: 'Select a.png' }).click()
     await page.getByRole('checkbox', { name: /^Select match-2026-05-10T21-30-00/ }).click()
+
+    // Ticking is not opening. The checkbox sits inside the card head, whose
+    // own click expands the card — and on an ambiguous card also opens the
+    // source preview and preloads every candidate's screenshot.
+    await expect(page.locator('.unknown-card.expanded')).toHaveCount(0)
 
     // The bar names BOTH counts: what was ticked, and what actually goes.
     const bulk = page.getByRole('button', { name: /^Dismiss 2 cards \(3 screenshots\)$/ })
@@ -186,12 +192,29 @@ test.describe('Unknown tab — bulk dismiss', () => {
     await expect(page.getByRole('checkbox', { name: 'Select junk1.png' })).not.toBeChecked()
   })
 
-  // NOTE: there is deliberately no write-gate case here. While a coaching
-  // session is open the Unknown tab renders nothing at all — the records on
-  // screen are the coach's loaned corpus, so there is no card, no checkbox,
-  // and no per-card Dismiss either. The checkbox still disables on the gate as
-  // defense in depth; that is asserted in UnknownBulkBar.test.ts, where the
-  // locked state can actually be reached.
+  test('a coaching session locks the failed section, which is the coach own folder', async ({ page }) => {
+    // The record-backed sections DO go empty during a session — those records
+    // are the player's loaned corpus. The failed ledger does not: it is a
+    // query over the COACH's own screenshots folder, untouched by the loan,
+    // so a coach with any unreadable screenshot of their own still sees this
+    // section and its checkboxes while a session is open. They must be locked
+    // like every other write on the tab.
+    await mockCoachSession(page, { active: true })
+    await pinSessionResume(page)
+    await page.route('**/api/v1/screenshots/failed', async (route: Route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify([{ filename: 'junk1.png', error: 'no text found', attempts: 3, parked: true }]),
+      })
+    })
+
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
+    const box = page.getByRole('checkbox', { name: 'Select junk1.png' })
+    await expect(box).toBeVisible()
+    await expect(box).toBeDisabled()
+    await expect(box).toHaveAttribute('title', /end the session/i)
+  })
 })
 
 test.describe('Unknown tab — bulk dismiss on the ambiguous section', () => {

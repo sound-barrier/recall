@@ -436,15 +436,18 @@
 }
 
 /* ─── Bulk-select checkboxes on the triage cards ──────────────
-   .leaf-checkbox ships at opacity 0.32 and is brightened by selectors
-   scoped to the matches list (.leaf-row:hover, .leaf-row.is-ticked). None
-   of those exist here, so without these rules every box on this tab would
-   sit permanently dimmed — a control at a third opacity, which is neither
-   findable nor AA. Same Gmail shape, keyed on this tab's own card. */
+   .leaf-checkbox ships at opacity 0.32 and is brightened by selectors scoped
+   to the matches list (.leaf-row:hover, .leaf-row.is-ticked). None of those
+   exist here, so without these rules a box on this tab would never brighten
+   at all — not on hover, not when ticked, not on focus.
+
+   It is still 0.32 AT REST, exactly as it is in the matches list. That is the
+   Gmail shape this deliberately mirrors: the checkbox is a quiet affordance
+   until you reach for it. Matching the precedent is the point; if the resting
+   contrast is wrong it is wrong in both places and should be fixed in both. */
 
 .unknown-card-head .unknown-select {
   flex-shrink: 0;
-  margin-right: 0.55rem;
 
   /* A <button> brings back the UA's `buttontext`, which computes to pure
      black — an untokenized color the theme snapshot rightly flags. The glyph

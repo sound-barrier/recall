@@ -326,6 +326,28 @@ changed bullets carry an inline re-evaluation note:
   CI. The WebKit timeout above is a SEPARATE, still-live environmental flake and
   is not fixed by that bump.)
 
+## 4b. `.btn.danger` is unreadable under the two dark themes
+
+`.btn.danger` (`styles/buttons.css:97`) pairs `background: var(--loss)` with
+`color: var(--primary-text-on-danger)`. That token is `#fff` at `:root` and is
+overridden only under `high-contrast`. But `--loss` was deliberately lightened
+for the dark themes — `#f9a` under `dark`, `#f35` under `night` — so those two
+render white on a light pink. axe measures the `dark` pair at **2.02:1**
+against a 4.5 threshold.
+
+Latent, not shipped-visible: every `.btn.danger` in the app
+(`SettingsBackupRestore`, `SettingsAdvanced` ×2, `IngestView`) sits behind an
+armed two-click confirm, so nothing renders one during the axe sweep — a probe
+with Settings → Advanced expanded finds zero on screen. That is exactly why it
+has survived: the a11y matrix cannot reach a state you have to arm.
+
+Found while giving the Unknown tab's bulk bar the same treatment, where the
+identical pairing failed the moment a test armed it. The bar's fix was to stop
+filling with `--loss` and sit the armed button on `--surface` with a doubled
+`--loss` edge; `.btn.danger` wants either that or a per-theme
+`--primary-text-on-danger`. Whichever is chosen, the a11y spec needs a case
+that ARMS a destructive confirm, or the next one will hide the same way.
+
 ## 5. Activate the schema-migration path — the deliberate last 1.0 commit
 
 `NewSQLStore` sets only `PRAGMA foreign_keys = ON` (`pkg/db/store.go`); there

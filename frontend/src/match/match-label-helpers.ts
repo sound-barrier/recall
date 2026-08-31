@@ -64,3 +64,16 @@ export function formatUnknownMapLabel(rec: Pick<MatchRecord, 'data'>): string {
   if (raw) return `Unknown map (${raw}?)`
   return 'Unknown map'
 }
+
+/**
+ * What to say when a bulk dismiss only partly landed.
+ *
+ * The count is the point: a sweep over a folder can fail on its ninth file,
+ * and "could not dismiss 1 of 40" tells the reader both that most of it
+ * worked and that something is still there. One failure keeps its own words,
+ * because with a single cause the cause is the useful part.
+ */
+export function dismissFailureMessage(attempted: number, failures: readonly string[]): string {
+  const head = `Could not dismiss ${failures.length} of ${pluralize(attempted, 'screenshot')}`
+  return failures.length === 1 ? `${head} — ${failures[0]}` : head
+}
