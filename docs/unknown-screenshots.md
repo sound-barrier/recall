@@ -172,10 +172,23 @@ Typical causes:
 - Custom UI colors (e.g. colorblind settings) defeat the scoreboard
   detection.
 
-Failed files are **retried on every parse run** — that's why the
-run counter keeps including them. If a file will never parse, use
-**Delete forever** to stop retrying it (the file itself stays on
-disk), exactly like an unmatched card.
+Failed files are retried on the next few parse runs, then **parked**:
+after three failed attempts Recall stops retrying automatically, the
+row gains a **Parked — won't retry automatically** badge, and the file
+leaves the Run Parse count (which used to promise the same doomed
+files forever). The Parse tab says how many are parked; the end-of-run
+toast reports each run's tally ("4 read · 2 failed to read").
+
+A parked row offers two ways out:
+
+- **Retry** resets the attempt count — the file re-enters the Run
+  Parse count on the spot. Use it after fixing whatever was wrong
+  (a re-downloaded file, an updated Tesseract). **Re-parse all
+  screenshots** (Settings → Advanced) also re-attempts every parked
+  file.
+- **Dismiss** stops trying for good, exactly like an unmatched card
+  (the file itself stays on disk; restore it anytime under
+  Settings → Advanced → Manage ignored files).
 
 **Save diagnostic bundle** (in the section header) builds a single
 `.zip` to attach to a bug report: the failing screenshots, each
@@ -190,13 +203,17 @@ verbatim, so glance over them before sharing publicly.
 
 If a PNG ended up in your screenshots folder that isn't actually
 an Overwatch match (a desktop screenshot, a screenshot from another
-game, etc.), the simplest fix is:
+game, etc.), expand its card and hit **Dismiss** — every file the
+card carries joins the ignore list, its rows leave the database on
+the spot, and future parse runs skip it. The file stays on disk, and
+**Settings → Advanced → Manage ignored files** can bring it back.
+The ambiguous "Needs your review" cards carry the same button, so
+junk the resolver keeps offering candidates for is dismissible right
+there too.
 
-1. Delete the offending PNG from your screenshots folder.
-2. **Settings → Advanced → Clear Parse Database**.
-3. Re-run **Parse → Run Parse**.
-
-This rebuilds the database cleanly without the orphan.
+Dismissing is per-file: a match that still has *other* screenshots
+keeps them (and stays on the Matches list) — only the dismissed
+file's contribution goes.
 
 ## File a bug report
 
@@ -300,6 +317,13 @@ panel's inline banner — three surfaces, one signal.
    records parsed by an OLDER Recall version (before this gap-
    detection feature shipped) — they have no preserved OCR text
    to consult, so only re-running Tesseract recovers them.
+3. **Dismiss the warning** if you don't need it. Unlike the other
+   sections' Dismiss, this one touches nothing — the match and its
+   data stay exactly as they are (the promised YAML fix must still
+   find them); the card just moves behind an
+   **N acknowledged — show** disclosure, where **Show again**
+   restores it. One click, no confirm, because it's reversible on
+   the spot.
 
 There is **no manual edit affordance** — you can't type a hero or
 map name into a record. The whole point of the gate is that
