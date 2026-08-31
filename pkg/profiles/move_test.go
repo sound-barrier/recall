@@ -125,17 +125,17 @@ func sidecarPresence(t *testing.T, s db.Store, key string) map[string]bool {
 	_, hasPlayMode := playModes[key]
 	_, hasCoachNote := coachNotes[key]
 	return map[string]bool{
-		"annotation":       hasAnnotation,
-		"hidden":           hidden[key],
+		"annotation":        hasAnnotation,
+		"hidden":            hidden[key],
 		"reference_gap_ack": ackedGaps[key],
-		"pinned":           pinned[key],
-		"review":           hasReview,
-		"user_data":        hasUserData,
-		"queue":            hasQueue,
-		"play_mode":        hasPlayMode,
-		"coach_note":       hasCoachNote,
-		"moment":           len(moments[key]) > 0,
-		"self_review_note": len(selfNotes[key]) > 0,
+		"pinned":            pinned[key],
+		"review":            hasReview,
+		"user_data":         hasUserData,
+		"queue":             hasQueue,
+		"play_mode":         hasPlayMode,
+		"coach_note":        hasCoachNote,
+		"moment":            len(moments[key]) > 0,
+		"self_review_note":  len(selfNotes[key]) > 0,
 	}
 }
 
