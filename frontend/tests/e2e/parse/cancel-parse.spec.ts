@@ -76,7 +76,7 @@ test.describe('cancel-parse — Stop affordance + SSE confirmation', () => {
       })
     })
     await page.route('**/api/v1/screenshots/pending-count', async (route: Route) => {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ count: 5 }) })
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ count: 5, parked: 0 }) })
     })
 
     // POST /api/v1/parses never resolves — keeps parseBusy=true so

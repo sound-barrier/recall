@@ -25,7 +25,7 @@ test.describe('Parse tab refreshes the pending-screenshot count', () => {
     let calls = 0
     await page.route('**/api/v1/screenshots/pending-count', (route: Route) => {
       calls += 1
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ count: calls === 1 ? 3 : 8 }) })
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ count: calls === 1 ? 3 : 8, parked: 0 }) })
     })
 
     await page.goto('/')

@@ -33,6 +33,7 @@ const {
   parseBusy,
   cancelingParse,
   newScreenshotCount,
+  parkedCount,
   lastParsedAt,
   parseProgress,
   parseLog,
@@ -52,7 +53,11 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
 const runParseTitle = computed(() => {
   if (writesLocked.value) return lockReason.value
   if (!tesseractReady.value) return 'Locate Tesseract in Settings → Engine first.'
-  if (newScreenshotCount.value === 0) return 'All screenshots in the folder have already been parsed.'
+  if (newScreenshotCount.value === 0) {
+    return parkedCount.value > 0
+      ? 'Nothing new to parse — parked files retry from the Unknown tab, or via Re-parse All.'
+      : 'All screenshots in the folder have already been parsed.'
+  }
   return ''
 })
 </script>
@@ -161,6 +166,10 @@ const runParseTitle = computed(() => {
                 Fix in Settings →
               </button>
             </p>
+            <p v-else-if="newScreenshotCount === 0 && parkedCount > 0 && !parseBusy" class="setting-meta blocked">
+              <span class="block-mark" aria-hidden="true">◎</span>
+              All new screenshots parsed — {{ parkedCount }} parked after repeated failures.
+            </p>
             <p v-else-if="newScreenshotCount === 0 && !parseBusy" class="setting-meta blocked">
               <span class="block-mark" aria-hidden="true">◎</span>
               All screenshots already parsed — nothing new in the folder.
@@ -172,6 +181,10 @@ const runParseTitle = computed(() => {
             >
               <span class="meta-dot" />
               Last run · {{ formatRelativeTime(lastParsedAt) }} · {{ matchedCount + unknownCount }} record{{ (matchedCount + unknownCount) === 1 ? '' : 's' }} on record
+            </p>
+            <p v-if="parkedCount > 0 && (newScreenshotCount ?? 0) > 0 && !parseBusy" class="setting-meta">
+              <span class="meta-dot" />
+              {{ parkedCount }} parked after repeated failures — retry from the Unknown tab.
             </p>
           </div>
           <div class="setting-control">

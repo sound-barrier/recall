@@ -20,6 +20,13 @@ export function UnignoreScreenshot(filename: string): Promise<void> {
   return unwrapVoid(sdk.unignoreScreenshot({ path: { filename } }))
 }
 
+// Retry a failed screenshot: delete its failure record. The record IS
+// the attempt count, so a parked file re-enters the pending count on
+// the spot. Idempotent on files with no failure record.
+export function RetryFailedFile(filename: string): Promise<void> {
+  return unwrapVoid(sdk.retryFailedFile({ path: { filename } }))
+}
+
 // Bulk truncate the suppress-list — Settings panel's "Re-enable all".
 export function ClearIgnoredScreenshots(): Promise<void> {
   return unwrapVoid(sdk.clearIgnoredScreenshots())

@@ -1,6 +1,6 @@
 import { onBeforeUnmount, onMounted, type Ref } from 'vue'
 import { EventsOn, EventsOff, type MatchRecord, type TesseractStatus } from '@/api-client'
-import type { ParseProgressEvent, WatchActivityEvent } from '@/components/ingest/parse-progress'
+import type { ParseProgressEvent, ParseRunSummary, WatchActivityEvent } from '@/components/ingest/parse-progress'
 
 // Live-stream subscriptions for the three SSE events emitted during
 // ingest: parse-progress (per-file ticks), parse-complete (batch
@@ -20,9 +20,11 @@ export interface EventStreamApi {
   // Watcher pending-file tally for the masthead dot. Optional - absent
   // consumers simply never see watch-activity payloads.
   watchActivity?: Ref<WatchActivityEvent | null>
-  // Called when a parse batch finishes. Should reload records and
-  // refresh whatever the caller wants invalidated.
-  onParseComplete: () => Promise<void> | void
+  // Called when a parse batch finishes, with the run's own tally when
+  // the event carried one (a payload-less legacy event passes
+  // undefined). Should reload records and refresh whatever the caller
+  // wants invalidated.
+  onParseComplete: (summary?: ParseRunSummary) => Promise<void> | void
   // Called when a parse run was aborted via CancelParse. Distinct
   // hook so the consumer can flip a "canceling…" state back to
   // idle, render different toast copy, etc. Optional — if absent,
@@ -43,6 +45,16 @@ export interface EventStreamApi {
 
 const DEFAULT_LOG_CAP = 50
 
+// Narrow an event payload to a run summary without trusting the wire:
+// both transports can deliver null / "{}" from older emit shapes.
+function isRunSummary(data: unknown): data is ParseRunSummary {
+  return (
+    typeof data === 'object' && data !== null
+    && typeof (data as ParseRunSummary).files_parsed === 'number'
+    && typeof (data as ParseRunSummary).files_failed === 'number'
+  )
+}
+
 export function useEventStream(api: EventStreamApi) {
   const cap = api.logCap ?? DEFAULT_LOG_CAP
 
@@ -61,7 +73,12 @@ export function useEventStream(api: EventStreamApi) {
   }
 
   function subscribe() {
-    EventsOn('parse-complete', () => { void api.onParseComplete() })
+    // The payload is best-effort: a run summary when present, undefined
+    // for the legacy "{}"/empty shapes — isRunSummary guards, because
+    // JSON.parse('{}') is truthy but carries no tally.
+    EventsOn('parse-complete', (data: unknown) => {
+      void api.onParseComplete(isRunSummary(data) ? data : undefined)
+    })
     EventsOn('parse-progress', (data: ParseProgressEvent | null) => {
       if (!data) return
       api.parseProgress.value = data

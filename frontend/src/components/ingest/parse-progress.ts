@@ -14,4 +14,8 @@
 // WatchActivityEvent: drives the masthead's "watching · N new" dot;
 // `last_seen_at` (RFC 3339) feeds its tooltip. Session-scoped by design:
 // there is no resync endpoint, the dot simply starts idle on reload.
-export type { ParseProgressEvent, WatchActivityEvent } from '@/client/types.gen'
+//
+// ParseRunSummary rides parse-complete: the finished run's own tally
+// ("X read · Y failed to read"). A toast, not durable state — a client
+// that reconnects after missing the event gets no replay.
+export type { ParseProgressEvent, ParseRunSummary, WatchActivityEvent } from '@/client/types.gen'

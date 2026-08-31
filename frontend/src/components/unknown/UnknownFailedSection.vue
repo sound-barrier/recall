@@ -20,7 +20,7 @@ import { useMatchActions } from '@/composables/matches/useMatchActions'
 // keeps the run counter honest.
 
 const parseStore = useParseStore()
-const { onDismissFiles } = useMatchActions()
+const { onDismissFiles, onRetryFailedFile } = useMatchActions()
 
 const failedFiles = computed(() => parseStore.failedFiles)
 
@@ -72,10 +72,11 @@ const { writesLocked, lockReason } = useWriteGate()
         </button>
       </div>
       <p class="failed-blurb">
-        Recall could not read these screenshots at all — each is retried on
-        the next few parse runs. Dismiss one to stop trying, or save a
-        diagnostic bundle (these images + logs + version info) to attach
-        to a bug report.
+        Recall could not read these screenshots. Each is retried on the
+        next few parse runs, then parked so your Run Parse count stays
+        honest. Retry a parked file, dismiss one to stop trying, or save
+        a diagnostic bundle (these images + logs + version info) to
+        attach to a bug report.
       </p>
       <p v-if="bundleSavedAs" class="failed-bundle-saved" role="status">
         ✓ Saved {{ bundleSavedAs }}
@@ -97,10 +98,25 @@ const { writesLocked, lockReason } = useWriteGate()
             <span class="unknown-key mono">{{ row.filename }}</span>
             <span class="unknown-src-count">
               {{ row.attempts }} attempt{{ row.attempts === 1 ? '' : 's' }} · last {{ formatParsedAt(row.last_failed_at) }}
+              <span v-if="row.parked" class="badge failed-parked-badge">Parked — won't retry automatically</span>
             </span>
           </div>
         </div>
         <div class="unknown-head-rhs">
+          <!-- Retry only on PARKED rows: a below-cap row already retries
+               on the next run, and a stored degraded row would re-read
+               nothing — the button would be a lie on either. -->
+          <button
+            v-if="row.parked"
+            type="button"
+            class="btn"
+            :aria-label="`Retry ${row.filename}`"
+            :disabled="writesLocked"
+            :title="lockReason || 'Reset the attempt count — the file re-enters the Run Parse count.'"
+            @click="onRetryFailedFile(row.filename)"
+          >
+            Retry
+          </button>
           <button
             type="button"
             class="unknown-delete-btn"

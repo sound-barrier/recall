@@ -128,7 +128,13 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # (the query module was already eager via the sitting store; only the
 # store's own code grew). Everything visible -- the fork, the dossier, the
 # drawer -- is lazy. Measured 356830B.
-: "${MAX_INITIAL_JS_BYTES:=358000}"
+# 2026-08: 358000 -> 360000 -- honest parse accounting's eager slice: the
+# {count, parked} pending shape through the store, the parse-complete
+# summary threading (event narrowing + finishParseRun's toast state),
+# and the Run Parse copy states. The outcome toast itself is a lazy
+# overlay chunk; only the lifecycle plumbing rides the entry graph.
+# Measured 358152B.
+: "${MAX_INITIAL_JS_BYTES:=360000}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
@@ -332,7 +338,11 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # 2026-08: 2166000 -> 2174000 -- the coaching S-campaign's lazy chunks: the
 # identity fork + typeahead, the player dossier and its notes query, the
 # earlier-notes drawer, the team-voice branches. Measured 2168268B.
-: "${MAX_TOTAL_JS_BYTES:=2174000}"
+# 2026-08: 2174000 -> 2177000 -- the dismiss-and-parse-accounting campaign's
+# lazy chunks: the ParseOutcomeToast overlay, the Unknown tab's Dismiss
+# extension (every-file loop + the ambiguous card's zone), the ref-gap
+# acknowledge disclosure, the parked badge + Retry. Measured 2175021B.
+: "${MAX_TOTAL_JS_BYTES:=2177000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset

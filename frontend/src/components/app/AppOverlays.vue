@@ -45,6 +45,7 @@ const MatchAnchorToast = lazyOverlay(() => import('@/components/matches/toasts/M
 const MatchUndoToast = lazyOverlay(() => import('@/components/matches/toasts/MatchUndoToast.vue'))
 const TiltNudgeToast = lazyOverlay(() => import('@/components/matches/toasts/TiltNudgeToast.vue'))
 const SessionSummaryToast = lazyOverlay(() => import('@/components/matches/toasts/SessionSummaryToast.vue'))
+const ParseOutcomeToast = lazyOverlay(() => import('@/components/ingest/ParseOutcomeToast.vue'))
 const FocusNudgeToast = lazyOverlay(() => import('@/components/matches/toasts/FocusNudgeToast.vue'))
 const MatchScreenshotLightbox = lazyOverlay(() => import('@/components/matches/detail/MatchScreenshotLightbox.vue'))
 const KeyboardShortcutsModal = lazyOverlay(() => import('@/components/app/KeyboardShortcutsModal.vue'))
@@ -105,6 +106,7 @@ const {
   ignoredPanelOpen,
   ignoredScreenshots,
   sessionToast,
+  parseOutcome,
   currentSession,
 } = storeToRefs(parseStore)
 
@@ -167,6 +169,15 @@ const lightboxSrc = computed(() => {
   <SessionSummaryToast
     :state="sessionToast"
     @dismiss="parseStore.dismissSessionToast"
+  />
+
+  <!-- End-of-run outcome — "X read · Y failed to read" off the
+       parse-complete payload, with the door to the Unknown tab's triage
+       when anything failed. Transient by design; the Failed section
+       keeps the durable record. -->
+  <ParseOutcomeToast
+    :state="parseOutcome"
+    @dismiss="parseStore.dismissParseOutcome"
   />
 
   <!-- What to focus on this session: the top three of the player's list,
