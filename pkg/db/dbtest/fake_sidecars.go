@@ -236,6 +236,34 @@ func (f *Fake) LoadHiddenKeys() (map[string]bool, error) {
 	return out, nil
 }
 
+// Reference-gap acknowledgements — mirrors SQLStore's presence-is-state
+// sidecar; both writes idempotent.
+
+func (f *Fake) AcknowledgeReferenceGap(matchKey string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.AckedReferenceGaps == nil {
+		f.AckedReferenceGaps = map[string]bool{}
+	}
+	f.AckedReferenceGaps[matchKey] = true
+	return nil
+}
+
+func (f *Fake) UnacknowledgeReferenceGap(matchKey string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.AckedReferenceGaps, matchKey)
+	return nil
+}
+
+func (f *Fake) LoadAcknowledgedReferenceGaps() (map[string]bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make(map[string]bool, len(f.AckedReferenceGaps))
+	maps.Copy(out, f.AckedReferenceGaps)
+	return out, nil
+}
+
 // ── The player's own timestamped moments ──────────────────────────────────
 
 func (f *Fake) UpsertMatchMoment(m db.MatchMoment) (db.MatchMoment, error) {

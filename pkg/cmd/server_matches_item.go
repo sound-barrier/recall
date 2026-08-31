@@ -488,3 +488,33 @@ func handleClearMatchPlayMode(a *app.App) http.HandlerFunc {
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
+
+// handleAcknowledgeReferenceGap dismisses a match's reference-data-gap
+// warning on the Unknown tab; its DELETE twin below restores it. The
+// acknowledgement itself is the resource, so neither verb carries a
+// body — the ignore-family shape, not visibility's {hidden:bool}.
+func handleAcknowledgeReferenceGap(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		matchKey, ok := matchKeyFromPath(w, r)
+		if !ok {
+			return
+		}
+		if writeError(w, r, a.AcknowledgeReferenceGap(matchKey)) {
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func handleUnacknowledgeReferenceGap(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		matchKey, ok := matchKeyFromPath(w, r)
+		if !ok {
+			return
+		}
+		if writeError(w, r, a.UnacknowledgeReferenceGap(matchKey)) {
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}

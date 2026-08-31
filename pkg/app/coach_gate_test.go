@@ -44,7 +44,13 @@ func gatedPerMatchWrites(a *app.App) map[string]func() error {
 		"UnhideMatch":           func() error { return a.UnhideMatch("k") },
 		"PinMatch":              func() error { return a.PinMatch("k") },
 		"UnpinMatch":            func() error { return a.UnpinMatch("k") },
-		"HardDeleteMatch":       func() error { return a.HardDeleteMatch("k") },
+		"AcknowledgeReferenceGap": func() error {
+			return a.AcknowledgeReferenceGap("k")
+		},
+		"UnacknowledgeReferenceGap": func() error {
+			return a.UnacknowledgeReferenceGap("k")
+		},
+		"HardDeleteMatch": func() error { return a.HardDeleteMatch("k") },
 	}
 }
 
@@ -174,10 +180,11 @@ func TestCoachSession_GateLiftsOnClose(t *testing.T) {
 // corpus mutation. The completeness net below holds every exported method
 // starting with one of these to "gated, or exempt with a stated reason".
 var mutatingVerbs = []string{
-	"Add", "Apply", "Bulk", "Clear", "Create", "Delete", "Demote", "Finish", "Hide",
-	"Ignore", "Import", "Move", "Parse", "Pin", "Promote", "Put", "ReParse",
-	"Remove", "Rename", "Reset", "Resolve", "Restore", "Retry", "Seed", "Set",
-	"Start", "Switch", "Unhide", "Unignore", "Unpin", "Update",
+	"Acknowledge", "Add", "Apply", "Bulk", "Clear", "Create", "Delete", "Demote",
+	"Finish", "Hide", "Ignore", "Import", "Move", "Parse", "Pin", "Promote",
+	"Put", "ReParse", "Remove", "Rename", "Reset", "Resolve", "Restore",
+	"Retry", "Seed", "Set", "Start", "Switch", "Unacknowledge", "Unhide",
+	"Unignore", "Unpin", "Update",
 }
 
 // ungatedByDesign is every mutating-sounding App method the gate must NOT

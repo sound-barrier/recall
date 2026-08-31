@@ -129,6 +129,17 @@ export function SetMatchPin(matchKey: string, pinned: boolean): Promise<void> {
   return unwrapVoid(sdk.setMatchPin({ path: { match_key: matchKey }, body: { pinned } }))
 }
 
+// Dismiss / restore a match's reference-data-gap warning. The match is
+// untouched — only the Unknown tab's gap card moves behind (or back out
+// of) its "N acknowledged" disclosure. Both directions idempotent.
+export function AcknowledgeReferenceGap(matchKey: string): Promise<void> {
+  return unwrapVoid(sdk.acknowledgeReferenceGap({ path: { match_key: matchKey } }))
+}
+
+export function UnacknowledgeReferenceGap(matchKey: string): Promise<void> {
+  return unwrapVoid(sdk.unacknowledgeReferenceGap({ path: { match_key: matchKey } }))
+}
+
 // Soft-delete a match. Reversible: pass hidden=false to restore. Both
 // directions are idempotent.
 export function SetMatchVisibility(matchKey: string, hidden: boolean): Promise<void> {

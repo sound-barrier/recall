@@ -179,6 +179,7 @@ func (s *SQLStore) Clear() error {
 		"match_annotations", // match_annotation_members + _tags cascade
 		"match_moments",     // the player's own timestamped moments; no FK to cascade through
 		"hidden_matches",
+		"acknowledged_reference_gaps",
 		"pinned_matches",
 		"ambiguous_candidates",
 		"ignored_screenshots",

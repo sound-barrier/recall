@@ -39,13 +39,14 @@ import (
 func (a *App) loadSidecars() aggregate.Sidecars {
 	annos, _ := a.store.LoadAnnotations()
 	hidden, _ := a.store.LoadHiddenKeys()
+	ackedGaps, _ := a.store.LoadAcknowledgedReferenceGaps()
 	reviews, _ := a.store.LoadReviews()
 	pinned, _ := a.store.LoadPinnedKeys()
 	coachNotes, _ := a.store.LoadMatchCoachNotes()
 	moments, _ := a.store.LoadMatchMoments()
 	selfReviews, _ := a.store.LoadSelfReviewNotes()
 	return aggregate.Sidecars{
-		Annotations: annos, Hidden: hidden, Reviews: reviews,
+		Annotations: annos, Hidden: hidden, AckedRefGaps: ackedGaps, Reviews: reviews,
 		Pinned: pinned, CoachNotes: coachNotes, Moments: moments, SelfReviews: selfReviews,
 	}
 }
@@ -63,6 +64,7 @@ type aggregateInputs struct {
 	snap        db.Screenshots
 	annos       map[string]db.Annotation
 	hidden      map[string]bool
+	ackedGaps   map[string]bool
 	reviews     map[string]db.ReviewState
 	pinned      map[string]bool
 	queues      map[string]db.QueueState
@@ -80,6 +82,7 @@ func (a *App) loadAggregateInputs() (aggregateInputs, error) {
 		func() (err error) { s.snap, err = a.store.LoadAll(); return },
 		func() (err error) { s.annos, err = a.store.LoadAnnotations(); return },
 		func() (err error) { s.hidden, err = a.store.LoadHiddenKeys(); return },
+		func() (err error) { s.ackedGaps, err = a.store.LoadAcknowledgedReferenceGaps(); return },
 		func() (err error) { s.reviews, err = a.store.LoadReviews(); return },
 		func() (err error) { s.pinned, err = a.store.LoadPinnedKeys(); return },
 		func() (err error) { s.queues, err = a.store.LoadMatchQueues(); return },
@@ -106,6 +109,7 @@ func (a *App) aggregateAll() ([]match.Record, error) {
 	aggregate.AttachUserData(recs, d.userData)
 	aggregate.AttachAnnotations(recs, d.annos)
 	aggregate.AttachHidden(recs, d.hidden)
+	aggregate.AttachReferenceGapAcks(recs, d.ackedGaps)
 	aggregate.AttachPinned(recs, d.pinned)
 	aggregate.AttachReviews(recs, d.reviews)
 	aggregate.AttachCoachNotes(recs, d.coachNotes)

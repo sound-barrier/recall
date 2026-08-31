@@ -409,6 +409,17 @@ CREATE TABLE IF NOT EXISTS hidden_matches (
 ) STRICT;
 -- statement-end
 
+-- Acknowledged reference-data gaps: presence IS the acknowledged state
+-- (the hidden_matches pattern). The Unknown tab's gap card warns that a
+-- match's OCR'd hero/map didn't resolve against the shipped reference
+-- data; acknowledging hides the WARNING while the match and its rows
+-- stay — a future YAML update can still resolve it.
+CREATE TABLE IF NOT EXISTS acknowledged_reference_gaps (
+  match_key TEXT PRIMARY KEY,
+  acknowledged_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
+-- statement-end
+
 CREATE TABLE IF NOT EXISTS unknown_screenshots (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   filename TEXT NOT NULL,

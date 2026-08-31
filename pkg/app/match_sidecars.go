@@ -123,6 +123,24 @@ func (a *App) UnhideMatch(matchKey string) error {
 	return matchedit.Unhide(a.store, matchKey)
 }
 
+// AcknowledgeReferenceGap dismisses a match's reference-data-gap
+// warning on the Unknown tab — the match stays; only the warning hides,
+// restorably. Idempotent.
+func (a *App) AcknowledgeReferenceGap(matchKey string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
+	return matchedit.AcknowledgeReferenceGap(a.store, matchKey)
+}
+
+// UnacknowledgeReferenceGap restores the warning. Idempotent.
+func (a *App) UnacknowledgeReferenceGap(matchKey string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
+	return matchedit.UnacknowledgeReferenceGap(a.store, matchKey)
+}
+
 // PinMatch stars a match — the list renders pinned matches in a leading
 // section above the date groups. Idempotent.
 func (a *App) PinMatch(matchKey string) error {

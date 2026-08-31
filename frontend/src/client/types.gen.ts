@@ -1604,6 +1604,16 @@ export type MatchRecord = {
      */
     hidden?: boolean;
     /**
+     * True iff the user dismissed this match's reference-data-gap
+     * warning via
+     * `PUT /api/v1/matches/{match_key}/reference-gap-acknowledgement`.
+     * The match is untouched — the Unknown tab just moves its gap
+     * card behind the "N acknowledged" disclosure. Omitted (or
+     * false) otherwise.
+     *
+     */
+    reference_gap_acknowledged?: boolean;
+    /**
      * Who reviewed this match's VOD: `self` (the user) or
      * `coach` (a coach). Omitted entirely when the match has
      * not been reviewed (the implicit third state). Set via
@@ -2310,6 +2320,100 @@ export type SetMatchVisibilityResponses = {
 };
 
 export type SetMatchVisibilityResponse = SetMatchVisibilityResponses[keyof SetMatchVisibilityResponses];
+
+export type UnacknowledgeReferenceGapData = {
+    body?: never;
+    path: {
+        /**
+         * Match identity — same `match_key` value exposed in
+         * `MatchRecord`. URL-safe: the canonical form replaces every
+         * legacy colon separator with a dash, so no percent-encoding
+         * is required for paste-in-URL use
+         * (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+         * and `ambiguous-<filename>` variants the embedded filename
+         * still needs the usual encoding for spaces / unicode.
+         *
+         */
+        match_key: string;
+    };
+    query?: never;
+    url: '/api/v1/matches/{match_key}/reference-gap-acknowledgement';
+};
+
+export type UnacknowledgeReferenceGapErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * A coaching session holds the database read-only; end the session first.
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type UnacknowledgeReferenceGapError = UnacknowledgeReferenceGapErrors[keyof UnacknowledgeReferenceGapErrors];
+
+export type UnacknowledgeReferenceGapResponses = {
+    /**
+     * Warning restored (or was never acknowledged).
+     */
+    204: void;
+};
+
+export type UnacknowledgeReferenceGapResponse = UnacknowledgeReferenceGapResponses[keyof UnacknowledgeReferenceGapResponses];
+
+export type AcknowledgeReferenceGapData = {
+    body?: never;
+    path: {
+        /**
+         * Match identity — same `match_key` value exposed in
+         * `MatchRecord`. URL-safe: the canonical form replaces every
+         * legacy colon separator with a dash, so no percent-encoding
+         * is required for paste-in-URL use
+         * (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+         * and `ambiguous-<filename>` variants the embedded filename
+         * still needs the usual encoding for spaces / unicode.
+         *
+         */
+        match_key: string;
+    };
+    query?: never;
+    url: '/api/v1/matches/{match_key}/reference-gap-acknowledgement';
+};
+
+export type AcknowledgeReferenceGapErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * A coaching session holds the database read-only; end the session first.
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type AcknowledgeReferenceGapError = AcknowledgeReferenceGapErrors[keyof AcknowledgeReferenceGapErrors];
+
+export type AcknowledgeReferenceGapResponses = {
+    /**
+     * Warning acknowledged.
+     */
+    204: void;
+};
+
+export type AcknowledgeReferenceGapResponse = AcknowledgeReferenceGapResponses[keyof AcknowledgeReferenceGapResponses];
 
 export type SetMatchPinData = {
     body: {
