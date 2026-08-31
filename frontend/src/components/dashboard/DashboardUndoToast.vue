@@ -163,3 +163,5 @@ const progressPct = computed(() => Math.round((remainingMs.value / DURATION_MS) 
   transition: width var(--duration-instant) linear;
 }
 </style>
+
+<style src="@/components/shared/toasts.css"></style>
