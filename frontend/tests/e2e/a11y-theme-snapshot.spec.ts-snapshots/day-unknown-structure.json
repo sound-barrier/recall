@@ -109,7 +109,7 @@
       "borderRadius": []
     },
     "button": {
-      "count": 10,
+      "count": 12,
       "fontSize": [
         "13.3333px",
         "13.6px",
@@ -136,6 +136,7 @@
       ],
       "backgroundColor": [
         "rgb(232, 229, 221)",
+        "rgb(245, 243, 237)",
         "rgba(0, 0, 0, 0)"
       ],
       "borderRadius": [
