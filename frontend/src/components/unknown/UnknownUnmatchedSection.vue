@@ -5,6 +5,8 @@ import type { MatchRecord } from '@/api-client'
 import { detectScreenshotSlots, screenshotURL } from '@/match/match-helpers'
 import { formatParsedAt } from '@/match/match-time-helpers'
 import { useArmedAction } from '@/composables/unknown/useArmedAction'
+import { useUnknownSelection, unknownRowLabel } from '@/composables/unknown/useUnknownSelection'
+import UnknownBulkBar from '@/components/unknown/UnknownBulkBar.vue'
 import { useHoverThumbnail } from '@/composables/shared/media/useHoverThumbnail'
 import type { CardStateApi } from '@/types/cardState'
 import { useMatchesStore } from '@/stores/matches'
@@ -38,6 +40,19 @@ const unknownRecords = computed(() => matchesStore.unknownRecords)
 // carries joins the suppress-list, or a two-screenshot card would come
 // straight back on the surviving file.
 const { trigger: triggerDismiss, isArmed: isDismissArmed } = useArmedAction()
+
+// Bulk dismiss — the post-import cleanup spree, where a folder of desktop
+// screenshots all deserve the same verdict. The checkbox on each card IS the
+// affordance (no bulk mode); the bar appears while anything is ticked. Its
+// selection is this section's alone.
+const selection = useUnknownSelection({
+  rows: () => unknownRecords.value.map((r) => ({ id: r.match_key, files: r.source_files ?? [] })),
+  onDismissFiles: (files) => { void onDismissFiles(files) },
+})
+
+function selectLabel(rec: MatchRecord): string {
+  return `Select ${unknownRowLabel(rec.source_files ?? [], rec.match_key)}`
+}
 
 function onDismissClick(rec: MatchRecord) {
   const files = rec.source_files ?? []
@@ -169,6 +184,12 @@ function onCardHeadClick(rec: MatchRecord) {
 
 <template>
   <div v-if="unknownRecords.length > 0" id="section-unmatched" class="unknown-list">
+    <UnknownBulkBar
+      :selection="selection"
+      row-noun="card"
+      select-all-label="Select all unmatched"
+      :total-rows="unknownRecords.length"
+    />
     <article
       v-for="(rec, idx) in unknownRecords"
       :key="rec.match_key"
@@ -186,6 +207,18 @@ function onCardHeadClick(rec: MatchRecord) {
       <!-- Card header: index + match key + slot chips + chevron -->
       <div class="unknown-card-head" @click="onCardHeadClick(rec)">
         <div class="unknown-head-lhs">
+          <button
+            type="button"
+            class="leaf-checkbox unknown-select"
+            role="checkbox"
+            :aria-checked="selection.isSelected(rec.match_key) ? 'true' : 'false'"
+            :aria-label="selectLabel(rec)"
+            :disabled="writesLocked"
+            :title="lockReason"
+            @click.stop="selection.toggleSelected(rec.match_key)"
+          >
+            <span class="leaf-checkbox-glyph" aria-hidden="true">{{ selection.isSelected(rec.match_key) ? '✓' : '' }}</span>
+          </button>
           <span class="unknown-idx">{{ String(idx + 1).padStart(2, '0') }}</span>
           <div class="unknown-key-block">
             <span class="unknown-key mono">{{ rec.match_key }}</span>

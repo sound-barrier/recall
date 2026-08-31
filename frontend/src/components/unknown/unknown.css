@@ -434,3 +434,37 @@
   z-index: 100;
   pointer-events: none;
 }
+
+/* ─── Bulk-select checkboxes on the triage cards ──────────────
+   .leaf-checkbox ships at opacity 0.32 and is brightened by selectors
+   scoped to the matches list (.leaf-row:hover, .leaf-row.is-ticked). None
+   of those exist here, so without these rules every box on this tab would
+   sit permanently dimmed — a control at a third opacity, which is neither
+   findable nor AA. Same Gmail shape, keyed on this tab's own card. */
+
+.unknown-card-head .unknown-select {
+  flex-shrink: 0;
+  margin-right: 0.55rem;
+
+  /* A <button> brings back the UA's `buttontext`, which computes to pure
+     black — an untokenized color the theme snapshot rightly flags. The glyph
+     inside sets its own; this just keeps the control on the token ladder. */
+  color: inherit;
+}
+
+.unknown-card:hover .unknown-select,
+.unknown-select:focus-visible,
+.unknown-select[aria-checked="true"] {
+  opacity: 1;
+}
+
+.unknown-select[aria-checked="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* While anything in the section is ticked, every box in it brightens —
+   the user is selecting, so the other targets should be visible. */
+.unknown-list:has(.unknown-select[aria-checked="true"]) .unknown-select {
+  opacity: 1;
+}

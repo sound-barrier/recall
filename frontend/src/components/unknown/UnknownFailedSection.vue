@@ -5,6 +5,8 @@ import type { FailedFile } from '@/api-client'
 import { screenshotURL } from '@/match/match-helpers'
 import { formatParsedAt } from '@/match/match-time-helpers'
 import { useArmedAction } from '@/composables/unknown/useArmedAction'
+import { useUnknownSelection } from '@/composables/unknown/useUnknownSelection'
+import UnknownBulkBar from '@/components/unknown/UnknownBulkBar.vue'
 import { useDiagnosticBundle } from '@/composables/ingest/useDiagnosticBundle'
 import { useHoverThumbnail } from '@/composables/shared/media/useHoverThumbnail'
 import { useParseStore } from '@/stores/parse'
@@ -40,6 +42,14 @@ const { trigger: triggerDismiss, isArmed: isDismissArmed } = useArmedAction()
 function onDismissClick(row: FailedFile) {
   triggerDismiss(row.filename, () => { void onDismissFiles([row.filename]) })
 }
+
+// Bulk dismiss. A failed row has no match_key — the ledger keys on filename —
+// so this section's selection keys on filename too, and its rows are exactly
+// one screenshot each.
+const selection = useUnknownSelection({
+  rows: () => failedFiles.value.map((r) => ({ id: r.filename, files: [r.filename] })),
+  onDismissFiles: (files) => { void onDismissFiles(files) },
+})
 
 // Cursor-anchored hover thumbnail, same peek the unmatched cards give.
 // Failed files carry no dir id on the wire — they were seen in the
@@ -83,6 +93,13 @@ const { writesLocked, lockReason } = useWriteGate()
       </p>
     </div>
 
+    <UnknownBulkBar
+      :selection="selection"
+      row-noun="screenshot"
+      select-all-label="Select all failed"
+      :total-rows="failedFiles.length"
+    />
+
     <article
       v-for="(row, idx) in failedFiles"
       :key="row.filename"
@@ -93,6 +110,18 @@ const { writesLocked, lockReason } = useWriteGate()
     >
       <div class="unknown-card-head failed-card-head">
         <div class="unknown-head-lhs">
+          <button
+            type="button"
+            class="leaf-checkbox unknown-select"
+            role="checkbox"
+            :aria-checked="selection.isSelected(row.filename) ? 'true' : 'false'"
+            :aria-label="`Select ${row.filename}`"
+            :disabled="writesLocked"
+            :title="lockReason"
+            @click.stop="selection.toggleSelected(row.filename)"
+          >
+            <span class="leaf-checkbox-glyph" aria-hidden="true">{{ selection.isSelected(row.filename) ? '✓' : '' }}</span>
+          </button>
           <span class="unknown-idx">{{ String(idx + 1).padStart(2, '0') }}</span>
           <div class="unknown-key-block">
             <span class="unknown-key mono">{{ row.filename }}</span>

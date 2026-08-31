@@ -4,6 +4,8 @@ import { computed, ref } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { screenshotURL, hasDuplicateCandidate } from '@/match/match-helpers'
 import { useArmedAction } from '@/composables/unknown/useArmedAction'
+import { useUnknownSelection, unknownRowLabel } from '@/composables/unknown/useUnknownSelection'
+import UnknownBulkBar from '@/components/unknown/UnknownBulkBar.vue'
 import UnknownCandidatePicker from '@/components/unknown/UnknownCandidatePicker.vue'
 import UnknownFailedSection from '@/components/unknown/UnknownFailedSection.vue'
 import UnknownReferenceGapSection from '@/components/unknown/UnknownReferenceGapSection.vue'
@@ -60,6 +62,18 @@ function onDismissAmbiguous(rec: MatchRecord) {
   const files = rec.source_files ?? []
   if (files.length === 0) return
   triggerDismiss(rec.match_key, () => { void onDismissFiles(files) })
+}
+
+// Bulk dismiss for this section. Same verb as the per-card button, applied
+// wider, so it carries the same two-click confirm — and its own selection,
+// separate from the unmatched and failed sections'.
+const selection = useUnknownSelection({
+  rows: () => ambiguousList.value.map((r) => ({ id: r.match_key, files: r.source_files ?? [] })),
+  onDismissFiles: (files) => { void onDismissFiles(files) },
+})
+
+function ambiguousSelectLabel(rec: MatchRecord): string {
+  return `Select ${unknownRowLabel(rec.source_files ?? [], rec.match_key)}`
 }
 
 function ambiguousDismissLabel(rec: MatchRecord): string {
@@ -171,6 +185,12 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
         These screenshots share statistics with other matches close in time — or exactly duplicate another match's stat line hours later. Pick the match each one belongs to, or keep it separate if none of the candidates is right.
       </p>
       <div class="unknown-list">
+        <UnknownBulkBar
+          :selection="selection"
+          row-noun="card"
+          select-all-label="Select all needing review"
+          :total-rows="ambiguousList.length"
+        />
         <article
           v-for="rec in ambiguousList"
           :key="rec.match_key"
@@ -180,6 +200,18 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
         >
           <div class="unknown-card-head" @click="onAmbiguousHeadClick(rec)">
             <div class="unknown-head-lhs">
+              <button
+                type="button"
+                class="leaf-checkbox unknown-select"
+                role="checkbox"
+                :aria-checked="selection.isSelected(rec.match_key) ? 'true' : 'false'"
+                :aria-label="ambiguousSelectLabel(rec)"
+                :disabled="writesLocked"
+                :title="lockReason"
+                @click.stop="selection.toggleSelected(rec.match_key)"
+              >
+                <span class="leaf-checkbox-glyph" aria-hidden="true">{{ selection.isSelected(rec.match_key) ? '✓' : '' }}</span>
+              </button>
               <span class="unknown-key-block">
                 <span class="unknown-key mono">{{ rec.source_files?.[0] ?? rec.match_key }}</span>
                 <span v-if="hasDuplicateCandidate(rec)" class="duplicate-badge">Possible duplicate</span>
