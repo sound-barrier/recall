@@ -167,7 +167,7 @@ export function MoveMatches(matchKeys: string[], targetProfile: string): Promise
 
 // Wipe all parsed-match data — DELETE on the matches collection. Settings
 // and the screenshots folder are untouched. Pass `keepIgnored = true` to
-// preserve the Unknown-tab "Delete forever" suppress list across the wipe.
+// preserve the Unknown-tab Dismiss suppress list across the wipe.
 export function ClearDatabase(keepIgnored = false): Promise<void> {
   return unwrapVoid(sdk.clearMatches(
     keepIgnored ? { query: { keep_ignored: true } } : {},

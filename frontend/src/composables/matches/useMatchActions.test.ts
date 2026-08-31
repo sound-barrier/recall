@@ -133,16 +133,18 @@ describe('useMatchActions — post-mutation reload scope', () => {
     expect(api.GetNewScreenshotCount).toHaveBeenCalledTimes(1)
   })
 
-  // A mid-loop failure still reloads — the card shrinks to its surviving
-  // files and a re-click retries cleanly over them.
-  it('a mid-loop dismiss failure surfaces the error and still reloads', async () => {
+  // A mid-loop failure aborts the loop — files AFTER the failed one are
+  // NOT attempted this pass — but still reloads, so the card shrinks to
+  // its survivors and a re-click retries cleanly over exactly them.
+  it('a mid-loop dismiss failure aborts the remainder, surfaces the error, and still reloads', async () => {
     api.IgnoreScreenshot
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(new Error('store exploded'))
     const { onDismissFiles } = await boot()
-    await onDismissFiles(['ok.png', 'boom.png'])
+    await onDismissFiles(['ok.png', 'boom.png', 'never-reached.png'])
 
     expect(api.IgnoreScreenshot).toHaveBeenCalledTimes(2)
+    expect(api.IgnoreScreenshot).not.toHaveBeenCalledWith('never-reached.png')
     expect(api.GetIgnoredScreenshots).toHaveBeenCalledTimes(1)
     expect(api.GetNewScreenshotCount).toHaveBeenCalledTimes(1)
   })

@@ -207,4 +207,8 @@ const { writesLocked, lockReason } = useWriteGate()
   color: var(--loss);
   overflow-wrap: anywhere;
 }
+
+.failed-parked-badge {
+  margin-left: 0.4rem;
+}
 </style>

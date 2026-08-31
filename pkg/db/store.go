@@ -169,7 +169,7 @@ type Store interface {
 	// user override layer, the queue / play-mode aux rows, and the
 	// ambiguity surface (candidate rows referencing the key, plus the
 	// candidate sets of its own screenshots when the key is the
-	// ambiguous sentinel). Surface for the "Delete forever" affordance
+	// ambiguous sentinel). Surface for the Dismiss affordance
 	// on the Hidden drawer. Idempotent.
 	HardDeleteMatch(matchKey string) error
 
@@ -237,7 +237,7 @@ type Store interface {
 	BulkSetMatchPlayMode(matchKeys []string, playMode string) error
 
 	// Ignored-screenshots surface — per-file suppress list for the
-	// "Delete forever" affordance on the Unknown tab. Presence in
+	// Dismiss affordance on the Unknown tab. Presence in
 	// ignored_screenshots means "skip this filename on every future
 	// parse run." Idempotent: adding an already-ignored filename
 	// refreshes the timestamp; removing a non-ignored one is a no-op.

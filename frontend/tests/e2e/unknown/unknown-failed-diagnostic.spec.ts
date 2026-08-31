@@ -16,6 +16,7 @@ const failedRows = () => ([
     filename: 'corrupt.png',
     error: 'decoding image: png: invalid format',
     attempts: 6,
+    parked: false,
     first_failed_at: '2026-07-01T20:00:00Z',
     last_failed_at: '2026-07-06T21:30:00Z',
   },

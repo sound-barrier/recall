@@ -86,9 +86,12 @@ function onViewFailed(token: number) {
   position: fixed;
   right: 1rem;
 
-  /* Above the session tally's slot (4.5rem) — both can raise on one
-     parse-complete, and two fixed toasts must not overlap. */
-  bottom: 8rem;
+  /* The bottom-right toast ladder, floor up: tilt nudge 1rem, session
+     tally 4.5rem, focus nudge 8.5rem, THIS at 13rem. All four can fire
+     off the same completed parse, so sharing a rung is not a rare
+     collision — the focus nudge renders later in AppOverlays and would
+     paint straight over an 8rem outcome toast. */
+  bottom: 13rem;
   z-index: 1200;
   display: flex;
   align-items: center;

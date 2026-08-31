@@ -116,7 +116,7 @@ func handleGetMatches(a *app.App) http.HandlerFunc {
 
 func handleClearMatches(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// `keep_ignored=true` preserves the Unknown-tab "Delete forever"
+		// `keep_ignored=true` preserves the Unknown-tab Dismiss
 		// suppress list across the wipe (Settings → Advanced exposes
 		// this as a "Keep suppress-list" checkbox on the Clear Database
 		// arm step). Default-off matches the historical "factory reset"

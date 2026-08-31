@@ -182,6 +182,24 @@ describe('useEventStream', () => {
     expect(onParseComplete).toHaveBeenCalled()
   })
 
+  // The payload narrowing: a real run summary passes through verbatim;
+  // the legacy filler shapes (null above, "{}" here) reach the callback
+  // as undefined — truthy-but-empty must not masquerade as a tally.
+  it('parse-complete forwards a valid run summary and rejects the {} filler', () => {
+    const records = ref<MatchRecord[]>([])
+    const parseProgress = ref<ParseProgressEvent | null>(null)
+    const parseLog = ref<ParseProgressEvent[]>([])
+    const onParseComplete = vi.fn()
+    mountComposable({ records, parseProgress, parseLog, onParseComplete })
+
+    const summary = { files_parsed: 4, files_failed: 2, matches_updated: 3 }
+    handlers['parse-complete']!(summary)
+    expect(onParseComplete).toHaveBeenLastCalledWith(summary)
+
+    handlers['parse-complete']!({})
+    expect(onParseComplete).toHaveBeenLastCalledWith(undefined)
+  })
+
   it('match-updated inserts a new record at the end', () => {
     const records = ref<MatchRecord[]>([rec('k1')])
     const parseProgress = ref<ParseProgressEvent | null>(null)

@@ -55,10 +55,11 @@ const emit = defineEmits<{
 
 <style scoped>
 /* The bottom-right toast ladder, from the floor up: the tilt nudge at
-   1rem, the session tally at 4.5rem, this at 8.5rem. All three fire off
-   the same completed parse, so sharing a rung is not a rare collision —
-   it is the normal case, and the tilt nudge (rendered later at the same
-   z-index) would have covered this one outright. */
+   1rem, the session tally at 4.5rem, this at 8.5rem, the parse-outcome
+   report at 13rem. All four fire off the same completed parse, so
+   sharing a rung is not a rare collision — it is the normal case, and
+   the tilt nudge (rendered later at the same z-index) would have
+   covered this one outright. */
 .focus-nudge-toast {
   position: fixed;
   right: 1rem;

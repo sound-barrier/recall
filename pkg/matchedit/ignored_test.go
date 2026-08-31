@@ -75,7 +75,7 @@ func TestIgnoreScreenshot_LeavesSiblingScreenshotsAndTheMatch(t *testing.T) {
 // Reproduces the user-reported bug: an Unknown card whose match_key is
 // match-<ts> (a tracked match where the OCR failed to extract a map
 // name, so the aggregator surfaces it on the Unknown tab via
-// `!r.data?.map && !r.ambiguous`) — clicking "Delete forever" should
+// `!r.data?.map && !r.ambiguous`) — clicking Dismiss should
 // wipe THAT match row too, not just the unmatched- / ambiguous- key
 // shapes. Pre-fix: the card never disappeared because the actual
 // match-<ts> row stayed and the next reload re-rendered it.

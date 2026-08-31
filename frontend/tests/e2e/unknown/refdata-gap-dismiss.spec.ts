@@ -11,6 +11,7 @@
  * it restorable without leaving the tab.
  */
 import type { Route } from '@playwright/test'
+import AxeBuilder from '@axe-core/playwright'
 
 import { test, expect } from '../_fixtures'
 
@@ -91,5 +92,16 @@ test.describe('Unknown tab — reference-gap acknowledge', () => {
     // No active cards — the section leads with the disclosure only.
     await expect(section.getByRole('button', { name: /1 acknowledged — show/ })).toBeVisible()
     await expect(section.locator(`[data-reference-gap-key="${KEY}"]`)).toHaveCount(0)
+
+    // The shared a11y matrix never renders this section (its corpus has
+    // no gap records), so the acknowledged-open state gets its axe pass
+    // here — the settled styling must never dip below AA again.
+    await section.getByRole('button', { name: /1 acknowledged — show/ }).click()
+    await expect(section.locator(`[data-reference-gap-key="${KEY}"]`)).toHaveCount(1)
+    const results = await new AxeBuilder({ page })
+      .include('#section-reference-gaps')
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze()
+    expect(results.violations).toEqual([])
   })
 })

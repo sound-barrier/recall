@@ -4,7 +4,7 @@ package dbtest
 // all_heroes_screenshots table. Presence in AllHeroes means the parser
 // recognized the PERSONAL "All Heroes" aggregate view for that filename and the
 // write path recorded it so the next parse run skips it (no re-OCR) — the same
-// role Ignored plays for the "Delete forever" suppress list.
+// role Ignored plays for the Dismiss suppress list.
 
 import "maps"
 
