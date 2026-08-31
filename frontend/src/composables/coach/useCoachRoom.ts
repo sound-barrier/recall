@@ -5,6 +5,7 @@ import { emptyDraft, tallyFocus, type CoachNoteDraft, type FocusCount } from '@/
 import { flattenReel, groupReelByPlayerDay, neighborKey, type ReelDay } from '@/match/coach/coach-reel-helpers'
 import { winrateOrNull } from '@/match/dossier/match-dossier-tally'
 import { tallyWLD, type WLDTally } from '@/match/match-stats-helpers'
+import { railTendencies, type RailTendency } from '@/match/coach/coach-rail-helpers'
 
 // Everything the Film Room derives from the loaned corpus + the coach's
 // notes: the reel, which frame is on the desk, its neighbors, and the
@@ -32,6 +33,8 @@ export interface CoachRoomApi {
   wld: ComputedRef<WLDTally>
   winRate: ComputedRef<number | null>
   focusTally: ComputedRef<FocusCount[]>
+  /** The stat rail's rows for the frame on the desk — hero, then map. */
+  railRows: ComputedRef<RailTendency[]>
   prevKey: ComputedRef<string | null>
   nextKey: ComputedRef<string | null>
 }
@@ -53,11 +56,19 @@ export function useCoachRoom(opts: CoachRoomOptions): CoachRoomApi {
   const activeDraft = computed(() => toValue(opts.notes)[activeKey.value] ?? emptyDraft())
 
   const wld = computed(() => tallyWLD(frames.value))
+
+  // What the player usually does on the frame's own hero and map, read out
+  // of the corpus already on screen. Follows the frame, so a coach walking
+  // the reel never has to ask for it.
+  const railRows = computed(() => railTendencies(frames.value, {
+    hero: selectedRecord.value?.data?.hero ?? '',
+    map: selectedRecord.value?.data?.map ?? '',
+  }))
   const winRate = computed(() => winrateOrNull(wld.value.w, wld.value.w + wld.value.l))
   const focusTally = computed(() => tallyFocus(toValue(opts.notes)))
 
   const prevKey = computed(() => neighborKey(reelDays.value, activeKey.value, -1))
   const nextKey = computed(() => neighborKey(reelDays.value, activeKey.value, 1))
 
-  return { reelDays, frames, activeKey, selectedRecord, activeDraft, wld, winRate, focusTally, prevKey, nextKey }
+  return { reelDays, frames, activeKey, selectedRecord, activeDraft, wld, winRate, focusTally, railRows, prevKey, nextKey }
 }

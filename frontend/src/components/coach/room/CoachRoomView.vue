@@ -9,6 +9,7 @@ import { playerClockOwner } from '@/match/match-time-helpers'
 import CoachAddCode from '@/components/coach/reel/CoachAddCode.vue'
 import CoachReel from '@/components/coach/reel/CoachReel.vue'
 import CoachSessionSheet from '@/components/coach/notes/CoachSessionSheet.vue'
+import CoachStatRail from '@/components/coach/room/CoachStatRail.vue'
 import {
   DEFAULT_COACH_LABELS, type CoachLabels, type CoachPlayerView, type KnownIdentity, type CoachSaveState,
   type RoomApi, type RoomVoice,
@@ -103,6 +104,15 @@ const room = useCoachRoom({
 // at all (a self-review), which is why both members are optional.
 const canAddCodes = computed(() =>
   props.api.sessionSource?.() === 'replay' && props.api.addReplayCode !== undefined)
+
+// The rail reads tendencies out of the loaned corpus, so it needs one. A
+// replay session's frames arrive as codes with no history behind them —
+// every bucket would be the single frame already on the desk, which is not
+// a tendency but a restatement. Same provenance key as the context editor
+// above, and never the data: a corpus that happens to be small is still a
+// corpus.
+const showRail = computed(() =>
+  props.api.sessionSource?.() !== 'replay' && room.railRows.value.length > 0)
 
 function addCode(code: string): void {
   props.api.addReplayCode?.(code)
@@ -244,6 +254,12 @@ function step(key: string | null): void {
     </div>
 
     <div class="coach-room-sheet">
+      <!-- Reference, not a writing surface, so it sits in the sticky column
+           beside the sheet rather than on the desk where the note field is.
+           Hidden for a replay session: those frames arrive as codes with no
+           history behind them, so every bucket would be the one frame the
+           coach is already looking at. -->
+      <CoachStatRail v-if="showRail" :rows="room.railRows.value" />
       <!-- The derived record travels with the slot, so a caller composing its
            own sheet (the self-review sitting's) reads the same numbers the
            default one does. -->
