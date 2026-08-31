@@ -21,8 +21,9 @@ var ErrMoveTargetIsActive = errors.New("move target is the active profile")
 //     UpsertSummary / UpsertTeams / etc. APIs production parse uses) +
 //     the user-override layer (user_match_data + the queue / play-mode
 //     aux rows — a manual match or an edited OCR match lives entirely
-//     there) + every annotation + the hidden_matches and pinned_matches
-//     flags + the review status + the accepted coach-note blocks.
+//     there) + every annotation + the hidden_matches, pinned_matches and
+//     acknowledged_reference_gaps flags + the review status + the
+//     accepted coach-note blocks.
 //     Filenames carry over verbatim so a future re-parse of the same
 //     source PNG on the new profile is a no-op.
 //  2. Hard-delete the rows on src. Per-key HardDeleteMatch so a
@@ -226,6 +227,9 @@ func loadMoveSource(src db.Store) (moveSource, error) {
 	if out.hidden, err = src.LoadHiddenKeys(); err != nil {
 		return moveSource{}, fmt.Errorf("move: load hidden keys: %w", err)
 	}
+	if out.ackedGaps, err = src.LoadAcknowledgedReferenceGaps(); err != nil {
+		return moveSource{}, fmt.Errorf("move: load reference-gap acks: %w", err)
+	}
 	if out.pinned, err = src.LoadPinnedKeys(); err != nil {
 		return moveSource{}, fmt.Errorf("move: load pinned keys: %w", err)
 	}
@@ -255,6 +259,7 @@ type moveSource struct {
 	snap        db.Screenshots
 	annotations map[string]db.Annotation
 	hidden      map[string]bool
+	ackedGaps   map[string]bool
 	pinned      map[string]bool
 	reviews     map[string]db.ReviewState
 	coachNotes  map[string][]db.MatchCoachNote
@@ -451,6 +456,11 @@ func copyPresenceFlags(targetStore db.Store, k string, src moveSource) error {
 	if src.pinned[k] {
 		if err := targetStore.PinMatch(k); err != nil {
 			return fmt.Errorf("move: copy pinned flag for %q: %w", k, err)
+		}
+	}
+	if src.ackedGaps[k] {
+		if err := targetStore.AcknowledgeReferenceGap(k); err != nil {
+			return fmt.Errorf("move: copy reference-gap ack for %q: %w", k, err)
 		}
 	}
 	return nil

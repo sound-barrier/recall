@@ -102,6 +102,15 @@ func sortedIncludedMoments(byKey map[string][]db.MatchMoment, include map[string
 
 // loadBundleSidecars gathers the per-key user surfaces (everything but the
 // coach layer, which is a list per key rather than one value per key).
+//
+// acknowledged_reference_gaps is deliberately NOT here, though it is the
+// same presence-is-state family as hidden/pinned: an acknowledgement is a
+// local triage preference about a WARNING, not match data — gap-ness is
+// release-relative, so the receiving install may not even show the card —
+// and the bundle's field set is a curated, privacy-disclosed contract
+// (user_layer_disclosure_test.go). The whole-DB backup/restore path
+// carries the ack for free; profiles.Move copies it because Move's phase 2
+// destroys the source.
 func loadBundleSidecars(store db.Store, include map[string]struct{}) (bundleUserLayer, error) {
 	userData, err := store.LoadAllUserMatchData()
 	if err != nil {

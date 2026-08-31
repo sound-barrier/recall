@@ -34,6 +34,7 @@ func TestStoreContract_ResolvingAnAmbiguousMatchCarriesItsSidecars(t *testing.T)
 			}))
 			// Everything the panel lets you do to a row.
 			mustNoErr(t, s.PinMatch(ambiguous))
+			mustNoErr(t, s.AcknowledgeReferenceGap(ambiguous))
 			mustNoErr(t, s.SetAnnotation(db.Annotation{
 				MatchKey: ambiguous, Note: "held the choke", Tags: []string{"positioning"},
 			}))
@@ -62,6 +63,11 @@ func assertSidecarsMoved(t *testing.T, s db.Store, resolved string) {
 	mustNoErr(t, err)
 	if !pinned[resolved] {
 		t.Error("the pin was left on the dead key")
+	}
+	acked, err := s.LoadAcknowledgedReferenceGaps()
+	mustNoErr(t, err)
+	if !acked[resolved] {
+		t.Error("the reference-gap ack was left on the dead key")
 	}
 	notes, err := s.LoadAnnotations()
 	mustNoErr(t, err)
