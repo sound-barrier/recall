@@ -471,6 +471,26 @@ await a macrotask (`await new Promise(r => setTimeout(r, 0))`), not just
 
 **Playwright e2e.** Specs in `frontend/tests/e2e/<feature>/` — one folder per feature area (`matches`, `match`, `dossier`, `data-table`, `narrow`, `trends`, `unknown`, `coach`, `elo`, `dashboard`, `onboarding`, `update`, `parse`, `settings`, `a11y`, `app`); pick the one whose surface the spec drives. The `tests/e2e/` ROOT holds only the shared harness: the `_*.ts` helpers (import them as `'../_fixtures'`) and the `coverage-*.ts` files `playwright.config.ts` names by path. The two `*-snapshots/` directories also stay at the root and are found by BASENAME (`snapshotPathTemplate` is `{testDir}/{testFileName}-snapshots/`), so two specs must never share a basename across folders. `task test-e2e` builds the frontend + `serveronly` binary into `/tmp/recall-e2e/`, serves on `:7099` with `HOME=/tmp/recall-e2e`. Mock backend with `page.route('**/api/...', route => route.fulfill({status, contentType, body: JSON.stringify(...)}))` — the server stays running across tests, so route mocks are the only way to drive feature-specific fixtures. Start here: `app/smoke.spec.ts` (loads, tab nav, skip-link), `a11y/a11y.spec.ts` (axe per view). Every user-visible affordance starts with a failing spec here BEFORE implementation — see *UI features need a failing e2e first* below, which is the canonical statement of that rule.
 
+**No SFC ships without a unit test. Ever.** A new `.vue` file gets a
+sibling `*.test.ts` in the same commit — not "later", not "the e2e covers
+it". An e2e proves the transport chain through ONE path; the render
+branches beside that path are exactly what it does not touch, and they are
+where a component says the honest thing instead of the confident one (no
+rate when nothing was decided, "no readings" instead of printed zeros, a
+disabled control naming its reason). Those branches are invisible to a
+green e2e and to a green coverage percentage, because a file nothing
+imports contributes no uncovered lines to a suite that never loads it.
+
+This is written down because it happened: thirteen Elo-tab components and
+`ViewLoadError` shipped at 0% — 280 uncovered branches — and the gap only
+surfaced when a coverage floor bit a later PR that had nothing to do with
+them. The bill for an untested component is paid by whoever touches the
+file next.
+
+The same rule reads forward: if you are ABOUT to add a `.vue` file, the
+test file is part of the change, and `task cover-frontend` naming your new
+component at 0% is a failed change, not a follow-up ticket.
+
 **UI features need a failing Playwright e2e first.** Any feature that adds or
 changes a user-visible affordance (button, filter, card state, modal, view)
 starts with a RED `frontend/tests/e2e/<feature>/*.spec.ts` — the specs live in
