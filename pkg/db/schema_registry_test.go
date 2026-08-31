@@ -31,10 +31,11 @@ var (
 	cascadingChildRe = regexp.MustCompile(`REFERENCES\s+\w+\s*\([^)]*match_key[^)]*\)\s*ON UPDATE CASCADE`)
 )
 
-// coachAuthored names the one table whose match_key belongs to SOMEBODY
-// ELSE's corpus: what this user, as a coach, wrote about a loaned match.
-// Renaming one of our own keys must never touch it.
-var coachAuthored = []string{"coach_notes"}
+// coachAuthored names the tables whose match_key belongs to SOMEBODY
+// ELSE's corpus: what this user, as a coach, wrote about a loaned match,
+// and which loaned matches a sitting covered. Renaming one of our own keys
+// must never touch either.
+var coachAuthored = []string{"coach_notes", "coach_session_matches"}
 
 func tablesDeclaringMatchKey(t *testing.T) (registry, cascading []string) {
 	t.Helper()

@@ -1317,6 +1317,49 @@ export type CoachNoteSummary = {
     updated_at: string;
 };
 
+export type CoachSession = {
+    /**
+     * The sitting's own id, minted when the corpus was claimed.
+     */
+    session_id: string;
+    /**
+     * Who the sitting was about, as it stood then — a snapshot beside
+     * the roster reference, so renaming a player does not rewrite the
+     * history of who a sitting was about.
+     *
+     */
+    handle?: string;
+    kind: CoachIdentityKindEnum;
+    /**
+     * Where the sitting's corpus came from.
+     */
+    source: 'bundle' | 'replay';
+    /**
+     * RFC3339. When the coach claimed the corpus.
+     */
+    opened_at: string;
+    /**
+     * RFC3339. Absent on an ABANDONED sitting — the coach opened the
+     * corpus and never handed it back.
+     *
+     */
+    ended_at?: string;
+    /**
+     * What the sitting covered, in reel order.
+     */
+    match_keys: Array<string>;
+    /**
+     * The focus list as it stood when the sitting ended, by value —
+     * "what changed since last time" wants what the list SAID then,
+     * not what survives now. Empty on an abandoned sitting.
+     *
+     */
+    focus_items: Array<{
+        text: string;
+        status: FocusStatus;
+    }>;
+};
+
 /**
  * One roster row — a player or team this user has coached.
  */
@@ -4660,6 +4703,40 @@ export type RunDatabaseMaintenanceResponses = {
 };
 
 export type RunDatabaseMaintenanceResponse = RunDatabaseMaintenanceResponses[keyof RunDatabaseMaintenanceResponses];
+
+export type ListCoachPlayerSessionsData = {
+    body?: never;
+    path: {
+        /**
+         * The roster row's id, from GET /api/v1/coach/players.
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/api/v1/coach/players/{id}/sessions';
+};
+
+export type ListCoachPlayerSessionsErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+};
+
+export type ListCoachPlayerSessionsError = ListCoachPlayerSessionsErrors[keyof ListCoachPlayerSessionsErrors];
+
+export type ListCoachPlayerSessionsResponses = {
+    /**
+     * The identity's sittings, newest first.
+     */
+    200: Array<CoachSession>;
+};
+
+export type ListCoachPlayerSessionsResponse = ListCoachPlayerSessionsResponses[keyof ListCoachPlayerSessionsResponses];
 
 export type ListCoachPlayerNotesData = {
     body?: never;

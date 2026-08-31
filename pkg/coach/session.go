@@ -28,6 +28,10 @@ type Player struct {
 // corpus — they never reach a store, and the App discards the whole
 // Session on End.
 type Session struct {
+	// SessionID identifies this sitting for the coach's own history. Minted
+	// at open rather than at end, because a sitting that is abandoned
+	// without ending is still a sitting the dossier should show.
+	SessionID string
 	// Source is where the corpus came from, and it decides two things the
 	// room needs to know: whether the coach may add matches (only a replay
 	// session grows) and whether to offer the observed-context editor (only
@@ -88,6 +92,7 @@ func OpenSession(payload []byte, now time.Time) (*Session, error) {
 		return nil, err
 	}
 	s := &Session{
+		SessionID:     NewID(),
 		OpenedAt:      now.UTC().Format(time.RFC3339),
 		ExportedAt:    contents.Manifest.ExportedAt,
 		RecallVersion: contents.Manifest.RecallVersion,

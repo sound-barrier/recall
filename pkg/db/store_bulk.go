@@ -149,7 +149,7 @@ func (s *SQLStore) collectFilenamesWhere(table, where string, args []any, out ma
 // insert via AddIgnoredScreenshot.
 //
 // Deliberately NOT wiped: the coach-AUTHORED family (coach_players,
-// coach_notes, coach_session_summaries). Those are notes this user wrote
+// coach_notes, coach_sessions). Those are notes this user wrote
 // about OTHER players' matches — not match history — and a coach clearing
 // an empty database must not lose their coaching work.
 func (s *SQLStore) Clear() error {

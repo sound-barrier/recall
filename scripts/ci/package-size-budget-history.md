@@ -93,3 +93,5 @@ a folder silently regrows what it just shed.
 | 2026-08-31 | dismiss-and-parse-accounting | `pkg/db` | 33 → 34 | store_duplicate_link.go — the "keep separate" verdict, one sidecar concern in one file, like every other sidecar in this package.
 | 2026-08-31 | dismiss-and-parse-accounting | `frontend/tests/e2e/match` | 25 → 26 | replay-code-shelf-life.spec.ts — a stored code from a past season says so; one spec per user-visible affordance.
 | 2026-08-31 | dismiss-and-parse-accounting | `frontend/src/components/coach/room` | 13 → 14 | CoachStatRail — the player's tendencies on the frame's own hero and map, read out of the loaned corpus; one more surface of the one room.
+| 2026-08-31 | dismiss-and-parse-accounting | `pkg/db` | 34 → 35 | store_coach_sessions.go — the coach's own sittings, coach-AUTHORED like store_coach_notes.go beside it.
+| 2026-08-31 | dismiss-and-parse-accounting | `pkg/db/dbtest` | 12 → 13 | fake_coach_sessions.go — the Fake's half of the same family; this count tracks pkg/db's by construction.

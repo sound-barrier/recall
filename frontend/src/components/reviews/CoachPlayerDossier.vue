@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
-import type { CoachPlayerSummary } from '@/api-client'
-import { useCoachPlayerNotesQuery } from '@/queries/selfReview'
+import type { CoachPlayerSummary, CoachSession } from '@/api-client'
+import { useCoachPlayerNotesQuery, useCoachPlayerSessionsQuery } from '@/queries/selfReview'
 import { localDay, matchKeyLabel } from '@/match/coach/coach-time'
 import { pluralize } from '@/match/match-label-helpers'
 
@@ -11,10 +11,14 @@ import { pluralize } from '@/match/match-label-helpers'
 // notes fetch on demand, because a coach opens a dossier to glance far
 // more often than to re-read an entire file.
 //
-// Deliberately WITHOUT a session history: the database keeps no record of
-// when a session happened (only each note's own timestamps), so "last
-// session" here honestly means "last note touched". Grouping by sitting
-// is the assessment's Tier 2.
+// The session list is the continuity: when they met, what it covered, and
+// what the focus list said at the end. It replaces the era when the
+// database kept no record of a sitting at all and "last session" honestly
+// meant "last note touched" — a sitting that produced no notes left no
+// trace whatsoever.
+//
+// Fetched with the notes rather than with the roster row: a coach opens a
+// dossier to glance far more often than to re-read a whole file.
 
 const props = defineProps<{ player: CoachPlayerSummary }>()
 
@@ -26,6 +30,19 @@ const emit = defineEmits<{
 const notesOpen = ref(false)
 const notesQuery = useCoachPlayerNotesQuery(() => props.player.id, notesOpen)
 const notes = computed(() => notesQuery.data.value ?? [])
+
+// The history loads with the dossier — it is the answer to "when did we
+// last meet", which is the question the dossier is opened to ask.
+const sessionsQuery = useCoachPlayerSessionsQuery(() => props.player.id, true)
+const sessions = computed(() => sessionsQuery.data.value ?? [])
+
+// A sitting with no end is one the coach walked away from. Saying so beats
+// showing a blank where a duration would go, and beats dropping the row —
+// it happened, and how often the two of them meet is the point of the list.
+function sessionLine(s: CoachSession): string {
+  const covered = pluralize(s.match_keys.length, 'match', 'matches')
+  return s.ended_at ? covered : `${covered} · never ended`
+}
 
 const subLine = computed(() => {
   const count = pluralize(props.player.note_count, 'note')
@@ -54,6 +71,21 @@ const subLine = computed(() => {
       <ul class="dossier-focus">
         <li v-for="item in player.focus_items" :key="item">
           {{ item }}
+        </li>
+      </ul>
+    </template>
+
+    <template v-if="sessions.length">
+      <p class="eyebrow ink">
+        Sessions
+      </p>
+      <ul class="dossier-sessions" aria-label="Sessions">
+        <li v-for="s in sessions" :key="s.session_id" class="dossier-session">
+          <span class="dossier-session-when">{{ localDay(s.opened_at) }}</span>
+          <span class="dossier-session-what">{{ sessionLine(s) }}</span>
+          <span v-if="s.focus_items.length" class="dossier-session-focus">
+            {{ s.focus_items.map((f) => f.text).join(' · ') }}
+          </span>
         </li>
       </ul>
     </template>
@@ -92,6 +124,29 @@ const subLine = computed(() => {
 </template>
 
 <style scoped>
+/* The history reads as a column of dates with what each one covered — the
+   shape of a logbook, which is what it is. */
+.dossier-sessions {
+  margin: 0 0 0.6rem;
+  padding: 0;
+  list-style: none;
+}
+
+.dossier-session {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0.25rem 0;
+  font-size: var(--type-2xs);
+}
+
+.dossier-session-when { font-family: var(--mono); }
+
+.dossier-session-focus {
+  flex-basis: 100%;
+  opacity: 0.7;
+}
+
 .dossier {
   display: grid;
 

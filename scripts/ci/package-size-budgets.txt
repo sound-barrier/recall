@@ -110,7 +110,11 @@ pkg/app                                       50
 # verdict. A sidecar concern like the ones above — one table, spelled in one
 # file — and the only one whose rows name a match by a column that is NOT
 # called match_key, which is why it comes with its own registry entry.
-pkg/db                                        34
+# 35 as of session history: store_coach_sessions.go, the coach's own
+# sittings. Coach-AUTHORED like store_coach_notes.go beside it — one
+# concern, one file, and the reason the dossier can stop calling "last note
+# touched" a session.
+pkg/db                                        35
 
 # pkg/parser — the OCR pipeline: Tesseract invocation, per-screenshot-type field
 # extraction, the embedded owdata YAML set, golden-file projection. One
@@ -519,8 +523,9 @@ frontend/src/match                            12
 # pkg/db/dbtest — the in-memory Store, one file per family, mirroring pkg/db's
 # own split. The count tracks pkg/db's families by construction: a new store
 # family needs a Fake file or the interface is unimplemented, so this number
-# moves when pkg/db's does and for the same reason.
-pkg/db/dbtest                                 12
+# moves when pkg/db's does and for the same reason — as it does here, for
+# fake_coach_sessions.go beside pkg/db's store_coach_sessions.go.
+pkg/db/dbtest                                 13
 
 # pkg/matchedit — one file per editable thing about a match: annotation,
 # ignored, manual, moment, play mode, queue, replay code, review, user data,
