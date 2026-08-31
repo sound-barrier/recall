@@ -392,6 +392,7 @@ func (f *Fake) Clear() error {
 	f.Annotations = nil
 	f.UserMatchData = nil
 	f.Hidden = nil
+	f.DuplicateLinks = nil
 	f.AckedReferenceGaps = nil
 	f.Reviews = nil
 	f.Queues = nil

@@ -193,6 +193,11 @@ func (s *SQLStore) Clear() error {
 		"coach_returns",     // coach_return_decisions cascade
 		"self_reviews",      // membership, notes, tags and moments cascade
 		"share_exports",     // the sent ledger; share_export_matches cascade
+		// The "keep separate" verdicts. Match keys are DETERMINISTIC (minted
+		// from the earliest filename timestamp), so a row surviving a wipe of
+		// the history it describes has the same two cards claim a duplicate
+		// again after a re-parse — a judgment the wipe was supposed to erase.
+		"duplicate_matches",
 		// The player-side focus families are match history (self_review_focus_items
 		// cascades with its sitting, but naming it is cheaper than relying on
 		// the order the parent wipe happens to run in); coach_focus_items is the

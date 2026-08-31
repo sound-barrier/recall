@@ -229,6 +229,7 @@ func loadMoveSource(src db.Store) (moveSource, error) {
 		{"coach notes", func() (err error) { out.coachNotes, err = src.LoadMatchCoachNotes(); return }},
 		{"match moments", func() (err error) { out.moments, err = src.LoadMatchMoments(); return }},
 		{"self reviews", func() (err error) { out.selfReviews, err = src.LoadSelfReviews(); return }},
+		{"duplicate links", func() (err error) { out.dupLinks, err = src.LoadAllDuplicateLinks(); return }},
 		{"match keys", func() (err error) { out.matchKeys, err = src.LoadMatchKeys(); return }},
 	} {
 		if err := load.fn(); err != nil {
@@ -252,6 +253,9 @@ type moveSource struct {
 	coachNotes  map[string][]db.MatchCoachNote
 	moments     map[string][]db.MatchMoment
 	selfReviews []db.SelfReview
+	// dupLinks: the "keep separate" verdicts, symmetric — so a moved match
+	// carries the judgment whichever end of the pair it sat on.
+	dupLinks map[string][]string
 	// Every key the source holds — the registry the sitting membership is
 	// judged against.
 	matchKeys map[string]bool
@@ -404,7 +408,27 @@ func copyMatchSidecars(targetStore db.Store, k string, src moveSource) error {
 	if err := copyMatchMoments(targetStore, k, src.moments[k]); err != nil {
 		return err
 	}
+	if err := copyDuplicateLinks(targetStore, k, src.dupLinks[k]); err != nil {
+		return err
+	}
 	return copyCoachNotes(targetStore, k, src.coachNotes[k])
+}
+
+// copyDuplicateLinks reproduces the "keep separate" verdicts the moved match
+// is part of — a judgment the user made by reading two scoreboards, which
+// phase 2's HardDeleteMatch destroys from both ends.
+//
+// Written with the moved key on the LEFT whichever end it sat on in the
+// source. The link is read symmetrically, so which column holds which key
+// does not change what either card says — and the moved match is the one
+// arriving on this store, so it is the one whose row must exist here.
+func copyDuplicateLinks(targetStore db.Store, k string, twins []string) error {
+	for _, twin := range twins {
+		if err := targetStore.LinkDuplicateMatches(k, twin); err != nil {
+			return fmt.Errorf("move: copy duplicate link for %q: %w", k, err)
+		}
+	}
+	return nil
 }
 
 // copyMatchMoments reproduces the player's own timestamped moments on the

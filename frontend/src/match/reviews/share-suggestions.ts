@@ -32,11 +32,20 @@ export interface SuggestionInputs {
 // shareSuggestions returns the proposals that have something to propose;
 // one with nothing in it is left out rather than offered empty.
 export function shareSuggestions(input: SuggestionInputs): ShareSuggestion[] {
-  // Filtered ONCE, at the top, because it is the rule both proposals must
-  // obey: a suggestion that lands the user in the dialog's own refusal —
-  // "N of these have no replay code" — costs them a click and teaches them
-  // the button is broken.
-  const loadable = input.records.filter((r) => (r.annotation?.replay_code ?? '') !== '')
+  // Filtered ONCE, at the top, because these are the rules both proposals
+  // must obey.
+  //
+  // A match with no replay code lands the user in the dialog's own refusal
+  // — "N of these have no replay code" — which costs a click and teaches
+  // them the button is broken.
+  //
+  // A HIDDEN match is the serious one. The bundle carries these matches
+  // WHOLE: screenshots, journal notes, tags, BattleTags. Every other door
+  // into the dialog resolves its keys from the narrowed set, which drops
+  // hidden records; a suggestion reads the raw corpus, so it is the only
+  // door that could put a match the user soft-deleted in front of a coach.
+  const loadable = input.records.filter((r) =>
+    !r.hidden && (r.annotation?.replay_code ?? '') !== '')
   const out: ShareSuggestion[] = []
 
   const sent = new Set(input.alreadySent)

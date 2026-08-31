@@ -89,6 +89,9 @@ func seedFullMatch(t *testing.T, s db.Store, key string) {
 	mustNoErr(t, err)
 	_, err = s.UpsertSelfReviewNote(db.SelfReviewNote{ReviewID: "sitting-" + key, MatchKey: key, Kind: "note", Text: "my own read"})
 	mustNoErr(t, err)
+	// The "keep separate" verdict on a possible duplicate — a judgment the
+	// user made by reading two scoreboards, and one HardDeleteMatch wipes.
+	mustNoErr(t, s.LinkDuplicateMatches(key, "match-2026-01-01T09-00-00"))
 }
 
 // sidecarPresence reports, per sidecar table, whether the store still carries
@@ -118,6 +121,8 @@ func sidecarPresence(t *testing.T, s db.Store, key string) map[string]bool {
 	mustNoErr(t, err)
 	selfNotes, err := s.LoadSelfReviewNotes()
 	mustNoErr(t, err)
+	dupLinks, err := s.LoadAllDuplicateLinks()
+	mustNoErr(t, err)
 	_, hasAnnotation := annotations[key]
 	_, hasReview := reviews[key]
 	_, hasUserData := userData[key]
@@ -136,6 +141,7 @@ func sidecarPresence(t *testing.T, s db.Store, key string) map[string]bool {
 		"coach_note":        hasCoachNote,
 		"moment":            len(moments[key]) > 0,
 		"self_review_note":  len(selfNotes[key]) > 0,
+		"duplicate_link":    len(dupLinks[key]) > 0,
 	}
 }
 

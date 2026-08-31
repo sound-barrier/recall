@@ -23,6 +23,7 @@ import {
 } from '@/match/match-label-helpers'
 import { formatKda, kdaRatio } from '@/match/match-stats-helpers'
 import { disruptionLabel, disruptionTint } from '@/match/dossier/match-disruption'
+import MatchDuplicateChip from '@/components/matches/shared/MatchDuplicateChip.vue'
 import { highlightTermsFor, type SearchClause } from '@/match/search-query'
 import HighlightedText from '@/components/matches/shared/HighlightedText.vue'
 import MatchProvenanceBadge from '@/components/matches/shared/MatchProvenanceBadge.vue'
@@ -266,6 +267,7 @@ const kda = computed(() => formatKda(kdaRatio(props.rec.data)))
         :aria-label="disruptionLabel('throwers', rec.annotation.throwers)"
         :title="disruptionLabel('throwers', rec.annotation.throwers)"
       >T</span>
+      <MatchDuplicateChip v-if="rec.duplicate_of?.length" :duplicate-of="rec.duplicate_of" />
       <span
         v-for="t in rec.annotation?.tags ?? []"
         :key="t"

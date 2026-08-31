@@ -87,8 +87,14 @@ async function prefillHandle(): Promise<void> {
 // stay empty and the server would fall back to the BACKUP name — handing a
 // coach a file named like a backup is the confusion this dialog exists to end.
 // useModalFocusTrap carries the same note for the same reason.
+// Expanded on request — see the disclosure in the template for why every
+// row has to be reachable. Reset on each open so a long set does not carry
+// its expansion into the next, smaller one.
+const manifestExpanded = ref(false)
+
 watch(shareOpen, (open) => {
   if (!open) return
+  manifestExpanded.value = false
   // The stash survives the "Show the N on Matches" round-trip — a player
   // who typed a message, found the block, and took the door to fix it must
   // not come back to an empty dialog. An explicit Cancel or a successful
@@ -125,9 +131,10 @@ function measureScroll(): void {
 // a gap NAMEABLE, and a name you have to scroll past hundreds of others to
 // reach is not one.
 const MANIFEST_ROWS_SHOWN = 12
-const shownManifest = computed(() => shareManifest.value.slice(0, MANIFEST_ROWS_SHOWN))
+const shownManifest = computed(() =>
+  (manifestExpanded.value ? shareManifest.value : shareManifest.value.slice(0, MANIFEST_ROWS_SHOWN)))
 const hiddenManifestCount = computed(() =>
-  Math.max(0, shareManifest.value.length - MANIFEST_ROWS_SHOWN))
+  (manifestExpanded.value ? 0 : Math.max(0, shareManifest.value.length - MANIFEST_ROWS_SHOWN)))
 
 const needsHandle = computed(() => handle.value.trim() === '')
 
@@ -314,9 +321,20 @@ function onSend(): void {
             </button>
           </li>
         </ul>
-        <p v-if="hiddenManifestCount > 0" class="send-to-coach-more">
-          …and {{ hiddenManifestCount }} more
-        </p>
+        <!-- A disclosure, not a footnote. The cap keeps a 40-match set from
+             burying the dialog's controls, but a row nobody can reach is a
+             row nobody can REMOVE — and "send the rest now" is the fastest
+             answer to a match with no replay code, which is exactly the
+             case the cap makes invisible. -->
+        <button
+          v-if="hiddenManifestCount > 0"
+          type="button"
+          class="send-to-coach-more"
+          :aria-expanded="manifestExpanded"
+          @click="manifestExpanded = !manifestExpanded"
+        >
+          {{ manifestExpanded ? 'Show fewer' : `…and ${hiddenManifestCount} more` }}
+        </button>
         <div
           v-show="moreBelow"
           class="send-to-coach-scroll-cue"
