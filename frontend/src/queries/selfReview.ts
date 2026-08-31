@@ -1,7 +1,10 @@
 import { useQuery } from '@tanstack/vue-query'
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 
-import { ListCoachPlayerNotes, ListCoachPlayers, ListSelfReviews, ListShareExports, type SelfReview } from '@/api-client'
+import {
+  ListCoachPlayerNotes, ListCoachPlayerSessions, ListCoachPlayers,
+  ListSelfReviews, ListShareExports, type SelfReview,
+} from '@/api-client'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 
@@ -42,6 +45,15 @@ export function useCoachPlayerNotesQuery(id: MaybeRefOrGetter<number>, enabled: 
   return useQuery({
     queryKey: computed(() => qk.coachPlayerNotes(toValue(id))),
     queryFn: () => ListCoachPlayerNotes(toValue(id)),
+    enabled: () => toValue(enabled),
+  }, getQueryClient())
+}
+
+/** The dossier's session history — same on-demand gate as the note list. */
+export function useCoachPlayerSessionsQuery(id: MaybeRefOrGetter<number>, enabled: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: computed(() => qk.coachPlayerSessions(toValue(id))),
+    queryFn: () => ListCoachPlayerSessions(toValue(id)),
     enabled: () => toValue(enabled),
   }, getQueryClient())
 }

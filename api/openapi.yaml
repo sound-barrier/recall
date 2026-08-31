@@ -2428,6 +2428,42 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/coach/players/{id}/sessions:
+    get:
+      operationId: ListCoachPlayerSessions
+      tags: [Coaching]
+      summary: Every sitting the coach held about one identity, newest first
+      description: |
+        The dossier's session list. Before these rows existed the database
+        knew WHEN a coach worked only as each note's own timestamps, so
+        "last session" meant "last note touched" and a sitting that produced
+        no notes left no trace at all.
+
+        A row with no `ended_at` is an ABANDONED sitting — the coach opened
+        the corpus and walked away — and is returned on purpose: dropping it
+        would misreport how often the two of them meet.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: The roster row's id, from GET /api/v1/coach/players.
+      responses:
+        "200":
+          description: The identity's sittings, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CoachSession"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/coach/players/{id}/notes:
     get:
       operationId: ListCoachPlayerNotes
@@ -5524,6 +5560,53 @@ components:
         updated_at:
           type: string
           description: RFC3339 of the last save.
+
+    CoachSession:
+      type: object
+      required: [session_id, kind, source, opened_at, match_keys, focus_items]
+      properties:
+        session_id:
+          type: string
+          description: The sitting's own id, minted when the corpus was claimed.
+        handle:
+          type: string
+          description: |
+            Who the sitting was about, as it stood then — a snapshot beside
+            the roster reference, so renaming a player does not rewrite the
+            history of who a sitting was about.
+        kind:
+          $ref: "#/components/schemas/CoachIdentityKindEnum"
+        source:
+          type: string
+          enum: [bundle, replay]
+          description: Where the sitting's corpus came from.
+        opened_at:
+          type: string
+          description: RFC3339. When the coach claimed the corpus.
+        ended_at:
+          type: string
+          description: |
+            RFC3339. Absent on an ABANDONED sitting — the coach opened the
+            corpus and never handed it back.
+        match_keys:
+          type: array
+          description: What the sitting covered, in reel order.
+          items:
+            type: string
+        focus_items:
+          type: array
+          description: |
+            The focus list as it stood when the sitting ended, by value —
+            "what changed since last time" wants what the list SAID then,
+            not what survives now. Empty on an abandoned sitting.
+          items:
+            type: object
+            required: [text, status]
+            properties:
+              text:
+                type: string
+              status:
+                $ref: "#/components/schemas/FocusStatus"
 
     CoachPlayerSummary:
       type: object

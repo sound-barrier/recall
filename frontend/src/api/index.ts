@@ -18,6 +18,7 @@ export type {
   AutoBackupStatus,
   CoachDecisionEnum,
   CoachingSettings,
+  CoachSession,
   CoachFocusTagEnum,
   CoachMatchContext,
   CoachMoment,

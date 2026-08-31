@@ -94,6 +94,10 @@ type Fake struct {
 	// one row per pair, read from both ends like the SQL table.
 	DuplicateLinks map[string]string
 
+	// CoachSessions holds the coach's own sittings by session id — the
+	// coach-AUTHORED family, so Clear() leaves them alone.
+	CoachSessions map[string]db.CoachSessionRow
+
 	// Coach-AUTHORED family (survives Clear): players this user has
 	// coached, their notes keyed player id → match_key, and the per-player
 	// session summary. Coach-RECEIVED family (wiped like match history):

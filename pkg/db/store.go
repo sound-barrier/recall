@@ -106,6 +106,16 @@ type Store interface {
 	// the user made so they are not asked to make it twice.
 	// LoadAllDuplicateLinks reads each stored row from BOTH ends, because
 	// "these two look like the same match" is a claim about the pair.
+	// The coach's own sittings — coach-AUTHORED, so they survive Clear()
+	// like coach_notes. Written when the corpus is claimed, filed under a
+	// player when the coach names them (or corrects it), stamped and
+	// frozen when it is handed back. An unstamped row is an ABANDONED
+	// sitting and is kept on purpose.
+	StartCoachSession(row CoachSessionRow) error
+	PointCoachSessionAt(sessionID string, playerRef int64, handle, kind string) error
+	EndCoachSession(sessionID string, focus []CoachSessionFocusRow) error
+	ListCoachSessions(playerRef int64) ([]CoachSessionRow, error)
+
 	LinkDuplicateMatches(matchKey, duplicateOf string) error
 	LoadAllDuplicateLinks() (map[string][]string, error)
 
@@ -309,7 +319,7 @@ type Store interface {
 
 	// Clear deletes every row in every table — children cascade — EXCEPT the
 	// coach-authored family (coach_players / coach_notes /
-	// coach_session_summaries), which is not match history.
+	// coach_sessions), which is not match history.
 	Clear() error
 	// Database health + maintenance surface (Settings → Advanced →
 	// Database health). Health is read-only and safe mid-parse;

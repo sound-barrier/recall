@@ -2,10 +2,12 @@ package app
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
 
+	"recall/pkg/applog"
 	"recall/pkg/coach"
 	"recall/pkg/db"
 	"recall/pkg/match"
@@ -89,7 +91,34 @@ func (a *App) claimCoachSessionWith(open func(time.Time) (*coach.Session, error)
 		a.coachSession = nil
 		return coach.SessionView{}, err
 	}
+	a.recordSittingOpened(s)
 	return view, nil
+}
+
+// recordSittingOpened writes the session's own history row. At OPEN, not at
+// end: a coach who opens a bundle and walks away did something, and a
+// dossier that only knew about finished sittings would misreport how often
+// they meet. The row learns its player later, when the coach names them.
+//
+// Best-effort — losing a line of history is not worth refusing the session
+// the coach actually asked for.
+func (a *App) recordSittingOpened(s *coach.Session) {
+	keys := make([]string, 0, s.MatchCount())
+	for _, r := range s.Records() {
+		keys = append(keys, r.MatchKey)
+	}
+	err := a.store.StartCoachSession(db.CoachSessionRow{
+		SessionID: s.SessionID,
+		PlayerRef: s.PlayerRef(),
+		Handle:    s.Player.Handle,
+		Kind:      s.Player.Kind,
+		Source:    string(s.Source),
+		MatchKeys: keys,
+	})
+	if err != nil {
+		applog.Subsystem("coach").Error("session history: open failed",
+			"session_id", s.SessionID, "err", err)
+	}
 }
 
 // adoptSessionPlayer resolves the coach_players row a bundle's identity
@@ -177,6 +206,13 @@ func (a *App) SetCoachSessionPlayer(handle, kind string) (coach.SessionView, err
 	s.Player.Handle = handle
 	s.Player.Kind = kind
 	s.SetPlayerRef(p.ID)
+	// The history row was written before anyone knew whose sitting this
+	// was, and the coach may be correcting an earlier answer — so it is
+	// re-pointed every time, not only the first.
+	if err := a.store.PointCoachSessionAt(s.SessionID, p.ID, handle, kind); err != nil {
+		applog.Subsystem("coach").Error("session history: re-point failed",
+			"session_id", s.SessionID, "err", err)
+	}
 	return a.coachViewLocked(time.Now())
 }
 
@@ -357,11 +393,38 @@ func (a *App) assertNoCoachSession() error {
 // Idempotent — the store-teardown paths call it unconditionally.
 func (a *App) endCoachSession() {
 	a.coachMu.Lock()
-	ended := a.coachSession != nil
+	s := a.coachSession
 	a.coachSession = nil
 	a.coachMu.Unlock()
-	if ended {
-		a.emitCoachSessionChanged(false)
+	if s == nil {
+		return
+	}
+	a.recordSittingEnded(s)
+	a.emitCoachSessionChanged(false)
+}
+
+// recordSittingEnded stamps the history row and freezes the focus list as
+// it stood — by value, because the coach's focus rows are delete-and-
+// reinserted on every autosave, and because "what changed since last time"
+// wants what the list SAID then.
+//
+// Best-effort, like the open: the session is already over, and a failure
+// here costs a line of history rather than any of the coach's work.
+func (a *App) recordSittingEnded(s *coach.Session) {
+	var frozen []db.CoachSessionFocusRow
+	if ref := s.PlayerRef(); ref != 0 {
+		items, err := a.store.LoadCoachFocusItems(ref)
+		if err != nil {
+			applog.Subsystem("coach").Error("session history: read focus failed",
+				"session_id", s.SessionID, "err", err)
+		}
+		for _, item := range items {
+			frozen = append(frozen, db.CoachSessionFocusRow{Text: item.Text, Status: item.Status})
+		}
+	}
+	if err := a.store.EndCoachSession(s.SessionID, frozen); err != nil {
+		applog.Subsystem("coach").Error("session history: end failed",
+			"session_id", s.SessionID, "err", err)
 	}
 }
 
@@ -444,4 +507,20 @@ func validateCoachHandle(handle string) (string, error) {
 		return "", fmt.Errorf("%w: handle exceeds %d characters", coach.ErrHandleInvalid, maxCoachHandleRunes)
 	}
 	return handle, nil
+}
+
+// ListCoachPlayerSessions returns the sittings the coach held about one
+// player, newest first — each with what it covered and the focus list it
+// froze. Refuses an id the roster does not carry, like its note sibling:
+// a dossier for a player who is not on the roster is a bug, not an empty
+// list.
+func (a *App) ListCoachPlayerSessions(playerRef int64) ([]db.CoachSessionRow, error) {
+	roster, err := a.store.LoadCoachPlayers()
+	if err != nil {
+		return nil, err
+	}
+	if !slices.ContainsFunc(roster, func(p db.CoachPlayerSummary) bool { return p.ID == playerRef }) {
+		return nil, db.ErrCoachPlayerUnknown
+	}
+	return a.store.ListCoachSessions(playerRef)
 }

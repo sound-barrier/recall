@@ -673,7 +673,8 @@ CREATE TABLE IF NOT EXISTS user_match_rank_modifiers (
 -- Three families that one machine may carry at once (a user can be both a
 -- coach and a player, and a player reviews their own games):
 --
---   * coach-AUTHORED (coach_players / coach_notes / coach_session_summaries)
+--   * coach-AUTHORED (coach_players / coach_notes / coach_sessions and its
+--     coach_session_* children)
 --     — what THIS user wrote about someone else's matches during a coaching
 --     session. Keyed by the player, never by a local match_key; Clear() and
 --     HardDeleteMatch() leave this family alone.
@@ -924,6 +925,62 @@ CREATE TABLE IF NOT EXISTS coach_return_decisions (
 -- the database (see the family note above). finished_at is NULL while the
 -- review is in progress; Finish stamps it and marks every member match
 -- reviewed_by 'self' where a coach has not already outranked it.
+-- The coach's own sittings — one row per session, opened when the corpus is
+-- claimed and stamped when it is handed back.
+--
+-- Before this, the database recorded WHEN a coach worked only as each note's
+-- own timestamps, so the dossier's "last session" honestly meant "last note
+-- touched" and "what changed since last time" had no last time to compare
+-- against. A session that produced no notes left no trace at all.
+--
+-- ended_at NULL is an ABANDONED sitting, and that is worth keeping: a coach
+-- who opened a bundle and walked away did something, and a dossier that
+-- silently dropped it would misreport how often they meet.
+--
+-- player_ref is nullable because a session has no identity until the coach
+-- answers "who is this?" — and can be re-pointed when they answer it wrong.
+-- handle and kind are SNAPSHOTS beside it, so a renamed player does not
+-- rewrite the history of who a sitting was about.
+CREATE TABLE IF NOT EXISTS coach_sessions (
+  session_id TEXT PRIMARY KEY,
+  player_ref INTEGER REFERENCES coach_players (id) ON DELETE SET NULL,
+  handle TEXT NOT NULL DEFAULT '',
+  kind TEXT NOT NULL DEFAULT 'player' CHECK (kind IN ('player', 'team')),
+  source TEXT NOT NULL CHECK (source IN ('bundle', 'replay')),
+  opened_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  ended_at TEXT
+) STRICT;
+-- statement-end
+CREATE INDEX IF NOT EXISTS idx_coach_sessions_player ON coach_sessions (player_ref, opened_at);
+-- statement-end
+
+-- What the sitting covered. match_key here belongs to ANOTHER player's
+-- corpus — the same rule coach_notes follows — so this table stays OUT of
+-- the rename registry: renaming one of our own keys must not touch it.
+CREATE TABLE IF NOT EXISTS coach_session_matches (
+  session_id TEXT NOT NULL REFERENCES coach_sessions (session_id) ON DELETE CASCADE,
+  match_key TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (session_id, match_key)
+) STRICT;
+-- statement-end
+
+-- The focus list as it stood when the sitting ended, BY VALUE.
+--
+-- Not a foreign key to coach_focus_items: those rows are deleted and
+-- reinserted on every autosave, so a reference would dangle within minutes
+-- of being written. A snapshot is also what the question actually wants —
+-- "what changed since last time" needs what the list SAID then, not what
+-- the surviving rows say now.
+CREATE TABLE IF NOT EXISTS coach_session_focus_items (
+  session_id TEXT NOT NULL REFERENCES coach_sessions (session_id) ON DELETE CASCADE,
+  sort_order INTEGER NOT NULL,
+  text TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'new',
+  PRIMARY KEY (session_id, sort_order)
+) STRICT;
+-- statement-end
+
 CREATE TABLE IF NOT EXISTS self_reviews (
   review_id TEXT PRIMARY KEY,
   title TEXT NOT NULL DEFAULT '',

@@ -14,6 +14,7 @@ import (
 	"recall/pkg/app"
 	"recall/pkg/coach"
 	"recall/pkg/coachreturn"
+	"recall/pkg/db"
 	"recall/pkg/match"
 )
 
@@ -49,6 +50,7 @@ func registerCoachRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/coach/session/matches", handleGetCoachSessionMatches(a))
 	apiMux.HandleFunc("GET /api/v1/coach/players", handleListCoachPlayers(a))
 	apiMux.HandleFunc("GET /api/v1/coach/players/{id}/notes", handleListCoachPlayerNotes(a))
+	apiMux.HandleFunc("GET /api/v1/coach/players/{id}/sessions", handleListCoachPlayerSessions(a))
 	apiMux.HandleFunc("PUT /api/v1/coach/session/notes/{match_key}", handlePutCoachNote(a))
 	apiMux.HandleFunc("DELETE /api/v1/coach/session/notes/{match_key}", handleDeleteCoachNote(a))
 	apiMux.HandleFunc("PUT /api/v1/coach/session/notes/{match_key}/moments/{moment_id}", handlePutCoachMoment(a))
@@ -566,6 +568,58 @@ func handleListCoachPlayerNotes(a *app.App) http.HandlerFunc {
 			})
 		}
 		writeJSON(w, r, wire, nil)
+	}
+}
+
+// coachSessionWire is one sitting on the wire — when it happened, what it
+// covered, and the focus list it froze. `ended_at` absent means the coach
+// walked away without handing the corpus back.
+type coachSessionWire struct {
+	SessionID  string                  `json:"session_id"`
+	Handle     string                  `json:"handle,omitempty"`
+	Kind       string                  `json:"kind"`
+	Source     string                  `json:"source"`
+	OpenedAt   string                  `json:"opened_at"`
+	EndedAt    string                  `json:"ended_at,omitempty"`
+	MatchKeys  []string                `json:"match_keys"`
+	FocusItems []coachSessionFocusWire `json:"focus_items"`
+}
+
+type coachSessionFocusWire struct {
+	Text   string `json:"text"`
+	Status string `json:"status"`
+}
+
+// handleListCoachPlayerSessions reads one coached identity's sittings,
+// newest first.
+func handleListCoachPlayerSessions(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, ok := idFromPath(w, r, "player id")
+		if !ok {
+			return
+		}
+		rows, err := a.ListCoachPlayerSessions(id)
+		if writeError(w, r, err) {
+			return
+		}
+		wire := make([]coachSessionWire, 0, len(rows))
+		for _, row := range rows {
+			wire = append(wire, coachSessionToWire(row))
+		}
+		writeJSON(w, r, wire, nil)
+	}
+}
+
+func coachSessionToWire(row db.CoachSessionRow) coachSessionWire {
+	focus := make([]coachSessionFocusWire, 0, len(row.FocusItems))
+	for _, f := range row.FocusItems {
+		focus = append(focus, coachSessionFocusWire{Text: f.Text, Status: string(f.Status)})
+	}
+	return coachSessionWire{
+		SessionID: row.SessionID, Handle: row.Handle, Kind: row.Kind,
+		Source: row.Source, OpenedAt: row.OpenedAt, EndedAt: row.EndedAt,
+		MatchKeys:  append([]string{}, row.MatchKeys...),
+		FocusItems: focus,
 	}
 }
 

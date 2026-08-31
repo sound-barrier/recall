@@ -63,8 +63,9 @@ func OpenReplaySession(codes []string, now time.Time) (*Session, error) {
 		return nil, ErrNoReplayCodes
 	}
 	s := &Session{
-		OpenedAt: now.UTC().Format(time.RFC3339),
-		Source:   SessionFromReplay,
+		SessionID: NewID(),
+		OpenedAt:  now.UTC().Format(time.RFC3339),
+		Source:    SessionFromReplay,
 		// Provisional until the room's "Who is this?" is answered — the
 		// wire never carries an empty kind, and player is the fork's
 		// default answer.

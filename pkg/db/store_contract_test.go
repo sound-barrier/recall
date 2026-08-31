@@ -1009,3 +1009,124 @@ func TestStoreContract_DuplicateLinkDiesWithEitherMatch(t *testing.T) {
 		})
 	}
 }
+
+// The coach's own sittings. Before this the database recorded WHEN a coach
+// worked only as each note's timestamps, so "last session" meant "last note
+// touched" and a sitting that produced no notes left no trace at all.
+func TestStoreContract_CoachSessionRecordsTheSitting(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			p, err := s.EnsureCoachPlayer("pid-1", "Kestrel", db.CoachKindPlayer)
+			mustNoErr(t, err)
+
+			mustNoErr(t, s.StartCoachSession(db.CoachSessionRow{
+				SessionID: "sess-1", PlayerRef: p.ID, Handle: "Kestrel",
+				Kind: db.CoachKindPlayer, Source: "bundle",
+				MatchKeys: []string{"match-a", "match-b"},
+			}))
+
+			got, err := s.ListCoachSessions(p.ID)
+			mustNoErr(t, err)
+			if len(got) != 1 {
+				t.Fatalf("sessions = %+v, want the one just opened", got)
+			}
+			if got[0].OpenedAt == "" {
+				t.Error("opened_at was not stamped")
+			}
+			// Still open — an unfinished sitting is not a finished one.
+			if got[0].EndedAt != "" {
+				t.Errorf("ended_at = %q on an open session, want empty", got[0].EndedAt)
+			}
+			if len(got[0].MatchKeys) != 2 {
+				t.Errorf("match keys = %v, want both", got[0].MatchKeys)
+			}
+		})
+	}
+}
+
+// A session has no identity until the coach answers "who is this?", and can
+// be re-pointed when they answer it wrong. The row is written at START, so
+// it has to be able to learn the player afterward — otherwise every
+// unaddressed bundle's sitting would be lost to the dossier it belongs to.
+func TestStoreContract_CoachSessionLearnsItsPlayerLate(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			mustNoErr(t, s.StartCoachSession(db.CoachSessionRow{
+				SessionID: "sess-1", Source: "replay", Kind: db.CoachKindPlayer,
+			}))
+			p, err := s.EnsureCoachPlayer("pid-1", "Kestrel", db.CoachKindPlayer)
+			mustNoErr(t, err)
+
+			mustNoErr(t, s.PointCoachSessionAt("sess-1", p.ID, "Kestrel", db.CoachKindPlayer))
+
+			got, err := s.ListCoachSessions(p.ID)
+			mustNoErr(t, err)
+			if len(got) != 1 || got[0].Handle != "Kestrel" {
+				t.Fatalf("sessions = %+v, want the sitting now filed under Kestrel", got)
+			}
+		})
+	}
+}
+
+// End stamps the sitting AND freezes the focus list as it stood. By value:
+// the coach's focus rows are delete-and-reinserted on every autosave, so a
+// reference would dangle — and "what changed since last time" wants what
+// the list SAID then, not what survives now.
+func TestStoreContract_CoachSessionEndFreezesTheFocusList(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			p, err := s.EnsureCoachPlayer("pid-1", "Kestrel", db.CoachKindPlayer)
+			mustNoErr(t, err)
+			mustNoErr(t, s.StartCoachSession(db.CoachSessionRow{
+				SessionID: "sess-1", PlayerRef: p.ID, Handle: "Kestrel",
+				Kind: db.CoachKindPlayer, Source: "bundle",
+			}))
+
+			mustNoErr(t, s.EndCoachSession("sess-1", []db.CoachSessionFocusRow{
+				{Text: "Hold high ground longer", Status: "working"},
+				{Text: "Ult economy on defense", Status: "new"},
+			}))
+
+			got, err := s.ListCoachSessions(p.ID)
+			mustNoErr(t, err)
+			if len(got) != 1 {
+				t.Fatalf("sessions = %+v", got)
+			}
+			if got[0].EndedAt == "" {
+				t.Error("ended_at was not stamped")
+			}
+			if len(got[0].FocusItems) != 2 || got[0].FocusItems[0].Text != "Hold high ground longer" {
+				t.Errorf("focus snapshot = %+v, want the list in order", got[0].FocusItems)
+			}
+		})
+	}
+}
+
+// An abandoned sitting is worth keeping: a coach who opened a bundle and
+// walked away did something, and a dossier that silently dropped it would
+// misreport how often they meet.
+func TestStoreContract_CoachSessionKeepsAnAbandonedSitting(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			p, err := s.EnsureCoachPlayer("pid-1", "Kestrel", db.CoachKindPlayer)
+			mustNoErr(t, err)
+			for _, id := range []string{"sess-1", "sess-2"} {
+				mustNoErr(t, s.StartCoachSession(db.CoachSessionRow{
+					SessionID: id, PlayerRef: p.ID, Handle: "Kestrel",
+					Kind: db.CoachKindPlayer, Source: "bundle",
+				}))
+			}
+			mustNoErr(t, s.EndCoachSession("sess-2", nil))
+
+			got, err := s.ListCoachSessions(p.ID)
+			mustNoErr(t, err)
+			if len(got) != 2 {
+				t.Fatalf("sessions = %+v, want both the finished and the abandoned one", got)
+			}
+		})
+	}
+}

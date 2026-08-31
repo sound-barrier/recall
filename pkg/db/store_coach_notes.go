@@ -7,7 +7,7 @@ import (
 )
 
 // Coach-AUTHORED family: coach_players, coach_notes (+ tag children) and
-// coach_session_summaries. Keyed by the player a session was about, never by
+// coach_sessions. Keyed by the player a session was about, never by
 // a local match — Clear() and HardDeleteMatch() leave all of it alone.
 
 const (

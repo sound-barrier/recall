@@ -8,6 +8,7 @@ import type {
   CoachNoteInput,
   CoachNoteSummary,
   CoachPlayerSummary,
+  CoachSession,
   FocusItem,
   SelfReview,
   SelfReviewNote,
@@ -51,6 +52,11 @@ export function ListCoachPlayers(): Promise<CoachPlayerSummary[]> {
 
 // The dossier's "Read every note" — one coached identity's whole file,
 // newest first. The match KEY doubles as the display label.
+/** One coached identity's sittings, newest first — the dossier's history. */
+export function ListCoachPlayerSessions(id: number): Promise<CoachSession[]> {
+  return unwrap(sdk.listCoachPlayerSessions({ path: { id } }))
+}
+
 export function ListCoachPlayerNotes(id: number): Promise<CoachNoteSummary[]> {
   return unwrap(sdk.listCoachPlayerNotes({ path: { id } }))
 }

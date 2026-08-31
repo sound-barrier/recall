@@ -40,6 +40,26 @@ const SABLE_NOTES = [
   },
 ]
 
+// Two sittings and an abandoned one. The abandoned row is the case worth
+// pinning: a coach who opened a bundle and walked away did something, and a
+// dossier that dropped it would misreport how often the two of them meet.
+const SABLE_SESSIONS = [
+  {
+    session_id: 's-2', handle: 'Sable', kind: 'player', source: 'bundle',
+    opened_at: '2026-08-14T19:00:00Z', match_keys: ['match-2026-08-13T22-30-00'],
+    focus_items: [],
+  },
+  {
+    session_id: 's-1', handle: 'Sable', kind: 'player', source: 'bundle',
+    opened_at: '2026-08-10T18:00:00Z', ended_at: '2026-08-10T19:20:00Z',
+    match_keys: ['replay-A1B2C3', 'match-2026-08-09T20-00-00'],
+    // Deliberately NOT the standing list above: a frozen snapshot is what
+    // the list said THEN, and the whole point of keeping it is that the two
+    // can differ.
+    focus_items: [{ text: 'Stop over-extending on first point.', status: 'working' }],
+  },
+]
+
 async function seedRoster(page: Page): Promise<void> {
   await page.route('**/api/v1/coach/players', async (route: Route) => {
     await route.fulfill({
@@ -49,6 +69,11 @@ async function seedRoster(page: Page): Promise<void> {
   await page.route('**/api/v1/coach/players/2/notes', async (route: Route) => {
     await route.fulfill({
       status: 200, contentType: 'application/json', body: JSON.stringify(SABLE_NOTES),
+    })
+  })
+  await page.route('**/api/v1/coach/players/2/sessions', async (route: Route) => {
+    await route.fulfill({
+      status: 200, contentType: 'application/json', body: JSON.stringify(SABLE_SESSIONS),
     })
   })
 }
@@ -77,6 +102,23 @@ test.describe('the coach roster is a door', () => {
     await expect(dossier.getByText(/Hold the high ground/)).toBeVisible()
     await expect(dossier.getByText(/Aug 13/)).toBeVisible()
     await expect(dossier.getByText('A1B2C3')).toBeVisible()
+  })
+
+  // "Last session" used to mean "last note touched", because the database
+  // kept no record of when a coach actually sat down. It does now.
+  test('the dossier lists the sittings, and says which one was abandoned', async ({ page }) => {
+    await panel(page).getByRole('button', { name: /Open Sable's dossier/ }).click()
+    const dossier = panel(page).getByRole('region', { name: /Sable — coaching dossier/ })
+
+    const sessions = dossier.getByRole('list', { name: 'Sessions' })
+    await expect(sessions.getByRole('listitem')).toHaveCount(2)
+    // Newest first, and each says what it covered.
+    await expect(sessions.getByRole('listitem').first()).toContainText(/Aug 14/)
+    await expect(sessions.getByRole('listitem').last()).toContainText(/2 matches/)
+    // The one nobody finished says so rather than reading as a short sitting.
+    await expect(sessions.getByRole('listitem').first()).toContainText(/never ended/i)
+    // What the focus list said then, not what it says now.
+    await expect(sessions.getByRole('listitem').last()).toContainText(/over-extending/)
   })
 
   test('"Review new codes" lands in the room already named', async ({ page }) => {

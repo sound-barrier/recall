@@ -38,6 +38,8 @@ export const qk = {
   coachPlayers: ['coach-players'] as const,
   coachPlayerNotesAll: ['coach-player-notes'] as const,
   coachPlayerNotes: (id: number) => ['coach-player-notes', id] as const,
+  coachPlayerSessionsAll: ['coach-player-sessions'] as const,
+  coachPlayerSessions: (id: number) => ['coach-player-sessions', id] as const,
   system: {
     referenceData: ['system', 'reference-data'] as const,
     version:       ['system', 'version'] as const,
