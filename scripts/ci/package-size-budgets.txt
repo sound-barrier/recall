@@ -259,7 +259,11 @@ frontend/tests/e2e/dossier                    24
 # now stored, and a chip on both cards navigates to the twin — a link that
 # claims a judgment and cannot be followed is worse than no link, and only
 # a browser proves the store → wire → reveal → panel chain end to end.
-frontend/tests/e2e/match                      25
+# 25 -> 26: replay-code-shelf-life.spec.ts. OW retires replay codes at
+# season rollover, and the failure this proves absent is the worst kind of
+# quiet one — the code is still six valid characters and the player finds
+# out only when the game refuses it, having already sat down to watch.
+frontend/tests/e2e/match                      26
 
 # frontend/tests/e2e/matches — the Matches view around the list: grouping and
 # sorting, collapse/expand, infinite scroll and scroll affordances, bulk mode

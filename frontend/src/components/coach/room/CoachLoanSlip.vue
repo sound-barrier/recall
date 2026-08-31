@@ -3,6 +3,8 @@ import { computed } from 'vue'
 
 import { formatLocalFromUTC, playerClockOwner } from '@/match/match-time-helpers'
 import { noteMark } from '@/match/coach/coach-notes'
+import { replayCodeIsLikelyDead } from '@/match/match-season-helpers'
+import { useOWData } from '@/composables/shared/useOWData'
 import { useCoachStore } from '@/stores/coach'
 
 // The loan slip — the masthead while a coaching session is open.
@@ -33,6 +35,21 @@ const loanLine = computed(() => {
     ? `${count} replay${count === 1 ? '' : 's'}`
     : `${count} match${count === 1 ? '' : 'es'}`
   return exported ? `${matches} · ${handle.value} exported ${exported}` : matches
+})
+
+// The bundle is a set of replay codes, and OW retires those at season
+// rollover. A coach who opens a session, watches the loan slip, and only
+// discovers at the first frame that nothing will load has spent the
+// session's opening on a dead end — so the slip says it up front.
+//
+// EVERY code, not some: one live code makes the sitting worth having, and
+// a warning that fires on a mixed bundle would train the coach to ignore
+// it. Silent when the corpus cannot be placed on the season axis at all.
+const { seasons } = useOWData()
+const deadBundle = computed(() => {
+  const withCodes = coach.loanedRecords.filter(r => r.annotation?.replay_code)
+  if (withCodes.length === 0) return false
+  return withCodes.every(r => replayCodeIsLikelyDead(r, seasons.value, Date.now()))
 })
 
 // Marks, not drafts: a half-typed note that says nothing yet isn't a note.
@@ -79,6 +96,11 @@ const requestEnd = () => coach.requestEndSession()
     -->
     <p v-if="coach.narrowSetAside" class="coach-slip-line">
       Your own filters are set aside until this session ends.
+    </p>
+    <p v-if="deadBundle" class="coach-slip-line coach-slip-stale">
+      Every replay code here predates the current season — OW retires them at
+      rollover, so expect the game to refuse them. The stats and notes still
+      work.
     </p>
     <p class="coach-slip-line">
       {{ notesLine }}
@@ -158,6 +180,13 @@ const requestEnd = () => coach.requestEndSession()
 </template>
 
 <style scoped>
+/* A term of the loan the coach cannot change, like the promise above it —
+   stated plainly, in the paper's own ink rather than an alarm color. This
+   is "expect this", not "something is wrong". */
+.coach-slip-stale {
+  font-style: italic;
+}
+
 .coach-slip {
   display: grid;
   gap: 0.15rem;

@@ -350,3 +350,13 @@
    margin-top app.css adds since the parent journal cell already
    provides the gap. */
 .journal-cell-tags .match-tags-editor { margin-top: 0; }
+
+/* A note about a stored value the app cannot fix — sits under its field,
+   quieter than the field's own label, in the warning tint the rest of the
+   app uses for "this will not work" rather than "this went wrong". */
+.journal-hint-stale {
+  margin: 0.3rem 0 0;
+  color: var(--text-dim);
+  font-size: var(--type-2xs);
+  line-height: 1.4;
+}
