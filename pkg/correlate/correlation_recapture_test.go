@@ -170,3 +170,30 @@ func TestFindDuplicateCandidates_SummaryOnly_StillReports(t *testing.T) {
 		t.Fatalf("expected one same_instant candidate, got %+v", cands)
 	}
 }
+
+// The one repeated hour of a DST fall-back resolves two different matches
+// to the same UTC instant. Identity alone cannot separate them, which is
+// why the fingerprint is six fields wide: the corroborating fields are what
+// stop a real match being demoted out of the user's history.
+//
+// The hero case is belt-and-braces — RowsConflict already vetoes a hero
+// mismatch, and this passes with hero out of the fingerprint entirely. It
+// is here so the veto's coverage of this path is pinned where the reader
+// is thinking about it. The length case below is the one that fails
+// without its field.
+func TestFindRecapturedMatches_SameInstantDifferentHero_NoFlag(t *testing.T) {
+	snap := recapSnap("match-2026-05-10T18-05-22")
+	snap.Summaries[0].Hero = "juno"
+	if cands := correlate.FindRecapturedMatches(recapNewKey, snap); cands != nil {
+		t.Errorf("expected no flag on a conflicting hero, got %+v", cands)
+	}
+}
+
+func TestFindRecapturedMatches_SameInstantDifferentLength_NoFlag(t *testing.T) {
+	snap := recapSnap("match-2026-05-10T18-05-22")
+	snap.Summaries[0].GameLength = "07:12"
+	snap.Summaries[1].GameLength = "14:38"
+	if cands := correlate.FindRecapturedMatches(recapNewKey, snap); cands != nil {
+		t.Errorf("expected no flag on a conflicting game length, got %+v", cands)
+	}
+}

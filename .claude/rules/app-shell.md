@@ -27,13 +27,20 @@ paths:
   runs `ParseScreenshots` (which now emits `parse-complete` itself).
 - **Duplicate sweep** (`pkg/app/duplicate_sweep.go`): runs at the END of
   `runClaimedParse`, after the OCR loop, and demotes run-created tracked
-  matches whose full TEAMS stat line duplicates an existing match (30 min -
-  7 days, `correlate.FindDuplicateMatches`) into the ambiguous queue via
-  `Store.DemoteMatchToAmbiguous` (inverse of `ResolveAmbiguous`). Only keys
-  absent from `parseRunState.preRunKeys` are judged - pre-existing history is
-  never demoted and `ReParseAll` is exempt by construction (every re-adopted
-  key pre-exists). Candidate "reason" is derived from distance
-  (`correlate.CandidateReason`), never stored.
+  matches that duplicate an existing one into the ambiguous queue via
+  `Store.DemoteMatchToAmbiguous` (inverse of `ResolveAmbiguous`). TWO
+  producers behind one entry point: the TEAMS stat line (30 min - 7 days)
+  and the match's own played-at identity (unwindowed, and the only one that
+  works with no TEAMS shot). Only keys absent from
+  `parseRunState.preRunKeys` are judged - pre-existing history is never
+  demoted and `ReParseAll` is exempt by construction (every re-adopted key
+  pre-exists). Candidate "reason" is STAMPED by its producer and stored on
+  the row: the two overlap on the distance axis, so it cannot be derived.
+  **Build `correlate.NewDuplicateScan(snap)` ONCE and call `CandidatesFor`
+  per key** - the one-shot `FindDuplicateCandidates` re-reads the whole
+  snapshot, which made a first import quadratic (18 s at 5 000 matches).
+  Resolving to a fresh key records the verdict in `duplicate_matches`, and
+  both cards carry a "possible duplicate of" chip naming the other.
 - **Parse run-state (single-flight, async-job)**: `parseRunning` + the
   progress snapshot (`parseDone`/`parseTotal`/`parseScope`) + `parseCancel` all
   live under `parseCancelMu`. `claimParse`/`endParse` bracket a run; a second
