@@ -151,8 +151,9 @@ func (a *App) HardDeleteMatch(matchKey string) error {
 }
 
 // IgnoreScreenshot adds filename to the suppress-list backing the
-// Unknown tab's "Delete forever" affordance, and wipes every match row
-// keyed on that file so the card disappears now, not on the next parse.
+// Unknown tab's Dismiss affordance, and removes the file's own rows —
+// a match this was the last screenshot of disappears now (sidecars
+// wiped), while one with sibling screenshots survives minus this file.
 // Idempotent.
 func (a *App) IgnoreScreenshot(filename string) error {
 	if err := a.assertNoCoachSession(); err != nil {

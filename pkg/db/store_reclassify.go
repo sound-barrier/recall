@@ -93,6 +93,12 @@ func (s *SQLStore) DeleteScreenshotRows(filename string) ([]string, error) {
 	if _, err := tx.Exec(`DELETE FROM ambiguous_candidates WHERE filename = ?`, filename); err != nil {
 		return nil, err
 	}
+	// Same-tx dead-key invariant as DeleteScreenshotSiblings: candidates
+	// referencing a key this delete emptied must not outlive it, even if
+	// the caller's follow-up wipe never runs.
+	if err := dropOrphanedCandidates(tx, keys); err != nil {
+		return nil, err
+	}
 	orphans, err := orphanedKeys(tx, keys)
 	if err != nil {
 		return nil, err

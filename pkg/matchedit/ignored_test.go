@@ -99,9 +99,10 @@ func TestIgnoreScreenshot_WipesTrackedMatchKeyTooNotJustUnmatchedAndAmbiguous(t 
 	}
 }
 
-// A tracked key the lookup returns that is ALSO one of the two
-// name-shaped fallbacks is deleted once, not twice — the dedupe keeps
-// the audit log and the test expectations honest.
+// The orphan list is a set: however many of the file's rows carried the
+// same key, HardDeleteMatch fires once per key — pinned so a future
+// implementation change can't reintroduce double deletes (noisy audit
+// logs, double-counted test expectations).
 func TestIgnoreScreenshot_DeletesEachKeyOnce(t *testing.T) {
 	encU := match.NewUnmatchedMatchKey("dupe.png").String()
 	fake := &dbtest.Fake{
