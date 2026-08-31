@@ -7,7 +7,7 @@ import UnknownFailedSection from '@/components/unknown/UnknownFailedSection.vue'
 import { useMatchesStore } from '@/stores/matches'
 import { qk } from '@/queries/keys'
 import { seedQuery } from '@/test-utils/queryTestUtils'
-import { ExportDiagnosticBundle, IgnoreScreenshot } from '@/api'
+import { ExportDiagnosticBundle, IgnoreScreenshot, RetryFailedFile } from '@/api'
 import type { FailedFile } from '@/api'
 
 // The section reads matchesStore.failedFiles directly and suppresses via
@@ -20,6 +20,7 @@ vi.mock('@/api', async (importOriginal) => ({
   GetFailedFiles:         vi.fn(async () => []),
   GetIgnoredScreenshots:  vi.fn(async () => []),
   IgnoreScreenshot:       vi.fn(async () => undefined),
+  RetryFailedFile:        vi.fn(async () => undefined),
   ExportDiagnosticBundle: vi.fn(async () => 'recall-diagnostic-x.zip'),
 }))
 
@@ -78,6 +79,20 @@ describe('UnknownFailedSection', () => {
     await user().click(screen.getByRole('button', { name: 'Save diagnostic bundle' }))
     await new Promise((r) => setTimeout(r))
     expect(screen.queryByText(/Saved/)).not.toBeInTheDocument()
+  })
+
+  it('a parked row carries the badge and Retry; a live row carries neither', async () => {
+    renderWith([
+      row({ filename: 'stuck.png', parked: true, attempts: 3 }),
+      row({ filename: 'young.png', attempts: 1 }),
+    ])
+
+    expect(screen.getByText(/Parked — won't retry automatically/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Retry stuck.png' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Retry young.png' })).not.toBeInTheDocument()
+
+    await user().click(screen.getByRole('button', { name: 'Retry stuck.png' }))
+    expect(RetryFailedFile).toHaveBeenCalledWith('stuck.png')
   })
 
   it('two-click Dismiss fires IgnoreScreenshot only on confirm', async () => {

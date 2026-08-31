@@ -42,8 +42,15 @@ interface IngestOver {
   parseBusy?:          boolean
   cancelingParse?:    boolean
   newScreenshotCount?: number | null
+  parkedCount?:        number
   lastParsedAt?:       number | null
   matchedCount?:       number
+}
+
+// The pending-count seed, extracted so renderIngest's default chain
+// stays under the complexity ceiling.
+function seedPending(over: IngestOver) {
+  seedQuery(qk.pendingCount, { count: over.newScreenshotCount ?? 3, parked: over.parkedCount ?? 0 })
 }
 
 function renderIngest(over: IngestOver = {}) {
@@ -59,7 +66,7 @@ function renderIngest(over: IngestOver = {}) {
 
   parse.parseBusy = over.parseBusy ?? false
   parse.cancelingParse = over.cancelingParse ?? false
-  seedQuery(qk.pendingCount, { count: over.newScreenshotCount ?? 3, parked: 0 })
+  seedPending(over)
   parse.lastParsedAt = over.lastParsedAt ?? null
   matches.records = Array.from({ length: over.matchedCount ?? 0 }, (_, i) => rec(i))
 
@@ -135,6 +142,18 @@ describe('IngestView (Parse tab)', () => {
     const btn = screen.getByRole('button', { name: /All parsed/ })
     expect(btn).toBeDisabled()
     expect(btn).toHaveTextContent('nothing new')
+  })
+
+  it('only-parked left: the button disables and the meta says why', () => {
+    renderIngest({ newScreenshotCount: 0, parkedCount: 2 })
+    expect(screen.getByRole('button', { name: /All parsed/ })).toBeDisabled()
+    expect(screen.getByText(/All new screenshots parsed — 2 parked after repeated failures\./)).toBeInTheDocument()
+  })
+
+  it('new files plus parked: the button counts only the new and a meta line names the parked', () => {
+    renderIngest({ newScreenshotCount: 3, parkedCount: 2 })
+    expect(screen.getByRole('button', { name: /Run Parse · 3/ })).toBeEnabled()
+    expect(screen.getByText(/2 parked after repeated failures — retry from the Unknown tab\./)).toBeInTheDocument()
   })
 
   it('toggles watch via the settings store on the Watch Folder checkbox change', async () => {
