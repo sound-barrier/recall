@@ -69,10 +69,13 @@ export const useParseStore = defineStore('parse', () => {
   // ── The two folder-side ledgers ───────────────────────────────────
   // Cluster siblings of the records query — silent keep-last on failure.
   // newScreenshotCount: image files in the dir not yet in the DB (null =
-  // not yet fetched). failedFiles: the ones OCR could not read at all,
-  // which have no record to ride on.
+  // not yet fetched). parkedCount: on-disk files parse gave up on after
+  // repeated failures (out of the button's count, retryable from the
+  // Unknown tab). failedFiles: the ones OCR could not read at all, which
+  // have no record to ride on.
   const pendingCountQuery = usePendingCountQuery()
-  const newScreenshotCount = computed(() => pendingCountQuery.data.value ?? null)
+  const newScreenshotCount = computed(() => pendingCountQuery.data.value?.count ?? null)
+  const parkedCount = computed(() => pendingCountQuery.data.value?.parked ?? 0)
   const failedFilesQuery = useFailedFilesQuery()
   const failedFiles = computed(() => failedFilesQuery.data.value ?? [])
 
@@ -117,6 +120,7 @@ export const useParseStore = defineStore('parse', () => {
     onClearIgnoredScreenshots,
     onRunParseFromIgnored,
     newScreenshotCount,
+    parkedCount,
     refreshNewCount,
     failedFiles,
     staleMatches,

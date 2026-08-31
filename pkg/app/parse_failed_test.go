@@ -7,13 +7,16 @@ import (
 	"testing"
 
 	"recall/pkg/app"
+	"recall/pkg/db"
 	"recall/pkg/parser"
 )
 
 // The failed-file ledger: a per-file OCR failure is recorded so the
 // Unknown tab can triage it, a later successful parse clears it, and
-// "Delete forever" clears it. Failures are deliberately NOT added to
-// the skip set — every run re-attempts them.
+// Dismiss clears it. Failures are retried on the next few runs, then
+// PARKED — once a file has failed parkedAttemptCap times, normal runs
+// skip it so the pending count stops promising work that will fail
+// again. Re-parse All (force) still re-attempts parked files.
 
 func TestApp_ParseScreenshots_RecordsFailedFile(t *testing.T) {
 	a, fake := newParseReadyApp(t)
@@ -151,15 +154,16 @@ func TestApp_IgnoreScreenshot_ClearsFailedFile(t *testing.T) {
 	}
 }
 
-func TestApp_ParseScreenshots_FailedFileNotAddedToSkipSet(t *testing.T) {
+func TestApp_ParseScreenshots_FailedFileRetriedBelowCap(t *testing.T) {
 	a, fake := newParseReadyApp(t)
-	if err := fake.RecordFailedFile("corrupt.png", 1, "boom"); err != nil {
-		t.Fatalf("seed: %v", err)
+	for range 2 {
+		if err := fake.RecordFailedFile("corrupt.png", 1, "boom"); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
 	}
 
-	// Capture the skip set the OCR loop receives: a ledgered failure
-	// must NOT be in it (retry-every-run policy) and must not have been
-	// auto-ignored.
+	// Capture the skip set the OCR loop receives: a failure below the
+	// cap must NOT be in it (still retried) and must not be auto-ignored.
 	var skipSeen map[string]bool
 	prev := app.ParseScreenshotsDirFunc
 	app.ParseScreenshotsDirFunc = func(_ context.Context, _ string, skip map[string]bool, _ parser.ProgressFunc) (map[string]*parser.MatchResult, error) {
@@ -172,9 +176,125 @@ func TestApp_ParseScreenshots_FailedFileNotAddedToSkipSet(t *testing.T) {
 		t.Fatalf("ParseScreenshots: %v", err)
 	}
 	if skipSeen["corrupt.png"] {
-		t.Error("failed files must be retried every run — not in the skip set")
+		t.Error("two failures must still retry — not in the skip set")
 	}
 	if fake.Ignored["corrupt.png"] {
 		t.Error("failure must not auto-ignore the file")
+	}
+}
+
+// The cap itself: three failed attempts park the file out of a normal
+// run, and an explicit Re-parse All re-attempts it — parked is an
+// automatic suppression, so it yields to force exactly like the
+// All-Heroes recognition; the user-curated sets (ignored, duplicates)
+// never do.
+func TestApp_ParseScreenshots_FileParksAtAttemptCap(t *testing.T) {
+	a, fake := newParseReadyApp(t)
+	for range 3 {
+		if err := fake.RecordFailedFile("corrupt.png", 1, "boom"); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+
+	var skipSeen map[string]bool
+	stubParseCapturingSkip(t, &skipSeen)
+	if err := a.ParseScreenshots(); err != nil {
+		t.Fatalf("ParseScreenshots: %v", err)
+	}
+	if !skipSeen["corrupt.png"] {
+		t.Error("three failures must park the file — a normal run skips it")
+	}
+
+	var forceSkip map[string]bool
+	stubParseCapturingSkip(t, &forceSkip)
+	if err := a.ReParseAll(); err != nil {
+		t.Fatalf("ReParseAll: %v", err)
+	}
+	if forceSkip["corrupt.png"] {
+		t.Error("Re-parse All must re-attempt parked files")
+	}
+}
+
+// The two non-OCR leak paths: a file whose parse succeeded but whose
+// insert (or ambiguity write) failed stored nothing, so without a ledger
+// row it would sit silently in the pending set forever and never park.
+func TestApp_ParseScreenshots_InsertErrorRecordsFailedFile(t *testing.T) {
+	a, fake := newParseReadyApp(t)
+	fake.UpsertErr = errors.New("database is locked")
+	stubParse(t, func(progress parser.ProgressFunc) error {
+		res := &parser.MatchResult{Result: "victory", Map: "rialto", Hero: "lucio"}
+		progress(1, 1, "victim.png", res, nil)
+		return nil
+	})
+
+	if err := a.ParseScreenshots(); err != nil {
+		t.Fatalf("ParseScreenshots: %v", err)
+	}
+	row, ok := fake.FailedFiles["victim.png"]
+	if !ok {
+		t.Fatalf("an insert failure must land in the ledger, got %v", fake.FailedFiles)
+	}
+	if !strings.HasPrefix(row.Error, "insert: ") {
+		t.Errorf("ledger error = %q, want the insert: prefix naming the stage", row.Error)
+	}
+}
+
+func TestApp_ParseScreenshots_AmbiguityErrorRecordsFailedFile(t *testing.T) {
+	a, fake := newParseReadyApp(t)
+	fake.AmbiguityErr = errors.New("database is locked")
+	stubParse(t, func(progress parser.ProgressFunc) error {
+		res := &parser.MatchResult{Result: "victory", Map: "rialto", Hero: "lucio"}
+		progress(1, 1, "victim.png", res, nil)
+		return nil
+	})
+
+	if err := a.ParseScreenshots(); err != nil {
+		t.Fatalf("ParseScreenshots: %v", err)
+	}
+	row, ok := fake.FailedFiles["victim.png"]
+	if !ok {
+		t.Fatalf("an ambiguity-write failure must land in the ledger, got %v", fake.FailedFiles)
+	}
+	if !strings.HasPrefix(row.Error, "ambiguity: ") {
+		t.Errorf("ledger error = %q, want the ambiguity: prefix naming the stage", row.Error)
+	}
+}
+
+// Parked on the wire means "the pending count gave up on this file" — so
+// it must be true only for hard failures (no parent row stored). A
+// degraded file accrues attempts too, but it stored what it read and
+// already left the pending set; labeling it parked would lie and its
+// Retry would change nothing.
+func TestApp_GetFailedFiles_MarksParkedOnlyForHardFailures(t *testing.T) {
+	a, fake := newParseReadyApp(t)
+	for range 3 {
+		if err := fake.RecordFailedFile("hard.png", 1, "boom"); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+		if err := fake.RecordFailedFile("degraded.png", 1, "cell OCR failed"); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+	if err := fake.RecordFailedFile("young.png", 1, "boom"); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	fake.Personals = []db.PersonalRow{{Filename: "degraded.png", MatchKey: "k"}}
+
+	rows, err := a.GetFailedFiles()
+	if err != nil {
+		t.Fatalf("GetFailedFiles: %v", err)
+	}
+	parked := map[string]bool{}
+	for _, r := range rows {
+		parked[r.Filename] = r.Parked
+	}
+	if !parked["hard.png"] {
+		t.Error("hard.png at the cap with no stored row must be parked")
+	}
+	if parked["degraded.png"] {
+		t.Error("degraded.png stored a row — it is not parked, whatever its attempts")
+	}
+	if parked["young.png"] {
+		t.Error("young.png is below the cap — not parked")
 	}
 }

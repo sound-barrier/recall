@@ -434,6 +434,15 @@ export type FailedFile = {
      */
     attempts: number;
     /**
+     * The file has failed enough runs in a row that normal parse
+     * runs stop retrying it (server-derived; degraded files that
+     * stored data are never parked, whatever their attempt
+     * count). Re-parse All re-attempts parked files; deleting the
+     * failure row (Retry) resets the count.
+     *
+     */
+    parked: boolean;
+    /**
      * Timestamp of the first recorded failure (RFC 3339).
      */
     first_failed_at: string;
@@ -3190,10 +3199,19 @@ export type GetPendingScreenshotCountError = GetPendingScreenshotCountErrors[key
 
 export type GetPendingScreenshotCountResponses = {
     /**
-     * Count.
+     * Pending and parked counts.
      */
     200: {
+        /**
+         * Files the next parse run will OCR.
+         */
         count: number;
+        /**
+         * On-disk files parked after repeated failures —
+         * skipped by normal runs, excluded from `count`.
+         *
+         */
+        parked: number;
     };
 };
 

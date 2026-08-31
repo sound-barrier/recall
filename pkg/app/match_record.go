@@ -3,43 +3,69 @@ package app
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"recall/pkg/aggregate"
 	"recall/pkg/match"
 	"recall/pkg/parser"
 )
 
+// PendingScreenshots is the wire shape behind the "Run Parse · N" button.
+// Count is exactly what the next normal run will OCR; Parked counts the
+// on-disk files the run gave up on (parkedAttemptCap failures) so the UI
+// can say "2 parked after repeated failures" instead of promising them.
+type PendingScreenshots struct {
+	Count  int `json:"count"`
+	Parked int `json:"parked"`
+}
+
 // GetNewScreenshotCount returns the number of image files in the configured
 // screenshots directory that the next parse run will OCR — the number behind
 // the "Run Parse · N" button. It answers off the SAME skip set and the SAME
 // directory scan the run itself uses (parsedSkipSet + parser.PendingFiles), so
 // it can't disagree with the progress panel's "X / N files". Computing it from
-// LoadAllFilenames alone used to leave out every All-Heroes screen, "Delete
-// forever" file, and registered duplicate, each of which inflated the button
-// permanently because none of them ever returns to a parent table.
-func (a *App) GetNewScreenshotCount() (int, error) {
+// LoadAllFilenames alone used to leave out every All-Heroes screen, dismissed
+// file, and registered duplicate, each of which inflated the button
+// permanently because none of them ever returns to a parent table. Parked
+// failures get the complementary treatment: they leave Count (the run skips
+// them) and surface in Parked instead — but only while still on disk.
+func (a *App) GetNewScreenshotCount() (PendingScreenshots, error) {
 	dir := a.settingsSnapshot().ScreenshotsDir
 	if dir == "" {
-		return 0, nil
+		return PendingScreenshots{}, nil
 	}
 	// Same folder the run itself would use, so the count and the run cannot
 	// disagree about what is already parsed.
 	dirID, err := a.store.EnsureScreenshotsDir(dir)
 	if err != nil {
-		return 0, err
+		return PendingScreenshots{}, err
 	}
 	skip, err := a.parsedSkipSet(dirID, false)
 	if err != nil {
-		return 0, err
+		return PendingScreenshots{}, err
 	}
 	pending, err := parser.PendingFiles(dir, skip)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return 0, nil
+			return PendingScreenshots{}, nil
 		}
-		return 0, err
+		return PendingScreenshots{}, err
 	}
-	return len(pending), nil
+	return PendingScreenshots{Count: len(pending), Parked: a.parkedOnDisk(dir)}, nil
+}
+
+// parkedOnDisk counts the parked filenames still present in dir. Parked
+// files sit inside the skip set, so the pending scan never sees them; a
+// per-file stat over the (small) parked set is the honest existence
+// check — a parked row whose file was deleted counts nowhere.
+func (a *App) parkedOnDisk(dir string) int {
+	n := 0
+	for f := range a.parkedSet() {
+		if _, err := os.Stat(filepath.Join(dir, f)); err == nil {
+			n++
+		}
+	}
+	return n
 }
 
 // GetMatchResults returns one match.Record per match, aggregated from

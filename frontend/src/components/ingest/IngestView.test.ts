@@ -59,7 +59,7 @@ function renderIngest(over: IngestOver = {}) {
 
   parse.parseBusy = over.parseBusy ?? false
   parse.cancelingParse = over.cancelingParse ?? false
-  seedQuery(qk.pendingCount, over.newScreenshotCount ?? 3)
+  seedQuery(qk.pendingCount, { count: over.newScreenshotCount ?? 3, parked: 0 })
   parse.lastParsedAt = over.lastParsedAt ?? null
   matches.records = Array.from({ length: over.matchedCount ?? 0 }, (_, i) => rec(i))
 

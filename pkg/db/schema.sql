@@ -504,12 +504,14 @@ CREATE TABLE IF NOT EXISTS ignored_screenshots (
 
 -- Per-file OCR failure ledger backing the Unknown tab's "Failed to read"
 -- triage section. A row exists while the file's most recent parse attempt
--- failed; a later successful parse deletes it, and "Delete forever"
--- (ignored_screenshots) deletes it. Deliberately NOT a skip list — failed
--- files are re-attempted on every parse run; ignoring is the user's
--- suppression lever. screenshots_dir_id lets the diagnostic bundle resolve
--- the on-disk path later (PruneScreenshotsDirs unions this table so a dir
--- referenced only here survives the startup GC).
+-- failed; a later successful parse deletes it, Dismiss
+-- (ignored_screenshots) deletes it, and Retry deletes it (which resets
+-- attempts). Mostly not a skip list — a failed file is re-attempted on
+-- the next few parse runs — but once attempts reaches the app layer's
+-- cap the file is PARKED: normal runs skip it, Re-parse All re-attempts
+-- it. screenshots_dir_id lets the diagnostic bundle resolve the on-disk
+-- path later (PruneScreenshotsDirs unions this table so a dir referenced
+-- only here survives the startup GC).
 CREATE TABLE IF NOT EXISTS failed_files (
   filename TEXT PRIMARY KEY,
   screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs (id) ON DELETE RESTRICT,

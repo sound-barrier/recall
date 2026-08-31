@@ -147,16 +147,20 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 }
 
 // parsedSkipSet builds the set of filenames the parser should skip: the
-// already-parsed files (unless force) — plus the recognized-but-unstored
-// All-Heroes screens, which skip on a normal run but are re-examined on a
-// force ReParseAll exactly like already-parsed files — unioned with the
-// user-curated suppress-list ("Delete forever" in the Unknown tab) and the
+// already-parsed files (unless force) — plus two automatic suppressions
+// that yield to force exactly like already-parsed files: the
+// recognized-but-unstored All-Heroes screens, and the PARKED failures
+// (files at parkedAttemptCap — retrying them every run is what kept the
+// pending count promising work that would fail again) — unioned with the
+// user-curated suppress-list (Dismiss in the Unknown tab) and the
 // registry's standing byte-identical duplicates. Errors loading the ignored /
-// recognized / duplicate sets don't abort the parse — it's a UX nicety, not a
-// correctness invariant; an empty set just means nothing's suppressed. The
-// suppress list and the duplicate registry ARE honored even on ReParseAll
-// (force) — the user explicitly told us never to look at those files again,
-// and a duplicate's canonical re-parses in its place.
+// recognized / parked / duplicate sets don't abort the parse — it's a UX
+// nicety, not a correctness invariant; an empty set just means nothing's
+// suppressed. The suppress list and the duplicate registry ARE honored even
+// on ReParseAll (force) — the user explicitly told us never to look at those
+// files again, and a duplicate's canonical re-parses in its place; the
+// automatic sets are re-examined on force, so Re-parse All is also the
+// "try everything once more" lever for parked files.
 //
 // GetNewScreenshotCount reports the same set's complement as the pending
 // count, so the "Run Parse · N" button and the progress panel's "X / N files"
@@ -185,6 +189,9 @@ func (a *App) parsedSkipSet(dirID int64, force bool) (map[string]bool, error) {
 		for f := range recognized {
 			parsed[f] = true
 		}
+		for f := range a.parkedSet() {
+			parsed[f] = true
+		}
 	}
 	ignored, _ := a.store.LoadIgnoredFilenames()
 	for f := range ignored {
@@ -194,6 +201,14 @@ func (a *App) parsedSkipSet(dirID int64, force bool) (map[string]bool, error) {
 		parsed[f] = true
 	}
 	return parsed, nil
+}
+
+// parkedSet loads the filenames whose failure count reached the cap.
+// Best-effort like the other suppression loads: an error means an empty
+// set, and the files simply retry this run.
+func (a *App) parkedSet() map[string]bool {
+	parked, _ := a.store.LoadFailedFilenames(parkedAttemptCap)
+	return parked
 }
 
 // parseRunState accumulates per-file outcomes across one Parse batch so the
@@ -261,6 +276,7 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 
 	if err := a.insertParsed(filename, key, ev.Type, st.dirID, result); err != nil {
 		ev.Error = "insert: " + err.Error()
+		st.recordLeakedFailure(filename, ev.Error)
 		a.emitParseProgress(ev)
 		return
 	}
@@ -269,6 +285,7 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 	// (or newly surfaces) ambiguity updates the candidates table in lockstep.
 	if err := a.store.ApplyAmbiguity(filename, ambigCands); err != nil {
 		ev.Error = "ambiguity: " + err.Error()
+		st.recordLeakedFailure(filename, ev.Error)
 		a.emitParseProgress(ev)
 		return
 	}
@@ -282,6 +299,16 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 	ev.HeroCorrections = st.heroCorrections
 	ev.MapCorrections = st.mapCorrections
 	a.emitParseProgress(ev)
+}
+
+// recordLeakedFailure ledgers a file whose parse succeeded but whose
+// write failed. It stored nothing, so without a row it would sit
+// silently in the pending set forever — retried every run, never parked,
+// and invisible to the Failed section. Ledger writes stay best-effort.
+func (st *parseRunState) recordLeakedFailure(filename, msg string) {
+	if err := st.app.store.RecordFailedFile(filename, st.dirID, msg); err != nil {
+		applog.Subsystem("parse").Warn("record failed file", "filename", filename, "err", err)
+	}
 }
 
 // reconcileFailureLedger keeps the triage ledger in step with a parse that

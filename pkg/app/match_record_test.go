@@ -35,9 +35,9 @@ func TestApp_GetMatchByKey(t *testing.T) {
 }
 
 func TestApp_GetNewScreenshotCount(t *testing.T) {
-	// No screenshots dir configured → 0, no error.
-	if n, err := app.NewWithStore(dbtest.New()).GetNewScreenshotCount(); err != nil || n != 0 {
-		t.Errorf("unset dir: got (%d, %v), want (0, nil)", n, err)
+	// No screenshots dir configured → zero counts, no error.
+	if p, err := app.NewWithStore(dbtest.New()).GetNewScreenshotCount(); err != nil || p.Count != 0 || p.Parked != 0 {
+		t.Errorf("unset dir: got (%+v, %v), want zero counts, nil", p, err)
 	}
 
 	// A dir of 3 images + a non-image; one image is already parsed → 2 new.
@@ -59,20 +59,50 @@ func TestApp_GetNewScreenshotCount(t *testing.T) {
 	a := app.NewWithStore(fake)
 	app.SettingsOf(a).ScreenshotsDir = dir
 
-	n, err := a.GetNewScreenshotCount()
+	p, err := a.GetNewScreenshotCount()
 	if err != nil {
 		t.Fatalf("GetNewScreenshotCount: %v", err)
 	}
-	if n != 2 {
-		t.Errorf("got %d new screenshots, want 2 (b.jpg + c.png; a.png parsed, notes.txt non-image)", n)
+	if p.Count != 2 {
+		t.Errorf("got %d new screenshots, want 2 (b.jpg + c.png; a.png parsed, notes.txt non-image)", p.Count)
 	}
 
 	// A configured folder that has since moved or unmounted reports 0, not an
 	// error — the count feeds a button label, and an unreachable folder is the
 	// parse's error to report, not the count's.
 	app.SettingsOf(a).ScreenshotsDir = filepath.Join(dir, "gone")
-	if n, err := a.GetNewScreenshotCount(); err != nil || n != 0 {
-		t.Errorf("vanished dir: got (%d, %v), want (0, nil)", n, err)
+	if p, err := a.GetNewScreenshotCount(); err != nil || p.Count != 0 || p.Parked != 0 {
+		t.Errorf("vanished dir: got (%+v, %v), want zero counts, nil", p, err)
+	}
+}
+
+// Parked files leave Count — the button must stop promising work that
+// will fail again — and surface in Parked instead, but only while the
+// file is still on disk: a parked row whose file was deleted counts
+// nowhere.
+func TestApp_GetNewScreenshotCount_SeparatesParkedFiles(t *testing.T) {
+	a, fake := newParseReadyApp(t)
+	dir := app.SettingsOf(a).ScreenshotsDir
+	writeFile(t, dir, "new.png", []byte("new"))
+	writeFile(t, dir, "stuck.png", []byte("stuck"))
+	for range 3 {
+		if err := fake.RecordFailedFile("stuck.png", 1, "boom"); err != nil {
+			t.Fatal(err)
+		}
+		if err := fake.RecordFailedFile("gone.png", 1, "boom"); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	p, err := a.GetNewScreenshotCount()
+	if err != nil {
+		t.Fatalf("GetNewScreenshotCount: %v", err)
+	}
+	if p.Count != 1 {
+		t.Errorf("Count = %d, want 1 — only new.png is pending", p.Count)
+	}
+	if p.Parked != 1 {
+		t.Errorf("Parked = %d, want 1 — stuck.png is on disk, gone.png is not", p.Parked)
 	}
 }
 
@@ -102,12 +132,12 @@ func TestApp_GetNewScreenshotCount_AgreesWithParseSkipSet(t *testing.T) {
 		"d.png": {ContentHash: "h", DuplicateOf: "a.png"},
 	}
 
-	count, err := a.GetNewScreenshotCount()
+	p, err := a.GetNewScreenshotCount()
 	if err != nil {
 		t.Fatalf("GetNewScreenshotCount: %v", err)
 	}
-	if count != 1 {
-		t.Errorf("count = %d, want 1 — only e.png is new (a.png parsed, b.png all-heroes, c.png ignored, d.png duplicate)", count)
+	if p.Count != 1 {
+		t.Errorf("count = %d, want 1 — only e.png is new (a.png parsed, b.png all-heroes, c.png ignored, d.png duplicate)", p.Count)
 	}
 
 	// ...and the run agrees: what the button promises is exactly what the
@@ -121,7 +151,7 @@ func TestApp_GetNewScreenshotCount_AgreesWithParseSkipSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PendingFiles: %v", err)
 	}
-	if len(pending) != count {
-		t.Errorf("parse total = %d %v, button count = %d; the two must agree", len(pending), pending, count)
+	if len(pending) != p.Count {
+		t.Errorf("parse total = %d %v, button count = %d; the two must agree", len(pending), pending, p.Count)
 	}
 }

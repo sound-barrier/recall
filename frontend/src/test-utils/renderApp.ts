@@ -26,6 +26,7 @@ export interface MountOverrides {
   watchEnabled?:      boolean
   exitOnClose?:       boolean
   newScreenshotCount?: number
+  parkedCount?:        number
   // Seeds localStorage['recall.includeUndated'] so useIncludeUndated
   // picks it up on mount. Default false (the production default), so
   // tests that pass dateless records and expect to see the UNKNOWN
@@ -132,7 +133,7 @@ function buildMock(overrides: MountOverrides = {}) {
     GetIgnoredScreenshots:   vi.fn(async () => [] as string[]),
     UnignoreScreenshot:      vi.fn(async () => undefined),
     ClearIgnoredScreenshots: vi.fn(async () => undefined),
-    GetNewScreenshotCount: vi.fn(async () => overrides.newScreenshotCount ?? 0),
+    GetNewScreenshotCount: vi.fn(async () => ({ count: overrides.newScreenshotCount ?? 0, parked: overrides.parkedCount ?? 0 })),
     GetFailedFiles:        vi.fn(async () => []),
     GetDataLocation:     vi.fn(async () => ({
       base_dir: '/test/base',

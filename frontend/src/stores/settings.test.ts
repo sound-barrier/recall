@@ -22,7 +22,7 @@ vi.mock('@/api', async (importOriginal) => ({
   EventsOn:              vi.fn(),
   EventsOff:             vi.fn(),
   GetActiveParse:        vi.fn(async () => null),
-  GetNewScreenshotCount: vi.fn(async () => 0),
+  GetNewScreenshotCount: vi.fn(async () => ({ count: 0, parked: 0 })),
   GetOWData:             vi.fn(async () => ({ heroes: [], maps: [], roles: {}, gameModes: [] })),
 }))
 

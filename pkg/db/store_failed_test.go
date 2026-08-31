@@ -128,3 +128,29 @@ func TestSQLStore_PruneScreenshotsDirs_KeepsFailedOnlyDir(t *testing.T) {
 		t.Errorf("dir id = %d, want %d", rows[0].ScreenshotsDirID, dirID)
 	}
 }
+
+// The parked-set loader: the skip set asks for filenames at or past the
+// attempt cap, and both implementations must draw the line identically.
+func TestStoreContract_LoadFailedFilenames_FiltersByMinAttempts(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			if err := s.RecordFailedFile("once.png", 1, "boom"); err != nil {
+				t.Fatalf("record: %v", err)
+			}
+			for range 3 {
+				if err := s.RecordFailedFile("thrice.png", 1, "boom"); err != nil {
+					t.Fatalf("record: %v", err)
+				}
+			}
+
+			got, err := s.LoadFailedFilenames(3)
+			if err != nil {
+				t.Fatalf("LoadFailedFilenames: %v", err)
+			}
+			if got["once.png"] || !got["thrice.png"] || len(got) != 1 {
+				t.Errorf("LoadFailedFilenames(3) = %v, want exactly thrice.png", got)
+			}
+		})
+	}
+}

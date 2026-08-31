@@ -556,8 +556,12 @@ export const getActiveParse = <ThrowOnError extends boolean = false>(options?: O
  * button. Computed from the run's own skip set, so it matches the
  * total the `parse-progress` events will report. Beyond the files
  * already in a per-screenshot-type table, that skip set excludes
- * recognized All-Heroes screens, files on the "Delete forever"
- * suppress list, and registered byte-identical duplicates.
+ * recognized All-Heroes screens, dismissed files, registered
+ * byte-identical duplicates, and PARKED failures — files whose OCR
+ * has failed enough times in a row that normal runs stop retrying
+ * them. Parked files still on disk are reported separately in
+ * `parked`; Re-parse All re-attempts them, and deleting a file's
+ * failure row (Retry) returns it to `count`.
  *
  */
 export const getPendingScreenshotCount = <ThrowOnError extends boolean = false>(options?: Options<GetPendingScreenshotCountData, ThrowOnError>): RequestResult<GetPendingScreenshotCountResponses, GetPendingScreenshotCountErrors, ThrowOnError> => (options?.client ?? client).get<GetPendingScreenshotCountResponses, GetPendingScreenshotCountErrors, ThrowOnError>({ url: '/api/v1/screenshots/pending-count', ...options });
@@ -579,11 +583,13 @@ export const unignoreScreenshot = <ThrowOnError extends boolean = false>(options
  * Permanently ignore a screenshot
  *
  * Adds `filename` to the suppress-list backing the Unknown
- * tab's "Delete forever" affordance. Future parse runs skip
- * this file. Also wipes any `unmatched-<filename>` or
- * `ambiguous-<filename>` match rows so the row disappears from
- * the result set immediately, not just on the next parse. The
- * on-disk file is **not** deleted.
+ * tab's Dismiss affordance. Future parse runs skip this file.
+ * Only the file's own rows leave the corpus: a match with
+ * other screenshots survives minus this file, while a match
+ * this was the last screenshot of is fully removed (sidecars
+ * included) so the card disappears from the result set
+ * immediately, not just on the next parse. The on-disk file
+ * is **not** deleted.
  *
  * Idempotent: ignoring an already-ignored filename refreshes
  * the timestamp. PUT (not POST) — the operation has no body
@@ -624,12 +630,15 @@ export const getIgnoredScreenshots = <ThrowOnError extends boolean = false>(opti
  * outright, or it succeeded but DEGRADED (a cell's OCR failed, so
  * some stats are missing from an otherwise-stored match). The two
  * differ in retry: a failed file stored no rows and is re-attempted
- * on every parse run, while a degraded one did store rows and so is
- * only re-read by "Re-parse all screenshots" — which is why it
- * surfaces here rather than silently passing as clean. Either way
- * this is visibility, not a skip list. A later clean parse clears
- * the row, as does `PUT /api/v1/screenshots/{filename}/ignore`
- * ("Delete forever").
+ * on the next few parse runs — until it PARKS (`parked: true`) at
+ * the repeated-failure cap and normal runs stop retrying it — while
+ * a degraded one did store rows and so is only re-read by "Re-parse
+ * all screenshots" (and is never parked), which is why it surfaces
+ * here rather than silently passing as clean. A later clean parse
+ * clears the row; so do Dismiss
+ * (`PUT /api/v1/screenshots/{filename}/ignore`) and Retry
+ * (`DELETE /api/v1/screenshots/failed/{filename}`), which returns
+ * a parked file to the pending count.
  *
  */
 export const getFailedFiles = <ThrowOnError extends boolean = false>(options?: Options<GetFailedFilesData, ThrowOnError>): RequestResult<GetFailedFilesResponses, GetFailedFilesErrors, ThrowOnError> => (options?.client ?? client).get<GetFailedFilesResponses, GetFailedFilesErrors, ThrowOnError>({ url: '/api/v1/screenshots/failed', ...options });

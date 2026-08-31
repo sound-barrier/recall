@@ -1015,21 +1015,33 @@ paths:
         button. Computed from the run's own skip set, so it matches the
         total the `parse-progress` events will report. Beyond the files
         already in a per-screenshot-type table, that skip set excludes
-        recognized All-Heroes screens, files on the "Delete forever"
-        suppress list, and registered byte-identical duplicates.
+        recognized All-Heroes screens, dismissed files, registered
+        byte-identical duplicates, and PARKED failures — files whose OCR
+        has failed enough times in a row that normal runs stop retrying
+        them. Parked files still on disk are reported separately in
+        `parked`; Re-parse All re-attempts them, and deleting a file's
+        failure row (Retry) returns it to `count`.
       responses:
         "200":
-          description: Count.
+          description: Pending and parked counts.
           content:
             application/json:
               schema:
                 type: object
-                required: [count]
+                required: [count, parked]
                 properties:
                   count:
                     type: integer
                     minimum: 0
                     example: 3
+                    description: Files the next parse run will OCR.
+                  parked:
+                    type: integer
+                    minimum: 0
+                    example: 1
+                    description: |
+                      On-disk files parked after repeated failures —
+                      skipped by normal runs, excluded from `count`.
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -1147,12 +1159,15 @@ paths:
         outright, or it succeeded but DEGRADED (a cell's OCR failed, so
         some stats are missing from an otherwise-stored match). The two
         differ in retry: a failed file stored no rows and is re-attempted
-        on every parse run, while a degraded one did store rows and so is
-        only re-read by "Re-parse all screenshots" — which is why it
-        surfaces here rather than silently passing as clean. Either way
-        this is visibility, not a skip list. A later clean parse clears
-        the row, as does `PUT /api/v1/screenshots/{filename}/ignore`
-        ("Delete forever").
+        on the next few parse runs — until it PARKS (`parked: true`) at
+        the repeated-failure cap and normal runs stop retrying it — while
+        a degraded one did store rows and so is only re-read by "Re-parse
+        all screenshots" (and is never parked), which is why it surfaces
+        here rather than silently passing as clean. A later clean parse
+        clears the row; so do Dismiss
+        (`PUT /api/v1/screenshots/{filename}/ignore`) and Retry
+        (`DELETE /api/v1/screenshots/failed/{filename}`), which returns
+        a parked file to the pending count.
       responses:
         "200":
           description: List of failed files.
@@ -4396,7 +4411,7 @@ components:
 
     FailedFile:
       type: object
-      required: [filename, error, attempts, first_failed_at, last_failed_at]
+      required: [filename, error, attempts, parked, first_failed_at, last_failed_at]
       properties:
         filename:
           type: string
@@ -4415,6 +4430,15 @@ components:
           minimum: 1
           example: 6
           description: Failed parse runs since `first_failed_at`.
+        parked:
+          type: boolean
+          example: true
+          description: |
+            The file has failed enough runs in a row that normal parse
+            runs stop retrying it (server-derived; degraded files that
+            stored data are never parked, whatever their attempt
+            count). Re-parse All re-attempts parked files; deleting the
+            failure row (Retry) resets the count.
         first_failed_at:
           type: string
           example: "2026-07-01T20:15:00Z"
