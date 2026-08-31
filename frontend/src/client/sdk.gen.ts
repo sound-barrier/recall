@@ -656,7 +656,7 @@ export const getIgnoredScreenshots = <ThrowOnError extends boolean = false>(opti
  * here rather than silently passing as clean. A later clean parse
  * clears the row; so do Dismiss
  * (`PUT /api/v1/screenshots/{filename}/ignore`) and Retry
- * (`DELETE /api/v1/screenshots/failed/{filename}`), which returns
+ * (`DELETE /api/v1/screenshots/{filename}/failure`), which returns
  * a parked file to the pending count.
  *
  */

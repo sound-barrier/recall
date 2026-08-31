@@ -150,7 +150,7 @@ func TestHub_Broadcast_TerminalEventSurvivesFullBuffer(t *testing.T) {
 
 	// Stuff the buffer past capacity with lossy progress events.
 	for i := range cap(ch) + 4 {
-		h.BroadcastData("parse-progress", `{"done":`+string(rune('0'+i%10))+`}`)
+		h.BroadcastData("parse-progress", `{"done":`+strconv.Itoa(i%10)+`}`)
 	}
 
 	h.Broadcast("parse-complete")
@@ -265,7 +265,7 @@ func TestHub_BroadcastTerminal_PayloadSurvivesFullBuffer(t *testing.T) {
 	ch := h.Subscribe()
 
 	for i := range cap(ch) + 4 {
-		h.BroadcastData("parse-progress", `{"done":`+string(rune('0'+i%10))+`}`)
+		h.BroadcastData("parse-progress", `{"done":`+strconv.Itoa(i%10)+`}`)
 	}
 
 	h.BroadcastTerminal("parse-complete", `{"files_parsed":9,"files_failed":1}`)

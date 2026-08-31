@@ -51,9 +51,10 @@ type ParseProgressEvent struct {
 // ParseRunSummary rides the parse-complete event: the run's own tally,
 // so the end-of-run report can say "X read · Y failed to read" without
 // inferring it from a refetched ledger (which cannot tell this run's
-// failures from standing degraded rows). FilesParsed counts files that
-// stored rows — degraded included; FilesFailed counts files that stored
-// nothing (OCR, insert, or ambiguity-write failure).
+// failures from standing degraded rows). FilesParsed counts files whose
+// writes all landed — degraded included; FilesFailed counts files whose
+// run failed somewhere: OCR or insert (nothing stored), or the
+// ambiguity write (rows stored, candidate record lost).
 type ParseRunSummary struct {
 	FilesParsed    int `json:"files_parsed"`
 	FilesFailed    int `json:"files_failed"`
@@ -241,9 +242,10 @@ type parseRunState struct {
 	heroCorrections int
 	mapCorrections  int
 	// Run tally for the parse-complete summary: parsed counts every file
-	// that stored rows (degraded included — it stored what it read);
-	// failed counts every file that stored nothing (OCR failure, insert
-	// failure, ambiguity-write failure).
+	// whose writes all landed (degraded included — it stored what it
+	// read); failed counts every file whose run failed somewhere — OCR
+	// or insert (nothing stored), or the ambiguity write (rows stored,
+	// candidate record lost).
 	filesParsed int
 	filesFailed int
 	// Run-scoped correlation snapshot + sidecars: loaded once at run

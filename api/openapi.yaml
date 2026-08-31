@@ -1089,6 +1089,14 @@ paths:
           description: Filename added to the ignore-list.
         "400":
           $ref: "#/components/responses/BadRequest"
+        "409":
+          description: >-
+            A coaching session holds the database read-only; end the
+            session first.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
         "500":
           $ref: "#/components/responses/InternalError"
     delete:
@@ -1107,6 +1115,14 @@ paths:
           description: Filename removed from the ignore-list.
         "400":
           $ref: "#/components/responses/BadRequest"
+        "409":
+          description: >-
+            A coaching session holds the database read-only; end the
+            session first.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -3962,10 +3978,13 @@ components:
         desktop event bus in Wails mode) — the finished run's own tally,
         so the end-of-run report can say "X read · Y failed to read"
         without inferring it from a refetched ledger. `files_parsed`
-        counts files that stored rows (degraded parses included);
-        `files_failed` counts files that stored nothing (OCR, insert, or
-        ambiguity-write failure). A canceled run emits `parse-canceled`
-        instead and carries no summary.
+        counts files whose writes all landed (degraded parses included);
+        `files_failed` counts files whose run failed somewhere — OCR or
+        insert failure (nothing stored), or an ambiguity-write failure
+        (rows stored, candidate record lost). A canceled run emits
+        `parse-canceled` instead and carries no summary; a client that
+        reconnects after missing the event gets no replay — treat the
+        summary as a toast, not durable state.
       required: [files_parsed, files_failed, matches_updated]
       properties:
         files_parsed:

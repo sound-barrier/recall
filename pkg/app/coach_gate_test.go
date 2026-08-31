@@ -80,6 +80,7 @@ func gatedIngestWrites(a *app.App) map[string]func() error {
 		"RestoreDatabase":         func() error { return a.RestoreDatabase([]byte("{}")) },
 		"IgnoreScreenshot":        func() error { return a.IgnoreScreenshot("x.png") },
 		"UnignoreScreenshot":      func() error { return a.UnignoreScreenshot("x.png") },
+		"RetryFailedFile":         func() error { return a.RetryFailedFile("x.png") },
 		"ClearIgnoredScreenshots": a.ClearIgnoredScreenshots,
 		"SeedTestProfile": func() error {
 			_, err := a.SeedTestProfile()
@@ -175,8 +176,8 @@ func TestCoachSession_GateLiftsOnClose(t *testing.T) {
 var mutatingVerbs = []string{
 	"Add", "Apply", "Bulk", "Clear", "Create", "Delete", "Demote", "Finish", "Hide",
 	"Ignore", "Import", "Move", "Parse", "Pin", "Promote", "Put", "ReParse",
-	"Remove", "Rename", "Reset", "Resolve", "Restore", "Seed", "Set", "Start",
-	"Switch", "Unhide", "Unignore", "Unpin", "Update",
+	"Remove", "Rename", "Reset", "Resolve", "Restore", "Retry", "Seed", "Set",
+	"Start", "Switch", "Unhide", "Unignore", "Unpin", "Update",
 }
 
 // ungatedByDesign is every mutating-sounding App method the gate must NOT
