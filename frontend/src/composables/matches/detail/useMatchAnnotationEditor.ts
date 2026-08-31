@@ -11,6 +11,10 @@ import { highlightTermsFor, type SearchClause } from '@/match/search-query'
 // the editor's stateful logic. Drafts hydrate from the record's annotation
 // and re-sync when it changes; every commit writes all the fields at once
 // via emitAnnotation so a single setter round-trip can't drop a field.
+// Which journal cell just saved. Named because two functions now set it
+// and a widening union has to widen in one place.
+type SavedField = 'note' | 'replay' | 'members' | 'tags' | 'exclusion'
+
 export function useMatchAnnotationEditor(
   record: () => MatchRecord,
   // May return the persist outcome: `false` (or a promise of it) means the
@@ -32,7 +36,7 @@ const tagInput        = ref('')
 const tagDraft        = ref<string[]>(record().annotation?.tags ?? [])
 // Track which annotation field, if any, just saved so a "saved ✓"
 // pulse can render without stomping on the active editor's value.
-const savedFlash      = ref<'' | 'note' | 'replay' | 'members' | 'tags'>('')
+const savedFlash      = ref<SavedField | ''>('')
 
 // The conventional tags. Order here is presentation order in the
 // quick-add row; the user can still add anything via free-form.
@@ -180,11 +184,29 @@ function exitNoteEditMode() {
 // annotation fields so the unified setter doesn't accidentally null
 // something the user typed in another input. Leaver is read from the
 // existing annotation (the chooser owns that field independently).
+// The "saved ✓" pulse is a persistence RECEIPT: it fires when the write
+// resolves and never on a reported failure, so a pulse on screen always
+// means the row reached disk.
+//
+// It lives here rather than inside commitAnnotation because not every
+// write is a draft commit — the exclusion chooser writes directly, and
+// while the pulse was commitAnnotation's private business that chip was
+// the one control on the journal that saved in silence.
+function pulseWhenPersisted(field: SavedField, outcome: void | boolean | Promise<void | boolean>) {
+  void Promise.resolve(outcome)
+    .then((ok) => {
+      if (ok === false) return
+      savedFlash.value = field
+      setTimeout(() => { if (savedFlash.value === field) savedFlash.value = '' }, 900)
+    })
+    .catch(() => { /* rejected persist — no false receipt */ })
+}
+
 // Setting or clearing the reason a match doesn't count. It carries the
 // rest of the drafts like every other field write, so an in-flight note
 // is never lost to a chip click.
 function setExclusionReason(reason: ExclusionReason) {
-  return emitAnnotation({
+  const outcome = emitAnnotation({
     leavers:     record().annotation?.leavers ?? [],
     throwers:    record().annotation?.throwers ?? [],
     note:        noteDraft.value.trim(),
@@ -193,9 +215,11 @@ function setExclusionReason(reason: ExclusionReason) {
     tags:        tagDraft.value,
     exclusion_reason: reason,
   })
+  pulseWhenPersisted('exclusion', outcome)
+  return outcome
 }
 
-function commitAnnotation(field: 'note' | 'replay' | 'members' | 'tags') {
+function commitAnnotation(field: Exclude<SavedField, 'exclusion'>) {
   // A full-state commit persists any applied-but-unconfirmed members/tags
   // too (every field write carries all drafts), so an in-flight apply is
   // hereby confirmed implicitly.
@@ -210,15 +234,7 @@ function commitAnnotation(field: 'note' | 'replay' | 'members' | 'tags') {
     tags:        tagDraft.value,
     exclusion_reason: (record().annotation?.exclusion_reason ?? '') as ExclusionReason,
   })
-  // The pulse is a persistence receipt: it fires when the write resolves,
-  // and never on a reported failure (the action surfaces its own error).
-  void Promise.resolve(outcome)
-    .then((ok) => {
-      if (ok === false) return
-      savedFlash.value = field
-      setTimeout(() => { if (savedFlash.value === field) savedFlash.value = '' }, 900)
-    })
-    .catch(() => { /* rejected persist — no false receipt */ })
+  pulseWhenPersisted(field, outcome)
 }
 
 // ── Apply previous annotation ───────────────────────────────────

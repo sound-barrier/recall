@@ -1,7 +1,7 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { useMatchesDossier } from '@/composables/matches/dossier/useMatchesDossier'
-import type { LeaverHandling } from '@/composables/matches/dossier/useMatchesDossier.types'
+import type { ExclusionHandling, LeaverHandling } from '@/composables/matches/dossier/useMatchesDossier.types'
 import { analyzeHeroPool, DEFAULT_HERO_MEANINGFUL_PCT } from '@/match/dossier/match-hero-pool-helpers'
 import { breakRust, leaverRate, winrateBySessionIndex } from '@/match/dossier/match-momentum-helpers'
 import { afterResultCounts, streakMeterImpact, tiltEpisodes, winrateByStreakDepth } from '@/match/elo/elo-streaks'
@@ -32,11 +32,19 @@ export interface EvidenceItem {
 export interface EloEvidenceOpts {
   trackRecs: ComputedRef<MatchRecord[]>
   leaverHandling: Readonly<Ref<LeaverHandling>>
+  // Threaded beside leaverHandling, never one without the other: both are
+  // the same user saying which matches their record is made of, and a tab
+  // that honors one and ignores the other reports a record the Matches tab
+  // disagrees with.
+  exclusionHandling: Readonly<Ref<ExclusionHandling>>
   heroRole: (hero: string | null | undefined) => string
 }
 
 export function useEloEvidence(opts: EloEvidenceOpts) {
-  const dossier = useMatchesDossier(opts.trackRecs, opts.leaverHandling, { heroRole: opts.heroRole })
+  const dossier = useMatchesDossier(opts.trackRecs, opts.leaverHandling, {
+    exclusionHandling: opts.exclusionHandling,
+    heroRole: opts.heroRole,
+  })
 
   const items = computed<EvidenceItem[]>(() => {
     const out: (EvidenceItem | null)[] = [

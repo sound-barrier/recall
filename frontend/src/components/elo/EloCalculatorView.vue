@@ -42,6 +42,7 @@ provideEloCalculator(calc)
 const { items: evidenceItems } = useEloEvidence({
   trackRecs: calc.trackRecs,
   leaverHandling: matchesStore.matchesNarrow.leaverHandling,
+  exclusionHandling: matchesStore.matchesNarrow.exclusionHandling,
   heroRole: ow.heroRole,
 })
 

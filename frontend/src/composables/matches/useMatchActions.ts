@@ -4,6 +4,7 @@ import {
   DeleteMatchMoment,
   SetMatchMoment,
   type DisruptionSide,
+  type ExclusionReason,
   type MatchAnnotationInput,
   type UserMatchDataInput,
   type ReviewedBy,
@@ -70,32 +71,38 @@ async function writeAnnotation(matchKey: string, input: MatchAnnotationInput): P
 
 type ExistingAnnotation = NonNullable<MatchRecord['annotation']>
 
-// One tag PUT carrying the existing annotation fields (the PUT replaces
-// the whole annotation row, so a slim body would clear note /
-// replay_code / members / the disruption sides). No-op when the tag is
-// already present.
+// One tag PUT carrying every existing annotation field through. No-op
+// when the tag is already present.
 async function tagMatch(r: MatchRecord | undefined, key: string, norm: string): Promise<void> {
   const existing: Partial<ExistingAnnotation> = r?.annotation ?? {}
   const existingTags = existing.tags ?? []
   if (existingTags.includes(norm)) return // already tagged
-  await SetMatchAnnotation(key, {
-    leavers:     existing.leavers ?? [],
-    throwers:    existing.throwers ?? [],
-    note:        existing.note ?? undefined,
-    replay_code: existing.replay_code ?? undefined,
-    members:     existing.members ?? undefined,
-    tags:        [...existingTags, norm],
-  })
+  await SetMatchAnnotation(key, annotationWith(existing, { tags: [...existingTags, norm] }))
 }
 
-// Every non-disruption annotation field passed through unchanged — the
-// PUT replaces the entire row, so a slim body would null the rest.
-function passthroughAnnotationFields(prev: Partial<ExistingAnnotation>) {
+// annotationWith expresses a full-row PUT as an EDIT: every field the
+// caller is not changing is carried from `prev`, and `edits` names only
+// what it means to change.
+//
+// The shape earns its keep by making a whole class of bug unreachable.
+// Two call sites used to hand-list the fields they were preserving, and
+// when the annotation grew a new one, neither list learned it: clicking a
+// leaver chip six inches from the exclusion chooser silently un-excluded
+// the match, and a bulk tag did it to every match selected. A caller
+// cannot forget a field it has never heard of.
+function annotationWith(
+  prev: Partial<ExistingAnnotation>,
+  edits: Partial<MatchAnnotationInput>,
+): MatchAnnotationInput {
   return {
-    note:        prev.note ?? '',
-    replay_code: prev.replay_code ?? '',
-    members:     prev.members ?? [],
-    tags:        prev.tags ?? [],
+    leavers:          prev.leavers ?? [],
+    throwers:         prev.throwers ?? [],
+    note:             prev.note ?? '',
+    replay_code:      prev.replay_code ?? '',
+    members:          prev.members ?? [],
+    tags:             prev.tags ?? [],
+    exclusion_reason: (prev.exclusion_reason ?? '') as ExclusionReason,
+    ...edits,
   }
 }
 
@@ -257,11 +264,8 @@ export function useMatchActions() {
     try {
       const rec = records.value.find(r => r.match_key === matchKey)
       const prev: Partial<ExistingAnnotation> = rec?.annotation ?? {}
-      await writeAnnotation(matchKey, {
-        leavers:     kind === 'leavers' ? sides : (prev.leavers ?? []),
-        throwers:    kind === 'throwers' ? sides : (prev.throwers ?? []),
-        ...passthroughAnnotationFields(prev),
-      })
+      await writeAnnotation(matchKey, annotationWith(prev,
+        kind === 'leavers' ? { leavers: sides } : { throwers: sides }))
       await reload()
     } catch (e) { onError(String(e)) }
   }

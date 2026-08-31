@@ -31,11 +31,17 @@ function hasExclusionReason(r: { annotation?: { exclusion_reason?: string | null
   return !!r.annotation?.exclusion_reason
 }
 
-/** What a tally is being asked to skip. Two independent reasons a match
- *  can sit out of the win rate while staying on the list. */
+/** What a tally is being asked to skip. Three independent reasons a match
+ *  can sit out of the win rate while staying on the list.
+ *
+ *  `skipReplay` is opt-in rather than automatic because the question it
+ *  answers is "does this count toward the PLAYER'S record" — true on every
+ *  player-facing readout, false on the coach's desk, where a replay match
+ *  is precisely the subject being tallied. */
 export interface TallyHandling {
   skipLeavers?: boolean
   skipExcluded?: boolean
+  skipReplay?: boolean
 }
 
 /** THE rule for whether a match counts. One predicate, because the
@@ -43,17 +49,20 @@ export interface TallyHandling {
  *  is how they came to disagree. */
 export function countsInTally(
   r: {
+    source?: string | null
     annotation?: { leavers?: string[] | null; exclusion_reason?: string | null } | null
   },
   handling: TallyHandling = {},
 ): boolean {
   if (handling.skipLeavers && hasLeaver(r)) return false
   if (handling.skipExcluded && hasExclusionReason(r)) return false
+  if (handling.skipReplay && r.source === 'replay') return false
   return true
 }
 
 export function tallyWLD(
   records: {
+    source?: string | null
     data?: { result?: string | null } | null
     annotation?: { leavers?: string[] | null; exclusion_reason?: string | null } | null
   }[],

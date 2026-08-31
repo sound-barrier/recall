@@ -328,7 +328,7 @@ describe('MatchDetailPanel — disruption chooser', () => {
   it('writes the picked scenario via SetMatchAnnotation', async () => {
     const { key } = renderPanel()
     await user().click(screen.getByRole('button', { name: /I left/ }))
-    expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leavers: ['self'], throwers: [], note: '', replay_code: '', members: [], tags: [] })
+    expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leavers: ['self'], throwers: [], note: '', replay_code: '', members: [], tags: [], exclusion_reason: '' })
   })
 
   // Clearing the only populated field (leaver) leaves the annotation empty, so
@@ -360,7 +360,7 @@ describe('MatchDetailPanel — disruption chooser', () => {
     } as unknown as Partial<MatchRecord>)
     const { key } = renderPanel({ record: annotated })
     await user().click(screen.getByRole('button', { name: /Enemy left/ }))
-    expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leavers: [], throwers: [], note: 'kept', replay_code: '', members: [], tags: [] })
+    expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leavers: [], throwers: [], note: 'kept', replay_code: '', members: [], tags: [], exclusion_reason: '' })
     expect(DeleteMatchAnnotation).not.toHaveBeenCalled()
   })
 })

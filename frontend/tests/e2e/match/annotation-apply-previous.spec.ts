@@ -99,6 +99,7 @@ test.describe('apply previous annotation — journal head', () => {
       leavers: [], throwers: [],
       note: '',
       replay_code: '',
+      exclusion_reason: '',
       members: ['Apollo', 'Zed'],
       tags: ['stack'],
     })
