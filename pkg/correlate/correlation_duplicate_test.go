@@ -237,17 +237,13 @@ func TestFindDuplicateMatches_MultipleCandidates_SortedByDistanceThenKey(t *test
 	}
 }
 
-// The Unknown tab's provenance chip is re-derived from the STORED
-// DistanceSeconds — a second count both producers truncate out of a
-// time.Duration — so the label has to still agree with the window that
-// actually proposed the candidate at the one second where the two bands
-// abut. Wrong here and a re-captured match reads as an EAD near-miss (or
-// a genuine near-miss reads as a duplicate), which is the opposite advice
-// for the user about to resolve it. Drives both producers end to end
-// rather than calling CandidateReason on hand-picked ints, because it is
-// the truncation that has to be proved harmless.
-func TestCandidateReason_AgreesWithTheWindowThatProposedIt(t *testing.T) {
-	t.Run("EAD bridge at its 30-min cap", func(t *testing.T) {
+// The Unknown tab's provenance chip reads the reason its producer STAMPED
+// on the candidate. Wrong here and a re-captured match reads as an EAD
+// near-miss (or a genuine near-miss reads as a duplicate), which is the
+// opposite advice for the user about to resolve it. Drives the producers
+// end to end rather than asserting on a constant.
+func TestCandidateReason_StampedByItsProducer(t *testing.T) {
+	t.Run("EAD bridge leaves it blank", func(t *testing.T) {
 		snap := db.Screenshots{
 			Teams: []db.TeamsRow{{
 				Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.00.00.11.png",
@@ -263,13 +259,12 @@ func TestCandidateReason_AgreesWithTheWindowThatProposedIt(t *testing.T) {
 		if !ok || len(cands) != 1 {
 			t.Fatalf("expected one EAD candidate at the cap, got ok=%v %+v", ok, cands)
 		}
-		if got := correlate.CandidateReason(cands[0].DistanceSeconds); got != "" {
-			t.Errorf("EAD candidate at %ds labeled %q, want the EAD-provenance blank",
-				cands[0].DistanceSeconds, got)
+		if cands[0].Reason != "" {
+			t.Errorf("EAD candidate labeled %q, want the per-file resolver's blank", cands[0].Reason)
 		}
 	})
 
-	t.Run("duplicate sweep at its tightest distance", func(t *testing.T) {
+	t.Run("the stat-line sweep names itself", func(t *testing.T) {
 		// One second past the EAD cap — the closest a duplicate candidate
 		// can ever sit to the boundary.
 		snap := newSnap("match-2026-05-10T20-44-02")
@@ -278,18 +273,16 @@ func TestCandidateReason_AgreesWithTheWindowThatProposedIt(t *testing.T) {
 		if len(cands) != 1 {
 			t.Fatalf("expected one duplicate candidate, got %+v", cands)
 		}
-		if got := correlate.CandidateReason(cands[0].DistanceSeconds); got != correlate.ReasonDuplicateStats {
-			t.Errorf("duplicate candidate at %ds labeled %q, want %q",
-				cands[0].DistanceSeconds, got, correlate.ReasonDuplicateStats)
+		if cands[0].Reason != correlate.ReasonDuplicateStats {
+			t.Errorf("duplicate candidate labeled %q, want %q", cands[0].Reason, correlate.ReasonDuplicateStats)
 		}
 	})
 
-	// The other side of the abutment, and the one the two subtests above
-	// cannot see: the bands must not OVERLAP either. At exactly the EAD cap
-	// the sweep must stay silent, or the same pair is proposed twice with
-	// two different provenance labels. Widening the sweep's lower bound to
-	// include 1800 leaves every other test in this package green.
-	t.Run("duplicate sweep stays silent at the EAD cap", func(t *testing.T) {
+	// The bands must still not OVERLAP: at exactly the EAD cap the sweep
+	// stays silent, or the same pair is proposed twice by two producers.
+	// A stored reason makes a wrong label impossible, not a double
+	// proposal.
+	t.Run("the stat-line sweep stays silent at the EAD cap", func(t *testing.T) {
 		snap := newSnap("match-2026-05-10T20-44-03")
 		snap.Teams[0].Filename = "Overwatch 2 Screenshot 2026.05.10 - 20.44.03.11.png"
 		if cands := correlate.FindDuplicateMatches(dupNewKey, snap); len(cands) != 0 {
@@ -298,19 +291,23 @@ func TestCandidateReason_AgreesWithTheWindowThatProposedIt(t *testing.T) {
 	})
 }
 
-func TestCandidateReason_DerivedFromDistance(t *testing.T) {
-	// Distances beyond the 30-min EAD cap can only come from the
-	// duplicate sweep; at or below it they're window/EAD candidates.
-	if got := correlate.CandidateReason(11321); got != correlate.ReasonDuplicateStats {
-		t.Errorf("11321s: got %q, want %q", got, correlate.ReasonDuplicateStats)
+// The reason a candidate exists cannot be read back out of its distance.
+// This is the case that retired the derivation: a re-capture 12 minutes
+// apart sits deep inside the EAD bridge's window, where distance alone
+// says "near-miss" — and the two are opposite advice for the user.
+func TestCandidateReason_SurvivesInsideTheEADWindow(t *testing.T) {
+	snap := recapSnap("match-2026-05-10T21-02-03")
+	snap.Summaries[0].Filename = "Overwatch 2 Screenshot 2026.05.10 - 21.02.03.11.png"
+
+	cands := correlate.FindRecapturedMatches(recapNewKey, snap)
+	if len(cands) != 1 {
+		t.Fatalf("expected one re-capture candidate, got %+v", cands)
 	}
-	if got := correlate.CandidateReason(1801); got != correlate.ReasonDuplicateStats {
-		t.Errorf("1801s: got %q, want %q", got, correlate.ReasonDuplicateStats)
+	if cands[0].DistanceSeconds != 720 {
+		t.Fatalf("distance = %d, want 720 (inside the EAD bridge's window)", cands[0].DistanceSeconds)
 	}
-	if got := correlate.CandidateReason(1800); got != "" {
-		t.Errorf("1800s: got %q, want empty", got)
-	}
-	if got := correlate.CandidateReason(720); got != "" {
-		t.Errorf("720s: got %q, want empty", got)
+	if cands[0].Reason != correlate.ReasonSameInstant {
+		t.Errorf("reason = %q, want %q — distance cannot tell you this",
+			cands[0].Reason, correlate.ReasonSameInstant)
 	}
 }

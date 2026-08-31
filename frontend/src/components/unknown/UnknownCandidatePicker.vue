@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import type { MatchRecord } from '@/api-client'
-import { screenshotURL, isDuplicateCandidate, hasDuplicateCandidate } from '@/match/match-helpers'
+import { screenshotURL, duplicateEvidence, isDuplicateCandidate, hasDuplicateCandidate } from '@/match/match-helpers'
 import { formatCandidateDistance } from '@/match/match-time-helpers'
 import { useMatchesStore } from '@/stores/matches'
 import { useUiStore } from '@/stores/ui'
@@ -92,7 +92,7 @@ const { writesLocked, lockedTitle, sessionActive } = useWriteGate()
           <div class="candidate-headline">
             <span class="candidate-key mono">{{ cand.match_key }}</span>
             <span v-if="isDuplicateCandidate(cand)" class="candidate-duplicate-label">
-              Possible duplicate — identical combat stat line
+              Possible duplicate — {{ duplicateEvidence(cand) }}
             </span>
             <span class="candidate-distance">{{ formatCandidateDistance(cand.distance_seconds) }}</span>
             <span v-if="findRecord(cand.match_key)" class="candidate-summary">

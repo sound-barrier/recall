@@ -891,3 +891,40 @@ func TestStoreContract_ReplacingAListKeepsEachItemsBirthday(t *testing.T) {
 		})
 	}
 }
+
+// Why a candidate was proposed is STORED, not derived. It used to be read
+// back out of distance_seconds, which worked only while the two producers
+// occupied complementary bands — the EAD bridge below 30 minutes, the
+// duplicate sweep above it. The re-capture sweep matches on the match's own
+// instant and so can land anywhere on that axis, including inside the
+// bridge's window, where a derived reason would name the wrong producer.
+func TestStoreContract_AmbiguousCandidateReasonRoundTrips(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			const key = "match-2026-01-01T12-00-00"
+			const sentinel = "ambiguous-cmVhc29uLnBuZw"
+			// 600 s sits deep inside the EAD bridge's window, where the old
+			// derivation would have answered "" no matter what wrote the row.
+			cands := []db.AmbiguousCandidate{{
+				MatchKey:        "match-2026-01-01T11-50-00",
+				DistanceSeconds: 600,
+				Reason:          "same_instant",
+			}}
+
+			mustNoErr(t, s.UpsertUnknown(db.UnknownRow{Filename: "reason.png", MatchKey: key}))
+			if ok, err := s.DemoteMatchToAmbiguous(key, sentinel, "reason.png", cands); !ok || err != nil {
+				t.Fatalf("demote = (%v, %v), want (true, nil)", ok, err)
+			}
+
+			got, err := s.LoadAmbiguousCandidatesFor("reason.png")
+			mustNoErr(t, err)
+			if len(got) != 1 {
+				t.Fatalf("candidates = %+v, want exactly the recorded one", got)
+			}
+			if got[0].Reason != "same_instant" {
+				t.Errorf("reason = %q, want %q", got[0].Reason, "same_instant")
+			}
+		})
+	}
+}

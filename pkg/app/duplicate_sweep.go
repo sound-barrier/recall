@@ -23,8 +23,9 @@ import (
 // (preRunKeys), so history is never re-judged and ReParseAll — where
 // every re-adopted key pre-exists — is a no-op by construction.
 
-// sweepNewMatchDuplicates demotes run-created tracked matches whose
-// TEAMS stat line duplicates an existing match's. Demotion failures are
+// sweepNewMatchDuplicates demotes run-created tracked matches that
+// duplicate an existing one — by TEAMS stat line, or by the match's own
+// played-at identity when no TEAMS shot exists. Demotion failures are
 // logged and skipped — a duplicate flag is a UX nicety, never worth
 // failing an otherwise-successful parse.
 func (st *parseRunState) sweepNewMatchDuplicates() {
@@ -42,7 +43,7 @@ func (st *parseRunState) sweepNewMatchDuplicates() {
 		surviving[k] = struct{}{}
 	}
 	for _, c := range created {
-		cands := filterCandidateKeys(correlate.FindDuplicateMatches(c.key, st.snap), surviving)
+		cands := filterCandidateKeys(correlate.FindDuplicateCandidates(c.key, st.snap), surviving)
 		if len(cands) == 0 || !st.demoteDuplicate(c, cands) {
 			surviving[c.key] = struct{}{}
 		}

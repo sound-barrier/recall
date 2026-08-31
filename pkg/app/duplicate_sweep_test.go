@@ -179,3 +179,81 @@ func TestDuplicateSweep_BothSetsInOneRun_EarlierSurvives(t *testing.T) {
 	}
 	assertDemoted(t, fake)
 }
+
+// The re-capture sweep — the same match screenshotted twice with no TEAMS
+// shot on either side. The stat-line fingerprint lives on the TEAMS
+// scoreboard, so it has nothing to compare here and the two copies would
+// both stay tracked; what the SUMMARY rows agree on instead is the match's
+// own identity: the instant it ended, the map, the result, the score.
+const (
+	recapOrigFile = "Overwatch 2 Screenshot 2026.05.10 - 18.05.24.11.png"
+	recapOrigKey  = "match-2026-05-10T18-05-24"
+	recapDupFile  = "Overwatch 2 Screenshot 2026.05.10 - 21.14.05.02.png"
+)
+
+var recapSentinel = match.NewAmbiguousMatchKey(recapDupFile).String()
+
+func recapSummaryResult() *parser.MatchResult {
+	return &parser.MatchResult{
+		Map: "rialto", Hero: "lucio", Result: "victory", FinalScore: "3-1",
+		Date: "2026-05-10", FinishedAt: "18:04",
+	}
+}
+
+// seedRecapturedOriginal seeds a SUMMARY-only original — deliberately no
+// TEAMS row, which is what makes the stat-line sweep blind to it.
+func seedRecapturedOriginal(fake *fakeStore) {
+	instant := "2026-05-11T00:04:00Z"
+	fake.Summaries = append(fake.Summaries, db.SummaryRow{
+		Filename: recapOrigFile, MatchKey: recapOrigKey,
+		Map: "rialto", Hero: "lucio", Result: "victory", FinalScore: "3-1",
+		Date: "2026-05-10", FinishedAt: "18:04", PlayedAtUTC: &instant,
+	})
+}
+
+func TestDuplicateSweep_SummaryOnlyRecapture_Demoted(t *testing.T) {
+	a, fake := newParseReadyApp(t)
+	seedRecapturedOriginal(fake)
+	stubParse(t, func(progress parser.ProgressFunc) error {
+		progress(1, 1, recapDupFile, recapSummaryResult(), nil)
+		return nil
+	})
+	if err := a.ParseScreenshots(); err != nil {
+		t.Fatalf("ParseScreenshots: %v", err)
+	}
+	for _, r := range fake.Summaries {
+		if r.Filename == recapDupFile && r.MatchKey != recapSentinel {
+			t.Errorf("re-capture not demoted: %q", r.MatchKey)
+		}
+		if r.Filename == recapOrigFile && r.MatchKey != recapOrigKey {
+			t.Errorf("original must be untouched: %q", r.MatchKey)
+		}
+	}
+	cands := fake.Ambiguous[recapDupFile]
+	if len(cands) != 1 || cands[0].MatchKey != recapOrigKey {
+		t.Fatalf("expected the original as the sole candidate, got %+v", fake.Ambiguous)
+	}
+	if cands[0].Reason != "same_instant" {
+		t.Errorf("candidate reason = %q, want %q", cands[0].Reason, "same_instant")
+	}
+}
+
+// A different match that merely happens to be captured nearby: same map and
+// hero, one minute later on the scoreboard. Nothing about it is the same
+// game, and demoting it would cost the user a real match.
+func TestDuplicateSweep_DifferentInstant_StaysTracked(t *testing.T) {
+	a, fake := newParseReadyApp(t)
+	seedRecapturedOriginal(fake)
+	stubParse(t, func(progress parser.ProgressFunc) error {
+		res := recapSummaryResult()
+		res.FinishedAt = "18:05"
+		progress(1, 1, recapDupFile, res, nil)
+		return nil
+	})
+	if err := a.ParseScreenshots(); err != nil {
+		t.Fatalf("ParseScreenshots: %v", err)
+	}
+	if len(fake.Ambiguous) != 0 {
+		t.Errorf("a match one minute later is a different match, got %+v", fake.Ambiguous)
+	}
+}

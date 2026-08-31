@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"slices"
 
-	"recall/pkg/correlate"
 	"recall/pkg/db"
 	"recall/pkg/match"
 	"recall/pkg/parser"
@@ -110,7 +109,7 @@ func ambiguousAttributions(cs []db.AmbiguousCandidate, byKey map[string]*match.R
 		attr := match.AmbiguousAttribution{
 			MatchKey:        c.MatchKey,
 			DistanceSeconds: c.DistanceSeconds,
-			Reason:          correlate.CandidateReason(c.DistanceSeconds),
+			Reason:          c.Reason,
 		}
 		if cand, ok := byKey[c.MatchKey]; ok && len(cand.SourceFiles) > 0 {
 			attr.RepresentativeSourceFile = cand.SourceFiles[0]

@@ -451,15 +451,20 @@ CREATE TABLE IF NOT EXISTS unknown_screenshots (
 CREATE INDEX IF NOT EXISTS idx_unknown_match_key_parsed_at ON unknown_screenshots (match_key, parsed_at);
 -- statement-end
 
--- Candidate rows come from two producers: the per-file resolver
--- (EAD-bridge / timestamp-window ambiguity, distances <= 30 min) and
--- the end-of-parse duplicate sweep (identical TEAMS stat line, 30 min
--- to 7 days). No reason column on purpose — the producer is derivable
--- from distance_seconds (correlate.CandidateReason).
+-- Candidate rows come from three producers: the per-file resolver
+-- (EAD-bridge / timestamp-window ambiguity, distances <= 30 min), the
+-- end-of-parse duplicate sweep (identical TEAMS stat line, 30 min to 7
+-- days), and the re-capture sweep (same played-at instant, map, result
+-- and final score, at any distance). The reason is STORED because that
+-- third producer overlaps the first on the distance axis — while there
+-- were only two, complementary bands, it was derived instead.
+-- '' is the per-file resolver, which has nothing to add.
 CREATE TABLE IF NOT EXISTS ambiguous_candidates (
   filename TEXT NOT NULL,
   match_key TEXT NOT NULL,
   distance_seconds INTEGER NOT NULL,
+  reason TEXT NOT NULL DEFAULT ''
+    CHECK (reason IN ('', 'duplicate_stats', 'same_instant')),
   PRIMARY KEY (filename, match_key)
 ) STRICT;
 -- statement-end

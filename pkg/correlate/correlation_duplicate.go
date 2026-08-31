@@ -21,29 +21,49 @@ const DuplicateMatchWindow = 7 * 24 * time.Hour
 
 // ReasonDuplicateStats marks an ambiguous candidate that was proposed by
 // the duplicate sweep (identical TEAMS stat line, hours-to-days apart)
-// rather than by the EAD bridge / timestamp window.
+// rather than by the EAD bridge / timestamp window. Stamped onto the
+// candidate and stored with it — see correlation_recapture.go for why a
+// third producer made deriving it from distance untenable.
 const ReasonDuplicateStats = "duplicate_stats"
 
-// CandidateReason derives why a stored ambiguous candidate was proposed
-// from its distance alone: the EAD bridge caps at eadBridgeAmbiguousWindow
-// and the timestamp window at MergeWindow, so any candidate farther out
-// can only have come from the duplicate sweep. Derived, not stored — the
-// ambiguous_candidates table needs no reason column.
+// FindDuplicateCandidates is the end-of-parse sweep's single entry point:
+// every way this package knows to say "you already have this match",
+// merged into one ranked list.
 //
-// Strictly greater, and it must stay strictly greater. Both producers
-// store int(d / time.Second), which truncates — but every distance is a
-// difference of two filename timestamps, and every capture source in
-// screenshot_sources.yaml is second-granular (Nvidia's hundredths and
-// prntscn's milliseconds are deliberately dropped), so d is always a whole
-// number of seconds and the truncation is lossless. That leaves the two
-// bands exactly complementary — EAD [0s, 1800s], sweep [1801s, 7d] — and
-// relaxing this to >= would relabel an EAD candidate sitting on its own
-// 30-minute cap as a duplicate.
-func CandidateReason(distanceSeconds int) string {
-	if time.Duration(distanceSeconds)*time.Second > eadBridgeAmbiguousWindow {
-		return ReasonDuplicateStats
+// Two producers, deliberately not folded into one. The stat-line
+// fingerprint compares six independent numbers off the TEAMS scoreboard
+// and is what catches a re-capture whose SUMMARY never OCR'd cleanly; the
+// re-capture sweep compares the match's own identity and is what catches
+// one that has no TEAMS shot at all. Neither subsumes the other, and a
+// match can be found by both.
+//
+// On a key proposed by both, the stat-line reason stands: they agree on
+// the outcome and on the distance, so only the label differs, and the
+// first producer's is the one the Unknown tab's copy was written for.
+func FindDuplicateCandidates(newKey string, snap db.Screenshots) []db.AmbiguousCandidate {
+	merged := FindDuplicateMatches(newKey, snap)
+	seen := make(map[string]struct{}, len(merged))
+	for _, c := range merged {
+		seen[c.MatchKey] = struct{}{}
 	}
-	return ""
+	for _, c := range FindRecapturedMatches(newKey, snap) {
+		if _, dup := seen[c.MatchKey]; !dup {
+			merged = append(merged, c)
+		}
+	}
+	sortCandidates(merged)
+	return merged
+}
+
+// sortCandidates puts the closest capture first, with match_key breaking
+// ties — the order the Unknown tab's picker renders.
+func sortCandidates(cands []db.AmbiguousCandidate) {
+	sort.Slice(cands, func(i, j int) bool {
+		if cands[i].DistanceSeconds != cands[j].DistanceSeconds {
+			return cands[i].DistanceSeconds < cands[j].DistanceSeconds
+		}
+		return cands[i].MatchKey < cands[j].MatchKey
+	})
 }
 
 // statLine is the six-field TEAMS fingerprint the duplicate sweep
@@ -202,14 +222,10 @@ func rankDuplicateCandidates(best map[string]time.Duration) []db.AmbiguousCandid
 		cands = append(cands, db.AmbiguousCandidate{
 			MatchKey:        k,
 			DistanceSeconds: int(d / time.Second),
+			Reason:          ReasonDuplicateStats,
 		})
 	}
-	sort.Slice(cands, func(i, j int) bool {
-		if cands[i].DistanceSeconds != cands[j].DistanceSeconds {
-			return cands[i].DistanceSeconds < cands[j].DistanceSeconds
-		}
-		return cands[i].MatchKey < cands[j].MatchKey
-	})
+	sortCandidates(cands)
 	return cands
 }
 

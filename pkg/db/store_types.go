@@ -344,6 +344,12 @@ type Screenshots struct {
 type AmbiguousCandidate struct {
 	MatchKey        string
 	DistanceSeconds int
+	// Reason says which producer proposed this candidate. Stored rather
+	// than derived: distance told the two producers apart only while they
+	// occupied complementary bands, and the re-capture sweep matches on
+	// the match's own instant, so it can land anywhere on the axis —
+	// including inside the EAD bridge's window.
+	Reason string
 }
 
 // ── Coaching ────────────────────────────────────────────────────────────

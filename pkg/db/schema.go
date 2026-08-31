@@ -56,6 +56,7 @@ var additiveColumns = []struct{ table, column, ddl string }{
 	// Same constant-default shape: every annotation written before the
 	// column existed described a match that counts, which is ''.
 	{"match_annotations", "exclusion_reason", "TEXT NOT NULL DEFAULT '' CHECK (exclusion_reason IN ('', 'placement', 'mmr_adjustment', 'outage'))"},
+	{"ambiguous_candidates", "reason", "TEXT NOT NULL DEFAULT '' CHECK (reason IN ('', 'duplicate_stats', 'same_instant'))"},
 }
 
 // ensureAdditiveColumns adds any additiveColumns missing from an already-created

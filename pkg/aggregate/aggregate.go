@@ -145,7 +145,7 @@ func attachMatchAmbiguity(rec *match.Record, key string, candidates map[string][
 		rec.Candidates = append(rec.Candidates, match.AmbiguousAttribution{
 			MatchKey:        c.MatchKey,
 			DistanceSeconds: c.DistanceSeconds,
-			Reason:          correlate.CandidateReason(c.DistanceSeconds),
+			Reason:          c.Reason,
 		})
 	}
 }

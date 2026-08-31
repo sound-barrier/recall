@@ -328,14 +328,29 @@ export function previousAnnotatedRecord<
   return null
 }
 
-// Duplicate-sweep candidates: the backend marks an ambiguous candidate
-// proposed by the end-of-parse duplicate sweep (identical TEAMS stat
-// line, 30 min – 7 days apart) with reason "duplicate_stats"; ordinary
-// EAD-bridge / timestamp-window candidates carry no reason. The Unknown
-// tab swaps its wording ("Possible duplicate", merge / keep-separate)
-// on this signal.
+// Duplicate-sweep candidates: the backend stamps an ambiguous candidate
+// with the producer that proposed it. Two of them mean "this is the match
+// you already have" — the end-of-parse sweep, which found an identical
+// TEAMS stat line, and the re-capture sweep, which found the same match
+// played at the same minute. Ordinary EAD-bridge / timestamp-window
+// candidates carry no reason. The Unknown tab swaps its wording
+// ("Possible duplicate", merge / keep-separate) on this signal.
+//
+// A registry rather than a chain of comparisons: a new producer adds a
+// row here and the whole tab learns it, wording included.
+const DUPLICATE_EVIDENCE: Record<string, string> = {
+  duplicate_stats: 'identical combat stat line',
+  same_instant: 'same match, re-captured',
+}
+
+// duplicateEvidence is what was actually compared, in the words shown
+// beside the candidate — '' when the candidate is not a duplicate claim.
+export function duplicateEvidence(cand: { reason?: string }): string {
+  return DUPLICATE_EVIDENCE[cand.reason ?? ''] ?? ''
+}
+
 export function isDuplicateCandidate(cand: { reason?: string }): boolean {
-  return cand.reason === 'duplicate_stats'
+  return duplicateEvidence(cand) !== ''
 }
 
 export function hasDuplicateCandidate(rec: Pick<MatchRecord, 'candidates'>): boolean {
