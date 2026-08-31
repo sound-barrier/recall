@@ -285,11 +285,15 @@ test.describe('coaching from replay codes', () => {
   })
 
   // The identity prompt's fork: six characters can belong to a TEAM, and the
-  // chosen shape is one shared review under the group's name — page-only.
-  // The session then speaks team: the slip drops the notes-file button (the
-  // file is a per-player artifact), the sheet reviews the team, and the
-  // observed-context panel stops asking for a single hero.
-  test('a team review: the fork, the voice, and the page-only slip', async ({ page }) => {
+  // chosen shape is one shared review under the group's name. The session
+  // then speaks team: the slip offers BOTH hand-over routes addressed to the
+  // team, the sheet reviews the team, and the observed-context panel stops
+  // asking for a single hero.
+  //
+  // The file used to be refused here as "a per-player artifact", which left
+  // a captain who runs Recall with nothing to import — they could read the
+  // coach's words in a browser and then retype them.
+  test('a team review: the fork, the voice, and both ways to hand it over', async ({ page }) => {
     await mockReplaySession(page)
     await page.goto('/')
     await page.getByRole('tab', { name: /^Reviews/ }).click()
@@ -304,11 +308,11 @@ test.describe('coaching from replay codes', () => {
     await prompt.getByRole('textbox', { name: 'Team name' }).fill('Sound Barrier')
     await prompt.getByRole('button', { name: 'Confirm' }).click()
 
-    // Team voice on the slip: the group's name, no notes-file button, the
-    // page leads and says who it is for.
+    // Team voice on the slip: the group's name, and both routes addressed
+    // to the team rather than to whoever happens to read them.
     const slip = page.getByRole('region', { name: /Coaching session/ })
     await expect(slip.getByText('Sound Barrier')).toBeVisible()
-    await expect(slip.getByRole('button', { name: /Export notes file/ })).toHaveCount(0)
+    await expect(slip.getByRole('button', { name: /Export notes file — for the team/ })).toBeVisible()
     await expect(slip.getByRole('button', { name: /Save a web page — for the team/ })).toBeVisible()
 
     // The sheet reviews the team by name.

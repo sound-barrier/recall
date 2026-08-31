@@ -157,7 +157,16 @@ func TestSetCoachSessionPlayer_ATeamOnABundleIsRefused(t *testing.T) {
 // artifact — import attributes purely by handle, so a team's shared review
 // would land as a per-player return on anyone whose handle matches the
 // team name. The backend refuses, not just the hidden button.
-func TestExportCoachNotes_ATeamReviewIsPageOnly(t *testing.T) {
+// A team review used to travel as the web page ONLY: the archive was
+// declared a per-player artifact and refused. That left a captain who runs
+// Recall with nothing to import — they could read the coach's words in a
+// browser and then retype them, which is not a feature, and the open
+// decision the team-session work left behind.
+//
+// The file carries an addressee now. It is signed as the TEAM's: no
+// mismatch warning on the captain's side, and the block they accept says
+// who it was written for.
+func TestExportCoachNotes_ATeamReviewTravelsAsAFileToo(t *testing.T) {
 	a, _ := openReplaySession(t, "a1b2c3")
 	if _, err := a.SetCoachSessionPlayer("Sound Barrier", db.CoachKindTeam); err != nil {
 		t.Fatalf("SetCoachSessionPlayer(team): %v", err)
@@ -165,11 +174,18 @@ func TestExportCoachNotes_ATeamReviewIsPageOnly(t *testing.T) {
 	if _, err := a.SetCoachingSettings("Ordo", ""); err != nil {
 		t.Fatalf("SetCoachingSettings: %v", err)
 	}
+	if err := a.PutCoachFocusItems([]coach.FocusItem{
+		{ItemID: "8f14e45f-ceea-467a-9c76-9c6b8f0e1c2d", Text: "Call the second ult before the first lands."},
+	}); err != nil {
+		t.Fatalf("PutCoachFocusItems: %v", err)
+	}
 
-	_, _, err := a.ExportCoachNotes([]byte("<html></html>"))
-
-	if !errors.Is(err, coach.ErrTeamPageOnly) {
-		t.Fatalf("ExportCoachNotes(team) = %v, want ErrTeamPageOnly", err)
+	name, blob, err := a.ExportCoachNotes([]byte("<html></html>"))
+	if err != nil {
+		t.Fatalf("ExportCoachNotes(team) = %v, want a file", err)
+	}
+	if name == "" || len(blob) == 0 {
+		t.Fatalf("ExportCoachNotes(team) produced %q / %d bytes", name, len(blob))
 	}
 }
 

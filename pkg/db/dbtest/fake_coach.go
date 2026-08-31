@@ -272,6 +272,10 @@ func (f *Fake) InsertCoachReturn(r db.CoachReturn) (int64, error) {
 		return 0, fmt.Errorf("dbtest: coach return %q violates the content_hash UNIQUE constraint", r.ContentHash)
 	}
 	r.ID = nextID(f.CoachReturns, func(x db.CoachReturn) int64 { return x.ID })
+	// Mirrors the column default: an unset kind is a player file.
+	if r.Kind == "" {
+		r.Kind = db.CoachKindPlayer
+	}
 	r.ImportedAt = nowRFC3339()
 	r.NotesJSON = slices.Clone(r.NotesJSON)
 	r.Decisions = map[string]db.CoachDecision{}

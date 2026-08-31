@@ -34,16 +34,17 @@ func (s *SQLStore) UpsertMatchCoachNote(n MatchCoachNote) (int64, error) {
 	// (the live accept).
 	var id int64
 	err = tx.QueryRow(
-		`INSERT INTO match_coach_notes (note_id, match_key, coach_name, session_date, text, match_clock, accepted_at)
-		 VALUES (?, ?, ?, ?, ?, ?, `+suppliedInstantOrNow+`)
+		`INSERT INTO match_coach_notes (note_id, match_key, coach_name, session_date, text, match_clock, for_team, accepted_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, `+suppliedInstantOrNow+`)
 		 ON CONFLICT(note_id) DO UPDATE SET
 		   match_key    = excluded.match_key,
 		   coach_name   = excluded.coach_name,
 		   session_date = excluded.session_date,
 		   text         = excluded.text,
-		   match_clock  = excluded.match_clock
+		   match_clock  = excluded.match_clock,
+		   for_team     = excluded.for_team
 		 RETURNING id`,
-		n.NoteID, n.MatchKey, n.CoachName, n.SessionDate, n.Text, n.MatchClock, n.AcceptedAt,
+		n.NoteID, n.MatchKey, n.CoachName, n.SessionDate, n.Text, n.MatchClock, n.ForTeam, n.AcceptedAt,
 	).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("upsert match coach note: %w", err)
@@ -154,7 +155,7 @@ func attachNoteMoments(q *sql.DB, byID map[int64]*MatchCoachNote) error {
 // the (accepted_at, id) order the per-match lists are assembled in.
 func (s *SQLStore) loadMatchCoachNoteRows() (map[int64]*MatchCoachNote, []int64, error) {
 	rows, err := s.db.Query(
-		`SELECT id, note_id, match_key, coach_name, session_date, text, match_clock, accepted_at
+		`SELECT id, note_id, match_key, coach_name, session_date, text, match_clock, for_team, accepted_at
 		 FROM match_coach_notes ORDER BY accepted_at, id`,
 	)
 	if err != nil {
@@ -165,7 +166,7 @@ func (s *SQLStore) loadMatchCoachNoteRows() (map[int64]*MatchCoachNote, []int64,
 	var order []int64
 	for rows.Next() {
 		var n MatchCoachNote
-		if err := rows.Scan(&n.ID, &n.NoteID, &n.MatchKey, &n.CoachName, &n.SessionDate, &n.Text, &n.MatchClock, &n.AcceptedAt); err != nil {
+		if err := rows.Scan(&n.ID, &n.NoteID, &n.MatchKey, &n.CoachName, &n.SessionDate, &n.Text, &n.MatchClock, &n.ForTeam, &n.AcceptedAt); err != nil {
 			return nil, nil, fmt.Errorf("load match coach notes: %w", err)
 		}
 		byID[n.ID] = &n
@@ -182,9 +183,9 @@ func (s *SQLStore) InsertCoachReturn(r CoachReturn) (int64, error) {
 	// notes_json is a TEXT column (STRICT rejects a BLOB there), so the raw
 	// document is bound as a string and read back into bytes.
 	err := s.db.QueryRow(
-		`INSERT INTO coach_returns (content_hash, coach_name, player_handle, session_date, notes_json)
-		 VALUES (?, ?, ?, ?, ?) RETURNING id`,
-		r.ContentHash, r.CoachName, r.PlayerHandle, r.SessionDate, string(r.NotesJSON),
+		`INSERT INTO coach_returns (content_hash, coach_name, player_handle, kind, session_date, notes_json)
+		 VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
+		r.ContentHash, r.CoachName, r.PlayerHandle, kindOrPlayer(r.Kind), r.SessionDate, string(r.NotesJSON),
 	).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("insert coach return: %w", err)
@@ -192,7 +193,7 @@ func (s *SQLStore) InsertCoachReturn(r CoachReturn) (int64, error) {
 	return id, nil
 }
 
-const selectCoachReturnSQL = `SELECT id, content_hash, coach_name, player_handle, session_date, notes_json, imported_at
+const selectCoachReturnSQL = `SELECT id, content_hash, coach_name, player_handle, kind, session_date, notes_json, imported_at
 	 FROM coach_returns `
 
 func (s *SQLStore) LookupCoachReturnByHash(hash string) (CoachReturn, bool, error) {
@@ -209,7 +210,7 @@ func (s *SQLStore) loadOneCoachReturn(query string, arg any) (CoachReturn, bool,
 	var r CoachReturn
 	var notesJSON string
 	err := s.db.QueryRow(query, arg).Scan(
-		&r.ID, &r.ContentHash, &r.CoachName, &r.PlayerHandle, &r.SessionDate, &notesJSON, &r.ImportedAt,
+		&r.ID, &r.ContentHash, &r.CoachName, &r.PlayerHandle, &r.Kind, &r.SessionDate, &notesJSON, &r.ImportedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return CoachReturn{}, false, nil
@@ -238,7 +239,7 @@ func (s *SQLStore) LoadCoachReturns() ([]CoachReturn, error) {
 	for rows.Next() {
 		var r CoachReturn
 		var notesJSON string
-		if err := rows.Scan(&r.ID, &r.ContentHash, &r.CoachName, &r.PlayerHandle, &r.SessionDate, &notesJSON, &r.ImportedAt); err != nil {
+		if err := rows.Scan(&r.ID, &r.ContentHash, &r.CoachName, &r.PlayerHandle, &r.Kind, &r.SessionDate, &notesJSON, &r.ImportedAt); err != nil {
 			return nil, fmt.Errorf("load coach returns: %w", err)
 		}
 		r.NotesJSON = []byte(notesJSON)

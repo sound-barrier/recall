@@ -230,6 +230,7 @@ func coachNoteFromRow(n db.MatchCoachNote) match.CoachNote {
 		NoteID:      n.NoteID,
 		CoachName:   n.CoachName,
 		SessionDate: n.SessionDate,
+		ForTeam:     n.ForTeam,
 		Text:        n.Text,
 		MatchClock:  n.MatchClock,
 		FocusTags:   n.FocusTags,

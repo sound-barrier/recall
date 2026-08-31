@@ -106,15 +106,18 @@ const requestEnd = () => coach.requestEndSession()
       {{ notesLine }}
     </p>
     <div class="coach-slip-actions">
+      <!-- A team review used to be page-only, which left a captain who runs
+           Recall with nothing to import — they could read the words in a
+           browser and retype them. The file carries the addressee now, so
+           the captain's side reads it as the TEAM's. -->
       <button
-        v-if="!isTeam"
         type="button"
         class="paper-btn coach-slip-btn"
         :disabled="!canExport"
         :title="exportTitle"
         @click="coach.exportNotes()"
       >
-        1 · Export notes file — for their Recall
+        {{ isTeam ? '1 · Export notes file — for the team' : '1 · Export notes file — for their Recall' }}
       </button>
       <!--
         The other way to hand it over. The archive is for a player who runs
@@ -151,7 +154,7 @@ const requestEnd = () => coach.requestEndSession()
         title="Discard the loaned records and go back to your own history"
         @click="requestEnd"
       >
-        {{ isTeam ? 'End session' : '2 · End session' }}
+        2 · End session
       </button>
       <!--
         The armed state offers both answers. It used to replace the button in

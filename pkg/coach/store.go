@@ -74,15 +74,18 @@ func withMoments(n Note, moments map[string][]db.CoachNoteMoment) Note {
 // ExportNotes assembles the notes file for a session. It refuses rather
 // than shipping something the player's side would reject or could not
 // attribute: no coach name, no confirmed handle, or nothing written yet.
+//
+// A TEAM session exports one too. It used to be refused as "a per-player
+// artifact", which left a captain who runs Recall with nothing to import —
+// they could read the coach's words in a browser and retype them. The file
+// carries Player.Kind, so the addressee travels with it: the captain's
+// side reads it as the TEAM's, not as a file about somebody else.
 func ExportNotes(s *Session, notes []Note, focus []FocusItem, coachName, recallVersion string, now time.Time) (NotesFile, error) {
 	if coachName == "" {
 		return NotesFile{}, ErrCoachNameRequired
 	}
 	if s.Player.Handle == "" {
 		return NotesFile{}, ErrHandleRequired
-	}
-	if s.Player.Kind == db.CoachKindTeam {
-		return NotesFile{}, ErrTeamPageOnly
 	}
 	if len(notes) == 0 && len(focus) == 0 {
 		return NotesFile{}, ErrNothingToExport

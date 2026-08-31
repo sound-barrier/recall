@@ -1263,6 +1263,13 @@ export type MatchCoachNote = {
      * The coach's session date (YYYY-MM-DD).
      */
     session_date: string;
+    /**
+     * The team this review was written for, when the coach addressed
+     * it to one. Absent on an ordinary per-player note — a team review
+     * that reads as a personal note has lost what made it one.
+     *
+     */
+    for_team?: string;
     text: string;
     /**
      * Optional `MM:SS` moment. Omitted when unset.

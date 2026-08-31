@@ -164,6 +164,10 @@ func Stage(st Store, payload []byte, localHandle string, _ MatchMaker) (sheet Sh
 	}
 	id, err := st.InsertCoachReturn(db.CoachReturn{
 		ContentHash: hash, CoachName: f.CoachName, PlayerHandle: f.Player.Handle,
+		// The addressee travels with the row: a sheet read later has only
+		// the row, and cannot otherwise tell "for your team" from "about
+		// somebody else".
+		Kind:        f.Player.Kind,
 		SessionDate: f.SessionDate, NotesJSON: raw,
 	})
 	if err != nil {
@@ -215,7 +219,7 @@ func landFocusItems(st Store, returnID int64, f coach.NotesFile, localHandle str
 	// The sheet warns about it, but by then the items would already be on
 	// the player's list — and "no deny" would make a stranger's homework
 	// permanent. The warning has to come before the landing, not after.
-	if handlesDiffer(localHandle, f.Player.Handle) {
+	if addressedElsewhere(localHandle, f.Player.Handle, f.Player.Kind) {
 		return nil
 	}
 	for i, it := range f.FocusItems {
@@ -298,7 +302,7 @@ func buildSheet(st Store, r db.CoachReturn, localHandle string) (Sheet, error) {
 		ImportedAt: r.ImportedAt, FocusItems: emptyIfNilItems(f.FocusItems),
 		Notes:          make([]Item, 0, len(f.Notes)),
 		Decisions:      make(map[string]string, len(r.Decisions)),
-		PlayerMismatch: handlesDiffer(localHandle, r.PlayerHandle),
+		PlayerMismatch: addressedElsewhere(localHandle, r.PlayerHandle, r.Kind),
 	}
 	for id, d := range r.Decisions {
 		sheet.Decisions[id] = d.Decision
@@ -322,9 +326,18 @@ func buildSheet(st Store, r db.CoachReturn, localHandle string) (Sheet, error) {
 	return sheet, nil
 }
 
-// handlesDiffer is the player-mismatch rule: only a set local handle can
-// disagree, and case and surrounding space do not count.
-func handlesDiffer(local, fromFile string) bool {
+// addressedElsewhere is the player-mismatch rule: only a set local handle
+// can disagree, and case and surrounding space do not count.
+//
+// A TEAM file never disagrees. Its handle names the TEAM, not the player,
+// so comparing the two is comparing different things — and the warning
+// exists to stop a STRANGER's homework landing on your list, which a file
+// addressed to the team you play for is not. Reading one as a mismatch
+// cost the captain every focus item in it.
+func addressedElsewhere(local, fromFile, kind string) bool {
+	if kind == db.CoachKindTeam {
+		return false
+	}
 	local = strings.TrimSpace(local)
 	return local != "" && !strings.EqualFold(local, strings.TrimSpace(fromFile))
 }
