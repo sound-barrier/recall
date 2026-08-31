@@ -62,22 +62,22 @@ function onDismiss() {
 
 <template>
   <Teleport to="body">
-    <Transition name="match-undo-toast">
+    <Transition name="toast-undo">
       <div
         v-if="state"
-        class="match-undo-toast"
+        class="toast toast-undo match-undo-toast"
         role="status"
         aria-live="polite"
         data-undo-toast
       >
-        <span class="match-undo-toast-glyph" aria-hidden="true">⊘</span>
-        <span class="match-undo-toast-body">
-          <span class="eyebrow match-undo-toast-eyebrow">Match hidden</span>
-          <span class="match-undo-toast-name">{{ state.label }}</span>
+        <span class="toast-glyph" aria-hidden="true">⊘</span>
+        <span class="toast-body">
+          <span class="eyebrow">Match hidden</span>
+          <span class="toast-name">{{ state.label }}</span>
         </span>
         <button
           type="button"
-          class="match-undo-toast-action"
+          class="toast-action"
           data-undo-toast-undo
           @click="onUndo"
         >
@@ -85,7 +85,7 @@ function onDismiss() {
         </button>
         <button
           type="button"
-          class="match-undo-toast-dismiss"
+          class="toast-close-plain"
           aria-label="Dismiss hidden-match notice"
           data-undo-toast-dismiss
           @click="onDismiss"
@@ -98,109 +98,9 @@ function onDismiss() {
 </template>
 
 <style scoped>
+/* Rung: the floor of the ladder. Everything else is the shared toast
+   family in styles/toasts.css. */
 .match-undo-toast {
-  position: fixed;
-  right: 1.4rem;
   bottom: 1.4rem;
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.7rem 0.85rem 0.75rem;
-  min-width: 280px;
-  max-width: min(420px, 92vw);
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--radius);
-  box-shadow: 0 24px 48px -24px rgb(var(--shadow-rgb) / 50%);
-  z-index: 110;
-  isolation: isolate;
-}
-
-.match-undo-toast-glyph {
-  font-size: var(--type-2xl);
-  color: var(--text-faint);
-  line-height: 1;
-}
-
-.match-undo-toast-body {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.match-undo-toast-name {
-  font-family: var(--display);
-  font-style: italic;
-  font-size: var(--type-xl);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.match-undo-toast-action {
-  appearance: none;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--surface);
-  font-family: var(--mono);
-  font-weight: 700;
-  font-size: var(--type-2xs);
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  padding: 0.4rem 0.85rem;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: background var(--duration-fast) ease;
-}
-
-.match-undo-toast-action:hover {
-  background: color-mix(in srgb, var(--accent) 80%, var(--text));
-}
-
-.match-undo-toast-action:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
-}
-
-.match-undo-toast-dismiss {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  color: var(--text-faint);
-  font-family: var(--mono);
-  font-size: var(--type-xl);
-  cursor: pointer;
-  padding: 0.15rem 0.3rem;
-  line-height: 1;
-  transition: color var(--duration-fast) ease;
-}
-
-.match-undo-toast-dismiss:hover { color: var(--text); }
-
-.match-undo-toast-dismiss:focus-visible {
-  outline: none;
-  color: var(--accent-text);
-}
-
-.match-undo-toast-enter-active,
-.match-undo-toast-leave-active {
-  transition: opacity var(--duration-med) ease,
-              transform var(--duration-relaxed) cubic-bezier(0.2, 0.7, 0.3, 1);
-}
-
-.match-undo-toast-enter-from,
-.match-undo-toast-leave-to {
-  opacity: 0;
-  transform: translateY(12px);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .match-undo-toast-enter-active,
-  .match-undo-toast-leave-active { transition: none; }
 }
 </style>

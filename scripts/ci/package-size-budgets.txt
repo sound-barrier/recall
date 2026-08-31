@@ -384,7 +384,14 @@ frontend/src/components/elo                   20
 # no app counterpart (page frame, per-note article, print rules); everything
 # about ink, type scale and the note's block rhythm comes from the four files
 # already here, which is the entire reason it is this short.
-frontend/src/styles                           20
+# 20 -> 21 for toasts.css: the bottom-right ladder, which had been seven
+# private copies of one chrome across three feature folders until the
+# duplication ratchet failed the build over it. This file is the family the
+# components now keep only their rung against — the same move the .eyebrow
+# collapse made, and the one this directory exists to hold. A shared surface
+# raised from any tab by a background parse cannot live in any single
+# feature's scoped block.
+frontend/src/styles                           21
 
 # frontend/src/components/settings — one component per Settings tab section,
 # plus the small widgets those sections share between them. Ratcheted down from

@@ -77,24 +77,24 @@ const headline = computed(() => {
 
 <template>
   <Teleport to="body">
-    <Transition name="match-anchor-toast">
+    <Transition name="toast-undo">
       <div
         v-if="state"
-        class="match-anchor-toast"
+        class="toast toast-undo match-anchor-toast"
         role="status"
         aria-live="polite"
         data-anchor-toast
       >
-        <span class="match-anchor-toast-glyph" aria-hidden="true">{{ state.kind === 'set' ? '◆' : '◇' }}</span>
-        <span class="match-anchor-toast-body">
-          <span class="eyebrow match-anchor-toast-eyebrow">{{ headline }}</span>
-          <span v-if="state.kind === 'set'" class="match-anchor-toast-name">{{ state.label }}</span>
-          <span v-else class="match-anchor-toast-sub">filter cleared</span>
+        <span class="toast-glyph toast-glyph-mark" aria-hidden="true">{{ state.kind === 'set' ? '◆' : '◇' }}</span>
+        <span class="toast-body">
+          <span class="eyebrow">{{ headline }}</span>
+          <span v-if="state.kind === 'set'" class="toast-name">{{ state.label }}</span>
+          <span v-else class="toast-sub">filter cleared</span>
         </span>
         <button
           v-if="state.kind === 'set'"
           type="button"
-          class="match-anchor-toast-action"
+          class="toast-action"
           data-anchor-toast-view
           @click="onView"
         >
@@ -102,7 +102,7 @@ const headline = computed(() => {
         </button>
         <button
           type="button"
-          class="match-anchor-toast-dismiss"
+          class="toast-close-plain"
           aria-label="Dismiss anchor confirmation"
           data-anchor-toast-dismiss
           @click="onDismiss"
@@ -115,120 +115,10 @@ const headline = computed(() => {
 </template>
 
 <style scoped>
+/* Rung: above the undo bar, which fires from the same list. The accent
+   border marks a confirmation rather than a reversible action. */
 .match-anchor-toast {
-  position: fixed;
-  right: 1.4rem;
   bottom: 5.4rem;
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.7rem 0.85rem 0.75rem;
-  min-width: 280px;
-  max-width: min(420px, 92vw);
-  background: var(--surface);
-  border: 1px solid var(--accent);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--radius);
-  box-shadow: 0 24px 48px -24px rgb(var(--shadow-rgb) / 50%);
-  z-index: 110;
-  isolation: isolate;
-}
-
-.match-anchor-toast-glyph {
-  font-family: var(--mono);
-  font-size: var(--type-2xl);
-  font-weight: 700;
-  color: var(--accent-text);
-  line-height: 1;
-}
-
-.match-anchor-toast-body {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.match-anchor-toast-name {
-  font-family: var(--display);
-  font-style: italic;
-  font-size: var(--type-xl);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.match-anchor-toast-sub {
-  font-family: var(--mono);
-  font-size: var(--type-sm);
-  color: var(--text-dim);
-  text-transform: lowercase;
-  letter-spacing: 0.02em;
-}
-
-.match-anchor-toast-action {
-  appearance: none;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--surface);
-  font-family: var(--mono);
-  font-weight: 700;
-  font-size: var(--type-2xs);
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  padding: 0.4rem 0.85rem;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: background var(--duration-fast) ease;
-}
-
-.match-anchor-toast-action:hover {
-  background: color-mix(in srgb, var(--accent) 80%, var(--text));
-}
-
-.match-anchor-toast-action:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
-}
-
-.match-anchor-toast-dismiss {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  color: var(--text-faint);
-  font-family: var(--mono);
-  font-size: var(--type-xl);
-  cursor: pointer;
-  padding: 0.15rem 0.3rem;
-  line-height: 1;
-  transition: color var(--duration-fast) ease;
-}
-
-.match-anchor-toast-dismiss:hover { color: var(--text); }
-
-.match-anchor-toast-dismiss:focus-visible {
-  outline: none;
-  color: var(--accent-text);
-}
-
-/* ── Slide-in / slide-out ── */
-.match-anchor-toast-enter-active,
-.match-anchor-toast-leave-active {
-  transition: opacity var(--duration-med) ease,
-              transform var(--duration-relaxed) cubic-bezier(0.2, 0.7, 0.3, 1);
-}
-
-.match-anchor-toast-enter-from,
-.match-anchor-toast-leave-to {
-  opacity: 0;
-  transform: translateY(12px);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .match-anchor-toast-enter-active,
-  .match-anchor-toast-leave-active { transition: none; }
+  border-color: var(--accent);
 }
 </style>
