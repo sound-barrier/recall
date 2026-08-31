@@ -928,3 +928,84 @@ func TestStoreContract_AmbiguousCandidateReasonRoundTrips(t *testing.T) {
 		})
 	}
 }
+
+// A "keep separate" verdict is a JUDGMENT, and the only place it was
+// recorded was the absence of an ambiguity — so the next time the user met
+// either card they had to make it again from scratch. duplicate_matches
+// remembers it, and both cards read it: the link is symmetric, because
+// "these two look like the same match" is not a claim about one of them.
+func TestStoreContract_DuplicateLinkRoundTripsBothDirections(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			const kept = "match-2026-01-01T12-00-00"
+			const original = "match-2026-01-01T09-00-00"
+			mustNoErr(t, s.LinkDuplicateMatches(kept, original))
+
+			links, err := s.LoadAllDuplicateLinks()
+			mustNoErr(t, err)
+			if got := links[kept]; len(got) != 1 || got[0] != original {
+				t.Errorf("links[%s] = %v, want [%s]", kept, got, original)
+			}
+			if got := links[original]; len(got) != 1 || got[0] != kept {
+				t.Errorf("links[%s] = %v, want [%s] — the link reads from both ends", original, got, kept)
+			}
+		})
+	}
+}
+
+// Both columns name a match, and only one of them is called match_key. The
+// rename registry is keyed on that name, so `duplicate_of` is exactly the
+// column a resolve would strand — pointing at a key nothing will look up
+// again, on a card that still claims a duplicate.
+func TestStoreContract_DuplicateLinkSurvivesARenameOnEitherSide(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			const kept = "match-2026-01-01T12-00-00"
+			const original = "ambiguous-cmVuYW1lLnBuZw"
+			const resolved = "match-2026-01-01T09-00-00"
+			mustNoErr(t, s.UpsertUnknown(db.UnknownRow{Filename: "rename.png", MatchKey: original}))
+			mustNoErr(t, s.ApplyAmbiguity("rename.png", []db.AmbiguousCandidate{
+				{MatchKey: resolved, DistanceSeconds: 60},
+			}))
+			mustNoErr(t, s.LinkDuplicateMatches(kept, original))
+
+			// Resolving the OTHER card renames it — the link must follow.
+			if ok, err := s.ResolveAmbiguous("rename.png", original, resolved); !ok || err != nil {
+				t.Fatalf("resolve = (%v, %v), want (true, nil)", ok, err)
+			}
+			links, err := s.LoadAllDuplicateLinks()
+			mustNoErr(t, err)
+			if got := links[kept]; len(got) != 1 || got[0] != resolved {
+				t.Errorf("links[%s] = %v, want [%s] — the link followed the rename", kept, got, resolved)
+			}
+		})
+	}
+}
+
+// Deleting either match takes the link with it: a chip pointing at a match
+// that no longer exists is a dead end the user cannot act on.
+func TestStoreContract_DuplicateLinkDiesWithEitherMatch(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			for _, side := range []struct{ name, deleted string }{
+				{"the kept match", "match-2026-01-01T12-00-00"},
+				{"the original", "match-2026-01-01T09-00-00"},
+			} {
+				t.Run(side.name, func(t *testing.T) {
+					s := impl.open(t)
+					mustNoErr(t, s.LinkDuplicateMatches(
+						"match-2026-01-01T12-00-00", "match-2026-01-01T09-00-00"))
+					mustNoErr(t, s.HardDeleteMatch(side.deleted))
+
+					links, err := s.LoadAllDuplicateLinks()
+					mustNoErr(t, err)
+					if len(links) != 0 {
+						t.Errorf("links after deleting %s = %v, want none", side.deleted, links)
+					}
+				})
+			}
+		})
+	}
+}

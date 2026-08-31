@@ -1699,6 +1699,16 @@ export type MatchRecord = {
      */
     candidates?: Array<AmbiguousCandidate>;
     /**
+     * Match keys this match was judged SEPARATE from — a sweep
+     * proposed them as the same match and the user chose "keep
+     * separate". Symmetric: both matches name each other, so the
+     * reader of either card can see the judgment was already made
+     * and jump to the other to check it. Absent for the
+     * overwhelming majority nobody ever had to decide about.
+     *
+     */
+    duplicate_of?: Array<string>;
+    /**
      * The coach-received layer: every coach note the user accepted
      * onto this match, oldest first. Notes accumulate — one block per
      * coach and session — and each is removed individually via

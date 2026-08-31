@@ -45,9 +45,11 @@ func (a *App) loadSidecars() aggregate.Sidecars {
 	coachNotes, _ := a.store.LoadMatchCoachNotes()
 	moments, _ := a.store.LoadMatchMoments()
 	selfReviews, _ := a.store.LoadSelfReviewNotes()
+	dupLinks, _ := a.store.LoadAllDuplicateLinks()
 	return aggregate.Sidecars{
 		Annotations: annos, Hidden: hidden, AckedRefGaps: ackedGaps, Reviews: reviews,
 		Pinned: pinned, CoachNotes: coachNotes, Moments: moments, SelfReviews: selfReviews,
+		DuplicateLinks: dupLinks,
 	}
 }
 
@@ -73,6 +75,7 @@ type aggregateInputs struct {
 	coachNotes  map[string][]db.MatchCoachNote
 	moments     map[string][]db.MatchMoment
 	selfReviews map[string][]db.SelfReviewNoteOnMatch
+	dupLinks    map[string][]string
 }
 
 func (a *App) loadAggregateInputs() (aggregateInputs, error) {
@@ -91,6 +94,7 @@ func (a *App) loadAggregateInputs() (aggregateInputs, error) {
 		func() (err error) { s.coachNotes, err = a.store.LoadMatchCoachNotes(); return },
 		func() (err error) { s.moments, err = a.store.LoadMatchMoments(); return },
 		func() (err error) { s.selfReviews, err = a.store.LoadSelfReviewNotes(); return },
+		func() (err error) { s.dupLinks, err = a.store.LoadAllDuplicateLinks(); return },
 	} {
 		if err = load(); err != nil {
 			return aggregateInputs{}, err
@@ -117,6 +121,7 @@ func (a *App) aggregateAll() ([]match.Record, error) {
 	aggregate.AttachSelfReviewNotes(recs, d.selfReviews)
 	aggregate.AttachQueues(recs, d.queues)
 	aggregate.AttachPlayModes(recs, d.playModes)
+	aggregate.AttachDuplicateLinks(recs, d.dupLinks)
 	aggregate.AttachAmbiguity(recs, d.snap.AmbiguousCandidates)
 	return recs, nil
 }

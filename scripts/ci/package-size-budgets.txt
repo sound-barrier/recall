@@ -106,7 +106,11 @@ pkg/app                                       50
 # every other concern here is, and the three tables belong together
 # precisely because a status change has to find a row in either
 # player-side family from an item id alone.
-pkg/db                                        33
+# 34 as of the duplicate link: store_duplicate_link.go, the "keep separate"
+# verdict. A sidecar concern like the ones above — one table, spelled in one
+# file — and the only one whose rows name a match by a column that is NOT
+# called match_key, which is why it comes with its own registry entry.
+pkg/db                                        34
 
 # pkg/parser — the OCR pipeline: Tesseract invocation, per-screenshot-type field
 # extraction, the embedded owdata YAML set, golden-file projection. One
@@ -251,7 +255,11 @@ frontend/tests/e2e/dossier                    24
 # count has to survive schema, wire, narrow and two tally sites; the failure
 # this proves absent is the masthead and the dossier disagreeing about a
 # win rate, which no unit test on either one alone can see.
-frontend/tests/e2e/match                      24
+# 24 -> 25: match-duplicate-link.spec.ts. The "keep separate" verdict is
+# now stored, and a chip on both cards navigates to the twin — a link that
+# claims a judgment and cannot be followed is worse than no link, and only
+# a browser proves the store → wire → reveal → panel chain end to end.
+frontend/tests/e2e/match                      25
 
 # frontend/tests/e2e/matches — the Matches view around the list: grouping and
 # sorting, collapse/expand, infinite scroll and scroll affordances, bulk mode

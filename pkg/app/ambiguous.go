@@ -3,8 +3,10 @@ package app
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"recall/pkg/aggregate"
+	"recall/pkg/applog"
 	"recall/pkg/db"
 	"recall/pkg/match"
 )
@@ -65,8 +67,40 @@ func (a *App) ResolveAmbiguousMatch(ambiguousMatchKey, resolvedTo string) error 
 	if !ok {
 		return ErrAmbiguousNotFound
 	}
+	a.rememberKeepSeparate(resolvedTo, cands)
 	a.emitResolvedMatch(resolvedTo)
 	return nil
+}
+
+// rememberKeepSeparate records the user's verdict when they resolved a
+// possible duplicate to a fresh key instead of merging it — the judgment
+// they made by reading two scoreboards, so nothing asks them to make it
+// again and both cards can say so.
+//
+// Only a candidate a sweep proposed as a DUPLICATE earns a link. An
+// ordinary EAD / timestamp-window near-miss is routine attribution, and a
+// "possible duplicate of" chip there would be a claim nobody made.
+//
+// Only the closest such candidate: duplicate_matches keys on match_key, one
+// verdict per match. Candidates arrive sorted by distance ascending, so the
+// first is the one the user was most plausibly deciding against.
+//
+// Best-effort — the resolution already committed, and losing a chip is not
+// worth failing the write the user actually asked for.
+func (a *App) rememberKeepSeparate(resolvedTo string, cands []db.AmbiguousCandidate) {
+	if slices.ContainsFunc(cands, func(c db.AmbiguousCandidate) bool { return c.MatchKey == resolvedTo }) {
+		return // a merge: the two are one match now, nothing left to point at
+	}
+	for _, c := range cands {
+		if c.Reason == "" {
+			continue
+		}
+		if err := a.store.LinkDuplicateMatches(resolvedTo, c.MatchKey); err != nil {
+			applog.Subsystem("parse").Error("keep-separate: link failed",
+				"match_key", resolvedTo, "duplicate_of", c.MatchKey, "err", err)
+		}
+		return
+	}
 }
 
 // emitResolvedMatch re-aggregates the just-resolved match and broadcasts

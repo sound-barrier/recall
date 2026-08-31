@@ -124,6 +124,20 @@ func ambiguousAttributions(cs []db.AmbiguousCandidate, byKey map[string]*match.R
 
 // AttachPinned flips `Pinned` on every record in the starred set.
 // Pure function, called once per aggregateAll.
+// AttachDuplicateLinks names, on each match, the ones it was judged
+// separate from. The map arrives symmetric — the store reads each stored
+// row from both ends — so a card and its twin both carry the link.
+func AttachDuplicateLinks(recs []match.Record, links map[string][]string) {
+	if len(links) == 0 {
+		return
+	}
+	for i := range recs {
+		if of, ok := links[recs[i].MatchKey]; ok {
+			recs[i].DuplicateOf = of
+		}
+	}
+}
+
 func AttachPinned(recs []match.Record, pinned map[string]bool) {
 	if len(pinned) == 0 {
 		return

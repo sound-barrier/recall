@@ -102,6 +102,13 @@ type Store interface {
 	ResolveAmbiguous(filename, ambiguousMatchKey, newMatchKey string) (bool, error)
 	DemoteMatchToAmbiguous(matchKey, ambiguousMatchKey, filename string, cands []AmbiguousCandidate) (bool, error)
 
+	// The "keep separate" verdict on a possible duplicate — the judgment
+	// the user made so they are not asked to make it twice.
+	// LoadAllDuplicateLinks reads each stored row from BOTH ends, because
+	// "these two look like the same match" is a claim about the pair.
+	LinkDuplicateMatches(matchKey, duplicateOf string) error
+	LoadAllDuplicateLinks() (map[string][]string, error)
+
 	// Match-annotation surface — user-curated per-match notes.
 	// SetAnnotation upserts; DeleteAnnotation removes by key; LoadAnnotations
 	// returns the full map keyed by match_key for the aggregator to attach

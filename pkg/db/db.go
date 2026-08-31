@@ -71,4 +71,16 @@ var matchKeyTables = []string{
 	"self_review_matches",
 	"share_export_matches",
 	"user_match_data",
+	"duplicate_matches",
+}
+
+// secondaryMatchKeyColumns is every column that names a match by something
+// OTHER than `match_key`. matchKeyTables above is keyed on the column NAME,
+// and storeSchemaCompletenessTest can only see columns that carry it — so a
+// column like duplicate_matches.duplicate_of is invisible to both, and a
+// rename would strand it on a dead key while its card went on claiming a
+// duplicate. There is one today; the point of the list is that the next one
+// has somewhere to go.
+var secondaryMatchKeyColumns = []struct{ table, column string }{
+	{"duplicate_matches", "duplicate_of"},
 }
