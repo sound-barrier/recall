@@ -263,6 +263,13 @@ The status line below shows either:
   new screenshots to process.
 - **All screenshots already parsed — nothing new in the folder.** —
   same idea, sterner.
+- **All new screenshots parsed — N parked after repeated failures.** —
+  the only files left are ones OCR gave up on after three failed
+  attempts; they no longer count toward the button. Retry them from
+  the Unknown tab's **Failed to read** section, or re-attempt
+  everything with **Re-parse all screenshots**.
+- **N parked after repeated failures — retry from the Unknown tab.** —
+  the same note as an extra line while new files are also waiting.
 - **Blocked — needs Tesseract.** — Engine row needs fixing first;
   click **Fix in Settings →** to jump to **Settings → Engine**.
 

@@ -197,8 +197,10 @@ size* rule, each of these directories carries a declared file budget in
 `scripts/ci/package-size-budgets.txt` — read the number there, and run
 `task package-size-audit` to see where a folder stands. `ls` stays the source of
 truth for *what is in* a folder; don't enumerate files here. (The two trees are
-not required to mirror: `composables/` has no `unknown/` — no composable is
-unknown-specific — and its `profile/` has no components counterpart.)
+not required to mirror: `composables/profile/` has no components counterpart,
+and a feature folder appears on the composables side only once a composable is
+genuinely feature-specific — `composables/unknown/` held nothing until
+`useArmedAction` earned it.)
 
 **Imports use the `@/` alias** (`@/` → `frontend/src/`) — the canonical Vue
 convention, configured in `vite.config.ts` + `vitest.config.ts` (`resolve.alias`)
