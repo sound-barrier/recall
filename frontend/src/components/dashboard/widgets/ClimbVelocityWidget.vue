@@ -42,6 +42,14 @@ const detail = computed(() => {
 
 <template>
   <span class="eyebrow kpi-eyebrow">Climb rate</span>
-  <span class="kpi-value" :class="tint" role="img" :aria-label="spokenName">{{ headline }}</span>
+  <!-- role="img" only while there IS a judgment to speak: an unnamed img role
+       is a WCAG 1.1.1 failure, and "—" needs no alternative text — the sub
+       line below already says nothing was read. -->
+  <span
+    class="kpi-value"
+    :class="tint"
+    :role="spokenName ? 'img' : undefined"
+    :aria-label="spokenName"
+  >{{ headline }}</span>
   <span class="kpi-sub">{{ detail }}</span>
 </template>
