@@ -45,7 +45,7 @@ test.describe('dashboard widget remove → undo toast', () => {
 
     const toast = page.locator('[data-undo-toast]')
     await expect(toast).toBeVisible()
-    await expect(toast.locator('.dashboard-undo-toast-name')).toContainText('Winrate')
+    await expect(toast.locator('.toast-name')).toContainText('Winrate')
 
     await toast.locator('[data-undo-action]').click()
     await expect(page.locator('[data-widget-id="winrate"]')).toHaveCount(1)
