@@ -12,7 +12,7 @@ import (
 // decided are correct as they stand.
 //
 // It exists because the alternative is a watch that reports the same thing
-// every Thursday forever. scripts/ci/check-deps.sh records what that costs, in
+// on every run forever. scripts/ci/check-deps.sh records what that costs, in
 // its own words: a gate that can never go green "is how a gate teaches people
 // to ignore it."
 //

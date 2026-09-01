@@ -8,7 +8,7 @@
 # one shell script rather than auditing an action.
 #
 # Idempotent by construction. The branch is fixed and force-updated, so a second
-# Thursday refreshes one pull request instead of opening a second — and a run
+# run refreshes one pull request instead of opening a second — and a run
 # that finds nothing new leaves the branch exactly as it was.
 #
 # Inputs (env):
@@ -31,7 +31,7 @@ git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
 git checkout -B "${BRANCH}"
 git add pkg/parser
-git commit -m "feat(parser): roster entries proposed by the Thursday watch
+git commit -m "feat(parser): roster entries proposed by the roster watch
 
 Every entry here is UNCONFIRMED. The spelling came from Blizzard's own
 page, not from a scoreboard, and not from parser output. Confirm each one
@@ -44,7 +44,7 @@ git push --force origin "${BRANCH}"
 
 body="$(mktemp)"
 {
-  echo "Opened by the Thursday roster watch. **Draft on purpose** — the entries"
+  echo "Opened by the roster watch. **Draft on purpose** — the entries"
   echo "below are proposals, not decisions."
   echo
   cat "${REPORT_FILE}"
@@ -82,6 +82,6 @@ if gh pr view "${BRANCH}" --json number >/dev/null 2>&1; then
 else
   echo "[ roster-watch ] opening a draft pull request"
   gh pr create --draft --base main --head "${BRANCH}" \
-    --title "feat(parser): roster drift found by the Thursday watch" \
+    --title "feat(parser): roster drift found by the roster watch" \
     --body-file "${body}"
 fi
