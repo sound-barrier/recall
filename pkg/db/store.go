@@ -333,9 +333,14 @@ type Store interface {
 	// own, and what a coach sent them. See store_focus_items.go.
 	FocusItemStore
 
+	// The player's saved teammates — tag to display name. Not keyed on a
+	// match, and not wiped by Clear. See store_roster.go.
+	RosterStore
+
 	// Clear deletes every row in every table — children cascade — EXCEPT the
 	// coach-authored family (coach_players / coach_notes /
-	// coach_sessions), which is not match history.
+	// coach_sessions) and the saved roster, neither of which is match
+	// history.
 	Clear() error
 	// Database health + maintenance surface (Settings → Advanced →
 	// Database health). Health is read-only and safe mid-parse;

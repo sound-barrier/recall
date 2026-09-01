@@ -1,0 +1,73 @@
+/* The add form is a single row that wraps: tag, name, note, Save. */
+.roster-control {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.roster-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.roster-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1 1 8rem;
+}
+
+.roster-field-wide {
+  flex: 2 1 12rem;
+}
+
+.roster-error {
+  color: var(--loss);
+}
+
+.roster-empty {
+  font-style: italic;
+}
+
+.roster-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.roster-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  border-top: 1px solid var(--border-soft);
+}
+
+.roster-name {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.roster-tag {
+  font-size: var(--type-xs);
+  color: var(--text-faint);
+}
+
+.roster-note {
+  font-size: var(--type-xs);
+  color: var(--text-dim);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.roster-remove {
+  margin-left: auto;
+  flex: 0 0 auto;
+}

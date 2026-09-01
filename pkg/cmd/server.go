@@ -320,6 +320,7 @@ func newAPIMux(a *app.App) *http.ServeMux {
 	// Registers in server_self_review.go.
 	registerSelfReviewRoutes(apiMux, a)
 	registerFocusRoutes(apiMux, a)
+	registerRosterRoutes(apiMux, a)
 
 	// ── Test-harness-only routes ────────────────────────────────────
 	// No-op unless RECALL_E2E=1 (the Playwright e2e harness). Never in

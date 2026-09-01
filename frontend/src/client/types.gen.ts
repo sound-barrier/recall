@@ -2042,6 +2042,22 @@ export type HeroPlay = {
     };
 };
 
+export type RosterMember = {
+    /**
+     * The BattleTag, as it appears in a match's members list.
+     */
+    tag: string;
+    /**
+     * What the chip shows instead of the tag.
+     */
+    display_name: string;
+    note?: string;
+    /**
+     * When they joined the roster. Survives a rename.
+     */
+    added_at?: string;
+};
+
 export type HeroSr = {
     hero: string;
     sr: number;
@@ -6251,6 +6267,128 @@ export type SetFocusItemStatusResponses = {
 };
 
 export type SetFocusItemStatusResponse = SetFocusItemStatusResponses[keyof SetFocusItemStatusResponses];
+
+export type ListRosterData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/roster';
+};
+
+export type ListRosterErrors = {
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type ListRosterError = ListRosterErrors[keyof ListRosterErrors];
+
+export type ListRosterResponses = {
+    /**
+     * The roster, alphabetical by display name.
+     */
+    200: Array<RosterMember>;
+};
+
+export type ListRosterResponse = ListRosterResponses[keyof ListRosterResponses];
+
+export type DeleteRosterMemberData = {
+    body?: never;
+    path: {
+        /**
+         * The BattleTag, as it appears in a match's `members` list. It is the
+         * identity, which is why it is the path segment and not a body field —
+         * two spellings of one identity in one request is a question with no
+         * right answer.
+         *
+         */
+        tag: string;
+    };
+    query?: never;
+    url: '/api/v1/roster/{tag}';
+};
+
+export type DeleteRosterMemberErrors = {
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type DeleteRosterMemberError = DeleteRosterMemberErrors[keyof DeleteRosterMemberErrors];
+
+export type DeleteRosterMemberResponses = {
+    /**
+     * Removed, or was never there.
+     */
+    204: void;
+};
+
+export type DeleteRosterMemberResponse = DeleteRosterMemberResponses[keyof DeleteRosterMemberResponses];
+
+export type SaveRosterMemberData = {
+    body: {
+        /**
+         * What the chip shows instead of the tag.
+         */
+        display_name?: string;
+        /**
+         * Anything worth remembering about them.
+         */
+        note?: string;
+    };
+    path: {
+        /**
+         * The BattleTag, as it appears in a match's `members` list. It is the
+         * identity, which is why it is the path segment and not a body field —
+         * two spellings of one identity in one request is a question with no
+         * right answer.
+         *
+         */
+        tag: string;
+    };
+    query?: never;
+    url: '/api/v1/roster/{tag}';
+};
+
+export type SaveRosterMemberErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type SaveRosterMemberError = SaveRosterMemberErrors[keyof SaveRosterMemberErrors];
+
+export type SaveRosterMemberResponses = {
+    /**
+     * Saved.
+     */
+    204: void;
+};
+
+export type SaveRosterMemberResponse = SaveRosterMemberResponses[keyof SaveRosterMemberResponses];
 
 export type SetSelfReviewFocusItemsData = {
     body: FocusItemsInput;

@@ -46,6 +46,7 @@ export type {
   FailedFile,
   HeroPlay,
   HeroSr,
+  RosterMember,
   IgnoredScreenshot,
   ManualMatchInput,
   MatchRecord,
@@ -91,6 +92,7 @@ export * from '@/api/suppress-list'
 export * from '@/api/parse'
 export * from '@/api/settings'
 export * from '@/api/profiles'
+export * from '@/api/roster'
 export * from '@/api/coach-session'
 export * from '@/api/coach-returns'
 export * from '@/api/self-review'

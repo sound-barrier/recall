@@ -92,7 +92,11 @@
 # directory the user chose, with two containment checks to prove it stayed
 # there. This one looks up bytes we stored, by content digest, where there is
 # no path and so nothing to escape.
-pkg/app                                       51
+# 52: roster.go — the roster's custody. Thin by design (trim, default the
+# name to the tag, refuse a blank one, refuse while a coach session is open),
+# but it is a responsibility of its own and belongs beside the store family
+# it fronts rather than inside a match file it has nothing to do with.
+pkg/app                                       52
 
 # pkg/db — the SQLite store: schema + additive-column registry, the migration
 # engine, per-screenshot-type CRUD, the Store interface and its *SQLStore
@@ -126,7 +130,11 @@ pkg/app                                       51
 # every sidecar above it — and content-addressed, which is what makes the
 # reference survive a match rename and the same screenshot pinned three
 # times cost one row.
-pkg/db                                        36
+# 37 as of the saved roster: store_roster.go, the people the player queues
+# with. One table, one file, like every sidecar above it — and the first one
+# Clear() deliberately leaves alone, because a list of people is not a record
+# of games played.
+pkg/db                                        37
 
 # pkg/parser — the OCR pipeline: Tesseract invocation, per-screenshot-type field
 # extraction, the embedded owdata YAML set, golden-file projection. One
@@ -179,7 +187,10 @@ pkg/fixtures                                  13
 # that takes a picture rather than an archive. Its own group because it is
 # addressed by content digest and belongs to no match: any moment, on
 # either side of the coach boundary, can point at what it stores.
-pkg/cmd                                       22
+# 23: server_roster.go — the /api/v1/roster endpoint group. A person, not a
+# match: nothing in it is keyed on one, which is why it is not under
+# /matches and not in server_matches_item.go.
+pkg/cmd                                       23
 
 
 # ── Frontend ───────────────────────────────────────────────────────────
@@ -309,7 +320,10 @@ frontend/tests/e2e/match                      27
 # beside the session tally and the tilt nudge. Same folder for the same
 # reason those are here: it is driven by the parse lifecycle over the
 # matches view, not by the Reviews tab whose data it happens to show.
-frontend/tests/e2e/matches                    27
+# 28: live-session-banner.spec.ts. The rail is chrome that follows the player
+# onto every tab, but what it reports is a session over the match corpus, so
+# it belongs with the specs that drive that corpus.
+frontend/tests/e2e/matches                    28
 
 # frontend/tests/e2e/narrow — everything that shrinks the set: the narrow panel
 # facets (time scope, season, teammates, reviewed-by, since-anchor, leaver /
@@ -469,7 +483,11 @@ frontend/src/styles                           20
 # the old wording described the folder less accurately every time one landed.
 # Registered because the count sits close enough to the ceiling that silent
 # growth would put it over.
-frontend/src/components/settings              16
+# 16 -> 18: SettingsRoster.vue and its stylesheet. Settings owns all config
+# and a roster is config; the section carries a list plus an add form, so its
+# CSS is a sibling file rather than a scoped block, exactly as the two
+# stylesheets that moved out of styles/ for chunk placement.
+frontend/src/components/settings              18
 
 # frontend/src/components/matches/detail — the match detail panel's sections
 # (header, expanded card, journal, status choosers, lightbox). Under the
@@ -504,7 +522,9 @@ frontend/src                                  13
 # A twelfth family is a real addition and earns a bump; a second module inside
 # an existing family means that family wants a folder, not this number raised.
 # Registered rather than left on the default because 13 is already past it.
-frontend/src/api                              13
+# 14: roster.ts — the saved-roster surface. A new endpoint group on the
+# existing api facade, spelled one file per family like every sibling.
+frontend/src/api                              14
 
 # frontend/src/components/matches/dossier — the dossier band components and
 # their shell. Under the ceiling; registered because the climb-focused dossier
@@ -573,7 +593,9 @@ frontend/src/match                            12
 # family needs a Fake file or the interface is unimplemented, so this number
 # moves when pkg/db's does and for the same reason — as it does here, for
 # fake_coach_sessions.go beside pkg/db's store_coach_sessions.go.
-pkg/db/dbtest                                 13
+# 14: fake_roster.go — the Fake's half of the roster family. This count
+# tracks pkg/db's by construction.
+pkg/db/dbtest                                 14
 
 # pkg/matchedit — one file per editable thing about a match: annotation,
 # ignored, manual, moment, play mode, queue, replay code, review, user data,

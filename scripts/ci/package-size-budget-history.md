@@ -105,3 +105,10 @@ a folder silently regrows what it just shed.
 | 2026-08-31 | seasonal-recap-and-attachments | frontend/src/components/dashboard/widgets | 49 → 50 | `patch-split` — the before/after comparison, which needed `patches.yaml` to exist at all. |
 | 2026-08-31 | seasonal-recap-and-attachments | pkg/parser | 25 → 26 | `patches.go` — game-change instants, a sibling of `seasons.go` with the same embed and update path. |
 | 2026-08-31 | seasonal-recap-and-attachments | frontend/src/components/dashboard/widgets | 50 → 51 | `hero-trend-lines` — the pool table names a hero's win rate; this one draws how it got there. |
+| 2026-08-31 | seasonal-recap-and-attachments | pkg/db | 36 → 37 | `store_roster.go` — the saved roster. The first sidecar family `Clear()` deliberately leaves alone: a list of people is not a record of games played. |
+| 2026-08-31 | seasonal-recap-and-attachments | pkg/db/dbtest | 13 → 14 | `fake_roster.go` — the Fake's half of the same family. |
+| 2026-08-31 | seasonal-recap-and-attachments | pkg/cmd | 22 → 23 | `server_roster.go` — `/api/v1/roster`. A person, not a match. |
+| 2026-08-31 | seasonal-recap-and-attachments | pkg/app | 51 → 52 | `roster.go` — trim, default the name to the tag, refuse a blank one, refuse during a loan. |
+| 2026-08-31 | seasonal-recap-and-attachments | frontend/src/api | 13 → 14 | `roster.ts` — one file per endpoint family, like every sibling. |
+| 2026-08-31 | seasonal-recap-and-attachments | frontend/src/components/settings | 16 → 18 | `SettingsRoster.vue` + its stylesheet. Settings owns all config, and a roster is config. |
+| 2026-08-31 | seasonal-recap-and-attachments | frontend/tests/e2e/matches | 27 → 28 | `live-session-banner.spec.ts` — chrome, but what it reports is a session over the match corpus. |

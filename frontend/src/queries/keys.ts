@@ -34,6 +34,7 @@ export const qk = {
   // families that feed it, so it is its own read rather than something
   // derived from the two branches above.
   focus: ['focus'] as const,
+  roster: ['roster'] as const,
   shares: ['shares'] as const,
   coachPlayers: ['coach-players'] as const,
   coachPlayerNotesAll: ['coach-player-notes'] as const,

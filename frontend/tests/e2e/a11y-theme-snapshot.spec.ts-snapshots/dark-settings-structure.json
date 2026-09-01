@@ -49,7 +49,7 @@
   },
   "designSystem": {
     "eyebrow": {
-      "count": 2,
+      "count": 5,
       "fontSize": [
         "9.6px"
       ],
@@ -108,7 +108,7 @@
       "borderRadius": []
     },
     "button": {
-      "count": 44,
+      "count": 45,
       "fontSize": [
         "11.52px",
         "12.48px",
@@ -140,9 +140,11 @@
         "rgb(224, 221, 214)",
         "rgb(250, 156, 27)",
         "rgb(255, 153, 170)",
-        "rgb(255, 255, 255)"
+        "rgb(255, 255, 255)",
+        "rgb(42, 26, 0)"
       ],
       "backgroundColor": [
+        "rgb(250, 156, 27)",
         "rgb(53, 53, 53)",
         "rgb(58, 58, 58)",
         "rgba(0, 0, 0, 0)",
@@ -203,7 +205,7 @@
       ]
     },
     "heading": {
-      "count": 29,
+      "count": 31,
       "fontSize": [
         "17.6px",
         "26.4px",

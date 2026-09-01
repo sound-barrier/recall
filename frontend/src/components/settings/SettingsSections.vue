@@ -7,9 +7,10 @@ import SettingsCoach from '@/components/settings/SettingsCoach.vue'
 import SettingsEngine from '@/components/settings/SettingsEngine.vue'
 import SettingsFolders from '@/components/settings/SettingsFolders.vue'
 import SettingsProfiles from '@/components/settings/SettingsProfiles.vue'
+import SettingsRoster from '@/components/settings/SettingsRoster.vue'
 import SettingsWindow from '@/components/settings/SettingsWindow.vue'
 
-// The nine configuration sections, in order. Extracted from SettingsView so the
+// The ten configuration sections, in order. Extracted from SettingsView so the
 // same blocks back both the Settings tab and the Settings dialog without
 // duplicating the wiring — the tab adds the intro hero + first-run CTA around
 // this; the dialog frames it in a modal.
@@ -30,6 +31,7 @@ import SettingsWindow from '@/components/settings/SettingsWindow.vue'
   <SettingsBackupRestore />
   <SettingsWindow />
   <SettingsCoach />
+  <SettingsRoster />
   <SettingsAdvanced />
 </template>
 

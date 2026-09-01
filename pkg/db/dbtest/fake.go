@@ -47,6 +47,9 @@ type Fake struct {
 	CoachFocusItems      map[int64][]db.FocusItem
 	SelfReviewFocusItems map[string][]db.FocusItem
 	ReceivedFocusItems   []db.ReceivedFocusItem
+	// The saved roster. Deliberately absent from Clear() below — see
+	// fake_roster.go.
+	Roster []db.RosterMember
 
 	// Queues maps match_key → QueueState (queue_type + timestamp).
 	// Absence of an entry means "queue not set."

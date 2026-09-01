@@ -66,6 +66,7 @@ var sentinels = []sentinel{
 	{"ErrInvalidLeaver", app.ErrInvalidLeaver, "invalid leaver: each side must be 'self', 'team', or 'enemy'"},
 	{"ErrInvalidReplayCode", app.ErrInvalidReplayCode, "invalid replay_code: must be six letters or digits"},
 	{"ErrReplayCodeTaken", app.ErrReplayCodeTaken, "that replay code is already on another match"},
+	{"ErrRosterTagEmpty", app.ErrRosterTagEmpty, "roster: a teammate needs a tag"},
 	{"ErrInvalidMaintenanceOp", app.ErrInvalidMaintenanceOp, "unknown maintenance operation"},
 	{"ErrInvalidMoment", app.ErrInvalidMoment, "invalid moment"},
 	{"ErrImageTooLarge", app.ErrImageTooLarge, "image too large"},
