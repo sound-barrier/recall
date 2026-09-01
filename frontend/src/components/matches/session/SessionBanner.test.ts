@@ -102,6 +102,23 @@ describe('SessionBanner', () => {
     expect(screen.getByRole('status', { name: 'Live session' })).toHaveTextContent('1 game ·')
   })
 
+  it('goes quiet once the session it is narrating has gone stale', async () => {
+    // The rail is read off the wall clock, not off the records, and a player
+    // who stops playing and leaves the app open is exactly when the records
+    // stop changing. It said "Live" all night.
+    vi.useFakeTimers()
+    try {
+      mount([rec({ minutesAgo: 10 }), rec({ minutesAgo: 5, result: 'defeat' })])
+      expect(screen.getByRole('status', { name: 'Live session' })).toBeInTheDocument()
+
+      // Past the session gap from the newest match.
+      await vi.advanceTimersByTimeAsync(4 * 60 * 60_000)
+      expect(screen.queryByRole('status', { name: 'Live session' })).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('stays dismissed once the player closes it', async () => {
     mount([rec({ minutesAgo: 10 }), rec({ minutesAgo: 5, result: 'defeat' })])
     await fireEvent.click(screen.getByRole('button', { name: 'Dismiss live session' }))

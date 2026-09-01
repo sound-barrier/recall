@@ -76,6 +76,49 @@ func TestStoreContract_RosterMemberDeletes(t *testing.T) {
 	}
 }
 
+// The roster is a LOOKUP, not a foreign key: un-rostering somebody must not
+// erase them from the games they actually played.
+//
+// It lives HERE rather than beside the app method it exercises because the
+// mutation it guards against is a SQL one — adding an ON DELETE CASCADE from
+// match_annotation_members to roster_members — and the Fake has no schema to
+// model that with. Against the Fake alone the assertion was true by
+// construction: no code path existed by which the delete could reach an
+// annotation.
+func TestStoreContract_RemovingFromTheRosterLeavesTheTagOnItsMatches(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			const key = "match:2026-08-01T20-00-00"
+			mustNoErr(t, s.SetAnnotation(db.Annotation{MatchKey: key, Members: []string{"Zed#2100"}}))
+			mustNoErr(t, s.SetRosterMember(db.RosterMember{Tag: "Zed#2100", DisplayName: "Zed"}))
+			mustNoErr(t, s.DeleteRosterMember("Zed#2100"))
+
+			notes, err := s.LoadAnnotations()
+			mustNoErr(t, err)
+			members := notes[key].Members
+			if len(members) != 1 || members[0] != "Zed#2100" {
+				t.Fatalf("annotation members = %v, want the tag untouched", members)
+			}
+		})
+	}
+}
+
+// LoadRoster returns an EMPTY slice, never nil, on both implementations — the
+// handler serializes it straight to the wire, and `null` where the client
+// expects `[]` is a shape production would never emit but tests would.
+func TestStoreContract_EmptyRosterIsAnEmptyList(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			got, err := impl.open(t).LoadRoster()
+			mustNoErr(t, err)
+			if got == nil {
+				t.Fatal("LoadRoster returned nil, want an empty slice")
+			}
+		})
+	}
+}
+
 // Clear() wipes match history. The roster is the player's own list of people,
 // not match history — same reasoning that keeps the coach-authored family out
 // of Clear — so it must SURVIVE, on both implementations. An omission

@@ -113,3 +113,5 @@ a folder silently regrows what it just shed.
 | 2026-08-31 | seasonal-recap-and-attachments | frontend/src/components/settings | 16 → 18 | `SettingsRoster.vue` + its stylesheet. Settings owns all config, and a roster is config. |
 | 2026-08-31 | seasonal-recap-and-attachments | frontend/tests/e2e/matches | 27 → 28 | `live-session-banner.spec.ts` — chrome, but what it reports is a session over the match corpus. |
 | 2026-08-31 | seasonal-recap-and-attachments | frontend/tests/e2e/matches | 28 → 29 | `roster-lookup.spec.ts` — maintained in Settings, but what it proves is what a match's Group chip says. |
+| 2026-08-31 | seasonal-recap-and-attachments | frontend/src/styles | 20 → 21 | `season-recap.css` — the standalone recap's geometry, beside `coach-sheet.css`, which cannot live in the app.css index either. |
+| 2026-08-31 | seasonal-recap-and-attachments | frontend/tests/e2e/dossier | 24 → 25 | `season-recap.spec.ts` — saved from Compare, but what it asserts is a season aggregate, and the page's offline-forever rules against the REAL stylesheets. |

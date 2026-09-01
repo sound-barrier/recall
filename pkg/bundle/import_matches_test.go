@@ -424,3 +424,63 @@ func TestImport_NormalizesReplayCodesAndRefusesNone(t *testing.T) {
 		t.Errorf("unrepairable code = %q, want it preserved", got)
 	}
 }
+
+// "Round-trips losslessly through Import" is the claim Export Data makes to
+// the user, and the roster is the one thing in the database that is not
+// attached to a match — which is exactly how it would have been forgotten.
+func TestImport_RoundTripsTheSavedRoster(t *testing.T) {
+	shots := t.TempDir()
+	src := seededStore(t, shots)
+	writeShots(t, shots, seededParentFiles()...)
+	if err := src.SetRosterMember(db.RosterMember{Tag: "Zed#2100", DisplayName: "Zed", Note: "main tank"}); err != nil {
+		t.Fatalf("seed roster: %v", err)
+	}
+
+	payload, err := bundle.Export(src, bundle.ExportBundleOptions{MatchKeys: seededKeys()}, nil, shots, seededVersion)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+	dst := dbtest.New()
+	if _, err := bundle.Import(dst, payload); err != nil {
+		t.Fatalf("Import: %v", err)
+	}
+
+	roster, err := dst.LoadRoster()
+	if err != nil {
+		t.Fatalf("LoadRoster: %v", err)
+	}
+	if len(roster) != 1 || roster[0].Tag != "Zed#2100" || roster[0].DisplayName != "Zed" || roster[0].Note != "main tank" {
+		t.Fatalf("roster = %+v, want the teammate whole", roster)
+	}
+}
+
+// A name already here wins. The import brings in what is missing; it does not
+// overwrite a rename the player made on THIS machine with an older export's.
+func TestImport_KeepsTheLocalNameForARosteredTag(t *testing.T) {
+	shots := t.TempDir()
+	src := seededStore(t, shots)
+	writeShots(t, shots, seededParentFiles()...)
+	if err := src.SetRosterMember(db.RosterMember{Tag: "Zed#2100", DisplayName: "old name"}); err != nil {
+		t.Fatalf("seed roster: %v", err)
+	}
+	payload, err := bundle.Export(src, bundle.ExportBundleOptions{MatchKeys: seededKeys()}, nil, shots, seededVersion)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+
+	dst := dbtest.New()
+	if err := dst.SetRosterMember(db.RosterMember{Tag: "Zed#2100", DisplayName: "Zeddy"}); err != nil {
+		t.Fatalf("seed local roster: %v", err)
+	}
+	if _, err := bundle.Import(dst, payload); err != nil {
+		t.Fatalf("Import: %v", err)
+	}
+
+	roster, err := dst.LoadRoster()
+	if err != nil {
+		t.Fatalf("LoadRoster: %v", err)
+	}
+	if len(roster) != 1 || roster[0].DisplayName != "Zeddy" {
+		t.Fatalf("roster = %+v, want the local name kept", roster)
+	}
+}

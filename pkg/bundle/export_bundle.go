@@ -97,6 +97,13 @@ type DataV2 struct {
 	// user-layer section, which is what lets the layer grow without the
 	// schema string moving — see the note above.
 	Moments []db.MatchMoment `json:"moments,omitempty"`
+	// The saved roster. NOT match-scoped like everything above it, and the
+	// only section here that is not: it rides so that "round-trips losslessly
+	// through Import" stays true of a full self-export, which is the path a
+	// player uses to move machines. Deliberately ABSENT from a share bundle —
+	// a coach has no business receiving the BattleTags of everybody you queue
+	// with.
+	Roster []db.RosterMember `json:"roster,omitempty"`
 	// The player's own saved review sittings, each carried WHOLE — its
 	// UUID, title, summary, instants, the member keys that are in the
 	// bundle, and the notes on those keys. A sitting none of whose members
@@ -167,7 +174,9 @@ func Export(store db.Store, opts ExportBundleOptions, recs []match.Record, scree
 	}
 	rows := filterBundleRows(snap, include)
 	screenshots := bundleScreenshotMap(rows)
-	user, err := loadBundleUserLayer(store, include)
+	// The roster rides a SELF-export only. A share bundle goes to a coach, and
+	// the BattleTags of everybody you queue with are not theirs to receive.
+	user, err := loadBundleUserLayer(store, include, opts.Player == nil)
 	if err != nil {
 		return nil, err
 	}
@@ -302,6 +311,7 @@ func writeBundleData(zw *zip.Writer, t parentTables, user bundleUserLayer, expor
 		CoachNotes:    user.coachNotes,
 		Moments:       user.moments,
 		SelfReviews:   user.selfReviews,
+		Roster:        user.roster,
 	}
 	if err := bundleWriteJSON(zw, "data.json", dataDoc, now); err != nil {
 		return fmt.Errorf("export bundle: write data.json: %w", err)

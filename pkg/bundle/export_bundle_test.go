@@ -248,3 +248,53 @@ func TestExport_CarriesThePlayersOwnMoments(t *testing.T) {
 		t.Errorf("moment did not survive export: %+v", d.Moments[0])
 	}
 }
+
+// The roster is the one section here that is NOT match-scoped, and it rides
+// so "round-trips losslessly through Import" stays true of a self-export —
+// the path a player uses to move machines.
+func TestExport_CarriesTheSavedRoster(t *testing.T) {
+	shots := t.TempDir()
+	store := seededStore(t, shots)
+	writeShots(t, shots, seededParentFiles()...)
+	if err := store.SetRosterMember(db.RosterMember{Tag: "Zed#2100", DisplayName: "Zed", Note: "main tank"}); err != nil {
+		t.Fatalf("seed roster: %v", err)
+	}
+
+	payload, err := bundle.Export(store, bundle.ExportBundleOptions{MatchKeys: []string{"m1"}}, nil, shots, seededVersion)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+
+	d := exportedData(t, payload)
+	if len(d.Roster) != 1 || d.Roster[0].DisplayName != "Zed" || d.Roster[0].Note != "main tank" {
+		t.Fatalf("roster = %+v, want the saved teammate whole", d.Roster)
+	}
+	// Not narrowed by the include set: the roster is per profile, and a
+	// teammate is not attached to any one match.
+	if d.Roster[0].Tag != "Zed#2100" {
+		t.Errorf("roster tag = %q", d.Roster[0].Tag)
+	}
+}
+
+// …and it does NOT ride a share bundle. A coach receiving a loan has no
+// business receiving the BattleTags of everybody the player queues with.
+func TestExport_ShareBundleLeavesTheRosterBehind(t *testing.T) {
+	shots := t.TempDir()
+	store := seededStore(t, shots)
+	writeShots(t, shots, seededParentFiles()...)
+	if err := store.SetRosterMember(db.RosterMember{Tag: "Zed#2100", DisplayName: "Zed"}); err != nil {
+		t.Fatalf("seed roster: %v", err)
+	}
+
+	payload, err := bundle.Export(store, bundle.ExportBundleOptions{
+		MatchKeys: []string{"m1"},
+		Player:    &bundle.PlayerIdentity{Handle: "Sable"},
+	}, nil, shots, seededVersion)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+
+	if d := exportedData(t, payload); len(d.Roster) != 0 {
+		t.Fatalf("share bundle carried the roster: %+v", d.Roster)
+	}
+}

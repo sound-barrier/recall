@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"recall/pkg/bundle"
+	"recall/pkg/db"
 )
 
 // What a share bundle carries is a privacy disclosure, and the disclosure is
@@ -47,6 +48,13 @@ func TestDataV2_UserLayerFieldsAreDisclosedInTheShareDialog(t *testing.T) {
 		if slices.Contains(ocr, name) {
 			continue
 		}
+		// A field the SHARE path leaves behind needs no disclosure, because
+		// nothing to disclose leaves the machine — and that exemption is
+		// PROVEN below rather than asserted here, so adding a name to the set
+		// is not a way around this gate.
+		if slices.Contains(selfExportOnly, name) {
+			continue
+		}
 		if _, ok := disclosed[name]; !ok {
 			t.Errorf("DataV2.%s leaves the player's machine in a share bundle and the "+
 				"share dialog does not say so.\n"+
@@ -57,6 +65,46 @@ func TestDataV2_UserLayerFieldsAreDisclosedInTheShareDialog(t *testing.T) {
 		if _, ok := rt.FieldByName(name); !ok {
 			t.Errorf("the share dialog discloses %q, which DataV2 no longer carries — "+
 				"the copy overstates what leaves the machine", name)
+		}
+	}
+}
+
+// selfExportOnly names the DataV2 fields a SHARE bundle leaves behind. They
+// need no line in the share dialog because they never reach a coach — and the
+// test below holds them to that, so the set cannot become a way of skipping
+// the disclosure gate above.
+var selfExportOnly = []string{"Roster"}
+
+func TestDataV2_SelfExportOnlyFieldsAreAbsentFromAShareBundle(t *testing.T) {
+	shots := t.TempDir()
+	store := seededStore(t, shots)
+	writeShots(t, shots, seededParentFiles()...)
+	// Seed every self-export-only surface, so an empty field in the share
+	// bundle means "left behind" rather than "never had anything".
+	if err := store.SetRosterMember(db.RosterMember{Tag: "Zed#2100", DisplayName: "Zed"}); err != nil {
+		t.Fatalf("seed roster: %v", err)
+	}
+
+	shared, err := bundle.Export(store, bundle.ExportBundleOptions{
+		MatchKeys: seededKeys(),
+		Player:    &bundle.PlayerIdentity{Handle: "Sable"},
+	}, nil, shots, seededVersion)
+	if err != nil {
+		t.Fatalf("Export (share): %v", err)
+	}
+	self, err := bundle.Export(store, bundle.ExportBundleOptions{MatchKeys: seededKeys()}, nil, shots, seededVersion)
+	if err != nil {
+		t.Fatalf("Export (self): %v", err)
+	}
+
+	sharedData := reflect.ValueOf(exportedData(t, shared))
+	selfData := reflect.ValueOf(exportedData(t, self))
+	for _, name := range selfExportOnly {
+		if !sharedData.FieldByName(name).IsZero() {
+			t.Errorf("DataV2.%s is exempt from the share disclosure but a share bundle carries it", name)
+		}
+		if selfData.FieldByName(name).IsZero() {
+			t.Errorf("DataV2.%s is empty in a SELF export too — the exemption proves nothing", name)
 		}
 	}
 }

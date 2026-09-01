@@ -1,9 +1,9 @@
 import type { MatchRecord } from '@/api-client'
 import type { Season } from '@/composables/shared/useOWData'
 import { escapeHTML } from '@/match/markdown/render-markdown'
-import { seasonForMatch } from '@/match/match-season-helpers'
+import { matchStartUTC, seasonForMatch } from '@/match/match-season-helpers'
 import { parseGameLengthMinutes } from '@/match/match-time-helpers'
-import { isPlaceableRank, matchEpoch } from '@/match/trends/match-trends-helpers'
+import { isPlaceableRank } from '@/match/trends/match-trends-helpers'
 
 /**
  * The page a player keeps at the end of a season.
@@ -51,9 +51,14 @@ export interface SeasonRecapInput {
 }
 
 export function toRecapInput(records: readonly MatchRecord[], season: Season): SeasonRecapInput {
+  // Placed by the SAME clock that selected them. seasonForMatch works off the
+  // canonical UTC start; ordering by the naive wall clock instead dropped
+  // every match the season filter had just accepted on a record with no
+  // `date` field — a rank-only capture — so the recap counted zero games in a
+  // season it had games in.
   const inSeason = records
     .filter((r) => seasonForMatch(r, [season])?.name === season.name)
-    .map((r) => ({ rec: r, t: matchEpoch(r) }))
+    .map((r) => ({ rec: r, t: matchStartUTC(r) }))
     .filter((e): e is { rec: MatchRecord; t: number } => e.t !== null)
     .sort((a, b) => a.t - b.t)
 
@@ -61,9 +66,12 @@ export function toRecapInput(records: readonly MatchRecord[], season: Season): S
   const days = new Set<string>()
   let minutes = 0
   let anyLength = false
-  for (const { rec } of inSeason) {
+  for (const { rec, t } of inSeason) {
     countResult(tally, rec.data?.result)
-    if (rec.data?.date) days.add(rec.data.date)
+    // The day comes from the instant the match was PLACED at, not from
+    // data.date — a season whose captures were all RANK screens carries no
+    // date field, and counted that way printed "5 games, 0 days played".
+    days.add(new Date(t).toDateString())
     const len = parseGameLengthMinutes(rec.data?.game_length)
     if (len !== null) {
       minutes += len

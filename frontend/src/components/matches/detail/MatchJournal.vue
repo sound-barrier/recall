@@ -410,7 +410,15 @@ onMounted(() => {
               :key="m"
               class="member-chip"
             >
-              <span class="member-chip-tag" :title="rosterNames.get(m) ? m : undefined">
+              <!-- The name, with the TAG still in the accessible name rather
+                   than only in a title: a title is mouse-hover-only, and the
+                   tag is the identity — a keyboard or screen-reader user
+                   would have lost it entirely. -->
+              <span
+                class="member-chip-tag"
+                :title="rosterNames.get(m) ? m : undefined"
+                :aria-label="rosterNames.get(m) ? `${rosterNames.get(m)} — ${m}` : undefined"
+              >
                 {{ rosterNames.get(m) ?? m }}
               </span>
               <button

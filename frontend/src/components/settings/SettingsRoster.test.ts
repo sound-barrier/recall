@@ -82,6 +82,22 @@ describe('SettingsRoster', () => {
     expect(screen.getByRole('button', { name: 'Remove Zed from the roster' })).toBeInTheDocument()
   })
 
+  it('removes a teammate, leaving the matches they played on alone', async () => {
+    mount([ZED])
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove Zed from the roster' }))
+    await flushPromises()
+    // The tag, not the display name: the roster is keyed on the identity, and
+    // removing by name would drop the wrong person after a rename.
+    expect(api.DeleteRosterMember).toHaveBeenCalledWith('Zed#2100')
+  })
+
+  it('surfaces a failed remove rather than pretending it worked', async () => {
+    api.DeleteRosterMember.mockRejectedValueOnce(new Error('database is locked'))
+    mount([ZED])
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove Zed from the roster' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('database is locked')
+  })
+
   it('surfaces a failed save instead of clearing the form over it', async () => {
     api.SaveRosterMember.mockRejectedValueOnce(new Error('roster: a teammate needs a tag'))
     mount([])
