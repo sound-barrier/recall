@@ -34,7 +34,7 @@ const REFERENCE_DATA = {
   heroes_by_role: { support: ['Lúcio', 'Brigitte', 'Ana'], dps: ['Ashe'], tank: ['Zarya'] },
   maps_by_game_mode: { control: ['Ilios'] },
   screenshot_sources: [],
-  seasons: [],
+  seasons: [], patches: [],
 }
 
 let seq = 0

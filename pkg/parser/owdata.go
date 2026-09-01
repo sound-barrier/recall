@@ -69,6 +69,9 @@ var embeddedScreenshotSourcesYAML []byte
 //go:embed seasons.yaml
 var embeddedSeasonsYAML []byte
 
+//go:embed patches.yaml
+var embeddedPatchesYAML []byte
+
 //go:embed ranks.yaml
 var embeddedRanksYAML []byte
 
@@ -101,6 +104,9 @@ type owDataset struct {
 
 	// Competitive season windows (see seasons.yaml).
 	seasons []Season
+
+	// Moments the game changed (see patches.yaml), oldest first.
+	patches []Patch
 
 	// Competitive tier ladder, lowest→highest (see ranks.yaml). Order is
 	// load-bearing: the index is the ladder coordinate.
@@ -190,6 +196,9 @@ func Sources() []ScreenshotSource { return loadDataset().screenshotSources }
 // order. Surfaced via App.GetOWData() → /api/v1/system/reference-data.
 func Seasons() []Season { return loadDataset().seasons }
 
+// Patches returns the game-change instants (patches.yaml), oldest first.
+func Patches() []Patch { return loadDataset().patches }
+
 // LoadError returns the combined error from the current dataset's
 // construction, or nil if every YAML loaded cleanly. Surfaced via
 // /api/v1/system/reference-data so the UI can render a banner if a
@@ -244,6 +253,9 @@ func Reload() error {
 		errs = append(errs, err)
 	}
 	if err := loadInto(ds, "seasons.yaml", embeddedSeasonsYAML, unmarshalSeasons); err != nil {
+		errs = append(errs, err)
+	}
+	if err := loadInto(ds, "patches.yaml", embeddedPatchesYAML, unmarshalPatches); err != nil {
 		errs = append(errs, err)
 	}
 	if err := loadInto(ds, "screenshot_sources.yaml", embeddedScreenshotSourcesYAML, unmarshalScreenshotSources); err != nil {

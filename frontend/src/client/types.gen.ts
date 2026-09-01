@@ -4485,6 +4485,21 @@ export type GetReferenceDataResponses = {
             end: string;
         }>;
         /**
+         * Moments the game changed, oldest first, from
+         * `pkg/parser/patches.yaml`. An instant rather than a
+         * window: patches are contiguous, so the span between two
+         * of them is derivable. Seeded with season starts only —
+         * a season start is always a patch, and a plausible but
+         * invented mid-season date would split a history at a
+         * moment nothing happened.
+         *
+         */
+        patches: Array<{
+            name: string;
+            at: string;
+            note?: string;
+        }>;
+        /**
          * Competitive tier ladder, LOWEST to HIGHEST. Source-of-truth
          * is `pkg/parser/ranks.yaml`. ORDER IS THE PAYLOAD — a tier's
          * index is its ladder position, which drives the rank charts'

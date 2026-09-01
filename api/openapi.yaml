@@ -2092,7 +2092,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [heroes_by_role, maps_by_game_mode, screenshot_sources, seasons, ranks]
+                required: [heroes_by_role, maps_by_game_mode, screenshot_sources, seasons, patches, ranks]
                 properties:
                   heroes_by_role:
                     type: object
@@ -2148,6 +2148,23 @@ paths:
                         number:  { type: integer, description: "Season number within the chapter." }
                         start:   { type: string, format: date-time, description: "Season start, UTC RFC 3339 (inclusive)." }
                         end:     { type: string, format: date-time, description: "Season end, UTC RFC 3339 (exclusive; = next start)." }
+                  patches:
+                    type: array
+                    description: |
+                      Moments the game changed, oldest first, from
+                      `pkg/parser/patches.yaml`. An instant rather than a
+                      window: patches are contiguous, so the span between two
+                      of them is derivable. Seeded with season starts only —
+                      a season start is always a patch, and a plausible but
+                      invented mid-season date would split a history at a
+                      moment nothing happened.
+                    items:
+                      type: object
+                      required: [name, at]
+                      properties:
+                        name: { type: string }
+                        at: { type: string, format: date-time }
+                        note: { type: string }
                   ranks:
                     type: array
                     description: |

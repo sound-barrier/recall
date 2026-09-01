@@ -23,7 +23,7 @@ const ROSTER = {
     control: ['Ilios'],
   },
   screenshot_sources: [],
-  seasons: [],
+  seasons: [], patches: [],
 } as unknown as OWData
 
 // The popover teleports to <body>, so every query goes through `screen`.

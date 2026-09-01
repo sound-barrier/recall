@@ -43,7 +43,7 @@ vi.mock('@/api', async (importOriginal) => ({
   EventsOn:       vi.fn(),
   EventsOff:      vi.fn(),
   GetActiveParse: vi.fn(async () => null),
-  GetOWData:      vi.fn(async () => ({ heroes_by_role: {}, maps_by_game_mode: {}, screenshot_sources: [], seasons: [], ranks: [] })),
+  GetOWData:      vi.fn(async () => ({ heroes_by_role: {}, maps_by_game_mode: {}, screenshot_sources: [], seasons: [], patches: [], ranks: [] })),
 }))
 
 // The write gate is stubbed so a locked run is a switch, not a whole

@@ -41,7 +41,7 @@ const REFERENCE_DATA = {
   seasons: [
     { name: 'Prev Season', chapter: 'C', number: 1, start: `${localYMD(-120)}T12:00:00Z`, end: `${localYMD(-60)}T12:00:00Z` },
     { name: 'This Season', chapter: 'C', number: 2, start: `${localYMD(-60)}T12:00:00Z`, end: `${localYMD(30)}T12:00:00Z` },
-  ],
+  ], patches: [],
 }
 
 let seq = 0

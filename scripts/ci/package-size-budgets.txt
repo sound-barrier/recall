@@ -148,7 +148,11 @@ pkg/db                                        36
 # a genuine split, since running an external binary answers to different
 # pressures (path validation, timeouts, a Windows console flash) than reading
 # fields off a screenshot.
-pkg/parser                                    25
+# 26 as of patches: patches.go + patches.yaml, the moments the game changed
+# under the player. A sibling of seasons.go in every way — same embed, same
+# publish-and-update path, same RFC 3339 parse — and a separate file because a
+# season and a patch are different facts that happen to share a shape.
+pkg/parser                                    26
 
 # pkg/fixtures — the seed generator: one plausible account, spelled
 # file-per-thing-it-generates (heroes, roles, annotations, chaos, the rank
@@ -403,7 +407,11 @@ frontend/src/match/elo                        13
 # thing here to read the SIZE of the gap between two queues rather than
 # binarizing it into sessions. One widget per question, which is what this
 # directory is.
-frontend/src/components/dashboard/widgets     49
+# 49 -> 50: patch-split, which needed patches.yaml to exist first — the app
+# had no notion of when the game changed under the player. It names the patch
+# it split on, because a before/after with no boundary named is two numbers
+# and an implication.
+frontend/src/components/dashboard/widgets     50
 
 
 

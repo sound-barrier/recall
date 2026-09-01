@@ -33,7 +33,7 @@ const ROSTER = {
     escort: ['Dorado'],
   },
   screenshot_sources: [],
-  seasons: [],
+  seasons: [], patches: [],
 } as unknown as OWData
 
 const RECORD = { match_key: '2026-08-10T20-00', data: {} } as unknown as MatchRecord

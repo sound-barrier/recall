@@ -26,7 +26,7 @@ const REFERENCE_DATA = {
   heroes_by_role: { support: ['Lúcio', 'Ana'], dps: ['Ashe'], tank: ['Zarya'] },
   maps_by_game_mode: { control: ['Ilios'] },
   screenshot_sources: [],
-  seasons: [],
+  seasons: [], patches: [],
 }
 
 // Every attribute the page exposes for testing, keyed for stable sorting.

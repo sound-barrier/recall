@@ -25,7 +25,7 @@ const REFERENCE_DATA = {
   },
   maps_by_game_mode: { control: ['Ilios'] },
   screenshot_sources: [],
-  seasons: [],
+  seasons: [], patches: [],
 }
 
 let seq = 0

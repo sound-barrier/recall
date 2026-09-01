@@ -6,6 +6,7 @@ import { useOWDataQuery } from '@/queries/system'
 // UTC RFC3339 strings; season assignment compares a match's canonical UTC
 // instant against [start, end).
 export type Season = NonNullable<OWData['seasons']>[number]
+export type Patch = NonNullable<OWData['patches']>[number]
 
 // SeasonWindow is the parsed comparable form of a season boundary — epoch ms,
 // half-open [startMs, endMs). null from the resolver = unknown season name.
@@ -40,6 +41,8 @@ export type OWDataApi = {
   heroIndex:       ComputedRef<Map<string, { display: string; role: string }>>
   mapIndex:        ComputedRef<Map<string, { display: string; gameMode: string }>>
   seasons:         ComputedRef<Season[]>
+  /** Moments the game changed, oldest first. */
+  patches:         ComputedRef<Patch[]>
   seasonsByChapter: ComputedRef<{ chapter: string; seasons: Season[] }[]>
   seasonWindow:    (name: string) => SeasonWindow | null
 }
@@ -83,6 +86,7 @@ const mapIndex = computed(() => {
 })
 
 const seasons = computed<Season[]>(() => data.value?.seasons ?? [])
+const patches = computed<Patch[]>(() => data.value?.patches ?? [])
 
 // Chapters in first-appearance order, each with its seasons in file order —
 // drives the grouped <optgroup> in the season selector.
@@ -147,5 +151,5 @@ export function useOWData(): OWDataApi {
   // falls back to the stored lowercase form.
   const query = useOWDataQuery()
   watchEffect(() => { data.value = query.data.value ?? null })
-  return { data, heroDisplayName, mapDisplayName, heroRole, mapGameMode, heroIndex, mapIndex, seasons, seasonsByChapter, seasonWindow }
+  return { data, heroDisplayName, mapDisplayName, heroRole, mapGameMode, heroIndex, mapIndex, seasons, patches, seasonsByChapter, seasonWindow }
 }

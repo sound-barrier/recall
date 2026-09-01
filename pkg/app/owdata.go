@@ -19,6 +19,7 @@ type OWData struct {
 	MapsByGameMode    map[string][]string `json:"maps_by_game_mode"`
 	ScreenshotSources []ScreenshotSource  `json:"screenshot_sources"`
 	Seasons           []Season            `json:"seasons"`
+	Patches           []Patch             `json:"patches"`
 	// Ranks is the competitive tier ladder, LOWEST to HIGHEST. Order is the
 	// payload: consumers derive a tier's ladder position from its index.
 	Ranks []string `json:"ranks"`
@@ -33,6 +34,15 @@ type Season struct {
 	Number  int    `json:"number"`
 	Start   string `json:"start"`
 	End     string `json:"end"`
+}
+
+// Patch is a moment the game changed under the player, as the wire carries it.
+// An instant rather than a window: patches are contiguous, so the span between
+// two of them is derivable and storing both ends would give one fact two homes.
+type Patch struct {
+	Name string `json:"name"`
+	At   string `json:"at"`
+	Note string `json:"note,omitempty"`
 }
 
 // ScreenshotSource surfaces the parser's per-tool filename grammar
@@ -76,11 +86,17 @@ func (a *App) GetOWData() OWData {
 			End:     s.End.UTC().Format(time.RFC3339),
 		})
 	}
+	parserPatches := parser.Patches()
+	patches := make([]Patch, 0, len(parserPatches))
+	for _, p := range parserPatches {
+		patches = append(patches, Patch{Name: p.Name, At: p.At.UTC().Format(time.RFC3339), Note: p.Note})
+	}
 	return OWData{
 		HeroesByRole:      parser.HeroesByRole(),
 		MapsByGameMode:    parser.MapsByGameMode(),
 		ScreenshotSources: sources,
 		Seasons:           seasons,
+		Patches:           patches,
 		Ranks:             parser.Ranks(),
 	}
 }

@@ -44,7 +44,7 @@ const REFERENCE_DATA = {
   screenshot_sources: [],
   seasons: [
     { name: SEASON_NAME, chapter: 'Test Chapter', number: 1, start: noonUTC(-10), end: noonUTC(10) },
-  ],
+  ], patches: [],
 }
 
 function rec(key: string, dayOffset: number) {
