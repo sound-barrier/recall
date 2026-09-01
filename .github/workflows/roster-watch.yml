@@ -22,17 +22,25 @@ on:
     # golden-corpus, and clear of CodeQL's Monday 06:00 and Dependabot's Sunday.
     #
     # These two days are measured, not chosen by feel. Against a year of real
-    # patch notes (50 patches, 2025-09 .. 2026-08) Overwatch ships on a 14-day
-    # beat anchored to each season start -- offsets 0, 14, 28 and 42 days recur
-    # in every season -- and every season start is a Tuesday, so the whole
-    # content calendar is Tuesday-anchored: 21 of the 50 landed on a Tuesday,
-    # 16 on a Thursday, the rest Wed/Fri.
+    # patch notes (50 patches, 2025-09 .. 2026-08) Overwatch patches fall into
+    # TWO clusters, and that is the whole reason for two runs:
     #
-    # That spread is why ONE run a week cannot do this job. Whichever day it
-    # picks, some patch lands just after it and waits nearly a week: a single
-    # Thursday run -- the first cut of this lane -- left 20 of the 50 unseen
-    # for more than five days, because it fires hours BEFORE Thursday's own
-    # patches and then does not look again. Wed+Sat is the best of all 21
+    #   Mon 1, Tue 21          -> 22 patches, swept up by the Wednesday run
+    #   Wed 8, Thu 16, Fri 4   -> 28 patches, swept up by the Saturday run
+    #
+    # There IS a Tuesday rhythm, but it covers less than it looks. Season
+    # starts are all Tuesday 19:00Z and the big drops land 0/14/28/42 days in
+    # -- yet that beat accounts for only 12 of the 33 patches in the four 2026
+    # seasons. Those 12 are the ones that carry new heroes and maps, so they
+    # matter most; the other 21 are off-beat hotfixes skewing Thursday (9) and
+    # Wednesday (7). Tuning the schedule to the beat alone would miss the
+    # bigger half.
+    #
+    # Two clusters is why ONE run a week cannot do this job -- it can sit after
+    # one of them, never after both. Thursday, the first cut of this lane, was
+    # the worst of the seven: it fires in the morning, hours BEFORE Thursday's
+    # own 16 patches go live, then does not look again for a week, leaving 20
+    # of the 50 unseen for more than five days. Wed+Sat is the best of all 21
     # day-pairs (2.7d worst case, 1.2d mean, vs 6.7d and 3.1d for Thursday
     # alone), and it is the STABLE one: Blizzard publishes no patch time, so
     # the ranking was swept across every plausible release hour and this pair
