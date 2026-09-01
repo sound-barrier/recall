@@ -73,11 +73,18 @@ export function fmtGoalPace(pace: GoalPace): GoalPaceLine {
   if (pace.kind === 'no-pace') {
     return { verdict: 'No pace yet', detail: 'Set games per week to see whether that date holds.' }
   }
+  if (pace.kind === 'no-projection') {
+    return { verdict: 'Nothing to project', detail: 'Fill in your record and meter move to measure the deadline.' }
+  }
   if (pace.kind === 'unreachable') {
     return { verdict: 'Out of reach', detail: 'No deadline fixes this — the climb plateaus below that rank.' }
   }
   const needed = `about ${weeks(pace.weeksNeeded)} of play`
-  if (pace.weeksLeft < 0) {
+  // <= 0, not < 0: round1 turns the eight hours after a deadline into -0,
+  // and -0 < 0 is false in JavaScript — so the sentence this branch exists to
+  // prevent ("0 weeks left") printed for exactly the window where the date
+  // had just gone.
+  if (pace.weeksLeft <= 0) {
     return { verdict: 'Behind', detail: `That date has passed — ${needed} to get there.` }
   }
   return {

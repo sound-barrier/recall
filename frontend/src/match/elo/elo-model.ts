@@ -258,11 +258,15 @@ export function gamesToWeeks(games: number | null, gamesPerWeek: number | null):
  * estimate does not have.
  */
 // Whether a goal's deadline holds. A deadline can fail to produce an answer
-// for two unrelated reasons — the rank is out of reach at this win rate, or
-// no pace has been measured to divide by — and a player who set a date is
-// owed the difference rather than a blank line. weeksLeft is known in every
-// case, because it comes from the calendar rather than the model.
+// three unrelated ways — the rank is out of reach at this win rate, no pace
+// has been measured to divide by, or there is no projection at all (no
+// decisive sample, no meter move) — and a player who set a date is owed the
+// difference rather than one verdict covering all three. "Out of reach" on
+// the strength of an empty form is the mistake the results panel already
+// carries a regression test for. weeksLeft is known in every case, because it
+// comes from the calendar rather than the model.
 export type GoalPace =
   | { kind: 'measured'; weeksLeft: number; weeksNeeded: number; onPace: boolean }
   | { kind: 'unreachable'; weeksLeft: number }
   | { kind: 'no-pace'; weeksLeft: number }
+  | { kind: 'no-projection'; weeksLeft: number }
