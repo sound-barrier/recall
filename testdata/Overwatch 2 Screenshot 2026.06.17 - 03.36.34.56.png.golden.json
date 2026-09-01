@@ -17,18 +17,15 @@
     "sr": [
       {
         "hero": "moira",
-        "sr": 2157,
-        "change": 0
+        "sr": 2157
       },
       {
         "hero": "zenyatta",
-        "sr": 1777,
-        "change": 0
+        "sr": 1777
       },
       {
         "hero": "wuyang",
-        "sr": 2144,
-        "change": 0
+        "sr": 2144
       }
     ]
   }

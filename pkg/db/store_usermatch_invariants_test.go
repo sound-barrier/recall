@@ -165,7 +165,7 @@ func TestSQLStore_DeleteUserMatchData_CascadesEveryChildTable(t *testing.T) {
 		MatchKey:  key,
 		Heroes:    []db.UserMatchHero{{Hero: "juno", Position: 0}},
 		HeroStats: []db.UserMatchHeroStat{{Hero: "juno", StatKey: "healing", Value: 9000}},
-		SR:        []db.HeroSR{{Hero: "juno", SR: 2500, Change: 21}},
+		SR:        []db.HeroSR{{Hero: "juno", SR: 2500, Change: new(21)}},
 		Modifiers: []string{"demotion protection"},
 	}))
 

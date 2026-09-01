@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import { screen, within } from '@testing-library/vue'
-import SRByRoleWidget from '@/components/dashboard/widgets/SRByRoleWidget.vue'
+import SRByHeroWidget from '@/components/dashboard/widgets/SRByHeroWidget.vue'
 import { renderWidget } from '@/test-utils'
 
-describe('SRByRoleWidget', () => {
+describe('SRByHeroWidget', () => {
   it('splits the movement by the hero that earned it', () => {
     // One net figure can read flat while a support climbed and a tank slid.
-    renderWidget(SRByRoleWidget, {
+    renderWidget(SRByHeroWidget, {
       dossier: {
-        srByRole: [
+        srByHero: [
           { hero: 'ana', net: 50, latest: 2525, readCount: 2 },
           { hero: 'reinhardt', net: -20, latest: 2100, readCount: 1 },
         ],
@@ -21,23 +21,23 @@ describe('SRByRoleWidget', () => {
   })
 
   it('puts the movement in the meter, scaled against the largest', () => {
-    renderWidget(SRByRoleWidget, {
+    renderWidget(SRByHeroWidget, {
       dossier: {
-        srByRole: [
+        srByHero: [
           { hero: 'ana', net: 50, latest: 2525, readCount: 2 },
           { hero: 'reinhardt', net: -20, latest: 2100, readCount: 1 },
         ],
       },
     })
-    expect(screen.getByRole('progressbar', { name: 'ana SR movement' }))
+    expect(screen.getByRole('progressbar', { name: 'ana SR movement — up' }))
       .toHaveAttribute('aria-valuenow', '50')
     // Magnitude, not sign — a slide of 20 is a bar of 20.
-    expect(screen.getByRole('progressbar', { name: 'reinhardt SR movement' }))
+    expect(screen.getByRole('progressbar', { name: 'reinhardt SR movement — down' }))
       .toHaveAttribute('aria-valuenow', '20')
   })
 
   it('says so when no match reported SR', () => {
-    renderWidget(SRByRoleWidget, { dossier: { srByRole: [] } })
+    renderWidget(SRByHeroWidget, { dossier: { srByHero: [] } })
     expect(screen.getByText('No SR readings in this set.')).toBeInTheDocument()
     expect(screen.queryAllByRole('listitem')).toHaveLength(0)
   })

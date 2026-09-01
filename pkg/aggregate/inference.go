@@ -40,11 +40,16 @@ func InferResultFromRank(d *parser.MatchResult) {
 		return
 	}
 	for _, s := range d.SR {
-		if s.Change > 0 {
+		// An unread pill infers nothing. It used to arrive as 0 and fall
+		// through both branches by accident; now it is nil and says so.
+		if s.Change == nil {
+			continue
+		}
+		if *s.Change > 0 {
 			d.Result = "victory"
 			return
 		}
-		if s.Change < 0 {
+		if *s.Change < 0 {
 			d.Result = "defeat"
 			return
 		}

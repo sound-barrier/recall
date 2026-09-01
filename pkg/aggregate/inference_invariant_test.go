@@ -37,7 +37,7 @@ func TestInference_ResultFromRank_FiresAtReadTime(t *testing.T) {
 		Ranks: []db.RankRow{{
 			ID: 1, Filename: "rank.png", MatchKey: "match-2026-05-10T21-29-28",
 			Rank: "platinum",
-			SR:   []db.HeroSR{{Hero: "juno", SR: 2867, Change: 22}},
+			SR:   []db.HeroSR{{Hero: "juno", SR: 2867, Change: new(22)}},
 		}},
 	}
 	a := app.NewWithStore(fs)
@@ -63,7 +63,7 @@ func TestInference_NeverPersistedToStore(t *testing.T) {
 		Ranks: []db.RankRow{{
 			ID: 1, Filename: "rank.png", MatchKey: "match-2026-05-10T21-29-28",
 			Rank: "platinum",
-			SR:   []db.HeroSR{{Hero: "juno", SR: 2867, Change: 22}},
+			SR:   []db.HeroSR{{Hero: "juno", SR: 2867, Change: new(22)}},
 		}},
 		Personals: []db.PersonalRow{{
 			ID: 1, Filename: "personal.png", MatchKey: "match-2026-05-10T21-29-28",
@@ -102,7 +102,7 @@ func TestInference_DoesNotOverrideStoredResult(t *testing.T) {
 		Ranks: []db.RankRow{{
 			ID: 1, Filename: "rank.png", MatchKey: "match-2026-05-10T21-29-28",
 			Rank: "platinum",
-			SR:   []db.HeroSR{{Hero: "juno", SR: 2867, Change: 22}},
+			SR:   []db.HeroSR{{Hero: "juno", SR: 2867, Change: new(22)}},
 		}},
 	}
 	a := app.NewWithStore(fs)
@@ -145,7 +145,7 @@ func TestInference_SoleHeroPercent_DoesNotOverrideStored(t *testing.T) {
 func TestInference_Idempotent(t *testing.T) {
 	d := &parser.MatchResult{
 		Rank: "platinum",
-		SR:   []parser.HeroSR{{Hero: "juno", Change: 22}},
+		SR:   []parser.HeroSR{{Hero: "juno", Change: new(22)}},
 	}
 	aggregate.InferResultFromRank(d)
 	first := d.Result

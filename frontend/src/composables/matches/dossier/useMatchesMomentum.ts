@@ -23,8 +23,7 @@ import {
 } from '@/match/dossier/match-momentum-helpers'
 import { tiltEpisodes, type TiltEpisodes } from '@/match/elo/elo-streaks'
 import {
-  srDelta, srPerRole, srVelocity,
-  type SRDelta, type SRRoleRow, type SRVelocity,
+  srPerHero, srVelocity, type SRHeroRow, type SRVelocity,
 } from '@/match/dossier/match-sr-helpers'
 import { freshVsTilted, type QueueGapSplit } from '@/match/dossier/match-queue-gap-helpers'
 
@@ -72,14 +71,14 @@ export function useMatchesMomentum(records: Readonly<Ref<MatchRecord[]>>) {
   }
 
   // ── denominated in SR rather than the meter ─────────────────────────────
-  function srMovement(opts: MaybeRefOrGetter<{ days: number }>): ComputedRef<SRDelta> {
-    return computed(() => srDelta(records.value, toValue(opts).days))
-  }
+  // srDelta is deliberately NOT exposed: srVelocity already carries its net,
+  // readCount and readOf, and a second door onto the same numbers is a second
+  // thing to keep in agreement.
   function srClimbRate(opts: MaybeRefOrGetter<{ days: number }>): ComputedRef<SRVelocity> {
     return computed(() => srVelocity(records.value, toValue(opts).days))
   }
-  function srByRole(): ComputedRef<SRRoleRow[]> {
-    return computed(() => srPerRole(records.value))
+  function srByHero(): ComputedRef<SRHeroRow[]> {
+    return computed(() => srPerHero(records.value))
   }
 
   // How long the player waited before queuing again — the gap kept as a
@@ -97,6 +96,6 @@ export function useMatchesMomentum(records: Readonly<Ref<MatchRecord[]>>) {
     winrateAfterLoss, winrateAfterWin, firstGameWinrate, netRankWeek,
     avgGameLength, leaverStats, sessions, tiltQueues,
     sessionDepth, formDelta, lossStreakRecovery,
-    srMovement, srClimbRate, srByRole, queueGapSplit,
+    srClimbRate, srByHero, queueGapSplit,
   }
 }

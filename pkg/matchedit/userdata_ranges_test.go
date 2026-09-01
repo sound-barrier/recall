@@ -149,7 +149,7 @@ func userHeroStat(value int) match.UserMatchDataInput {
 }
 
 func userSR(sr, change int) match.UserMatchDataInput {
-	return match.UserMatchDataInput{SR: []match.UserHeroSRInput{{Hero: "ana", SR: sr, Change: change}}}
+	return match.UserMatchDataInput{SR: []match.UserHeroSRInput{{Hero: "ana", SR: sr, Change: &change}}}
 }
 
 // A bad value anywhere in a collection is caught, not just in its first

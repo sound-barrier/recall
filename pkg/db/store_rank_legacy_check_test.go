@@ -102,7 +102,7 @@ func TestUpsertRank_SurvivesAModifierTheLocalSchemaRejects(t *testing.T) {
 		// 'variance' rides every post-placement season-4 rank screen, so on an
 		// upgraded install this is not an edge case — it is every one of them.
 		Modifiers: []string{"reversal", "variance", "defeat"},
-		SR:        []db.HeroSR{{Hero: "juno", SR: 2065, Change: -18}},
+		SR:        []db.HeroSR{{Hero: "juno", SR: 2065, Change: new(-18)}},
 	}); err != nil {
 		t.Fatalf("UpsertRank = %v — an old CHECK must cost the PILL, never the row", err)
 	}

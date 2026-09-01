@@ -34,7 +34,7 @@ func TestUpsertRank_TrendModifiersSurviveTheRoundTrip(t *testing.T) {
 				Filename: "r.png", MatchKey: "k1", Rank: "platinum", Level: 2,
 				RankProgress: new(67), Result: "victory",
 				Modifiers: []string{mod},
-				SR:        []db.HeroSR{{Hero: "juno", SR: 2065, Change: 115}},
+				SR:        []db.HeroSR{{Hero: "juno", SR: 2065, Change: new(115)}},
 			}
 			if err := s.UpsertRank(row); err != nil {
 				t.Fatalf("UpsertRank(%q) = %v — the parser emits this value, so the "+

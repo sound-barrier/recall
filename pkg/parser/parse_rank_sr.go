@@ -87,7 +87,9 @@ func extractSR(text string) []HeroSR {
 		if m := srValueRe.FindStringSubmatchIndex(seg); m != nil {
 			entry.SR, _ = strconv.Atoi(seg[m[2]:m[3]])
 			if m2 := srChangeRe.FindString(orig[m[1]:]); m2 != "" {
-				entry.Change, _ = strconv.Atoi(m2)
+				if n, err := strconv.Atoi(m2); err == nil {
+					entry.Change = &n
+				}
 			}
 		}
 		out = append(out, entry)

@@ -55,7 +55,7 @@ func seededStore(t *testing.T) *dbtest.Fake {
 	f.Ranks = []db.RankRow{{
 		ID: 14, Filename: "2026-08-02_20-05-00-rank.png", MatchKey: keyRank, ScreenshotsDirID: seedDirID,
 		Rank: "diamond", Level: 3,
-		Modifiers: []string{"win streak"}, SR: []db.HeroSR{{Hero: "ana", SR: 3210, Change: 22}},
+		Modifiers: []string{"win streak"}, SR: []db.HeroSR{{Hero: "ana", SR: 3210, Change: new(22)}},
 	}}
 	f.Unknowns = []db.UnknownRow{{
 		ID: 15, Filename: "2026-08-03_21-00-00-unknown.png", MatchKey: keyUnknown, ScreenshotsDirID: seedDirID,

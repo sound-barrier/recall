@@ -147,9 +147,15 @@ func (r *MatchResult) warnf(format string, args ...any) {
 }
 
 type HeroSR struct {
-	Hero   string `json:"hero"`
-	SR     int    `json:"sr"`
-	Change int    `json:"change"`
+	Hero string `json:"hero"`
+	SR   int    `json:"sr"`
+	// Change is the SR the pill said this hero moved. A POINTER for the same
+	// reason ChangePercent is one: the pill is often unreadable, and a bare
+	// int stored 0 for "we could not read it" — indistinguishable from a match
+	// that genuinely moved nothing. Nearly half the rank captures in the
+	// corpus were storing that 0, and every reader downstream counted them as
+	// measured flatness.
+	Change *int `json:"change,omitempty"`
 }
 
 type HeroPlay struct {

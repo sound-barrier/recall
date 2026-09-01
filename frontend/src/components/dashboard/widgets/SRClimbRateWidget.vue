@@ -36,7 +36,10 @@ const detail = computed(() => {
   const v = rate.value
   if (v.readCount === 0) return 'No SR readings in this window.'
   const perSession = v.perSession === null ? null : `${signed(v.perSession)}/session`
-  return [perSession, `${v.readCount} readings`].filter(Boolean).join(' · ')
+  // The denominator, not just the numerator: a rate built from 4 of 19
+  // matches is a different claim from one built from all 19, and the tile
+  // used to print only the 4.
+  return [perSession, `read on ${v.readCount} of ${v.readOf}`].filter(Boolean).join(' · ')
 })
 </script>
 

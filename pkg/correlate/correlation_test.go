@@ -123,14 +123,14 @@ func TestMergeMatchResult_HeroesPlayed_MergeByHeroName(t *testing.T) {
 func TestMergeMatchResult_SR_MergeByHero(t *testing.T) {
 	dst := &parser.MatchResult{SR: []parser.HeroSR{{Hero: "juno", SR: 2867}}}
 	src := &parser.MatchResult{SR: []parser.HeroSR{
-		{Hero: "juno", Change: 22},
-		{Hero: "lucio", SR: 3200, Change: 30},
+		{Hero: "juno", Change: new(22)},
+		{Hero: "lucio", SR: 3200, Change: new(30)},
 	}}
 	correlate.MergeMatchResult(dst, src)
 	if len(dst.SR) != 2 {
 		t.Fatalf("expected 2 SR rows after merge, got %d", len(dst.SR))
 	}
-	if dst.SR[0].SR != 2867 || dst.SR[0].Change != 22 {
+	if dst.SR[0].SR != 2867 || dst.SR[0].Change == nil || *dst.SR[0].Change != 22 {
 		t.Errorf("juno SR fold broken: %+v", dst.SR[0])
 	}
 }

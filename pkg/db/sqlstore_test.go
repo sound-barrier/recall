@@ -235,8 +235,8 @@ func TestSQLStore_Rank_UpsertThenLoadRoundTrip(t *testing.T) {
 		Result:    "victory",
 		Modifiers: []string{"expected", "victory"},
 		SR: []db.HeroSR{
-			{Hero: "lucio", SR: 3200, Change: 30},
-			{Hero: "juno", SR: 2867, Change: 22},
+			{Hero: "lucio", SR: 3200, Change: new(30)},
+			{Hero: "juno", SR: 2867, Change: new(22)},
 		},
 	}
 	if err := s.UpsertRank(want); err != nil {

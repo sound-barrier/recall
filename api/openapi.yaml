@@ -4568,7 +4568,7 @@ components:
 
     UserHeroSRInput:
       type: object
-      required: [hero, sr, change]
+      required: [hero, sr]
       properties:
         hero:
           type: string
@@ -4580,6 +4580,9 @@ components:
           type: integer
           minimum: -1000000
           maximum: 1000000
+          description: >-
+            Optional, like the OCR field it overrides — an omitted movement is
+            unstated, not a stated zero.
 
     ManualMatchInput:
       type: object
@@ -6517,11 +6520,20 @@ components:
 
     HeroSR:
       type: object
-      required: [hero, sr, change]
+      required: [hero, sr]
       properties:
         hero:    { type: string,  example: lucio }
         sr:      { type: integer, example: 2754 }
-        change:  { type: integer, description: "Signed delta this match", example: 30 }
+        change:
+          type: integer
+          example: 30
+          description: >-
+            SR this hero moved this match (signed; a loss is negative). Absent
+            when the movement pill could not be read, which is distinct from 0
+            — a match that moved no SR. Same distinction, same reason, as
+            change_percent above: 19 of the 40 SR captures in the corpus were
+            storing 0 for "unread", and every reader downstream counted them
+            as measured flatness.
 
     Performance:
       type: object

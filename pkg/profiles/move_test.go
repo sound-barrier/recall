@@ -63,7 +63,7 @@ func seedFullMatch(t *testing.T, s db.Store, key string) {
 		Filename: key + "-rank.png", MatchKey: key, Rank: "platinum", Level: 3,
 		RankProgress: new(40), ChangePercent: new(-12), Result: "victory",
 		Modifiers: []string{"expected"},
-		SR:        []db.HeroSR{{Hero: "lucio", SR: 2450, Change: -21}},
+		SR:        []db.HeroSR{{Hero: "lucio", SR: 2450, Change: new(-21)}},
 	}))
 	mustNoErr(t, s.UpsertUnknown(db.UnknownRow{Filename: key + "-unknown.png", MatchKey: key}))
 	mustNoErr(t, s.SetAnnotation(db.Annotation{MatchKey: key, Note: "smurf lobby"}))
@@ -221,7 +221,7 @@ func assertRankRowIntact(t *testing.T, ranks []db.RankRow) {
 		t.Fatalf("rank row lost: %+v", ranks)
 	}
 	rank := ranks[0]
-	if len(rank.SR) != 1 || rank.SR[0].SR != 2450 || rank.SR[0].Change != -21 {
+	if len(rank.SR) != 1 || rank.SR[0].SR != 2450 || rank.SR[0].Change == nil || *rank.SR[0].Change != -21 {
 		t.Errorf("rank SR children lost: %+v", rank.SR)
 	}
 	if len(rank.Modifiers) != 1 || rank.Modifiers[0] != "expected" {

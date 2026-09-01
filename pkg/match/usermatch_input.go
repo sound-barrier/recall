@@ -54,9 +54,12 @@ type UserHeroStatInput struct {
 
 // UserHeroSRInput is one per-hero SR override (editing an OCR rank screen).
 type UserHeroSRInput struct {
-	Hero   string `json:"hero"`
-	SR     int    `json:"sr"`
-	Change int    `json:"change"`
+	Hero string `json:"hero"`
+	SR   int    `json:"sr"`
+	// Change is nullable like the OCR field it overrides: a form submitted
+	// without a movement is an unstated one, and a bare int would have made
+	// it a stated zero. See parser.HeroSR.
+	Change *int `json:"change,omitempty"`
 }
 
 // ManualMatchInput is the wire shape for POST /matches — a hand-entered match

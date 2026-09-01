@@ -15,13 +15,11 @@
     "sr": [
       {
         "hero": "kiriko",
-        "sr": 1799,
-        "change": 0
+        "sr": 1799
       },
       {
         "hero": "mizuki",
-        "sr": 2481,
-        "change": 0
+        "sr": 2481
       }
     ],
     "modifiers_raw": "IKAZE"
