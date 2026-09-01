@@ -1,4 +1,5 @@
 import { computed, toValue, type ComputedRef, type MaybeRefOrGetter, type Ref } from 'vue'
+import { heroConcentration as heroConcentrationOf, type HeroConcentration } from '@/match/dossier/match-hero-pool-helpers'
 import type { MatchRecord } from '@/api-client'
 import type { WeekStart } from '@/match/match-time-helpers'
 import { dayTimeWinrateGrid, type WinrateGrid } from '@/match/trends/match-trends-helpers'
@@ -104,6 +105,16 @@ export function useDossierQueries(
   // counts defeats whose final_score didn't classify, so the widget
   // can be honest about coverage instead of silently shrinking the
   // denominator.
+  // How concentrated the pool is, by TIME. topHeroesByMinutes already knows
+  // the minutes; this asks the one question a ranked list cannot answer —
+  // whether the shape of that list is a pool or a single pick with company.
+  function heroConcentration(): ComputedRef<HeroConcentration> {
+    return computed(() => heroConcentrationOf(
+      topHeroesByMinutesRows(records.value, Number.MAX_SAFE_INTEGER)
+        .map((h) => ({ key: h.key, minutes: h.totalMinutes })),
+    ))
+  }
+
   function lossQualityBreakdown(): ComputedRef<{ rows: BreakdownEntry[]; unscored: number }> {
     return computed(() => {
       const counts: Record<LossQuality, number> = { close: 0, normal: 0, stomp: 0 }
@@ -326,6 +337,7 @@ export function useDossierQueries(
     heroPool,
     modifierBreakdown,
     lossQualityBreakdown,
+    heroConcentration,
     modifierRecord,
     withWhomBreakdown,
     heroGameModeCounts,

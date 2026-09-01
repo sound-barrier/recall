@@ -395,7 +395,15 @@ frontend/src/match/elo                        13
 # list is about the PLAYER, not about the narrowed set), which is a
 # difference in where its data comes from, not a second responsibility
 # for the directory: it still renders one slice as a tile.
-frontend/src/components/dashboard/widgets     45
+# 45 -> 49: the analytics wave. Two SR-denominated tiles beside the
+# meter-denominated ones they do NOT replace (sr-climb-rate, sr-by-role — SR
+# is banked per role, so one net figure hides a support climbing while a tank
+# slides), the effective-pool tile that asks whether a hero list is a pool or
+# one pick with company, and the fresh-vs-tilted split, which is the first
+# thing here to read the SIZE of the gap between two queues rather than
+# binarizing it into sessions. One widget per question, which is what this
+# directory is.
+frontend/src/components/dashboard/widgets     49
 
 
 

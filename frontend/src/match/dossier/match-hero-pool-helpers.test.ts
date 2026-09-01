@@ -1,10 +1,7 @@
 import { describe, it, expect } from 'vitest'
 
 import type { MatchRecord } from '@/api-client'
-import {
-  deriveHeroPool, heroCountBuckets, meaningfulHeroes, outOfPoolHeroes, poolSplit,
-  matchesPoolMode, classifyPoolMembership, roleWinrates, rankPoolHeroes,
-} from '@/match/dossier/match-hero-pool-helpers'
+import { classifyPoolMembership, deriveHeroPool, heroConcentration, heroCountBuckets, matchesPoolMode, meaningfulHeroes, outOfPoolHeroes, poolSplit, rankPoolHeroes, roleWinrates } from '@/match/dossier/match-hero-pool-helpers'
 
 type Rec = Pick<MatchRecord, 'data'>
 
@@ -263,5 +260,68 @@ describe('rankPoolHeroes', () => {
     expect(sojourn).toBeLessThan(cassidy)
     expect(ranked.find((h) => h.key === 'sojourn')!.inPool).toBe(false)
     expect(ranked.find((h) => h.key === 'cassidy')!.inPool).toBe(true)
+  })
+})
+
+describe('heroConcentration', () => {
+  it('scores a one-hero player as fully concentrated', () => {
+    // Normalized HHI: 1 means everything is one pick, 0 an even spread. A
+    // single hero has nowhere to spread to, so it is the top of the scale.
+    expect(heroConcentration([{ key: 'ana', minutes: 600 }])).toEqual({
+      score: 1, effectiveHeroes: 1, overReliance: 'ana', heroes: 1,
+    })
+  })
+
+  it('scores an even spread as unconcentrated', () => {
+    const got = heroConcentration([
+      { key: 'ana', minutes: 100 },
+      { key: 'juno', minutes: 100 },
+      { key: 'kiriko', minutes: 100 },
+      { key: 'lucio', minutes: 100 },
+    ])
+    expect(got.score).toBe(0)
+    expect(got.effectiveHeroes).toBe(4)
+    expect(got.overReliance).toBe('')
+  })
+
+  it('weights by TIME, not by match count', () => {
+    // Ten cameo appearances are not a hero pool. Minutes is the honest
+    // denominator, which is why the match-counting pool helpers cannot
+    // answer this.
+    const got = heroConcentration([
+      { key: 'ana', minutes: 900 },
+      { key: 'juno', minutes: 100 },
+    ])
+    expect(got.score).toBeGreaterThan(0.5)
+    expect(got.overReliance).toBe('ana')
+  })
+
+  it('flags over-reliance only past the threshold', () => {
+    // 40% of the time on the top pick is a lead, not a dependency.
+    const spread = heroConcentration([
+      { key: 'ana', minutes: 40 },
+      { key: 'juno', minutes: 30 },
+      { key: 'kiriko', minutes: 30 },
+    ])
+    expect(spread.overReliance).toBe('')
+
+    // Past half, it is the answer to "what do you play".
+    const leaning = heroConcentration([
+      { key: 'ana', minutes: 55 },
+      { key: 'juno', minutes: 45 },
+    ])
+    expect(leaning.overReliance).toBe('ana')
+  })
+
+  it('says nothing at all when nothing was played', () => {
+    expect(heroConcentration([])).toEqual({
+      score: null, effectiveHeroes: 0, overReliance: '', heroes: 0,
+    })
+  })
+
+  it('ignores heroes with no recorded time rather than dividing by them', () => {
+    const got = heroConcentration([{ key: 'ana', minutes: 100 }, { key: 'ghost', minutes: 0 }])
+    expect(got.heroes).toBe(1)
+    expect(got.score).toBe(1)
   })
 })

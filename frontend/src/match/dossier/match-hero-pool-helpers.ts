@@ -372,3 +372,62 @@ export function roleWinrates(records: readonly Pick<MatchRecord, 'data'>[]): Rol
       return { role, games: t.games, wins: t.wins, decisive: t.decisive, winrate: decisiveWinrate(t.wins, t.decisive) }
     })
 }
+
+// ─── How concentrated the pool is ────────────────────────────────────────
+
+/** Share of total minutes past which one hero counts as over-relied-on. */
+const OVER_RELIANCE_SHARE = 0.5
+
+export interface HeroConcentration {
+  /**
+   * Normalized Herfindahl index over PLAY TIME: 1 is everything on one hero,
+   * 0 is a perfectly even spread. Null when nothing was played — an unknown
+   * spread is not a flat one.
+   */
+  score: number | null
+  /**
+   * The inverse Herfindahl: how many heroes an even spread would need to look
+   * like this one. "3.2" reads better than "0.31" to someone deciding whether
+   * to widen their pool.
+   */
+  effectiveHeroes: number
+  /** The hero past OVER_RELIANCE_SHARE of the time, or '' when none is. */
+  overReliance: string
+  /** How many heroes carried any time at all. */
+  heroes: number
+}
+
+/**
+ * How concentrated a hero pool is, weighted by TIME.
+ *
+ * Match count cannot answer this: ten cameo appearances on a hero are not a
+ * pool, and the existing pool helpers count matches because that is what a
+ * win rate needs. Minutes is the honest denominator for "what do you actually
+ * play", which is why this takes them rather than PoolHeroStat.
+ *
+ * Normalized so a one-hero player scores 1 rather than scoring whatever the
+ * raw index happens to be at n=1 — the scale has to mean the same thing to
+ * someone with two heroes and someone with nine.
+ */
+export function heroConcentration(
+  played: readonly { key: string; minutes: number }[],
+): HeroConcentration {
+  const rows = played.filter((h) => h.minutes > 0)
+  const total = rows.reduce((sum, h) => sum + h.minutes, 0)
+  if (rows.length === 0 || total === 0) {
+    return { score: null, effectiveHeroes: 0, overReliance: '', heroes: 0 }
+  }
+  const hhi = rows.reduce((sum, h) => sum + (h.minutes / total) ** 2, 0)
+  const n = rows.length
+  // Normalize against the even-spread floor (1/n), so the scale runs 0..1 for
+  // any pool size. A single hero has no spread to measure and is 1 by
+  // definition rather than by the formula, which divides by zero there.
+  const score = n === 1 ? 1 : (hhi - 1 / n) / (1 - 1 / n)
+  const top = rows.reduce((a, b) => (b.minutes > a.minutes ? b : a))
+  return {
+    score: Math.round(score * 100) / 100,
+    effectiveHeroes: Math.round((1 / hhi) * 10) / 10,
+    overReliance: top.minutes / total > OVER_RELIANCE_SHARE ? top.key : '',
+    heroes: n,
+  }
+}
