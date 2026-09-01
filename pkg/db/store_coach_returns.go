@@ -73,9 +73,10 @@ func replaceNoteMoments(tx *sql.Tx, noteID int64, moments []MatchCoachNoteMoment
 	for _, m := range moments {
 		if _, err := tx.Exec(
 			`INSERT INTO match_coach_note_moments
-			   (match_coach_note_id, moment_id, match_clock, text, focus_tag, sort_order)
-			 VALUES (?, ?, ?, ?, ?, ?)`,
+			   (match_coach_note_id, moment_id, match_clock, text, focus_tag, sort_order, image_sha256)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
 			noteID, m.MomentID, m.MatchClock, m.Text, m.FocusTag, m.SortOrder,
+			sql.NullString{String: m.ImageSHA256, Valid: m.ImageSHA256 != ""},
 		); err != nil {
 			return fmt.Errorf("insert note moment: %w", err)
 		}
@@ -131,7 +132,8 @@ func (s *SQLStore) LoadMatchCoachNotes() (map[string][]MatchCoachNote, error) {
 // order — the ORDER BY is the strip's order, so no caller has to re-sort.
 func attachNoteMoments(q *sql.DB, byID map[int64]*MatchCoachNote) error {
 	rows, err := q.Query(
-		`SELECT match_coach_note_id, moment_id, match_clock, text, focus_tag, sort_order
+		`SELECT match_coach_note_id, moment_id, match_clock, text, focus_tag, sort_order,
+		        COALESCE(image_sha256, '')
 		 FROM match_coach_note_moments
 		 ORDER BY match_coach_note_id, sort_order`)
 	if err != nil {
@@ -141,7 +143,8 @@ func attachNoteMoments(q *sql.DB, byID map[int64]*MatchCoachNote) error {
 	for rows.Next() {
 		var parent int64
 		var m MatchCoachNoteMoment
-		if err := rows.Scan(&parent, &m.MomentID, &m.MatchClock, &m.Text, &m.FocusTag, &m.SortOrder); err != nil {
+		if err := rows.Scan(&parent, &m.MomentID, &m.MatchClock, &m.Text, &m.FocusTag,
+			&m.SortOrder, &m.ImageSHA256); err != nil {
 			return fmt.Errorf("scan match coach note moment: %w", err)
 		}
 		if n, ok := byID[parent]; ok {

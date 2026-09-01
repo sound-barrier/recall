@@ -3,7 +3,9 @@ package cmd
 import (
 	"errors"
 	"io"
+	"mime"
 	"net/http"
+	"strings"
 
 	"recall/pkg/app"
 	"recall/pkg/db"
@@ -21,16 +23,25 @@ import (
 // back, so a lie here is refused rather than stored and rejected later.
 func handlePutMomentImage(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		raw, err := io.ReadAll(io.LimitReader(r.Body, momentImageMaxBodyBytes+1))
+		raw, err := io.ReadAll(io.LimitReader(r.Body, momentImageLimit+1))
 		if err != nil {
 			writeProblem(w, r, probInvalidBody, "read body: "+err.Error())
 			return
 		}
-		if int64(len(raw)) > momentImageMaxBodyBytes {
+		if int64(len(raw)) > momentImageLimit {
 			writeProblem(w, r, probPayloadTooLarge, "image larger than 8 MiB")
 			return
 		}
-		sha, err := a.PutMomentImage(raw, r.Header.Get("Content-Type"))
+		// PARSED, not string-compared. RFC 9110 makes the media type
+		// case-insensitive and parameters legal, so a conformant client
+		// sending `image/png; charset=binary`, or a proxy that normalized the
+		// casing, would otherwise get a hard 400 for a request that is right.
+		mime, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		if err != nil {
+			writeProblem(w, r, probInvalidBody, "unreadable Content-Type")
+			return
+		}
+		sha, err := a.PutMomentImage(raw, strings.ToLower(mime))
 		if errors.Is(err, app.ErrImageTooLarge) {
 			writeProblem(w, r, probPayloadTooLarge, "image larger than 8 MiB")
 			return

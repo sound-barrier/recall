@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 )
 
 // ErrUnsupportedImageType is returned for bytes the serving handler would
@@ -96,14 +97,20 @@ var momentImageReferrers = []string{
 // that stop pointing at an image usually vanish without anyone asking this
 // table's permission — which is the trade that keeps note deletion a single
 // step. Callers run this after anything that can drop a moment.
-func (s *SQLStore) PruneOrphanMomentImages() (int, error) {
+func (s *SQLStore) PruneOrphanMomentImages(minAge time.Duration) (int, error) {
 	var where strings.Builder
 	for _, t := range momentImageReferrers {
 		// #nosec G202 -- table names come from a hard-coded slice, not user input.
 		where.WriteString(` AND sha256 NOT IN (SELECT image_sha256 FROM ` + t + ` WHERE image_sha256 IS NOT NULL)`)
 	}
+	// A GRACE PERIOD, because an image is uploaded BEFORE the moment that will
+	// point at it is saved. In between it has no referrer at all, and a sweep
+	// triggered by an unrelated delete would take a frame somebody is still
+	// attaching. For a film-room draft that window is minutes, not
+	// milliseconds. Callers pass zero only when they mean "now, exactly".
+	cutoff := time.Now().UTC().Add(-minAge).Format("2006-01-02T15:04:05Z")
 	// #nosec G202 -- the clause above is built from a hard-coded slice.
-	res, err := s.db.Exec(`DELETE FROM moment_images WHERE 1 = 1` + where.String())
+	res, err := s.db.Exec(`DELETE FROM moment_images WHERE created_at <= ?`+where.String(), cutoff)
 	if err != nil {
 		return 0, fmt.Errorf("prune moment images: %w", err)
 	}

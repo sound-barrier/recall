@@ -576,5 +576,13 @@ func movePhase2DeleteSource(src db.Store, matchKeys []string, moved []db.SelfRev
 			return fmt.Errorf("move: delete source self review %q: %w", r.ReviewID, err)
 		}
 	}
+	// The moved matches took their moments out of this profile, and the frames
+	// those pointed at are now unreferenced HERE. Move is the one carrier that
+	// deletes from the source, so without this a hundred moved matches leave a
+	// hundred screenshots behind in a database that no longer shows them.
+	// Best-effort: the move HAS happened, and the bytes go on the next sweep.
+	if _, err := src.PruneOrphanMomentImages(0); err != nil {
+		return fmt.Errorf("move: collect unreferenced frames: %w", err)
+	}
 	return nil
 }

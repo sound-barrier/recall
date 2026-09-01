@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // The images a moment points at: stored by the app, served back by it.
@@ -54,7 +55,18 @@ func (a *App) PutMomentImage(raw []byte, mime string) (string, error) {
 // refcount because three of the four referring tables are CASCADE-deleted
 // children of a note: the rows stop pointing without anyone telling this
 // table, which is exactly the trade that keeps deleting a note one step.
-func (a *App) PruneMomentImages() (int, error) { return a.store.PruneOrphanMomentImages() }
+func (a *App) PruneMomentImages() (int, error) {
+	return a.store.PruneOrphanMomentImages(momentImageGrace)
+}
+
+// momentImageGrace is how long a freshly stored frame is safe from the sweep.
+//
+// An upload precedes the save of the moment that will name it — the file is
+// dropped, the bytes go up, and the moment is written when the row is savable,
+// which for a film-room draft can be minutes later. Without this, an unrelated
+// delete in that window collects a frame somebody is still attaching, and it
+// comes back as a broken picture with no error anywhere.
+const momentImageGrace = time.Hour
 
 // MomentImageHandler serves `/_moment-image/<sha256>`.
 //

@@ -32,11 +32,53 @@ func (a *App) ExportCoachNotes(sheetHTML []byte) (name string, payload []byte, e
 	if err != nil {
 		return "", nil, err
 	}
-	payload, err = coach.WriteNotesArchive(file, sheetHTML, time.Now())
+	// The frames the notes point at travel WITH them. A digest the player's
+	// database has never seen is a broken picture on their screen, and the
+	// coach has no way to know — so the bytes go in the archive rather than
+	// the reference going alone.
+	file, images, err := a.withAttachedFrames(file)
+	if err != nil {
+		return "", nil, err
+	}
+	payload, err = coach.WriteNotesArchive(file, sheetHTML, images, time.Now())
 	if err != nil {
 		return "", nil, err
 	}
 	return coach.ArchiveFileName(file.Player.Handle, file.SessionDate), payload, nil
+}
+
+// withAttachedFrames gathers the frames a notes file names, and DROPS any
+// reference whose bytes are gone.
+//
+// Both halves matter. A picture can be pruned between being attached and the
+// review being sent, and a coach who cannot export because one frame went
+// missing is worse off than one whose review arrives a frame short. But an
+// archive that NAMES a frame it does not carry is a different thing: the
+// reference lives inside notes.json, whose hash is the archive's identity, so
+// the claim would travel while the bytes did not and the player would see a
+// broken picture with no explanation. Clearing the reference keeps the
+// archive honest about what it holds — which is why WriteNotesArchive is free
+// to refuse the mismatch outright.
+func (a *App) withAttachedFrames(f coach.NotesFile) (coach.NotesFile, map[string][]byte, error) {
+	images := map[string][]byte{}
+	for i := range f.Notes {
+		for j := range f.Notes[i].Moments {
+			sha := f.Notes[i].Moments[j].ImageSHA256
+			if sha == "" {
+				continue
+			}
+			img, ok, err := a.store.LoadMomentImage(sha)
+			if err != nil {
+				return coach.NotesFile{}, nil, fmt.Errorf("read attached frame: %w", err)
+			}
+			if !ok {
+				f.Notes[i].Moments[j].ImageSHA256 = ""
+				continue
+			}
+			images[sha] = img.Bytes
+		}
+	}
+	return f, images, nil
 }
 
 // coachNotesFileLocked assembles the notes file for the open session. The

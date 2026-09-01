@@ -19,6 +19,7 @@ package coachreturn
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"recall/pkg/coach"
@@ -48,6 +49,33 @@ type Store interface {
 	SetCoachReturnDecision(returnID int64, noteID, decision string) error
 	DeleteCoachReturn(id int64) error
 	UpsertReceivedFocusItem(item db.ReceivedFocusItem) error
+	// PutMomentImage takes custody of a frame the archive carried. Stored at
+	// STAGE time, not on accept: the bytes arrive with the archive and there
+	// is nowhere else to keep them, and a return the player skips leaves them
+	// unreferenced for the ordinary sweep to collect.
+	PutMomentImage(raw []byte, mime string) (string, error)
+}
+
+// stageMomentImages stores every frame an archive carried.
+//
+// Content-addressed, so re-importing the same archive stores nothing twice
+// and two moments sharing a frame cost one row. The digest the archive used
+// is verified against the bytes by the reader, so what is stored here is
+// always addressed by its own content — a coach cannot make the player's
+// store disagree with itself about what a digest names.
+func stageMomentImages(st Store, payload []byte) error {
+	images, err := coach.ReadNotesArchiveImages(payload)
+	if err != nil {
+		return err
+	}
+	for _, raw := range images {
+		// PNG is what the app stores; the reader has already checked the
+		// bytes hash to the name they arrived under.
+		if _, err := st.PutMomentImage(raw, http.DetectContentType(raw)); err != nil {
+			return fmt.Errorf("coach: store attached frame: %w", err)
+		}
+	}
+	return nil
 }
 
 // Verdict values the player records against a staged note.
@@ -143,6 +171,13 @@ type Verdict struct {
 func Stage(st Store, payload []byte, localHandle string, _ MatchMaker) (sheet Sheet, alreadyStaged bool, err error) {
 	f, raw, err := coach.ReadNotesArchive(payload)
 	if err != nil {
+		return Sheet{}, false, err
+	}
+	// The frames the coach pinned, taken into custody before anything is
+	// decided. Doing it here rather than on accept means the bytes are safe
+	// the moment the archive lands — accepting a note later only copies a
+	// reference, and by then the zip is long gone.
+	if err := stageMomentImages(st, payload); err != nil {
 		return Sheet{}, false, err
 	}
 	hash := coach.ContentHash(raw)

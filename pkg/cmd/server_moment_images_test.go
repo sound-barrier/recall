@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"recall/pkg/cmd"
 	"recall/pkg/db/dbtest"
 )
 
@@ -173,5 +174,50 @@ func TestMomentImages_HeadCarriesTheHeadersWithoutTheBody(t *testing.T) {
 	}
 	if got := rec.Header().Get("Content-Type"); got != "image/png" {
 		t.Fatalf("Content-Type = %q, want image/png", got)
+	}
+}
+
+func TestMomentImages_OversizeAnswersWithTheLimit_ThroughTheRealStack(t *testing.T) {
+	// Through the HARDENED handler, which is the only shape that ships. The
+	// middleware's MaxBytesReader used to be set to the same number as the
+	// handler's own check, so it always tripped first and a large upload got a
+	// 400 saying "request body too large" — a documented 413 that nothing
+	// could reach.
+	_, mux := newTestApp(t, nil)
+	hardened := cmd.WithSecurityHardening(mux)
+
+	big := make([]byte, (8<<20)+1024)
+	copy(big, onePixelPNG)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v1/moment-images", bytes.NewReader(big))
+	req.Header.Set("Content-Type", "image/png")
+	rec := httptest.NewRecorder()
+	hardened.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status = %d, want 413; body=%q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMomentImages_AcceptsAConformantContentType(t *testing.T) {
+	// RFC 9110 makes the media type case-insensitive and parameters legal. A
+	// string comparison rejected both, so a conformant generated client — or
+	// a proxy that normalized the casing — got a hard 400 for a good request.
+	_, mux := newTestApp(t, nil)
+	for _, ct := range []string{"image/png; charset=binary", "IMAGE/PNG", "image/png"} {
+		if rec := postImage(t, mux, onePixelPNG, ct); rec.Code != http.StatusOK {
+			t.Fatalf("Content-Type %q: status = %d, want 200; body=%q", ct, rec.Code, rec.Body.String())
+		}
+	}
+}
+
+func TestMomentImages_RefusesSVG(t *testing.T) {
+	// Named specifically rather than as "some unsupported type". This app
+	// serves attachments from its OWN origin and sets no CSP, so the two-item
+	// allowlist is the whole reason an uploaded file cannot execute script in
+	// the app's context. SVG is the one that would.
+	_, mux := newTestApp(t, nil)
+	svg := []byte(`<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>`)
+	if rec := postImage(t, mux, svg, "image/svg+xml"); rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 — SVG must never be storable", rec.Code)
 	}
 }

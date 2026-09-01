@@ -41,11 +41,21 @@ const (
 	// own internal cap. A bundle carries screenshot bytes and a native .db
 	// snapshot carries every table, so both can dwarf the old JSON export.
 	importMaxBodyBytes int64 = 256 << 20 // 256 MiB
-	// momentImageMaxBodyBytes caps one attachment. Deliberately far below the
-	// import cap: this endpoint takes a picture, and anything the size of a
-	// bundle arriving here is a mistake. app.maxMomentImageBytes holds the
-	// same line for callers that never cross this boundary.
-	momentImageMaxBodyBytes int64 = 8 << 20 // 8 MiB
+	// momentImageMaxBodyBytes is the HARDENING ceiling for one attachment, and
+	// it is deliberately a little above the limit the handler enforces.
+	//
+	// Both numbers are needed and they must not be equal. MaxBytesReader is a
+	// blunt instrument — it aborts the read and the caller sees "request body
+	// too large", a 400 about nothing they can act on. The handler's own
+	// check is what turns an oversized image into a 413 that names the limit.
+	// Set them equal and the middleware always wins, which is exactly what
+	// happened: the documented 413 was unreachable and every large upload got
+	// a 400. The slack is what lets the handler see one byte past its own cap
+	// and answer properly.
+	momentImageMaxBodyBytes int64 = momentImageLimit + (1 << 20)
+	// momentImageLimit is the actual ceiling, mirrored by app.maxMomentImageBytes
+	// for callers (a Wails method) that never cross the HTTP boundary at all.
+	momentImageLimit int64 = 8 << 20 // 8 MiB
 )
 
 // maxBodyForPath returns the body-size ceiling for a request path. The

@@ -35,6 +35,11 @@ type Moment struct {
 	MatchClock string `json:"match_clock"`
 	Text       string `json:"text"`
 	FocusTag   string `json:"focus_tag,omitempty"`
+	// ImageSHA256 names the frame this moment is about. It lives INSIDE
+	// notes.json on purpose: the hash of that document is the archive's
+	// identity, so a picture referenced from anywhere else would let two
+	// materially different archives hash identical and dedupe into one.
+	ImageSHA256 string `json:"image_sha256,omitempty"`
 	// SortOrder is the authored order, kept only to break ties between two
 	// moments stamped at the same second — there is no other signal for which
 	// the coach meant first.
@@ -44,9 +49,10 @@ type Moment struct {
 
 // MomentInput is the body of a moment write — the moment minus its identity.
 type MomentInput struct {
-	MatchClock string `json:"match_clock"`
-	Text       string `json:"text"`
-	FocusTag   string `json:"focus_tag"`
+	MatchClock  string `json:"match_clock"`
+	Text        string `json:"text"`
+	FocusTag    string `json:"focus_tag"`
+	ImageSHA256 string
 }
 
 // ValidateMomentInput normalizes a moment write and enforces its rules,
