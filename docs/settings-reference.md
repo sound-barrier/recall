@@ -18,6 +18,12 @@ states, etc.
 
 ## Settings tab
 
+The numbers are the ones on screen. Two sections are documented
+elsewhere rather than here — **05 / Profiles** in
+[How Recall works](how-it-works.md) and **08 / Coaching** further down
+this page — and **07 / Window** is one checkbox whose label says what
+it does.
+
 ### 01 / Directories
 
 #### Screenshots Folder
@@ -91,6 +97,20 @@ Two preview cards: **Day** (light palette, cream + brand orange) or
 apply; the active card shows an orange ring. Recall remembers the
 choice across launches.
 
+#### Live session banner
+
+Off by default. Turned on, a thin rail sits under the masthead while
+you are playing: the rank you are on, and what the running session has
+done to it — games, W-L, and the meter movement when the rank pills
+were readable.
+
+It is off by default on purpose. The Matches tab already tallies the
+session in four places; the rail exists because it follows you onto
+every tab and because it carries the rank, which none of the others do.
+Dismissing it dismisses that session — the next game does not bring it
+back — and it says "No rank read" rather than printing a tier it never
+saw.
+
 ### 04 / Calendar
 
 #### First Day of Week
@@ -110,7 +130,7 @@ calculates the week boundary from this setting, so a Tuesday match
 shows up under either "Week of Sunday Jan 12" or "Week of Monday Jan
 13" depending on what you picked.
 
-### 05 / Backup & Restore
+### 06 / Backup & Restore
 
 #### Export Data
 
@@ -137,7 +157,18 @@ picker. **Replaces** the current database — local matches that
 aren't in the backup will be lost. Cancel button next to it backs
 out without touching anything.
 
-### 06 / Advanced
+### 09 / Roster
+
+The people you queue with. A **BattleTag** you save here shows up as
+the **name** you gave it wherever you tagged that person, and completes
+as you type in a match's *Group* field. The optional note is for
+anything worth remembering ("main tank, Tuesdays").
+
+Removing somebody stops showing their name. It does not touch the
+matches they played on — the tag stays exactly where you put it, and
+the roster is only a lookup over it.
+
+### 10 / Advanced
 
 A collapsible section, closed by default. Contains power-user
 controls most players never need to touch.

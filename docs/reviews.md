@@ -222,6 +222,15 @@ file it under a focus tag. It reads down the match, exactly as a
 coach's does, and sits above their notes because they are your words.
 (A review — above — does the same over a whole set at once.)
 
+**Pin a frame to a moment.** Drag an image onto the moment, or use the
+button beside it to pick one. The picture is what the claim is *about*,
+so it lives inside the moment rather than beside the note. Recall takes
+custody of the bytes — the frame survives after you tidy the folder it
+came from, rides your backups and profile moves, and travels inside a
+coaching return, where the exported page inlines it so the page still
+shows it with the network off. The same frame pinned three times is
+stored once. Clearing the database clears them too.
+
 ## Coaching someone
 
 There are two ways in, and they land in the same room. Take a **bundle**
