@@ -1,6 +1,6 @@
 import { usePersistedRef, parseBoolish } from '@/composables/shared/usePersistedRef'
 
-export const SESSION_BANNER_STORAGE_KEY = 'recall.sessionBanner'
+const SESSION_BANNER_STORAGE_KEY = 'recall.sessionBanner'
 
 // Persisted preference for the live session banner.
 //
