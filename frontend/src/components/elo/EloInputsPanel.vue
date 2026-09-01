@@ -3,13 +3,14 @@ import { computed } from 'vue'
 import { TIER_ORDER, type Tier } from '@/match/trends/match-trends-helpers'
 import { useEloCalc } from '@/composables/elo/useEloCalculator'
 import { DEFAULT_METER_MOVE_PCT } from '@/match/elo/elo-model'
-import { fmtScoreRank } from '@/components/elo/elo-format'
+import { fmtGoalPace, fmtScoreRank, type GoalPaceLine } from '@/components/elo/elo-format'
 
 // The calculator form: every input starts from the picked track's own games and
 // stays editable. Manual edits stop the background re-seed; win-rate/sample
 // edits also drop the hero picker so the two never fight over the win rate.
 const {
   currentTier, currentDivision, currentProgress, targetTier, targetDivision,
+  pickTargetTier, pickTargetDivision, targetBy, pickTargetBy, goalPace,
   winRatePct, sampleN, meterMovePct, gamesPerWeekInput, decaySlopePts,
   editInput, lastSeed, decay, projInput, editedFields, isEdited, resetToMeasured,
   measuredPercentile,
@@ -21,6 +22,11 @@ const tierName = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
 function num(e: Event): number {
   return Number((e.target as HTMLInputElement).value)
 }
+
+const paceLine = computed<GoalPaceLine | null>(() => (goalPace.value ? fmtGoalPace(goalPace.value) : null))
+// Only a measured pace can be met; the other two states are neither on
+// nor off it, and both take the alerting tint.
+const onPace = computed(() => goalPace.value?.kind === 'measured' && goalPace.value.onPace)
 
 const wrHint = computed(() => {
   const s = lastSeed.value
@@ -120,7 +126,7 @@ const plateauLine = computed(() => {
           <span class="elo-field-label">Tier</span><span v-if="editedFields.targetTier" class="elo-edited-dot" data-elo-edited="target-tier" title="Differs from your measured number">●</span>
           <select
             class="elo-input" data-elo-target="tier" :value="targetTier"
-            @change="editInput('targetTier', ($event.target as HTMLSelectElement).value as Tier)"
+            @change="pickTargetTier(($event.target as HTMLSelectElement).value as Tier)"
           >
             <option v-for="t in TIER_ORDER" :key="t" :value="t">{{ tierName(t) }}</option>
           </select>
@@ -129,12 +135,31 @@ const plateauLine = computed(() => {
           <span class="elo-field-label">Division</span><span v-if="editedFields.targetDivision" class="elo-edited-dot" data-elo-edited="target-division" title="Differs from your measured number">●</span>
           <select
             class="elo-input" data-elo-target="division" :value="String(targetDivision)"
-            @change="editInput('targetDivision', num($event))"
+            @change="pickTargetDivision(num($event))"
           >
             <option v-for="d in DIVISIONS" :key="d" :value="String(d)">{{ d }}</option>
           </select>
         </label>
       </div>
+      <div class="elo-row">
+        <!-- The deadline. Optional on purpose: a goal without a date is still
+             a goal, and requiring one would make the field a guess rather
+             than a commitment. -->
+        <label class="elo-field">
+          <span class="elo-field-label">By</span>
+          <input
+            type="date"
+            class="elo-input"
+            data-elo-target="by"
+            :value="targetBy"
+            @change="pickTargetBy(($event.target as HTMLInputElement).value)"
+          >
+        </label>
+      </div>
+      <p v-if="paceLine" class="elo-goal-pace">
+        <span class="eyebrow" :class="onPace ? 'accent' : 'alert'">{{ paceLine.verdict }}</span>
+        {{ paceLine.detail }}
+      </p>
     </fieldset>
 
     <fieldset class="elo-fieldset">

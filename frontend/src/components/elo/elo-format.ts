@@ -1,7 +1,7 @@
 // Plain-language number formatting for the Elo Calculator. Everything here
 // trades statistical wording for a phrasing a ranked player reads at a glance;
 // the raw stat stays available in a muted aside only where it earns its place.
-import type { GamesRange } from '@/match/elo/elo-model'
+import type { GamesRange, GoalPace } from '@/match/elo/elo-model'
 import { TIER_ORDER } from '@/match/trends/match-trends-helpers'
 import { LADDER_MAX } from '@/match/elo/elo-model'
 
@@ -52,6 +52,38 @@ export function fmtWeeks(weeks: number | null): string {
   if (weeks > 520) return 'years at your current pace'
   const rounded = weeks < 10 ? Math.round(weeks * 10) / 10 : Math.round(weeks)
   return `≈ ${rounded} week${rounded === 1 ? '' : 's'} at your pace`
+}
+
+// The pace line: a verdict a player can read in one word, and the sentence
+// behind it. Split because the verdict also carries the line's tint, and a
+// verdict conveyed by color alone is no verdict at all.
+export interface GoalPaceLine {
+  verdict: string
+  detail: string
+}
+
+function weeks(count: number): string {
+  return `${count} week${count === 1 ? '' : 's'}`
+}
+
+// fmtGoalPace answers in the order a player asks: does the date hold, and
+// what are the two numbers behind that. A date already gone gets its own
+// sentence — "0 weeks left" is a rounding, "that date has passed" is a fact.
+export function fmtGoalPace(pace: GoalPace): GoalPaceLine {
+  if (pace.kind === 'no-pace') {
+    return { verdict: 'No pace yet', detail: 'Set games per week to see whether that date holds.' }
+  }
+  if (pace.kind === 'unreachable') {
+    return { verdict: 'Out of reach', detail: 'No deadline fixes this — the climb plateaus below that rank.' }
+  }
+  const needed = `about ${weeks(pace.weeksNeeded)} of play`
+  if (pace.weeksLeft < 0) {
+    return { verdict: 'Behind', detail: `That date has passed — ${needed} to get there.` }
+  }
+  return {
+    verdict: pace.onPace ? 'On pace' : 'Behind',
+    detail: `${needed}, ${weeks(pace.weeksLeft)} left.`,
+  }
 }
 
 // fmtProb keeps the extremes honest — a flat 100%/0% overpromises, so the

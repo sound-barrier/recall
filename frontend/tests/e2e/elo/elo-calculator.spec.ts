@@ -410,4 +410,31 @@ test.describe('Elo Calculator', () => {
     await expect(summary).toBeHidden()
     await expect(page.locator('[data-elo-card="naive"]')).toContainText(/~\s*20 games/)
   })
+
+  test('holds on to a goal and its deadline across a reload', async ({ page }) => {
+    await mockCorpus(page, corpus70())
+    await openCalculator(page)
+
+    // Seeded one tier above where the player sits.
+    await expect(page.locator('[data-elo-target="tier"]')).toHaveValue('platinum')
+
+    await page.locator('[data-elo-target="tier"]').selectOption('diamond')
+    await page.locator('[data-elo-target="division"]').selectOption('3')
+    await page.locator('[data-elo-target="by"]').fill(localYMD(120))
+    // The pace line only appears once a date is committed to. Diamond 3
+    // sits past where this record plateaus, so the honest answer names
+    // that rather than quoting a number of weeks.
+    await expect(page.getByText('Out of reach')).toBeVisible()
+
+    await page.reload()
+    await page.getByRole('tab', { name: 'Elo Calculator' }).click()
+    await expect(page.locator('[data-elo-target="tier"]')).toHaveValue('diamond')
+    await expect(page.locator('[data-elo-target="division"]')).toHaveValue('3')
+    await expect(page.locator('[data-elo-target="by"]')).toHaveValue(localYMD(120))
+    await expect(page.getByText('Out of reach')).toBeVisible()
+
+    // A goal inside the plateau gets the weeks instead.
+    await page.locator('[data-elo-target="tier"]').selectOption('platinum')
+    await expect(page.getByText(/weeks of play/)).toBeVisible()
+  })
 })

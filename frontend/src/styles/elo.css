@@ -605,6 +605,17 @@
   font-style: italic;
 }
 
+/* The goal's pace line: verdict eyebrow, then the two weeks numbers on
+   the same baseline so the sentence reads as one. */
+#panel-elo .elo-goal-pace {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  font-size: var(--type-xs);
+  color: var(--text-dim);
+}
+
 #panel-elo .elo-advanced summary {
   cursor: pointer;
   font-size: var(--type-sm);

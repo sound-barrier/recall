@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 import { render, type RenderResult } from '@testing-library/vue'
 import type { MatchRecord, TesseractStatus, UpdateInfo } from '@/api'
 import { flushPromises } from '@/test-utils/flush'
+import { installMemoryLocalStorage } from '@/test-utils/localStorage'
 
 // ─── SFC test setup (Testing Library) ────────────────────────────────
 //
@@ -213,21 +214,10 @@ export async function renderApp(overrides: MountOverrides = {}): Promise<RenderR
   // clean — and so the api-client instance we install the mock on below is the
   // SAME one App's stores import.
   vi.resetModules()
-  // happy-dom's localStorage is a noop without `--localstorage-file`
-  // (vitest's default config doesn't pass it), so any test that
-  // relies on App.vue reading a persisted preference needs a real
-  // in-memory store. Stub one before render so every persisted-pref
-  // composable hydrates from these seeds rather than always falling
-  // back to the default.
-  const storage: Record<string, string> = {}
-  vi.stubGlobal('localStorage', {
-    getItem: (key: string) => storage[key] ?? null,
-    setItem: (key: string, value: string) => { storage[key] = String(value) },
-    removeItem: (key: string) => { delete storage[key] },
-    clear:      () => { for (const k of Object.keys(storage)) delete storage[k] },
-    key:        (i: number) => Object.keys(storage)[i] ?? null,
-    get length() { return Object.keys(storage).length },
-  })
+  // Stub a real store before render so every persisted-pref composable
+  // hydrates from the seeds below rather than always falling back to
+  // the default.
+  installMemoryLocalStorage()
 
   // Seed localStorage for any preferences App reads on mount via
   // composables (useIncludeUndated, …). We only write the keys the

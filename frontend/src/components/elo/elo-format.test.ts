@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 
 import {
-  fmtRank, fmtScoreRank, fmtGames, fmtGamesRange, fmtWeeks, fmtProb, fmtPct, fmtPValue,
+  fmtGoalPace, fmtRank, fmtScoreRank, fmtGames, fmtGamesRange, fmtWeeks, fmtProb, fmtPct, fmtPValue,
 } from '@/components/elo/elo-format'
 import type { GamesRange } from '@/match/elo/elo-model'
 
@@ -84,5 +84,32 @@ describe('fmtPValue', () => {
     expect(fmtPValue(0.0004)).toBe('p < 0.001')
     expect(fmtPValue(0.004)).toBe('p = 0.004')
     expect(fmtPValue(0.34)).toBe('p = 0.34')
+  })
+})
+
+describe('fmtGoalPace', () => {
+  it('names the play a goal needs against the time it has', () => {
+    expect(fmtGoalPace({ kind: 'measured', weeksNeeded: 4.7, weeksLeft: 12.3, onPace: true }))
+      .toEqual({ verdict: 'On pace', detail: 'about 4.7 weeks of play, 12.3 weeks left.' })
+  })
+
+  it('speaks in the singular for exactly one week on either side', () => {
+    expect(fmtGoalPace({ kind: 'measured', weeksNeeded: 1, weeksLeft: 1, onPace: true }).detail)
+      .toBe('about 1 week of play, 1 week left.')
+  })
+
+  it('calls a goal the pace does not meet behind', () => {
+    expect(fmtGoalPace({ kind: 'measured', weeksNeeded: 20, weeksLeft: 3, onPace: false }))
+      .toEqual({ verdict: 'Behind', detail: 'about 20 weeks of play, 3 weeks left.' })
+  })
+
+  it('says a passed date has passed rather than rounding it to zero', () => {
+    expect(fmtGoalPace({ kind: 'measured', weeksNeeded: 4.7, weeksLeft: -0.3, onPace: false }))
+      .toEqual({ verdict: 'Behind', detail: 'That date has passed — about 4.7 weeks of play to get there.' })
+  })
+
+  it('separates a goal beyond the plateau from one with no pace to divide by', () => {
+    expect(fmtGoalPace({ kind: 'unreachable', weeksLeft: 8 }).verdict).toBe('Out of reach')
+    expect(fmtGoalPace({ kind: 'no-pace', weeksLeft: 8 }).verdict).toBe('No pace yet')
   })
 })

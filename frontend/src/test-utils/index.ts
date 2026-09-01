@@ -11,4 +11,5 @@
 export { renderApp, fireBackendEvent, mockedApi } from '@/test-utils/renderApp'
 export { renderWidget } from '@/test-utils/renderWidget'
 export { flushPromises } from '@/test-utils/flush'
+export { installMemoryLocalStorage } from '@/test-utils/localStorage'
 export { editorReady, leaveWriter, markdownField } from '@/test-utils/noteWriter'
