@@ -15,9 +15,11 @@ import { FRESH_GAP_MINUTES, TILTED_GAP_MINUTES } from '@/match/dossier/match-que
 const dossier = useDossier()
 const split = dossier.queueGapSplit()
 
+// The wait is measured from the last game ENDING, so these read as waits
+// rather than as spans between endings.
 const rows = computed(() => [
-  { key: `Straight back in (under ${TILTED_GAP_MINUTES} min)`, ...split.value.tilted },
-  { key: `After a break (over ${FRESH_GAP_MINUTES} min)`, ...split.value.fresh },
+  { key: `Re-queued within ${TILTED_GAP_MINUTES} min`, ...split.value.tilted },
+  { key: `Back after ${FRESH_GAP_MINUTES}+ min away`, ...split.value.fresh },
 ])
 
 const anySample = computed(() => rows.value.some((r) => r.sample > 0))
@@ -37,7 +39,7 @@ const anySample = computed(() => rows.value.some((r) => r.sample > 0))
         <span
           class="bd-fill"
           role="progressbar"
-          :aria-valuenow="row.winrate ?? 0"
+          :aria-valuenow="row.winrate ?? undefined"
           aria-valuemin="0"
           aria-valuemax="100"
           :aria-label="`${row.key} winrate`"
