@@ -126,7 +126,7 @@ async function saveBlobResponse(
 
 // pickFile — promise wrapper around a transient <input type=file>.
 // Resolves with the selected File, or null on cancel.
-function pickFile(accept: string): Promise<File | null> {
+export function pickFile(accept: string): Promise<File | null> {
   return new Promise(resolve => {
     const input = document.createElement('input')
     input.type = 'file'

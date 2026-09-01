@@ -100,3 +100,4 @@ a folder silently regrows what it just shed.
 | 2026-08-31 | seasonal-recap-and-attachments | pkg/db | 35 → 36 | `store_moment_images.go` — the content-addressed image store. One table, one file, like every sidecar family beside it. |
 | 2026-08-31 | seasonal-recap-and-attachments | pkg/cmd | 21 → 22 | `server_moment_images.go` — the `/api/v1/moment-images` endpoint group. The fourth binary-body surface, and the only one taking a picture rather than an archive. |
 | 2026-08-31 | seasonal-recap-and-attachments | pkg/app | 50 → 51 | `moment_images.go` — custody plus the serving handler. A sibling of `screenshot_files.go`: that one resolves a path the user chose, this one looks up bytes we stored by digest. |
+| 2026-08-31 | seasonal-recap-and-attachments | frontend/tests/e2e/match | 26 → 27 | `match-moment-attachment.spec.ts` — the first file-drop in the suite, and the only proof of the upload → digest → save → serve chain end to end. |

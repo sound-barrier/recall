@@ -9,10 +9,12 @@ import MatchExclusionChooser from '@/components/matches/detail/MatchExclusionCho
 import CoachCueStrip from '@/components/coach/notes/CoachCueStrip.vue'
 import CoachNoteBlock from '@/components/coach/notes/CoachNoteBlock.vue'
 import { coachBlockView, selfBlockView } from '@/match/coach/note-block-view'
-import { fromWireMoment, isSavable, type CoachMoment } from '@/match/coach/coach-moments'
+import { fromWireMoment, isSavable, toMomentInput, type CoachMoment } from '@/match/coach/coach-moments'
+import { attachFrame } from '@/composables/coach/useMomentAttachment'
 import { useCoachAutosave } from '@/composables/coach/useCoachAutosave'
 import { useMatchAnnotationEditor } from '@/composables/matches/detail/useMatchAnnotationEditor'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
+import { useAppStore } from '@/stores/app'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import NoteProse from '@/components/shared/NoteProse.vue'
 import NoteWriter from '@/components/shared/NoteWriter.vue'
@@ -48,6 +50,7 @@ const emit = defineEmits<{
 const {
   onSetMatchAnnotation, onCopyReplayCode, onSetMatchMoment, onDeleteMatchMoment,
 } = useMatchActions()
+const appStore = useAppStore()
 
 // A coach's moments point at seconds inside a replay, so the block offers the
 // code beside them. Same routine the row context menu uses — it names the
@@ -96,17 +99,30 @@ function onMomentUpdate(moment: CoachMoment) {
   // keystroke, and each write refetches the match corpus behind it. Keying on
   // the match instead would collapse three moments into whichever typed last.
   queueSave(moment.momentId, async () => {
-    const saved = await onSetMatchMoment(props.record.match_key, moment.momentId, {
-      match_clock: moment.matchClock,
-      text: moment.text,
-      ...(moment.focusTag ? { focus_tag: moment.focusTag } : {}),
-    })
+    const saved = await onSetMatchMoment(props.record.match_key, moment.momentId, toMomentInput(moment))
     // A refused write keeps the draft, so the row stays on screen holding what
     // the player typed rather than reverting their words for them.
     if (!saved) throw new Error('the server refused this moment')
     savedIds.add(moment.momentId)
     drafts.value = drafts.value.filter((d) => d.momentId !== moment.momentId)
   })
+}
+
+/**
+ * A frame dropped on one of the player's own moments.
+ *
+ * Upload first, then take the ordinary update path — so the attachment is
+ * saved by the same debounced writer everything else on the row is, and a
+ * moment that is not yet savable holds its picture locally until it is.
+ */
+async function onMomentAttach(momentId: string, file: File) {
+  const current = moments.value.find((m) => m.momentId === momentId)
+  if (!current) return
+  try {
+    onMomentUpdate(await attachFrame(current, file))
+  } catch (e) {
+    appStore.setErrorFromRaw(String(e))
+  }
 }
 
 function onMomentRemove(momentId: string) {
@@ -512,6 +528,7 @@ onMounted(() => {
         @update="onMomentUpdate"
         @remove="onMomentRemove"
         @copy-replay="onCopyReplay"
+        @attach="onMomentAttach"
       />
 
       <!-- The coach layer and the player's own sittings: one block per coach
@@ -524,6 +541,7 @@ onMounted(() => {
         :block="block.view"
         :replay-code="record.annotation?.replay_code ?? ''"
         @copy-replay="onCopyReplay"
+        @attach="onMomentAttach"
       />
     </div>
   </section>

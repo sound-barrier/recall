@@ -30,7 +30,7 @@ function harness() {
 
 const KEY = 'match-2026-08-01T20-00-00'
 const note = (text: string) => ({ kind: 'note' as const, text, focusTags: [], extraTags: [], matchClock: '' })
-const moment = (id: string, clock: string, text: string) => ({ momentId: id, matchClock: clock, text, focusTag: '' })
+const moment = (id: string, clock: string, text: string) => ({ momentId: id, matchClock: clock, text, focusTag: '', imageSHA256: '' })
 
 describe('useReviewDrafts', () => {
   it('writes a draft optimistically and PUTs it in wire shape; an emptied draft is a DELETE', async () => {
@@ -67,7 +67,11 @@ describe('useReviewDrafts', () => {
     drafts.updateMoment(KEY, moment('m-1', '04:45', 'peeled late'))
     expect(queued.has(momentSaveKey('m-1'))).toBe(true)
     await runAll()
-    expect(writes.putMoment).toHaveBeenCalledWith(KEY, 'm-1', { match_clock: '04:45', text: 'peeled late' })
+    // image_sha256 rides every write, empty included: an omitted field reads
+    // as "leave it alone", which would make removing a frame impossible.
+    expect(writes.putMoment).toHaveBeenCalledWith(KEY, 'm-1', {
+      match_clock: '04:45', text: 'peeled late', image_sha256: '',
+    })
     expect(drafts.notes.value[KEY]?.kind).toBe('reviewed_only')
   })
 

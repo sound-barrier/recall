@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from 'vue'
+import { useAppStore } from '@/stores/app'
+import { attachFrame } from '@/composables/coach/useMomentAttachment'
 
 import type { ObservedContext } from '@/api-client'
 import CoachDesk from '@/components/coach/room/CoachDesk.vue'
@@ -183,6 +185,23 @@ function confirmPlayer(handle: string, kind: 'player' | 'team'): void {
 function step(key: string | null): void {
   if (key !== null) select(key)
 }
+
+/**
+ * A frame dropped on one of the coach's moments.
+ *
+ * Upload, then take the ordinary update path, so the attachment rides the same
+ * debounced autosave every keystroke on that row already does.
+ */
+async function onAttachMoment(momentId: string, file: File): Promise<void> {
+  const key = room.activeKey.value
+  const current = (props.api.moments()[key] ?? []).find((m) => m.momentId === momentId)
+  if (!current) return
+  try {
+    props.api.updateMoment(key, await attachFrame(current, file))
+  } catch (e) {
+    useAppStore().setErrorFromRaw(String(e))
+  }
+}
 </script>
 
 <template>
@@ -244,6 +263,7 @@ function step(key: string | null): void {
           @update-note="(draft: CoachNoteDraft) => api.updateNote(room.activeKey.value, draft)"
           @update-moment="(m: CoachMoment) => api.updateMoment(room.activeKey.value, m)"
           @remove-moment="(id: string) => api.removeMoment(room.activeKey.value, id)"
+          @attach-moment="onAttachMoment"
           @copy-replay="emit('copy-replay', room.activeKey.value)"
           @remove-frame="emit('remove-frame', room.activeKey.value)"
           @prev="step(room.prevKey.value)"
