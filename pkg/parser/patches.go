@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -33,16 +32,42 @@ type patchesFile struct {
 }
 
 // unmarshalPatches is the loadInto hook for patches.yaml.
+//
+// An empty list is VALID here, unlike every other data file: the shipped file
+// holds only mid-season patches, and there are none this repo can date. The
+// season starts are added by patchesWithSeasonStarts at read time.
 func unmarshalPatches(ds *owDataset, b []byte) error {
 	out, err := parsePatches(b)
 	if err != nil {
 		return err
 	}
-	if len(out) == 0 {
-		return errors.New("no patches in YAML")
-	}
 	ds.patches = out
 	return nil
+}
+
+// patchesWithSeasonStarts is the list the app actually reads: the mid-season
+// patches from patches.yaml, plus one entry per season start.
+//
+// A season start is always a patch, and seasons.yaml is where that instant
+// lives and is corrected. Duplicating it into patches.yaml gave the same fact
+// two homes, and only seasons.yaml reaches an installed copy through Apply
+// Data Update — so a corrected start moved the season filter and left the
+// patch split behind.
+func patchesWithSeasonStarts(patches []Patch, seasons []Season) []Patch {
+	at := make(map[int64]bool, len(patches))
+	for _, p := range patches {
+		at[p.At.UnixMilli()] = true
+	}
+	out := slices.Clone(patches)
+	for _, s := range seasons {
+		if s.Start.IsZero() || at[s.Start.UnixMilli()] {
+			continue
+		}
+		at[s.Start.UnixMilli()] = true
+		out = append(out, Patch{Name: s.Name, At: s.Start, Note: "Season start"})
+	}
+	slices.SortStableFunc(out, func(a, b Patch) int { return a.At.Compare(b.At) })
+	return out
 }
 
 // parsePatches decodes patches.yaml, oldest first.

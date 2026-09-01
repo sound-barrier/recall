@@ -121,6 +121,7 @@ var dataYAMLFiles = []string{
 	"screenshot_sources.yaml",
 	"seasons.yaml",
 	"ranks.yaml",
+	"patches.yaml",
 }
 
 // Apply downloads + verifies + applies the live game data from the
