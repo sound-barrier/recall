@@ -72,15 +72,16 @@ describe('native dialog dispatch (Wails mode)', () => {
     ['ImportMatches', 'LoadMatchImportFromFile', []],
     ['OpenCoachBundle', 'LoadCoachBundleFromFile', []],
     ['ExportCoachNotes', 'SaveCoachNotesToFile', [SHEET]],
-    ['ExportCoachSheet', 'SaveCoachSheetToFile', [SHEET, 'review.html']],
+    ['ExportWebPage', 'SaveWebPageToFile', [SHEET, 'review.html', 'Save coaching review (web page)']],
     ['PickScreenshotsDir', 'PickScreenshotsDir', []],
     ['PickTesseractBinary', 'PickTesseractBinary', []],
   ] as const)('%s dispatches Call.ByName(%s)', async (fn, goMethod, args) => {
     const api = await import('@/api')
     await (api[fn] as (...a: readonly unknown[]) => Promise<unknown>)(...args)
-    // ExportCoachSheet takes (html, name) and dispatches (name, html) — the
+    // ExportWebPage takes (html, name, title) and dispatches (name, html,
+    // title) — the
     // Go dialog wants its default filename first.
-    const expected = fn === 'ExportCoachSheet' ? ['review.html', SHEET] : [...args]
+    const expected = fn === 'ExportWebPage' ? ['review.html', SHEET, 'Save coaching review (web page)'] : [...args]
     expect(callByName).toHaveBeenCalledWith(FQN + goMethod, ...expected)
   })
 

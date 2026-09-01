@@ -188,19 +188,27 @@ func (a *App) SaveTextToFile(defaultName, contents string) (string, error) {
 	return path, nil
 }
 
-// SaveCoachSheetToFile writes the standalone review page a coach hands over.
+// SaveWebPageToFile writes one of the standalone HTML pages the app builds —
+// the review a coach hands over, the recap of a season.
 //
 // A sibling of SaveTextToFile rather than a reuse of it: that dialog says
 // "Save match data (CSV)" and filters for *.csv, and putting it in front of
-// an HTML review would be the wrong dialog on the wrong file. The page
-// itself is built in the frontend, where the real stylesheets are; Go never
-// parses it, exactly as it never parses the ledger inside the archive.
-func (a *App) SaveCoachSheetToFile(defaultName, contents string) (string, error) {
+// an HTML page would be the wrong dialog on the wrong file. `message` is a
+// parameter because the page's own name is what belongs on the dialog, and
+// the second such page proved that a hard-coded one does not generalize.
+//
+// The page itself is built in the frontend, where the real stylesheets are;
+// Go never parses it, exactly as it never parses the ledger inside the
+// archive.
+func (a *App) SaveWebPageToFile(defaultName, contents, message string) (string, error) {
 	if defaultName == "" {
-		defaultName = "recall-coaching-review-" + time.Now().UTC().Format("20060102-150405") + ".html"
+		defaultName = "recall-page-" + time.Now().UTC().Format("20060102-150405") + ".html"
+	}
+	if message == "" {
+		message = "Save web page"
 	}
 	path, err := application.Get().Dialog.SaveFile().
-		SetMessage("Save coaching review (web page)").
+		SetMessage(message).
 		SetFilename(defaultName).
 		AddFilter("Web page", "*.html").
 		AddFilter("All files", "*").
@@ -212,7 +220,7 @@ func (a *App) SaveCoachSheetToFile(defaultName, contents string) (string, error)
 		return "", nil
 	}
 	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
-		return "", fmt.Errorf("write coach sheet: %w", err)
+		return "", fmt.Errorf("write web page: %w", err)
 	}
 	return path, nil
 }

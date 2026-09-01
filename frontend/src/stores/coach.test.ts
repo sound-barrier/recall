@@ -89,7 +89,7 @@ beforeEach(() => {
     DeleteCoachNote: vi.fn(async () => undefined),
     PutCoachFocusItems: vi.fn(async () => undefined),
     ExportCoachNotes: vi.fn(async () => 'recall-coach-notes-sable.zip'),
-    ExportCoachSheet: vi.fn(async () => 'recall-review-sable.html'),
+    ExportWebPage: vi.fn(async () => 'recall-review-sable.html'),
     OpenCoachReplaySession: vi.fn(async () => replaySessionView()),
     AddCoachSessionReplayCode: vi.fn(async () => replaySessionView({ match_count: 2 })),
     SetCoachSessionMatchContext: vi.fn(async () => replaySessionView()),
@@ -475,7 +475,7 @@ describe('coach store — a save that failed', () => {
 
     await coach.exportSheet()
 
-    expect(api.ExportCoachSheet).toHaveBeenCalledTimes(1)
+    expect(api.ExportWebPage).toHaveBeenCalledTimes(1)
     expect(coach.dirtySinceExport).toBe(true)
     expect(app.error).not.toBe('')
   })

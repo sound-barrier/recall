@@ -320,10 +320,11 @@ frontend/tests/e2e/match                      27
 # beside the session tally and the tilt nudge. Same folder for the same
 # reason those are here: it is driven by the parse lifecycle over the
 # matches view, not by the Reviews tab whose data it happens to show.
-# 28: live-session-banner.spec.ts. The rail is chrome that follows the player
-# onto every tab, but what it reports is a session over the match corpus, so
-# it belongs with the specs that drive that corpus.
-frontend/tests/e2e/matches                    28
+# 27 -> 29: live-session-banner.spec.ts and roster-lookup.spec.ts. The rail is
+# chrome that follows the player onto every tab, and the roster is maintained
+# in Settings — but what each one REPORTS is about the match corpus, so both
+# belong with the specs that drive it.
+frontend/tests/e2e/matches                    29
 
 # frontend/tests/e2e/narrow — everything that shrinks the set: the narrow panel
 # facets (time scope, season, teammates, reviewed-by, since-anchor, leaver /

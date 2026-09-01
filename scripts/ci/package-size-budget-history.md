@@ -112,3 +112,4 @@ a folder silently regrows what it just shed.
 | 2026-08-31 | seasonal-recap-and-attachments | frontend/src/api | 13 → 14 | `roster.ts` — one file per endpoint family, like every sibling. |
 | 2026-08-31 | seasonal-recap-and-attachments | frontend/src/components/settings | 16 → 18 | `SettingsRoster.vue` + its stylesheet. Settings owns all config, and a roster is config. |
 | 2026-08-31 | seasonal-recap-and-attachments | frontend/tests/e2e/matches | 27 → 28 | `live-session-banner.spec.ts` — chrome, but what it reports is a session over the match corpus. |
+| 2026-08-31 | seasonal-recap-and-attachments | frontend/tests/e2e/matches | 28 → 29 | `roster-lookup.spec.ts` — maintained in Settings, but what it proves is what a match's Group chip says. |

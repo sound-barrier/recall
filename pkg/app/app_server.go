@@ -96,11 +96,11 @@ func (a *App) SaveTextToFile(_, _ string) (string, error) {
 	return "", errors.New("native dialogs unavailable in server mode; the browser downloads the CSV client-side")
 }
 
-// SaveCoachSheetToFile is not available in server mode (no native dialogs).
+// SaveWebPageToFile is not available in server mode (no native dialogs).
 // The browser builds the HTML Blob and triggers a download client-side, so
 // no server round-trip is needed.
-func (a *App) SaveCoachSheetToFile(_, _ string) (string, error) {
-	return "", errors.New("native dialogs unavailable in server mode; the browser downloads the review client-side")
+func (a *App) SaveWebPageToFile(_, _, _ string) (string, error) {
+	return "", errors.New("native dialogs unavailable in server mode; the browser downloads the page client-side")
 }
 
 // LoadRestoreFromFile is not available in server mode (no native dialogs).
