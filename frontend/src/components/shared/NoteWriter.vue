@@ -3,6 +3,7 @@ import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, ref, useTemp
 
 import NoteProse from '@/components/shared/NoteProse.vue'
 import { pluralize } from '@/match/match-label-helpers'
+import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
 import { useUiStore } from '@/stores/ui'
 
 import { applyInlineMark, applyLineMark, type InlineMark, type LineMark } from '@/match/markdown/note-toolbar'
@@ -67,7 +68,16 @@ const props = defineProps<{
    * coach's note, not the two-line field in a form that is mostly pickers.
    */
   expandable?: boolean
+  /**
+   * The cap this field's own server accepts, when it is not the note cap.
+   * The send-to-coach message is 2000 runes (bundle.maxPlayerMessageRunes);
+   * refusing the 2001st keystroke here is what keeps that refusal from
+   * arriving later, at Send, detached from the sentence that caused it.
+   */
+  maxLength?: number
 }>()
+
+const maxChars = computed(() => props.maxLength ?? MAX_NOTE_TEXT)
 
 const emit = defineEmits<{
   'update:text': [text: string]
@@ -146,12 +156,29 @@ function onExpandedKeydown(e: KeyboardEvent): void {
   expanded.value = false
 }
 
+// Tab containment and the page-scroll freeze, from the shared trap. `inert`
+// on the hosts is NOT enough: this teleports to <body>, and the overlay layer
+// and the toasts live outside the container that gets inerted — so without
+// containment Tab walks onto controls this surface is painting over, and
+// Enter on one of them navigates the app out from under a half-written note.
+//
+// Its own Escape never fires: the capture-phase handler above stops the event
+// before it reaches the trap's bubble-phase listener, which is what keeps one
+// press from closing this AND the panel underneath.
+useModalFocusTrap(expanded, {
+  containerSelector: '.note-writer-expanded',
+  onClose: () => { expanded.value = false },
+  // The markup-first focusable is a formatting button. Someone who expanded a
+  // writer means to write.
+  initialFocus: () => focusField(),
+  // Not back to Expand — that control reopens what was just closed.
+  restoreFocus: false,
+})
+
 watch(expanded, async (open) => {
   uiStore.expandedWriterOpen = open
   if (open) {
     document.addEventListener('keydown', onExpandedKeydown, true)
-    await nextTick()
-    focusField()
     return
   }
   document.removeEventListener('keydown', onExpandedKeydown, true)
@@ -203,7 +230,7 @@ function isActive(mark: string): boolean {
 // ── raw mode: the pure text transforms, exactly as before ────────────────
 
 function applyRawEdit(next: { text: string; start: number; end: number }): void {
-  if (next.text.length > MAX_NOTE_TEXT) return
+  if (next.text.length > maxChars.value) return
   emit('update:text', next.text)
   void nextTick(() => {
     const field = rawField.value
@@ -323,7 +350,7 @@ defineExpose({ focus: focusField })
       ref="root"
       v-bind="$attrs"
       class="note-writer"
-      :class="{ 'note-writer-expanded': expanded }"
+      :class="{ 'note-writer-expanded': expanded, paper: expanded && surface === 'paper' }"
       :role="expanded ? 'dialog' : undefined"
       :aria-modal="expanded ? 'true' : undefined"
       :aria-label="expanded ? label : undefined"
@@ -422,7 +449,7 @@ defineExpose({ focus: focusField })
           rows="5"
           :value="text"
           :aria-label="label"
-          :maxlength="MAX_NOTE_TEXT"
+          :maxlength="maxChars"
           :disabled="disabled"
           :title="blockedReason"
           :placeholder="placeholder"

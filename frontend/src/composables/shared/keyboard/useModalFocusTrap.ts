@@ -37,11 +37,21 @@ export interface ModalFocusTrapOptions {
   // simple modals keep "Esc anywhere closes". Forms (the Add-match modal, the
   // Filter-matches panel) opt in so a mid-entry Esc doesn't lose the work.
   keepOpenOnFieldEscape?: boolean
+  // Where focus goes as the modal opens, when the markup-first focusable is
+  // the wrong answer. A writing surface wants the FIELD; its first focusable
+  // is a formatting button, and landing there means the first keystroke does
+  // not go where the writer is looking.
+  initialFocus?: () => void
+  // Skip returning focus to the trigger on close. For a surface that reopens
+  // from the control it restores to — the expanded note writer — putting
+  // focus back on that trigger means the next Space or Enter reopens it; the
+  // caller puts focus somewhere better itself.
+  restoreFocus?: boolean
 }
 
 export function useModalFocusTrap(
   open: Ref<boolean>,
-  { containerSelector, onClose, keepOpenOnFieldEscape }: ModalFocusTrapOptions,
+  { containerSelector, onClose, keepOpenOnFieldEscape, initialFocus, restoreFocus = true }: ModalFocusTrapOptions,
 ) {
   const lastFocusedBeforeModal = ref<HTMLElement | null>(null)
 
@@ -129,7 +139,8 @@ export function useModalFocusTrap(
       // sheet's only focusable is the Close button at the bottom,
       // and a default `.focus()` would auto-scrollIntoView and
       // open the modal already scrolled to the foot.
-      focusable()[0]?.focus({ preventScroll: true })
+      if (initialFocus) initialFocus()
+      else focusable()[0]?.focus({ preventScroll: true })
     } else {
       document.removeEventListener('keydown', onKeydown)
       const prev = lastFocusedBeforeModal.value
@@ -140,7 +151,7 @@ export function useModalFocusTrap(
       // focus to a trigger that scrolled off-screen doesn't yank the
       // page to it on close.
       await nextTick()
-      prev?.focus({ preventScroll: true })
+      if (restoreFocus) prev?.focus({ preventScroll: true })
     }
   }, { immediate: true })
 

@@ -134,4 +134,59 @@ test.describe('expanded writing mode', () => {
     await expandBtn(page).click()
     await expect(page.locator('aside.detail-panel')).toHaveAttribute('inert', '')
   })
+
+  test('keeps Tab inside it, so nothing invisible can be reached', async ({ page }) => {
+    // It is an opaque full-viewport surface teleported to <body>. The inert
+    // treatment covers .container, but AppOverlays and the toast layer live
+    // outside it — so without containment, Tab walks onto controls the writer
+    // is painting over. Pressing Enter on one of those navigates the app out
+    // from under someone mid-sentence.
+    await openJournal(page, 'Hold the high ground')
+    await expandBtn(page).click()
+    await expect(expanded(page)).toBeVisible()
+
+    const inside: boolean[] = []
+    for (let i = 0; i < 20; i++) {
+      await page.keyboard.press('Tab')
+      inside.push(await page.evaluate(() => {
+        const box = document.querySelector('.note-writer-expanded')
+        const el = document.activeElement
+        return !!box && !!el && box.contains(el)
+      }))
+    }
+    expect(inside.every(Boolean), 'focus left the expanded writer').toBe(true)
+  })
+
+  test('freezes the page behind it', async ({ page }) => {
+    // position: fixed covers the page; it does not stop the wheel.
+    await openJournal(page, 'Hold the high ground')
+    await expandBtn(page).click()
+    await expect(expanded(page)).toBeVisible()
+    const locked = await page.evaluate(() => document.documentElement.style.overflow)
+    expect(locked).toBe('hidden')
+  })
+
+  test('puts the caret in the field, not on the page, as it opens', async ({ page }) => {
+    // Half the time the first keystroke after Expand went to <body>: the
+    // ProseMirror instance had just been moved by the Teleport.
+    await openJournal(page, 'Hold the high ground')
+    await expandBtn(page).click()
+    await expect(expanded(page).getByRole('textbox', { name: 'Note' })).toBeFocused()
+  })
+
+  test('survives a click on its own margin, which takes focus off the field', async ({ page }) => {
+    // Clicking the padding drops focus to <body>, firing focusout on the
+    // writer. Forwarding that as a blur tells the journal "done editing",
+    // which unmounts the writer — out from under a half-written note, on a
+    // click that should have done nothing at all.
+    await openJournal(page, 'Hold the high ground')
+    await expandBtn(page).click()
+    await expect(expanded(page)).toBeVisible()
+
+    await expanded(page).click({ position: { x: 4, y: 4 } })
+    await page.waitForTimeout(60)
+
+    await expect(expanded(page)).toBeVisible()
+    await expect(expanded(page).getByRole('textbox', { name: 'Note' })).toBeVisible()
+  })
 })

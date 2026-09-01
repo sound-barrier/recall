@@ -48,6 +48,19 @@ for (const theme of THEMES) {
     expect(found.list, found.detail).toEqual([])
   })
 
+  // The coach's note expanded. It teleports to <body>, which leaves `.paper`
+  // behind — the writer carries the class itself so the ink palette travels,
+  // and this is what proves the traveled version still reads. The journal's
+  // expanded writer is scanned in a11y.spec.ts; that one is `surface="plain"`
+  // and exercises none of the paper tokens.
+  test(`a11y: expanded coach note on paper (${theme} theme) has no axe violations`, async ({ page }) => {
+    await openCoachRoom(page, theme)
+    await page.getByRole('button', { name: /^Expand / }).first().click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    const found = await violations(page)
+    expect(found.list, found.detail).toEqual([])
+  })
+
   test(`a11y: in-session Matches with the loan slip (${theme} theme) has no axe violations`, async ({ page }) => {
     await openCoachRoom(page, theme)
     await page.getByRole('tab', { name: /^Matches/ }).click()

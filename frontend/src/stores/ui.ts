@@ -84,7 +84,14 @@ export const useUiStore = defineStore('ui', () => {
   // directly + App/AppOverlays read them without prop/emit drilling.
   // Whether a NoteWriter is expanded to the full viewport. App-level rather
   // than local to the writer because the surface underneath — a detail panel,
-  // the film room — has to go inert, and only one can be open at a time.
+  // the film room — has to go inert.
+  //
+  // A BOOLEAN, not a count, because exactly one can be open: each host renders
+  // one expandable writer (the detail panel one MatchCardExpanded, the desk one
+  // CoachNoteEditor, the send dialog one field), and the writer's focus trap
+  // resolves `.note-writer-expanded` with a single querySelector for the same
+  // reason. If a host ever renders two, this and that selector both need to
+  // learn it — last-writer-wins here would un-inert the app under the second.
   const expandedWriterOpen = ref(false)
 
   const narrowOpen = ref(false)

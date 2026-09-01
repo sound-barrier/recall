@@ -222,9 +222,12 @@ function onSend(): void {
           The bundle is signed with this — Send stays off until it has a name.
         </p>
 
-        <label class="send-to-coach-field-label" for="send-to-coach-message">
+        <!-- Visual furniture, not a <label>: `for` cannot associate with a
+             contenteditable, and the writer names its own field. Same reason
+             ManualMatchForm and CoachNoteEditor stopped using one. -->
+        <p class="send-to-coach-field-label">
           Message for your coach (optional)
-        </label>
+        </p>
         <!-- The coach reads this in their session sheet, where it renders as
              markdown — so it is written on the same surface every other piece
              of prose in the app is written on. Expandable, because "what do
@@ -232,6 +235,7 @@ function onSend(): void {
              a page. -->
         <NoteWriter
           expandable
+          :max-length="2000"
           field-id="send-to-coach-message"
           class="send-to-coach-message"
           label="Message for your coach (optional)"

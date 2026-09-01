@@ -297,4 +297,48 @@ describe('NoteWriter — the expanded writing surface', () => {
     const preview = screen.getByRole('region', { name: 'Preview' })
     expect(within(preview).getByText('bold')).toBeInTheDocument()
   })
+
+  // NOTE: the "no blur while expanded" guard is covered by the e2e
+  // (note-expanded-writing.spec.ts, "survives a click on its own margin"),
+  // not here. In a unit environment the focus trap has already put focus in
+  // the field by the time the deferred focusout check runs, so the guard
+  // never decides anything — a test here passes with the guard removed, and
+  // a test that cannot fail for a real reason is worse than none.
+
+  it('still reports a blur once it is back inline', async () => {
+    // The guard is about the expanded state, not a blanket silence.
+    const view = await writer({ expandable: true, text: 'written' })
+    // focusout bubbles, so firing it on the field reaches the writer's own
+    // handler. Nothing is focused on a fresh collapsed render, so the
+    // handler's "is focus still inside me?" check answers no on its own.
+    await fireEvent.focusOut(screen.getByRole('textbox', { name: 'Note' }))
+    await new Promise((r) => setTimeout(r, 5))
+
+    expect(view.emitted('blur')).toHaveLength(1)
+  })
+
+  it('lets the app go if it is torn down while expanded', async () => {
+    // The host can vanish under it — the detail panel closes, the match is
+    // deleted. A flag left true would inert the whole app with nothing open.
+    const view = await writer({ expandable: true })
+    const ui = useUiStore()
+    await fireEvent.click(screen.getByRole('button', { name: 'Expand Note' }))
+    expect(ui.expandedWriterOpen).toBe(true)
+
+    view.unmount()
+    expect(ui.expandedWriterOpen).toBe(false)
+  })
+
+  it('passes a host attribute through to its own element', async () => {
+    // The root is a Teleport, which cannot receive fallthrough attributes —
+    // hence inheritAttrs:false plus an explicit v-bind. Without it a host's
+    // class or title silently vanishes.
+    setActivePinia(createPinia())
+    render(NoteWriter, {
+      props: { text: '', label: 'Note', placeholder: 'x' },
+      attrs: { title: 'from the host' },
+    })
+    await editorReady()
+    expect(screen.getByTitle('from the host')).toBeInTheDocument()
+  })
 })
