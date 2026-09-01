@@ -27,8 +27,10 @@ func at(s string) time.Time {
 
 func shipped() rosterwatch.Shipped {
 	return rosterwatch.Shipped{
-		HeroesByRole:    map[string][]string{"dps": {"Ashe", "Mei"}, "tank": {"D.va"}},
-		MapsByGameMode:  map[string][]string{"control": {"Ilios"}, "hybrid": {"King's Row"}},
+		HeroesByRole: map[string][]string{"dps": {"Ashe", "Mei"}, "tank": {"D.va"}},
+		// Three tracked modes, because the map comparison reads the tracked set
+		// off this map — a fixture with one mode cannot exercise the filter.
+		MapsByGameMode:  map[string][]string{"control": {"Ilios"}, "hybrid": {"King's Row"}, "push": {"Colosseo"}},
 		NewestPatch:     at("2026-08-11T19:00:00Z"),
 		NewestSeasonEnd: at("2126-10-13T19:00:00Z"),
 	}
@@ -105,6 +107,82 @@ func TestCompare_ReportsASpellingDifferenceRatherThanARemoval(t *testing.T) {
 	// would ask the maintainer to add a hero they already have.
 	if slices.Contains(kinds(got), rosterwatch.KindHeroMissing) {
 		t.Errorf("kinds = %v, must not also claim the hero is missing", kinds(got))
+	}
+}
+
+// maps.yaml tracks the COMPETITIVE modes only. Upstream lists every map in the
+// game — deathmatch, workshop, the practice range — and proposing those would
+// bury a real new map under two dozen that do not belong in the file.
+//
+// The filter reads the modes off the shipped file rather than hard-coding
+// them, so it cannot fall out of step with what maps.yaml actually files under.
+func TestCompare_IgnoresAMapInAModeTheRosterDoesNotTrack(t *testing.T) {
+	up := upstream()
+	up.Maps = append(up.Maps,
+		rosterwatch.Map{Name: "Petra", GameMode: "deathmatch"},
+		rosterwatch.Map{Name: "Workshop Island", GameMode: "workshop"},
+		rosterwatch.Map{Name: "Redwood Dam", GameMode: "push"})
+
+	got := rosterwatch.Compare(shipped(), up, now, nil)
+	if len(got.Findings) != 1 {
+		t.Fatalf("findings = %+v, want only the push map", got.Findings)
+	}
+	if got.Findings[0].Name != "Redwood Dam" {
+		t.Errorf("finding = %+v, want Redwood Dam", got.Findings[0])
+	}
+}
+
+// A map the roster spells differently is a spelling difference, not a second
+// map. Reported as an addition it would be APPLIED as one, leaving the roster
+// carrying both — which is how "Hanoaka" and "Hanaoka" would have ended up
+// side by side, the exact shape of the Neon Function incident.
+func TestCompare_ReportsAMapSpellingRatherThanASecondMap(t *testing.T) {
+	ship := shipped()
+	ship.MapsByGameMode["clash"] = []string{"Hanoaka"}
+	up := upstream()
+	up.Maps = append(up.Maps, rosterwatch.Map{Name: "Hanaoka", GameMode: "clash"})
+
+	got := rosterwatch.Compare(ship, up, now, nil)
+	if len(got.Findings) != 1 || got.Findings[0].Kind != rosterwatch.KindMapSpelling {
+		t.Fatalf("findings = %+v, want one %s", got.Findings, rosterwatch.KindMapSpelling)
+	}
+}
+
+// Upstream writes King's Row with a typographic apostrophe; the roster uses the
+// ASCII one. parser.Normalize folds diacritics and colons but not quote marks,
+// so without folding here the app's most-played map reads as missing.
+func TestCompare_FoldsATypographicApostrophe(t *testing.T) {
+	up := upstream()
+	up.Maps = []rosterwatch.Map{{Name: "Ilios", GameMode: "control"}, {Name: "King\u2019s Row", GameMode: "hybrid"}}
+
+	got := rosterwatch.Compare(shipped(), up, now, nil)
+	if len(got.Findings) != 0 {
+		t.Fatalf("findings = %+v, want none — it is the same map", got.Findings)
+	}
+}
+
+// A dropped colon IS reported, and a quote-style difference is not — the line
+// between them is whether the roster made a choice.
+//
+// U+2019 and U+0027 are two renderings of one apostrophe; neither spelling is a
+// decision anybody took. But the roster keeps the colon in "Soldier: 76" and
+// drops it in "Watchpoint Gibraltar", so dropping it is a choice, and a choice
+// that disagrees with Blizzard is worth putting in front of the maintainer
+// once. The accepted list is where it goes to rest.
+func TestCompare_ReportsADroppedColonEvenThoughItStillMatches(t *testing.T) {
+	ship := shipped()
+	ship.MapsByGameMode["escort"] = []string{"Watchpoint Gibraltar"}
+	up := upstream()
+	up.Maps = append(up.Maps, rosterwatch.Map{Name: "Watchpoint: Gibraltar", GameMode: "escort"})
+
+	got := rosterwatch.Compare(ship, up, now, nil)
+	if len(got.Findings) != 1 || got.Findings[0].Kind != rosterwatch.KindMapSpelling {
+		t.Fatalf("findings = %+v, want one %s", got.Findings, rosterwatch.KindMapSpelling)
+	}
+	// Reported as a spelling, never as a missing map: the two names already
+	// match on the comparison key, so writing it would add a duplicate.
+	if got.Findings[0].Kind == rosterwatch.KindMapMissing {
+		t.Error("a dropped colon must not propose a second map")
 	}
 }
 

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -105,14 +104,3 @@ func getBytes(client *http.Client, url string) ([]byte, error) {
 	}
 	return b, nil
 }
-
-// unescape turns the handful of HTML entities Blizzard's roster names actually
-// carry back into the runes heroes.yaml stores. strings.NewReplacer rather than
-// html.UnescapeString so the set is explicit and reviewable — these names are
-// about to be proposed as canonical, and a silent mis-decode is precisely the
-// class of bug this package exists to prevent.
-var unescape = strings.NewReplacer(
-	"&amp;", "&", "&#39;", "'", "&rsquo;", "’", "&quot;", `"`,
-	"&uacute;", "ú", "&oacute;", "ó", "&ouml;", "ö", "&iacute;", "í",
-	"&ccedil;", "ç", "&atilde;", "ã", "&eacute;", "é", "&ndash;", "–",
-)

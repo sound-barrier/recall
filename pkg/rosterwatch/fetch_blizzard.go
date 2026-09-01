@@ -2,6 +2,7 @@ package rosterwatch
 
 import (
 	"fmt"
+	"html"
 	"net/http"
 	"regexp"
 	"strings"
@@ -16,14 +17,22 @@ import (
 // instead of guessing, so the cost of a Blizzard redesign is a red job and a
 // one-line fix, not a wrong roster.
 
-// A hero card links to /heroes/<slug>/ and carries the display name in its
-// text. The role rides on the card as a data attribute; when it does not, the
-// hero is still reported — just without a role, so the tool declines to write
-// it and asks a human which key it files under.
+// A hero card is an <a class="hero-card"> carrying the role as a data
+// attribute and the display name in an <h2 slot="heading">.
+//
+// The NAME comes from that heading and not from the card's text, which also
+// contains a "New" badge — reading the whole card gave every hero on the live
+// page a name like "Ana      New" while a hand-written fixture said otherwise.
+// The recorded fixture carries the badge for that reason.
 var (
-	heroCardRe = regexp.MustCompile(`(?is)<a[^>]+href="[^"]*/heroes/([a-z0-9\-]+)/?"[^>]*>(.*?)</a>`)
-	roleAttrRe = regexp.MustCompile(`(?i)data-role="([a-z]+)"`)
-	tagRe      = regexp.MustCompile(`(?s)<[^>]*>`)
+	heroCardRe    = regexp.MustCompile(`(?is)<a[^>]*class="hero-card".*?</a>`)
+	heroHeadingRe = regexp.MustCompile(`(?is)<h2[^>]*slot="heading"[^>]*>(.*?)</h2>`)
+	roleAttrRe    = regexp.MustCompile(`(?i)data-role="([a-z]+)"`)
+	tagRe         = regexp.MustCompile(`(?s)<[^>]*>`)
+	// Comments are stripped before any of the above run. A comment that talks
+	// ABOUT the markup matches the pattern for the markup — which this
+	// package's own fixture proved, by describing the card it contains.
+	commentRe = regexp.MustCompile(`(?s)<!--.*?-->`)
 )
 
 // FetchHeroes reads Blizzard's hero index.
@@ -34,19 +43,25 @@ func FetchHeroes(client *http.Client) ([]Hero, error) {
 	}
 	seen := map[string]bool{}
 	var out []Hero
-	for _, m := range heroCardRe.FindAllSubmatch(body, -1) {
-		name := textOf(m[2])
+	for _, card := range heroCardRe.FindAll(stripComments(body), -1) {
+		heading := heroHeadingRe.FindSubmatch(card)
+		if heading == nil {
+			continue
+		}
+		name := textOf(heading[1])
 		if name == "" || seen[name] {
 			continue
 		}
 		seen[name] = true
-		out = append(out, Hero{Name: name, Role: roleFrom(string(m[0]))})
+		out = append(out, Hero{Name: name, Role: roleFrom(string(card))})
 	}
 	if len(out) == 0 {
 		return nil, fmt.Errorf("%w: no hero cards at %s", ErrSourceUnreadable, HeroesURL)
 	}
 	return out, nil
 }
+
+func stripComments(doc []byte) []byte { return commentRe.ReplaceAll(doc, nil) }
 
 // roleFrom maps Blizzard's role word onto the key heroes.yaml files under.
 // Their "damage" is this repo's "dps" — the YAML key, and the string every
@@ -67,9 +82,13 @@ func roleFrom(card string) string {
 	return ""
 }
 
-// textOf strips tags and entities out of a fragment's inner HTML.
+// textOf strips tags out of a fragment and decodes entities.
+//
+// html.UnescapeString rather than a hand-kept replacer: these names are about
+// to be proposed as canonical, and a half-decoded one is precisely the class of
+// error — a name that looks almost right — this package exists to catch.
 func textOf(fragment []byte) string {
-	return strings.TrimSpace(unescape.Replace(string(tagRe.ReplaceAll(fragment, []byte(" ")))))
+	return strings.TrimSpace(html.UnescapeString(string(tagRe.ReplaceAll(fragment, []byte(" ")))))
 }
 
 // Blizzard writes every patch heading as "Overwatch ... Patch Notes – <date>",
@@ -88,6 +107,7 @@ func FetchPatchDates(client *http.Client) ([]time.Time, error) {
 	if err != nil {
 		return nil, err
 	}
+	body = stripComments(body)
 	seen := map[string]bool{}
 	var out []time.Time
 	for _, m := range patchHeadingRe.FindAllSubmatch(body, -1) {

@@ -25,6 +25,7 @@ const (
 	KindHeroMissing   = "hero-missing"
 	KindHeroSpelling  = "hero-spelling"
 	KindMapMissing    = "map-missing"
+	KindMapSpelling   = "map-spelling"
 	KindPatchMissing  = "patch-missing"
 	KindSeasonExpired = "season-expired"
 	KindChannelStale  = "channel-stale"
@@ -157,49 +158,168 @@ func Compare(shipped Shipped, up Upstream, now time.Time, accepted Accepted) Rep
 // SPELLING difference — Blizzard does not delete heroes, and reporting D.Va as
 // an addition when D.va is already there asks for a hero the roster has.
 func heroFindings(shipped Shipped, up Upstream) []Finding {
-	have := map[string]string{} // normalized -> shipped display name
+	have := map[string]string{} // comparison key -> shipped display name
 	for _, names := range shipped.HeroesByRole {
 		for _, n := range names {
-			have[parser.Normalize(n)] = n
+			have[compareKey(n)] = n
 		}
 	}
 	var out []Finding
 	for _, h := range up.Heroes {
-		shippedName, known := have[parser.Normalize(h.Name)]
-		switch {
-		case !known:
+		shippedName, known := have[compareKey(h.Name)]
+		if !known {
+			if near := nearest(h.Name, have); near != "" {
+				out = append(out, Finding{
+					Kind: KindHeroSpelling, Name: h.Name, Group: h.Role,
+					Detail: fmt.Sprintf("hero named %q upstream, %q in heroes.yaml — one is a typo, not two heroes", h.Name, near),
+				})
+				continue
+			}
 			out = append(out, Finding{
 				Kind: KindHeroMissing, Name: h.Name, Group: h.Role,
 				Detail: fmt.Sprintf("hero %q (%s) is upstream and not in heroes.yaml", h.Name, h.Role),
 			})
-		case shippedName != h.Name:
-			out = append(out, Finding{
-				Kind: KindHeroSpelling, Name: h.Name, Group: h.Role,
-				Detail: fmt.Sprintf("hero spelled %q upstream, %q in heroes.yaml", h.Name, shippedName),
-			})
+			continue
 		}
+		if sameButForQuotes(shippedName, h.Name) {
+			continue
+		}
+		out = append(out, Finding{
+			Kind: KindHeroSpelling, Name: h.Name, Group: h.Role,
+			Detail: fmt.Sprintf("hero spelled %q upstream, %q in heroes.yaml", h.Name, shippedName),
+		})
 	}
 	return out
 }
 
+// mapFindings compares only the modes maps.yaml actually files under.
+//
+// Upstream lists every map in the game — deathmatch, elimination, the workshop
+// rooms, the practice range. maps.yaml is the COMPETITIVE roster, and proposing
+// two dozen arcade maps would bury the one new competitive map among them. The
+// tracked set is read off the shipped file, so it cannot drift from it.
+//
+// A mode the roster does not track yet is therefore invisible here. That is the
+// right trade: a new game mode is a bigger change than a bot should propose — it
+// needs a regex in text.go and an entry in the frontend's GAME_MODES  and the
+// patch-notes signal announces one anyway.
 func mapFindings(shipped Shipped, up Upstream) []Finding {
-	have := map[string]bool{}
-	for _, names := range shipped.MapsByGameMode {
+	tracked := map[string]bool{}
+	have := map[string]string{} // comparison key -> shipped display name
+	for mode, names := range shipped.MapsByGameMode {
+		tracked[mode] = true
 		for _, n := range names {
-			have[parser.Normalize(n)] = true
+			have[compareKey(n)] = n
 		}
 	}
 	var out []Finding
 	for _, m := range up.Maps {
-		if have[parser.Normalize(m.Name)] {
+		if !tracked[m.GameMode] {
+			continue
+		}
+		shippedName, known := have[compareKey(m.Name)]
+		if !known {
+			if near := nearest(m.Name, have); near != "" {
+				out = append(out, Finding{
+					Kind: KindMapSpelling, Name: m.Name, Group: m.GameMode,
+					Detail: fmt.Sprintf("map named %q upstream, %q in maps.yaml — one is a typo, not two maps", m.Name, near),
+				})
+				continue
+			}
+			out = append(out, Finding{
+				Kind: KindMapMissing, Name: m.Name, Group: m.GameMode,
+				Detail: fmt.Sprintf("map %q (%s) is upstream and not in maps.yaml", m.Name, m.GameMode),
+			})
+			continue
+		}
+		if sameButForQuotes(shippedName, m.Name) {
 			continue
 		}
 		out = append(out, Finding{
-			Kind: KindMapMissing, Name: m.Name, Group: m.GameMode,
-			Detail: fmt.Sprintf("map %q (%s) is upstream and not in maps.yaml", m.Name, m.GameMode),
+			Kind: KindMapSpelling, Name: m.Name, Group: m.GameMode,
+			Detail: fmt.Sprintf("map spelled %q upstream, %q in maps.yaml", m.Name, shippedName),
 		})
 	}
 	return out
+}
+
+// maxTypoDistance is how far apart two names can be and still be one name
+// spelled two ways.
+//
+// Two is enough for a transposition ("Hanoaka" / "Hanaoka") or a single
+// substituted letter ("Neon Function" / "Neon Junction" — the garble that sat
+// canonical in maps.yaml for seven weeks), and tight enough that two genuinely
+// different short names do not collapse into one. A near miss is REPORTED, never
+// written: which of the two spellings is right is exactly the judgment a
+// scraper cannot make.
+var quoteFold = strings.NewReplacer("\u2019", "'", "\u2018", "'", "\u02bc", "'")
+
+const maxTypoDistance = 2
+
+// nearest returns the shipped name a near-miss upstream name probably IS, or
+// "" when nothing is close enough to be a spelling of it.
+func nearest(name string, have map[string]string) string {
+	key := compareKey(name)
+	best, bestDist := "", maxTypoDistance+1
+	for shippedKey, display := range have {
+		// A short name can be two edits from an unrelated one, so the guard is
+		// on length as well as distance.
+		if len(shippedKey) < 5 || len(key) < 5 {
+			continue
+		}
+		if d := editDistance(shippedKey, key); d < bestDist {
+			best, bestDist = display, d
+		}
+	}
+	if bestDist > maxTypoDistance {
+		return ""
+	}
+	return best
+}
+
+// editDistance is Levenshtein over runes. pkg/parser has one, unexported and
+// tuned for snapping OCR noise onto the roster; this one answers a different
+// question — whether two CANONICAL names are one typo apart — so it lives here
+// rather than widening that one's surface.
+func editDistance(a, b string) int {
+	ar, br := []rune(a), []rune(b)
+	prev := make([]int, len(br)+1)
+	curr := make([]int, len(br)+1)
+	for j := range prev {
+		prev[j] = j
+	}
+	for i := 1; i <= len(ar); i++ {
+		curr[0] = i
+		for j := 1; j <= len(br); j++ {
+			cost := 1
+			if ar[i-1] == br[j-1] {
+				cost = 0
+			}
+			curr[j] = min(min(curr[j-1]+1, prev[j]+1), prev[j-1]+cost)
+		}
+		prev, curr = curr, prev
+	}
+	return prev[len(br)]
+}
+
+// compareKey is how two spellings of one name are recognized as one name.
+//
+// parser.Normalize does the heavy lifting — lowercase, diacritics, the colon in
+// "Watchpoint: Gibraltar" — but it does not touch quote marks, and upstream
+// writes King’s Row with a typographic apostrophe where the roster uses the
+// ASCII one. Folded HERE rather than in Normalize: that function decides what
+// OCR text matches the roster, and widening it would change parsing everywhere
+// to fix a difference that only exists between this repo and a web page.
+func compareKey(name string) string {
+	return parser.Normalize(quoteFold.Replace(name))
+}
+
+// sameButForQuotes reports whether two display names differ only in quote
+// style. Upstream renders King’s Row with a typographic apostrophe; the roster
+// uses the ASCII one, and neither is wrong — reporting it every week would be
+// noise the maintainer has to silence rather than a difference to act on.
+func sameButForQuotes(a, b string) bool {
+	return quoteFold.Replace(a) == quoteFold.Replace(b)
 }
 
 // patchFindings reports every upstream patch newer than the newest boundary the
