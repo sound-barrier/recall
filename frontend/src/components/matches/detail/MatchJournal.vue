@@ -14,7 +14,7 @@ import { useCoachAutosave } from '@/composables/coach/useCoachAutosave'
 import { useMatchAnnotationEditor } from '@/composables/matches/detail/useMatchAnnotationEditor'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
-import NoteProse from '@/components/coach/notes/NoteProse.vue'
+import NoteProse from '@/components/shared/NoteProse.vue'
 import NoteWriter from '@/components/shared/NoteWriter.vue'
 
 // The expanded match card's MATCH JOURNAL — note / replay / squad / tags
@@ -301,6 +301,7 @@ onMounted(() => {
         <NoteWriter
           v-else
           ref="noteFieldRef"
+          expandable
           :text="noteDraft"
           label="Note"
           :field-id="`note-${record.match_key}`"
@@ -314,6 +315,7 @@ onMounted(() => {
           @update:text="noteDraft = $event"
           @focus="isEditingNote = true"
           @blur="exitNoteEditMode"
+          @commit="commitAnnotation('note')"
         />
       </div>
 

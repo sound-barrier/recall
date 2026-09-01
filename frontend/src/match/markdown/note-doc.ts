@@ -233,3 +233,17 @@ export function docToMarkdown(doc: NoteDoc): string {
     .filter((s) => s !== '')
     .join('\n\n')
 }
+
+/**
+ * Words in a note, for the expanded writing surface's counter.
+ *
+ * Whitespace-separated runs, which is what a person means by "words" when
+ * they are looking at a draft. Markdown markers travel attached to the word
+ * they mark (`**high**` is one word, as it reads), and a line of only markup
+ * is not a word — which is why this trims before it splits rather than
+ * counting separators.
+ */
+export function wordCount(text: string): number {
+  const trimmed = text.trim()
+  return trimmed === '' ? 0 : trimmed.split(/\s+/).length
+}

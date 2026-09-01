@@ -230,6 +230,7 @@ function toggleReviewed(): void {
          its editor state across two different players' notes. -->
     <NoteWriter
       :key="matchKey"
+      expandable
       :text="draft.text"
       label="Note"
       :placeholder="notePlaceholder"

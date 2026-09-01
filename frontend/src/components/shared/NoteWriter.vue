@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
+
+import NoteProse from '@/components/shared/NoteProse.vue'
+import { pluralize } from '@/match/match-label-helpers'
+import { useUiStore } from '@/stores/ui'
 
 import { applyInlineMark, applyLineMark, type InlineMark, type LineMark } from '@/match/markdown/note-toolbar'
-import { MAX_NOTE_TEXT } from '@/match/markdown/note-doc'
+import { MAX_NOTE_TEXT, wordCount } from '@/match/markdown/note-doc'
 
 // The note WRITING surface, for both editors that have one.
 //
@@ -20,6 +24,11 @@ import { MAX_NOTE_TEXT } from '@/match/markdown/note-doc'
 // Markdown it runs note-toolbar.ts's pure text transforms, unchanged.
 
 const NoteRichText = defineAsyncComponent(() => import('@/components/shared/NoteRichText.vue'))
+
+// A Teleport cannot receive fallthrough attributes, and this component's root
+// became one. Bind them explicitly to the writer's own element so a host that
+// passes a class still gets it.
+defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
   text: string
@@ -52,12 +61,25 @@ const props = defineProps<{
    * be markup a textarea cannot hold, so it shows none.
    */
   highlight?: readonly string[]
+  /**
+   * Offer the full-viewport writing surface. Opt-in, because it only earns
+   * its place where someone might write at length — a journal note or a
+   * coach's note, not the two-line field in a form that is mostly pickers.
+   */
+  expandable?: boolean
 }>()
 
 const emit = defineEmits<{
   'update:text': [text: string]
   focus: []
   blur: []
+  /**
+   * Collapsing the expanded surface. NOT a blur: the writer is still open and
+   * still being edited, it is merely back inline — so a host that saves on
+   * blur has to be told to save here too, or a full-screen writing session
+   * would end with nothing written down.
+   */
+  commit: []
 }>()
 
 type Mode = 'rich' | 'raw'
@@ -85,10 +107,71 @@ const rawField = useTemplateRef<HTMLTextAreaElement>('rawField')
  */
 function onFocusOut(): void {
   setTimeout(() => {
+    // An EXPANDED writer is a modal, and a modal is not left by a blur. The
+    // teleport to <body> moves focus on its way out, so forwarding that would
+    // tell the journal "done editing" and unmount the writer out from under
+    // the surface that had just opened — which is exactly what it did.
+    if (expanded.value) return
     if (root.value?.contains(document.activeElement)) return
     emit('blur')
   }, 0)
 }
+
+// ── the expanded writing surface ─────────────────────────────────────────
+//
+// Not a second editor: <Teleport :disabled> MOVES this component's own DOM to
+// <body> and back, so the value, the mode, the toolbar state and the live
+// ProseMirror instance all survive the trip. There is nothing to hand over,
+// which is why there is no state to lose.
+//
+// It stacks over hosts that are themselves modals (the detail panel, the film
+// room), so the flag lives in the UI store: the host has to be made inert, and
+// this surface is no longer a descendant of it once teleported.
+const uiStore = useUiStore()
+const expanded = ref(false)
+
+const words = computed(() => pluralize(wordCount(props.text), 'word'))
+
+/**
+ * Escape closes the writer and NOTHING else.
+ *
+ * Capture phase, and stopImmediatePropagation, for the same reason the
+ * screenshot lightbox does it: the host underneath registers its own
+ * bubble-phase Escape, and without this ordering one press would close both.
+ */
+function onExpandedKeydown(e: KeyboardEvent): void {
+  if (e.key !== 'Escape') return
+  e.preventDefault()
+  e.stopImmediatePropagation()
+  expanded.value = false
+}
+
+watch(expanded, async (open) => {
+  uiStore.expandedWriterOpen = open
+  if (open) {
+    document.addEventListener('keydown', onExpandedKeydown, true)
+    await nextTick()
+    focusField()
+    return
+  }
+  document.removeEventListener('keydown', onExpandedKeydown, true)
+  emit('commit')
+  // Focus returns to the FIELD, not to the Expand button that opened this.
+  //
+  // The dialog convention says restore to the trigger, but the trigger here
+  // reopens the thing just closed — so a Space or Enter from someone who was
+  // mid-sentence would expand it straight back. They were writing; put them
+  // back in the writing. It also settles a race: Teleport moving the editor
+  // home lets ProseMirror reclaim focus, which fought a restore aimed
+  // anywhere else.
+  await nextTick()
+  focusField()
+}, { flush: 'post' })
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onExpandedKeydown, true)
+  if (expanded.value) uiStore.expandedWriterOpen = false
+})
 
 const chipClass = computed(() => (props.surface === 'plain' ? 'note-tool-plain' : 'paper-chip'))
 
@@ -200,128 +283,175 @@ watch(rich, (r) => {
   pendingFocus = undefined
 })
 
-defineExpose({
-  /**
-   * Focus the field, optionally at a plain-text offset — the currency a
-   * caret-at-click produces. Formatted maps it to a document position;
-   * Markdown mode is already counting characters, so it uses it directly.
-   */
-  focus: (offset?: number) => {
-    if (mode.value === 'rich') {
-      if (rich.value) rich.value.focus(offset)
-      else pendingFocus = offset ?? null
-      return
-    }
-    const field = rawField.value
-    if (!field) return
-    field.focus()
-    // No offset means the END — "Edit annotation" from the row menu is a
-    // request to keep writing, and a caret parked at character zero would put
-    // the next sentence in front of the last one.
-    const at = offset === undefined
-      ? field.value.length
-      : Math.max(0, Math.min(offset, field.value.length))
-    field.setSelectionRange(at, at)
-  },
-})
+/**
+ * Focus the field, optionally at a plain-text offset — the currency a
+ * caret-at-click produces. Formatted maps it to a document position;
+ * Markdown mode is already counting characters, so it uses it directly.
+ *
+ * A named function rather than an inline one on defineExpose, because the
+ * expand/collapse watcher needs it too — and a bare `focus()` in this scope
+ * silently resolves to window.focus, which type-checks and does nothing to
+ * the field.
+ */
+function focusField(offset?: number): void {
+  if (mode.value === 'rich') {
+    if (rich.value) rich.value.focus(offset)
+    else pendingFocus = offset ?? null
+    return
+  }
+  const field = rawField.value
+  if (!field) return
+  field.focus()
+  // No offset means the END — "Edit annotation" from the row menu is a
+  // request to keep writing, and a caret parked at character zero would put
+  // the next sentence in front of the last one.
+  const at = offset === undefined
+    ? field.value.length
+    : Math.max(0, Math.min(offset, field.value.length))
+  field.setSelectionRange(at, at)
+}
+
+defineExpose({ focus: focusField })
 </script>
 
 <template>
-  <div ref="root" class="note-writer" @focusout="onFocusOut">
-    <div class="note-writer-tools">
-      <div class="note-toolbar" role="toolbar" aria-label="Formatting">
+  <!-- :disabled keeps the writer exactly where it is until it is expanded;
+       when it is, the SAME nodes move to <body> rather than a second copy
+       mounting beside them. -->
+  <Teleport to="body" :disabled="!expanded">
+    <div
+      ref="root"
+      v-bind="$attrs"
+      class="note-writer"
+      :class="{ 'note-writer-expanded': expanded }"
+      :role="expanded ? 'dialog' : undefined"
+      :aria-modal="expanded ? 'true' : undefined"
+      :aria-label="expanded ? label : undefined"
+      @focusout="onFocusOut"
+    >
+      <div class="note-writer-tools">
+        <div class="note-toolbar" role="toolbar" aria-label="Formatting">
+          <button
+            v-for="b in TOOLBAR_INLINE"
+            :key="b.mark"
+            type="button"
+            class="note-tool"
+            :class="[chipClass, { 'note-tool-em': b.mark === 'italic', 'note-tool-del': b.mark === 'strike' }]"
+            :aria-label="b.label"
+            :aria-pressed="isActive(b.mark)"
+            :disabled="toolsDisabled"
+            :title="disabledReason ?? b.label"
+            @click="markInline(b.mark)"
+          >
+            {{ b.glyph }}
+          </button>
+          <span class="note-tool-sep" aria-hidden="true" />
+          <button
+            v-for="b in TOOLBAR_LINE"
+            :key="b.mark"
+            type="button"
+            class="note-tool"
+            :class="chipClass"
+            :aria-label="b.label"
+            :aria-pressed="isActive(b.mark)"
+            :disabled="toolsDisabled"
+            :title="disabledReason ?? b.label"
+            @click="markLine(b.mark)"
+          >
+            {{ b.glyph }}
+          </button>
+        </div>
+
+        <!-- role="group", not a tablist: the app has exactly one tablist and it
+           belongs to the seven views. Every other two-state picker here is a
+           pressed pair. -->
+        <div class="note-mode" role="group" aria-label="Note format">
+          <button
+            type="button"
+            class="note-mode-btn"
+            :class="{ 'note-mode-on': mode === 'rich' }"
+            :aria-pressed="mode === 'rich'"
+            data-note-mode-pick="rich"
+            @click="mode = 'rich'"
+          >
+            Formatted
+          </button>
+          <button
+            type="button"
+            class="note-mode-btn"
+            :class="{ 'note-mode-on': mode === 'raw' }"
+            :aria-pressed="mode === 'raw'"
+            data-note-mode-pick="raw"
+            @click="mode = 'raw'"
+          >
+            Markdown
+          </button>
+        </div>
+
         <button
-          v-for="b in TOOLBAR_INLINE"
-          :key="b.mark"
+          v-if="expandable && !expanded"
           type="button"
-          class="note-tool"
-          :class="[chipClass, { 'note-tool-em': b.mark === 'italic', 'note-tool-del': b.mark === 'strike' }]"
-          :aria-label="b.label"
-          :aria-pressed="isActive(b.mark)"
-          :disabled="toolsDisabled"
-          :title="disabledReason ?? b.label"
-          @click="markInline(b.mark)"
-        >
-          {{ b.glyph }}
-        </button>
-        <span class="note-tool-sep" aria-hidden="true" />
-        <button
-          v-for="b in TOOLBAR_LINE"
-          :key="b.mark"
-          type="button"
-          class="note-tool"
+          class="note-expand"
           :class="chipClass"
-          :aria-label="b.label"
-          :aria-pressed="isActive(b.mark)"
-          :disabled="toolsDisabled"
-          :title="disabledReason ?? b.label"
-          @click="markLine(b.mark)"
+          :aria-label="`Expand ${label}`"
+          @click="expanded = true"
         >
-          {{ b.glyph }}
+          Expand
         </button>
       </div>
 
-      <!-- role="group", not a tablist: the app has exactly one tablist and it
-           belongs to the seven views. Every other two-state picker here is a
-           pressed pair. -->
-      <div class="note-mode" role="group" aria-label="Note format">
-        <button
-          type="button"
-          class="note-mode-btn"
-          :class="{ 'note-mode-on': mode === 'rich' }"
-          :aria-pressed="mode === 'rich'"
-          data-note-mode-pick="rich"
-          @click="mode = 'rich'"
-        >
-          Formatted
-        </button>
-        <button
-          type="button"
-          class="note-mode-btn"
-          :class="{ 'note-mode-on': mode === 'raw' }"
-          :aria-pressed="mode === 'raw'"
-          data-note-mode-pick="raw"
-          @click="mode = 'raw'"
-        >
-          Markdown
+      <div class="note-writer-body">
+        <NoteRichText
+          v-if="mode === 'rich'"
+          ref="rich"
+          :text="text"
+          :label="label"
+          :field-id="fieldId"
+          :placeholder="placeholder"
+          :disabled="disabled"
+          :highlight="highlight"
+          @update:text="emit('update:text', $event)"
+          @update:active="active = $event"
+          @focus="emit('focus')"
+        />
+        <textarea
+          v-else
+          :id="fieldId"
+          ref="rawField"
+          class="note-raw note-text"
+          rows="5"
+          :value="text"
+          :aria-label="label"
+          :maxlength="MAX_NOTE_TEXT"
+          :disabled="disabled"
+          :title="blockedReason"
+          :placeholder="placeholder"
+          spellcheck="true"
+          autocorrect="off"
+          data-note-surface="raw"
+          @input="onRawInput"
+          @keydown="onRawKeydown"
+          @focus="emit('focus')"
+        />
+
+        <!-- Only in Markdown mode: Formatted IS the preview, and a second pane
+           showing the same thing would be two views of one surface. -->
+        <section v-if="expanded && mode === 'raw'" class="note-preview-pane" aria-label="Preview">
+          <NoteProse :text="text" />
+        </section>
+      </div>
+
+      <div v-if="expanded" class="note-writer-foot">
+        <span class="note-words">{{ words }}</span>
+        <button type="button" class="note-done" :class="chipClass" @click="expanded = false">
+          Done
         </button>
       </div>
     </div>
-
-    <NoteRichText
-      v-if="mode === 'rich'"
-      ref="rich"
-      :text="text"
-      :label="label"
-      :field-id="fieldId"
-      :placeholder="placeholder"
-      :disabled="disabled"
-      :highlight="highlight"
-      @update:text="emit('update:text', $event)"
-      @update:active="active = $event"
-      @focus="emit('focus')"
-    />
-    <textarea
-      v-else
-      :id="fieldId"
-      ref="rawField"
-      class="note-raw note-text"
-      rows="5"
-      :value="text"
-      :aria-label="label"
-      :maxlength="MAX_NOTE_TEXT"
-      :disabled="disabled"
-      :title="blockedReason"
-      :placeholder="placeholder"
-      spellcheck="true"
-      autocorrect="off"
-      data-note-surface="raw"
-      @input="onRawInput"
-      @keydown="onRawKeydown"
-      @focus="emit('focus')"
-    />
-  </div>
+  </Teleport>
 </template>
+
+<style scoped src="./note-writer-expanded.css"></style>
 
 <style scoped>
 .note-writer-tools {

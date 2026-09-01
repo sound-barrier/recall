@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FocusEntry } from '@/api'
-import NoteProse from '@/components/coach/notes/NoteProse.vue'
+import NoteProse from '@/components/shared/NoteProse.vue'
 
 // What to work on, said while you are in a session — the one moment the
 // list is worth anything, because it is the only moment you can still act

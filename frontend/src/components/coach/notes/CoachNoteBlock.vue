@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
-import NoteProse from '@/components/coach/notes/NoteProse.vue'
+import NoteProse from '@/components/shared/NoteProse.vue'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { focusTagLabel } from '@/match/coach/coach-notes'
 import type { NoteBlockView } from '@/match/coach/note-block-view'

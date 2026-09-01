@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 import { fireEvent, render, screen } from '@testing-library/vue'
 import { flushPromises } from '@/test-utils'
 
@@ -75,6 +76,8 @@ async function fillMinimalFullForm() {
 }
 
 beforeEach(() => {
+
+  setActivePinia(createPinia())
   createManualMatch = vi.fn<CreateManualMatchFn>(async () => RECORD)
   setApiBacking({ CreateManualMatch: createManualMatch })
 })
