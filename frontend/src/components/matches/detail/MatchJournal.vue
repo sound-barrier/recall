@@ -16,6 +16,8 @@ import { useMatchAnnotationEditor } from '@/composables/matches/detail/useMatchA
 import { useMatchActions } from '@/composables/matches/useMatchActions'
 import { useAppStore } from '@/stores/app'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
+import { useRosterQuery } from '@/queries/roster'
+import { useMatchesStore } from '@/stores/matches'
 import NoteProse from '@/components/shared/NoteProse.vue'
 import NoteWriter from '@/components/shared/NoteWriter.vue'
 
@@ -153,6 +155,31 @@ const { seasons } = useOWData()
 const replayCodeStale = computed(() =>
   Boolean(props.record.annotation?.replay_code)
   && replayCodeIsLikelyDead(props.record, seasons.value, Date.now()))
+
+// The saved roster: a tag the player has named renders as that name, and the
+// tag itself moves to the title so the identity is still reachable. The
+// completions offer the roster first, then every teammate already tagged
+// anywhere in the corpus — a name you have used before is a name you are
+// likely to use again, and it is the only source that existed until now.
+const { data: roster } = useRosterQuery()
+const rosterNames = computed(() => new Map(
+  (roster.value ?? []).map((m) => [m.tag, m.display_name])))
+
+const matchesStore = useMatchesStore()
+const memberSuggestions = computed(() => {
+  const seen = new Set<string>()
+  const out: { tag: string; label: string }[] = []
+  for (const m of roster.value ?? []) {
+    seen.add(m.tag)
+    out.push({ tag: m.tag, label: m.display_name === m.tag ? m.tag : `${m.display_name} · ${m.tag}` })
+  }
+  for (const tag of matchesStore.matchesNarrow.availableMembers.value) {
+    if (seen.has(tag)) continue
+    seen.add(tag)
+    out.push({ tag, label: tag })
+  }
+  return out
+})
 
 // The coach-received layer — one block per coach and session — and the
 // player's own sitting blocks, one per sitting, alongside (never merged
@@ -383,7 +410,9 @@ onMounted(() => {
               :key="m"
               class="member-chip"
             >
-              <span class="member-chip-tag">{{ m }}</span>
+              <span class="member-chip-tag" :title="rosterNames.get(m) ? m : undefined">
+                {{ rosterNames.get(m) ?? m }}
+              </span>
               <button
                 type="button"
                 class="member-chip-remove"
@@ -404,9 +433,20 @@ onMounted(() => {
               :placeholder="memberDraft.length ? 'Add BattleTag…' : 'Add BattleTag · Enter to confirm'"
               spellcheck="false"
               autocomplete="off"
+              :list="`members-suggestions-${record.match_key}`"
               @keydown="onMemberKeydown"
               @blur="addMember"
             >
+            <!-- A native datalist rather than the TypeaheadDropdown the map
+                 and hero pickers use: that component owns its own input, and
+                 this cell's input already carries chips, Enter-to-confirm and
+                 backspace-to-remove. The completion is the only thing that was
+                 missing, and the platform has one. -->
+            <datalist :id="`members-suggestions-${record.match_key}`">
+              <option v-for="s in memberSuggestions" :key="s.tag" :value="s.tag">
+                {{ s.label }}
+              </option>
+            </datalist>
           </div>
         </div>
       </div>
@@ -478,6 +518,7 @@ onMounted(() => {
               placeholder="add tag"
               spellcheck="false"
               autocomplete="off"
+              aria-label="Add tag"
               role="combobox"
               aria-autocomplete="list"
               :aria-controls="`tags-${record.match_key}-suggestions`"

@@ -136,3 +136,10 @@ SetTimeout
 # tests seed state with — pkg/app/export_test.go's shim plus
 # pkg/gamedata/status_test.go — and test code isn't in deadcode's call graph.
 SaveManifest
+
+# db.ServableImageType: the mime allow-list the moment-image store accepts, in
+# one place so dbtest.Fake refuses exactly what SQLStore's CHECK constraint
+# does. Its only caller is the Fake, and test code isn't in deadcode's call
+# graph — deleting it would let the two implementations drift on the one
+# question the contract suite exists to hold them to.
+ServableImageType

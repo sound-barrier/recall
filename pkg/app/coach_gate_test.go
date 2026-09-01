@@ -126,6 +126,13 @@ func gatedSelfReviewWrites(a *app.App) map[string]func() error {
 		// The player's own list — a coach's items land in it, but moving one
 		// is the player acting on their data, so the gate covers it.
 		"SetFocusItemStatus": func() error { return a.SetFocusItemStatus("i", string(db.FocusWorking)) },
+		// The saved roster is the PLAYER's list of people. A coach with a
+		// loan open is looking at somebody else's history and must not
+		// rename anybody in it.
+		"SaveRosterMember": func() error {
+			return a.SaveRosterMember(db.RosterMember{Tag: "Zed#2100", DisplayName: "Zed"})
+		},
+		"RemoveRosterMember": func() error { return a.RemoveRosterMember("Zed#2100") },
 		"FinishSelfReview": func() error {
 			_, err := a.FinishSelfReview("r")
 			return err

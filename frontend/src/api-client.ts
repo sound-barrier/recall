@@ -116,6 +116,11 @@ export const PutSelfReviewMoment = bind('PutSelfReviewMoment')
 export const DeleteSelfReviewMoment = bind('DeleteSelfReviewMoment')
 export const PutCoachFocusItems = bind('PutCoachFocusItems')
 export const ListFocus = bind('ListFocus')
+// The saved roster — read by the journal's member chips and the Settings
+// section that maintains it.
+export const ListRoster = bind('ListRoster')
+export const SaveRosterMember = bind('SaveRosterMember')
+export const DeleteRosterMember = bind('DeleteRosterMember')
 export const SetFocusItemStatus = bind('SetFocusItemStatus')
 export const PickScreenshotsDir = bind('PickScreenshotsDir')
 export const PickTesseractBinary = bind('PickTesseractBinary')

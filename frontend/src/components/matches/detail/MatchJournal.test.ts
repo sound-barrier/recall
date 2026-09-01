@@ -69,7 +69,10 @@ function renderJournal(over: JournalProps = {}) {
 // happy-dom's activeElement fails identity comparison against a queried
 // element even when they serialize identically — compare ids.
 const focusedId = () => document.activeElement?.id ?? ''
-const tagInput = () => screen.getByRole('combobox')
+// Named, because the Group field is a combobox too now (an <input list>
+// carries the role implicitly) — and because a combobox with no accessible
+// name was a gap this file's single-combobox assumption was hiding.
+const tagInput = () => screen.getByRole('combobox', { name: 'Add tag' })
 
 beforeEach(() => {
   onSetMatchAnnotation.mockClear()

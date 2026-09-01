@@ -122,7 +122,7 @@ watch(
 <template>
   <details id="sec-advanced" class="settings-section advanced-section">
     <summary class="advanced-summary">
-      <span class="section-num">09</span>
+      <span class="section-num">10</span>
       <span class="section-slash" aria-hidden="true">/</span>
       <span class="section-title">Advanced</span>
       <span class="advanced-chev" aria-hidden="true">›</span>

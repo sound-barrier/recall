@@ -3760,6 +3760,89 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/roster:
+    get:
+      operationId: ListRoster
+      tags: [Matches]
+      summary: The teammates you've saved
+      description: |
+        The player's saved roster, ordered by display name. Each entry maps a
+        BattleTag — the string a match's `members` list carries — to the name
+        the player actually calls that person.
+
+        NOT a foreign key for `members`. A teammate tagged before they were
+        rostered keeps working, and removing somebody from the roster does not
+        erase them from the matches they played; this list supplies display
+        names and completions, nothing more.
+      responses:
+        "200":
+          description: The roster, alphabetical by display name.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RosterMember"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/roster/{tag}:
+    parameters:
+      - name: tag
+        in: path
+        required: true
+        schema:
+          type: string
+        description: |
+          The BattleTag, as it appears in a match's `members` list. It is the
+          identity, which is why it is the path segment and not a body field —
+          two spellings of one identity in one request is a question with no
+          right answer.
+    put:
+      operationId: SaveRosterMember
+      tags: [Matches]
+      summary: Add or rename a teammate
+      description: |
+        Upsert by tag. `display_name` defaults to the tag when blank, because
+        an entry with no name shows nothing where the chip used to show
+        something. The day they joined the roster survives a rename.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                display_name:
+                  type: string
+                  description: What the chip shows instead of the tag.
+                note:
+                  type: string
+                  description: Anything worth remembering about them.
+      responses:
+        "204":
+          description: Saved.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: DeleteRosterMember
+      tags: [Matches]
+      summary: Drop a teammate from the roster
+      description: |
+        The matches they were tagged on keep the tag. Removing a tag that was
+        never rostered succeeds — the caller's intent holds either way.
+      responses:
+        "204":
+          description: Removed, or was never there.
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/self-reviews/{review_id}/focus-items:
     parameters:
       - $ref: "#/components/parameters/ReviewID"
@@ -6517,6 +6600,26 @@ components:
           example:
             weapon_accuracy: 24
             players_saved: 6
+
+    RosterMember:
+      type: object
+      required: [tag, display_name]
+      properties:
+        tag:
+          type: string
+          example: "Zed#2100"
+          description: The BattleTag, as it appears in a match's members list.
+        display_name:
+          type: string
+          example: "Zed"
+          description: What the chip shows instead of the tag.
+        note:
+          type: string
+          example: "main tank, Tuesdays"
+        added_at:
+          type: string
+          format: date-time
+          description: When they joined the roster. Survives a rename.
 
     HeroSR:
       type: object

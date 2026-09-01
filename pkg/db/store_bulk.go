@@ -151,7 +151,9 @@ func (s *SQLStore) collectFilenamesWhere(table, where string, args []any, out ma
 // Deliberately NOT wiped: the coach-AUTHORED family (coach_players,
 // coach_notes, coach_sessions). Those are notes this user wrote
 // about OTHER players' matches — not match history — and a coach clearing
-// an empty database must not lose their coaching work.
+// an empty database must not lose their coaching work. Nor is roster_members:
+// the people you queue with are not a record of games played, and re-typing
+// six BattleTags is not a thing a history wipe should cost.
 func (s *SQLStore) Clear() error {
 	// One transaction for the whole wipe + sentinel reseed — the
 	// crash-consistency convention the per-concern bulk writers follow. A
