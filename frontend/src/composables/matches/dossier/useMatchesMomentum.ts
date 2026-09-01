@@ -22,6 +22,11 @@ import {
   type SessionIndexBreakdown,
 } from '@/match/dossier/match-momentum-helpers'
 import { tiltEpisodes, type TiltEpisodes } from '@/match/elo/elo-streaks'
+import {
+  srDelta, srPerRole, srVelocity,
+  type SRDelta, type SRRoleRow, type SRVelocity,
+} from '@/match/dossier/match-sr-helpers'
+import { freshVsTilted, type QueueGapSplit } from '@/match/dossier/match-queue-gap-helpers'
 
 // "Net rank this week" anchors on the last seven days of play.
 const NET_RANK_DAYS = 7
@@ -66,6 +71,23 @@ export function useMatchesMomentum(records: Readonly<Ref<MatchRecord[]>>) {
     return computed(() => climbVelocity(records.value, { days: toValue(opts).days }))
   }
 
+  // ── denominated in SR rather than the meter ─────────────────────────────
+  function srMovement(opts: MaybeRefOrGetter<{ days: number }>): ComputedRef<SRDelta> {
+    return computed(() => srDelta(records.value, toValue(opts).days))
+  }
+  function srClimbRate(opts: MaybeRefOrGetter<{ days: number }>): ComputedRef<SRVelocity> {
+    return computed(() => srVelocity(records.value, toValue(opts).days))
+  }
+  function srByRole(): ComputedRef<SRRoleRow[]> {
+    return computed(() => srPerRole(records.value))
+  }
+
+  // How long the player waited before queuing again — the gap kept as a
+  // number, which nothing else here does.
+  function queueGapSplit(): ComputedRef<QueueGapSplit> {
+    return computed(() => freshVsTilted(records.value))
+  }
+
   function lossStreakRecovery(opts: MaybeRefOrGetter<{ minStreak: number }>): ComputedRef<RateSample> {
     return computed(() => winrateAfterLossStreak(records.value, toValue(opts).minStreak))
   }
@@ -75,5 +97,6 @@ export function useMatchesMomentum(records: Readonly<Ref<MatchRecord[]>>) {
     winrateAfterLoss, winrateAfterWin, firstGameWinrate, netRankWeek,
     avgGameLength, leaverStats, sessions, tiltQueues,
     sessionDepth, formDelta, lossStreakRecovery,
+    srMovement, srClimbRate, srByRole, queueGapSplit,
   }
 }

@@ -67,6 +67,10 @@ import RollingBaselineWidget from '@/components/dashboard/widgets/RollingBaselin
 import ClimbVelocityWidget from '@/components/dashboard/widgets/ClimbVelocityWidget.vue' 
 import LossStreakRecoveryWidget from '@/components/dashboard/widgets/LossStreakRecoveryWidget.vue'
 import SessionDepthWidget from '@/components/dashboard/widgets/SessionDepthWidget.vue'
+import SRClimbRateWidget from '@/components/dashboard/widgets/SRClimbRateWidget.vue'
+import SRByRoleWidget from '@/components/dashboard/widgets/SRByRoleWidget.vue'
+import HeroConcentrationWidget from '@/components/dashboard/widgets/HeroConcentrationWidget.vue'
+import QueueGapWidget from '@/components/dashboard/widgets/QueueGapWidget.vue'
 
 // Central registry for the dossier's customizable dashboard widgets.
 //
@@ -156,6 +160,10 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
   { id: 'climb-velocity',       eyebrow: 'Climb rate',             shape: 'kpi',       defaultRow: 1, component: ClimbVelocityWidget,      config: climbVelocitySchema      },
   { id: 'form-delta',           eyebrow: 'Recent form',            shape: 'kpi',       defaultRow: 1, component: FormDeltaWidget,          config: formDeltaSchema          },
   { id: 'loss-streak-recovery', eyebrow: 'After a loss streak',    shape: 'kpi',       defaultRow: 1, component: LossStreakRecoveryWidget, config: lossStreakRecoverySchema },
+  { id: 'sr-climb-rate',        eyebrow: 'SR climb rate',          shape: 'kpi',       defaultRow: 1, component: SRClimbRateWidget,       config: climbVelocitySchema      },
+  { id: 'sr-by-role',           eyebrow: 'SR by role',             shape: 'breakdown', defaultRow: 2, component: SRByRoleWidget,          config: EMPTY_SCHEMA             },
+  { id: 'hero-concentration',   eyebrow: 'Effective hero pool',    shape: 'kpi',       defaultRow: 1, component: HeroConcentrationWidget, config: EMPTY_SCHEMA             },
+  { id: 'queue-gap',            eyebrow: 'Fresh vs tilted queue',  shape: 'breakdown', defaultRow: 2, component: QueueGapWidget,          config: EMPTY_SCHEMA             },
   { id: 'session-depth',        eyebrow: 'Session depth',          shape: 'breakdown', defaultRow: 2, component: SessionDepthWidget,       config: EMPTY_SCHEMA             },
 ]
 

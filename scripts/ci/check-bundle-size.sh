@@ -147,7 +147,13 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # in the INITIAL stylesheet; both are sibling stylesheets in their own
 # chunks now, and initial CSS came in UNDER its unchanged budget.
 # Measured 360811B.
-: "${MAX_INITIAL_JS_BYTES:=362000}"
+# 2026-08: 362000 -> 364000 -- the analytics kernels, which are EAGER by
+# construction: they hang off useMatchesMomentum, which the matches store
+# builds during setup, so everything the store can answer is in the first-paint
+# graph whether or not a widget asks. The four widgets themselves are not —
+# they live in the dashboard registry the Matches view lazy-loads. Measured
+# 362688B.
+: "${MAX_INITIAL_JS_BYTES:=364000}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
@@ -368,7 +374,10 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # (9696B, shared, not duplicated) in the reviews path as well as the matches
 # and coach ones. All lazy: initial JS measured 360160B against an unchanged
 # 362000 budget. Measured 2195094B.
-: "${MAX_TOTAL_JS_BYTES:=2199000}"
+# 2026-08: 2199000 -> 2208000 -- the analytics wave's lazy half: four widgets
+# (SR climb rate, SR by role, effective hero pool, fresh-vs-tilted queue) and
+# the attachment UI on the cue row. Measured 2203885B.
+: "${MAX_TOTAL_JS_BYTES:=2208000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
