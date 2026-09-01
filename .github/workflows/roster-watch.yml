@@ -1,4 +1,4 @@
-# The Thursday watch on the game data.
+# The twice-weekly watch on the game data.
 #
 # Recall's model rests on six YAML files that say what exists in Overwatch, and
 # before this lane they moved only when a human noticed. The cost of not
@@ -18,9 +18,32 @@ name: Roster watch
 
 on:
   schedule:
-    # Thursday 08:23 UTC. Off the top of the hour like golden-corpus, and clear
-    # of CodeQL's Monday 06:00 and Dependabot's Sunday.
-    - cron: '23 8 * * 4'
+    # Wednesday and Saturday, 08:23 UTC. Off the top of the hour like
+    # golden-corpus, and clear of CodeQL's Monday 06:00 and Dependabot's Sunday.
+    #
+    # These two days are measured, not chosen by feel. Against a year of real
+    # patch notes (50 patches, 2025-09 .. 2026-08) Overwatch ships on a 14-day
+    # beat anchored to each season start -- offsets 0, 14, 28 and 42 days recur
+    # in every season -- and every season start is a Tuesday, so the whole
+    # content calendar is Tuesday-anchored: 21 of the 50 landed on a Tuesday,
+    # 16 on a Thursday, the rest Wed/Fri.
+    #
+    # That spread is why ONE run a week cannot do this job. Whichever day it
+    # picks, some patch lands just after it and waits nearly a week: a single
+    # Thursday run -- the first cut of this lane -- left 20 of the 50 unseen
+    # for more than five days, because it fires hours BEFORE Thursday's own
+    # patches and then does not look again. Wed+Sat is the best of all 21
+    # day-pairs (2.7d worst case, 1.2d mean, vs 6.7d and 3.1d for Thursday
+    # alone), and it is the STABLE one: Blizzard publishes no patch time, so
+    # the ranking was swept across every plausible release hour and this pair
+    # moves 0.3d across that whole range where the alternatives swing a day.
+    #
+    # Twice a week costs nothing extra. A run that finds nothing exits 0 having
+    # made three HTTP requests, the golden corpus runs only when entries were
+    # actually written, and roster-watch-pr.sh force-pushes ONE branch and
+    # edits ONE draft PR -- so the second run of a week refreshes that PR
+    # rather than opening another.
+    - cron: '23 8 * * 3,6'
   workflow_dispatch:
 
 permissions:

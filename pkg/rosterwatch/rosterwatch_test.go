@@ -209,7 +209,7 @@ func TestCompare_SaysTheSeasonRanOutWhenItsEndHasPassed(t *testing.T) {
 }
 
 // The accepted list is what lets the watch reach green. Without it the D.Va
-// difference — real in the roster today — would be reported every Thursday
+// difference — real in the roster today — would be reported on every run
 // forever, which is how a gate teaches people to ignore it.
 func TestCompare_StaysQuietAboutAnAcceptedDifference(t *testing.T) {
 	ship := shipped()
