@@ -5,7 +5,7 @@ paths:
 
 # CI/CD (`.github/workflows/`)
 
-Ten workflows:
+Eleven workflows:
 
 | File | Trigger | What it does |
 |---|---|---|
@@ -17,7 +17,8 @@ Ten workflows:
 | `golden-corpus.yml` | dispatch + weekly | OCRs the full golden screenshot corpus against the pinned Tesseract and diffs against the baselined goldens. |
 | `labels.yml` | Push to `main` (`.github/labels.yml`) + dispatch | Syncs repo labels via `EndBug/label-sync@v2`. `delete-other-labels: false` by default; dispatch input flips it `true`. |
 | `pages.yml` | Push to `main` (paths: `api/openapi.yaml`, `docs/**`, `book/**`, `testdata/**`, `pages.yml`) + dispatch | Builds (1) Honkit user-docs book → Pages root; (2) Swagger UI → `/api/`. **One-time setup**: Settings → Pages → Source = "GitHub Actions". |
-| `release-please.yml` | Push to `main` | Reads Conventional Commits, opens/updates a Release PR bumping manifest + CHANGELOG. Override version with `Release-As: X.Y.Z[-suffix]` footer. **Identity**: uses a PAT not `GITHUB_TOKEN`, so PRs are authored under the maintainer's account → `pull_request` workflows DO trigger AND bot-login exemptions need a branch-name fallback (`startsWith(head.ref, 'release-please--')`). |
+| `release-please.yml` | Push to `main` | Reads Conventional Commits, opens/updates a Release PR bumping manifest + CHANGELOG. Override version with `Release-As: X.Y.Z[-suffix]` footer. **Identity**: `GITHUB_TOKEN`, not a PAT — the anti-loop guard is worked around by `gh workflow run` instead. Consequence to remember when adding any Actions-authored PR: **a PR opened with `GITHUB_TOKEN` does NOT trigger `pull_request` workflows**, so it arrives with no CI (this is why `roster-watch.yml` runs the golden corpus itself). Bot-login exemptions need a branch-name fallback (`startsWith(head.ref, 'release-please--')`). |
+| `roster-watch.yml` | Thursday 08:23 UTC cron + dispatch | Runs `cmd/roster-watch` against Blizzard's hero page + patch notes and the upstream map list, and opens/updates a **draft** PR on the fixed branch `chore/roster-watch` with the entries it is confident in. Exit 2 (a source could not be read) **fails the job** — a scrape that quietly reports "in sync" goes quiet in exactly the week the answer stopped being true. When entries were written it runs the golden corpus IN THE JOB, because a PR authored by `GITHUB_TOKEN` gets no CI and that corpus is the only gate catching a roster-name collision. Never writes `seasons.yaml`, the guard tests, or the doc counts. Accepted differences live in `scripts/ci/roster-watch-accepted.txt`. Local: `task roster-watch` (report-only). |
 | `release.yml` | `v*` tags | Builds/publishes release artifacts. Details in RELEASES.md → "`release.yml` jobs". |
 
 ## Toolchain provisioning (hybrid, 2026-07-10)
