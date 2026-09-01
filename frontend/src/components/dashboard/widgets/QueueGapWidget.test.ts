@@ -25,8 +25,8 @@ describe('QueueGapWidget', () => {
         queueGapSplit: { tilted: { winrate: 33, sample: 9 }, fresh: { winrate: 61, sample: 18 } },
       },
     })
-    expect(screen.getByText(/Straight back in \(under 5 min\)/)).toBeInTheDocument()
-    expect(screen.getByText(/After a break \(over 60 min\)/)).toBeInTheDocument()
+    expect(screen.getByText(/Re-queued within 5 min/)).toBeInTheDocument()
+    expect(screen.getByText(/Back after 60\+ min away/)).toBeInTheDocument()
   })
 
   it('says there is nothing to compare rather than showing two empty bars', () => {
@@ -46,5 +46,9 @@ describe('QueueGapWidget', () => {
       },
     })
     expect(screen.getByText('no games')).toBeInTheDocument()
+    // …and the meter says nothing either. A screen reader hearing "0 percent"
+    // on the side the page just called empty is the same lie, spoken.
+    expect(screen.getByRole('progressbar', { name: /Back after 60\+ min away/ })).not.toHaveAttribute('aria-valuenow')
+    expect(screen.getByRole('progressbar', { name: /Re-queued within 5 min/ })).toHaveAttribute('aria-valuenow', '40')
   })
 })
