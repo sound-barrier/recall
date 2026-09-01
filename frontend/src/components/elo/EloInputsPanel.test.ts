@@ -98,6 +98,15 @@ describe('EloInputsPanel', () => {
     expect(localStorage.getItem('recall.elo.targetBy')).toBe('2026-12-01')
   })
 
+  it('blames the inputs, not the goal, when there is nothing to project', async () => {
+    // "Out of reach" is a verdict about the climb. Saying it because the
+    // record is empty tells a player their goal is unattainable on no data.
+    const calc = mountPanel()
+    calc.editInput('sampleN', 0)
+    await setDeadline('2029-01-01')
+    expect(screen.getByText('Nothing to project')).toBeInTheDocument()
+  })
+
   it('stays silent about pace until a deadline exists', () => {
     mountPanel()
     expect(screen.queryByText(/of play/)).not.toBeInTheDocument()

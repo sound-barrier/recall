@@ -580,6 +580,8 @@ describe('the climb goal', () => {
 
   it('falls back to the default goal when storage holds something unreadable', () => {
     localStorage.setItem('recall.elo.targetTier', 'wood')
+    // 9 is REJECTED, not clamped: a clamp would land on 5, which is also the
+    // derived default, and the assertion below would pass with no fallback.
     localStorage.setItem('recall.elo.targetDivision', '9')
     localStorage.setItem('recall.elo.targetBy', 'someday')
 
@@ -622,7 +624,7 @@ describe('the climb goal', () => {
     expect(measured(c.goalPace.value).weeksLeft).toBeLessThan(0)
   })
 
-  it('tells a player who set no pace apart from one whose goal is out of reach', () => {
+  it('keeps the three ways a deadline can go unanswered apart', () => {
     const c = calc()
     c.pickTargetBy('2027-01-01')
     c.editInput('gamesPerWeekInput', null)
@@ -633,8 +635,31 @@ describe('the climb goal', () => {
     c.pickTargetTier('champion')
     c.pickTargetDivision(1)
     expect(c.goalPace.value?.kind).toBe('unreachable')
-    // The calendar half of the answer survives either way.
+
+    // An emptied record projects nothing at all. Calling THAT "out of reach"
+    // blames the goal for a gap in the inputs.
+    c.editInput('sampleN', 0)
+    expect(c.goalPace.value?.kind).toBe('no-projection')
+
+    // The calendar half of the answer survives all three.
     expect(c.goalPace.value!.weeksLeft).toBeGreaterThan(0)
+  })
+
+  it('gives the goal back to the measured default on a reset', () => {
+    // The pick is persisted, so without a clear here a goal could be set and
+    // never unset: the target stopped following the player's rank and the
+    // edited marker stayed lit forever.
+    const c = calc()
+    c.pickTargetTier('champion')
+    c.pickTargetDivision(1)
+    c.pickTargetBy('2027-01-01')
+    expect(c.targetTier.value).toBe('champion')
+
+    c.resetToMeasured()
+    expect(c.targetTier.value).toBe('platinum')
+    expect(c.targetDivision.value).toBe(5)
+    expect(c.targetBy.value).toBe('')
+    expect(c.goalPace.value).toBeNull()
   })
 })
 

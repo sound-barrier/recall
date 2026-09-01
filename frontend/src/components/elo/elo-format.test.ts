@@ -108,8 +108,20 @@ describe('fmtGoalPace', () => {
       .toEqual({ verdict: 'Behind', detail: 'That date has passed — about 4.7 weeks of play to get there.' })
   })
 
-  it('separates a goal beyond the plateau from one with no pace to divide by', () => {
+  it('counts the hours just after a deadline as passed, not as zero left', () => {
+    // round1 turns the eight hours after a deadline into -0, and -0 < 0 is
+    // false in JavaScript — so the exact sentence this branch exists to
+    // prevent printed for that window.
+    expect(fmtGoalPace({ kind: 'measured', weeksNeeded: 3, weeksLeft: -0, onPace: false }).detail)
+      .toBe('That date has passed — about 3 weeks of play to get there.')
+  })
+
+  it('keeps the three ways a deadline can go unanswered apart', () => {
+    // "Out of reach" is a verdict about the CLIMB. Saying it because the form
+    // is empty, or because no pace was entered, blames the goal for a gap in
+    // the inputs.
     expect(fmtGoalPace({ kind: 'unreachable', weeksLeft: 8 }).verdict).toBe('Out of reach')
     expect(fmtGoalPace({ kind: 'no-pace', weeksLeft: 8 }).verdict).toBe('No pace yet')
+    expect(fmtGoalPace({ kind: 'no-projection', weeksLeft: 8 }).verdict).toBe('Nothing to project')
   })
 })

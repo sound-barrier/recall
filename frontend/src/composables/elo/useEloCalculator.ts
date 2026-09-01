@@ -1,8 +1,8 @@
 import {
-  computed, inject, provide, ref, toValue, watch,
+  computed, inject, onScopeDispose, provide, ref, toValue, watch,
   type ComputedRef, type InjectionKey, type MaybeRefOrGetter, type Ref,
 } from 'vue'
-import { parseClampedNumber, usePersistedRef } from '@/composables/shared/usePersistedRef'
+import { usePersistedRef } from '@/composables/shared/usePersistedRef'
 import type { MatchRecord } from '@/api-client'
 import type { Season } from '@/composables/shared/useOWData'
 import { seasonForMatch } from '@/match/match-season-helpers'
@@ -55,6 +55,10 @@ export interface EloCalcOpts {
 // SEASON_WEEKS sizes the "this season" probability window.
 const SEASON_WEEKS = 12
 const MS_PER_WEEK = 7 * 86_400_000
+// How often the deadline readout re-reads the wall clock. Coarse on purpose:
+// the sentence is measured in weeks, so a minute of staleness is invisible and
+// a tighter interval would wake the app for nothing.
+const CLOCK_TICK_MS = 60_000
 // With no measured pace the simulator assumes a typical week so the verdict
 // still has a season to quote; paceAssumed flags the copy.
 const FALLBACK_GAMES_PER_WEEK = 10
@@ -98,7 +102,14 @@ export function useEloCalculator(opts: EloCalcOpts) {
   const { value: pickedDivision, set: setTargetDivision } = usePersistedRef<number>({
     key: 'recall.elo.targetDivision',
     defaultValue: 0,
-    parse: parseClampedNumber(1, 5),
+    // REJECTS out of range rather than clamping, because 0 is how this ref
+    // says "no pick" — a clamp would turn the reset's 0 into a 1 the moment a
+    // sibling instance re-hydrated, and would have turned a stored 9 into a
+    // legitimate-looking 5.
+    parse: (raw) => {
+      const n = Number(raw)
+      return Number.isInteger(n) && n >= 1 && n <= 5 ? n : undefined
+    },
   })
   // The deadline the goal is measured against. Empty means "no date, just get
   // there" — a goal without one is still a goal, and forcing a date would make
@@ -318,7 +329,17 @@ export function useEloCalculator(opts: EloCalcOpts) {
 
   // resetToMeasured re-seeds the whole form (and clears the hero
   // selection + nudges) — the one way back to the measured numbers.
-  const resetToMeasured = applySeed
+  //
+  // That includes the GOAL. The pick lives in localStorage and the derived
+  // default is what the form seeds to, so without clearing it here a goal
+  // could be set but never unset: the edited marker stayed lit forever and
+  // the target stopped following the player's rank.
+  function resetToMeasured(): void {
+    setTargetTier('')
+    setTargetDivision(0)
+    setTargetBy('')
+    applySeed()
+  }
 
   // Manual edits are name-keyed (templates auto-unwrap destructured refs,
   // so they can't pass the ref itself). Every edit marks the form dirty;
@@ -379,21 +400,35 @@ export function useEloCalculator(opts: EloCalcOpts) {
     return inp ? binomialTwoSidedP(inp.sampleWins, inp.sampleWins + inp.sampleLosses) : null
   })
 
+  // "Weeks left" is the only number on this tab read off the wall clock, and a
+  // computed is evaluated once and memoized — so in a tray app left running,
+  // "1.9 weeks left" stayed on screen after the date had gone. The tick is the
+  // dependency that lets the sentence age.
+  const clockTick = ref(Date.now())
+  const clockTimer = window.setInterval(() => { clockTick.value = Date.now() }, CLOCK_TICK_MS)
+  onScopeDispose(() => { window.clearInterval(clockTimer) })
+
   /**
    * Whether the goal lands by its date, at the pace already measured.
    *
    * The model counts GAMES, and a player commits to a DATE — so this is the
    * one place the two meet, and it needs the games-per-week the player is
-   * actually playing rather than an assumption. Null wherever an honest answer
-   * is unavailable: no date set, no reachable projection, no pace to divide by.
+   * actually playing rather than an assumption. Null only when there is no
+   * date to measure against; every other gap gets a named arm, because "out
+   * of reach" and "nothing to project from" are different answers.
    */
   const goalPace = computed<GoalPace | null>(() => {
     if (!targetBy.value) return null
     const by = Date.parse(targetBy.value)
     if (Number.isNaN(by)) return null
-    const weeksLeft = round1((by - Date.now()) / MS_PER_WEEK)
+    const weeksLeft = round1((by - clockTick.value) / MS_PER_WEEK)
     const pace = gamesPerWeekInput.value
     if (pace === null || pace <= 0) return { kind: 'no-pace', weeksLeft }
+    // No projection at all — no decisive sample, no meter move, no ladder
+    // score — is not the same as a goal past where the climb plateaus, and
+    // saying "out of reach" on the strength of no data is the exact mistake
+    // the results panel already carries a regression test for.
+    if (projInput.value === null) return { kind: 'no-projection', weeksLeft }
     const weeks = weeksDecay.value
     if (weeks === null) return { kind: 'unreachable', weeksLeft }
     return { kind: 'measured', weeksLeft, weeksNeeded: round1(weeks), onPace: weeks <= weeksLeft }
