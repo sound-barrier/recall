@@ -45,23 +45,16 @@ func ApplyMap(doc []byte, m Map, season string) ([]byte, error) {
 	return appendEntry(doc, m.GameMode, m.Name, mapCaveat(season))
 }
 
-func heroCaveat(season string) []string {
-	return []string{
-		season + ". Spelling and role transcribed by roster-watch from",
-		"Blizzard's own hero page — NOT from parser output, and",
-		"NOT yet checked against a real scoreboard, so the in-game",
-		"rendering OCR will see is unconfirmed. The first match parsed",
-		"on this hero is the check.",
-	}
+func heroCaveat(season string) string {
+	return season + ", from Blizzard's own hero page — NOT from parser output, " +
+		"and NOT yet checked against a real scoreboard. The first match parsed on this " +
+		"hero is the check; delete this comment when it passes."
 }
 
-func mapCaveat(season string) []string {
-	return []string{
-		season + ". Name and game mode read by roster-watch from the",
-		"upstream map list — NOT from parser output, and",
-		"NOT yet checked against a real scoreboard. See the Neon Junction",
-		"entry for what a garbled name made canonical costs.",
-	}
+func mapCaveat(season string) string {
+	return season + ", from the upstream map list — NOT from parser output, " +
+		"and NOT yet checked against a real scoreboard. The first match parsed on this " +
+		"map is the check; delete this comment when it passes."
 }
 
 // ParseGroups decodes a "key: []name" roster file. Exported so the caller —
@@ -80,7 +73,7 @@ func ParseGroups(doc []byte) (map[string][]string, error) {
 // Entries land at the end of their block rather than in sorted position on
 // purpose: a new name is the one a reader wants to find, and the loader sorts
 // for display anyway (heroesByRole is sorted at load).
-func appendEntry(doc []byte, key, name string, caveat []string) ([]byte, error) {
+func appendEntry(doc []byte, key, name, caveat string) ([]byte, error) {
 	if strings.TrimSpace(name) == "" {
 		return nil, errors.New("rosterwatch: refusing to write an empty name")
 	}
@@ -92,10 +85,7 @@ func appendEntry(doc []byte, key, name string, caveat []string) ([]byte, error) 
 		return doc, nil // already there; writing twice is not an edit
 	}
 
-	block := make([]string, 0, len(caveat)+1)
-	for _, line := range caveat {
-		block = append(block, "  # "+line)
-	}
+	block := wrapComment(caveat)
 	block = append(block, "  - "+quoteIfNeeded(name))
 
 	lines := strings.Split(strings.TrimRight(string(doc), "\n"), "\n")
@@ -141,6 +131,33 @@ func endOfBlock(lines []string, key string) (int, bool) {
 		end--
 	}
 	return end, true
+}
+
+// wrapComment lays the caveat out as YAML comment lines.
+//
+// Wrapped here rather than written pre-broken because the season label is
+// caller-supplied and varies in length — a hard-coded break puts the seam in a
+// different place every time, and a roster file people read should not look
+// like it was assembled by a machine even when it was.
+func wrapComment(text string) []string {
+	const width = 74 // "  # " plus 74 keeps the file inside 78 columns
+	var out []string
+	line := ""
+	for word := range strings.FieldsSeq(text) {
+		switch {
+		case line == "":
+			line = word
+		case len(line)+1+len(word) <= width:
+			line += " " + word
+		default:
+			out = append(out, "  # "+line)
+			line = word
+		}
+	}
+	if line != "" {
+		out = append(out, "  # "+line)
+	}
+	return out
 }
 
 // quoteIfNeeded quotes a name YAML would otherwise mis-read — the colon in
