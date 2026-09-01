@@ -56,6 +56,18 @@ func TestEnsureAdditiveColumns_AddsMissingColumnIdempotently(t *testing.T) {
 		filename TEXT NOT NULL, match_key TEXT NOT NULL,
 		distance_seconds INTEGER NOT NULL, PRIMARY KEY (filename, match_key))`)
 	mustNoErr(t, err)
+	// "Old" moment tables from before a moment could carry a picture. All
+	// four, because the registry names all four — a synthetic database that
+	// holds only some of the tables the registry walks fails on the first one
+	// it is missing, which says nothing about the code under test.
+	for _, tbl := range []string{
+		"match_moments", "coach_note_moments",
+		"match_coach_note_moments", "self_review_note_moments",
+	} {
+		_, err = d.Exec(`CREATE TABLE ` + tbl + ` (
+			id INTEGER PRIMARY KEY, moment_id TEXT NOT NULL, text TEXT NOT NULL)`)
+		mustNoErr(t, err)
+	}
 
 	if has, err := db.ColumnExists(d, "summary_screenshots", "played_at_utc"); err != nil || has {
 		t.Fatalf("precondition: column should be absent (has=%v err=%v)", has, err)

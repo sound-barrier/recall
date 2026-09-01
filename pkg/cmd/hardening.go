@@ -41,6 +41,11 @@ const (
 	// own internal cap. A bundle carries screenshot bytes and a native .db
 	// snapshot carries every table, so both can dwarf the old JSON export.
 	importMaxBodyBytes int64 = 256 << 20 // 256 MiB
+	// momentImageMaxBodyBytes caps one attachment. Deliberately far below the
+	// import cap: this endpoint takes a picture, and anything the size of a
+	// bundle arriving here is a mistake. app.maxMomentImageBytes holds the
+	// same line for callers that never cross this boundary.
+	momentImageMaxBodyBytes int64 = 8 << 20 // 8 MiB
 )
 
 // maxBodyForPath returns the body-size ceiling for a request path. The
@@ -53,6 +58,11 @@ func maxBodyForPath(p string) int64 {
 	switch p {
 	case "/api/v1/imports", "/api/v1/database", "/api/v1/coach/session":
 		return importMaxBodyBytes
+	case "/api/v1/moment-images":
+		// One screenshot, not an archive. 8 MiB is room for a large 1440p
+		// capture and not room for a video; app.maxMomentImageBytes holds the
+		// same line for callers that never cross this boundary.
+		return momentImageMaxBodyBytes
 	default:
 		return defaultMaxBodyBytes
 	}

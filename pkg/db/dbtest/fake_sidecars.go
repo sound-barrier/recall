@@ -338,3 +338,72 @@ func (f *Fake) LoadMatchMoments() (map[string][]db.MatchMoment, error) {
 	}
 	return out, nil
 }
+
+// ── Images a moment points at ─────────────────────────────────────────────
+//
+// Content-addressed, exactly as the SQLStore is: the same bytes are the same
+// row. The digest is computed by db.MomentImageDigest so the two
+// implementations cannot disagree about what "the same image" means — which
+// is the whole reason the store owns the hashing rather than its callers.
+
+func (f *Fake) PutMomentImage(raw []byte, mime string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if !db.ServableImageType(mime) {
+		return "", fmt.Errorf("%w: %s", db.ErrUnsupportedImageType, mime)
+	}
+	if len(raw) == 0 {
+		return "", fmt.Errorf("%w: empty", db.ErrUnsupportedImageType)
+	}
+	if f.MomentImages == nil {
+		f.MomentImages = map[string]db.MomentImage{}
+	}
+	sha := db.MomentImageDigest(raw)
+	if _, seen := f.MomentImages[sha]; !seen {
+		f.MomentImages[sha] = db.MomentImage{
+			SHA256:    sha,
+			Bytes:     slices.Clone(raw),
+			MIME:      mime,
+			ByteSize:  len(raw),
+			CreatedAt: nowRFC3339(),
+		}
+	}
+	return sha, nil
+}
+
+func (f *Fake) LoadMomentImage(sha string) (db.MomentImage, bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	img, ok := f.MomentImages[sha]
+	return img, ok, nil
+}
+
+func (f *Fake) PruneOrphanMomentImages() (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	referenced := map[string]bool{}
+	for _, bucket := range f.MatchMoments {
+		for _, m := range bucket {
+			if m.ImageSHA256 != "" {
+				referenced[m.ImageSHA256] = true
+			}
+		}
+	}
+	// The coach-side families the SQLStore also consults. The Fake holds them
+	// under their notes, so walking those is what keeps the two answers equal.
+	for _, n := range f.MatchCoachNotes {
+		for _, m := range n.Moments {
+			if m.ImageSHA256 != "" {
+				referenced[m.ImageSHA256] = true
+			}
+		}
+	}
+	removed := 0
+	for sha := range f.MomentImages {
+		if !referenced[sha] {
+			delete(f.MomentImages, sha)
+			removed++
+		}
+	}
+	return removed, nil
+}

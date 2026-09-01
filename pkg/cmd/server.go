@@ -237,6 +237,10 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 	// Stays at /_screenshot/{filename} — binary asset, not part of the
 	// JSON API surface, so deliberately outside /api/v1/.
 	mux.Handle("/_screenshot/", a.ScreenshotHandler())
+	// Attachments the app owns, addressed by content digest. A sibling of the
+	// screenshot route rather than part of it: that one resolves a filename
+	// inside a directory the user chose, this one looks up bytes we stored.
+	mux.Handle(app.MomentImagePrefix(), a.MomentImageHandler())
 
 	// ── pprof (opt-in via RECALL_PPROF) ──────────────────────────────
 	// Off by default — only mounted when RECALL_PPROF is set to something

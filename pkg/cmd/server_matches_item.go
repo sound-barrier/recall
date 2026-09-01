@@ -281,10 +281,11 @@ func handleSetMatchMoment(a *app.App) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, r, match.CoachNoteMoment{
-			MomentID:   saved.MomentID,
-			MatchClock: saved.MatchClock,
-			Text:       saved.Text,
-			FocusTag:   saved.FocusTag,
+			MomentID:    saved.MomentID,
+			MatchClock:  saved.MatchClock,
+			Text:        saved.Text,
+			FocusTag:    saved.FocusTag,
+			ImageSHA256: saved.ImageSHA256,
 		}, nil)
 	}
 }

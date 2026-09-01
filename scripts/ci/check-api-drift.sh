@@ -218,6 +218,20 @@ fi
 #                                     format: binary. Covered
 #                                     deterministically by
 #                                     pkg/cmd/server_backup_test.go.
+#   --exclude-path /api/v1/moment-images
+#                                   — POST takes a raw PNG or JPEG
+#                                     (format: binary). Same limitation as
+#                                     the three below: schemathesis cannot
+#                                     synthesize an image, so every fuzzed
+#                                     body is correctly refused as an
+#                                     unservable type — which trips
+#                                     positive_data_acceptance on a body
+#                                     that is only "spec-valid" in the sense
+#                                     that any bytes match format: binary.
+#                                     Covered deterministically by
+#                                     pkg/cmd/server_moment_images_test.go
+#                                     (a real one-pixel PNG in, the digest
+#                                     back, and the served bytes out).
 #   --exclude-path /api/v1/imports  — POST merges a recall-bundle/v1 ZIP
 #                                     (application/zip, format: binary).
 #                                     Same binary-body limitation —
@@ -292,6 +306,7 @@ schemathesis run \
   --exclude-path '/api/v1/system/data-update' \
   --exclude-path '/api/v1/profiles/test/seed' \
   --exclude-path /api/v1/database \
+  --exclude-path /api/v1/moment-images \
   --exclude-path /api/v1/imports \
   --exclude-path /api/v1/coach/session \
   --exclude-path /api/v1/coach/session/replay \

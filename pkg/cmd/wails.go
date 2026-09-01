@@ -59,6 +59,7 @@ func RunWails(a *app.App, assets embed.FS) {
 			Handler: application.AssetFileServerFS(assets),
 			Middleware: application.ChainMiddleware(
 				screenshotsMiddleware(a.ScreenshotHandler()),
+				momentImagesMiddleware(a.MomentImageHandler()),
 				apiMiddleware(desktopAPIHandler(a)),
 			),
 		},
@@ -290,6 +291,24 @@ func screenshotsMiddleware(screenshots http.Handler) application.Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.Path, "/_screenshot/") {
 				screenshots.ServeHTTP(w, r)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// momentImagesMiddleware does for attachments what screenshotsMiddleware does
+// for the watched folder: short-circuits their URL space ahead of the asset
+// pipeline, in dev and production alike. Separate rather than folded into the
+// one above because the two serve different things — a file the user owns
+// versus bytes this app stored — and a middleware that answered for both would
+// hide which one a request reached.
+func momentImagesMiddleware(images http.Handler) application.Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasPrefix(r.URL.Path, app.MomentImagePrefix()) {
+				images.ServeHTTP(w, r)
 				return
 			}
 			next.ServeHTTP(w, r)

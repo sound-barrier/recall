@@ -250,10 +250,11 @@ func coachMomentsFromRows(rows []db.MatchCoachNoteMoment) []match.CoachNoteMomen
 	out := make([]match.CoachNoteMoment, 0, len(rows))
 	for _, m := range rows {
 		out = append(out, match.CoachNoteMoment{
-			MomentID:   m.MomentID,
-			MatchClock: m.MatchClock,
-			Text:       m.Text,
-			FocusTag:   m.FocusTag,
+			MomentID:    m.MomentID,
+			MatchClock:  m.MatchClock,
+			Text:        m.Text,
+			FocusTag:    m.FocusTag,
+			ImageSHA256: m.ImageSHA256,
 		})
 	}
 	return out
@@ -341,10 +342,11 @@ func selfReviewMomentsFromRows(rows []db.SelfReviewMoment) []match.CoachNoteMome
 	out := make([]match.CoachNoteMoment, 0, len(rows))
 	for _, m := range rows {
 		out = append(out, match.CoachNoteMoment{
-			MomentID:   m.MomentID,
-			MatchClock: m.MatchClock,
-			Text:       m.Text,
-			FocusTag:   m.FocusTag,
+			MomentID:    m.MomentID,
+			MatchClock:  m.MatchClock,
+			Text:        m.Text,
+			FocusTag:    m.FocusTag,
+			ImageSHA256: m.ImageSHA256,
 		})
 	}
 	return out
@@ -375,10 +377,11 @@ func MatchMomentsFromRows(rows []db.MatchMoment) []match.CoachNoteMoment {
 	out := make([]match.CoachNoteMoment, 0, len(rows))
 	for _, m := range rows {
 		out = append(out, match.CoachNoteMoment{
-			MomentID:   m.MomentID,
-			MatchClock: m.MatchClock,
-			Text:       m.Text,
-			FocusTag:   m.FocusTag,
+			MomentID:    m.MomentID,
+			MatchClock:  m.MatchClock,
+			Text:        m.Text,
+			FocusTag:    m.FocusTag,
+			ImageSHA256: m.ImageSHA256,
 		})
 	}
 	return out

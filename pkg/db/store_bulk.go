@@ -178,6 +178,11 @@ func (s *SQLStore) Clear() error {
 		"match_play_mode",
 		"match_annotations", // match_annotation_members + _tags cascade
 		"match_moments",     // the player's own timestamped moments; no FK to cascade through
+		// The bytes those moments pointed at. Not reached by any cascade —
+		// moment_images is deliberately not foreign-keyed — so a Clear that
+		// skipped it would leave every screenshot the user ever attached
+		// sitting in a database they just asked to be emptied.
+		"moment_images",
 		"hidden_matches",
 		"acknowledged_reference_gaps",
 		"pinned_matches",

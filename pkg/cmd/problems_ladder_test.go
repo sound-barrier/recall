@@ -68,6 +68,7 @@ var sentinels = []sentinel{
 	{"ErrReplayCodeTaken", app.ErrReplayCodeTaken, "that replay code is already on another match"},
 	{"ErrInvalidMaintenanceOp", app.ErrInvalidMaintenanceOp, "unknown maintenance operation"},
 	{"ErrInvalidMoment", app.ErrInvalidMoment, "invalid moment"},
+	{"ErrImageTooLarge", app.ErrImageTooLarge, "image too large"},
 	{"ErrMomentEmpty", app.ErrMomentEmpty, "a moment needs text"},
 	{"ErrInvalidPlayMode", app.ErrInvalidPlayMode, "invalid play_mode: must be 'quickplay' or 'competitive'"},
 	{"ErrInvalidPlayedAt", app.ErrInvalidPlayedAt, "invalid played_at: must be RFC 3339"},

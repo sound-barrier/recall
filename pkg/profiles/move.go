@@ -215,7 +215,7 @@ func movePhase1Ambiguity(targetStore db.Store, snap db.Screenshots, movedShots m
 // 10k+ match range, at which point a SQL-side LoadForKeys filter is the
 // natural next step (existing read paths stay unchanged).
 func loadMoveSource(src db.Store) (moveSource, error) {
-	var out moveSource
+	out := moveSource{srcStore: src}
 	for _, load := range []struct {
 		what string
 		fn   func() error
@@ -259,6 +259,11 @@ type moveSource struct {
 	// Every key the source holds — the registry the sitting membership is
 	// judged against.
 	matchKeys map[string]bool
+	// The source store itself, for the one thing a snapshot cannot hold
+	// cheaply: image BYTES. Loading every attachment up front would pull a
+	// whole profile's screenshots into memory to move three matches, so the
+	// copier reads the few it needs, by digest, as it goes.
+	srcStore db.Store
 }
 
 // dirIDResolver re-maps a source screenshots_dir_id onto the target by
@@ -405,7 +410,7 @@ func copyMatchSidecars(targetStore db.Store, k string, src moveSource) error {
 			return fmt.Errorf("move: copy review for %q: %w", k, err)
 		}
 	}
-	if err := copyMatchMoments(targetStore, k, src.moments[k]); err != nil {
+	if err := copyMatchMoments(src.srcStore, targetStore, k, src.moments[k]); err != nil {
 		return err
 	}
 	if err := copyDuplicateLinks(targetStore, k, src.dupLinks[k]); err != nil {
@@ -435,13 +440,44 @@ func copyDuplicateLinks(targetStore db.Store, k string, twins []string) error {
 // target. moment_id is their identity on both sides, so a retry after a failed
 // phase 2 upserts in place instead of duplicating — the same property the
 // coach blocks below rely on.
-func copyMatchMoments(targetStore db.Store, k string, moments []db.MatchMoment) error {
+func copyMatchMoments(srcStore, targetStore db.Store, k string, moments []db.MatchMoment) error {
 	for _, m := range moments {
+		// The picture goes with it. A moment's image reference is a content
+		// digest into the SOURCE profile's moment_images; copying the moment
+		// alone would leave the target pointing at bytes it has never seen,
+		// and Move deletes from the source — so the frame the note is about
+		// would simply be gone. Content-addressed, so a re-run stores nothing
+		// twice and two moments sharing an image copy it once.
+		if err := copyMomentImage(srcStore, targetStore, m.ImageSHA256); err != nil {
+			return fmt.Errorf("move: copy image for moment %q of %q: %w", m.MomentID, k, err)
+		}
 		if _, err := targetStore.UpsertMatchMoment(m); err != nil {
 			return fmt.Errorf("move: copy moment %q for %q: %w", m.MomentID, k, err)
 		}
 	}
 	return nil
+}
+
+// copyMomentImage reproduces one image on the target, by digest.
+//
+// A reference the source cannot resolve is NOT an error: an image can already
+// have been pruned, or arrived from an archive that named one it did not
+// carry. The moment still moves, and renders without its picture — which is
+// the same degradation the serving handler is built for, and much better than
+// refusing to move the match.
+func copyMomentImage(srcStore, targetStore db.Store, sha string) error {
+	if sha == "" {
+		return nil
+	}
+	img, ok, err := srcStore.LoadMomentImage(sha)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return nil
+	}
+	_, err = targetStore.PutMomentImage(img.Bytes, img.MIME)
+	return err
 }
 
 // copyCoachNotes reproduces the accepted coach-note blocks on the target.

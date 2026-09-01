@@ -1015,6 +1015,12 @@ export type CoachMoment = {
      */
     focus_tag?: CoachFocusTagEnum;
     /**
+     * Content digest of the attached frame, or absent when the moment
+     * has none. Served from `/_moment-image/{sha256}`.
+     *
+     */
+    image_sha256?: string;
+    /**
      * When the moment was last saved (RFC3339).
      */
     updated_at?: string;
@@ -1033,6 +1039,16 @@ export type MatchMomentInput = {
      * Optional.
      */
     focus_tag?: CoachFocusTagEnum;
+    /**
+     * The frame this moment is about, by the content digest returned
+     * from `POST /api/v1/moment-images`. Empty or absent when the
+     * moment carries no picture. A digest naming an image that is not
+     * (or is no longer) stored is accepted: it renders as a missing
+     * picture rather than failing the write, because a moment can
+     * outlive the frame it pointed at.
+     *
+     */
+    image_sha256?: string;
 };
 
 /**
@@ -4929,6 +4945,42 @@ export type ExportDiagnosticBundleResponses = {
 };
 
 export type ExportDiagnosticBundleResponse = ExportDiagnosticBundleResponses[keyof ExportDiagnosticBundleResponses];
+
+export type PutMomentImageData = {
+    body: Blob | File;
+    path?: never;
+    query?: never;
+    url: '/api/v1/moment-images';
+};
+
+export type PutMomentImageErrors = {
+    /**
+     * Not an image type this app will serve back.
+     */
+    400: ProblemDetails;
+    /**
+     * The image is larger than the 8 MiB cap.
+     */
+    413: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type PutMomentImageError = PutMomentImageErrors[keyof PutMomentImageErrors];
+
+export type PutMomentImageResponses = {
+    /**
+     * Stored. The digest names it from here on.
+     */
+    200: {
+        sha256: string;
+        byte_size?: number;
+    };
+};
+
+export type PutMomentImageResponse = PutMomentImageResponses[keyof PutMomentImageResponses];
 
 export type ImportMatchesData = {
     /**

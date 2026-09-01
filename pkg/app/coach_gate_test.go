@@ -209,7 +209,16 @@ var ungatedByDesign = map[string]string{
 	"PutCoachFocusItems":    "the session's own surface — coach-authored, by design",
 	"DeleteCoachNote":       "the session's own surface — coach-authored, by design",
 	"PutCoachMoment":        "the session's own surface — coach-authored, by design",
-	"DeleteCoachMoment":     "the session's own surface — coach-authored, by design",
+	// Content-addressed bytes in the CALLER's own database. A coach attaching
+	// a frame mid-session is storing it on their own disk, exactly as a player
+	// does — there is no other player's corpus for the gate to protect, and
+	// the moment that points at it IS gated on whichever side wrote it.
+	"PutMomentImage": "stores bytes in the caller's own database; the moment referencing them is what the gate covers",
+	// A sweep over rows nothing points at any more. It cannot remove anything
+	// a moment still names, in either direction, so it is safe to run whoever
+	// is at the keyboard.
+	"PruneMomentImages": "collects unreferenced bytes; removes nothing any moment still names",
+	"DeleteCoachMoment": "the session's own surface — coach-authored, by design",
 	// Both write to the in-memory session and nothing else. The reel a coach
 	// TYPED is theirs to grow, and what they observed while watching is
 	// theirs to record; neither reaches a store, so there is no coach's own

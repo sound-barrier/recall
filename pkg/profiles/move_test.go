@@ -3,6 +3,7 @@ package profiles_test
 import (
 	"errors"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -571,5 +572,54 @@ func TestMove_CarriesAWholeSittingAndRefusesToSplitOne(t *testing.T) {
 	}
 	if left, _ := src.LoadSelfReviews(); len(left) != 0 {
 		t.Errorf("the source kept a shell of the moved sitting: %+v", left)
+	}
+}
+
+// A single valid PNG, small enough to inline. Same bytes the db contract
+// suite uses; duplicated rather than exported because a test fixture reaching
+// across packages is a coupling neither package wants.
+var onePixelPNG = []byte{
+	0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a,
+	0x00, 0x00, 0x00, 0x0d, 'I', 'H', 'D', 'R',
+	0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+	0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4, 0x89,
+	0x00, 0x00, 0x00, 0x0a, 'I', 'D', 'A', 'T',
+	0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01,
+	0x0d, 0x0a, 0x2d, 0xb4,
+	0x00, 0x00, 0x00, 0x00, 'I', 'E', 'N', 'D', 0xae, 0x42, 0x60, 0x82,
+}
+
+// A moved moment's picture has to move with it.
+//
+// The bytes live in the source profile's database, addressed by content —
+// so a move that copies the moment and not the image leaves a reference into
+// a table the target has never heard of, and the frame the note is ABOUT is
+// gone. This is the one path where losing it is destructive rather than
+// merely degraded: Move deletes from the source.
+func TestMove_CarriesTheImageAMomentPointsAt(t *testing.T) {
+	src, dst := newStore(t, "src"), newStore(t, "dst")
+	seedFullMatch(t, src, movedKey)
+
+	sha, err := src.PutMomentImage(onePixelPNG, "image/png")
+	mustNoErr(t, err)
+	_, err = src.UpsertMatchMoment(db.MatchMoment{
+		MomentID: "m-1", MatchKey: movedKey, MatchClock: "03:23",
+		Text: "walked in alone", ImageSHA256: sha,
+	})
+	mustNoErr(t, err)
+
+	mustNoErr(t, profiles.Move(src, dst, []string{movedKey}))
+
+	moved, err := dst.LoadMatchMoments()
+	mustNoErr(t, err)
+	idx := slices.IndexFunc(moved[movedKey], func(m db.MatchMoment) bool { return m.MomentID == "m-1" })
+	if idx < 0 {
+		t.Fatalf("the moment with a picture did not move; got %d moments", len(moved[movedKey]))
+	}
+	if got := moved[movedKey][idx].ImageSHA256; got != sha {
+		t.Fatalf("moved moment points at %q, want %q", got, sha)
+	}
+	if _, ok, err := dst.LoadMomentImage(sha); err != nil || !ok {
+		t.Fatal("the moment moved but its picture did not")
 	}
 }

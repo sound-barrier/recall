@@ -199,17 +199,19 @@ func (s *SQLStore) UpsertMatchMoment(m MatchMoment) (MatchMoment, error) {
 		m.MomentID = NewCoachNoteID()
 	}
 	err := s.db.QueryRow(
-		`INSERT INTO match_moments (moment_id, match_key, match_clock, text, focus_tag, sort_order)
-		 VALUES (?, ?, ?, ?, ?, ?)
+		`INSERT INTO match_moments (moment_id, match_key, match_clock, text, focus_tag, sort_order, image_sha256)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(moment_id) DO UPDATE SET
-		   match_clock = excluded.match_clock,
-		   text        = excluded.text,
-		   focus_tag   = excluded.focus_tag,
-		   sort_order  = excluded.sort_order,
-		   updated_at  = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+		   match_clock  = excluded.match_clock,
+		   text         = excluded.text,
+		   focus_tag    = excluded.focus_tag,
+		   sort_order   = excluded.sort_order,
+		   image_sha256 = excluded.image_sha256,
+		   updated_at   = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
 		 WHERE match_moments.match_key = excluded.match_key
 		 RETURNING created_at, updated_at`,
 		m.MomentID, m.MatchKey, m.MatchClock, m.Text, m.FocusTag, m.SortOrder,
+		sql.NullString{String: m.ImageSHA256, Valid: m.ImageSHA256 != ""},
 	).Scan(&m.CreatedAt, &m.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		// The WHERE on the DO UPDATE refused: this id exists on a DIFFERENT
@@ -236,7 +238,8 @@ func (s *SQLStore) DeleteMatchMoment(matchKey, momentID string) error {
 // list already in reading order.
 func (s *SQLStore) LoadMatchMoments() (map[string][]MatchMoment, error) {
 	rows, err := s.db.Query(
-		`SELECT moment_id, match_key, match_clock, text, focus_tag, sort_order, created_at, updated_at
+		`SELECT moment_id, match_key, match_clock, text, focus_tag, sort_order,
+		        COALESCE(image_sha256, ''), created_at, updated_at
 		 FROM match_moments ORDER BY match_key, match_clock, sort_order`)
 	if err != nil {
 		return nil, fmt.Errorf("load match moments: %w", err)
@@ -246,7 +249,7 @@ func (s *SQLStore) LoadMatchMoments() (map[string][]MatchMoment, error) {
 	for rows.Next() {
 		var m MatchMoment
 		if err := rows.Scan(&m.MomentID, &m.MatchKey, &m.MatchClock, &m.Text,
-			&m.FocusTag, &m.SortOrder, &m.CreatedAt, &m.UpdatedAt); err != nil {
+			&m.FocusTag, &m.SortOrder, &m.ImageSHA256, &m.CreatedAt, &m.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan match moment: %w", err)
 		}
 		out[m.MatchKey] = append(out[m.MatchKey], m)
