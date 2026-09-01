@@ -1,27 +1,16 @@
-<!-- Trimmed from https://overwatch.blizzard.com/en-us/heroes/ (2026-09).
-     Kept: the link shape the scraper keys on, one hero per role, and the four
-     names whose exact bytes matter — an accent, an umlaut, a colon, a period.
-     Everything else on the real page (nav, footer, filters) is dropped. -->
-<html><body>
-<main>
-  <blz-hero-card>
-    <a href="/en-us/heroes/ana/" data-role="support"><span class="heroCardName">Ana</span></a>
-  </blz-hero-card>
-  <blz-hero-card>
-    <a href="/en-us/heroes/dva/" data-role="tank"><span class="heroCardName">D.Va</span></a>
-  </blz-hero-card>
-  <blz-hero-card>
-    <a href="/en-us/heroes/lucio/" data-role="support"><span class="heroCardName">L&uacute;cio</span></a>
-  </blz-hero-card>
-  <blz-hero-card>
-    <a href="/en-us/heroes/soldier-76/" data-role="damage"><span class="heroCardName">Soldier: 76</span></a>
-  </blz-hero-card>
-  <blz-hero-card>
-    <a href="/en-us/heroes/torbjorn/" data-role="damage"><span class="heroCardName">Torbj&ouml;rn</span></a>
-  </blz-hero-card>
-  <blz-hero-card>
-    <a href="/en-us/heroes/wrecking-ball/" data-role="tank"><span class="heroCardName">Wrecking Ball</span></a>
-  </blz-hero-card>
-</main>
-<a href="/en-us/news/">News</a>
-</body></html>
+<!-- Recorded from https://overwatch.blizzard.com/en-us/heroes/ (2026-09-01),
+     six real cards with image URLs and inline styles elided. Kept verbatim:
+     the <a class="hero-card"> wrapper, its data-role, the href, and the
+     <h2 slot="heading"> the name lives in — everything the scraper keys on.
+
+     A hand-idealized version of this file passed the tests and then read every
+     name as "Ana      New" against the live page, because a card also contains
+     a badge. The fixture is recorded, not written, for that reason. -->
+<html><body><blz-gallery>
+<a class="hero-card" data-stadium="true" data-role="support" data-subrole="tactician" href="/heroes/ana" show="show" slot="gallery-items" id="ana"><blz-card class="heroCard" layout="center" icon="…" backplate=""><blz-image class="heroCardPortrait" alt="…" slot="media" src="…" style="…"></blz-image><blz-content-block size="small" layout="center"><h2 slot="heading">Ana</h2><blz-icon slot="heading-icon" src="…"></blz-icon></blz-content-block><blz-badge class="stadium-badge" slot="bottom-right-corner" style="…"><blz-icon class="stadium-icon" slot="leading-icon" src="…" size="300">New</blz-icon></blz-badge></blz-card></a>
+<a class="hero-card" data-stadium="true" data-role="tank" data-subrole="initiator" href="/heroes/dva" show="show" slot="gallery-items" id="dva"><blz-card class="heroCard" layout="center" icon="…" backplate=""><blz-image class="heroCardPortrait" alt="…" slot="media" src="…" style="…"></blz-image><blz-content-block size="small" layout="center"><h2 slot="heading">D.Va</h2><blz-icon slot="heading-icon" src="…"></blz-icon></blz-content-block><blz-badge class="stadium-badge" slot="bottom-right-corner" style="…"><blz-icon class="stadium-icon" slot="leading-icon" src="…" size="300">New</blz-icon></blz-badge></blz-card></a>
+<a class="hero-card" data-stadium="true" data-role="support" data-subrole="tactician" href="/heroes/lucio" show="show" slot="gallery-items" id="lucio"><blz-card class="heroCard" layout="center" icon="…" backplate=""><blz-image class="heroCardPortrait" alt="…" slot="media" src="…" style="…"></blz-image><blz-content-block size="small" layout="center"><h2 slot="heading">Lúcio</h2><blz-icon slot="heading-icon" src="…"></blz-icon></blz-content-block><blz-badge class="stadium-badge" slot="bottom-right-corner" style="…"><blz-icon class="stadium-icon" slot="leading-icon" src="…" size="300">New</blz-icon></blz-badge></blz-card></a>
+<a class="hero-card" data-stadium="true" data-role="damage" data-subrole="specialist" href="/heroes/soldier-76" show="show" slot="gallery-items" id="soldier-76"><blz-card class="heroCard" layout="center" icon="…" backplate=""><blz-image class="heroCardPortrait" alt="…" slot="media" src="…" style="…"></blz-image><blz-content-block size="small" layout="center"><h2 slot="heading">Soldier: 76</h2><blz-icon slot="heading-icon" src="…"></blz-icon></blz-content-block><blz-badge class="stadium-badge" slot="bottom-right-corner" style="…"><blz-icon class="stadium-icon" slot="leading-icon" src="…" size="300">New</blz-icon></blz-badge></blz-card></a>
+<a class="hero-card" data-stadium="true" data-role="damage" data-subrole="specialist" href="/heroes/torbjorn" show="show" slot="gallery-items" id="torbjorn"><blz-card class="heroCard" layout="center" icon="…" backplate=""><blz-image class="heroCardPortrait" alt="…" slot="media" src="…" style="…"></blz-image><blz-content-block size="small" layout="center"><h2 slot="heading">Torbjörn</h2><blz-icon slot="heading-icon" src="…"></blz-icon></blz-content-block><blz-badge class="stadium-badge" slot="bottom-right-corner" style="…"><blz-icon class="stadium-icon" slot="leading-icon" src="…" size="300">New</blz-icon></blz-badge></blz-card></a>
+<a class="hero-card" data-role="tank" data-subrole="initiator" href="/heroes/wrecking-ball" show="show" slot="gallery-items" id="wrecking-ball"><blz-card class="heroCard" layout="center" icon="…" backplate=""><blz-image class="heroCardPortrait" alt="…" slot="media" src="…" style="…"></blz-image><blz-content-block size="small" layout="center"><h2 slot="heading">Wrecking Ball</h2><blz-icon slot="heading-icon" src="…"></blz-icon></blz-content-block></blz-card></a>
+</blz-gallery></body></html>

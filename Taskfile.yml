@@ -618,6 +618,17 @@ tasks:
     desc: Smoke-test scripts/release/*.sh in temp dirs (no real tag needed)
     cmds: [bash scripts/release/smoke/smoke.sh]
 
+  roster-watch:
+    desc: Report where the shipped roster has fallen behind the game (read-only)
+    cmds:
+      # Report only. The workflow passes --apply; locally this never writes,
+      # because the point of running it by hand is to read what it found.
+      #
+      # The workflow invokes the binary DIRECTLY rather than through this task:
+      # the tool distinguishes "drift found" (1) from "a source could not be
+      # read" (2), and go-task rewrites a failing command's exit code.
+      - go run ./cmd/roster-watch --accepted scripts/ci/roster-watch-accepted.txt
+
   bug-finder:
     desc: Build recall-bug-finder CLI to build/bin/ (maintainer-only — not released)
     cmds:

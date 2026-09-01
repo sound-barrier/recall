@@ -1,0 +1,17 @@
+# Roster differences the maintainer has looked at and decided are correct as
+# they stand. Read by `task roster-watch` and by the weekly workflow.
+#
+# Format mirrors deadcode-allow.txt: one "<kind>:<name>" key per line, '#'
+# starts a comment, blank lines ignored. The kinds are hero-missing,
+# hero-spelling, map-missing, patch-missing, season-expired, channel-stale.
+#
+# This file is what lets the watch reach green. Without it a difference the
+# maintainer has already judged would be reported every Thursday forever, and
+# scripts/ci/check-deps.sh already records what that costs: a gate that can
+# never go green "is how a gate teaches people to ignore it."
+#
+# An entry that stops matching anything is reported as stale, so this list
+# cannot quietly rot into a set of exemptions nobody has read.
+
+# (empty — add a line when you have judged a difference and want it to stop
+# being reported, with the reason on the same line after a '#')
