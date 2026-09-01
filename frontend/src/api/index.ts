@@ -72,7 +72,7 @@ export {
   EventsOn,
   ExportBundle,
   ExportCoachNotes,
-  ExportCoachSheet,
+  ExportWebPage,
   ExportDiagnosticBundle,
   ExportMatchesCSV,
   ImportMatches,

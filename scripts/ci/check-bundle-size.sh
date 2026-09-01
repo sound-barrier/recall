@@ -153,7 +153,12 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # graph whether or not a widget asks. The four widgets themselves are not —
 # they live in the dashboard registry the Matches view lazy-loads. Measured
 # 362688B.
-: "${MAX_INITIAL_JS_BYTES:=364000}"
+# 2026-08: 364000 -> 366000 -- the roster's three api functions. src/api is one
+# facade module re-exported by src/api/index.ts, which the entry chunk loads,
+# so an endpoint family added there is eager by construction however lazily its
+# UI is reached. The roster's query, its Settings section and the journal's
+# completion are all in lazy chunks. Measured 364660B.
+: "${MAX_INITIAL_JS_BYTES:=366000}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
@@ -382,7 +387,10 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # its own chunk behind an off-by-default preference, so most launches never
 # fetch it; it counts here because this budget measures the whole graph.
 # Measured 2213212B.
-: "${MAX_TOTAL_JS_BYTES:=2218000}"
+# 2026-08: 2218000 -> 2236000 -- the season recap (builder plus the app's own
+# stylesheets inlined as text, in their own chunk behind a dynamic import, like
+# the coach sheet's twin) and the roster's UI. Measured 2228464B.
+: "${MAX_TOTAL_JS_BYTES:=2236000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset

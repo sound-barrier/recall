@@ -93,20 +93,23 @@
       "borderRadius": []
     },
     "button": {
-      "count": 13,
+      "count": 14,
       "fontSize": [
         "10.56px",
+        "12.48px",
         "13.3333px",
         "16px",
         "9.6px"
       ],
       "letterSpacing": [
         "0.4224px",
+        "0.4992px",
         "1.536px",
         "normal"
       ],
       "fontWeight": [
         "400",
+        "600",
         "700"
       ],
       "textTransform": [
@@ -121,6 +124,7 @@
       "backgroundColor": [
         "color(srgb 0.284784 0.225804 0.134196)",
         "rgb(24, 27, 34)",
+        "rgb(29, 32, 41)",
         "rgba(0, 0, 0, 0)"
       ],
       "borderRadius": [

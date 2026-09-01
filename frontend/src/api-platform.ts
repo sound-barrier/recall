@@ -169,17 +169,18 @@ export async function ExportMatchesCSV(csv: string, defaultName: string): Promis
   return defaultName
 }
 
-// ExportCoachSheet saves the standalone page a coach hands a player — one
-// self-contained HTML file, built client-side by buildCoachSheet, that opens
-// in any browser with the network off. Same two paths as the CSV above: a
-// native save dialog under Wails, a transient <a download> in the browser.
-// Resolves with the saved filename ("" on a Wails cancel).
+// ExportWebPage saves one of the standalone HTML pages the app builds — the
+// review a coach hands over, the recap of a season. Each is a self-contained
+// file that opens in any browser with the network off. Same two paths as the
+// CSV above: a native save dialog under Wails, a transient <a download> in
+// the browser. Resolves with the saved filename ("" on a Wails cancel).
 //
 // A separate Wails method rather than reusing SaveTextToFile: that dialog is
 // labeled "Save match data (CSV)" and filters for .csv, which would be the
-// wrong dialog in front of the wrong file.
-export async function ExportCoachSheet(html: string, defaultName: string): Promise<string> {
-  if (IS_WAILS) return wailsCall<string>('SaveCoachSheetToFile', defaultName, html)
+// wrong dialog in front of the wrong file. `dialogTitle` is a parameter
+// because the page's own name belongs on the dialog.
+export async function ExportWebPage(html: string, defaultName: string, dialogTitle: string): Promise<string> {
+  if (IS_WAILS) return wailsCall<string>('SaveWebPageToFile', defaultName, html, dialogTitle)
   triggerBlobDownload(new Blob([html], { type: 'text/html;charset=utf-8' }), defaultName)
   return defaultName
 }
@@ -322,7 +323,7 @@ export async function OpenCoachBundle(): Promise<CoachSessionView | null> {
 //
 // The human copy goes UP with the request rather than being rendered on the
 // far side. It is built here, where the app's real stylesheets are, so the
-// page inside this archive and the page ExportCoachSheet writes on its own
+// page inside this archive and the page ExportWebPage writes on its own
 // are the same bytes — two renderers of one document is how they drift.
 export function ExportCoachNotes(sheetHTML: string): Promise<string> {
   if (IS_WAILS) return wailsCall<string>('SaveCoachNotesToFile', sheetHTML)

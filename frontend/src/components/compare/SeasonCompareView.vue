@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import type { MatchRecord } from '@/api-client'
@@ -11,6 +11,7 @@ import { seasonForMatch } from '@/match/match-season-helpers'
 import { matchesLeaverHandling } from '@/composables/matches/narrow/narrowPredicates'
 import { compareSeasons, type ComparisonSection } from '@/match/compare/match-compare-helpers'
 import { buildSeasonMetrics, topHeroDisplay } from '@/components/compare/compareSnapshot'
+import { useSeasonRecap } from '@/composables/compare/useSeasonRecap'
 import CompareTable from '@/components/compare/CompareTable.vue'
 import FormCompareView from '@/components/compare/FormCompareView.vue'
 
@@ -43,6 +44,13 @@ watch(seasons, (list) => {
 }, { immediate: true })
 
 const scope = ref<'full' | 'filtered'>('full')
+
+// The recap is a permanent surface on the season the player has picked as
+// the baseline — the one they are already looking at — with the rollover
+// notice above it as a nudge rather than the feature.
+const recap = useSeasonRecap(() => matchesStore.records, () => seasons.value)
+onMounted(() => { recap.seedIfUnseen() })
+const recapSeason = computed(() => seasons.value.find((s) => s.name === pickA.value) ?? null)
 
 // Full-scope source. Beyond hidden-stripping, honor the leaver 'Hide' setting
 // and the unknown-map default here — the narrow applies both in the filtered
@@ -149,6 +157,19 @@ const liveSummary = computed(() => {
       </button>
     </div>
 
+    <aside v-if="recap.endedSeason.value" class="compare-rollover" role="status">
+      <span class="eyebrow accent">Season ended</span>
+      <p class="compare-rollover-copy">
+        {{ recap.endedSeason.value.name }} is over. Keep a recap of it.
+      </p>
+      <button type="button" class="btn primary" @click="recap.save(recap.endedSeason.value!)">
+        Save recap
+      </button>
+      <button type="button" class="btn ghost" @click="recap.markSeen()">
+        Not now
+      </button>
+    </aside>
+
     <template v-if="mode === 'seasons'">
       <div v-if="!enoughSeasons" class="empty">
         <div class="empty-mark" aria-hidden="true">
@@ -185,6 +206,17 @@ const liveSummary = computed(() => {
             </select>
           </label>
 
+          <div class="compare-recap">
+            <button
+              type="button"
+              class="btn"
+              :disabled="recapSeason === null || recap.saving.value"
+              @click="recapSeason && recap.save(recapSeason)"
+            >
+              {{ recap.saving.value ? 'Saving…' : 'Save recap of A' }}
+            </button>
+          </div>
+
           <div class="compare-scope" role="group" aria-label="Comparison scope">
             <button
               type="button"
@@ -208,6 +240,13 @@ const liveSummary = computed(() => {
             </button>
           </div>
         </div>
+
+        <p v-if="recap.savedAs.value" class="compare-note" role="status">
+          Saved <strong>{{ recap.savedAs.value }}</strong> — it opens in any browser, with the network off.
+        </p>
+        <p v-if="recap.error.value" class="compare-note compare-note-error" role="alert">
+          {{ recap.error.value }}
+        </p>
 
         <p class="sr-only" aria-live="polite">
           {{ liveSummary }}
@@ -240,6 +279,37 @@ const liveSummary = computed(() => {
 </template>
 
 <style scoped>
+/* The rollover notice: one line, an accent rule, and the two answers to it.
+   Sits above the mode switch because it is about the tab, not about the
+   comparison currently on screen. */
+.compare-rollover {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3);
+  border-left: 2px solid var(--accent);
+  background: var(--surface-2);
+}
+
+.compare-rollover-copy {
+  flex: 1 1 14rem;
+  margin: 0;
+  color: var(--text-dim);
+}
+
+.compare-recap {
+  display: flex;
+  align-items: center;
+}
+
+/* The save outcome reuses .compare-note below — one visual concept, one rule
+   — and adds only the error tint. */
+.compare-note-error {
+  color: var(--loss);
+}
+
 .compare-view {
   max-width: 60rem;
 }

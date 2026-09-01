@@ -1,0 +1,114 @@
+/* The season recap — geometry only.
+ *
+ * Inlined into a standalone HTML file the player keeps, alongside the app's
+ * REAL tokens.css, themes.css and paper.css, for the same reason the coach's
+ * sheet is: the page renders from the same bytes the app does, so the two
+ * cannot drift the way a hand-copied subset would.
+ *
+ * Nothing here about ink, paper or type scale — those exist and are imported.
+ * What lives here is the one thing the app has no equivalent of: a page that
+ * is a KEEPSAKE rather than a workspace. The headline numbers are a grid
+ * because a recap is scanned, not read. */
+
+.recap {
+  margin: 0;
+  padding: var(--space-5) var(--space-3);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.recap-page {
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+.recap-head {
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: var(--space-4);
+}
+
+.recap-h1 {
+  margin: var(--space-1) 0 0;
+  font-size: 2rem;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.recap-h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--type-md);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+}
+
+.recap-empty {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* The headline grid: as many columns as fit, each a label over a number. */
+.recap-headline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.recap-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.recap-stat-value {
+  font-size: var(--type-3xl);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.recap-rank,
+.recap-list {
+  margin-bottom: var(--space-5);
+}
+
+.recap-rank-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--type-2xl);
+  font-weight: 600;
+}
+
+.recap-arrow {
+  color: var(--text-dim);
+}
+
+.recap-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recap-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.recap-row-key {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.recap-row-games,
+.recap-row-rate {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}

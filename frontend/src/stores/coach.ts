@@ -4,7 +4,7 @@ import { defineStore } from 'pinia'
 import {
   AddCoachSessionReplayCode,
   CloseCoachSession, DeleteCoachMoment, DeleteCoachNote, ExportCoachNotes,
-  ExportCoachSheet,
+  ExportWebPage,
   OpenCoachBundle, OpenCoachReplaySession, PutCoachFocusItems, PutCoachMoment,
   PutCoachNote, SetCoachSessionMatchContext, SetCoachSessionPlayer,
   type CoachSessionView, type FocusItem, type ObservedContext,
@@ -502,7 +502,7 @@ export const useCoachStore = defineStore('coach', () => {
     try {
       const handle = session.value?.player?.handle || 'player'
       const name = `recall-review-${handle}-${session.value?.session_date ?? ''}.html`
-      const saved = await ExportCoachSheet(await renderSheet(), name)
+      const saved = await ExportWebPage(await renderSheet(), name, 'Save coaching review (web page)')
       // "" is a canceled native dialog — nothing written, nothing changes.
       if (!saved) return
       exportedTo.value = saved
