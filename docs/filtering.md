@@ -357,6 +357,12 @@ the arrow keys paginate through that exact set. See
 [How it works → What it looks like](how-it-works.md#what-it-looks-like)
 for the panel's keyboard contract in detail.
 
+The **Group** field takes BattleTags, and completes from two sources:
+everyone you have tagged before, and the roster you keep in
+*Settings → Roster*. A rostered tag shows as the name you gave it, with
+the tag itself on hover — so a group chip reads as a person rather than
+as a string with a number in it.
+
 ## Match count
 
 The dossier subline reads the current state:

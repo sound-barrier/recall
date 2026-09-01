@@ -140,6 +140,55 @@ and it answers "is a night of this worth it?" in the terms you'd ask.
 Null on both when nothing in the window reported a movement — the rate
 is unknown, which is not the same as flat.
 
+**In SR rather than the meter.** *Climb velocity* counts the progress
+meter, because that is what almost every rank screen reports. **SR climb
+rate** counts the SR itself, and **SR by hero** splits it — Overwatch
+banks SR per hero, so one net figure can read flat while one hero
+climbed and another slid. Both ship beside the meter widgets rather
+than replacing them: SR is reported on a minority of captures, and each
+tile says how many it read ("read on 4 of 19") so you can weigh the
+number by what is behind it. A card whose movement pill could not be
+read counts as unread, not as a match that moved nothing.
+
+## Did the game change under me?
+
+**Matches → dossier → Patch split.**
+
+Your win rate before the newest patch your set straddles, against your
+win rate after it — with the patch named, because a before-and-after
+with no boundary named is two numbers and an implication.
+
+Recall knows every season start is a patch. Mid-season balance patches
+are real and frequent, and their dates are not something the app can
+derive, so it does not invent them: a split at a moment nothing happened
+would invite you to explain a difference that is not there. Dates added
+upstream arrive through **Check for updates**, like a corrected season.
+
+## Do I tilt-queue?
+
+**Matches → dossier → Fresh vs tilted queue.**
+
+Your win rate after queuing straight back in (under five minutes from
+the last game ENDING) against your win rate after an hour away. The
+band between the two is deliberately in neither: a twenty-minute break
+is not a re-queue and not a rest, and forcing it into one side would
+fill both with the least meaningful games.
+
+## Which heroes am I actually on?
+
+**Matches → dossier → Effective hero pool, Hero trend lines.**
+
+*Effective hero pool* answers whether a hero list is a pool or one pick
+with company: it reports how many heroes an even spread would need to
+look like yours, weighted by time played, and names the hero past half
+your time when there is one. Heroes whose play time could not be read
+are named too — a spread measured over three of eight is a different
+claim from one over all eight.
+
+*Hero trend lines* draws each hero's rolling win rate beside their name.
+A hero you just picked up and a hero you have been losing on for a month
+print the same 52%; only the shape tells them apart.
+
 ## Today's session
 
 While you are playing, the session readout stays up: a running W/L/D
@@ -149,6 +198,26 @@ starts a new count rather than adding to yesterday's.
 
 Sessions are also a grouping option in the leaves list, so a finished
 session can be read back the same way you watched it.
+
+**The live rail** is the same tally on every tab, plus the one thing the
+others do not carry: the rank you are on. It is **off by default** —
+turn it on in *Settings → Appearance → Live session banner* — because
+four surfaces already spell a session tally and a fifth is your call,
+not ours. Dismissing it dismisses that session, not that moment: the
+next game does not bring it back.
+
+## Keeping a season
+
+**Compare → Save recap of A.**
+
+A season recap is one HTML file: the record, where the climb started and
+ended, the heroes and maps behind it. It opens in any browser with the
+network off, forever — nothing in it reaches out — so it keeps as well
+as a screenshot does, and reads better.
+
+Any past season, one pick away. When a season rolls over, the Compare
+tab offers a recap of the one that just ended; that notice is a nudge
+onto a page that is always there, not the only way to reach it.
 
 ## Next chapter
 
