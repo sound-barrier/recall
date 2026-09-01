@@ -23,6 +23,7 @@
   "data-elo-stat=p-value": "Rigged MMR?Too few games to tellAt 1 game your record still looks like a coin flip — play more before blaming the system. (p = 1.00)",
   "data-elo-stat=season": "This season?very unlikelyPlaying your 100% record out 4,000 times — lobbies toughening as you climb, like the amber curve — these are your odds of touching Silver 5 within ~12 games at your pace. Touching counts any moment of the season; you can brush it and still slip back.",
   "data-elo-stat=streak": "Endless loss streaks?Effectively never at this rateAt 100%, a 5-loss run over 100 games rounds to zero — if one happens anyway, look at tilt before the matchmaker.",
+  "data-elo-target=by": "",
   "data-elo-target=division": "5",
   "data-elo-target=tier": "silver",
   "data-elo-timeline": "The honest timeline In 100% of 4,000 simulated seasons you never touch Silver 5 within ~12 games at this form. Improvement — or simply more games than one season holds — moves that number.Certainty has a price: ≈1044 more decisive games to pin your true win rate within ±3 points."

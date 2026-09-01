@@ -30,6 +30,7 @@
   "data-elo-stat=runs": "Scripted streaks?More alternating than chanceYour 200 games form 192 win/loss runs; a fair sequence at your rate averages 101 (p < 0.001). Slightly more regular than random — nothing sinister about that either.",
   "data-elo-stat=season": "This season?70% chancePlaying your 52% record out 4,000 times — lobbies toughening as you climb, like the amber curve — these are your odds of touching Emerald 5 within ~88 games at your pace. Touching counts any moment of the season; you can brush it and still slip back.",
   "data-elo-stat=streak": "Endless loss streaks?75% — normalA 5-loss streak in your next 100 games is 75% likely at 52%. Expected, not rigged.",
+  "data-elo-target=by": "",
   "data-elo-target=division": "5",
   "data-elo-target=tier": "emerald",
   "data-elo-timeline": "The honest timeline Across 4,000 simulated seasons: the fastest tenth touch Emerald 5 by ~10 games · the median by ~42 · 30% never arrive within ~88 games.Certainty has a price: ≈846 more decisive games to pin your true win rate within ±3 points."
