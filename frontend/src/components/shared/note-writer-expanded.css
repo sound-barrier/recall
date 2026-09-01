@@ -6,7 +6,13 @@
 .note-writer-expanded {
   position: fixed;
   inset: 0;
-  z-index: 1300;
+
+  /* Below the error banner (1100) and the toast layer (1200), both of which
+     exist to stay visible ACROSS modals — this is an opaque full-viewport
+     surface, so sitting above them would paint over a failure the reader
+     still needs, and (before containment) leave it Tab-reachable but unseen.
+     Above the detail panel (90), which is the only thing it opens from. */
+  z-index: 1050;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -75,4 +81,16 @@
   .note-preview-pane {
     display: none;
   }
+}
+
+/* Expanded FROM the film room. Teleporting to <body> leaves the host's
+   `.paper` ancestor behind, so the writer carries the class itself — but its
+   own background rule is scoped (specificity 0,2,0) and would otherwise
+   outrank `.paper`'s, painting ink-colored type on the ordinary ground. The
+   plate's border and radius go too: this is the whole viewport now, not a
+   sheet sitting on a desk. */
+.note-writer-expanded.paper {
+  background: var(--paper);
+  border: 0;
+  border-radius: 0;
 }

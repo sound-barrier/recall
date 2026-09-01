@@ -90,9 +90,11 @@
   border-radius: var(--radius);
 }
 
+/* The message is written on the shared editor now, so it brings its own
+   field chrome — the same way the manual-match form and the coach note host
+   it. `resize` is gone because it did nothing on a contenteditable. */
 .send-to-coach-message {
   line-height: 1.45;
-  resize: vertical;
 }
 
 .send-to-coach-summary {

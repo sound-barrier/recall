@@ -31,6 +31,11 @@ const props = defineProps<{
   disabled?: boolean
   /** Search terms to light. Drawn over the text; never part of the note. */
   highlight?: readonly string[]
+  /**
+   * The cap on the SERIALIZED markdown. A contenteditable has no `maxlength`,
+   * so the refusal is a ProseMirror transaction filter — see NoteLengthCap.
+   */
+  maxLength?: number
 }>()
 
 const emit = defineEmits<{
@@ -90,7 +95,7 @@ let lastEmitted = props.text
 const editor = useEditor({
   content: textToDoc(props.text),
   editable: !props.disabled,
-  extensions: noteExtensions(props.placeholder),
+  extensions: noteExtensions(props.placeholder, props.maxLength),
   editorProps: { attributes: fieldAttributes() },
   // onTransaction rather than onSelectionUpdate: pressing Bold with nothing
   // selected sets a STORED mark, which changes neither the document nor the

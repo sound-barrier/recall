@@ -232,15 +232,19 @@ const MarksHugTheirContent = Extension.create({
  * so the refusal happens here — and a transaction that shortens the note
  * always passes, or a note already over the cap could never be repaired.
  */
-const NoteLengthCap = Extension.create({
+const NoteLengthCap = Extension.create<{ max: number }>({
   name: 'noteLengthCap',
+  addOptions() {
+    return { max: MAX_NOTE_TEXT }
+  },
   addProseMirrorPlugins() {
+    const { max } = this.options
     return [new Plugin({
       key: new PluginKey('noteLengthCap'),
       filterTransaction: (tr, state) => {
         if (!tr.docChanged) return true
         const next = [...markdownOf(tr.doc)].length
-        if (next <= MAX_NOTE_TEXT) return true
+        if (next <= max) return true
         return next <= [...markdownOf(state.doc)].length
       },
     })]
@@ -348,7 +352,7 @@ export const TOOL_STATE: readonly { key: string; name: string; attrs?: Record<st
 ]
 
 /** The whole schema, in one place, for the editor and its tests. */
-export function noteExtensions(placeholder: string) {
+export function noteExtensions(placeholder: string, maxChars: number = MAX_NOTE_TEXT) {
   return [
     Document, Paragraph, Text,
     NoteHardBreak, NoteHeading,
@@ -356,6 +360,6 @@ export function noteExtensions(placeholder: string) {
     Bold, Italic, NoteStrike,
     UndoRedo,
     Placeholder.configure({ placeholder }),
-    HeadingDisplayLevel, MarksHugTheirContent, NoteLengthCap, PlainTextOnly, SearchHits,
+    HeadingDisplayLevel, MarksHugTheirContent, NoteLengthCap.configure({ max: maxChars }), PlainTextOnly, SearchHits,
   ]
 }

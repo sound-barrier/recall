@@ -144,4 +144,16 @@ describe('SendToCoachModal', () => {
     await nextTick()
     await vi.waitFor(() => expect(screen.getByRole('toolbar', { name: 'Formatting' })).toBeInTheDocument())
   })
+
+  it('holds the message to the length the server will actually accept', async () => {
+    // The server caps this at 2000 runes (bundle.maxPlayerMessageRunes, and
+    // maxLength: 2000 in the spec). The old textarea refused the 2001st
+    // keystroke; the shared editor defaults to 4000, which would move the
+    // refusal to Send time and lose the reason why.
+    render(SendToCoachModal)
+    open([READY], ['m-1'])
+    await nextTick()
+    const messageField = await markdownField('Message for your coach (optional)')
+    expect(messageField.maxLength).toBe(2000)
+  })
 })
