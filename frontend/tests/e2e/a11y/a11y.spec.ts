@@ -26,7 +26,32 @@
 import AxeBuilder from '@axe-core/playwright'
 
 import { test, expect } from '../_fixtures'
-import { VIEWS, THEMES, openView } from '../_theme-matrix'
+import {
+  VIEWS, THEMES, openView, pinTheme, seedFocus, seedProfiles, seedReviewsEmpty, silenceParseEvents,
+} from '../_theme-matrix'
+
+// A session that is still running: three games inside the 3-hour gap, the
+// newest carrying a readable rank pill and a meter move, so the rail renders
+// every part it has — pill, tally, movement and the partial-read note.
+function liveSession() {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return [90, 50, 10].map((minutesAgo, i) => {
+    const when = new Date(Date.now() - minutesAgo * 60_000)
+    return {
+      match_key: `live-${i}`,
+      source_files: [`live-${i}.png`],
+      queue_type: 'role',
+      data: {
+        map: 'rialto', playlist: 'competitive', hero: 'lucio', role: 'support',
+        result: i === 2 ? 'defeat' : 'victory',
+        date: `${when.getFullYear()}-${pad(when.getMonth() + 1)}-${pad(when.getDate())}`,
+        finished_at: `${pad(when.getHours())}:${pad(when.getMinutes())}`,
+        rank: 'gold', level: 2, rank_progress: 55, change_percent: i === 2 ? -20 : 21,
+      },
+      parsed_at: when.toISOString(),
+    }
+  })
+}
 
 // Force `prefers-reduced-motion: reduce` for every a11y test so the
 // site's @media rule collapses every animation/transition to 0.01ms.
@@ -118,4 +143,29 @@ for (const theme of THEMES) {
     const results = await runAx(page)
     expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([])
   })
+
+  // The live session rail, which the matrix cannot reach twice over: it is
+  // off by default, and the audit corpus's newest match is a day old, so no
+  // session is running. Seeded with its own fresh corpus and the preference
+  // pre-set, because a bar that sits above every view on every tab is exactly
+  // the surface a contrast miss would follow the player around on.
+  test(`a11y: live session banner (${theme} theme) has no axe violations`, async ({ page }) => {
+    await pinTheme(page, theme)
+    await silenceParseEvents(page)
+    await seedProfiles(page)
+    await seedReviewsEmpty(page)
+    await seedFocus(page)
+    await page.addInitScript(() => {
+      try { localStorage.setItem('recall.sessionBanner', 'true') } catch (_) { /* sandboxed */ }
+    })
+    await page.route('**/api/v1/matches', (route) => route.fulfill({
+      status: 200, contentType: 'application/json', body: JSON.stringify(liveSession()),
+    }))
+    await page.goto('/')
+    await expect(page.getByRole('status', { name: 'Live session' })).toBeVisible()
+
+    const results = await runAx(page)
+    expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([])
+  })
+
 }

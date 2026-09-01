@@ -20,7 +20,7 @@ import { useSettingsStore } from '@/stores/settings'
 // siblings in the same template already took no props at all
 // (TECHNICAL_DEBT.md section 15).
 const settingsStore = useSettingsStore()
-const { themeMode } = storeToRefs(settingsStore)
+const { themeMode, sessionBanner } = storeToRefs(settingsStore)
 
 function pick(mode: ThemeMode) {
   settingsStore.setTheme(mode)
@@ -184,6 +184,31 @@ function pick(mode: ThemeMode) {
               </div>
             </button>
           </div>
+        </div>
+      </div>
+
+      <div class="setting-row appearance-row">
+        <div class="setting-info">
+          <h4 id="setting-session-banner" class="setting-label">
+            Live session banner
+          </h4>
+          <p class="setting-desc">
+            Shows the rank you're on and how far tonight has moved it, on every tab
+            while you're playing. Off by default — the Matches page already tallies
+            the session; this adds where you stand on the ladder.
+          </p>
+        </div>
+        <div class="setting-control">
+          <button
+            type="button"
+            class="btn"
+            role="switch"
+            aria-labelledby="setting-session-banner"
+            :aria-checked="sessionBanner"
+            @click="settingsStore.setSessionBanner(!sessionBanner)"
+          >
+            {{ sessionBanner ? 'On' : 'Off' }}
+          </button>
         </div>
       </div>
     </div>

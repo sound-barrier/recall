@@ -39,6 +39,8 @@ describe('App.vue lazy-loaded components', () => {
     { name: 'UnknownMapsView',        path: '@/components/unknown/UnknownMapsView.vue' },
     { name: 'SeasonCompareView',      path: '@/components/compare/SeasonCompareView.vue' },
     { name: 'EloCalculatorView',      path: '@/components/elo/EloCalculatorView.vue' },
+    // Off by default, so most launches never fetch this chunk at all.
+    { name: 'SessionBanner',          path: '@/components/matches/session/SessionBanner.vue' },
     { name: 'ReviewsView',            path: '@/components/reviews/ReviewsView.vue' },
     { name: 'MatchDetailPanel',       path: '@/components/matches/detail/MatchDetailPanel.vue' },
     { name: 'MatchScreenshotLightbox', path: '@/components/matches/detail/MatchScreenshotLightbox.vue' },
