@@ -1,8 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { nextTick, ref } from 'vue'
 
 import type { MatchRecord } from '@/api-client'
+import type { GoalPace } from '@/match/elo/elo-model'
 import { useEloCalc, useEloCalculator } from '@/composables/elo/useEloCalculator'
+import { installMemoryLocalStorage } from '@/test-utils'
 
 let seq = 0
 function rec(opts: { result?: string; hero?: string; role?: string; rank?: { tier: string; level: number; progress: number; change?: number } } = {}): MatchRecord {
@@ -549,6 +551,90 @@ describe('useEloCalculator — hero evidence', () => {
     seq = 0
     const soloRecords = Array.from({ length: 20 }, (_, i) => rec({ hero: 'lucio', result: i < 14 ? 'victory' : 'defeat' }))
     expect(useEloCalculator({ records: soloRecords, heroRole, mapGameMode , seasons: [] }).heroGap.value).toBeNull()
+  })
+})
+
+describe('the climb goal', () => {
+  beforeEach(() => {
+    installMemoryLocalStorage()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-30T12:00:00Z'))
+  })
+  afterEach(() => { vi.useRealTimers() })
+
+  const calc = () => useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode, seasons: [] })
+
+  it('carries the goal over to the next session', () => {
+    const first = calc()
+    first.pickTargetTier('diamond')
+    first.pickTargetDivision(2)
+    first.pickTargetBy('2026-12-01')
+
+    // A second instance stands in for the next launch: it reads the same
+    // storage the first one wrote, without being handed anything.
+    const next = calc()
+    expect(next.targetTier.value).toBe('diamond')
+    expect(next.targetDivision.value).toBe(2)
+    expect(next.targetBy.value).toBe('2026-12-01')
+  })
+
+  it('falls back to the default goal when storage holds something unreadable', () => {
+    localStorage.setItem('recall.elo.targetTier', 'wood')
+    localStorage.setItem('recall.elo.targetDivision', '9')
+    localStorage.setItem('recall.elo.targetBy', 'someday')
+
+    const c = calc()
+    expect(c.targetTier.value).toBe('platinum')
+    expect(c.targetDivision.value).toBe(5)
+    expect(c.targetBy.value).toBe('')
+  })
+
+  it('says nothing about pace until a deadline is set', () => {
+    const c = calc()
+    expect(c.targetBy.value).toBe('')
+    expect(c.goalPace.value).toBeNull()
+  })
+
+  // Narrowing helper: every assertion below is about a pace the model
+  // could actually measure, and the union's other arms carry no weeks.
+  function measured(pace: GoalPace | null) {
+    expect(pace?.kind).toBe('measured')
+    return pace as Extract<GoalPace, { kind: 'measured' }>
+  }
+
+  it('measures the deadline against the decay-aware weeks, not the naive ones', () => {
+    const c = calc()
+    c.pickTargetBy('2026-12-01')
+    const pace = measured(c.goalPace.value)
+    // 2026-06-30T12:00Z → 2026-12-01 is 153.5 days, 21.9 weeks.
+    expect(pace.weeksLeft).toBeCloseTo(21.9, 1)
+    expect(pace.weeksNeeded).toBeCloseTo(c.weeksDecay.value!, 1)
+    expect(pace.weeksNeeded).not.toBeCloseTo(c.weeksNaive.value!, 1)
+  })
+
+  it('judges a reachable deadline on pace and a passed one behind', () => {
+    const c = calc()
+    c.pickTargetBy('2029-01-01')
+    expect(measured(c.goalPace.value).onPace).toBe(true)
+
+    c.pickTargetBy('2026-06-29')
+    expect(measured(c.goalPace.value).onPace).toBe(false)
+    expect(measured(c.goalPace.value).weeksLeft).toBeLessThan(0)
+  })
+
+  it('tells a player who set no pace apart from one whose goal is out of reach', () => {
+    const c = calc()
+    c.pickTargetBy('2027-01-01')
+    c.editInput('gamesPerWeekInput', null)
+    expect(c.goalPace.value?.kind).toBe('no-pace')
+
+    c.editInput('gamesPerWeekInput', 10)
+    // Champion 1 from Gold 2 is past where this record's climb plateaus.
+    c.pickTargetTier('champion')
+    c.pickTargetDivision(1)
+    expect(c.goalPace.value?.kind).toBe('unreachable')
+    // The calendar half of the answer survives either way.
+    expect(c.goalPace.value!.weeksLeft).toBeGreaterThan(0)
   })
 })
 

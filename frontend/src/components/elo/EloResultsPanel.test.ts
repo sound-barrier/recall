@@ -111,8 +111,8 @@ describe('EloResultsPanel — the two futures', () => {
   it('calls a target at the current rank "Already there" in both futures', () => {
     mountPanel(basicCorpus(), (calc) => {
       calc.editInput('currentProgress', 0)
-      calc.editInput('targetTier', 'gold')
-      calc.editInput('targetDivision', 2)
+      calc.pickTargetTier('gold')
+      calc.pickTargetDivision(2)
     })
     expect(screen.getAllByText('Already there')).toHaveLength(2)
   })
@@ -123,8 +123,8 @@ describe('EloResultsPanel — the two futures', () => {
     // told a 57%-win-rate player their climb was "Out of reach" and that
     // "a losing record settles below the target" — on the same screen.
     mountPanel(basicCorpus(), (calc) => {
-      calc.editInput('targetTier', 'gold')
-      calc.editInput('targetDivision', 4)
+      calc.pickTargetTier('gold')
+      calc.pickTargetDivision(4)
     })
     expect(screen.getAllByText('Already there')).toHaveLength(2)
     expect(screen.queryByText('Out of reach')).not.toBeInTheDocument()

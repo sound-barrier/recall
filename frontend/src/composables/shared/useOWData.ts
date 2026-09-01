@@ -6,7 +6,9 @@ import { useOWDataQuery } from '@/queries/system'
 // UTC RFC3339 strings; season assignment compares a match's canonical UTC
 // instant against [start, end).
 export type Season = NonNullable<OWData['seasons']>[number]
-export type Patch = NonNullable<OWData['patches']>[number]
+// Local: consumers that need a patch shape declare the narrow one they
+// read (splitByPatch's PatchRef), rather than the whole wire record.
+type Patch = NonNullable<OWData['patches']>[number]
 
 // SeasonWindow is the parsed comparable form of a season boundary — epoch ms,
 // half-open [startMs, endMs). null from the resolver = unknown season name.

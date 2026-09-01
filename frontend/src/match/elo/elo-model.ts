@@ -248,3 +248,21 @@ export function gamesToWeeks(games: number | null, gamesPerWeek: number | null):
   if (games === null || gamesPerWeek === null || gamesPerWeek <= 0) return null
   return games / gamesPerWeek
 }
+
+/**
+ * Whether a dated goal lands at the pace already measured.
+ *
+ * The projection counts GAMES and a player commits to a DATE; this is where
+ * the two meet. Both spans are in weeks because that is the unit the pace
+ * input is in — converting to days would invent precision the games-per-week
+ * estimate does not have.
+ */
+// Whether a goal's deadline holds. A deadline can fail to produce an answer
+// for two unrelated reasons — the rank is out of reach at this win rate, or
+// no pace has been measured to divide by — and a player who set a date is
+// owed the difference rather than a blank line. weeksLeft is known in every
+// case, because it comes from the calendar rather than the model.
+export type GoalPace =
+  | { kind: 'measured'; weeksLeft: number; weeksNeeded: number; onPace: boolean }
+  | { kind: 'unreachable'; weeksLeft: number }
+  | { kind: 'no-pace'; weeksLeft: number }

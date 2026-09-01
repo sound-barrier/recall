@@ -2,6 +2,7 @@ import {
   computed, inject, provide, ref, toValue, watch,
   type ComputedRef, type InjectionKey, type MaybeRefOrGetter, type Ref,
 } from 'vue'
+import { parseClampedNumber, usePersistedRef } from '@/composables/shared/usePersistedRef'
 import type { MatchRecord } from '@/api-client'
 import type { Season } from '@/composables/shared/useOWData'
 import { seasonForMatch } from '@/match/match-season-helpers'
@@ -14,7 +15,7 @@ import {
   decayProjection, gamesToWeeks, naiveProjection, projectionCurves,
   requiredWinRateForGames, DEFAULT_DECAY_SLOPE, DEFAULT_METER_MOVE_PCT,
   PROVISIONAL_MIN_DECISIVE,
-  type DecayProjection, type NaiveProjection, type ProjectionCurves, type ProjectionInput,
+  type DecayProjection, type GoalPace, type NaiveProjection, type ProjectionCurves, type ProjectionInput,
 } from '@/match/elo/elo-model'
 import { binomialTwoSidedP, lossStreakChance, runsTest } from '@/match/elo/elo-stats'
 import {
@@ -53,6 +54,7 @@ export interface EloCalcOpts {
 
 // SEASON_WEEKS sizes the "this season" probability window.
 const SEASON_WEEKS = 12
+const MS_PER_WEEK = 7 * 86_400_000
 // With no measured pace the simulator assumes a typical week so the verdict
 // still has a season to quote; paceAssumed flags the copy.
 const FALLBACK_GAMES_PER_WEEK = 10
@@ -79,8 +81,33 @@ export function useEloCalculator(opts: EloCalcOpts) {
   const currentTier = ref<Tier>('gold')
   const currentDivision = ref(3)
   const currentProgress = ref(0)
-  const targetTier = ref<Tier>('platinum')
-  const targetDivision = ref(5)
+  // The GOAL persists; everything else on this tab is a what-if you dial in
+  // and throw away. "Reach Diamond by the end of the season" is a thing a
+  // player decides once and then comes back to — losing it on reload made the
+  // tab a calculator rather than something you can be held to.
+  //
+  // Stored as the player's PICK, empty until they make one, with the
+  // one-tier-up default DERIVED rather than assigned. The seed re-runs
+  // whenever the corpus changes, so a default written into the same ref
+  // would overwrite the saved goal on every launch — and did.
+  const { value: pickedTier, set: setTargetTier } = usePersistedRef<Tier | ''>({
+    key: 'recall.elo.targetTier',
+    defaultValue: '',
+    parse: (raw) => (TIER_ORDER.includes(raw as Tier) ? (raw as Tier) : undefined),
+  })
+  const { value: pickedDivision, set: setTargetDivision } = usePersistedRef<number>({
+    key: 'recall.elo.targetDivision',
+    defaultValue: 0,
+    parse: parseClampedNumber(1, 5),
+  })
+  // The deadline the goal is measured against. Empty means "no date, just get
+  // there" — a goal without one is still a goal, and forcing a date would make
+  // the field a guess rather than a commitment.
+  const { value: targetBy, set: setTargetBy } = usePersistedRef<string>({
+    key: 'recall.elo.targetBy',
+    defaultValue: '',
+    parse: (raw) => (raw === '' || !Number.isNaN(Date.parse(raw)) ? raw : undefined),
+  })
   const winRatePct = ref<number | null>(null)
   const sampleN = ref(0)
   const meterMovePct = ref(DEFAULT_METER_MOVE_PCT)
@@ -127,7 +154,6 @@ export function useEloCalculator(opts: EloCalcOpts) {
       // known division is where an unread progress starts.
       currentProgress.value = Math.max(0, s.rank.progress ?? 0)
     }
-    applyTargetDefault(s.rank?.tier ?? currentTier.value)
     winRatePct.value = s.winRate === null ? null : round1(s.winRate * 100)
     sampleN.value = s.wins + s.losses
     meterMovePct.value = round1(s.meterMovePct)
@@ -138,16 +164,32 @@ export function useEloCalculator(opts: EloCalcOpts) {
     selectedHeroes.value = new Set()
     heroAdjustPts.value = new Map()
     dirty.value = false
-    seededForm.value = formSnapshot()
+    // The baseline target is the DERIVED default, never a saved goal —
+    // otherwise a goal carried over from a past session would read as a
+    // measured number and its edited marker would never light.
+    seededForm.value = {
+      ...formSnapshot(),
+      targetTier: defaultTarget.value.tier,
+      targetDivision: defaultTarget.value.division,
+    }
   }
 
-  // Default target: one tier up, division 5 (Champion tops out at 1).
-  function applyTargetDefault(fromTier: Tier): void {
-    const idx = (TIER_ORDER as readonly string[]).indexOf(fromTier)
+  // Default goal: one tier up, division 5 (Champion tops out at 1). Derived
+  // from wherever the player currently sits, so switching tracks moves it
+  // without touching — or losing — a goal they actually set.
+  const defaultTarget = computed<{ tier: Tier; division: number }>(() => {
+    const idx = (TIER_ORDER as readonly string[]).indexOf(currentTier.value)
     const next = Math.min(idx + 1, TIER_ORDER.length - 1)
-    targetTier.value = TIER_ORDER[next] ?? 'champion'
-    targetDivision.value = next === idx ? 1 : 5
-  }
+    return { tier: TIER_ORDER[next] ?? 'champion', division: next === idx ? 1 : 5 }
+  })
+  const targetTier = computed<Tier>(() => pickedTier.value || defaultTarget.value.tier)
+  const targetDivision = computed<number>(() => pickedDivision.value || defaultTarget.value.division)
+
+  // A goal edit is an edit like any other: it must stop the corpus watcher
+  // from re-seeding over the form the player is working in.
+  function pickTargetTier(next: Tier): void { setTargetTier(next); dirty.value = true }
+  function pickTargetDivision(next: number): void { setTargetDivision(next); dirty.value = true }
+  function pickTargetBy(next: string): void { setTargetBy(next); dirty.value = true }
 
   function setTrack(next: TrackKey): void {
     trackPicked.value = true
@@ -282,8 +324,11 @@ export function useEloCalculator(opts: EloCalcOpts) {
   // so they can't pass the ref itself). Every edit marks the form dirty;
   // win-rate/sample edits also detach the hero selection so the two
   // sources never fight.
+  // Only the throwaway what-if inputs. The goal is written through its own
+  // setters — assigning its ref would update the form and silently skip the
+  // persist, which is what a bare entry here used to do.
   const editable = {
-    currentTier, currentDivision, currentProgress, targetTier, targetDivision,
+    currentTier, currentDivision, currentProgress,
     winRatePct, sampleN, meterMovePct, gamesPerWeekInput, decaySlopePts,
   }
   function editInput(
@@ -332,6 +377,26 @@ export function useEloCalculator(opts: EloCalcOpts) {
   const pValue = computed(() => {
     const inp = projInput.value
     return inp ? binomialTwoSidedP(inp.sampleWins, inp.sampleWins + inp.sampleLosses) : null
+  })
+
+  /**
+   * Whether the goal lands by its date, at the pace already measured.
+   *
+   * The model counts GAMES, and a player commits to a DATE — so this is the
+   * one place the two meet, and it needs the games-per-week the player is
+   * actually playing rather than an assumption. Null wherever an honest answer
+   * is unavailable: no date set, no reachable projection, no pace to divide by.
+   */
+  const goalPace = computed<GoalPace | null>(() => {
+    if (!targetBy.value) return null
+    const by = Date.parse(targetBy.value)
+    if (Number.isNaN(by)) return null
+    const weeksLeft = round1((by - Date.now()) / MS_PER_WEEK)
+    const pace = gamesPerWeekInput.value
+    if (pace === null || pace <= 0) return { kind: 'no-pace', weeksLeft }
+    const weeks = weeksDecay.value
+    if (weeks === null) return { kind: 'unreachable', weeksLeft }
+    return { kind: 'measured', weeksLeft, weeksNeeded: round1(weeks), onPace: weeks <= weeksLeft }
   })
 
   const weeksNaive = computed(() => gamesToWeeks(naive.value?.expectedGames ?? null, gamesPerWeekInput.value))
@@ -442,6 +507,7 @@ export function useEloCalculator(opts: EloCalcOpts) {
     track, tracks: computed(() => tracksInfo.value.tracks), setTrack, trackLabels: TRACK_LABELS,
     // editable inputs + edit API
     currentTier, currentDivision, currentProgress, targetTier, targetDivision,
+    pickTargetTier, pickTargetDivision, targetBy, pickTargetBy,
     winRatePct, sampleN, meterMovePct, gamesPerWeekInput, decaySlopePts,
     editInput, lastSeed, editedFields, isEdited, resetToMeasured, measuredPercentile, percentileTrail,
     measuredNaive, measuredWeeks, measuredProbSeason,
@@ -451,7 +517,7 @@ export function useEloCalculator(opts: EloCalcOpts) {
     // derived
     trackRecs, currentScore, targetScore, projInput, naive, decay, curves,
     ceiling, provisional,
-    pValue, weeksNaive, weeksDecay,
+    pValue, weeksNaive, weeksDecay, goalPace,
     seasonGames, simHorizonGames, paceAssumed, probThisSeason, requiredWrForSeason,
     lossStreak, streakLen: STREAK_LEN, streakHorizon: STREAK_HORIZON,
     skepticVerdict, trueRateRange, gamesToCertainty,

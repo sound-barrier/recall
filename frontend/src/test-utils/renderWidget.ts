@@ -1,9 +1,9 @@
 import { render, type RenderResult } from '@testing-library/vue'
 import { computed, type Component, type ComputedRef } from 'vue'
-import { vi } from 'vitest'
 import type { MatchRecord } from '@/api-client'
 import { DOSSIER_KEY, FULL_DOSSIER_KEY } from '@/composables/dashboard/useDossier'
 import { NARROW_KEY, type NarrowApi } from '@/composables/matches/narrow/useNarrow'
+import { installMemoryLocalStorage } from '@/test-utils/localStorage'
 import type {
   AverageKDA,
   BestWinrateHero,
@@ -213,21 +213,6 @@ function fakeDossier(over: DossierOverride): MatchesDossier {
   } as unknown as MatchesDossier
 }
 
-// In-memory localStorage shim mirroring renderApp's. happy-dom's
-// default is a no-op so the useWidgetConfig persisted ref never
-// hydrates without this.
-function installLocalStorageShim(): void {
-  const storage: Record<string, string> = {}
-  vi.stubGlobal('localStorage', {
-    getItem:    (k: string) => storage[k] ?? null,
-    setItem:    (k: string, v: string) => { storage[k] = String(v) },
-    removeItem: (k: string) => { delete storage[k] },
-    clear:      () => { for (const k of Object.keys(storage)) delete storage[k] },
-    key:        (i: number) => Object.keys(storage)[i] ?? null,
-    get length() { return Object.keys(storage).length },
-  })
-}
-
 export interface RenderWidgetOptions {
   // Subset of the dossier to expose to the widget. Fields the widget
   // doesn't read can be omitted.
@@ -254,7 +239,7 @@ export function renderWidget(
   Component: Component,
   options: RenderWidgetOptions = {},
 ): RenderResult {
-  installLocalStorageShim()
+  installMemoryLocalStorage()
   if (options.configSeed) {
     for (const [id, value] of Object.entries(options.configSeed)) {
       localStorage.setItem(`recall.dashboard.widget-config.${id}`, JSON.stringify(value))
