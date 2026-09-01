@@ -117,6 +117,22 @@ func summarizeImport(data DataV2, existing map[string]bool) ImportSummary {
 // importUserLayer writes the v2 user-layer sections for keys not already
 // present locally (the same skip-existing rule the parent rows follow).
 func importUserLayer(store db.Store, data DataV2, existing map[string]bool) error {
+	if err := importMatchScopedLayer(store, data, existing); err != nil {
+		return err
+	}
+	// The roster is the one section here that is NOT keyed on a match, which
+	// is why it sits outside the walk above rather than at the end of it.
+	if err := importRoster(store, data.Roster); err != nil {
+		return err
+	}
+	return importSelfReviews(store, data.SelfReviews, existing)
+}
+
+// importMatchScopedLayer brings in every section keyed on a match_key, in a
+// fixed order. Split out because adding the roster beside them pushed one
+// function past the complexity gate — and because the split is the honest
+// one: everything here is narrowed by `existing`, and the roster is not.
+func importMatchScopedLayer(store db.Store, data DataV2, existing map[string]bool) error {
 	if err := importUserMatchData(store, data.UserMatchData, existing); err != nil {
 		return err
 	}
@@ -143,13 +159,7 @@ func importUserLayer(store db.Store, data DataV2, existing map[string]bool) erro
 	if err := importMatchMoments(store, data.Moments, existing); err != nil {
 		return err
 	}
-	if err := importCoachNotes(store, data.CoachNotes, existing); err != nil {
-		return err
-	}
-	if err := importRoster(store, data.Roster); err != nil {
-		return err
-	}
-	return importSelfReviews(store, data.SelfReviews, existing)
+	return importCoachNotes(store, data.CoachNotes, existing)
 }
 
 // importRoster brings the saved teammates in. Not narrowed by the include
