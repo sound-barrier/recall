@@ -18,10 +18,14 @@ const headline = computed(() =>
 const detail = computed(() => {
   const p = pool.value
   if (p.score === null) return 'No hero play time in this set.'
-  if (p.overReliance) {
-    return `${p.heroes} played · over half your time is ${p.overReliance}`
-  }
-  return `${p.heroes} played · spread across them`
+  const shape = p.overReliance
+    ? `over half your time is ${p.overReliance}`
+    : 'spread across them'
+  // Heroes whose play time went unread are in no part of the number. Naming
+  // them is the difference between "spread across five" and "spread across
+  // the five of nine we could measure".
+  const unread = p.unreadHeroes > 0 ? ` · ${p.unreadHeroes} unread` : ''
+  return `${p.heroes} played · ${shape}${unread}`
 })
 
 // The tint is a judgment, so the word rides in the name (WCAG 1.4.1). Narrow

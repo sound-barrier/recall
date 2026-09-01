@@ -9,10 +9,19 @@
 
 export const SPARK_W = 220
 export const SPARK_H = 56
-const SPARK_PAD = 6
+
+// Padding as a SHARE of the box, not an absolute. It was 6 units, which is a
+// tenth of the Form card's 56 and a quarter of the 24-unit strip beside a
+// hero's name — and at any height under 12 it exceeded half the box and drew
+// the line upside down.
+const SPARK_PAD_RATIO = 6 / SPARK_H
+
+function padFor(height: number): number {
+  return height * SPARK_PAD_RATIO
+}
 
 /** The 50% win-rate midline's y coordinate. */
-export const midY = SPARK_PAD + (SPARK_H - 2 * SPARK_PAD) / 2
+export const midY = padFor(SPARK_H) + (SPARK_H - 2 * padFor(SPARK_H)) / 2
 
 /** The box a sparkline is drawn in. Defaults to the Form card's pair. */
 export interface SparkBox {
@@ -31,7 +40,8 @@ const DEFAULT_BOX: SparkBox = { w: SPARK_W, h: SPARK_H }
  */
 export function sparkPoints(values: number[], box: SparkBox = DEFAULT_BOX): string {
   if (values.length === 0) return ''
-  const y = (v: number) => SPARK_PAD + ((100 - v) / 100) * (box.h - 2 * SPARK_PAD)
+  const pad = padFor(box.h)
+  const y = (v: number) => pad + ((100 - v) / 100) * (box.h - 2 * pad)
   if (values.length === 1) {
     return `0,${y(values[0]!).toFixed(1)} ${box.w},${y(values[0]!).toFixed(1)}`
   }
@@ -47,5 +57,9 @@ export function sparkAria(values: number[], which: string): string {
   if (values.length === 0) return ''
   const first = values[0]!
   const last = values[values.length - 1]!
-  return `Rolling win rate ${which}: ${first}% to ${last}% across ${values.length} decisive games`
+  const span = `${values.length} decisive game${values.length === 1 ? '' : 's'}`
+  // One point is a dot, not a trend, and "50% to 50%" reads as a measured
+  // flat line rather than as a single reading.
+  if (values.length === 1) return `Rolling win rate ${which}: ${first}% over ${span}`
+  return `Rolling win rate ${which}: ${first}% to ${last}% across ${span}`
 }

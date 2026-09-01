@@ -25,18 +25,28 @@ describe('HeroTrendLinesWidget', () => {
     // user nothing about the data — WCAG 1.1.1 wants the equivalent.
     renderWidget(HeroTrendLinesWidget, {
       dossier: { records: history('ana', ['victory', 'victory', 'defeat', 'victory']) },
-      configSeed: { 'hero-trend-lines': { window: 2, limit: 5 } },
+      configSeed: { 'hero-trend-lines': { window: 5, limit: 5 } },
     })
     expect(screen.getByRole('img', { name: /Rolling win rate ana:/ })).toBeInTheDocument()
   })
 
-  it(`captions the line with that hero's latest rolling rate`, () => {
+  it(`captions the line with that hero's LATEST rolling rate, not its first`, () => {
+    // Four straight wins would caption 100% whichever end the code read, so
+    // the record has to actually move: the first two-game window is 50%, the
+    // last is 0%.
     renderWidget(HeroTrendLinesWidget, {
-      dossier: { records: history('ana', ['victory', 'victory', 'victory', 'victory']) },
-      configSeed: { 'hero-trend-lines': { window: 2, limit: 5 } },
+      // Five wins then five losses over a five-game window: the first point
+      // is 100%, the last is 0%. Reading either end gives a different answer,
+      // which is what makes the assertion mean something.
+      dossier: { records: history('ana', [
+        'victory', 'victory', 'victory', 'victory', 'victory',
+        'defeat', 'defeat', 'defeat', 'defeat', 'defeat',
+      ]) },
+      configSeed: { 'hero-trend-lines': { window: 5, limit: 5 } },
     })
     expect(screen.getByText('ana')).toBeInTheDocument()
-    expect(screen.getByText('100%')).toBeInTheDocument()
+    expect(screen.getByText('0%')).toBeInTheDocument()
+    expect(screen.queryByText('100%')).not.toBeInTheDocument()
   })
 
   it('says there is nothing to trend rather than drawing an empty chart', () => {

@@ -393,6 +393,13 @@ export interface HeroConcentration {
   effectiveHeroes: number
   /** The hero past OVER_RELIANCE_SHARE of the time, or '' when none is. */
   overReliance: string
+  /**
+   * Heroes the player played whose time could not be read, and which are
+   * therefore in NO part of the score. A concentration measured over three of
+   * eight heroes is a different claim from one measured over all eight, and
+   * the widget could not say so while this number was thrown away.
+   */
+  unreadHeroes: number
   /** How many heroes carried any time at all. */
   heroes: number
 }
@@ -413,9 +420,10 @@ export function heroConcentration(
   played: readonly { key: string; minutes: number }[],
 ): HeroConcentration {
   const rows = played.filter((h) => h.minutes > 0)
+  const unreadHeroes = played.length - rows.length
   const total = rows.reduce((sum, h) => sum + h.minutes, 0)
   if (rows.length === 0 || total === 0) {
-    return { score: null, effectiveHeroes: 0, overReliance: '', heroes: 0 }
+    return { score: null, effectiveHeroes: 0, overReliance: '', heroes: 0, unreadHeroes }
   }
   const hhi = rows.reduce((sum, h) => sum + (h.minutes / total) ** 2, 0)
   const n = rows.length
@@ -429,5 +437,6 @@ export function heroConcentration(
     effectiveHeroes: Math.round((1 / hhi) * 10) / 10,
     overReliance: top.minutes / total > OVER_RELIANCE_SHARE ? top.key : '',
     heroes: n,
+    unreadHeroes,
   }
 }
