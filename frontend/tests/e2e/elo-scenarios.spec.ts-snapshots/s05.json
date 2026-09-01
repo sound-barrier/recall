@@ -25,6 +25,7 @@
   "data-elo-stat=p-value": "Rigged MMR?Too few games to tellAt 19 games your record still looks like a coin flip — play more before blaming the system. (p = 1.00)",
   "data-elo-stat=season": "This season?30% chancePlaying your 52.6% record out 4,000 times — lobbies toughening as you climb, like the amber curve — these are your odds of touching Platinum 5 within ~89 games at your pace. Touching counts any moment of the season; you can brush it and still slip back. Holding Platinum 5 once you touch it would take about 52.9% — the playbook's job, not the queue's.",
   "data-elo-stat=streak": "Endless loss streaks?73% — normalA 5-loss streak in your next 100 games is 73% likely at 52.6%. Expected, not rigged.",
+  "data-elo-target=by": "",
   "data-elo-target=division": "5",
   "data-elo-target=tier": "platinum",
   "data-elo-timeline": "The honest timeline In 70% of 4,000 simulated seasons you never touch Platinum 5 within ~89 games at this form. Improvement — or simply more games than one season holds — moves that number.Certainty has a price: ≈1028 more decisive games to pin your true win rate within ±3 points."

@@ -30,6 +30,7 @@
   "data-elo-stat=runs": "Scripted streaks?More alternating than chanceYour 200 games form 160 win/loss runs; a fair sequence at your rate averages 97 (p < 0.001). Slightly more regular than random — nothing sinister about that either.",
   "data-elo-stat=season": "This season?91% chancePlaying your 60% record out 4,000 times — lobbies toughening as you climb, like the amber curve — these are your odds of touching Master 5 within ~88 games at your pace. Touching counts any moment of the season; you can brush it and still slip back.",
   "data-elo-stat=streak": "Endless loss streaks?46% — normalA 5-loss streak in your next 100 games is 46% likely at 60%. Expected, not rigged.",
+  "data-elo-target=by": "",
   "data-elo-target=division": "5",
   "data-elo-target=tier": "master",
   "data-elo-timeline": "The honest timeline Across 4,000 simulated seasons: the fastest tenth touch Master 5 by ~17 games · the median by ~35 · the slowest tenth by ~85 · 9% never arrive within ~88 games.Certainty has a price: ≈812 more decisive games to pin your true win rate within ±3 points."

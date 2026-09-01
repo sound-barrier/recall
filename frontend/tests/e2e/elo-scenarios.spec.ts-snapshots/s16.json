@@ -28,6 +28,7 @@
   "data-elo-stat=runs": "Scripted streaks?More alternating than chanceYour 60 games form 60 win/loss runs; a fair sequence at your rate averages 31 (p < 0.001). Slightly more regular than random — nothing sinister about that either.",
   "data-elo-stat=season": "This season?14% chancePlaying your 50% record out 4,000 times — lobbies toughening as you climb, like the amber curve — these are your odds of touching Platinum 5 within ~84 games at your pace. Touching counts any moment of the season; you can brush it and still slip back. Holding Platinum 5 once you touch it would take about 54.3% — the playbook's job, not the queue's.",
   "data-elo-stat=streak": "Endless loss streaks?81% — normalA 5-loss streak in your next 100 games is 81% likely at 50%. Expected, not rigged.",
+  "data-elo-target=by": "",
   "data-elo-target=division": "5",
   "data-elo-target=tier": "platinum",
   "data-elo-timeline": "The honest timeline In 86% of 4,000 simulated seasons you never touch Platinum 5 within ~84 games at this form. Improvement — or simply more games than one season holds — moves that number.Certainty has a price: ≈988 more decisive games to pin your true win rate within ±3 points."
