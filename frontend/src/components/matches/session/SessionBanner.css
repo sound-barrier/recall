@@ -1,0 +1,85 @@
+/* A thin rail under the masthead. It sits above content the player is
+   reading, so it stays one line tall and never grows a second row. */
+.session-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--accent);
+  font-size: var(--type-sm);
+  color: var(--text-dim);
+}
+
+.sb-live {
+  flex: 0 0 auto;
+}
+
+.sb-rank {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  color: var(--text);
+  font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', 'Russo One', sans-serif;
+  letter-spacing: 0.04em;
+}
+
+.sb-rank strong { font-weight: 400; font-size: var(--type-lg); }
+
+.sb-progress {
+  font-family: var(--mono);
+  font-size: var(--type-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+}
+
+.sb-rank-unread {
+  font-family: inherit;
+  letter-spacing: normal;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.sb-rule {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border-soft);
+}
+
+.sb-tally {
+  font-variant-numeric: tabular-nums;
+}
+
+.sb-move { color: var(--text); font-weight: 600; }
+
+.sb-partial {
+  color: var(--text-faint);
+  font-size: var(--type-xs);
+}
+
+.sb-role {
+  margin-left: auto;
+  font-size: var(--type-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-faint);
+}
+
+.sb-close {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0 var(--space-1);
+  font-size: var(--type-lg);
+  line-height: 1;
+  color: var(--text-faint);
+  cursor: pointer;
+  border-radius: var(--radius-hair);
+}
+
+.sb-close:hover { color: var(--text); }
+
+.sb-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

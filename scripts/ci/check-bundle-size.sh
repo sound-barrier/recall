@@ -377,7 +377,12 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # 2026-08: 2199000 -> 2208000 -- the analytics wave's lazy half: four widgets
 # (SR climb rate, SR by role, effective hero pool, fresh-vs-tilted queue) and
 # the attachment UI on the cue row. Measured 2203885B.
-: "${MAX_TOTAL_JS_BYTES:=2208000}"
+# 2026-08: 2208000 -> 2218000 -- the patch-split and hero-trend-line widgets,
+# the Elo goal's deadline + pace line, and the live session rail. The rail is
+# its own chunk behind an off-by-default preference, so most launches never
+# fetch it; it counts here because this budget measures the whole graph.
+# Measured 2213212B.
+: "${MAX_TOTAL_JS_BYTES:=2218000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset

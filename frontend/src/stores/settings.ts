@@ -26,6 +26,7 @@ import { useTesseractStatus } from '@/composables/settings/useTesseractStatus'
 import { useFeatureToggle } from '@/composables/shared/useFeatureToggle'
 import { useScreenshotsDir } from '@/composables/settings/useScreenshotsDir'
 import { useTheme } from '@/composables/settings/useTheme'
+import { useSessionBanner } from '@/composables/shared/useSessionBanner'
 import { useWeekStart } from '@/composables/shared/useWeekStart'
 import { useAppStore } from '@/stores/app'
 
@@ -171,6 +172,11 @@ export const useSettingsStore = defineStore('settings', () => {
   // ── Appearance ────────────────────────────────────────────────────
   const { themeMode, setTheme } = useTheme()
 
+  // ── Appearance — the live session banner ──────────────────────────
+  // Off by default; see useSessionBanner for why a fifth session surface is
+  // opt-in. Owned here so Settings writes it and App reads the same instance.
+  const { sessionBanner, setSessionBanner } = useSessionBanner()
+
   // ── Calendar — first day of week ──────────────────────────────────
   // Owned here (not a per-component useWeekStart) so App, SettingsView, and
   // the matches-store dossier all read ONE instance.
@@ -198,6 +204,8 @@ export const useSettingsStore = defineStore('settings', () => {
   return {
     themeMode,
     setTheme,
+    sessionBanner,
+    setSessionBanner,
     weekStart,
     setWeekStart,
     tesseractStatus,

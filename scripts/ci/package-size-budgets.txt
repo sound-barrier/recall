@@ -411,7 +411,12 @@ frontend/src/match/elo                        13
 # had no notion of when the game changed under the player. It names the patch
 # it split on, because a before/after with no boundary named is two numbers
 # and an implication.
-frontend/src/components/dashboard/widgets     50
+# 50 -> 51: hero-trend-lines. The pool table already names a hero's win rate;
+# this one draws how it got there, which is the difference between a hero you
+# just picked up and a hero you have been losing on for a month — the same
+# 52%, two different problems. One more tile on the same surface, over a
+# series the dossier already computed and nothing rendered.
+frontend/src/components/dashboard/widgets     51
 
 
 

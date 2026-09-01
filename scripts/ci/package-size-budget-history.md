@@ -104,3 +104,4 @@ a folder silently regrows what it just shed.
 | 2026-08-31 | seasonal-recap-and-attachments | frontend/src/components/dashboard/widgets | 45 → 49 | The analytics wave: `sr-climb-rate`, `sr-by-role`, `hero-concentration`, `queue-gap`. One widget per question, and the two SR tiles ship beside the meter-denominated ones rather than replacing them. |
 | 2026-08-31 | seasonal-recap-and-attachments | frontend/src/components/dashboard/widgets | 49 → 50 | `patch-split` — the before/after comparison, which needed `patches.yaml` to exist at all. |
 | 2026-08-31 | seasonal-recap-and-attachments | pkg/parser | 25 → 26 | `patches.go` — game-change instants, a sibling of `seasons.go` with the same embed and update path. |
+| 2026-08-31 | seasonal-recap-and-attachments | frontend/src/components/dashboard/widgets | 50 → 51 | `hero-trend-lines` — the pool table names a hero's win rate; this one draws how it got there. |

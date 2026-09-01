@@ -13,6 +13,7 @@ import { storeToRefs } from 'pinia'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useParseStore } from '@/stores/parse'
+import { useSettingsStore } from '@/stores/settings'
 import { useUiStore } from '@/stores/ui'
 import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
 import { useAppKeyboard } from '@/composables/app/useAppKeyboard'
@@ -48,6 +49,7 @@ const EloCalculatorView = lazyView(() => import('@/components/elo/EloCalculatorV
 // Reviews hosts the film room while a session is open, and the shelf of
 // reviews otherwise; the room is its own chunk inside that one.
 const ReviewsView = lazyView(() => import('@/components/reviews/ReviewsView.vue'))
+const SessionBanner = lazyView(() => import('@/components/matches/session/SessionBanner.vue'))
 
 // App-shell cross-cutting state (error banner, version, update check, data
 // location) lives in the Pinia app store. Destructure with the same local
@@ -61,6 +63,9 @@ const { view } = storeToRefs(appStore)
 // views/chrome that need it.
 const { records, firstLoadPending } = storeToRefs(useMatchesStore())
 const { showUnsupportedModal, parseAnnouncement } = storeToRefs(useParseStore())
+// The one settings preference the SHELL renders rather than a view: the live
+// session rail, which is chrome and belongs beside the other banners.
+const { sessionBanner } = storeToRefs(useSettingsStore())
 
 // All App-shell keyboard wiring — tablist Arrow/Home/End nav, the global
 // shortcut registry (j/k, g-prefix, e/t, ?), and the search→panel auto-track —
@@ -132,6 +137,10 @@ useServerEvents()
            shelf lists the same notes per coach with the same Review button;
            the banner above them would say it twice. -->
       <CoachInboxBanner v-if="view !== 'reviews'" />
+
+      <!-- Live session rail — off unless the player asked for it in Settings,
+           so the v-if is also what keeps its chunk off every other launch. -->
+      <SessionBanner v-if="sessionBanner" />
 
       <!-- <main> is the page's primary landmark. The skip-link at the
            top of .app jumps focus here so keyboard users can bypass the
