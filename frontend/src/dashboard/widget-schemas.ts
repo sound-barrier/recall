@@ -239,3 +239,27 @@ export const recentMatchesSchema = makeSchema<RecentMatchesConfig>([
     default: 5,
   },
 ])
+
+export interface HeroTrendConfig extends Record<string, unknown> {
+  window: 5 | 10 | 20
+  limit: 3 | 5 | 8
+}
+
+// The rolling window is the knob that decides whether a line reads as a trend
+// or as noise: five games is twitchy, twenty is a month for most people.
+export const heroTrendSchema = makeSchema<HeroTrendConfig>([
+  {
+    kind:    'integer-choice',
+    key:     'window',
+    label:   'Rolling window (games)',
+    choices: [5, 10, 20],
+    default: 10,
+  },
+  {
+    kind:    'integer-choice',
+    key:     'limit',
+    label:   'Heroes shown',
+    choices: [3, 5, 8],
+    default: 5,
+  },
+])

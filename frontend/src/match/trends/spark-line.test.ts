@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { SPARK_H, SPARK_W, midY, sparkAria, sparkPoints } from '@/components/compare/form-sparkline'
+import { SPARK_H, SPARK_W, midY, sparkAria, sparkPoints } from '@/match/trends/spark-line'
 
 // Pure SVG geometry for the verdict card's facing sparkline pair. happy-dom
 // gives every element a zero-sized box, so the shape can only be verified as
@@ -50,5 +50,23 @@ describe('sparkAria', () => {
 
   it('returns no label for an empty series — the view renders a text fallback instead', () => {
     expect(sparkAria([], 'this period')).toBe('')
+  })
+})
+
+describe('sparkPoints in a custom box', () => {
+  it('scales to the box it is given rather than to the Form card', () => {
+    // The same line is drawn at two very different sizes — a facing pair on
+    // the verdict card, and a strip beside a hero's name. Rescaling by CSS
+    // would stretch the stroke with it.
+    const wide = sparkPoints([0, 100], { w: 100, h: 20 })
+    expect(wide).toBe('0.0,14.0 100.0,6.0')
+  })
+
+  it('draws a single reading as a flat line across the box', () => {
+    expect(sparkPoints([50], { w: 40, h: 20 })).toBe('0,10.0 40,10.0')
+  })
+
+  it('still defaults to the Form card box when none is given', () => {
+    expect(sparkPoints([50])).toBe(sparkPoints([50], { w: 220, h: 56 }))
   })
 })
