@@ -234,11 +234,12 @@ type RankRow struct {
 	SR           []HeroSR
 }
 
-// HeroSR is one row of rank_sr.
+// HeroSR is one row of rank_sr. Change is nullable — see parser.HeroSR for
+// why a bare int could not tell an unread pill from a flat match.
 type HeroSR struct {
 	Hero   string
 	SR     int
-	Change int
+	Change *int
 }
 
 // UserMatchData is the per-match user override layer (user_match_data + its

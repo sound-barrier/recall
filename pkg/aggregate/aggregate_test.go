@@ -174,7 +174,7 @@ func TestAggregate_PartialCoverage_RankOnly(t *testing.T) {
 		Ranks: []db.RankRow{{
 			ID: 1, Filename: "r.png", MatchKey: "m1",
 			Rank: "platinum", Level: 3, RankProgress: new(40), ChangePercent: new(5),
-			SR: []db.HeroSR{{Hero: "juno", SR: 2867, Change: 22}},
+			SR: []db.HeroSR{{Hero: "juno", SR: 2867, Change: new(22)}},
 		}},
 	}
 	got := aggregate.Screenshots(snap)
@@ -371,7 +371,7 @@ func TestAggregateMatchKey_InferenceAppliedAtReadTime(t *testing.T) {
 		Ranks: []db.RankRow{{
 			ID: 1, Filename: "rank.png", MatchKey: "m-rank",
 			Rank: "platinum", Level: 3,
-			SR: []db.HeroSR{{Hero: "lucio", SR: 2350, Change: 23}},
+			SR: []db.HeroSR{{Hero: "lucio", SR: 2350, Change: new(23)}},
 		}},
 	}
 	rec, ok := aggregate.MatchKey("m-rank", snap, aggregate.Sidecars{})

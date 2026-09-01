@@ -40,7 +40,7 @@ func (c rankCard) toRankRow(matchKey, ts, hero, result string) db.RankRow {
 		RankPercentile: &percentile,
 		Result:         result,
 		Modifiers:      c.modifiers,
-		SR:             []db.HeroSR{{Hero: hero, SR: c.sr, Change: c.srChange}},
+		SR:             []db.HeroSR{{Hero: hero, SR: c.sr, Change: &c.srChange}},
 	}
 }
 

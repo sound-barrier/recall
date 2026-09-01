@@ -20,8 +20,8 @@ import (
 func TestExtractSR_MultibyteNoiseDoesNotDesyncTheCardWindows(t *testing.T) {
 	const cards = " LUCIO SR 2754 +30 ANA SR 1896 +8"
 	want := []parser.HeroSR{
-		{Hero: "lucio", SR: 2754, Change: 30},
-		{Hero: "ana", SR: 1896, Change: 8},
+		{Hero: "lucio", SR: 2754, Change: new(30)},
+		{Hero: "ana", SR: 1896, Change: new(8)},
 	}
 	cases := []struct {
 		name, noise string
@@ -97,7 +97,7 @@ func TestParseRank_BackfillNeverReassignsAnAlreadyReadSR(t *testing.T) {
 		"rank_modifiers":   "VICTORY",
 	})
 	assertSRValues(t, res.SR, []parser.HeroSR{
-		{Hero: "lucio", SR: 2754, Change: 30},
+		{Hero: "lucio", SR: 2754, Change: new(30)},
 		{Hero: "ana", SR: 1896},
 	})
 }
@@ -131,7 +131,7 @@ func TestParseRank_DigitForcedRereadSkippedWhenEveryCardRead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseRank: %v", err)
 	}
-	assertSRValues(t, res.SR, []parser.HeroSR{{Hero: "lucio", SR: 2754, Change: 30}})
+	assertSRValues(t, res.SR, []parser.HeroSR{{Hero: "lucio", SR: 2754, Change: new(30)}})
 	for _, r := range *regions {
 		if strings.HasPrefix(r, "rank_sr_digits") {
 			t.Errorf("digit-forced re-read %q must not fire when every card already has an SR", r)
@@ -164,7 +164,7 @@ func TestParseRank_SRChangeSignFollowsTheFinalizedResult(t *testing.T) {
 			if res.Result != c.wantResult {
 				t.Fatalf("Result = %q, want %q", res.Result, c.wantResult)
 			}
-			assertSRValues(t, res.SR, []parser.HeroSR{{Hero: "lucio", SR: 2754, Change: c.wantChange}})
+			assertSRValues(t, res.SR, []parser.HeroSR{{Hero: "lucio", SR: 2754, Change: &c.wantChange}})
 		})
 	}
 }

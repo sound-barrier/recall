@@ -6,17 +6,26 @@ import { renderWidget } from '@/test-utils'
 describe('SRClimbRateWidget', () => {
   it('reports the weekly rate in SR, signed', () => {
     renderWidget(SRClimbRateWidget, {
-      dossier: { srClimbRate: { perWeek: 42, perSession: 14, sessions: 3, readCount: 9 } },
+      dossier: { srClimbRate: { perWeek: 42, perSession: 14, sessions: 3, readCount: 9, readOf: 9 } },
     })
     expect(screen.getByText('+42 SR/wk')).toBeInTheDocument()
-    expect(screen.getByText('+14/session · 9 readings')).toBeInTheDocument()
+    expect(screen.getByText('+14/session · read on 9 of 9')).toBeInTheDocument()
+  })
+
+  it('names the matches it could NOT read, not only the ones it could', () => {
+    // SR is reported on a minority of captures. A rate quoted without its
+    // denominator reads as if every match in the window backed it.
+    renderWidget(SRClimbRateWidget, {
+      dossier: { srClimbRate: { perWeek: 42, perSession: 14, sessions: 3, readCount: 4, readOf: 19 } },
+    })
+    expect(screen.getByText('+14/session · read on 4 of 19')).toBeInTheDocument()
   })
 
   it('says nothing was read rather than printing a zero climb', () => {
     // SR is reported far less often than the meter, so this is the COMMON
     // case, not an edge one — printing 0 would read as a stalled climb.
     renderWidget(SRClimbRateWidget, {
-      dossier: { srClimbRate: { perWeek: null, perSession: null, sessions: 0, readCount: 0 } },
+      dossier: { srClimbRate: { perWeek: null, perSession: null, sessions: 0, readCount: 0, readOf: 0 } },
     })
     expect(screen.getByText('—')).toBeInTheDocument()
     expect(screen.getByText('No SR readings in this window.')).toBeInTheDocument()
@@ -24,14 +33,14 @@ describe('SRClimbRateWidget', () => {
 
   it('carries the direction as a word, not only as a tint', () => {
     renderWidget(SRClimbRateWidget, {
-      dossier: { srClimbRate: { perWeek: -30, perSession: -10, sessions: 3, readCount: 6 } },
+      dossier: { srClimbRate: { perWeek: -30, perSession: -10, sessions: 3, readCount: 6, readOf: 6 } },
     })
     expect(screen.getByRole('img', { name: '-30 SR/wk — losing' })).toBeInTheDocument()
   })
 
   it('claims no alternative text when there is no direction to speak', () => {
     renderWidget(SRClimbRateWidget, {
-      dossier: { srClimbRate: { perWeek: null, perSession: null, sessions: 0, readCount: 0 } },
+      dossier: { srClimbRate: { perWeek: null, perSession: null, sessions: 0, readCount: 0, readOf: 0 } },
     })
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
   })

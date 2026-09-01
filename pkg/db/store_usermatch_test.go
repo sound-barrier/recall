@@ -26,7 +26,7 @@ func TestSQLStore_UserMatchData_RoundTrip(t *testing.T) {
 			{Hero: "junkrat", Position: 1},
 		},
 		HeroStats: []db.UserMatchHeroStat{{Hero: "baptiste", StatKey: "healing_accuracy", Value: 66}},
-		SR:        []db.HeroSR{{Hero: "baptiste", SR: 2697, Change: 23}},
+		SR:        []db.HeroSR{{Hero: "baptiste", SR: 2697, Change: new(23)}},
 		Modifiers: []string{"demotion protection"},
 	}
 	mustNoErr(t, s.UpsertUserMatchData(want))

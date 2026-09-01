@@ -148,14 +148,14 @@ func TestAttachUserData_SROverrideConverts(t *testing.T) {
 	rec := ocrRecord("match-1")
 	ud := map[string]db.UserMatchData{"match-1": {
 		MatchKey: "match-1",
-		SR:       []db.HeroSR{{Hero: "ana", SR: 3200, Change: 25}},
+		SR:       []db.HeroSR{{Hero: "ana", SR: 3200, Change: new(25)}},
 	}}
 
 	recs := []match.Record{rec}
 	aggregate.AttachUserData(recs, ud)
 
 	got := recs[0].Data.SR
-	if len(got) != 1 || got[0].Hero != "ana" || got[0].SR != 3200 || got[0].Change != 25 {
+	if len(got) != 1 || got[0].Hero != "ana" || got[0].SR != 3200 || got[0].Change == nil || *got[0].Change != 25 {
 		t.Errorf("SR = %+v, want [{ana 3200 25}]", got)
 	}
 	if !slices.Contains(recs[0].EditedFields, "data.sr") {

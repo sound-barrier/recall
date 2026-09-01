@@ -27,7 +27,7 @@ import type { FormDelta, RateSample, LeaverRate, SessionIndexBreakdown } from '@
 import type { TiltEpisodes } from '@/match/elo/elo-streaks'
 import type { HeroCountBucket, HeroPoolAnalysis } from '@/match/dossier/match-hero-pool-helpers'
 import type { BaselineDelta, PerformanceVsRank, ClimbVelocity } from '@/match/dossier/match-baseline-helpers'
-import type { SRDelta, SRRoleRow, SRVelocity } from '@/match/dossier/match-sr-helpers'
+import type { SRHeroRow, SRVelocity } from '@/match/dossier/match-sr-helpers'
 import type { QueueGapSplit } from '@/match/dossier/match-queue-gap-helpers'
 import type { HeroConcentration } from '@/match/dossier/match-hero-pool-helpers'
 
@@ -124,9 +124,8 @@ type DossierOverride = {
   // Query helper — loss quality (takes no opts; wrapQuery tolerates that).
   lossQualityBreakdown?: { rows: BreakdownEntry[]; unscored: number }
   // Query helpers — the SR-denominated climb widgets and the queue gap.
-  srMovement?: SRDelta
   srClimbRate?: SRVelocity
-  srByRole?: SRRoleRow[]
+  srByHero?: SRHeroRow[]
   queueGapSplit?: QueueGapSplit
   heroConcentration?: HeroConcentration
 }
@@ -181,11 +180,10 @@ function fakeDossier(over: DossierOverride): MatchesDossier {
     velocity:            wrapQuery(over.velocity, {
       perSession: null, perWeek: null, sessions: 0, readCount: 0,
     } as ClimbVelocity),
-    srMovement:  wrapQuery(over.srMovement, { net: null, readCount: 0, readOf: 0 } as SRDelta),
     srClimbRate: wrapQuery(over.srClimbRate, {
       perWeek: null, perSession: null, sessions: 0, readCount: 0,
     } as SRVelocity),
-    srByRole:    wrapQuery(over.srByRole, [] as SRRoleRow[]),
+    srByHero:    wrapQuery(over.srByHero, [] as SRHeroRow[]),
     queueGapSplit: wrapQuery(over.queueGapSplit, {
       tilted: { winrate: null, sample: 0 }, fresh: { winrate: null, sample: 0 },
     } as QueueGapSplit),

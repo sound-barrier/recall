@@ -294,11 +294,14 @@ CREATE TABLE IF NOT EXISTS rank_modifiers (
 ) STRICT;
 -- statement-end
 
+-- change is NULLABLE on purpose: NULL means the movement pill could not be
+-- read, which is distinct from a match that moved 0 SR. The same distinction
+-- rank_screenshots.change_percent already carries.
 CREATE TABLE IF NOT EXISTS rank_sr (
   rank_screenshot_id INTEGER NOT NULL REFERENCES rank_screenshots (id) ON DELETE CASCADE,
   hero TEXT NOT NULL,
   sr INTEGER NOT NULL DEFAULT 0,
-  change INTEGER NOT NULL DEFAULT 0,
+  change INTEGER,
   PRIMARY KEY (rank_screenshot_id, hero)
 ) STRICT;
 -- statement-end
@@ -677,7 +680,7 @@ CREATE TABLE IF NOT EXISTS user_match_sr (
   match_key TEXT NOT NULL REFERENCES user_match_data (match_key) ON UPDATE CASCADE ON DELETE CASCADE,
   hero TEXT NOT NULL,
   sr INTEGER NOT NULL DEFAULT 0,
-  change INTEGER NOT NULL DEFAULT 0,
+  change INTEGER,
   PRIMARY KEY (match_key, hero)
 ) STRICT;
 -- statement-end
@@ -1199,4 +1202,18 @@ CREATE INDEX IF NOT EXISTS idx_received_focus_items_status
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_received_focus_items_return
   ON received_focus_items (return_id);
+-- statement-end
+
+-- The player's saved roster: the BattleTag a teammate is tagged by, and the
+-- name the player actually calls them. NOT a foreign key for
+-- match_annotation_members — a teammate tagged before they were rostered must
+-- keep working, and un-rostering somebody must not erase them from the
+-- matches they played. This table only supplies display names and
+-- completions.
+CREATE TABLE IF NOT EXISTS roster_members (
+  tag TEXT PRIMARY KEY,
+  display_name TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  added_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
 -- statement-end

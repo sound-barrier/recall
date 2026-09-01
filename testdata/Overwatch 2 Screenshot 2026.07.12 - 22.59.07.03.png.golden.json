@@ -15,13 +15,11 @@
     "sr": [
       {
         "hero": "juno",
-        "sr": 2168,
-        "change": 0
+        "sr": 2168
       },
       {
         "hero": "lucio",
-        "sr": 2837,
-        "change": 0
+        "sr": 2837
       }
     ]
   }

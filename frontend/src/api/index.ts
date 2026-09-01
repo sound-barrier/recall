@@ -45,6 +45,7 @@ export type {
   DataUpdateResult,
   FailedFile,
   HeroPlay,
+  HeroSr,
   IgnoredScreenshot,
   ManualMatchInput,
   MatchRecord,

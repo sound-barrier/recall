@@ -131,7 +131,11 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 	// losses read negative.
 	if res.Result == "defeat" {
 		for i := range res.SR {
-			res.SR[i].Change = -res.SR[i].Change
+			if res.SR[i].Change == nil {
+				continue
+			}
+			negated := -*res.SR[i].Change
+			res.SR[i].Change = &negated
 		}
 	}
 

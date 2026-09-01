@@ -120,8 +120,15 @@ func validateNumericRanges(in match.UserMatchDataInput) error {
 			return ErrStatOutOfRange
 		}
 	}
-	for _, sr := range in.SR {
-		if !inRange(sr.SR, statMin, statMax) || !inRange(sr.Change, changeMin, changeMax) {
+	return validateSRRanges(in.SR)
+}
+
+// validateSRRanges is split out because Change became nullable — an omitted
+// movement is unstated, not a stated zero — and the extra branch that took
+// pushed validateNumericRanges past the complexity gate.
+func validateSRRanges(rows []match.UserHeroSRInput) error {
+	for _, sr := range rows {
+		if !inRange(sr.SR, statMin, statMax) || !ptrInRange(sr.Change, changeMin, changeMax) {
 			return ErrStatOutOfRange
 		}
 	}

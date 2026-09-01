@@ -363,7 +363,10 @@ export type UserHeroStatInput = {
 export type UserHeroSrInput = {
     hero: string;
     sr: number;
-    change: number;
+    /**
+     * Optional, like the OCR field it overrides — an omitted movement is unstated, not a stated zero.
+     */
+    change?: number;
 };
 
 /**
@@ -2043,9 +2046,9 @@ export type HeroSr = {
     hero: string;
     sr: number;
     /**
-     * Signed delta this match
+     * SR this hero moved this match (signed; a loss is negative). Absent when the movement pill could not be read, which is distinct from 0 — a match that moved no SR. Same distinction, same reason, as change_percent above: 19 of the 40 SR captures in the corpus were storing 0 for "unread", and every reader downstream counted them as measured flatness.
      */
-    change: number;
+    change?: number;
 };
 
 export type Performance = {

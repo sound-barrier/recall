@@ -17,18 +17,15 @@
     "sr": [
       {
         "hero": "juno",
-        "sr": 2239,
-        "change": 0
+        "sr": 2239
       },
       {
         "hero": "kiriko",
-        "sr": 1799,
-        "change": 0
+        "sr": 1799
       },
       {
         "hero": "zenyatta",
-        "sr": 1777,
-        "change": 0
+        "sr": 1777
       }
     ]
   }

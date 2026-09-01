@@ -15,18 +15,15 @@
     "sr": [
       {
         "hero": "juno",
-        "sr": 2361,
-        "change": 0
+        "sr": 2361
       },
       {
         "hero": "ana",
-        "sr": 1896,
-        "change": 0
+        "sr": 1896
       },
       {
         "hero": "lucio",
-        "sr": 2860,
-        "change": 0
+        "sr": 2860
       }
     ]
   }

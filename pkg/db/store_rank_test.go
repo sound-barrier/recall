@@ -66,8 +66,8 @@ func TestSQLStore_UpsertRank_ReParseReplacesChildrenAndKeepsTheParent(t *testing
 		Filename: "r.png", MatchKey: "k1", Rank: "platinum", Level: 3,
 		Modifiers: []string{"win streak", "victory"},
 		SR: []db.HeroSR{
-			{Hero: "juno", SR: 2500, Change: 21},
-			{Hero: "lucio", SR: 2400, Change: 19},
+			{Hero: "juno", SR: 2500, Change: new(21)},
+			{Hero: "lucio", SR: 2400, Change: new(19)},
 		},
 	}
 	mustNoErr(t, s.UpsertRank(first))
@@ -76,7 +76,7 @@ func TestSQLStore_UpsertRank_ReParseReplacesChildrenAndKeepsTheParent(t *testing
 	second := first
 	second.Level = 4
 	second.Modifiers = []string{"victory"}
-	second.SR = []db.HeroSR{{Hero: "juno", SR: 2521, Change: 21}}
+	second.SR = []db.HeroSR{{Hero: "juno", SR: 2521, Change: new(21)}}
 	mustNoErr(t, s.UpsertRank(second))
 
 	after := loadOneRank(t, s)
@@ -106,12 +106,12 @@ func TestSQLStore_LoadAll_RankChildrenAttachToTheirOwnParent(t *testing.T) {
 	mustNoErr(t, s.UpsertRank(db.RankRow{
 		Filename: "r1.png", MatchKey: "k1", Rank: "platinum",
 		Modifiers: []string{"win streak"},
-		SR:        []db.HeroSR{{Hero: "juno", SR: 2500, Change: 21}},
+		SR:        []db.HeroSR{{Hero: "juno", SR: 2500, Change: new(21)}},
 	}))
 	mustNoErr(t, s.UpsertRank(db.RankRow{
 		Filename: "r2.png", MatchKey: "k2", Rank: "diamond",
 		Modifiers: []string{"loss streak"},
-		SR:        []db.HeroSR{{Hero: "lucio", SR: 3100, Change: -18}},
+		SR:        []db.HeroSR{{Hero: "lucio", SR: 3100, Change: new(-18)}},
 	}))
 
 	snap, err := s.LoadAll()
@@ -140,8 +140,8 @@ func TestSQLStore_UpsertRank_RejectedChildLeavesNoPartialRow(t *testing.T) {
 		Filename: "r.png", MatchKey: "k1", Rank: "platinum",
 		Modifiers: []string{"win streak"},
 		SR: []db.HeroSR{
-			{Hero: "juno", SR: 2500, Change: 21},
-			{Hero: "juno", SR: 2521, Change: 21},
+			{Hero: "juno", SR: 2500, Change: new(21)},
+			{Hero: "juno", SR: 2521, Change: new(21)},
 		},
 	})
 	if err == nil {

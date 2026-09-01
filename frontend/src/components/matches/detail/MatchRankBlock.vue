@@ -151,13 +151,21 @@ function saveRank() {
       <li v-for="s in record.data.sr" :key="s.hero" class="sr-entry">
         <span class="sr-hero">{{ ow.heroDisplayName(s.hero) }}</span>
         <span class="sr-value">{{ s.sr }}</span>
-        <span class="sr-delta" :class="s.change >= 0 ? 'up' : 'down'">{{ s.change >= 0 ? '+' : '' }}{{ s.change }}</span>
+        <span v-if="s.change === undefined" class="sr-delta sr-delta-unread">not read</span>
+        <span v-else class="sr-delta" :class="s.change >= 0 ? 'up' : 'down'">{{ s.change >= 0 ? '+' : '' }}{{ s.change }}</span>
       </li>
     </ul>
   </div>
 </template>
 
 <style scoped>
+/* Same rule as the unread tier beside it: a movement nobody read says so,
+   rather than borrowing the up-tint and printing +0. */
+.sr-delta-unread {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
 /* The unread-tier chip keeps the tier slot's shape so the line does not
    reflow, but drops the tier coloring it has no tier to earn. */
 .rank-tier-unread {

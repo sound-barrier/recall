@@ -81,7 +81,9 @@ func mergeSR(dst, src *parser.MatchResult) {
 				if dst.SR[i].SR == 0 {
 					dst.SR[i].SR = srcSR.SR
 				}
-				if dst.SR[i].Change == 0 {
+				// nil is "unread", so a later screenshot that DID read the
+				// pill fills it in. A read 0 is a real reading and stands.
+				if dst.SR[i].Change == nil {
 					dst.SR[i].Change = srcSR.Change
 				}
 				break

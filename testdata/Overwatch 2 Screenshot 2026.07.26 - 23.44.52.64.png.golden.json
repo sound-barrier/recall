@@ -16,18 +16,15 @@
     "sr": [
       {
         "hero": "brigitte",
-        "sr": 2846,
-        "change": 0
+        "sr": 2846
       },
       {
         "hero": "zenyatta",
-        "sr": 1715,
-        "change": 0
+        "sr": 1715
       },
       {
         "hero": "lifeweaver",
-        "sr": 2227,
-        "change": 0
+        "sr": 2227
       }
     ]
   }

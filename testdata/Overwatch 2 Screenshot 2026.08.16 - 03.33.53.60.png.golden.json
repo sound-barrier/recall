@@ -17,13 +17,11 @@
     "sr": [
       {
         "hero": "kiriko",
-        "sr": 1773,
-        "change": 0
+        "sr": 1773
       },
       {
         "hero": "juno",
-        "sr": 1950,
-        "change": 0
+        "sr": 1950
       }
     ],
     "rank_percentile": 57

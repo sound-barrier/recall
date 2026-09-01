@@ -18,7 +18,7 @@ func fullOverride() match.UserMatchDataInput {
 		Eliminations: new(21),
 		Heroes:       []match.UserHeroInput{{Hero: "kiriko", PercentPlayed: new(40), Position: 1}},
 		HeroStats:    []match.UserHeroStatInput{{Hero: "ana", StatKey: "damage", Value: 4200}},
-		SR:           []match.UserHeroSRInput{{Hero: "ana", SR: 2450, Change: -21}},
+		SR:           []match.UserHeroSRInput{{Hero: "ana", SR: 2450, Change: new(-21)}},
 	}
 }
 
@@ -54,7 +54,7 @@ func TestSetUserData_WritesEveryChildCollection(t *testing.T) {
 	if len(got.HeroStats) != 1 || got.HeroStats[0].Value != 4200 {
 		t.Errorf("HeroStats = %+v, want one ana/damage/4200", got.HeroStats)
 	}
-	if len(got.SR) != 1 || got.SR[0].SR != 2450 || got.SR[0].Change != -21 {
+	if len(got.SR) != 1 || got.SR[0].SR != 2450 || got.SR[0].Change == nil || *got.SR[0].Change != -21 {
 		t.Errorf("SR = %+v, want ana 2450/-21", got.SR)
 	}
 }
