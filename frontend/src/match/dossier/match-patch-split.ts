@@ -1,5 +1,6 @@
-import { matchEpoch } from '@/match/trends/match-trends-helpers'
-import type { MomentumInput, RateSample } from '@/match/dossier/match-momentum-helpers'
+import type { MatchRecord } from '@/api-client'
+import type { RateSample } from '@/match/dossier/match-momentum-helpers'
+import { matchStartUTC } from '@/match/match-season-helpers'
 
 /**
  * "I was good before the nerf" — the same set, split at a patch.
@@ -8,6 +9,13 @@ import type { MomentumInput, RateSample } from '@/match/dossier/match-momentum-h
  * simply the newest one that exists. Splitting on a patch every match predates
  * would put the whole history on one side and present it as a comparison, and
  * the number would be about nothing.
+ *
+ * A match is placed by its START instant in UTC, exactly as season assignment
+ * places it — the boundaries ARE season starts, so the two must agree or the
+ * same match sits before the boundary in the Compare tab and after it here.
+ * The naive wall clock does not agree: it is the player's local time with no
+ * offset, so a coach's corpus, or a player who has moved timezone, lands games
+ * on the wrong side of a boundary they were nowhere near.
  */
 
 export interface PatchRef {
@@ -25,13 +33,13 @@ export interface PatchSplit {
 
 /** Win rate before and after the newest patch this set straddles. */
 export function splitByPatch(
-  records: readonly MomentumInput[],
+  records: readonly MatchRecord[],
   patches: readonly PatchRef[],
 ): PatchSplit {
   const timed: { t: number; result: string | undefined }[] = []
   for (const r of records) {
-    const t = matchEpoch(r)
-    if (t != null) timed.push({ t, result: r.data?.result })
+    const t = matchStartUTC(r)
+    if (t !== null) timed.push({ t, result: r.data?.result })
   }
   const chosen = newestStraddled(timed, patches)
   if (!chosen) {

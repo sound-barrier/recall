@@ -196,8 +196,12 @@ func Sources() []ScreenshotSource { return loadDataset().screenshotSources }
 // order. Surfaced via App.GetOWData() → /api/v1/system/reference-data.
 func Seasons() []Season { return loadDataset().seasons }
 
-// Patches returns the game-change instants (patches.yaml), oldest first.
-func Patches() []Patch { return loadDataset().patches }
+// Patches returns the game-change instants, oldest first: the mid-season
+// patches from patches.yaml plus every season start, which is always a patch.
+func Patches() []Patch {
+	ds := loadDataset()
+	return patchesWithSeasonStarts(ds.patches, ds.seasons)
+}
 
 // LoadError returns the combined error from the current dataset's
 // construction, or nil if every YAML loaded cleanly. Surfaced via

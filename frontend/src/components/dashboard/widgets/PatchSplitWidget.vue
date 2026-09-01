@@ -45,7 +45,7 @@ const anySample = computed(() => rows.value.some((r) => r.sample > 0))
         <span
           class="bd-fill"
           role="progressbar"
-          :aria-valuenow="row.winrate ?? 0"
+          :aria-valuenow="row.winrate ?? undefined"
           aria-valuemin="0"
           aria-valuemax="100"
           :aria-label="`${row.key} the patch, winrate`"

@@ -41,6 +41,9 @@ func mainAssets() map[string][]byte {
 		// rollback, not the real tier list, and a literal here keeps them
 		// independent of pkg/parser's embedded data.
 		"ranks.yaml": []byte("ranks:\n  - bronze\n  - silver\n"),
+		// Empty is valid for this one — the shipped file holds only mid-season
+		// patches, and the season starts come from seasons.yaml.
+		"patches.yaml": []byte("patches: []\n"),
 	}
 }
 

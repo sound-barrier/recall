@@ -151,6 +151,9 @@ func fakeMainServer(t *testing.T, commitSHA string, heroesBody, mapsBody, source
 	// ranks.yaml joined dataYAMLFiles with the tier-ladder single source, so
 	// Apply needs it present too; serve the embedded set for a zero diff.
 	stage("ranks.yaml", validRanksYAML())
+	// patches.yaml joined dataYAMLFiles when the season starts stopped being
+	// copied into it; empty is its shipped state and a zero diff.
+	stage("patches.yaml", []byte("patches: []\n"))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return srv
