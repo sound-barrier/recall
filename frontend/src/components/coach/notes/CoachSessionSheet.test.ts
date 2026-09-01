@@ -124,5 +124,12 @@ describe('CoachSessionSheet — a team session', () => {
     expect(screen.getByRole('button', { name: 'End session' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Change team' })).toBeInTheDocument()
   })
-})
 
+  it("renders the player's emphasis in their message, not literal asterisks", () => {
+    // The player writes this and the coach reads it — the same act as a note
+    // or a moment, so it takes the same grammar.
+    renderSheet({ player: { handle: 'Sable', message: 'Mostly worried about my **ult timing**.' } })
+    expect(screen.getByText('ult timing')).toBeInTheDocument()
+    expect(screen.queryByText(/\*\*ult timing\*\*/)).not.toBeInTheDocument()
+  })
+})

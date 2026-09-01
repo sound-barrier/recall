@@ -82,6 +82,11 @@ export const useUiStore = defineStore('ui', () => {
   // manual-match modal both freeze the background while up (App reads these in
   // its backgroundFrozen computed). They live here so MatchesView flips them
   // directly + App/AppOverlays read them without prop/emit drilling.
+  // Whether a NoteWriter is expanded to the full viewport. App-level rather
+  // than local to the writer because the surface underneath — a detail panel,
+  // the film room — has to go inert, and only one can be open at a time.
+  const expandedWriterOpen = ref(false)
+
   const narrowOpen = ref(false)
   function setNarrowOpen(open: boolean) { narrowOpen.value = open }
 
@@ -159,23 +164,32 @@ export const useUiStore = defineStore('ui', () => {
   // (selection) deliberately stays out — e-to-close and the j/k interplay
   // are part of the global map while it's open; the cheatsheet suppresses
   // itself via its own ref in useAppKeyboard.
-  const shortcutMutingModalOpen = computed(() =>
-    firstRun.firstRunModalOpen.value
-    || appStore.showStartupErrorModal
-    || parseStore.showUnsupportedModal
-    || narrowOpen.value
-    || manualMatchOpen.value
-    || settingsDialogOpen.value
-    || paletteOpen.value
+  //
+  // A LIST rather than a chain of `||`: one entry per modal, each able to
+  // carry its own reason, and adding the next one is appending a line instead
+  // of growing a single expression past the complexity gate.
+  const shortcutMutingModalOpen = computed(() => [
+    firstRun.firstRunModalOpen.value,
+    appStore.showStartupErrorModal,
+    parseStore.showUnsupportedModal,
+    narrowOpen.value,
+    manualMatchOpen.value,
+    settingsDialogOpen.value,
+    paletteOpen.value,
     // Both export dialogs. Without them, clicking a non-interactive spot
     // inside the box drops focus to <body> and `/` then navigates to Matches
     // BEHIND the dialog and focuses the narrow search — a focus trap only
     // intercepts Tab and Escape, so a programmatic .focus() out of it is
     // invisible. Listing them here also makes the background inert.
-    || matchesStore.exportBundleOpen
-    || matchesStore.shareOpen
-    || appStore.aboutOpen,
-  )
+    matchesStore.exportBundleOpen,
+    matchesStore.shareOpen,
+    appStore.aboutOpen,
+    // The expanded writing surface. It teleports to <body>, so it is not a
+    // descendant of whatever opened it — the host underneath has to be made
+    // unreachable explicitly, and `/` must not navigate out from under
+    // someone who is mid-sentence.
+    expandedWriterOpen.value,
+  ].some(Boolean))
 
   const backgroundFrozen = computed(() =>
     shortcutMutingModalOpen.value || selection.isOpen.value,
@@ -192,6 +206,7 @@ export const useUiStore = defineStore('ui', () => {
     isSourcesOpen,
     narrowOpen,
     setNarrowOpen,
+    expandedWriterOpen,
     manualMatchOpen,
     manualMatchMode,
     openManualMatch,

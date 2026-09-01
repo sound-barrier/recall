@@ -55,6 +55,10 @@ const canNext = selection.canNext
 const positionIndex = computed(() => selection.selectedIndex.value + 1)
 const positionTotal = computed(() => matchesStore.matchesNarrow.narrowedRecords.value.length)
 const hasLightbox = computed(() => preview.lightboxFilename.value !== null)
+// Anything stacked OVER this panel makes it unreachable: the screenshot
+// lightbox, and now the expanded writing surface, which teleports to <body>
+// and so is not a descendant of the panel it was opened from.
+const stacked = computed(() => hasLightbox.value || uiStore.expandedWriterOpen)
 const anchorKey = computed(() => matchesStore.matchAnchor.anchorKey.value)
 const availableTags = computed(() => matchesStore.matchesNarrow.availableTags.value)
 // The journal's "Apply previous" source: the nearest chronologically
@@ -178,8 +182,8 @@ function onBackdropClick(e: MouseEvent) {
       <aside
         class="detail-panel"
         :class="resultClass"
-        :inert="hasLightbox || undefined"
-        :aria-hidden="hasLightbox ? 'true' : undefined"
+        :inert="stacked || undefined"
+        :aria-hidden="stacked ? 'true' : undefined"
       >
         <DetailPanelHeader
           :record="record"

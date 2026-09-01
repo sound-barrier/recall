@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/vue'
-import { describe, it, expect, vi } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { h } from 'vue'
 
 import type { FocusItem, MatchRecord, MatchResult } from '@/api-client'
@@ -64,6 +65,9 @@ function renderRoom(
 }
 
 describe('CoachRoomView — the three regions', () => {
+  // NoteWriter reads the UI store to freeze the app while it is expanded.
+  beforeEach(() => { setActivePinia(createPinia()) })
+
   // A region inside the Reviews tabpanel, not a panel of its own: the tab is
   // the panel, and goToView focuses #panel-<view>.
   it('is the film-room region the Reviews tab hosts', () => {

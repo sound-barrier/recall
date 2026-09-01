@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import NoteProse from '@/components/coach/notes/NoteProse.vue'
+import NoteProse from '@/components/shared/NoteProse.vue'
 import { computed } from 'vue'
 
 import type { CoachDecisionEnum, CoachReturnItem } from '@/api-client'

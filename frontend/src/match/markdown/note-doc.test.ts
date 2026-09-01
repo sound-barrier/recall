@@ -4,7 +4,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { blocksOf } from '@/match/markdown/note-blocks'
-import { blocksToDoc, docToMarkdown, textToDoc, type NoteDoc } from '@/match/markdown/note-doc'
+import { blocksToDoc, docToMarkdown, textToDoc, type NoteDoc, wordCount } from '@/match/markdown/note-doc'
 import { renderMarkdown } from '@/match/markdown/render-markdown'
 
 // The same table both grammar implementations are pinned to, reached across
@@ -163,5 +163,36 @@ describe('blocksToDoc over blocks, not text', () => {
   it('is the same as textToDoc for the same source', () => {
     const src = '# Focus\n\n- angle\n- ult\n\nThat is it.'
     expect(blocksToDoc(blocksOf(src))).toEqual(textToDoc(src))
+  })
+})
+
+describe('wordCount', () => {
+  it('counts whitespace-separated runs', () => {
+    expect(wordCount('one two three four five')).toBe(5)
+  })
+
+  it('is zero for an empty note', () => {
+    expect(wordCount('')).toBe(0)
+  })
+
+  it('is zero for a note that is only whitespace', () => {
+    // Otherwise an untouched field would claim one word.
+    expect(wordCount('   \n\n  ')).toBe(0)
+  })
+
+  it('does not count a line break as a word', () => {
+    expect(wordCount('first\nsecond')).toBe(2)
+  })
+
+  it('collapses runs of whitespace', () => {
+    expect(wordCount('a     b')).toBe(2)
+  })
+
+  it('keeps a marked-up word as one word, the way it reads', () => {
+    expect(wordCount('hold **the** ground')).toBe(3)
+  })
+
+  it('counts a single word as one', () => {
+    expect(wordCount('alone')).toBe(1)
   })
 })

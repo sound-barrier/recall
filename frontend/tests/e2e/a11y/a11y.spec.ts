@@ -98,4 +98,24 @@ for (const theme of THEMES) {
     const results = await runAx(page)
     expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([])
   })
+
+  // The expanded writing surface, which the matrix cannot reach either: it is
+  // two clicks deep (open a match, activate the journal) and then teleported
+  // to <body>, so it is not inside any view the sweep walks. Scanned in
+  // Markdown mode, where its second pane is up and the source and the preview
+  // sit on the same ground.
+  test(`a11y: expanded note writer (${theme} theme) has no axe violations`, async ({ page }) => {
+    await openView(page, 'tab-matches', theme)
+    await page.locator('.leaf-row').first().click()
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
+    // The seeded matches carry no note, so the journal already shows its
+    // editor rather than a preview to click through.
+    await page.getByRole('button', { name: 'Expand Note' }).click()
+    await expect(page.getByRole('dialog', { name: 'Note' })).toBeVisible()
+    await page.getByRole('button', { name: 'Markdown', exact: true }).click()
+    await expect(page.getByRole('region', { name: 'Preview' })).toBeVisible()
+
+    const results = await runAx(page)
+    expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([])
+  })
 }

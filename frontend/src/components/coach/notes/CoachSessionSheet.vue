@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SheetFocusTally from '@/components/sheet/SheetFocusTally.vue'
+import NoteProse from '@/components/shared/NoteProse.vue'
 import SheetRecord from '@/components/sheet/SheetRecord.vue'
 import SheetFocusItems from '@/components/sheet/SheetFocusItems.vue'
 import type { FocusItem } from '@/api'
@@ -76,7 +77,7 @@ const emit = defineEmits<{
       </button>
     </div>
     <blockquote v-if="player.message" class="sheet-message">
-      {{ player.message }}
+      <NoteProse :text="player.message" />
     </blockquote>
 
     <SheetRecord :wld="wld" :win-rate="winRate" />

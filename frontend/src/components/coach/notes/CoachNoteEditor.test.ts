@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/vue'
-import { describe, it, expect } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import CoachNoteEditor from '@/components/coach/notes/CoachNoteEditor.vue'
 import { emptyDraft, type CoachNoteDraft } from '@/match/coach/coach-notes'
@@ -20,6 +21,9 @@ function lastUpdate(view: ReturnType<typeof renderEditor>): CoachNoteDraft {
 }
 
 describe('CoachNoteEditor — focus chips', () => {
+  // NoteWriter reads the UI store to freeze the app while it is expanded.
+  beforeEach(() => { setActivePinia(createPinia()) })
+
   it('offers the fixed vocabulary, unpressed, in human words', () => {
     renderEditor()
     expect(screen.getByRole('button', { name: 'ult economy' })).toHaveAttribute('aria-pressed', 'false')

@@ -20,6 +20,10 @@ type MatchAnnotation = NonNullable<MatchRecord['annotation']>
 // JOURNAL's own contract (which cell is rendered, what the keyboard does,
 // what gets persisted), so stub the action layer rather than standing up
 // Pinia + the api seam.
+// NoteWriter reads the UI store (it freezes the app while expanded), so every
+// block in this file needs a Pinia — three of them already installed one.
+beforeEach(() => { setActivePinia(createPinia()) })
+
 const onSetMatchAnnotation = vi.fn().mockResolvedValue(true)
 const onSetMatchMoment = vi.fn().mockResolvedValue(true)
 const onDeleteMatchMoment = vi.fn().mockResolvedValue(true)

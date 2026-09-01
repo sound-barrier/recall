@@ -361,7 +361,14 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # warning, the film-room stat rail and its kernel, the send dialog's two
 # suggestions plus per-row removal, the dossier's session list, and the
 # team notes file's addressee. Measured 2188972B.
-: "${MAX_TOTAL_JS_BYTES:=2191000}"
+# 2026-08: 2191000 -> 2199000 -- the expanded writing surface, and one more
+# surface reaching the shared editor. NoteWriter grew the teleported dialog,
+# the word count and the Markdown-mode preview pane, and the send-to-coach
+# message moved off its bare textarea onto it -- which puts the writer chunk
+# (9696B, shared, not duplicated) in the reviews path as well as the matches
+# and coach ones. All lazy: initial JS measured 360160B against an unchanged
+# 362000 budget. Measured 2195094B.
+: "${MAX_TOTAL_JS_BYTES:=2199000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset

@@ -108,8 +108,10 @@ test.describe('sending matches to a coach', () => {
     await reviewsTab(page).click()
     await page.getByRole('button', { name: /Send to a coach…/ }).click()
     await expect(dialog(page).getByRole('textbox', { name: /Your handle/ })).toHaveValue('Sable#1234')
+    // The message is written on the shared editor now, so its field is a
+    // contenteditable — toHaveValue reads .value and throws on one.
     await expect(dialog(page).getByRole('textbox', { name: /Message for your coach/ }))
-      .toHaveValue('Look at my ult timing on the Dorado loss.')
+      .toHaveText('Look at my ult timing on the Dorado loss.')
 
     // An explicit Cancel is a decision — the draft goes with it.
     await dialog(page).getByRole('button', { name: 'Cancel' }).click()
@@ -220,7 +222,11 @@ test.describe('sending matches to a coach', () => {
     await page.getByTestId('bulk-send-to-coach').click()
 
     await dialog(page).getByLabel('Your handle (required)').fill('Sable')
-    await dialog(page).getByLabel(/Message for your coach/).fill('ult timing')
+    // Exact, because the Expand control's own name CONTAINS this label
+    // ("Expand Message for your coach (optional)") and a loose match hits it.
+    await dialog(page)
+      .getByLabel('Message for your coach (optional)', { exact: true })
+      .fill('ult timing')
     await dialog(page).getByTestId('send-to-coach-submit').click()
 
     await expect.poll(() => posted.seen()).toBe(true)

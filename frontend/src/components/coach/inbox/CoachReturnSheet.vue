@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
-import NoteProse from '@/components/coach/notes/NoteProse.vue'
+import NoteProse from '@/components/shared/NoteProse.vue'
 import { storeToRefs } from 'pinia'
 
 import CoachReturnCard from '@/components/coach/inbox/CoachReturnCard.vue'

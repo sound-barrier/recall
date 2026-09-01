@@ -1,0 +1,78 @@
+/* The expanded writing surface.
+   A sibling stylesheet rather than more scoped CSS in the SFC: these rules
+   only ever apply while the writer is teleported to <body>, so they have no
+   business weighing on every host that merely renders a note field. */
+
+.note-writer-expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--bg);
+  overflow: auto;
+}
+
+/* The measure is the point of expanding: long-form prose wants a column it
+   can be read back in, not the full width of a 32-inch monitor. */
+.note-writer-expanded .note-writer-body {
+  display: flex;
+  gap: var(--space-4);
+  flex: 1;
+  width: min(120ch, 100%);
+  margin: 0 auto;
+  min-height: 0;
+}
+
+.note-writer-expanded .note-writer-body > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.note-writer-expanded .note-raw {
+  height: 100%;
+  resize: none;
+}
+
+.note-preview-pane {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: var(--space-3);
+  border-left: 1px solid var(--border-soft);
+}
+
+.note-writer-expanded .note-writer-tools,
+.note-writer-foot {
+  width: min(120ch, 100%);
+  margin: 0 auto;
+}
+
+.note-writer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.note-words {
+  font-family: var(--mono);
+  font-size: var(--type-2xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.note-expand,
+.note-done {
+  cursor: pointer;
+}
+
+@media (width <= 40rem) {
+  /* Two panes do not fit; the source is the one being edited. */
+  .note-preview-pane {
+    display: none;
+  }
+}

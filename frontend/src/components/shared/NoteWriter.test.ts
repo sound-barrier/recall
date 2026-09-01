@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+import { useUiStore } from '@/stores/ui'
 import { fireEvent, render, screen, within } from '@testing-library/vue'
 
 import NoteWriter from '@/components/shared/NoteWriter.vue'
@@ -20,8 +22,11 @@ import { editorReady } from '@/test-utils'
  * machine and on whether the run is instrumented.
  */
 async function writer(over: Partial<{
-  text: string; disabled: boolean; toolsDisabled: boolean; disabledReason: string
+  text: string; disabled: boolean; toolsDisabled: boolean; disabledReason: string; expandable: boolean
 }> = {}) {
+  // The writer reads the UI store to mark the app inert while it is expanded,
+  // which is how a component announces an app-level modal here.
+  setActivePinia(createPinia())
   const view = render(NoteWriter, {
     props: { text: '', label: 'Note', placeholder: 'What did you see?', ...over },
   })
@@ -220,5 +225,76 @@ describe('NoteWriter — what counts as leaving', () => {
     const view = await writer({ text: 'a' })
     document.body.focus()
     expect(await leave(view)).toHaveLength(1)
+  })
+
+})
+
+describe('NoteWriter — the expanded writing surface', () => {
+  it('offers no expand control unless the host asked for one', () => {
+    // A two-line field in a form that is mostly pickers has nothing to gain
+    // from a full-viewport surface.
+    return writer().then(() => {
+      expect(screen.queryByRole('button', { name: 'Expand Note' })).not.toBeInTheDocument()
+    })
+  })
+
+  it('opens a labeled dialog holding the same field', async () => {
+    await writer({ expandable: true, text: 'start' })
+    await fireEvent.click(screen.getByRole('button', { name: 'Expand Note' }))
+    const dialog = screen.getByRole('dialog', { name: 'Note' })
+    expect(within(dialog).getByRole('textbox', { name: 'Note' })).toBeInTheDocument()
+  })
+
+  it('counts the words in the note', async () => {
+    await writer({ expandable: true, text: 'one two three' })
+    await fireEvent.click(screen.getByRole('button', { name: 'Expand Note' }))
+    expect(screen.getByText('3 words')).toBeInTheDocument()
+  })
+
+  it('says "1 word" for a one-word note', async () => {
+    await writer({ expandable: true, text: 'alone' })
+    await fireEvent.click(screen.getByRole('button', { name: 'Expand Note' }))
+    expect(screen.getByText('1 word')).toBeInTheDocument()
+  })
+
+  it('counts nothing as no words', async () => {
+    await writer({ expandable: true, text: '   ' })
+    await fireEvent.click(screen.getByRole('button', { name: 'Expand Note' }))
+    expect(screen.getByText('0 words')).toBeInTheDocument()
+  })
+
+  it('marks the app inert while it is open, and lets go on close', async () => {
+    // It teleports to <body>, so nothing underneath is an ancestor any more —
+    // the host has to be told to go unreachable.
+    await writer({ expandable: true })
+    // AFTER writer(), which installs the Pinia the component is using.
+    const ui = useUiStore()
+    await fireEvent.click(screen.getByRole('button', { name: 'Expand Note' }))
+    expect(ui.expandedWriterOpen).toBe(true)
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    expect(ui.expandedWriterOpen).toBe(false)
+  })
+
+  it('tells the host to save when it collapses, without saying it was left', async () => {
+    // Collapsing is not a blur: the writer is still open and still being
+    // edited. A host that saves on blur would otherwise end a full-screen
+    // writing session with nothing written down.
+    const view = await writer({ expandable: true, text: 'written' })
+    await fireEvent.click(screen.getByRole('button', { name: 'Expand Note' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    expect(view.emitted('commit')).toHaveLength(1)
+    expect(view.emitted('blur')).toBeUndefined()
+  })
+
+  it('shows the preview beside the source only in Markdown mode', async () => {
+    // Formatted IS the preview; a second pane would be two views of one thing.
+    await writer({ expandable: true, text: '**bold**' })
+    await fireEvent.click(screen.getByRole('button', { name: 'Expand Note' }))
+    expect(screen.queryByRole('region', { name: 'Preview' })).not.toBeInTheDocument()
+
+    await fireEvent.click(modeBtn('Markdown'))
+    const preview = screen.getByRole('region', { name: 'Preview' })
+    expect(within(preview).getByText('bold')).toBeInTheDocument()
   })
 })

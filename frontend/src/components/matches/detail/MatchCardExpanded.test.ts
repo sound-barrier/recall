@@ -1,4 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 import { render, screen, fireEvent, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 
@@ -54,6 +55,9 @@ function renderCard(over: { record?: MatchRecord; isSourcesOpen?: boolean } = {}
 }
 
 describe('MatchCardExpanded — reference-data gap banner', () => {
+  // NoteWriter reads the UI store to freeze the app while it is expanded.
+  beforeEach(() => { setActivePinia(createPinia()) })
+
   it('warns when the OCR hero never pinned to the canonical roster, quoting the raw read', () => {
     const rec = makeRecord({ hero: '', hero_raw: 'Neon Function' })
     renderCard({ record: rec })

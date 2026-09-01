@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/vue'
-import { describe, it, expect } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import type { MatchRecord } from '@/api-client'
 import CoachDesk from '@/components/coach/room/CoachDesk.vue'
@@ -19,6 +20,9 @@ function renderDesk(props: Record<string, unknown> = {}) {
 }
 
 describe('CoachDesk', () => {
+  // NoteWriter reads the UI store to freeze the app while it is expanded.
+  beforeEach(() => { setActivePinia(createPinia()) })
+
   it('puts the match on the desk with its note editor', async () => {
     renderDesk()
     expect(screen.getByRole('article')).toBeInTheDocument()

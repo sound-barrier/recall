@@ -11,7 +11,7 @@
 // PLAYER, not an aggregation over the narrowed set, so narrowing to last
 // Tuesday's Ana games must not change what you are working on.
 import { computed } from 'vue'
-import NoteProse from '@/components/coach/notes/NoteProse.vue'
+import NoteProse from '@/components/shared/NoteProse.vue'
 
 import { activeFocus } from '@/match/reviews/focus-items'
 import { useFocusQuery } from '@/queries/focus'

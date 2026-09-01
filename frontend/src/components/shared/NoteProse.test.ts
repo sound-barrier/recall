@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/vue'
-import NoteProse from '@/components/coach/notes/NoteProse.vue'
+import NoteProse from '@/components/shared/NoteProse.vue'
 
 // This component is the ONLY v-html in the app, so the escaping argument its
 // header makes is worth holding to a test rather than to a comment.

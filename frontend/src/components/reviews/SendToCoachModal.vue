@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
+import NoteWriter from '@/components/shared/NoteWriter.vue'
 import { storeToRefs } from 'pinia'
 
 import { useCoachingSettingsQuery } from '@/queries/settings'
@@ -224,15 +225,20 @@ function onSend(): void {
         <label class="send-to-coach-field-label" for="send-to-coach-message">
           Message for your coach (optional)
         </label>
-        <textarea
-          id="send-to-coach-message"
-          v-model="message"
-          class="send-to-coach-input send-to-coach-message"
-          rows="3"
-          maxlength="2000"
+        <!-- The coach reads this in their session sheet, where it renders as
+             markdown — so it is written on the same surface every other piece
+             of prose in the app is written on. Expandable, because "what do
+             you want them to look at" is sometimes a paragraph and sometimes
+             a page. -->
+        <NoteWriter
+          expandable
+          field-id="send-to-coach-message"
+          class="send-to-coach-message"
+          label="Message for your coach (optional)"
           placeholder="What do you want them to look at?"
-          spellcheck="true"
-          autocorrect="off"
+          surface="plain"
+          :text="message"
+          @update:text="message = $event"
         />
 
         <!-- Above the manifest, deliberately. The manifest is one row per

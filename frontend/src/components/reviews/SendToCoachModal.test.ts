@@ -6,6 +6,7 @@ import { nextTick } from 'vue'
 
 import SendToCoachModal from '@/components/reviews/SendToCoachModal.vue'
 import { setApiBacking } from '@/api-client'
+import { markdownField } from '@/test-utils/noteWriter'
 import { useMatchesStore } from '@/stores/matches'
 import { seedQuery } from '@/test-utils/queryTestUtils'
 import { resetQueryClient } from '@/queries/client'
@@ -79,7 +80,8 @@ describe('SendToCoachModal', () => {
     await nextTick()
     await vi.waitFor(() => expect(handleField()).toHaveValue('Sable'))
 
-    await user().type(screen.getByLabelText(/Message for your coach/), 'ult timing')
+    const messageField = await markdownField('Message for your coach (optional)')
+    await user().type(messageField, 'ult timing')
     await user().click(sendBtn())
 
     await vi.waitFor(() => expect(exportBundle).toHaveBeenCalledTimes(1))
@@ -131,5 +133,15 @@ describe('SendToCoachModal', () => {
 
     expect(screen.getByText('…and 8 more')).toBeInTheDocument()
     expect(screen.getByText(/The bundle carries these matches whole/)).toBeInTheDocument()
+  })
+
+  it('offers the message the same writing surface as every other prose field', async () => {
+    // The coach reads this in their session sheet, where it renders as
+    // markdown like a note does. A bare textarea here would be the only place
+    // in the app where writing for someone else came without the tools.
+    render(SendToCoachModal)
+    open([READY], ['m-1'])
+    await nextTick()
+    await vi.waitFor(() => expect(screen.getByRole('toolbar', { name: 'Formatting' })).toBeInTheDocument())
   })
 })
