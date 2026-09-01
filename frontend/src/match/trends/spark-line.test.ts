@@ -58,8 +58,20 @@ describe('sparkPoints in a custom box', () => {
     // The same line is drawn at two very different sizes — a facing pair on
     // the verdict card, and a strip beside a hero's name. Rescaling by CSS
     // would stretch the stroke with it.
+    // Padding is a SHARE of the height (6/56), so a 20-unit box pads 2.1 —
+    // not the 6 that would have eaten more than half of it.
     const wide = sparkPoints([0, 100], { w: 100, h: 20 })
-    expect(wide).toBe('0.0,14.0 100.0,6.0')
+    expect(wide).toBe('0.0,17.9 100.0,2.1')
+  })
+
+  it('keeps a short box the right way up', () => {
+    // With absolute 6-unit padding, any height under 12 inverted the line:
+    // the drawable span went negative and a 100% reading was drawn BELOW a
+    // 0% one. Nothing rendered that small yet, which is why nothing caught it.
+    const [lowPoint, highPoint] = sparkPoints([0, 100], { w: 10, h: 8 })
+      .split(' ')
+      .map((p) => Number(p.split(',')[1]))
+    expect(lowPoint!).toBeGreaterThan(highPoint!)
   })
 
   it('draws a single reading as a flat line across the box', () => {

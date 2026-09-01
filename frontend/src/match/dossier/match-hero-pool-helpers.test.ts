@@ -268,7 +268,7 @@ describe('heroConcentration', () => {
     // Normalized HHI: 1 means everything is one pick, 0 an even spread. A
     // single hero has nowhere to spread to, so it is the top of the scale.
     expect(heroConcentration([{ key: 'ana', minutes: 600 }])).toEqual({
-      score: 1, effectiveHeroes: 1, overReliance: 'ana', heroes: 1,
+      score: 1, effectiveHeroes: 1, overReliance: 'ana', heroes: 1, unreadHeroes: 0,
     })
   })
 
@@ -315,8 +315,21 @@ describe('heroConcentration', () => {
 
   it('says nothing at all when nothing was played', () => {
     expect(heroConcentration([])).toEqual({
-      score: null, effectiveHeroes: 0, overReliance: '', heroes: 0,
+      score: null, effectiveHeroes: 0, overReliance: '', heroes: 0, unreadHeroes: 0,
     })
+  })
+
+  it('counts the heroes whose time it could not read', () => {
+    // A hero with no parseable play_time is in NO part of the score. The
+    // number was thrown away, so "spread across three" could not tell the
+    // reader it was three of eight.
+    const got = heroConcentration([
+      { key: 'ana', minutes: 300 },
+      { key: 'lucio', minutes: 300 },
+      { key: 'kiriko', minutes: 0 },
+    ])
+    expect(got.heroes).toBe(2)
+    expect(got.unreadHeroes).toBe(1)
   })
 
   it('ignores heroes with no recorded time rather than dividing by them', () => {
