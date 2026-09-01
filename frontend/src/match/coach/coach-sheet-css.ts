@@ -1,3 +1,4 @@
+import badges from '@/styles/badges.css?inline'
 import coachSheet from '@/styles/coach-sheet.css?inline'
 import noteProse from '@/styles/note-prose.css?inline'
 import paper from '@/styles/paper.css?inline'
@@ -12,6 +13,11 @@ import tokens from '@/styles/tokens.css?inline'
  * does. That is the entire reason this module exists: the alternative is a
  * hand-copied subset, which is what the Go ledger template did, and which
  * drifted from `note-prose.css` one rule at a time.
+ *
+ * `badges.css` is here because the sheet's kicker is an `.eyebrow` and that
+ * rule lives there. It had been missing since the sheet shipped: the kicker
+ * rendered as a plain span, and the recap that later copied this pattern
+ * leaned on the same class for its whole headline before anyone noticed.
  *
  * Two constraints on what may be added to this list:
  *
@@ -29,4 +35,4 @@ import tokens from '@/styles/tokens.css?inline'
  * string, so a builder that read them directly would make its own security
  * assertions vacuous. The real bytes are proven by the e2e instead.
  */
-export const COACH_SHEET_CSS = [tokens, themes, paper, noteProse, coachSheet].join('\n')
+export const COACH_SHEET_CSS = [tokens, themes, badges, paper, noteProse, coachSheet].join('\n')

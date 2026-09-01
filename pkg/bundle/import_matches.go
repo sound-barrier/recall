@@ -146,7 +146,36 @@ func importUserLayer(store db.Store, data DataV2, existing map[string]bool) erro
 	if err := importCoachNotes(store, data.CoachNotes, existing); err != nil {
 		return err
 	}
+	if err := importRoster(store, data.Roster); err != nil {
+		return err
+	}
 	return importSelfReviews(store, data.SelfReviews, existing)
+}
+
+// importRoster brings the saved teammates in. Not narrowed by the include
+// set — the roster is per PROFILE, not per match — and upserted by tag, so a
+// name already here is kept rather than overwritten by an older export's.
+func importRoster(store db.Store, roster []db.RosterMember) error {
+	if len(roster) == 0 {
+		return nil
+	}
+	existing, err := store.LoadRoster()
+	if err != nil {
+		return fmt.Errorf("import: load roster: %w", err)
+	}
+	have := make(map[string]bool, len(existing))
+	for _, m := range existing {
+		have[m.Tag] = true
+	}
+	for _, m := range roster {
+		if have[m.Tag] {
+			continue
+		}
+		if err := store.SetRosterMember(m); err != nil {
+			return fmt.Errorf("import: roster member %q: %w", m.Tag, err)
+		}
+	}
+	return nil
 }
 
 // importSelfReviews brings the player's sittings in under their own UUIDs.

@@ -20,11 +20,14 @@ type bundleUserLayer struct {
 	coachNotes  []db.MatchCoachNote
 	moments     []db.MatchMoment
 	selfReviews []db.SelfReview
+	// The saved roster — per PROFILE, not per match, so it is not narrowed by
+	// the include set. Populated only for a self-export; see DataV2.Roster.
+	roster []db.RosterMember
 }
 
 // loadBundleUserLayer gathers every user-layer surface for the included
 // match keys. Slices sort by match_key for deterministic bundle bytes.
-func loadBundleUserLayer(store db.Store, include map[string]struct{}) (bundleUserLayer, error) {
+func loadBundleUserLayer(store db.Store, include map[string]struct{}, withRoster bool) (bundleUserLayer, error) {
 	layer, err := loadBundleSidecars(store, include)
 	if err != nil {
 		return bundleUserLayer{}, err
@@ -44,6 +47,13 @@ func loadBundleUserLayer(store db.Store, include map[string]struct{}) (bundleUse
 		return bundleUserLayer{}, fmt.Errorf("export bundle: load self reviews: %w", err)
 	}
 	layer.selfReviews = includedSelfReviews(selfReviews, include)
+	if withRoster {
+		roster, err := store.LoadRoster()
+		if err != nil {
+			return bundleUserLayer{}, fmt.Errorf("export bundle: load roster: %w", err)
+		}
+		layer.roster = roster
+	}
 	return layer, nil
 }
 

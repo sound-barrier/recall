@@ -77,6 +77,10 @@ export function useSeasonRecap(
         seasonRecapFilename(season),
         `Save ${season.name} recap (web page)`,
       )
+      // "" is a CANCEL — the native dialog resolves empty rather than
+      // throwing. Treating it as a save wrote nothing, said nothing, and
+      // answered the rollover notice for the rest of the season.
+      if (name === '') return
       savedAs.value = name
       markSeen()
     } catch (e) {

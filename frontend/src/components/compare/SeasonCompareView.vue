@@ -304,12 +304,6 @@ const liveSummary = computed(() => {
   align-items: center;
 }
 
-/* The save outcome reuses .compare-note below — one visual concept, one rule
-   — and adds only the error tint. */
-.compare-note-error {
-  color: var(--loss);
-}
-
 .compare-view {
   max-width: 60rem;
 }
@@ -416,6 +410,13 @@ const liveSummary = computed(() => {
   margin: 0.7rem 0 0;
   font-size: var(--type-sm);
   color: var(--text-dim);
+}
+
+/* AFTER .compare-note, not before it: same specificity, so the later rule is
+   the one that applies. Declared above it, the error tint lost to the muted
+   one and a failed save read as an ordinary note. */
+.compare-note-error {
+  color: var(--loss);
 }
 
 .compare-note-faint {

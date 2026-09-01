@@ -92,7 +92,7 @@ describe('toRecapInput', () => {
     expect(got.games).toBe(1)
   })
 
-  it('is empty for a season the player did not play', () => {
+  it('counts the previous season as its own, not as a slice of this one', () => {
     const got = toRecapInput(corpus(), PREVIOUS)
     expect(got.games).toBe(1)
     expect(got.topHeroes).toEqual([{ key: 'ana', games: 1, winratePct: 0 }])
@@ -110,10 +110,37 @@ describe('buildSeasonRecap', () => {
 
   it('reaches out for nothing — it has to open with the network off, forever', () => {
     const html = page()
-    for (const forbidden of ['<script', 'url(', '@import', '<img', 'http://', 'https://', '<a ']) {
-      expect(html).not.toContain(forbidden)
+    // The same list the coach sheet's twin carries. Escaping is the ONLY
+    // defense in a page built by string concatenation, and this is what holds
+    // it: a shorter list is a weaker guard, not a tidier one.
+    for (const forbidden of [
+      '<script', '<img', '<iframe', '<link', '<a ', 'href=', 'src=', 'srcset=',
+      'http://', 'https://', '@import', 'url(', 'javascript:',
+    ]) {
+      expect(html, `recap contains ${forbidden}`).not.toContain(forbidden)
     }
+    expect(html).not.toMatch(/\son\w+\s*=/)
     expect(html).toContain("default-src 'none'")
+  })
+
+  it('neutralizes text that tries to reach out', () => {
+    // The other half. A hero name is OCR output and a season name arrives
+    // from a published YAML — neither is this app's to trust.
+    seq = 0
+    const hostile = toRecapInput(
+      [rec({ utc: '2026-08-12T20:00:00Z', hero: '<img src=x onerror=alert(1)>' })],
+      { ...SEASON, name: '<a href="javascript:alert(2)">S4</a>' },
+    )
+    const html = buildSeasonRecap(hostile, '')
+
+    // No live tag survives. That is the whole proof: an inline handler can
+    // only fire from inside a tag, and no `<` in the data becomes one.
+    expect(html).not.toContain('<img')
+    expect(html).not.toContain('<a ')
+    expect(html).toContain('&lt;img')
+    // NOT asserting on the bare `href=` characters: they survive escaping as
+    // inert text, so their absence would say nothing. The tags are the proof —
+    // an inline handler can only fire from inside one.
   })
 
   it('carries the app\'s own stylesheet rather than a hand-copied subset', () => {
@@ -139,6 +166,25 @@ describe('buildSeasonRecap', () => {
   it('says a season went unplayed instead of printing a wall of zeros', () => {
     const html = buildSeasonRecap(toRecapInput([], SEASON), '')
     expect(html).toContain('No competitive games this season')
-    expect(html).not.toContain('0%')
+    // The zeros the sentence replaces. Asserting on '0%' alone said nothing:
+    // a season with no games has no win rate either, so the wall of zeros it
+    // would print contains no percentage at all.
+    expect(html).not.toContain('Games')
+    expect(html).not.toContain('Longest win streak')
+  })
+
+  it('counts a day per match placed, not per match that carried a date', () => {
+    // A season whose captures were all RANK screens carries no `date` field
+    // at all. Counting days off it printed "5 games, 0 days played" — and
+    // ordering by the naive clock dropped the match from the count entirely,
+    // in a season the UTC filter had just accepted it into.
+    seq = 0
+    const dateless = {
+      match_key: 'match:2026-08-20T20-00-00',
+      data: { played_at_utc: '2026-08-20T20:00:00Z', result: 'victory' },
+    } as unknown as MatchRecord
+    const got = toRecapInput([dateless], SEASON)
+    expect(got.games).toBe(1)
+    expect(got.daysPlayed).toBe(1)
   })
 })

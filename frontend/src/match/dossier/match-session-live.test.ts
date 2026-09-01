@@ -50,7 +50,24 @@ describe('liveSessionReadout', () => {
     expect(readout.rank?.tier).toBe('gold')
     expect(readout.rank?.level).toBe(2)
     expect(readout.rank?.progress).toBe(18)
-    expect(readout.summary).toMatchObject({ matches: 3, w: 2, l: 1 })
+    // The tally is over the SUPPORT games only — the dps game moved a
+    // different ladder from the one the pill beside it names.
+    expect(readout.summary).toMatchObject({ matches: 2, w: 1, l: 1 })
+  })
+
+  it('leaves another role\'s movement out of the ladder the pill names', () => {
+    seq = 0
+    const readout = liveSessionReadout([
+      rec({ day: 10, hh: 19, role: 'support', rank: { tier: 'gold', level: 2, progress: 40 } }),
+      rec({ day: 10, hh: 20, role: 'support' }),
+      rec({ day: 10, hh: 21, role: 'tank', result: 'defeat', rank: { tier: 'bronze', level: 5, progress: 5 } }),
+    ], at(10, 21))!
+
+    // Newest match is tank, so the pill is the tank ladder — and so is the
+    // tally. Two support wins summed onto it would credit a ladder they never
+    // touched.
+    expect(readout.role).toBe('tank')
+    expect(readout.summary).toMatchObject({ matches: 1, w: 0, l: 1 })
   })
 
   it('keeps the tally when the session carries no rank reading at all', () => {

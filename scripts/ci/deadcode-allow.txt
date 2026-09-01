@@ -22,17 +22,19 @@ App\.Pick
 # Pick* pair — Wails dialogs in app_wails.go; server-mode stubs in
 # app_server.go return errors directing callers to GET/PUT /api/v1/database,
 # POST /api/v1/exports/bundle, and POST /api/v1/imports respectively.
-# SaveTextToFile (flat match CSV) and SaveCoachSheetToFile (the standalone
-# review page a coach hands over) have no server stub target — the browser
-# builds the Blob client-side. Both are their own method rather than one
-# shared saver because the native dialog is labeled and filtered for the
-# file it is about, and "Save match data (CSV)" in front of an HTML review
-# would be the wrong dialog on the wrong file.
+# SaveTextToFile (flat match CSV) and SaveWebPageToFile (the standalone pages
+# the app builds — a coach's review, a season recap) have no server stub
+# target: the browser builds the Blob client-side. They stay two methods
+# rather than one because the native dialog is labeled and filtered for the
+# file it is about, and "Save match data (CSV)" in front of an HTML page would
+# be the wrong dialog on the wrong file. The PAGE saver takes its message as a
+# parameter — the second such page is what proved a hard-coded one does not
+# generalize.
 App\.SaveBackupToFile
 App\.SaveBundleToFile
 App\.SaveDiagnosticBundleToFile
 App\.SaveTextToFile
-App\.SaveCoachSheetToFile
+App\.SaveWebPageToFile
 App\.LoadRestoreFromFile
 App\.LoadMatchImportFromFile
 

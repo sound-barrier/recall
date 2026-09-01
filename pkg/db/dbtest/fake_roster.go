@@ -16,7 +16,10 @@ import (
 func (f *Fake) LoadRoster() ([]db.RosterMember, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	out := slices.Clone(f.Roster)
+	// An empty roster is an empty LIST, not nil — the handler serializes this
+	// straight to the wire, and the SQLStore never emits `null` there.
+	out := make([]db.RosterMember, 0, len(f.Roster))
+	out = append(out, f.Roster...)
 	slices.SortFunc(out, func(a, b db.RosterMember) int {
 		if c := cmp.Compare(a.DisplayName, b.DisplayName); c != 0 {
 			return c

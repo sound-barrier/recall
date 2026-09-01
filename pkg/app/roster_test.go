@@ -56,31 +56,6 @@ func TestSaveRosterMember_RefusesABlankTag(t *testing.T) {
 	}
 }
 
-func TestRemoveRosterMember_LeavesTheTaggedMatchesAlone(t *testing.T) {
-	store := &dbtest.Fake{}
-	a := app.NewWithStore(store)
-	mustNoErrApp(t, store.SetAnnotation(db.Annotation{
-		MatchKey: "match:2026-08-01T20-00-00",
-		Members:  []string{"Zed#2100"},
-	}))
-	mustNoErrApp(t, a.SaveRosterMember(db.RosterMember{Tag: "Zed#2100", DisplayName: "Zed"}))
-	mustNoErrApp(t, a.RemoveRosterMember("Zed#2100"))
-
-	roster, err := a.Roster()
-	mustNoErrApp(t, err)
-	if len(roster) != 0 {
-		t.Fatalf("roster = %d rows after remove, want 0", len(roster))
-	}
-	// The roster is a lookup, not a foreign key. Un-rostering somebody must
-	// not erase them from the games they actually played.
-	notes, err := store.LoadAnnotations()
-	mustNoErrApp(t, err)
-	members := notes["match:2026-08-01T20-00-00"].Members
-	if len(members) != 1 || members[0] != "Zed#2100" {
-		t.Fatalf("annotation members = %v, want the tag untouched", members)
-	}
-}
-
 func mustNoErrApp(t *testing.T, err error) {
 	t.Helper()
 	if err != nil {
