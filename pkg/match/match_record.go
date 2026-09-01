@@ -237,6 +237,9 @@ type CoachNoteMoment struct {
 	MatchClock string `json:"match_clock"`
 	Text       string `json:"text"`
 	FocusTag   string `json:"focus_tag,omitempty"`
+	// ImageSHA256 names the frame this moment is about, served from
+	// /_moment-image/{sha256}. Omitted when there is no picture.
+	ImageSHA256 string `json:"image_sha256,omitempty"`
 }
 
 // ErrMatchNotFound is returned by GetMatchByKey when no match has the

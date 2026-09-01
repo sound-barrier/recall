@@ -2668,6 +2668,64 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/moment-images:
+    post:
+      operationId: PutMomentImage
+      tags: [Matches]
+      summary: Store an image a moment can point at
+      description: |
+        Takes custody of a picture — the frame a timestamped moment is about.
+
+        The body is the raw image, not multipart and not base64: the three
+        other binary endpoints here take their bytes the same way, and a
+        wrapper would only be something to unwrap.
+
+        CONTENT-ADDRESSED. The response is the sha256 of the bytes, and
+        storing the same image twice is one row and the same digest — so a
+        screenshot pinned to three moments costs one copy, and the reference
+        survives a match rename, which a filename would not.
+
+        Attach it by putting that digest in a moment's `image_sha256`.
+      requestBody:
+        required: true
+        content:
+          image/png:
+            schema:
+              type: string
+              format: binary
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Stored. The digest names it from here on.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sha256]
+                properties:
+                  sha256:
+                    type: string
+                    pattern: "^[0-9a-f]{64}$"
+                  byte_size:
+                    type: integer
+        "400":
+          description: Not an image type this app will serve back.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "413":
+          description: The image is larger than the 8 MiB cap.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/imports:
     post:
       operationId: ImportMatches
@@ -5223,6 +5281,11 @@ components:
           description: |
             Optional. A coach saying what happened at 4:45 should not have
             to classify it first.
+        image_sha256:
+          type: string
+          description: |
+            Content digest of the attached frame, or absent when the moment
+            has none. Served from `/_moment-image/{sha256}`.
         updated_at:
           type: string
           description: When the moment was last saved (RFC3339).
@@ -5247,6 +5310,16 @@ components:
           allOf:
             - $ref: "#/components/schemas/CoachFocusTagEnum"
           description: Optional.
+        image_sha256:
+          type: string
+          pattern: "^([0-9a-f]{64})?$"
+          description: |
+            The frame this moment is about, by the content digest returned
+            from `POST /api/v1/moment-images`. Empty or absent when the
+            moment carries no picture. A digest naming an image that is not
+            (or is no longer) stored is accepted: it renders as a missing
+            picture rather than failing the write, because a moment can
+            outlive the frame it pointed at.
 
     CoachMomentInput:
       type: object

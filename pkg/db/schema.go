@@ -59,6 +59,14 @@ var additiveColumns = []struct{ table, column, ddl string }{
 	{"ambiguous_candidates", "reason", "TEXT NOT NULL DEFAULT '' CHECK (reason IN ('', 'duplicate_stats', 'same_instant'))"},
 	{"coach_returns", "kind", "TEXT NOT NULL DEFAULT 'player' CHECK (kind IN ('player', 'team'))"},
 	{"match_coach_notes", "for_team", "TEXT NOT NULL DEFAULT ''"},
+	// The image a moment points at, by content digest. Nullable rather than
+	// NOT NULL DEFAULT '': the four moment tables answer "is there a picture?"
+	// and NULL says no more honestly than a sentinel that also has to be
+	// excluded from every join.
+	{"match_moments", "image_sha256", "TEXT"},
+	{"coach_note_moments", "image_sha256", "TEXT"},
+	{"match_coach_note_moments", "image_sha256", "TEXT"},
+	{"self_review_note_moments", "image_sha256", "TEXT"},
 }
 
 // ensureAdditiveColumns adds any additiveColumns missing from an already-created

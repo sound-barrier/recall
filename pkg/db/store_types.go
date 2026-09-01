@@ -405,8 +405,22 @@ type MatchMoment struct {
 	Text       string
 	FocusTag   string
 	SortOrder  int
-	CreatedAt  string
-	UpdatedAt  string
+	// ImageSHA256 names a row in moment_images by content digest, or is empty
+	// when the moment carries no picture.
+	ImageSHA256 string
+	CreatedAt   string
+	UpdatedAt   string
+}
+
+// MomentImage is a picture a moment points at, addressed by the digest of its
+// own bytes. The store owns the hashing so two callers cannot disagree about
+// what "the same image" means.
+type MomentImage struct {
+	SHA256    string
+	Bytes     []byte
+	MIME      string
+	ByteSize  int
+	CreatedAt string
 }
 
 // MomentSlot answers which moment a row is and where it sits in the reading
@@ -424,8 +438,11 @@ type CoachNoteMoment struct {
 	Text       string
 	FocusTag   string
 	SortOrder  int
-	CreatedAt  string
-	UpdatedAt  string
+	// ImageSHA256 names a row in moment_images by content digest, or is empty
+	// when the moment carries no picture.
+	ImageSHA256 string
+	CreatedAt   string
+	UpdatedAt   string
 }
 
 // MomentSlot — see MatchMoment.MomentSlot.
@@ -478,6 +495,9 @@ type MatchCoachNoteMoment struct {
 	Text       string
 	FocusTag   string
 	SortOrder  int
+	// ImageSHA256 names a row in moment_images by content digest, or is empty
+	// when the moment carries no picture.
+	ImageSHA256 string
 }
 
 // CoachReturn is a staged notes file the player has imported but not
@@ -570,8 +590,11 @@ type SelfReviewMoment struct {
 	Text       string
 	FocusTag   string
 	SortOrder  int
-	CreatedAt  string
-	UpdatedAt  string
+	// ImageSHA256 names a row in moment_images by content digest, or is empty
+	// when the moment carries no picture.
+	ImageSHA256 string
+	CreatedAt   string
+	UpdatedAt   string
 }
 
 // MomentSlot — see MatchMoment.MomentSlot.

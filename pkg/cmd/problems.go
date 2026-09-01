@@ -51,7 +51,11 @@ var (
 	probDataVerify            = problemType{"data-verification-failed", "Unprocessable Entity", http.StatusUnprocessableEntity}
 	probRestoreInvalid        = problemType{"restore-invalid", "Unprocessable Entity", http.StatusUnprocessableEntity}
 	probBadGateway            = problemType{"upstream-fetch-failed", "Bad Gateway", http.StatusBadGateway}
-	probInternal              = problemType{"internal", "Internal Server Error", http.StatusInternalServerError}
+	// An attachment past the per-image cap. 413 rather than 400: the request
+	// is well-formed and the answer is about its size, which is the one thing
+	// the sender can act on without guessing.
+	probPayloadTooLarge = problemType{"payload-too-large", "Payload Too Large", http.StatusRequestEntityTooLarge}
+	probInternal        = problemType{"internal", "Internal Server Error", http.StatusInternalServerError}
 )
 
 // fieldError is one entry in the `errors` extension member — a single offending

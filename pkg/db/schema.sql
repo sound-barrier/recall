@@ -335,6 +335,33 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_match_annotations_replay_code
 -- a column on it: several share a match, which is the whole point, and the
 -- annotation is a single row by design.
 --
+-- Images attached to a moment: the frame the timestamped claim is ABOUT.
+--
+-- The first bytes this app takes custody of. Everything else it displays is a
+-- file already sitting in the folder the user pointed at, served read-only —
+-- these are ours, so they answer to the same lifecycle every other sidecar
+-- does, and living in the database rather than beside it is what makes that
+-- automatic: a profile move, a backup and a restore carry them without being
+-- taught to.
+--
+-- CONTENT-ADDRESSED. The same screenshot pinned to three moments is one row,
+-- and the reference survives a match rename, which a filename would not.
+-- Deliberately NOT foreign-keyed from the moment tables: three of the four
+-- are CASCADE-deleted children of a note, and a RESTRICT there would turn
+-- every note deletion into a two-step. A reference with no row renders as a
+-- missing image, which is a far smaller harm than a delete that cannot run;
+-- PruneOrphanMomentImages is what collects the bytes afterwards.
+CREATE TABLE IF NOT EXISTS moment_images (
+  sha256 TEXT PRIMARY KEY,
+  bytes BLOB NOT NULL,
+  -- What the serving handler is willing to hand back. Anything else would be
+  -- stored only to be refused at read time.
+  mime TEXT NOT NULL CHECK (mime IN ('image/png', 'image/jpeg')),
+  byte_size INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
+-- statement-end
+
 -- Deliberately NOT the same table as the coach's received moments. These are
 -- the player's own words about their own match; folding both into one list
 -- would make "who said this" a column instead of a boundary, and the coach
@@ -355,6 +382,9 @@ CREATE TABLE IF NOT EXISTS match_moments (
     'hero_pick', 'comms', 'mechanics', 'mental'
   )),
   sort_order INTEGER NOT NULL DEFAULT 0,
+  -- The frame this moment is about, by content digest into moment_images.
+  -- NULL when there is no picture; see that table for why it is not an FK.
+  image_sha256 TEXT,
   created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
 ) STRICT;
@@ -773,6 +803,9 @@ CREATE TABLE IF NOT EXISTS coach_note_moments (
   match_clock TEXT NOT NULL,
   text TEXT NOT NULL,
   sort_order INTEGER NOT NULL DEFAULT 0,
+  -- The frame this moment is about, by content digest into moment_images.
+  -- NULL when there is no picture; see that table for why it is not an FK.
+  image_sha256 TEXT,
   created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   UNIQUE (coach_note_id, moment_id)
@@ -876,6 +909,9 @@ CREATE TABLE IF NOT EXISTS match_coach_note_moments (
     'hero_pick', 'comms', 'mechanics', 'mental'
   )),
   sort_order INTEGER NOT NULL DEFAULT 0,
+  -- The frame this moment is about, by content digest into moment_images.
+  -- NULL when there is no picture; see that table for why it is not an FK.
+  image_sha256 TEXT,
   -- Unique WITHIN the block, the same constraint its authored twin carries:
   -- the id comes from a file another machine wrote, so it is not a namespace
   -- to trust, and two rows sharing one collide as Vue keys downstream.
@@ -1071,6 +1107,9 @@ CREATE TABLE IF NOT EXISTS self_review_note_moments (
     'hero_pick', 'comms', 'mechanics', 'mental'
   )),
   sort_order INTEGER NOT NULL DEFAULT 0,
+  -- The frame this moment is about, by content digest into moment_images.
+  -- NULL when there is no picture; see that table for why it is not an FK.
+  image_sha256 TEXT,
   created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   UNIQUE (self_review_note_id, moment_id)

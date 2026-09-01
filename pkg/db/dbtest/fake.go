@@ -106,6 +106,9 @@ type Fake struct {
 	CoachPlayers []db.CoachPlayer
 	// The player's own timestamped moments, keyed by match.
 	MatchMoments map[string][]db.MatchMoment
+	// Images a moment points at, keyed by content digest — the Fake's twin of
+	// the moment_images table.
+	MomentImages map[string]db.MomentImage
 	CoachNotes   map[int64]map[string]db.CoachNote
 	// Keyed by the parent note's PUBLIC id, mirroring the SQL loader.
 	CoachNoteMoments map[string][]db.CoachNoteMoment
@@ -404,6 +407,7 @@ func (f *Fake) Clear() error {
 	// The player's own moments are match history too — the SQL Clear wipes
 	// match_moments, and the Fake once did not, which no assertion noticed.
 	f.MatchMoments = nil
+	f.MomentImages = nil
 	// The received coach layer is match history; the authored family
 	// (CoachPlayers / CoachNotes / CoachFocusItems) deliberately survives.
 	f.MatchCoachNotes = nil

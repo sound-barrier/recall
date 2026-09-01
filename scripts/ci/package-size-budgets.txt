@@ -85,7 +85,14 @@
 # thing (where the corpus comes from) which is now the parameter
 # claimCoachSessionWith takes. Splitting the shell instead would mean two
 # places racing for the one session slot.
-pkg/app                                       50
+# 51 as of moment images: moment_images.go, custody of the attachments a
+# moment points at — the store call, the size ceiling, and the handler that
+# serves them back. A sibling of screenshot_files.go rather than part of it,
+# and the distinction is the point: that one resolves a filename inside a
+# directory the user chose, with two containment checks to prove it stayed
+# there. This one looks up bytes we stored, by content digest, where there is
+# no path and so nothing to escape.
+pkg/app                                       51
 
 # pkg/db — the SQLite store: schema + additive-column registry, the migration
 # engine, per-screenshot-type CRUD, the Store interface and its *SQLStore
@@ -113,8 +120,13 @@ pkg/app                                       50
 # 35 as of session history: store_coach_sessions.go, the coach's own
 # sittings. Coach-AUTHORED like store_coach_notes.go beside it — one
 # concern, one file, and the reason the dossier can stop calling "last note
+# 36 as of moment images: store_moment_images.go, the first bytes this app
+# takes custody of rather than reads. One table, spelled in one file, like
+# every sidecar above it — and content-addressed, which is what makes the
+# reference survive a match rename and the same screenshot pinned three
+# times cost one row.
 # touched" a session.
-pkg/db                                        35
+pkg/db                                        36
 
 # pkg/parser — the OCR pipeline: Tesseract invocation, per-screenshot-type field
 # extraction, the embedded owdata YAML set, golden-file projection. One
@@ -158,7 +170,12 @@ pkg/fixtures                                  13
 # — reading the player's whole list and moving one item along it. A group
 # of its own rather than a corner of the coach or self-review files,
 # because the list spans both and belongs to neither.
-pkg/cmd                                       21
+# 22 as of moment images: server_moment_images.go, the /api/v1/moment-images
+# endpoint group — the fourth binary-body surface here, and the only one
+# that takes a picture rather than an archive. Its own group because it is
+# addressed by content digest and belongs to no match: any moment, on
+# either side of the coach boundary, can point at what it stores.
+pkg/cmd                                       22
 
 
 # ── Frontend ───────────────────────────────────────────────────────────

@@ -53,6 +53,10 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/resolution", handleResolveMatch(a))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/annotation", handleSetMatchAnnotation(a))
 	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/annotation", handleDeleteMatchAnnotation(a))
+	// Attachments live outside the match namespace on purpose: they are
+	// content-addressed, so one upload can be pointed at by any moment on any
+	// match — and by a coach's, later.
+	apiMux.HandleFunc("POST /api/v1/moment-images", handlePutMomentImage(a))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/moments/{moment_id}", handleSetMatchMoment(a))
 	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/moments/{moment_id}", handleDeleteMatchMoment(a))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/data", handleUpdateMatchData(a))

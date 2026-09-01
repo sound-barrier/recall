@@ -142,6 +142,17 @@ type Store interface {
 	DeleteMatchMoment(matchKey, momentID string) error
 	LoadMatchMoments() (map[string][]MatchMoment, error)
 
+	// Images a moment points at, content-addressed. The first bytes this app
+	// owns rather than reads: they answer to Clear, to a match deletion, and
+	// they ride a profile move and a backup because they live in the database.
+	// PutMomentImage returns the digest it stored under; LoadMomentImage
+	// reports `false` rather than an error for a digest nothing stored, since
+	// a moment can outlive its picture. PruneOrphanMomentImages collects what
+	// nothing points at any more.
+	PutMomentImage(raw []byte, mime string) (string, error)
+	LoadMomentImage(sha string) (MomentImage, bool, error)
+	PruneOrphanMomentImages() (int, error)
+
 	// User match-data override layer — the single source for BOTH inline
 	// edits of a parsed match AND hand-entered matches. UpsertUserMatchData
 	// replaces a match's override row + children; DeleteUserMatchData removes

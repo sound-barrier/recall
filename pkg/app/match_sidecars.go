@@ -1,6 +1,7 @@
 package app
 
 import (
+	"recall/pkg/applog"
 	"recall/pkg/db"
 	"recall/pkg/matchedit"
 )
@@ -220,5 +221,17 @@ func (a *App) DeleteMatchMoment(matchKey, momentID string) error {
 	if err := a.assertNoCoachSession(); err != nil {
 		return err
 	}
-	return a.store.DeleteMatchMoment(matchKey, momentID)
+	if err := a.store.DeleteMatchMoment(matchKey, momentID); err != nil {
+		return err
+	}
+	// The picture it pointed at may now be unreferenced. Collected here rather
+	// than by a refcount because a moment is not the only thing that can stop
+	// pointing at an image — a coach note taking its moments with it does the
+	// same, through a cascade this layer never sees. A failed sweep is not a
+	// failed delete: the moment IS gone, and the bytes are collected on the
+	// next one.
+	if _, err := a.store.PruneOrphanMomentImages(); err != nil {
+		applog.Subsystem("matches").Warn("could not collect unreferenced moment images", "err", err)
+	}
+	return nil
 }

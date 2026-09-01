@@ -50,6 +50,9 @@ type MomentInput struct {
 	MatchClock string `json:"match_clock"`
 	Text       string `json:"text"`
 	FocusTag   string `json:"focus_tag"`
+	// ImageSHA256 is the frame this moment is about, by content digest.
+	// Empty when there is none.
+	ImageSHA256 string `json:"image_sha256"`
 }
 
 // FocusTags is the vocabulary a moment may be filed under, mirroring the
@@ -64,9 +67,10 @@ var FocusTags = []string{
 // copy to store. Every rejection wraps ErrInvalidMoment and names the field.
 func ValidateMomentInput(in MomentInput) (MomentInput, error) {
 	out := MomentInput{
-		MatchClock: normalizeMatchClock(strings.TrimSpace(in.MatchClock)),
-		Text:       strings.TrimSpace(in.Text),
-		FocusTag:   strings.TrimSpace(in.FocusTag),
+		MatchClock:  normalizeMatchClock(strings.TrimSpace(in.MatchClock)),
+		Text:        strings.TrimSpace(in.Text),
+		FocusTag:    strings.TrimSpace(in.FocusTag),
+		ImageSHA256: strings.TrimSpace(in.ImageSHA256),
 	}
 	switch {
 	case out.MatchClock == "":
@@ -79,9 +83,18 @@ func ValidateMomentInput(in MomentInput) (MomentInput, error) {
 		return MomentInput{}, fmt.Errorf("%w: moment text exceeds %d characters", ErrInvalidMoment, MaxMomentTextRunes)
 	case out.FocusTag != "" && !slices.Contains(FocusTags, out.FocusTag):
 		return MomentInput{}, fmt.Errorf("%w: focus tag %q is not in the vocabulary", ErrInvalidMoment, out.FocusTag)
+	case out.ImageSHA256 != "" && !imageDigestPattern.MatchString(out.ImageSHA256):
+		// A digest is generated, never typed, so a malformed one is a bug or
+		// a probe. A digest naming an image nothing stored is NOT refused
+		// here — that is a moment outliving its picture, which renders as a
+		// missing frame rather than a write nobody can complete.
+		return MomentInput{}, fmt.Errorf("%w: image_sha256 is not a sha256 digest", ErrInvalidMoment)
 	}
 	return out, nil
 }
+
+// imageDigestPattern is what a stored image's content address looks like.
+var imageDigestPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 // normalizeMatchClock zero-pads a single-digit minute so "4:45" and "04:45"
 // are one value.
@@ -136,12 +149,13 @@ func SetMoment(s MomentStore, matchKey, momentID string, in MomentInput) (db.Mat
 		return db.MatchMoment{}, err
 	}
 	return s.UpsertMatchMoment(db.MatchMoment{
-		MomentID:   momentID,
-		MatchKey:   matchKey,
-		MatchClock: normalized.MatchClock,
-		Text:       normalized.Text,
-		FocusTag:   normalized.FocusTag,
-		SortOrder:  SortOrderFor(existing, momentID),
+		MomentID:    momentID,
+		MatchKey:    matchKey,
+		MatchClock:  normalized.MatchClock,
+		Text:        normalized.Text,
+		FocusTag:    normalized.FocusTag,
+		ImageSHA256: normalized.ImageSHA256,
+		SortOrder:   SortOrderFor(existing, momentID),
 	})
 }
 
