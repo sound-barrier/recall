@@ -71,6 +71,7 @@ import SRClimbRateWidget from '@/components/dashboard/widgets/SRClimbRateWidget.
 import SRByRoleWidget from '@/components/dashboard/widgets/SRByRoleWidget.vue'
 import HeroConcentrationWidget from '@/components/dashboard/widgets/HeroConcentrationWidget.vue'
 import QueueGapWidget from '@/components/dashboard/widgets/QueueGapWidget.vue'
+import PatchSplitWidget from '@/components/dashboard/widgets/PatchSplitWidget.vue'
 
 // Central registry for the dossier's customizable dashboard widgets.
 //
@@ -164,6 +165,7 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
   { id: 'sr-by-role',           eyebrow: 'SR by role',             shape: 'breakdown', defaultRow: 2, component: SRByRoleWidget,          config: EMPTY_SCHEMA             },
   { id: 'hero-concentration',   eyebrow: 'Effective hero pool',    shape: 'kpi',       defaultRow: 1, component: HeroConcentrationWidget, config: EMPTY_SCHEMA             },
   { id: 'queue-gap',            eyebrow: 'Fresh vs tilted queue',  shape: 'breakdown', defaultRow: 2, component: QueueGapWidget,          config: EMPTY_SCHEMA             },
+  { id: 'patch-split',          eyebrow: 'Before / after a patch',  shape: 'breakdown', defaultRow: 2, component: PatchSplitWidget,        config: EMPTY_SCHEMA             },
   { id: 'session-depth',        eyebrow: 'Session depth',          shape: 'breakdown', defaultRow: 2, component: SessionDepthWidget,       config: EMPTY_SCHEMA             },
 ]
 

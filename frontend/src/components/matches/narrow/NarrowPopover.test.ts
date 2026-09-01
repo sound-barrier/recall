@@ -98,7 +98,7 @@ interface SetupOpts {
 
 function setup(opts: SetupOpts = {}) {
   seedQuery(qk.system.referenceData, {
-    heroes_by_role: {}, maps_by_game_mode: {}, screenshot_sources: [], seasons: [], ranks: [],
+    heroes_by_role: {}, maps_by_game_mode: {}, screenshot_sources: [], seasons: [], patches: [], ranks: [],
   })
   const records = opts.records ?? CORPUS
   const anchor = opts.anchorKey ?? ''

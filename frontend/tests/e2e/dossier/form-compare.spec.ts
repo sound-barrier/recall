@@ -27,7 +27,7 @@ const REFERENCE_DATA = {
   seasons: [
     { name: 'S1', chapter: 'C', number: 1, start: '2026-02-10T19:00:00Z', end: '2026-04-14T19:00:00Z' },
     { name: 'S2', chapter: 'C', number: 2, start: '2026-04-14T19:00:00Z', end: '2026-08-11T19:00:00Z' },
-  ],
+  ], patches: [],
 }
 
 function localYMD(offset: number): string {

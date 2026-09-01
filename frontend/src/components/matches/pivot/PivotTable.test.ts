@@ -38,7 +38,7 @@ beforeEach(() => {
     heroes_by_role: { support: ['ana'], tank: ['dva'] },
     maps_by_game_mode: {},
     screenshot_sources: [],
-    seasons: [],
+    seasons: [], patches: [],
   })
 })
 afterEach(() => vi.unstubAllGlobals())

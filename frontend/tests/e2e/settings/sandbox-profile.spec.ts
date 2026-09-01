@@ -13,7 +13,7 @@ const REFERENCE_DATA = {
   heroes_by_role: { support: ['Lúcio'] },
   maps_by_game_mode: { control: ['Ilios'] },
   screenshot_sources: [],
-  seasons: [],
+  seasons: [], patches: [],
 }
 
 const ONE_MATCH = [{

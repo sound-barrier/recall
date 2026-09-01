@@ -35,7 +35,7 @@ const OW_DATA: OWData = {
   heroes_by_role: { support: ['Lúcio'], dps: ['Genji'], tank: ['Reinhardt'] },
   maps_by_game_mode: { escort: ['Rialto'] },
   screenshot_sources: [],
-  seasons: [],
+  seasons: [], patches: [],
   ranks: [],
 }
 

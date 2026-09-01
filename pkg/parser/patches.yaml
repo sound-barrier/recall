@@ -1,0 +1,29 @@
+# Game patches — used to split "before this changed" from "after".
+#
+# Boundaries are UTC instants (RFC 3339), same convention as seasons.yaml, and
+# a match belongs to the patch window its START falls in.
+#
+# SEEDED WITH SEASON STARTS ONLY, and that is a deliberate limit rather than a
+# stub. A season start is always a patch — that much is verifiable from the
+# season table beside this file. Mid-season balance patches are real and
+# frequent, but their dates are not something this repo can derive, and a
+# plausible-looking invented date is worse than a missing one: it would split a
+# player's history at a moment nothing happened and invite them to explain the
+# difference.
+#
+# Adding a patch: append an entry, rebuild. Like seasons.yaml this file is
+# embedded AND published, so a corrected or added date can reach an installed
+# copy through the same check-for-updates flow.
+patches:
+  - name: "Reign of Talon — Season 1"
+    at: "2026-02-10T19:00:00Z"
+    note: "Season start"
+  - name: "Reign of Talon — Season 2"
+    at: "2026-04-14T19:00:00Z"
+    note: "Season start"
+  - name: "Reign of Talon — Season 3"
+    at: "2026-06-16T19:00:00Z"
+    note: "Season start"
+  - name: "Reign of Talon — Season 4"
+    at: "2026-08-11T19:00:00Z"
+    note: "Season start"

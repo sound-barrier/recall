@@ -23,7 +23,7 @@ const REFERENCE_DATA = {
   seasons: [
     { name: S1, chapter: 'Reign of Talon', number: 1, start: '2026-02-10T19:00:00Z', end: '2026-04-14T19:00:00Z' },
     { name: S2, chapter: 'Reign of Talon', number: 2, start: '2026-04-14T19:00:00Z', end: '2026-06-16T19:00:00Z' },
-  ],
+  ], patches: [],
 }
 
 function rec(key: string, playedUTC: string, map: string, result: string) {

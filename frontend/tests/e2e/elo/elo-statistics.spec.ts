@@ -35,7 +35,7 @@ const REFERENCE_DATA = {
   heroes_by_role: { support: ['Lúcio', 'Ana'], dps: ['Ashe'], tank: ['Zarya'] },
   maps_by_game_mode: { control: ['Ilios'] },
   screenshot_sources: [],
-  seasons: [],
+  seasons: [], patches: [],
 }
 
 // Ten-game result blocks, oldest→newest within the block. Games that sit
