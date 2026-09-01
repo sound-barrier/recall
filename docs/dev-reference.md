@@ -41,6 +41,7 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 | `task clean` | Remove `dist/`, `build/bin/`, `frontend/{dist,node_modules}`. |
 | `task update-deps` | `go get -u ./...` + `go mod tidy` + `npm update`. |
 | `task check-deps` | Compare pinned tools vs latest. |
+| `task roster-watch` | Report where the shipped roster has fallen behind the game (read-only). Exit 1 = drift, 2 = a source could not be read. |
 | `task trivy` | Trivy scan (Go + npm); fails on HIGH/CRITICAL. |
 | `task cloc` / `cloc-detail` | LOC summary. |
 | `task icon` | Resync `build/appicon.png` from `assets/icon.png` (macOS-only `sips`). |
@@ -90,8 +91,10 @@ port. Native-window dev hosts: **macOS** and **Debian/Ubuntu** (both run
 
 ## Reference-data publishing surface
 
-The parser ships four YAMLs (`heroes.yaml`, `maps.yaml`,
-`screenshot_sources.yaml`, `seasons.yaml`) on two parallel channels:
+The parser ships six YAMLs (`heroes.yaml`, `maps.yaml`,
+`screenshot_sources.yaml`, `seasons.yaml`, `ranks.yaml`, `patches.yaml`) on two
+parallel channels. `hero_stats.yaml` and `modifiers.yaml` are embed-only — they
+ride a binary release and never a data update:
 
 | Channel | Producer | Consumer entry point | URL shape |
 |---|---|---|---|
