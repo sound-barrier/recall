@@ -1,0 +1,26 @@
+[
+  {
+    "key": "aatlis",
+    "name": "Aatlis",
+    "screenshot": "https://example.invalid/aatlis.jpg",
+    "gamemodes": ["flashpoint"],
+    "location": "Morocco",
+    "country_code": "MA"
+  },
+  {
+    "key": "ilios",
+    "name": "Ilios",
+    "screenshot": "https://example.invalid/ilios.jpg",
+    "gamemodes": ["control"],
+    "location": "Greece",
+    "country_code": "GR"
+  },
+  {
+    "key": "kings-row",
+    "name": "King's Row",
+    "screenshot": "https://example.invalid/kings-row.jpg",
+    "gamemodes": ["hybrid"],
+    "location": "England",
+    "country_code": "GB"
+  }
+]
