@@ -11,7 +11,7 @@ import { matchesLeaverHandling } from '@/composables/matches/narrow/narrowPredic
 import { useFormDrill } from '@/composables/compare/useFormDrill'
 import { N_OPTIONS, useFormPairing } from '@/composables/compare/useFormPairing'
 import { buildSeasonMetrics, topHeroDisplay } from '@/components/compare/compareSnapshot'
-import { SPARK_H, SPARK_W, midY, sparkAria, sparkPoints } from '@/components/compare/form-sparkline'
+import { SPARK_H, SPARK_W, midY, sparkAria, sparkPoints } from '@/match/trends/spark-line'
 import CompareTable from '@/components/compare/CompareTable.vue'
 import { compareSeasons, type ComparisonRow } from '@/match/compare/match-compare-helpers'
 import { judgeForm } from '@/match/compare/match-form-verdict'
