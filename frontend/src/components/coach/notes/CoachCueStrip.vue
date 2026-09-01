@@ -34,6 +34,8 @@ const emit = defineEmits<{
   update: [moment: CoachMoment]
   remove: [momentId: string]
   'copy-replay': []
+  /** A file dropped on, or picked for, one row — relayed with which row. */
+  attach: [momentId: string, file: File]
 }>()
 
 const ordered = computed(() => sortMoments(props.moments))
@@ -94,6 +96,7 @@ function addMoment() {
         @update="(next: CoachMoment) => emit('update', next)"
         @remove="emit('remove', moment.momentId)"
         @copy-replay="emit('copy-replay')"
+        @attach="(file: File) => emit('attach', moment.momentId, file)"
       />
     </ol>
 

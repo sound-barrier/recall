@@ -284,7 +284,12 @@ frontend/tests/e2e/dossier                    24
 # season rollover, and the failure this proves absent is the worst kind of
 # quiet one — the code is still six valid characters and the player finds
 # out only when the game refuses it, having already sat down to watch.
-frontend/tests/e2e/match                      26
+# 26 -> 27: match-moment-attachment.spec.ts. The first FILE drop in this
+# suite — every existing drag spec moves an id as text/plain, so the
+# DataTransfer here is hand-built with a real File on it. It also proves the
+# one chain no unit test reaches: the bytes leave the browser, come back
+# addressed by their own content, and the moment saves that digest.
+frontend/tests/e2e/match                      27
 
 # frontend/tests/e2e/matches — the Matches view around the list: grouping and
 # sorting, collapse/expand, infinite scroll and scroll affordances, bulk mode

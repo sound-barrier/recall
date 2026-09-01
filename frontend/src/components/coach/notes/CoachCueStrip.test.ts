@@ -4,7 +4,7 @@ import CoachCueStrip from '@/components/coach/notes/CoachCueStrip.vue'
 import type { CoachMoment } from '@/match/coach/coach-moments'
 
 const moment = (over: Partial<CoachMoment> = {}): CoachMoment => ({
-  momentId: 'm-1', matchClock: '04:12', text: 'Walked in alone', focusTag: '', ...over,
+  momentId: 'm-1', matchClock: '04:12', text: 'Walked in alone', focusTag: '', imageSHA256: '', ...over,
 })
 
 function renderStrip(props: Record<string, unknown> = {}) {

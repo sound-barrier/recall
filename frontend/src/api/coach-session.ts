@@ -169,6 +169,25 @@ export function SetMatchMoment(
   }))
 }
 
+/**
+ * Take custody of an image a moment can point at, and get back its content
+ * address.
+ *
+ * Content-addressed on the server, so uploading the same screenshot twice is
+ * one row and the same digest — the caller can attach freely without
+ * bookkeeping. The body is the raw file, like the three other binary
+ * endpoints; there is no multipart anywhere in this app.
+ */
+export async function PutMomentImage(file: Blob): Promise<string> {
+  const out = await unwrap(sdk.putMomentImage({
+    body: file,
+    // The SDK would otherwise JSON-serialize the Blob into "{}".
+    bodySerializer: null,
+    headers: { 'Content-Type': file.type },
+  } as Parameters<typeof sdk.putMomentImage>[0]))
+  return out.sha256
+}
+
 // Drop one of the player's moments. Idempotent.
 export function DeleteMatchMoment(matchKey: string, momentID: string): Promise<void> {
   return unwrapVoid(sdk.deleteMatchMoment({

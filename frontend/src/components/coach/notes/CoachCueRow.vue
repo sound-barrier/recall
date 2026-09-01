@@ -6,7 +6,8 @@ import { EMPTY_CLOCK } from '@/match/coach/match-clock-field'
 import { useMatchClockField } from '@/composables/coach/useMatchClockField'
 import type { CoachSaveState } from '@/components/coach/room/coach-room-props'
 import { isPastTheEnd } from '@/match/coach/coach-cue-geometry'
-import { isSavable, type CoachMoment } from '@/match/coach/coach-moments'
+import { isSavable, momentImageURL, type CoachMoment } from '@/match/coach/coach-moments'
+import { pickFile } from '@/api-platform'
 
 // One cue on the strip: when it happened, what happened, and the replay code
 // that lets the reader get there.
@@ -33,7 +34,49 @@ const emit = defineEmits<{
   update: [moment: CoachMoment]
   remove: []
   'copy-replay': []
+  /**
+   * A file the reader dropped or picked. The row hands it UP rather than
+   * uploading: it is a presentational leaf, and both hosts already own the
+   * moment's persistence — putting the request here would put it in two
+   * places that then have to agree about failure.
+   */
+  attach: [file: File]
 }>()
+
+// What the store will take and the handler will serve back. Stated here so a
+// wrong file is refused where the reader dropped it, rather than after a round
+// trip that ends in a 400 about a word they never typed.
+const ATTACHABLE = ['image/png', 'image/jpeg']
+
+const dragOver = ref(false)
+const attachError = ref('')
+
+function offerFile(file: File | null): void {
+  attachError.value = ''
+  if (!file) return
+  if (!ATTACHABLE.includes(file.type)) {
+    attachError.value = 'That is not a PNG or JPEG.'
+    return
+  }
+  emit('attach', file)
+}
+
+function onDrop(e: DragEvent): void {
+  dragOver.value = false
+  // Only a FILE drop is an attachment. The reorder drags elsewhere in the app
+  // move an id as text/plain, and dragging a link or a selection across a cue
+  // row must not read as pinning a frame to it.
+  const file = e.dataTransfer?.files?.[0] ?? null
+  offerFile(file)
+}
+
+async function onPickFile(): Promise<void> {
+  offerFile(await pickFile(ATTACHABLE.join(',')))
+}
+
+function detach(): void {
+  emit('update', { ...props.moment, imageSHA256: '' })
+}
 
 // Always a complete MM:SS — a moment with no clock yet starts at 00:00
 // rather than empty, which is what lets the digits shift in with no
@@ -88,7 +131,16 @@ function onTagChange(tag: string) {
     <div class="cue-rail" aria-hidden="true">
       <span class="cue-punch" />
     </div>
-    <div class="cue-body" role="group" :aria-label="rowLabel">
+    <div
+      class="cue-body"
+      :class="{ 'cue-drop-over': dragOver }"
+      role="group"
+      :aria-label="rowLabel"
+      @dragover.prevent="dragOver = true"
+      @dragenter.prevent="dragOver = true"
+      @dragleave="dragOver = false"
+      @drop.prevent="onDrop"
+    >
       <div class="cue-head">
         <!--
           The clock is shown ONCE, by the field that holds it. There used to
@@ -168,6 +220,45 @@ function onTagChange(tag: string) {
           </button>
         </p>
       </div>
+
+      <!--
+        The frame this moment is about. Shown at a size you can recognize the
+        fight in and not at a size that pushes the next cue off the strip; the
+        full picture is one click away in the lightbox every other screenshot
+        in the app opens in.
+      -->
+      <div v-if="moment.imageSHA256" class="cue-frame">
+        <img
+          :src="momentImageURL(moment.imageSHA256)"
+          class="cue-frame-img"
+          :alt="`Frame attached to ${rowLabel.toLowerCase()}`"
+        >
+        <button
+          type="button"
+          class="paper-chip cue-frame-remove"
+          :disabled="blocked"
+          :title="blocked ? blockedReason : undefined"
+          :aria-label="`Remove the frame from ${rowLabel.toLowerCase()}`"
+          @click="detach"
+        >
+          Remove frame
+        </button>
+      </div>
+      <button
+        v-else
+        type="button"
+        class="paper-chip cue-attach"
+        :disabled="blocked"
+        :title="blocked ? blockedReason : 'Drop a screenshot here, or pick one'"
+        :aria-label="`Attach a frame to ${rowLabel.toLowerCase()}`"
+        @click="onPickFile"
+      >
+        Attach a frame
+      </button>
+
+      <p v-if="attachError" class="cue-warn" role="status">
+        {{ attachError }}
+      </p>
 
       <!--
         A rejected save has to be visible on the ROW. The desk's own indicator

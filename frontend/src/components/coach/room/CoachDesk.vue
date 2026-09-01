@@ -81,6 +81,8 @@ const emit = defineEmits<{
   'update-context': [context: ObservedContext]
   'update-moment': [moment: CoachMoment]
   'remove-moment': [momentId: string]
+  /** A frame dropped on one moment: which one, and the file. */
+  'attach-moment': [momentId: string, file: File]
   'copy-replay': []
   'remove-frame': []
   prev: []
@@ -148,6 +150,7 @@ function onRemoveFrame(): void {
           @update="(m: CoachMoment) => emit('update-moment', m)"
           @remove="(id: string) => emit('remove-moment', id)"
           @copy-replay="emit('copy-replay')"
+          @attach="(id: string, file: File) => emit('attach-moment', id, file)"
         />
         <CoachNoteEditor
           v-else

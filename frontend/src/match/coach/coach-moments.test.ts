@@ -10,7 +10,7 @@ const noteDraft = (text: string): CoachNoteDraft =>
   ({ kind: 'note', text, focusTags: [], extraTags: [], matchClock: '' })
 
 const at = (clock: string, text = 'x'): CoachMoment =>
-  ({ momentId: clock, matchClock: clock, text, focusTag: '' })
+  ({ momentId: clock, matchClock: clock, text, focusTag: '', imageSHA256: '' })
 
 describe('isSavable', () => {
   // Half a moment is a draft. Sending one would store an observation that
