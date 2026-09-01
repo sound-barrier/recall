@@ -49,6 +49,9 @@ type Moment struct {
 	MatchClock string `json:"match_clock"`
 	Text       string `json:"text"`
 	FocusTag   string `json:"focus_tag,omitempty"`
+	// ImageSHA256 names the frame this moment is about, served from
+	// /_moment-image/{sha256}. Omitted when there is none.
+	ImageSHA256 string `json:"image_sha256,omitempty"`
 	// SortOrder is the authored order, kept only to break ties between two
 	// moments stamped at the same second.
 	SortOrder int    `json:"-"`
@@ -88,7 +91,10 @@ func noteFromRow(n db.SelfReviewNote) Note {
 }
 
 func momentFromRow(m db.SelfReviewMoment) Moment {
-	return Moment{MomentID: m.MomentID, MatchClock: m.MatchClock, Text: m.Text, FocusTag: m.FocusTag, SortOrder: m.SortOrder, UpdatedAt: m.UpdatedAt}
+	return Moment{
+		MomentID: m.MomentID, MatchClock: m.MatchClock, Text: m.Text, FocusTag: m.FocusTag,
+		ImageSHA256: m.ImageSHA256, SortOrder: m.SortOrder, UpdatedAt: m.UpdatedAt,
+	}
 }
 
 // emptyIfNil keeps a required-array field an array on the wire.

@@ -610,3 +610,14 @@ type SelfReviewNoteOnMatch struct {
 	ReviewCreatedAt  string
 	ReviewFinishedAt string
 }
+
+// ImageDigest reports the frame a moment points at, or "" for none.
+//
+// Four tables carry that field on four different structs, and a reader that
+// has to know which one it is holding cannot ask the question generically —
+// which is what the Fake's prune needs to do, and what the SQLStore expresses
+// as four subqueries over one column name.
+func (m MatchMoment) ImageDigest() string          { return m.ImageSHA256 }
+func (m CoachNoteMoment) ImageDigest() string      { return m.ImageSHA256 }
+func (m MatchCoachNoteMoment) ImageDigest() string { return m.ImageSHA256 }
+func (m SelfReviewMoment) ImageDigest() string     { return m.ImageSHA256 }

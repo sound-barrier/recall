@@ -73,11 +73,12 @@ func PutMoment(s Store, ref MomentRef, in matchedit.MomentInput) (Moment, error)
 		return Moment{}, err
 	}
 	saved, err := s.UpsertSelfReviewMoment(db.SelfReviewNoteRef{ReviewID: reviewID, MatchKey: matchKey}, db.SelfReviewMoment{
-		MomentID:   momentID,
-		MatchClock: normalized.MatchClock,
-		Text:       normalized.Text,
-		FocusTag:   normalized.FocusTag,
-		SortOrder:  matchedit.SortOrderFor(existing, momentID),
+		MomentID:    momentID,
+		MatchClock:  normalized.MatchClock,
+		Text:        normalized.Text,
+		FocusTag:    normalized.FocusTag,
+		ImageSHA256: normalized.ImageSHA256,
+		SortOrder:   matchedit.SortOrderFor(existing, momentID),
 	})
 	if err != nil {
 		return Moment{}, MapStoreErr(err)

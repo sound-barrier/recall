@@ -325,15 +325,17 @@ func (s *SQLStore) UpsertCoachNoteMoment(playerRef int64, m CoachNoteMoment) (Co
 	// the first save's id is the moment's identity, and an edit keeps it.
 	var id int64
 	err = tx.QueryRow(
-		`INSERT INTO coach_note_moments (moment_id, coach_note_id, match_clock, text, sort_order)
-		 VALUES (?, ?, ?, ?, ?)
+		`INSERT INTO coach_note_moments (moment_id, coach_note_id, match_clock, text, sort_order, image_sha256)
+		 VALUES (?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(coach_note_id, moment_id) DO UPDATE SET
-		   match_clock = excluded.match_clock,
-		   text        = excluded.text,
-		   sort_order  = excluded.sort_order,
-		   updated_at  = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+		   match_clock  = excluded.match_clock,
+		   text         = excluded.text,
+		   sort_order   = excluded.sort_order,
+		   image_sha256 = excluded.image_sha256,
+		   updated_at   = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
 		 RETURNING id, created_at, updated_at`,
 		m.MomentID, noteRow, m.MatchClock, m.Text, m.SortOrder,
+		sql.NullString{String: m.ImageSHA256, Valid: m.ImageSHA256 != ""},
 	).Scan(&id, &m.CreatedAt, &m.UpdatedAt)
 	if err != nil {
 		return CoachNoteMoment{}, fmt.Errorf("upsert coach note moment: %w", err)
@@ -400,7 +402,7 @@ func (s *SQLStore) LoadCoachNoteMoments(playerRef int64) (map[string][]CoachNote
 func (s *SQLStore) scanCoachNoteMoments(playerRef int64) ([]scannedMoment, error) {
 	rows, err := s.db.Query(
 		`SELECT m.id, m.moment_id, n.note_id, m.match_clock, m.text, m.sort_order,
-		        m.created_at, m.updated_at
+		        COALESCE(m.image_sha256, ''), m.created_at, m.updated_at
 		 FROM coach_note_moments m
 		 JOIN coach_notes n ON n.id = m.coach_note_id
 		 WHERE n.player_ref = ?
@@ -415,7 +417,7 @@ func (s *SQLStore) scanCoachNoteMoments(playerRef int64) ([]scannedMoment, error
 		var row scannedMoment
 		m := &row.moment
 		if err := rows.Scan(&row.rowID, &m.MomentID, &m.NoteID, &m.MatchClock, &m.Text,
-			&m.SortOrder, &m.CreatedAt, &m.UpdatedAt); err != nil {
+			&m.SortOrder, &m.ImageSHA256, &m.CreatedAt, &m.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan coach note moment: %w", err)
 		}
 		all = append(all, row)

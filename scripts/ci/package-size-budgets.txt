@@ -120,12 +120,12 @@ pkg/app                                       51
 # 35 as of session history: store_coach_sessions.go, the coach's own
 # sittings. Coach-AUTHORED like store_coach_notes.go beside it — one
 # concern, one file, and the reason the dossier can stop calling "last note
+# touched" a session.
 # 36 as of moment images: store_moment_images.go, the first bytes this app
 # takes custody of rather than reads. One table, spelled in one file, like
 # every sidecar above it — and content-addressed, which is what makes the
 # reference survive a match rename and the same screenshot pinned three
 # times cost one row.
-# touched" a session.
 pkg/db                                        36
 
 # pkg/parser — the OCR pipeline: Tesseract invocation, per-screenshot-type field

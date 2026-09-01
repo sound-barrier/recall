@@ -150,7 +150,7 @@ func replayNotesFile() coach.NotesFile {
 // notesArchive packs a notes file the way a coach's export does.
 func notesArchive(t *testing.T, f coach.NotesFile) []byte {
 	t.Helper()
-	payload, err := coach.WriteNotesArchive(f, testSheet, fixedNow)
+	payload, err := coach.WriteNotesArchive(f, testSheet, nil, fixedNow)
 	if err != nil {
 		t.Fatalf("WriteNotesArchive: %v", err)
 	}

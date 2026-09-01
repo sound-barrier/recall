@@ -166,7 +166,12 @@ func (a *App) HardDeleteMatch(matchKey string) error {
 	if err := a.assertNoCoachSession(); err != nil {
 		return err
 	}
-	return matchedit.HardDelete(a.store, matchKey)
+	if err := matchedit.HardDelete(a.store, matchKey); err != nil {
+		return err
+	}
+	// The match took its moments with it; their frames are now unreferenced.
+	a.collectOrphanFrames()
+	return nil
 }
 
 // IgnoreScreenshot adds filename to the suppress-list backing the
@@ -178,7 +183,13 @@ func (a *App) IgnoreScreenshot(filename string) error {
 	if err := a.assertNoCoachSession(); err != nil {
 		return err
 	}
-	return matchedit.IgnoreScreenshot(a.store, filename)
+	if err := matchedit.IgnoreScreenshot(a.store, filename); err != nil {
+		return err
+	}
+	// A match this was the last screenshot of is gone now, sidecars and all —
+	// including moments whose frames nothing points at any more.
+	a.collectOrphanFrames()
+	return nil
 }
 
 // UnignoreScreenshot removes filename from the suppress-list so the next
@@ -213,7 +224,14 @@ func (a *App) SetMatchMoment(matchKey, momentID string, in matchedit.MomentInput
 	if err := a.assertNoCoachSession(); err != nil {
 		return db.MatchMoment{}, err
 	}
-	return matchedit.SetMoment(a.store, matchKey, momentID, in)
+	saved, err := matchedit.SetMoment(a.store, matchKey, momentID, in)
+	if err != nil {
+		return db.MatchMoment{}, err
+	}
+	// A moment can REPLACE its frame, which strands the one it had. Swapping a
+	// picture three times would otherwise leave two dead images per moment.
+	a.collectOrphanFrames()
+	return saved, nil
 }
 
 // DeleteMatchMoment removes one of the player's moments. Idempotent.
@@ -230,8 +248,18 @@ func (a *App) DeleteMatchMoment(matchKey, momentID string) error {
 	// same, through a cascade this layer never sees. A failed sweep is not a
 	// failed delete: the moment IS gone, and the bytes are collected on the
 	// next one.
-	if _, err := a.store.PruneOrphanMomentImages(); err != nil {
+	a.collectOrphanFrames()
+	return nil
+}
+
+// collectOrphanFrames sweeps up attachment bytes nothing points at any more.
+//
+// Called from every path that can drop or replace a moment — deleting one,
+// deleting the match under it, and suppressing the last screenshot a match
+// had. A failed sweep is never a failed operation: the thing the caller asked
+// for HAS happened, and the bytes are collected on the next one.
+func (a *App) collectOrphanFrames() {
+	if _, err := a.PruneMomentImages(); err != nil {
 		applog.Subsystem("matches").Warn("could not collect unreferenced moment images", "err", err)
 	}
-	return nil
 }

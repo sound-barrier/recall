@@ -1,8 +1,13 @@
 package bundle
 
 import (
+	"archive/zip"
+	"bytes"
 	"errors"
 	"fmt"
+	"net/http"
+	"regexp"
+	"strings"
 
 	"recall/pkg/db"
 	"recall/pkg/match"
@@ -45,6 +50,13 @@ type ImportSummary struct {
 func Import(store db.Store, payload []byte) (ImportSummary, error) {
 	contents, err := Read(payload)
 	if err != nil {
+		return ImportSummary{}, err
+	}
+	// The frames the incoming moments name. Taken into custody BEFORE the
+	// moments themselves, so a moment is never written pointing at bytes this
+	// database does not yet hold — content-addressed, so re-importing the same
+	// bundle stores nothing twice.
+	if err := importMomentImages(store, payload); err != nil {
 		return ImportSummary{}, err
 	}
 	if contents.Manifest.Player != nil {
@@ -198,6 +210,39 @@ func WriteSelfReview(store db.Store, r db.SelfReview) error {
 	}
 	return nil
 }
+
+// importMomentImages takes custody of the frames a bundle carried.
+//
+// Entry names are NOT trusted: archive/zip does not sanitize them, so anything
+// that is not exactly `moment-images/<64 hex>` is skipped, and the bytes are
+// then verified to hash to the name they arrived under. A bundle cannot make
+// this database disagree with itself about what a digest means.
+func importMomentImages(store db.Store, payload []byte) error {
+	zr, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
+	if err != nil {
+		return fmt.Errorf("%w: open zip: %w", ErrImportMalformed, err)
+	}
+	for _, entry := range zr.File {
+		sha, ok := strings.CutPrefix(entry.Name, bundleMomentImagePrefix)
+		if !ok || !bundleDigestPattern.MatchString(sha) {
+			continue
+		}
+		raw, err := ReadZipEntry(zr, entry.Name, maxZipEntryBytes)
+		if err != nil {
+			return fmt.Errorf("%w: %s: %w", ErrImportMalformed, entry.Name, err)
+		}
+		if db.MomentImageDigest(raw) != sha {
+			return fmt.Errorf("%w: %s does not match its own contents", ErrImportMalformed, entry.Name)
+		}
+		if _, err := store.PutMomentImage(raw, http.DetectContentType(raw)); err != nil {
+			return fmt.Errorf("bundle: store attached frame: %w", err)
+		}
+	}
+	return nil
+}
+
+// bundleDigestPattern is the only entry-name shape moment-images/ may carry.
+var bundleDigestPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 // importMatchMoments writes the player's own timestamped moments for keys the
 // import is bringing in. Same rule as every section above: a match already in

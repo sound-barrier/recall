@@ -222,11 +222,12 @@ func acceptedMoments(moments []Moment) []db.MatchCoachNoteMoment {
 	out := make([]db.MatchCoachNoteMoment, 0, len(moments))
 	for i, m := range SortMoments(moments) {
 		out = append(out, db.MatchCoachNoteMoment{
-			MomentID:   m.MomentID,
-			MatchClock: m.MatchClock,
-			Text:       m.Text,
-			FocusTag:   m.FocusTag,
-			SortOrder:  i,
+			MomentID:    m.MomentID,
+			MatchClock:  m.MatchClock,
+			Text:        m.Text,
+			ImageSHA256: m.ImageSHA256,
+			FocusTag:    m.FocusTag,
+			SortOrder:   i,
 		})
 	}
 	return out

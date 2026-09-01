@@ -42,7 +42,7 @@ func readArchiveEntries(t *testing.T, payload []byte) map[string][]byte {
 
 func TestNotesArchive_RoundTrip(t *testing.T) {
 	f := validNotesFile()
-	payload, err := coach.WriteNotesArchive(f, testSheet, fixedNow)
+	payload, err := coach.WriteNotesArchive(f, testSheet, nil, fixedNow)
 	if err != nil {
 		t.Fatalf("WriteNotesArchive: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestNotesArchive_RoundTrip(t *testing.T) {
 func TestWriteNotesArchive_RefusesAnInvalidFile(t *testing.T) {
 	f := validNotesFile()
 	f.CoachName = ""
-	if _, err := coach.WriteNotesArchive(f, testSheet, fixedNow); !errors.Is(err, coach.ErrNotesMalformed) {
+	if _, err := coach.WriteNotesArchive(f, testSheet, nil, fixedNow); !errors.Is(err, coach.ErrNotesMalformed) {
 		t.Fatalf("err = %v, want ErrNotesMalformed", err)
 	}
 }
@@ -208,10 +208,10 @@ func TestContentHash_IsSHA256Hex(t *testing.T) {
 // are — but it did not stop requiring it: an archive with only notes.json in
 // it is unreadable by the player it was made for.
 func TestWriteNotesArchive_RequiresTheHumanCopy(t *testing.T) {
-	if _, err := coach.WriteNotesArchive(validNotesFile(), nil, fixedNow); !errors.Is(err, coach.ErrSheetMissing) {
+	if _, err := coach.WriteNotesArchive(validNotesFile(), nil, nil, fixedNow); !errors.Is(err, coach.ErrSheetMissing) {
 		t.Fatalf("err = %v, want ErrSheetMissing", err)
 	}
-	if _, err := coach.WriteNotesArchive(validNotesFile(), []byte{}, fixedNow); !errors.Is(err, coach.ErrSheetMissing) {
+	if _, err := coach.WriteNotesArchive(validNotesFile(), []byte{}, nil, fixedNow); !errors.Is(err, coach.ErrSheetMissing) {
 		t.Fatalf("empty sheet: err = %v, want ErrSheetMissing", err)
 	}
 }
@@ -223,7 +223,7 @@ func TestWriteNotesArchive_BoundsTheHumanCopy(t *testing.T) {
 	for i := range huge {
 		huge[i] = 'x'
 	}
-	if _, err := coach.WriteNotesArchive(validNotesFile(), huge, fixedNow); !errors.Is(err, coach.ErrSheetTooLarge) {
+	if _, err := coach.WriteNotesArchive(validNotesFile(), huge, nil, fixedNow); !errors.Is(err, coach.ErrSheetTooLarge) {
 		t.Fatalf("err = %v, want ErrSheetTooLarge", err)
 	}
 }
@@ -233,7 +233,7 @@ func TestWriteNotesArchive_BoundsTheHumanCopy(t *testing.T) {
 // is only who authored what it declines to read.
 func TestWriteNotesArchive_CarriesTheHumanCopyVerbatim(t *testing.T) {
 	page := []byte("<!doctype html><html><body>the coach's own words</body></html>")
-	payload, err := coach.WriteNotesArchive(validNotesFile(), page, fixedNow)
+	payload, err := coach.WriteNotesArchive(validNotesFile(), page, nil, fixedNow)
 	if err != nil {
 		t.Fatalf("WriteNotesArchive: %v", err)
 	}

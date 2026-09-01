@@ -376,7 +376,7 @@ func (s *SQLStore) attachSelfReviewNoteChildren(byID map[int64]*SelfReviewNoteOn
 	}
 	// #nosec G202 -- where comes from this file.
 	rows, err := s.db.Query(
-		`SELECT m.self_review_note_id, m.moment_id, m.match_clock, m.text, m.focus_tag, m.sort_order, m.created_at, m.updated_at
+		`SELECT m.self_review_note_id, m.moment_id, m.match_clock, m.text, m.focus_tag, m.sort_order, COALESCE(m.image_sha256, ''), m.created_at, m.updated_at
 		 FROM self_review_note_moments m
 		 JOIN self_review_notes n ON n.id = m.self_review_note_id `+where+`
 		 ORDER BY m.self_review_note_id, m.match_clock, m.sort_order`, args...)
@@ -387,7 +387,7 @@ func (s *SQLStore) attachSelfReviewNoteChildren(byID map[int64]*SelfReviewNoteOn
 	for rows.Next() {
 		var noteRow int64
 		var m SelfReviewMoment
-		if err := rows.Scan(&noteRow, &m.MomentID, &m.MatchClock, &m.Text, &m.FocusTag, &m.SortOrder, &m.CreatedAt, &m.UpdatedAt); err != nil {
+		if err := rows.Scan(&noteRow, &m.MomentID, &m.MatchClock, &m.Text, &m.FocusTag, &m.SortOrder, &m.ImageSHA256, &m.CreatedAt, &m.UpdatedAt); err != nil {
 			return fmt.Errorf("load self review moments: %w", err)
 		}
 		if n, ok := byID[noteRow]; ok {
@@ -476,7 +476,7 @@ func requireSelfReviewMatch(tx *sql.Tx, reviewID, matchKey string) error {
 
 func loadSelfReviewMomentsForNote(q querier, noteRow int64) ([]SelfReviewMoment, error) {
 	rows, err := q.Query(
-		`SELECT moment_id, match_clock, text, focus_tag, sort_order, created_at, updated_at
+		`SELECT moment_id, match_clock, text, focus_tag, sort_order, COALESCE(image_sha256, ''), created_at, updated_at
 		 FROM self_review_note_moments WHERE self_review_note_id = ?
 		 ORDER BY match_clock, sort_order`, noteRow)
 	if err != nil {
@@ -486,7 +486,7 @@ func loadSelfReviewMomentsForNote(q querier, noteRow int64) ([]SelfReviewMoment,
 	var out []SelfReviewMoment
 	for rows.Next() {
 		var m SelfReviewMoment
-		if err := rows.Scan(&m.MomentID, &m.MatchClock, &m.Text, &m.FocusTag, &m.SortOrder, &m.CreatedAt, &m.UpdatedAt); err != nil {
+		if err := rows.Scan(&m.MomentID, &m.MatchClock, &m.Text, &m.FocusTag, &m.SortOrder, &m.ImageSHA256, &m.CreatedAt, &m.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("load self review moments: %w", err)
 		}
 		out = append(out, m)
@@ -561,16 +561,19 @@ func (s *SQLStore) UpsertSelfReviewMoment(ref SelfReviewNoteRef, m SelfReviewMom
 	}
 	suppliedUpdatedAt := m.UpdatedAt
 	err = tx.QueryRow(
-		`INSERT INTO self_review_note_moments (self_review_note_id, moment_id, match_clock, text, focus_tag, sort_order, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, `+suppliedInstantOrNow+`, `+suppliedInstantOrNow+`)
+		`INSERT INTO self_review_note_moments (self_review_note_id, moment_id, match_clock, text, focus_tag, sort_order, image_sha256, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, `+suppliedInstantOrNow+`, `+suppliedInstantOrNow+`)
 		 ON CONFLICT(self_review_note_id, moment_id) DO UPDATE SET
-		   match_clock = excluded.match_clock,
-		   text        = excluded.text,
-		   focus_tag   = excluded.focus_tag,
-		   sort_order  = excluded.sort_order,
-		   updated_at  = excluded.updated_at
+		   match_clock  = excluded.match_clock,
+		   text         = excluded.text,
+		   focus_tag    = excluded.focus_tag,
+		   sort_order   = excluded.sort_order,
+		   image_sha256 = excluded.image_sha256,
+		   updated_at   = excluded.updated_at
 		 RETURNING created_at, updated_at`,
-		noteRow, m.MomentID, m.MatchClock, m.Text, m.FocusTag, m.SortOrder, m.CreatedAt, m.UpdatedAt,
+		noteRow, m.MomentID, m.MatchClock, m.Text, m.FocusTag, m.SortOrder,
+		sql.NullString{String: m.ImageSHA256, Valid: m.ImageSHA256 != ""},
+		m.CreatedAt, m.UpdatedAt,
 	).Scan(&m.CreatedAt, &m.UpdatedAt)
 	if err != nil {
 		return SelfReviewMoment{}, fmt.Errorf("upsert self review moment: %w", err)

@@ -8,10 +8,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
+	"regexp"
+	"slices"
 	"strings"
 	"time"
 
 	"recall/pkg/bundle"
+	"recall/pkg/db"
 )
 
 // MaxNotesArchiveBytes caps the COMPRESSED notes archive a player may
@@ -20,13 +24,20 @@ import (
 // DECOMPRESSED — the zip-bomb guard, same shape as the bundle's per-entry
 // cap.
 const (
-	MaxNotesArchiveBytes       = 4 << 20
+	// Raised from 4 MiB when moments learned to carry a frame: one 1440p
+	// screenshot is most of the old ceiling on its own, so an archive with
+	// three pinned frames could not be written, let alone read back.
+	MaxNotesArchiveBytes       = 64 << 20
 	maxNotesEntryBytes   int64 = 8 << 20
 )
 
 const (
 	notesEntryName  = "notes.json"
 	ledgerEntryName = "ledger.html"
+	// Attached frames live under a directory rather than at the top level, so
+	// SniffArchive — which keys on the presence of notes.json — is unaffected,
+	// and so a reader can tell a picture from a document by where it sits.
+	imagesEntryPrefix = "images/"
 )
 
 // ArchiveKind is what an uploaded ZIP is, judged by its entry names alone.
@@ -70,8 +81,11 @@ func SniffArchive(payload []byte) ArchiveKind {
 // (indented, the machine copy) plus ledger.html (the human copy), every
 // entry stamped with now. The file is validated first so an archive this
 // build writes is one it can read back.
-func WriteNotesArchive(f NotesFile, sheetHTML []byte, now time.Time) ([]byte, error) {
+func WriteNotesArchive(f NotesFile, sheetHTML []byte, images map[string][]byte, now time.Time) ([]byte, error) {
 	if err := ValidateNotesFile(f); err != nil {
+		return nil, err
+	}
+	if err := validateArchiveImages(f, images); err != nil {
 		return nil, err
 	}
 	if err := validateSheetHTML(sheetHTML); err != nil {
@@ -92,11 +106,85 @@ func WriteNotesArchive(f NotesFile, sheetHTML []byte, now time.Time) ([]byte, er
 			return nil, err
 		}
 	}
+	// Frames the notes point at. Named by their own digest, so the entry name
+	// carries no player-supplied string at all — there is nothing in it for a
+	// reader to sanitize, and two moments sharing a frame share one entry.
+	for _, sha := range slices.Sorted(maps.Keys(images)) {
+		if err := writeZipEntry(zw, imagesEntryPrefix+sha, images[sha], now); err != nil {
+			return nil, err
+		}
+	}
 	if err := zw.Close(); err != nil {
 		return nil, fmt.Errorf("coach: close archive: %w", err)
 	}
 	return buf.Bytes(), nil
 }
+
+// ErrImageMissing rejects an archive whose notes name a frame it does not
+// carry. The reference is inside notes.json, whose hash is the archive's
+// identity — so an image that traveled beside it WITHOUT being named there
+// would let two materially different archives hash identical, and the second
+// would silently dedupe into the first on import.
+var ErrImageMissing = errors.New("a moment names a frame this archive does not carry")
+
+// validateArchiveImages holds an outgoing archive to the promise its notes
+// make: every digest a moment points at is here, and nothing else is.
+func validateArchiveImages(f NotesFile, images map[string][]byte) error {
+	for _, n := range f.Notes {
+		for _, m := range n.Moments {
+			if m.ImageSHA256 == "" {
+				continue
+			}
+			if _, ok := images[m.ImageSHA256]; !ok {
+				return fmt.Errorf("%w: %s", ErrImageMissing, m.ImageSHA256)
+			}
+		}
+	}
+	return nil
+}
+
+// ReadNotesArchiveImages pulls the attached frames out of an archive.
+//
+// A second pass rather than a fourth return value from ReadNotesArchive: only
+// the import path needs the bytes, and every other reader — the sniffer, the
+// re-import hash check — would be paying to decompress pictures it will not
+// look at.
+//
+// Entry names are NOT trusted. archive/zip does not sanitize them, and this is
+// the first reader here that walks entries it did not name itself, so anything
+// that is not exactly `images/<64 hex>` is skipped rather than written
+// anywhere. The digest is then VERIFIED against the bytes: an archive claiming
+// a frame under a name that is not its content address is refused, which is
+// what keeps the content-addressed store content-addressed.
+func ReadNotesArchiveImages(payload []byte) (map[string][]byte, error) {
+	if len(payload) > MaxNotesArchiveBytes {
+		return nil, fmt.Errorf("%w: archive exceeds the size limit", ErrNotesMalformed)
+	}
+	zr, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
+	if err != nil {
+		return nil, fmt.Errorf("%w: open zip: %w", ErrNotesMalformed, err)
+	}
+	out := map[string][]byte{}
+	for _, entry := range zr.File {
+		sha, ok := strings.CutPrefix(entry.Name, imagesEntryPrefix)
+		if !ok || !archiveDigestPattern.MatchString(sha) {
+			continue
+		}
+		raw, err := bundle.ReadZipEntry(zr, entry.Name, maxNotesEntryBytes)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %s: %w", ErrNotesMalformed, entry.Name, err)
+		}
+		if db.MomentImageDigest(raw) != sha {
+			return nil, fmt.Errorf("%w: %s does not match its own contents", ErrNotesMalformed, entry.Name)
+		}
+		out[sha] = raw
+	}
+	return out, nil
+}
+
+// archiveDigestPattern is the only entry-name shape the images directory may
+// carry. Anything else is skipped: there is no path to build from it.
+var archiveDigestPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 // ErrSheetMissing rejects an archive with no human copy in it.
 var ErrSheetMissing = errors.New("the review page is required")

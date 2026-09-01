@@ -378,32 +378,48 @@ func (f *Fake) LoadMomentImage(sha string) (db.MomentImage, bool, error) {
 	return img, ok, nil
 }
 
-func (f *Fake) PruneOrphanMomentImages() (int, error) {
+func (f *Fake) PruneOrphanMomentImages(minAge time.Duration) (int, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	referenced := map[string]bool{}
-	for _, bucket := range f.MatchMoments {
-		for _, m := range bucket {
-			if m.ImageSHA256 != "" {
-				referenced[m.ImageSHA256] = true
-			}
+	// Every family the SQLStore consults, spelled once each. A Fake that
+	// under-counts referrers prunes bytes the real store would keep, and every
+	// app test built on it inherits the wrong semantics — which is exactly the
+	// divergence class the contract suite exists to catch.
+	for _, bucket := range f.MatchMoments { // match_moments
+		noteImages(referenced, bucket)
+	}
+	for _, n := range f.MatchCoachNotes { // match_coach_note_moments
+		noteImages(referenced, n.Moments)
+	}
+	for _, moments := range f.CoachNoteMoments { // coach_note_moments
+		noteImages(referenced, moments)
+	}
+	for _, r := range f.SelfReviews { // self_review_note_moments
+		for _, n := range r.Notes {
+			noteImages(referenced, n.Moments)
 		}
 	}
-	// The coach-side families the SQLStore also consults. The Fake holds them
-	// under their notes, so walking those is what keeps the two answers equal.
-	for _, n := range f.MatchCoachNotes {
-		for _, m := range n.Moments {
-			if m.ImageSHA256 != "" {
-				referenced[m.ImageSHA256] = true
-			}
-		}
-	}
+	cutoff := time.Now().UTC().Add(-minAge).Format("2006-01-02T15:04:05Z")
 	removed := 0
-	for sha := range f.MomentImages {
-		if !referenced[sha] {
+	for sha, img := range f.MomentImages {
+		// Same grace period the SQLStore applies, and for the same reason: an
+		// image exists before the moment that will name it does.
+		if !referenced[sha] && img.CreatedAt <= cutoff {
 			delete(f.MomentImages, sha)
 			removed++
 		}
 	}
 	return removed, nil
+}
+
+// noteImages collects the digests one family's moments point at. Generic over
+// the row type because the four families carry the same field on four
+// different structs — the shape the SQLStore expresses as four subqueries.
+func noteImages[T interface{ ImageDigest() string }](into map[string]bool, moments []T) {
+	for _, m := range moments {
+		if sha := m.ImageDigest(); sha != "" {
+			into[sha] = true
+		}
+	}
 }

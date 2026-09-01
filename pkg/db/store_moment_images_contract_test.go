@@ -3,6 +3,7 @@ package db_test
 import (
 	"bytes"
 	"testing"
+	"time"
 
 	"recall/pkg/db"
 )
@@ -150,7 +151,7 @@ func TestMomentImages_PruneKeepsWhatIsStillPointedAt(t *testing.T) {
 				t.Fatalf("upsert: %v", err)
 			}
 
-			n, err := s.PruneOrphanMomentImages()
+			n, err := s.PruneOrphanMomentImages(0)
 			if err != nil {
 				t.Fatalf("prune: %v", err)
 			}
@@ -184,7 +185,7 @@ func TestMomentImages_GoWhenTheMatchGoes(t *testing.T) {
 			if err := s.HardDeleteMatch("m1"); err != nil {
 				t.Fatalf("hard delete: %v", err)
 			}
-			if _, err := s.PruneOrphanMomentImages(); err != nil {
+			if _, err := s.PruneOrphanMomentImages(0); err != nil {
 				t.Fatalf("prune: %v", err)
 			}
 			if _, ok, _ := s.LoadMomentImage(sha); ok {
@@ -207,6 +208,56 @@ func TestMomentImages_ClearTakesThemToo(t *testing.T) {
 			}
 			if _, ok, _ := s.LoadMomentImage(sha); ok {
 				t.Fatal("Clear left an image behind")
+			}
+		})
+	}
+}
+
+func TestMomentImages_PruneSparesWhatWasJustUploaded(t *testing.T) {
+	// An upload happens BEFORE the moment that will name it is saved. Between
+	// those two, the bytes have no referrer at all — and an unrelated delete
+	// in that window must not take a frame somebody is still attaching.
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			sha := putImage(t, s, onePixelPNG)
+
+			n, err := s.PruneOrphanMomentImages(time.Hour)
+			if err != nil {
+				t.Fatalf("prune: %v", err)
+			}
+			if n != 0 {
+				t.Fatalf("pruned %d freshly uploaded images, want 0", n)
+			}
+			if _, ok, _ := s.LoadMomentImage(sha); !ok {
+				t.Fatal("collected a frame that was still being attached")
+			}
+		})
+	}
+}
+
+func TestMomentImages_PruneIsNotFooledByMomentsWithoutPictures(t *testing.T) {
+	// The subqueries filter `image_sha256 IS NOT NULL` for a reason: in SQL,
+	// `x NOT IN (…, NULL)` is never true, so one picture-less moment — which
+	// is the NORMAL case, not an edge one — would make the sweep delete
+	// nothing, ever. This is the shape that guard protects.
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			orphan := putImage(t, s, onePixelPNG)
+			if _, err := s.UpsertMatchMoment(moment("plain", "m1", "01:00", "no picture here")); err != nil {
+				t.Fatalf("upsert: %v", err)
+			}
+
+			n, err := s.PruneOrphanMomentImages(0)
+			if err != nil {
+				t.Fatalf("prune: %v", err)
+			}
+			if n != 1 {
+				t.Fatalf("pruned %d, want 1 — a moment with no picture must not shield every orphan", n)
+			}
+			if _, ok, _ := s.LoadMomentImage(orphan); ok {
+				t.Fatal("the orphan survived a sweep alongside a picture-less moment")
 			}
 		})
 	}

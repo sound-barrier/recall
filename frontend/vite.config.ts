@@ -28,6 +28,10 @@ export default defineConfig({
     proxy: {
       '/api/v1': { target: `http://${process.env.RECALL_SERVER_ADDR ?? '127.0.0.1:7000'}`, changeOrigin: true },
       '/_screenshot': { target: `http://${process.env.RECALL_SERVER_ADDR ?? '127.0.0.1:7000'}`, changeOrigin: true },
+      // Attachments. Without this an <img> falls through to the SPA and gets
+      // index.html back with a 200 — a broken picture with no error anywhere,
+      // in dev only.
+      '/_moment-image': { target: `http://${process.env.RECALL_SERVER_ADDR ?? '127.0.0.1:7000'}`, changeOrigin: true },
     },
   },
   resolve: {

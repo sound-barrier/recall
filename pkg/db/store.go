@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	_ "modernc.org/sqlite"
 
@@ -151,7 +152,11 @@ type Store interface {
 	// nothing points at any more.
 	PutMomentImage(raw []byte, mime string) (string, error)
 	LoadMomentImage(sha string) (MomentImage, bool, error)
-	PruneOrphanMomentImages() (int, error)
+	// PruneOrphanMomentImages collects images nothing points at and older than
+	// minAge. The age matters: an upload precedes the save of the moment that
+	// will name it, so a sweep with no grace period can take a frame somebody
+	// is still in the middle of attaching.
+	PruneOrphanMomentImages(minAge time.Duration) (int, error)
 
 	// User match-data override layer — the single source for BOTH inline
 	// edits of a parsed match AND hand-entered matches. UpsertUserMatchData

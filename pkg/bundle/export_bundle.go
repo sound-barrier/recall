@@ -188,6 +188,14 @@ func Export(store db.Store, opts ExportBundleOptions, recs []match.Record, scree
 	if err := copyBundleScreenshots(zw, rows, snap, screenshots, screenshotsDir, now); err != nil {
 		return nil, err
 	}
+	// The frames the included moments point at. The BUNDLE is the one carrier
+	// that is not the database itself — a profile move, a backup and a restore
+	// all move the file the bytes live in, and this does not. Without these
+	// entries every moment arrives on the far side naming a digest that
+	// database has never seen, and the picture is silently gone.
+	if err := copyBundleMomentImages(zw, store, user.moments, now); err != nil {
+		return nil, err
+	}
 	if err := writeBundleManifest(zw, opts, include, screenshots, exportedAt, version, now); err != nil {
 		return nil, err
 	}
@@ -317,6 +325,38 @@ func copyBundleScreenshots(zw *zip.Writer, t parentTables, snap db.Screenshots, 
 			if err := copyBundleScreenshot(zw, dir, f.Filename, screenshots, now); err != nil {
 				return err
 			}
+		}
+	}
+	return nil
+}
+
+// bundleMomentImagePrefix is where a bundle keeps attached frames. A sibling
+// of screenshots/, and named by content digest for the same reason the store
+// is: two moments sharing a frame carry one copy.
+const bundleMomentImagePrefix = "moment-images/"
+
+// copyBundleMomentImages writes the frames the exported moments name.
+//
+// A digest the store cannot resolve is skipped rather than failing the export
+// — an image can have been pruned, and refusing to export a whole history
+// over one missing picture is the worse trade. The far side treats an
+// unresolvable reference as a missing frame, which is what it already does.
+func copyBundleMomentImages(zw *zip.Writer, store db.Store, moments []db.MatchMoment, now time.Time) error {
+	seen := map[string]bool{}
+	for _, m := range moments {
+		if m.ImageSHA256 == "" || seen[m.ImageSHA256] {
+			continue
+		}
+		seen[m.ImageSHA256] = true
+		img, ok, err := store.LoadMomentImage(m.ImageSHA256)
+		if err != nil {
+			return fmt.Errorf("bundle: read attached frame: %w", err)
+		}
+		if !ok {
+			continue
+		}
+		if err := bundleWriteRaw(zw, bundleMomentImagePrefix+m.ImageSHA256, img.Bytes, now); err != nil {
+			return err
 		}
 	}
 	return nil

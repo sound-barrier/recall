@@ -182,7 +182,7 @@ func TestSheets_ListsEveryStagedReturn(t *testing.T) {
 	second.CoachName = "Wren"
 	second.Notes = second.Notes[:1]
 	second.Notes[0].NoteID = coach.NewID()
-	payload, err := coach.WriteNotesArchive(second, testSheet, fixedNow)
+	payload, err := coach.WriteNotesArchive(second, testSheet, nil, fixedNow)
 	if err != nil {
 		t.Fatalf("WriteNotesArchive: %v", err)
 	}
@@ -431,7 +431,7 @@ func TestDecide_TwoCoachesAccumulateOnOneMatch(t *testing.T) {
 	wrenFile.Notes = wrenFile.Notes[:1]
 	wrenFile.Notes[0].NoteID = coach.NewID()
 	wrenFile.Notes[0].Text = "peel earlier"
-	payload, err := coach.WriteNotesArchive(wrenFile, testSheet, fixedNow)
+	payload, err := coach.WriteNotesArchive(wrenFile, testSheet, nil, fixedNow)
 	if err != nil {
 		t.Fatalf("WriteNotesArchive: %v", err)
 	}
