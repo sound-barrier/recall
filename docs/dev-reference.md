@@ -29,6 +29,8 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 | `task init` | Fresh-clone setup via `initialize.sh`: installs mise + system packages (Tesseract, container runtime, pipx, cloc), then `mise install` (Go, Node, `wails3`, every linter), Debian GTK4 + WebKitGTK 6.0 dev libs, `npm ci`, `lefthook install`. Idempotent. |
 | `task dev` | Hot-reload Wails v3 dev server (`wails3 dev`, macOS / Debian / Ubuntu). Deletes the dev DB first (fresh schema every boot). |
 | `task build-windows` | Windows/amd64 Wails v3 app + NSIS installer → `dist/windows/` via a **native** cross-compile (`CGO_ENABLED=0` — v3's WebView2 loader is pure Go, no Docker; needs `wails3` + node + `makensis`). The shipped release target. |
+| `task build-windows-exe` | Just the exe → `bin/Recall.exe`, no installer. The first half of `build-windows`. |
+| `task build-windows-installer` | NSIS installer around whatever `bin/Recall.exe` currently holds → `bin/recall-amd64-installer.exe`. The second half. The halves exist so `release.yml` can Authenticode-sign the exe **before** NSIS embeds it — see `docs/signing.md`. |
 | `task build-mac` | macOS Wails app → `dist/mac/Recall.app` (macOS host). **Local dev target only — not released.** |
 | `go build ./...` / `-tags serveronly ./...` | Compile-check Wails / server variant. |
 | `bash -n scripts/X.sh` | Syntax-check a shell script. |
