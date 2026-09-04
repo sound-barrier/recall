@@ -1,5 +1,119 @@
 # Changelog
 
+## [0.33.0](https://github.com/sound-barrier/recall/compare/v0.32.0...v0.33.0) (2026-09-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* **parser:** let an unread SR pill say so instead of reading as zero
+* **coach:** make an attached frame travel to the player
+* **matches:** let the app keep a picture, not just point at one
+* **coach:** coach_returns gains `kind`, match_coach_notes gains `for_team`, and MatchCoachNote carries `for_team` on the wire. No migration — pre-1.0, no deployed data.
+* **coach:** three new tables and GET /api/v1/coach/players/{id}/sessions. No migration — pre-1.0, no deployed data.
+* **correlate:** `correlate.FindDuplicateCandidates` remains, but callers sweeping many keys must use `NewDuplicateScan(snap).CandidatesFor(key)`.
+* **matches:** new `duplicate_matches` table; MatchRecord gains `duplicate_of`. No migration — pre-1.0, no deployed data.
+* **correlate:** ambiguous_candidates gains a `reason` column and the AmbiguousCandidate wire enum gains `same_instant`. No migration — pre-1.0, no deployed data.
+* **matches:** `PUT /api/v1/matches/{key}/annotation` and the MatchAnnotation response both carry `exclusion_reason`, and match_annotations gains the column. No migration — pre-1.0, no deployed data.
+
+### Features
+
+* **app:** park a screenshot after three failed parse attempts ([dab509c](https://github.com/sound-barrier/recall/commit/dab509c7ddc2fce677871b094e009eb26dc58da2))
+* **app:** report a parse run's outcome and let a parked file retry ([940a0f1](https://github.com/sound-barrier/recall/commit/940a0f13146c2b6fa9d96f60411b49a47e2d483d))
+* **coach:** give every written word one grammar ([a9347e7](https://github.com/sound-barrier/recall/commit/a9347e767c25c15f5a61dccc1ed388ae6aafd115))
+* **coach:** let a team review travel as a file, addressed to the team ([48fe724](https://github.com/sound-barrier/recall/commit/48fe724bcf23803ebe4db8e4086660b4dca28f95))
+* **coach:** make an attached frame travel to the player ([58570d0](https://github.com/sound-barrier/recall/commit/58570d047cf1b0610e0baf3f226c1ea4d643e71d))
+* **coach:** read the player's tendencies beside the frame ([b4d6e31](https://github.com/sound-barrier/recall/commit/b4d6e31955b8a0103eb71bbbd253a461db4c089b))
+* **coach:** record the coach's own sittings ([23e8864](https://github.com/sound-barrier/recall/commit/23e886417191d4a667e50c24e9f4987cf422427f))
+* **coach:** say when a replay code has probably expired ([483788f](https://github.com/sound-barrier/recall/commit/483788f5d4a6bfe086fda21ce7d0ef722e93c438))
+* **compare:** give a season an ending you can keep ([fa89dce](https://github.com/sound-barrier/recall/commit/fa89dceddeaaa6612a4795d8d4937c943e133d87))
+* **correlate:** catch a re-capture that has no TEAMS shot ([f276d29](https://github.com/sound-barrier/recall/commit/f276d2994ae8342c20efff65b7772d580770c3d6))
+* **dashboard:** draw each hero's form as its own line ([f2550ff](https://github.com/sound-barrier/recall/commit/f2550ffd415ab2a3a9b723e58ebe3ceab1e14310))
+* **dashboard:** measure the climb in SR, and the pool by time ([e984c1c](https://github.com/sound-barrier/recall/commit/e984c1c8b109236f5d4990ec2884b309cc4ea5ad))
+* **dashboard:** split a history at the patch that changed it ([88f268c](https://github.com/sound-barrier/recall/commit/88f268c7b34ac1f09f155118064ccbb4df91f15a))
+* **elo:** make the climb goal something you can be held to ([60776cc](https://github.com/sound-barrier/recall/commit/60776ccb71fad5cdfdb2e0763033f4254493850b))
+* **ingest:** surface parked files and the run's own outcome ([c9f7740](https://github.com/sound-barrier/recall/commit/c9f7740a22e09538d06f3ba6e73e657b2f41f7f2))
+* **matches:** let a BattleTag read as the name you call them ([215cd84](https://github.com/sound-barrier/recall/commit/215cd84dc3fe44ddcd8d69785e5613c604ca9623))
+* **matches:** let the app keep a picture, not just point at one ([2b6de2c](https://github.com/sound-barrier/recall/commit/2b6de2c1f7dd08f082471b8f86ce01308de38d1c))
+* **matches:** pin the frame a moment is about ([161bf54](https://github.com/sound-barrier/recall/commit/161bf543c4e843fc3f944435db60d7d9645d2c3a))
+* **matches:** put the rank you're on above every tab ([4a1710c](https://github.com/sound-barrier/recall/commit/4a1710c1940509d6772a879e1b39b456685a39a0))
+* **matches:** record why a match should not count ([23a804d](https://github.com/sound-barrier/recall/commit/23a804d0793efebb8f147c69ddcdb3c76c89465e))
+* **matches:** remember that two matches were judged separate ([e936ae4](https://github.com/sound-barrier/recall/commit/e936ae420d2b147de6a1e7460007f0a82d1f16df))
+* **notes:** give long writing somewhere to happen ([3e81f90](https://github.com/sound-barrier/recall/commit/3e81f90ffa7ee0bca62569604bdbd3f63de33d8d))
+* **reviews:** propose what to send a coach, and let the user edit it ([c1775ae](https://github.com/sound-barrier/recall/commit/c1775ae4898f0c831f45bc7b72a59c948411e35d))
+* **roster-watch:** report the drift as a command ([e9b41a7](https://github.com/sound-barrier/recall/commit/e9b41a74fb6de2246a96eee84cebd8f1b056a065))
+* **rosterwatch:** compare the shipped roster against the live game ([836f497](https://github.com/sound-barrier/recall/commit/836f497164432a8d2de77f16e5ea4bf60111fc95))
+* **unknown:** acknowledge a reference-gap warning instead of deleting it ([b3a6f7b](https://github.com/sound-barrier/recall/commit/b3a6f7b755061767d18a6a611e332abffa8913de))
+* **unknown:** one Dismiss on every card, dismissing every file it carries ([adcb61c](https://github.com/sound-barrier/recall/commit/adcb61c47c6132b72db951adcd313983eabdc8d6))
+* **unknown:** sweep the triage queue instead of dismissing card by card ([a5d6413](https://github.com/sound-barrier/recall/commit/a5d641309a1648e361a660180f2a78360fd23cfd))
+
+
+### Bug Fixes
+
+* **a11y:** name the parse meter, and stop printing three zero losses ([212c7c2](https://github.com/sound-barrier/recall/commit/212c7c24c7a161530fcc5054aa7672a7523bafd1))
+* answer the adversarial review of the last three features ([c76e012](https://github.com/sound-barrier/recall/commit/c76e012e0bb2affa8645eb94973eb7f3dfab3454))
+* **app:** give every parked surface one dir-scoped semantic ([7d0a9d0](https://github.com/sound-barrier/recall/commit/7d0a9d0a3ad9cc1707a3f75208730afe09322828))
+* **app:** pin the Retry gate and stop overclaiming files_failed ([92d93c6](https://github.com/sound-barrier/recall/commit/92d93c6ea5f26db708e4f17712ec82be3d2456dd))
+* **app:** scrub the keys the keep-separate failure logs ([e43269e](https://github.com/sound-barrier/recall/commit/e43269e273deb72a34fd09e4c476378885fd725d))
+* **dashboard:** give the undo toast back the stylesheet it wears ([280b7ad](https://github.com/sound-barrier/recall/commit/280b7ad43e4b493b64b5b7b8daaf6e844a4a93f8))
+* **dashboard:** measure the wait between games, not the span ([f861db3](https://github.com/sound-barrier/recall/commit/f861db37d9b329c63696a74852aacfe5edb74cc1))
+* **dashboard:** say what the analytics tiles could not measure ([59aabe3](https://github.com/sound-barrier/recall/commit/59aabe3ef3ba69bf15169af207a684dcfd13506c))
+* **db:** keep the dead-key candidate invariant inside the dismiss tx ([1b41836](https://github.com/sound-barrier/recall/commit/1b418362c44d41ab7870f36f60b09d03a50dbeab))
+* **deps:** bump golang.org/x/image past CVE-2026-46603 ([d3a9536](https://github.com/sound-barrier/recall/commit/d3a95364c988db0e920ed52c4afe8f047b3dd791))
+* **elo:** stop calling an empty form an unreachable goal ([2c32f58](https://github.com/sound-barrier/recall/commit/2c32f58141c1c35fc485c377abbfff1feba2020d))
+* **matchedit:** make ignore keep a match's sibling screenshots ([aed00ea](https://github.com/sound-barrier/recall/commit/aed00ea50f4aca5a3128170712c921dc9af67bab))
+* **matches:** stop three writes from erasing the exclusion reason ([c9c10e9](https://github.com/sound-barrier/recall/commit/c9c10e94cdfa5edaf6dac22377b628fd61504e72))
+* **notes:** stop the expanded writer from being a keyboard trap ([0c3b12f](https://github.com/sound-barrier/recall/commit/0c3b12f608e6dc4cb5837d041347e16d09565fb5))
+* **parser:** give a season start one home, and a real update path ([6dc7791](https://github.com/sound-barrier/recall/commit/6dc7791277a106c1b3bced5046e47773cbeb696c))
+* **parser:** let an unread SR pill say so instead of reading as zero ([a93f913](https://github.com/sound-barrier/recall/commit/a93f913eba15bbd00cbb1e3fa5ebe7d9acd96834))
+* **profiles:** carry reference-gap acks through Move and renames ([12d4880](https://github.com/sound-barrier/recall/commit/12d4880b493cb8fb2a2047e36f2f6ed770ad2ef2))
+* **reviews:** stop a suggestion from sending a match the user hid ([c5f74a2](https://github.com/sound-barrier/recall/commit/c5f74a29ef73f614db3bf34844901607d687b01f))
+* **unknown:** honest labels, an AA-safe settled state, a clear toast rung ([c81352b](https://github.com/sound-barrier/recall/commit/c81352bfc011d06a4d01f56c489c4890ae244f0c))
+* **unknown:** make the bulk confirm mean what its comment claimed ([0cb89f9](https://github.com/sound-barrier/recall/commit/0cb89f9a804d2631b1cbe4afcbb80c5dfdaecf20))
+
+
+### Performance
+
+* **correlate:** index the duplicate sweep instead of rescanning per match ([6ee9aa9](https://github.com/sound-barrier/recall/commit/6ee9aa994dd36a644e53adf27fde3f44f4215307))
+
+
+### Refactors
+
+* **bundle:** split the import walk at the line the roster drew ([0e4a382](https://github.com/sound-barrier/recall/commit/0e4a38252ed7b19a7083bcd4fc4ea85951c26a3b))
+* **profiles:** fold loadMoveSource into the loop-of-loaders shape ([0e38f42](https://github.com/sound-barrier/recall/commit/0e38f421c03c44501cf918b54e88de8b40ab1a18))
+* **styles:** collapse seven toasts into one family ([256ea99](https://github.com/sound-barrier/recall/commit/256ea996b01c8fcf9df9fd408c36cd563e5184ef))
+
+
+### Documentation
+
+* describe the seven features, and stop shipping their chrome eagerly ([bad9a5d](https://github.com/sound-barrier/recall/commit/bad9a5dc4af7d20117f866558b21610764efcda4))
+* describe the thirteen, and move them out of the backlog ([52e9114](https://github.com/sound-barrier/recall/commit/52e9114d8bb07dc7043507d65f48f369e913d9e1))
+* record the eleventh workflow, and two things that had gone stale ([0c8cbca](https://github.com/sound-barrier/recall/commit/0c8cbca8a12428af81186e31eaea19945177a1ef))
+* **roster-watch:** correct why the watch runs twice a week ([baef275](https://github.com/sound-barrier/recall/commit/baef275b44f8da4e67fd3b519d6d930b5a20cc07))
+* teach the Unknown tab's Dismiss and the parked-failure loop ([2a85369](https://github.com/sound-barrier/recall/commit/2a85369ca54beaa65f43a81125f03e63f2dcc1a1))
+
+
+### Build & Packaging
+
+* **deps:** Bump dawidd6/action-download-artifact ([3d92748](https://github.com/sound-barrier/recall/commit/3d9274812fe988693e439244f7da7d7318afc6af))
+* **deps:** Bump github.com/wailsapp/wails/v3 ([82dc36d](https://github.com/sound-barrier/recall/commit/82dc36ddcdd89cf8266c7489c98eecf30a83ab16))
+* **deps:** Bump modernc.org/sqlite in the go-deps group ([9522d43](https://github.com/sound-barrier/recall/commit/9522d43d26fd3b648f1f04e2d3f5a4e4e09071fa))
+* **deps:** Bump the actions group with 3 updates ([ebb72a6](https://github.com/sound-barrier/recall/commit/ebb72a63287e60fb2c0854cc3fd80d4c21bf02bf))
+
+
+### CI
+
+* **roster-watch:** move the watch to Wednesday and Saturday ([601e378](https://github.com/sound-barrier/recall/commit/601e3785c211271e809fc52e1aedd805bb411037))
+* run the roster watch every Thursday ([51d1303](https://github.com/sound-barrier/recall/commit/51d1303af96ec009915b5dfe64c72ac34c8a3190))
+
+
+### Tests
+
+* **elo:** record the deadline field in the scenario snapshots ([55cfa24](https://github.com/sound-barrier/recall/commit/55cfa24e04db63b9a38c4f0bc9cf8056375af04b))
+* **frontend:** cover the branches the new components actually have ([caeea49](https://github.com/sound-barrier/recall/commit/caeea497c0ae979ffbbf3a51da90ebe40bd8108b))
+* **frontend:** cover the four widgets the harness could not reach ([da210bc](https://github.com/sound-barrier/recall/commit/da210bc50bcba12a258c32547a8f4af78b64d327))
+* **frontend:** give every component that had no test one, and say so in CLAUDE.md ([e536a16](https://github.com/sound-barrier/recall/commit/e536a16f492a929fabc56a9d25738634f8d0867e))
+* **ingest:** pin the parked copy states and the Retry row at unit tier ([47c07e9](https://github.com/sound-barrier/recall/commit/47c07e9263c7c2ac97b9405d3dafdd307cc38da0))
+
 ## [0.32.0](https://github.com/sound-barrier/recall/compare/v0.31.0...v0.32.0) (2026-08-25)
 
 
