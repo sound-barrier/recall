@@ -112,6 +112,24 @@ while IFS= read -r path; do
   [[ -e "${path}" ]] || fail "no such file: ${path}"
 done < <(grep -rhoE 'docs/[a-z0-9-]+\.md' "${DOC_FILES[@]}" | sort -u || true)
 
+# ── 5. Every book chapter is actually staged for publishing ───────────────────
+# book/SUMMARY.md is the site's navigation; .github/workflows/pages.yml copies
+# each chapter into the staged build by an EXPLICIT `cp` line. A chapter listed
+# in one and missing from the other publishes a link to a 404 -- and the site is
+# where users are sent for the privacy policy, so a dead link there is a
+# promise broken in public. Nothing else catches this: Honkit builds happily
+# without the file, and the workflow's own comment (which said "five" while
+# copying nine) is proof the list drifts.
+echo "==> checking every book chapter is staged by the Pages workflow"
+PAGES_WORKFLOW=".github/workflows/pages.yml"
+if [[ -f "${PAGES_WORKFLOW}" && -f book/SUMMARY.md ]]; then
+  while IFS= read -r chapter; do
+    [[ "${chapter}" == "README.md" ]] && continue
+    grep -q "cp docs/${chapter}" "${PAGES_WORKFLOW}" \
+      || fail "book/SUMMARY.md links ${chapter}, but ${PAGES_WORKFLOW} never copies it into the staged book (the published link would 404)"
+  done < <(grep -oE '\]\(([a-z0-9-]+\.md)\)' book/SUMMARY.md | tr -d ']()' | sort -u || true)
+fi
+
 if [[ "${failures}" -gt 0 ]]; then
   echo >&2
   echo "::error::check-doc-paths: ${failures} reference(s) name something that does not exist." >&2
