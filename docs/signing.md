@@ -37,6 +37,12 @@ projects, which is what `release.yml` is wired for. Apply at
 to be asked about exactly the behaviors in the table above — the self-updater
 and the hidden subprocess are the two worth explaining up front.
 
+Point the reviewer at the published privacy policy —
+<https://sound-barrier.github.io/recall/privacy.html> — which answers those
+questions in writing: nothing is collected or uploaded, the app is receive-only,
+and it closes with a table explaining each behavior a scanner flags. Source:
+`docs/privacy.md`.
+
 Paid alternatives, if the OSS application is declined:
 
 - **Azure Trusted Signing** — around $10/month, runs headless in CI, no
