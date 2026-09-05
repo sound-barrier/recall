@@ -18,4 +18,5 @@
 ## Getting help
 
 * [FAQ](faq.md)
+* [Privacy](privacy.md)
 * [Bug reports & feature requests](feedback.md)
