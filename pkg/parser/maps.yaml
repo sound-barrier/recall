@@ -6,6 +6,21 @@ control:
   - Nepal
   - Oasis
   - Samoa
+  # Found 2026-09-05 by the roster watch, from the upstream map list — NOT
+  # from parser output, and NOT yet checked against a real scoreboard. The
+  # first match parsed on this map is the check; delete this comment when it
+  # passes.
+  - Arena Victoriae
+  # Found 2026-09-05 by the roster watch, from the upstream map list — NOT
+  # from parser output, and NOT yet checked against a real scoreboard. The
+  # first match parsed on this map is the check; delete this comment when it
+  # passes.
+  - Gogadoro
+  # Found 2026-09-05 by the roster watch, from the upstream map list — NOT
+  # from parser output, and NOT yet checked against a real scoreboard. The
+  # first match parsed on this map is the check; delete this comment when it
+  # passes.
+  - Wuxing University
 escort:
   - "Circuit Royal"
   - Dorado
@@ -33,6 +48,16 @@ push:
   - Esperança
   - "New Queen Street"
   - Runasapi
+  # Found 2026-09-05 by the roster watch, from the upstream map list — NOT
+  # from parser output, and NOT yet checked against a real scoreboard. The
+  # first match parsed on this map is the check; delete this comment when it
+  # passes.
+  - Place Lacroix
+  # Found 2026-09-05 by the roster watch, from the upstream map list — NOT
+  # from parser output, and NOT yet checked against a real scoreboard. The
+  # first match parsed on this map is the check; delete this comment when it
+  # passes.
+  - Redwood Dam
 clash:
   - Hanoaka
   - "Throne of Anubis"
