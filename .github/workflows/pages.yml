@@ -85,7 +85,7 @@ jobs:
         with:
           install_args: node
 
-      # Stage book/ + the five chapter copies into a fresh build
+      # Stage book/ + the chapter copies into a fresh build
       # directory so the committed book/ stays pure metadata. Two
       # reasons this matters:
       #   1. Honkit reads .gitignore from its source dir and skips
@@ -108,6 +108,7 @@ jobs:
           cp docs/unknown-screenshots.md  _stage/book/unknown-screenshots.md
           cp docs/feedback.md             _stage/book/feedback.md
           cp docs/faq.md                  _stage/book/faq.md
+          cp docs/privacy.md              _stage/book/privacy.md
           # Mirror testdata/ into the staged book so how-it-works.md's
           # example-screenshot images resolve via the same
           # `testdata/foo.png` relative path used in the README.
