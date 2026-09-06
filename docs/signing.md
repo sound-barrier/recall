@@ -113,14 +113,16 @@ Draft:
 > is no second human reviewer; the code signing policy says so explicitly and
 > describes the automated gates that stand in for one. MFA is enabled.
 
-Two things to confirm before sending, because the policy asserts them:
+One thing to confirm before sending, because the policy asserts it: **MFA is on**
+for the GitHub account.
 
-1. **MFA is on** for the GitHub account.
-2. The **branch protection gap** is either closed or left as the policy
-   describes it. Today `required_pull_request_reviews` is unset and
-   `enforce_admins` is off, so pull requests are convention rather than
-   enforcement. Turning both on costs nothing, closes the gap the policy has to
-   admit, and lets that paragraph read as a control instead of a caveat.
+The branch-protection gap an earlier draft had to concede is closed. `main` now
+requires a pull request with "do not allow bypassing" enabled, so direct pushes
+are rejected for the maintainer too. The required approval count is deliberately
+zero: GitHub forbids self-approval, so on a one-person project any higher number
+would prevent merging rather than add review. Say that in those terms if asked --
+it reads as a considered decision, which it is, rather than a control switched
+off for convenience.
 
 ## SignPath configuration
 

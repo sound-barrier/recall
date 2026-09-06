@@ -60,8 +60,16 @@ release-please respects a [`Release-As:` commit footer](https://github.com/googl
 
 ```sh
 task release-beta VERSION=0.0.13-beta.0
-git push origin main
+git checkout -b chore/cut-v0.0.13-beta.0
+git push -u origin chore/cut-v0.0.13-beta.0
+gh pr create --fill && gh pr merge --auto --rebase
 ```
+
+The prep commit goes through a pull request like everything else. `main`
+requires one and does not allow bypassing, so `git push origin main` is
+rejected -- including for the maintainer. The pull request needs no approval
+(the required count is zero, because a solo maintainer cannot approve their
+own), only green checks.
 
 `task release-beta` creates a signed empty commit with the `Release-As:` footer formatted correctly and reminds you of the push-and-fire steps. The expansion of what it does:
 

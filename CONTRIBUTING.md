@@ -488,7 +488,8 @@ The 30-second version for prereleases:
 
 ```sh
 task release-beta VERSION=0.0.13-beta.0
-git push origin main
+git checkout -b chore/cut-v0.0.13-beta.0 && git push -u origin chore/cut-v0.0.13-beta.0
+gh pr create --fill && gh pr merge --auto --rebase   # main rejects direct pushes
 # … merge the Release PR release-please opens …
 # If RELEASE_PLEASE_TOKEN is configured, release.yml fires on its own.
 # Otherwise:

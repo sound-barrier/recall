@@ -45,20 +45,18 @@ Action is pinned by full commit SHA (currently 81 of 81), so a compromised
 upstream tag cannot silently change what runs. Force pushes and branch deletion
 are blocked.
 
-Two limits on that, stated because a policy that overstates its own controls is
-worth less than one that admits them:
+Every change reaches `main` through a pull request, and this is **enforced by
+GitHub, not merely a convention**: `main` requires a pull request, and
+"do not allow bypassing" is on, so the maintainer is bound by the same rules as
+anyone else. Direct pushes to `main` are rejected, including the maintainer's.
+Because the project has one developer, the required approval count is zero --
+GitHub does not permit self-approval, so any higher number would make merging
+impossible rather than safer. The pull request and the full check suite are the
+gate; the approval count is not.
 
-- **Pull requests are a project convention, not a mechanical requirement.**
-  `required_pull_request_reviews` is not configured, and `enforce_admins` is
-  off, so the maintainer can push to `main` as repository administrator. The
-  convention is written down in `CONTRIBUTING.md` and followed; it is not
-  enforced against the maintainer by GitHub.
-- **One direct push is intentional.** A `Release-As:` prep commit may go
-  straight to `main` to retarget the release-please pull request. It changes no
-  shipped code and publishes nothing.
-
-This is weaker than independent human review and is not presented as
-equivalent. It is stated here so the gap is visible rather than implied.
+What this does **not** provide is independent human review, and that is stated
+plainly rather than implied. One person writes the code and one person merges
+it. The controls above constrain *how* a change lands, not *who* judged it.
 
 ## What must be true before a signing request
 
