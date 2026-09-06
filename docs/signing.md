@@ -52,6 +52,76 @@ Paid alternatives, if the OSS application is declined:
   immediate SmartScreen reputation, which an OV certificate has to earn over
   time.
 
+## The application
+
+SignPath Foundation accepts at their discretion and states plainly that projects
+have no right to a certificate. The binding criterion for a project this young
+is reputation — they say they "cannot sign binaries based on source code that
+nobody knows." Recall is weak there and strong nearly everywhere else, so the
+application should lead with what is verifiable and concede the rest rather than
+pad it.
+
+Where Recall stood on 2026-09-06: 59 releases since 2026-05-25, 2,174 commits in
+111 days, 116 installer downloads, and **zero stars, forks, watchers, or
+externally-filed issues**. Do not dress that up. A reviewer will look.
+
+Draft:
+
+> **Project:** Recall — <https://github.com/sound-barrier/recall>
+> **License:** Apache-2.0, no dual licensing, no proprietary components.
+> **Docs:** <https://sound-barrier.github.io/recall/>
+> **Code signing policy:** <https://sound-barrier.github.io/recall/code-signing-policy.html>
+> **Privacy policy:** <https://sound-barrier.github.io/recall/privacy.html>
+>
+> Recall is a Windows desktop app that reads a player's own Overwatch
+> post-match screenshots with local OCR and turns them into a searchable match
+> history. It runs entirely offline. It has no account, no server, no
+> telemetry, and no upload path of any kind — the privacy policy above states
+> this and the source backs it.
+>
+> **On reputation, plainly:** the project is four months old and has no stars
+> and no external contributors. 59 releases have been published and the
+> installer has been downloaded 116 times. I am not going to claim a user base
+> I do not have. What I offer instead is that every claim here is mechanically
+> checkable:
+>
+> - Every artifact carries a SLSA build provenance attestation. Any release can
+>   be verified with
+>   `gh attestation verify <file> --repo sound-barrier/recall`, tying the binary
+>   to the workflow, commit and tag that produced it.
+> - Builds are pure Go, `CGO_ENABLED=0`, from public source, in a public
+>   workflow, with no vendored binaries and no unpinned fetch. All 81 external
+>   GitHub Actions are pinned by full commit SHA.
+> - `main` carries 17 required status checks including CodeQL, Trivy,
+>   govulncheck, Semgrep and dependency review, plus enforced test-coverage
+>   floors. An SBOM and SHA256SUMS ship with every release.
+> - Releases are never automatic; each one is triggered deliberately by me.
+>
+> **Disclosure — a Defender false positive.** Windows Defender flagged a recent
+> unsigned release as malware. I am raising it before you find it. The build
+> hits several heuristics at once: an unsigned, statically-linked Go binary
+> with no download reputation, in an unsigned NSIS installer, that watches a
+> user-chosen folder for images, launches Tesseract as a hidden child process
+> to avoid a console flash over the game, replaces its own executable when the
+> user accepts an update, and whose installer closes a running instance before
+> upgrading. Each is documented in the privacy policy with the reason it
+> exists. None sends data anywhere — there is no POST, PUT or multipart code
+> path in the repository. A signature is precisely what this build lacks, which
+> is why I am applying.
+>
+> **Roles.** I am the sole maintainer and am named as Author and Approver. There
+> is no second human reviewer; the code signing policy says so explicitly and
+> describes the automated gates that stand in for one. MFA is enabled.
+
+Two things to confirm before sending, because the policy asserts them:
+
+1. **MFA is on** for the GitHub account.
+2. The **branch protection gap** is either closed or left as the policy
+   describes it. Today `required_pull_request_reviews` is unset and
+   `enforce_admins` is off, so pull requests are convention rather than
+   enforcement. Turning both on costs nothing, closes the gap the policy has to
+   admit, and lets that paragraph read as a control instead of a caveat.
+
 ## SignPath configuration
 
 Create a project (suggested slug `recall`) with a signing policy
