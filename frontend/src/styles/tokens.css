@@ -328,15 +328,24 @@
   --type-display-md: 2.5rem;
   --type-display-lg: 3.5rem;
 
-  /* Layout width. --content-max drives the page container: it stays at the
-     1140 floor at the default window size, then grows to a 1760 ceiling as the
-     window is enlarged/maximized so data-dense views use the space instead of
-     stranding a narrow column in empty gutters. The slope (85vw) sets the
-     experience on the most common display — a maximized 1080p (1920) lands at
-     ≈1532, untouched by the ceiling — while the 1760 cap only engages above
-     ~2190px so 1440p (2560) maximizes to ≈1760 (≈400px gutters) instead of
-     being stranded at 1600. --content-measure caps text-heavy views (Settings,
-     Parse) back to a readable column while the container is wide. */
+  /* Layout width. --content-max drives the page container: it holds a 1140
+     floor, then grows toward a 1760 ceiling as the window is enlarged, so
+     data-dense views use the space instead of stranding a narrow column in
+     empty gutters.
+
+     The numbers below are CSS pixels, which are LOGICAL — on a display at 150%
+     scaling a 2560-wide monitor is 1707 of them, so a resolution named here
+     only means what it says at 100%.
+
+     A default-size window is 80% of the monitor's work area, which is where
+     the slope (85vw) is aimed: 1080p opens ≈1536 wide and lands at ≈1206, and
+     1440p opens ≈2048 and lands at ≈1641 — both clear of the floor, which is
+     the whole point, since the window opened at a fixed 1024 for months while
+     this token quietly assumed otherwise. Maximized, 1920 lands at ≈1532 and
+     the 1760 cap only engages above ~2190px, so 2560 reaches ≈1760 (≈400px
+     gutters) instead of being stranded at 1600. --content-measure caps
+     text-heavy views (Settings, Parse) back to a readable column while the
+     container is wide. */
   --content-max: clamp(1140px, calc(85vw - 100px), 1760px);
   --content-measure: 1180px;
 

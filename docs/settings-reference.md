@@ -16,13 +16,19 @@ the masthead chip loads a different `settings.json` — so each
 profile has its own screenshots folder, Tesseract path, toggle
 states, etc.
 
+The one exception is the **window's size and position**, kept in
+`window.json` next to the profiles folder rather than inside one.
+Which window you like has nothing to do with which profile you are
+looking at, so switching profiles does not move or resize the window.
+
 ## Settings tab
 
 The numbers are the ones on screen. Two sections are documented
 elsewhere rather than here — **05 / Profiles** in
 [How Recall works](how-it-works.md) and **08 / Coaching** further down
-this page — and **07 / Window** is one checkbox whose label says what
-it does.
+this page — and **07 / Window** is two rows whose labels say what they
+do: what closing the window does, and a reset for the window's size and
+position.
 
 ### 01 / Directories
 

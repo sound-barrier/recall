@@ -1559,6 +1559,31 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/settings/window-geometry:
+    delete:
+      operationId: ResetWindowSize
+      tags: [Settings]
+      summary: Forget the remembered window size and position
+      description: |
+        Deletes the saved desktop window geometry and returns the live window
+        to its default — a share of the current monitor's work area, centered.
+        The resize happens immediately, not on the next launch.
+
+        The geometry this clears is install-wide rather than per-profile:
+        which window someone likes has nothing to do with which profile they
+        are looking at.
+
+        Desktop-only. Server mode has no window to resize and answers 409,
+        the same shape the self-update endpoints use for "not possible on
+        this install".
+      responses:
+        "204":
+          description: Cleared; the window has been returned to its default.
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/settings/auto-backup:
     get:
       operationId: GetAutoBackupStatus

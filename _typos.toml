@@ -20,6 +20,16 @@ locale = "en-us"
 # Wails v3's API spells this field the British way — it is upstream's
 # name, not ours to Americanize.
 BackgroundColour = "BackgroundColour"
+# Same situation, for the window-state half of that API: the methods,
+# the WindowState constants and the event names are all spelled -ise/-ised
+# upstream. pkg/cmd/window_geometry.go calls them by name.
+Maximise = "Maximise"
+UnMaximise = "UnMaximise"
+IsMaximised = "IsMaximised"
+IsMinimised = "IsMinimised"
+WindowStateMaximised = "WindowStateMaximised"
+WindowMaximise = "WindowMaximise"
+WindowUnMaximise = "WindowUnMaximise"
 
 [default.extend-words]
 # "mis-classify", "mis-classified", "mis-tagged" — common technical-

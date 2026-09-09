@@ -151,6 +151,12 @@ Inside it, the default `main` profile's data lives at:
 The masthead chip lets you create more profiles + switch between
 them; each one gets its own sibling directory under `profiles\`.
 
+One file sits outside the profiles, at
+`%AppData%\Recall\window.json`: the app window's size and position.
+It is shared across profiles on purpose — switching accounts should
+not move your window. Delete it (or use **Settings → 07 / Window →
+Reset**) if the window ever ends up somewhere awkward.
+
 To wipe a single profile: close Recall, delete that profile's
 folder under `profiles\`, restart. To wipe everything, delete the
 whole `Recall\` install root. For a guided reset that backs up first,
