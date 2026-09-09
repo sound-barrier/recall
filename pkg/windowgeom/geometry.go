@@ -1,3 +1,5 @@
+//go:build !serveronly
+
 // Package windowgeom decides how big the desktop window opens, where it opens,
 // and remembers where the user last put it.
 //
@@ -7,6 +9,12 @@
 // a plain table test instead of a running desktop. A monitor that was
 // unplugged between two launches is trivial to write down and impossible to
 // arrange by hand.
+//
+// The package is tagged !serveronly because a browser tab has no window to
+// place. Without the tag every symbol here reads as dead code in the
+// serveronly build — the deadcode gate reported seventeen of them — and
+// answering that with seventeen allow-list entries would bury one real fact
+// (this is desktop-only) under a list nobody would ever re-read.
 package windowgeom
 
 import (

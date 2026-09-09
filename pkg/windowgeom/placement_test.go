@@ -1,3 +1,5 @@
+//go:build !serveronly
+
 package windowgeom_test
 
 import (
