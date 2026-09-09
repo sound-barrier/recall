@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.33.1](https://github.com/sound-barrier/recall/compare/v0.33.0...v0.33.1) (2026-09-09)
+
+
+### Features
+
+* **desktop:** open the window where you left it, at a size that fits ([8280eb6](https://github.com/sound-barrier/recall/commit/8280eb62eb5b6af8611546dfcc855c5de0825913))
+* **settings:** let the window size be reset from Settings ([5e0f2b5](https://github.com/sound-barrier/recall/commit/5e0f2b57c231145da9fec185465d71b169ba3a07))
+
+
+### Bug Fixes
+
+* **deps:** bump the tiptap set past the mergeAttributes prototype flaw ([bc9a689](https://github.com/sound-barrier/recall/commit/bc9a689773b0b66a06e8c75fb7a63d954971715f))
+* **deps:** close four fast-uri SSRF and host-confusion advisories ([b87f66d](https://github.com/sound-barrier/recall/commit/b87f66d4eeb7fb4c7f6917f718cc8a3a289f42fb))
+* **deps:** close the js-yaml and vitest advisories ([2510419](https://github.com/sound-barrier/recall/commit/2510419c5b57936dffb77daf3f2661120c7e5f66))
+* **deps:** take tiptap to 3.30.5 for the Markdown parsing ReDoS ([1878487](https://github.com/sound-barrier/recall/commit/1878487bd772fdcd82d31bb0da9b99f75e385a3b))
+* **desktop:** answer the adversarial review of the window geometry ([23bf1f2](https://github.com/sound-barrier/recall/commit/23bf1f24d560c879fd06242f5d52dadbff16685c))
+
+
+### Documentation
+
+* say where the window's size and position live ([c5457cb](https://github.com/sound-barrier/recall/commit/c5457cb29f572f9922c24eee32fa760d51c3a7e1))
+
+
+### Build & Packaging
+
+* **deps:** Bump github.com/wailsapp/wails/v3 ([54d7a97](https://github.com/sound-barrier/recall/commit/54d7a97d5e8f3d956282c09a900d21a0c2e4ace2))
+* **deps:** Bump the actions group with 7 updates ([99e1987](https://github.com/sound-barrier/recall/commit/99e1987067bc4162c80d7650baeee295f96af07b))
+* keep the placement rules out of the serveronly build ([1d47978](https://github.com/sound-barrier/recall/commit/1d479788eaa61c31a55195a47cbc753f76ab12ad))
+
+
+### Tests
+
+* classify the window reset in the two completeness gates ([6416ae1](https://github.com/sound-barrier/recall/commit/6416ae11ddafdd984a344654395ce4f93f1da3aa))
+
 ## [0.33.0](https://github.com/sound-barrier/recall/compare/v0.32.0...v0.33.0) (2026-09-06)
 
 
