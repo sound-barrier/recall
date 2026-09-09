@@ -136,6 +136,7 @@ const SETTINGS: WireCase[] = [
     name: 'SetExitOnClose', method: 'PUT', path: '/api/v1/settings/close-behavior',
     call: () => api.SetExitOnClose(true), body: { exit_on_close: true },
   },
+  { name: 'ResetWindowSize',  call: () => api.ResetWindowSize(),  method: 'DELETE', path: '/api/v1/settings/window-geometry' },
   { name: 'GetTesseractStatus',   call: () => api.GetTesseractStatus(),   method: 'GET',    path: '/api/v1/settings/tesseract' },
   { name: 'ResetTesseractPath',   call: () => api.ResetTesseractPath(),   method: 'DELETE', path: '/api/v1/settings/tesseract' },
   {

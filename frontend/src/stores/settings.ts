@@ -14,6 +14,7 @@ import {
   SetScreenshotsDir,
   RevealScreenshotsDir,
   ResetScreenshotsDir,
+  ResetWindowSize,
 } from '@/api-client'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
@@ -116,6 +117,19 @@ export const useSettingsStore = defineStore('settings', () => {
     set: SetExitOnClose,
     onError: (m) => { appStore.setErrorFromRaw(m) },
   })
+
+  // ── Window size (desktop) ─────────────────────────────────────────
+  // Nothing to mirror: the Go side owns the window and applies the default
+  // immediately, so there is no state here that could drift from it. The
+  // reset is only reachable in the desktop build — server mode has no window
+  // — which SettingsWindow gates on.
+  async function resetWindowSize() {
+    try {
+      await ResetWindowSize()
+    } catch (e) {
+      appStore.setErrorFromRaw(String(e))
+    }
+  }
 
   // ── Screenshots directory ─────────────────────────────────────────
   // Persisted Go-side, mirrored here for rendering; also owns the
@@ -229,6 +243,7 @@ export const useSettingsStore = defineStore('settings', () => {
     exitOnClose,
     setExitOnClose,
     toggleExitOnClose,
+    resetWindowSize,
     screenshotsDir,
     probing,
     probeMessage,

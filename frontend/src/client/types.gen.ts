@@ -3916,6 +3916,39 @@ export type SetExitOnCloseResponses = {
 
 export type SetExitOnCloseResponse = SetExitOnCloseResponses[keyof SetExitOnCloseResponses];
 
+export type ResetWindowSizeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/window-geometry';
+};
+
+export type ResetWindowSizeErrors = {
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type ResetWindowSizeError = ResetWindowSizeErrors[keyof ResetWindowSizeErrors];
+
+export type ResetWindowSizeResponses = {
+    /**
+     * Cleared; the window has been returned to its default.
+     */
+    204: void;
+};
+
+export type ResetWindowSizeResponse = ResetWindowSizeResponses[keyof ResetWindowSizeResponses];
+
 export type GetAutoBackupStatusData = {
     body?: never;
     path?: never;

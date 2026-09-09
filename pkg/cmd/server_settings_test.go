@@ -2,6 +2,7 @@ package cmd_test
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"os"
 	"path"
@@ -27,6 +28,55 @@ func newSettingsMux(t *testing.T) *http.ServeMux {
 }
 
 const autoBackupPath = "/api/v1/settings/auto-backup"
+
+const windowGeometryPath = "/api/v1/settings/window-geometry"
+
+// fakeWindowSizer stands in for the desktop shell's real one, which cannot be
+// built here: it needs a running Wails app and a native window.
+type fakeWindowSizer struct {
+	calls int
+	err   error
+}
+
+func (f *fakeWindowSizer) Reset() error {
+	f.calls++
+	return f.err
+}
+
+// The route exists in every build, but only the desktop build has a window
+// behind it. Answering 409 rather than 404 says "nothing to reset here", which
+// is what the server-mode binary and the browser build both are — and it keeps
+// the endpoint present in one spec instead of two.
+func TestWindowGeometry_ResetIsAConflictWithNoWindow(t *testing.T) {
+	mux := newSettingsMux(t)
+	assertProblem(t, del(t, mux, windowGeometryPath), http.StatusConflict, "conflict", "window")
+}
+
+func TestWindowGeometry_ResetForwardsToTheWindow(t *testing.T) {
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	a, mux := newTestApp(t, dbtest.New())
+	sizer := &fakeWindowSizer{}
+	a.WindowSize = sizer
+
+	if rec := del(t, mux, windowGeometryPath); rec.Code != http.StatusNoContent {
+		t.Fatalf("DELETE status = %d, want 204; body=%q", rec.Code, rec.Body.String())
+	}
+	if sizer.calls != 1 {
+		t.Errorf("Reset called %d times, want exactly 1", sizer.calls)
+	}
+}
+
+// A window that refuses to resize is a 500, not a silent 204: the button in
+// Settings promises the window moved, so a failure has to reach the banner.
+func TestWindowGeometry_ResetSurfacesAFailure(t *testing.T) {
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	a, mux := newTestApp(t, dbtest.New())
+	a.WindowSize = &fakeWindowSizer{err: errors.New("disk is read-only")}
+
+	if rec := del(t, mux, windowGeometryPath); rec.Code != http.StatusInternalServerError {
+		t.Fatalf("DELETE status = %d, want 500; body=%q", rec.Code, rec.Body.String())
+	}
+}
 
 // autoBackupInterval reads `interval_days` out of an auto-backup response.
 func autoBackupInterval(t *testing.T, body []byte) int {

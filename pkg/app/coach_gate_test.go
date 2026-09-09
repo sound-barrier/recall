@@ -209,6 +209,7 @@ var ungatedByDesign = map[string]string{
 	"ResetTesseractPath":    "settings, not the corpus",
 	"SetWatchEnabled":       "settings, not the corpus",
 	"SetExitOnClose":        "settings, not the corpus",
+	"ResetWindowSize":       "moves a window on this machine; touches no stored data",
 	"SetAutoBackupInterval": "settings, not the corpus",
 	"SetCoachingSettings":   "settings, not the corpus",
 	"SetCoachSessionPlayer": "the session's own surface",

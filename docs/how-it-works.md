@@ -327,6 +327,7 @@ data surface (dossier, heatmap, Archive) to that profile's history.
 ```text
 <base>/
 ├── profiles.json        ← which profile is active + the list
+├── window.json          ← the app window's size and position
 └── profiles/
     ├── main/            ← the default profile (created on first launch)
     │   ├── settings.json
@@ -335,6 +336,13 @@ data surface (dossier, heatmap, Archive) to that profile's history.
         ├── settings.json
         └── db/recall.db
 ```
+
+`window.json` sits beside the profiles rather than inside one, because
+the size and position of the app window is about your monitors, not
+about which account you are looking at — switching profiles leaves the
+window where it is. Delete it, or use **Settings → 07 / Window →
+Reset**, and the window goes back to a comfortable share of whichever
+display it opens on.
 
 Inside each profile directory:
 

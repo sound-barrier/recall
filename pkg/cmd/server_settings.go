@@ -30,6 +30,8 @@ func registerSettingsRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/settings/close-behavior", handleGetCloseBehavior(a))
 	apiMux.HandleFunc("PUT /api/v1/settings/close-behavior", handleSetCloseBehavior(a))
 
+	apiMux.HandleFunc("DELETE /api/v1/settings/window-geometry", handleResetWindowGeometry(a))
+
 	apiMux.HandleFunc("GET /api/v1/settings/auto-backup", handleGetAutoBackup(a))
 	apiMux.HandleFunc("PUT /api/v1/settings/auto-backup", handleSetAutoBackup(a))
 }
@@ -148,6 +150,24 @@ func handleSetCloseBehavior(a *app.App) http.HandlerFunc {
 			return
 		}
 		if writeError(w, r, a.SetExitOnClose(*body.ExitOnClose)) {
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// handleResetWindowGeometry forgets the remembered window size and position
+// and returns the live window to its default. Symmetric with the other two
+// DELETE handlers here — the user-set override is the thing being deleted —
+// but unlike them it has an immediate effect: the window resizes as the
+// request returns.
+//
+// 409 rather than 404 when no window is wired: the route exists in every build,
+// but server mode has nothing to resize. Same shape as the self-update seam.
+func handleResetWindowGeometry(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if writeError(w, r, a.ResetWindowSize(),
+			errStatus{app.ErrWindowSizeUnavailable, probConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
