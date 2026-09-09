@@ -118,6 +118,11 @@ type App struct {
 	// selfUpdateRunning single-flights StartSelfUpdate so a double-click
 	// can't launch two concurrent download+install passes.
 	selfUpdateRunning atomic.Bool
+	// WindowSize is the desktop window-geometry seam, wired by the Wails
+	// wrapper (pkg/cmd) alongside the window itself. Nil in server mode,
+	// where there is no window to resize, so ResetWindowSize keys off one
+	// field the way SelfUpdate does. See pkg/app/window.go.
+	WindowSize WindowSizer
 	// coachMu guards coachSession. The session methods take it for
 	// write, every mutating orchestrator reads it through
 	// assertNoCoachSession, and the store-teardown paths discard

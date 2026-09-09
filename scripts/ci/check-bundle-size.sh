@@ -390,7 +390,14 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # 2026-08: 2218000 -> 2236000 -- the season recap (builder plus the app's own
 # stylesheets inlined as text, in their own chunk behind a dynamic import, like
 # the coach sheet's twin) and the roster's UI. Measured 2228464B.
-: "${MAX_TOTAL_JS_BYTES:=2236000}"
+# 2026-09: 2236000 -> 2242000 -- window geometry adds under a kilobyte (the
+# reset endpoint's SDK entry, a Settings row, a store action). The bump is for
+# what was found while measuring it: main had drifted to 2234405B against a
+# recorded 2228464B, so the 1600B that looked like headroom was really 600B,
+# and the next honest change would have tripped a gate nobody had touched.
+# Re-baselined against a clean build of main rather than the stale note.
+# Measured 2235392B.
+: "${MAX_TOTAL_JS_BYTES:=2242000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
