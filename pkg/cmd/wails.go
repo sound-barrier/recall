@@ -43,12 +43,22 @@ func RunWails(a *app.App, assets embed.FS) {
 	// for lifecycle management; the parse-complete sender is wired below.
 	notifier := notifications.New()
 
+	// The window sizer is built first because the window options below are its
+	// output: what was saved last session can only reach InitialPosition
+	// through the options literal. Reading the file needs nothing but the
+	// install dir, so it is safe this early.
+	sizer := newWindowSizer(geometryPath())
+
 	wailsApp := application.New(application.Options{
 		Name:        "Recall",
 		Description: "Overwatch screenshot telemetry — local match history + trends",
 		Services: []application.Service{
 			application.NewService(a),
 			application.NewService(notifier),
+			// Placed last on purpose: services start in registration order,
+			// and the sizer's startup hook is the one moment where the screen
+			// list is known and the window has not been created yet.
+			application.NewService(sizer),
 		},
 		Assets: application.AssetOptions{
 			// Embedded frontend/dist, with the /_screenshot/ handler and the
@@ -89,16 +99,16 @@ func RunWails(a *app.App, assets embed.FS) {
 		wailsApp.Menu.Set(m)
 	}
 
-	win = wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
+	win = wailsApp.Window.NewWithOptions(sizer.WindowOptions(application.WebviewWindowOptions{
 		Title:            "Recall",
-		Width:            minWindowW,
-		Height:           minWindowH,
 		BackgroundColour: application.NewRGB(27, 38, 54),
 		URL:              "/",
-	})
-	// Creation size is a safe minimum; grow it to a share of the actual display
-	// (the fixed 1024×768 felt cramped on 1440p+ monitors).
-	sizeWindowToScreen(win)
+	}))
+	// Attach must come before setupSystemTray: both register a WindowClosing
+	// hook, hooks run in registration order, and the systray's cancels the
+	// event. Saving the geometry has to happen while the window still has one.
+	sizer.Attach(wailsApp, win)
+	a.WindowSize = sizer
 	setupSystemTray(wailsApp, win, a)
 
 	// In-app binary self-updater (Windows + Linux). Returns nil — leaving
