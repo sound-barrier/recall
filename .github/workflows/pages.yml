@@ -100,6 +100,7 @@ jobs:
           mkdir -p _stage/book
           cp -R book/. _stage/book/
           cp docs/install-windows.md      _stage/book/install-windows.md
+          cp docs/code-signing-policy.md  _stage/book/code-signing-policy.md
           cp docs/how-it-works.md         _stage/book/how-it-works.md
           cp docs/settings-reference.md   _stage/book/settings-reference.md
           cp docs/filtering.md            _stage/book/filtering.md

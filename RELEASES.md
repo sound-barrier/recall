@@ -60,8 +60,16 @@ release-please respects a [`Release-As:` commit footer](https://github.com/googl
 
 ```sh
 task release-beta VERSION=0.0.13-beta.0
-git push origin main
+git checkout -b chore/cut-v0.0.13-beta.0
+git push -u origin chore/cut-v0.0.13-beta.0
+gh pr create --fill && gh pr merge --auto --rebase
 ```
+
+The prep commit goes through a pull request like everything else. `main`
+requires one and does not allow bypassing, so `git push origin main` is
+rejected -- including for the maintainer. The pull request needs no approval
+(the required count is zero, because a solo maintainer cannot approve their
+own), only green checks.
 
 `task release-beta` creates a signed empty commit with the `Release-As:` footer formatted correctly and reminds you of the push-and-fire steps. The expansion of what it does:
 
@@ -131,7 +139,7 @@ Triggered on `v*` tag push (the auto-fire path from `push-release-tag.sh`'s `gh 
 
 | Job | `needs:` | Output | Notes |
 |---|---|---|---|
-| `build-windows` | — | Windows/amd64 NSIS `installer.exe` + raw `recall-{v}-windows-amd64.exe` | **Native** cross-compile on ubuntu — v3's WebView2 loader is pure Go (`CGO_ENABLED=0`), so no Docker/mingw. `task build-windows` = `wails3 task windows:package INSTALL_SCOPE=user` (generate syso → `go build -H windowsgui` → WebView2 bootstrapper → `makensis`; per-user install so the in-app updater can swap in place), then `scripts/release/package-wails-windows.sh` emits both the installer (human download) and the raw exe (updater target). Provenance-attested in-job. |
+| `build-windows` | — | Windows/amd64 NSIS `installer.exe` + raw `recall-{v}-windows-amd64.exe` | **Native** cross-compile on ubuntu — v3's WebView2 loader is pure Go (`CGO_ENABLED=0`), so no Docker/mingw. The job runs `task build-windows-exe` → **Authenticode-sign** → `task build-windows-installer` → **sign** → `scripts/release/package-wails-windows.sh`, which emits both the installer (human download) and the raw exe (updater target). The halves exist so the exe is signed BEFORE NSIS embeds it — sign only the finished artifacts and the file installed to `%LOCALAPPDATA%` is unsigned and gets flagged at runtime. Signing needs `SIGNPATH_API_TOKEN`; without it the release still publishes and prints a loud `::warning::` that it is unsigned (setup: `docs/signing.md`). Hashing and provenance attestation both run AFTER signing, so `SHA256SUMS` covers the shipped bytes. |
 | `sbom` | `build-windows` | `recall-{version}-sbom.spdx.json` | `anchore/sbom-action`. Downloads the built artifacts so syft scans both source AND the binary. Captures Go-build-info indirect deps the source-only scan misses. |
 | `release` | `build-windows`, `sbom` | GitHub Release with all artifacts + per-artifact `<filename>.sha256` + a combined `SHA256SUMS` | `softprops/action-gh-release` creates+uploads atomically — no pre-existing release means no GitHub-immutability race. This job also stages + attests the reference-data YAMLs and `Reset-Database.bat`. SBOM does not get a sha256 sidecar. Artifact filenames embed the version with the `v` prefix stripped. **`SHA256SUMS` is load-bearing**: the in-app Wails updater reads it (github provider `ChecksumAsset: "SHA256SUMS"`, a compile-time constant) to verify each download — renaming it breaks every shipped client. |
 

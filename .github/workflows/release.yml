@@ -43,6 +43,9 @@ jobs:
       contents: read
       id-token: write
       attestations: write
+      # SignPath's connector downloads the uploaded artifact back out of this
+      # run through the GitHub API, which needs the Actions read scope.
+      actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
@@ -58,9 +61,92 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends nsis
 
-      - name: Build Windows app + NSIS installer
-        run: task build-windows
+      # ── Authenticode signing ────────────────────────────────────────
+      # Unsigned Go binaries in an unsigned NSIS installer are a textbook
+      # Defender false positive, and Recall hit one. Signing is the fix; see
+      # docs/signing.md for the SignPath setup this consumes.
+      #
+      # The order below is the whole point. The installer EMBEDS recall.exe, so
+      # the exe is signed BEFORE NSIS packs it -- otherwise the file that
+      # actually lands in %LOCALAPPDATA%\Programs\Recall is unsigned and gets
+      # flagged at runtime, no matter how well-signed the installer was.
+      - name: Check for signing credentials
+        id: signing
+        env:
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+        run: bash scripts/release/signing-status.sh
 
+      - name: Build Windows exe
+        run: task build-windows-exe
+
+      - name: Upload unsigned exe for signing
+        if: steps.signing.outputs.enabled == 'true'
+        id: unsigned-exe
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: unsigned-exe
+          path: bin/Recall.exe
+          if-no-files-found: error
+
+      - name: Sign the exe
+        if: steps.signing.outputs.enabled == 'true'
+        uses: signpath/github-action-submit-signing-request@c92b958760219087e01f8d67a1669ed57afe2627  # v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_EXE_ARTIFACT_CONFIG }}
+          github-artifact-id: ${{ steps.unsigned-exe.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed-exe
+
+      - name: Install the signed exe
+        if: steps.signing.outputs.enabled == 'true'
+        run: bash scripts/release/install-signed-artifact.sh signed-exe/Recall.exe bin/Recall.exe
+
+      # Packs whatever bin/Recall.exe now holds -- the signed one, above.
+      - name: Build NSIS installer
+        run: task build-windows-installer
+
+      - name: Upload unsigned installer for signing
+        if: steps.signing.outputs.enabled == 'true'
+        id: unsigned-installer
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: unsigned-installer
+          path: bin/recall-amd64-installer.exe
+          if-no-files-found: error
+
+      - name: Sign the installer
+        if: steps.signing.outputs.enabled == 'true'
+        uses: signpath/github-action-submit-signing-request@c92b958760219087e01f8d67a1669ed57afe2627  # v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_INSTALLER_ARTIFACT_CONFIG }}
+          github-artifact-id: ${{ steps.unsigned-installer.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed-installer
+
+      - name: Install the signed installer
+        if: steps.signing.outputs.enabled == 'true'
+        run: |
+          bash scripts/release/install-signed-artifact.sh \
+            signed-installer/recall-amd64-installer.exe \
+            bin/recall-amd64-installer.exe
+
+      - name: Stage to dist/
+        run: |
+          mkdir -p dist/windows
+          cp bin/recall-amd64-installer.exe dist/windows/
+          cp bin/Recall.exe dist/windows/
+
+      # Renames to the release filenames. Runs AFTER signing, so the SHA256SUMS
+      # and the provenance attestation below both cover the signed bytes --
+      # hashing before signing would publish digests for files nobody ships.
       - name: Package
         env:
           VERSION: ${{ github.ref_name }}
