@@ -48,11 +48,26 @@ test.describe('wide-window layout', () => {
     expect(container - panel).toBeGreaterThan(200)
   })
 
-  test('the default-size window keeps the ~1140 floor (no regression)', async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 })
+  // The two cases below are the sizes the app ACTUALLY opens at now: 80% of
+  // the monitor's work area. They used to read 1440x900, which was 75% of
+  // 1080p — a size the window has not opened at since the v3 port silently
+  // broke the sizing, and never will again.
+  test('a default-size window on 1080p clears the floor', async ({ page }) => {
+    // 80% of a 1920x1032 work area.
+    await page.setViewportSize({ width: 1536, height: 826 })
     await page.goto('/')
     const container = await widthOf(page.locator('.container'))
-    expect(container).toBeGreaterThanOrEqual(1100)
-    expect(container).toBeLessThanOrEqual(1200)
+    expect(container).toBeGreaterThanOrEqual(1140)
+    expect(container).toBeLessThanOrEqual(1260)
+  })
+
+  test('a default-size window on 1440p uses the extra width', async ({ page }) => {
+    // 80% of a 2560x1392 work area — the case that started this: the window
+    // must not look like the small one any more.
+    await page.setViewportSize({ width: 2048, height: 1114 })
+    await page.goto('/')
+    const container = await widthOf(page.locator('.container'))
+    expect(container).toBeGreaterThanOrEqual(1580)
+    expect(container).toBeLessThanOrEqual(1700)
   })
 })
