@@ -33,6 +33,17 @@ func screen(x, w, h int, scale float32, primary bool) windowgeom.Display {
 	}
 }
 
+// stackedAbove builds a monitor sitting directly above the primary, so its
+// coordinates are negative on the Y axis the way a left-hand monitor's are on X.
+func stackedAbove(w, h int) windowgeom.Display {
+	const taskbar = 48
+	return windowgeom.Display{
+		WorkArea:       windowgeom.Rect{Y: -h, Width: w, Height: h - taskbar},
+		PhysicalBounds: windowgeom.Rect{Y: -h, Width: w, Height: h},
+		Scale:          1,
+	}
+}
+
 func oneScreen1080p() []windowgeom.Display {
 	return []windowgeom.Display{screen(0, 1920, 1080, 1, true)}
 }
@@ -143,9 +154,6 @@ func TestPlanRecoversFromAPositionThatNoLongerLands(t *testing.T) {
 		{"parked far off-screen", &windowgeom.Geometry{Width: 1600, Height: 900, X: -32000, Y: -32000, Fingerprint: fp}},
 		// Mostly off the right edge: a sliver is visible but not enough to work with.
 		{"barely overlapping", &windowgeom.Geometry{Width: 1600, Height: 900, X: 1870, Y: 200, Fingerprint: fp}},
-		// On screen horizontally, but the title bar is above the work area, so
-		// there is nothing left to drag.
-		{"title bar out of reach", &windowgeom.Geometry{Width: 1600, Height: 900, X: 100, Y: -400, Fingerprint: fp}},
 		// Full width on screen and the title bar within reach, but hanging so
 		// far off the bottom that only a seventh of the window is visible.
 		// Nothing but the overlap-area rule rejects this one.
@@ -164,6 +172,50 @@ func TestPlanRecoversFromAPositionThatNoLongerLands(t *testing.T) {
 					got.Rect.Width, got.Rect.Height)
 			}
 		})
+	}
+}
+
+// A window hanging off an edge is nudged back on, not started over. It is
+// still recognizably where the user put it, which a re-center is not.
+func TestPlanClampsAPartlyOffScreenRectBackOn(t *testing.T) {
+	displays := oneScreen1080p()
+	saved := &windowgeom.Geometry{
+		Width: 1600, Height: 900, X: 100, Y: -400,
+		Fingerprint: windowgeom.Fingerprint(displays),
+	}
+	got := windowgeom.Plan(saved, displays)
+	if got.Centered {
+		t.Fatal("most of the window was on screen; want it clamped, not re-centered")
+	}
+	want := windowgeom.Rect{X: 100, Y: 0, Width: 1600, Height: 900}
+	if got.Rect != want {
+		t.Errorf("rect = %+v, want %+v", got.Rect, want)
+	}
+}
+
+// Two monitors stacked vertically are one contiguous surface with no dead
+// space. A window sitting across the seam is entirely on real screens, and an
+// earlier reachability rule threw exactly these positions away — it asked
+// whether the top edge was inside ONE work area, which is never true across a
+// seam. Containment is the clamp's job, so intent is all this decides.
+func TestPlanKeepsAPositionAcrossAVerticalMonitorSeam(t *testing.T) {
+	displays := []windowgeom.Display{
+		screen(0, 1920, 1080, 1, true),
+		stackedAbove(1920, 1080),
+	}
+	saved := &windowgeom.Geometry{
+		Width: 1400, Height: 900, X: 100, Y: -50,
+		Fingerprint: windowgeom.Fingerprint(displays),
+	}
+	got := windowgeom.Plan(saved, displays)
+	if got.Centered {
+		t.Fatal("the window was entirely on screen; want it kept, not re-centered")
+	}
+	if !fitsSomeWorkArea(got.Rect, displays) {
+		t.Errorf("rect %+v escapes every work area", got.Rect)
+	}
+	if got.Rect.X != 100 {
+		t.Errorf("X = %d, want the remembered 100 — only the axis that overhung should move", got.Rect.X)
 	}
 }
 
