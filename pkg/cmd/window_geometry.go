@@ -43,7 +43,7 @@ type windowSizer struct {
 	wailsApp *application.App
 	win      *application.WebviewWindow
 
-	minOnce sync.Once
+	readyOnce sync.Once
 
 	mu         sync.Mutex
 	latest     windowgeom.Geometry
@@ -53,9 +53,11 @@ type windowSizer struct {
 	// and pushing one would shove the window off the edge. Written during
 	// startup, read from a window hook, so it lives under the mutex with the
 	// rest of the shared state.
-	enforceMin  bool
-	fingerprint string
-	timer       *time.Timer
+	enforceMin bool
+	// restoreMaximized carries the saved maximized state from placement to the
+	// runtime-ready hook, which is where it can actually be applied.
+	restoreMaximized bool
+	timer            *time.Timer
 }
 
 var _ app.WindowSizer = (*windowSizer)(nil)
@@ -98,9 +100,14 @@ func (s *windowSizer) WindowOptions(base application.WebviewWindowOptions) appli
 		return base
 	}
 	base.Width, base.Height = s.saved.Width, s.saved.Height
-	if s.saved.Maximized {
-		base.StartState = application.WindowStateMaximised
-	}
+	// Maximized is deliberately NOT restored through StartState. Windows
+	// applies StartState first and the position block second, and that block
+	// calls setPosition, which re-reads the window's CURRENT bounds — by then
+	// the maximized rect — swaps in X/Y and hands the whole thing to
+	// SetWindowPos with no SWP_NOSIZE. The result is a maximized-size window
+	// drawn at the restore origin, hanging off the bottom-right, with
+	// WS_MAXIMIZE still set so nothing corrects it. The window is created at
+	// its restore rect instead and maximized once it is live.
 	if !s.saved.Centered {
 		base.InitialPosition = application.WindowXY
 		base.X, base.Y = s.saved.X, s.saved.Y
@@ -127,10 +134,15 @@ func (s *windowSizer) Attach(wailsApp *application.App, win *application.Webview
 		win.RegisterHook(event, func(*application.WindowEvent) { s.capture() })
 	}
 
-	// The runtime-ready hook is the first moment the window can answer
-	// questions about itself, which is what the size floor needs.
+	// The runtime-ready hook is the first moment the window can answer questions
+	// about itself, which both the size floor and the maximize restore need.
+	// Order matters: the floor goes on first, so maximizing saves the real size
+	// constraints and un-maximizing puts them back.
 	win.RegisterHook(events.Common.WindowRuntimeReady, func(*application.WindowEvent) {
-		s.minOnce.Do(s.applyMinSize)
+		s.readyOnce.Do(func() {
+			s.applyMinSize()
+			s.applyMaximized()
+		})
 	})
 
 	// Closing does not mean quitting here — the default is to hide to the
@@ -181,6 +193,14 @@ func (s *windowSizer) place() {
 
 	s.win.SetSize(plan.Rect.Width, plan.Rect.Height)
 	if plan.Centered {
+		// Clear the coordinates before centering. Center() only sets
+		// InitialPosition; it leaves options.X/Y alone, and the creation rect is
+		// built straight from those. A rejected position left in place would
+		// still decide which monitor the window is born on, and center() then
+		// centers on the monitor NEAREST the window — so the position we just
+		// judged unusable would pick the display anyway. Zeroing both also puts
+		// creation on the OS default (Windows reads 0,0 as "unset").
+		s.win.SetRelativePosition(0, 0)
 		s.win.Center()
 	} else {
 		// Pre-creation this only writes options.X/Y, and with no target screen
@@ -190,30 +210,24 @@ func (s *windowSizer) place() {
 		// exported way to reach those two fields.
 		s.win.SetRelativePosition(plan.Rect.X, plan.Rect.Y)
 	}
-	if plan.Maximized {
-		//nolint:misspell // Maximise is the framework's own method name.
-		s.win.Maximise()
-	}
-
-	s.seed(plan, windowgeom.Fingerprint(displays))
+	s.seed(plan)
 }
 
 // seed gives the record a complete starting value, so the first thing written
 // is never a half-filled one — a window maximized before it is ever moved
 // would otherwise persist a zero size.
-func (s *windowSizer) seed(plan windowgeom.Placement, fingerprint string) {
+func (s *windowSizer) seed(plan windowgeom.Placement) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.fingerprint = fingerprint
 	s.enforceMin = plan.Rect.Width >= windowgeom.MinWidth && plan.Rect.Height >= windowgeom.MinHeight
+	s.restoreMaximized = plan.Maximized
 	s.latest = windowgeom.Geometry{
-		Width:       plan.Rect.Width,
-		Height:      plan.Rect.Height,
-		X:           plan.Rect.X,
-		Y:           plan.Rect.Y,
-		Centered:    plan.Centered,
-		Maximized:   plan.Maximized,
-		Fingerprint: fingerprint,
+		Width:     plan.Rect.Width,
+		Height:    plan.Rect.Height,
+		X:         plan.Rect.X,
+		Y:         plan.Rect.Y,
+		Centered:  plan.Centered,
+		Maximized: plan.Maximized,
 	}
 }
 
@@ -255,6 +269,24 @@ func (s *windowSizer) applyMinSize() {
 	s.win.SetMinSize(windowgeom.MinWidth, windowgeom.MinHeight)
 }
 
+// applyMaximized maximizes a window that was left maximized. It runs here
+// rather than through the creation options because Windows applies StartState
+// before the position block, and that block would then move the maximized frame
+// to the restore origin at maximized size (see WindowOptions). The cost is that
+// a restored-maximized window is briefly visible at its restore size first —
+// cosmetic, and the alternative is a window half off the screen.
+func (s *windowSizer) applyMaximized() {
+	s.mu.Lock()
+	maximize := s.restoreMaximized
+	s.mu.Unlock()
+
+	if s.win == nil || !maximize {
+		return
+	}
+	//nolint:misspell // Maximise is the framework's own method name.
+	s.win.Maximise()
+}
+
 // capture takes one sample of where the window is now.
 func (s *windowSizer) capture() {
 	if s.win == nil || s.win.IsMinimised() || s.win.IsFullscreen() {
@@ -267,13 +299,19 @@ func (s *windowSizer) capture() {
 	if !maximized {
 		rect = rectFrom(s.win.Bounds())
 	}
-	s.record(maximized, rect)
+	// The fingerprint is taken NOW, not at startup. Monitors get plugged in and
+	// unplugged while the app is running — the framework re-caches its screen
+	// list on WM_DISPLAYCHANGE — and a position recorded after that belongs to
+	// the desk it was recorded on. Stamping it with the startup layout instead
+	// makes the next launch decide the desk has changed and throw the position
+	// away, which is exactly what a docking user does every day.
+	s.record(maximized, rect, windowgeom.Fingerprint(s.displays()))
 }
 
 // record folds one sample in. A maximized window contributes only the flag:
 // its bounds ARE the maximized rect, and storing those as the restore size is
 // what makes un-maximizing snap back to full screen forever after.
-func (s *windowSizer) record(maximized bool, rect windowgeom.Rect) {
+func (s *windowSizer) record(maximized bool, rect windowgeom.Rect, fingerprint string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.latest.Maximized = maximized
@@ -282,7 +320,7 @@ func (s *windowSizer) record(maximized bool, rect windowgeom.Rect) {
 		s.latest.Width, s.latest.Height = rect.Width, rect.Height
 		s.latest.Centered = false
 	}
-	s.latest.Fingerprint = s.fingerprint
+	s.latest.Fingerprint = fingerprint
 	s.haveLatest = true
 	s.scheduleLocked()
 }

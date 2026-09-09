@@ -20,12 +20,12 @@ const (
 	// screen so it still reads as a window someone can move.
 	workAreaFraction = 0.80
 
-	// A remembered position is only honored if the window would come back
-	// mostly on screen and still be draggable — enough of its title bar
-	// visible, and the bar itself inside the work area.
+	// minOverlapPercent decides one question and no other: did the user mean
+	// THIS monitor? Whether the window comes back reachable is not asked here,
+	// because fitInto answers it unconditionally — every honored rect is
+	// clamped wholly inside one work area, so its title bar is always on screen
+	// and always grabbable.
 	minOverlapPercent = 30
-	minGrabWidth      = 120
-	titleBarHeight    = 32
 )
 
 // Placement is how to open the window. When Centered is set, the caller lets
@@ -149,25 +149,29 @@ func targetFor(want Rect, displays []Display) (Display, bool) {
 			best, bestArea = d, area
 		}
 	}
-	if !worthHonoring(want, best.WorkArea, bestArea) {
+	if !worthHonoring(want, bestArea) {
 		return Display{}, false
 	}
 	return best, true
 }
 
-// worthHonoring rejects a position the user could not recover from on their
-// own: mostly off-screen, or with too little of the title bar left to grab.
-func worthHonoring(want, workArea Rect, area int) bool {
+// worthHonoring asks whether a remembered position still points at this
+// monitor strongly enough to be worth clamping onto it, rather than starting
+// over in the middle of the primary.
+//
+// It deliberately does NOT test whether the window is currently reachable. An
+// earlier version also required the title bar to sit inside the work area, and
+// that threw away perfectly good positions: on two monitors stacked vertically,
+// a window whose top edge is on the upper display but whose bulk is on the
+// lower one is entirely on real screens and entirely draggable, and fitInto
+// would have clamped it in place. The same rule fired whenever a taskbar moved
+// to the top of a single screen. Containment is fitInto's job; this is only
+// about intent.
+func worthHonoring(want Rect, area int) bool {
 	if area <= 0 {
 		return false
 	}
-	if area*100 < want.Width*want.Height*minOverlapPercent {
-		return false
-	}
-	if want.Y < workArea.Y || want.Y > workArea.Y+workArea.Height-titleBarHeight {
-		return false
-	}
-	return overlapLen(want.X, want.Width, workArea.X, workArea.Width) >= minGrabWidth
+	return area*100 >= want.Width*want.Height*minOverlapPercent
 }
 
 // sortedByBounds fixes the scan order so a tie between two equally-overlapped

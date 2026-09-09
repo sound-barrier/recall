@@ -106,15 +106,29 @@ func TestWindowOptionsLeaveACenteredRecordCentered(t *testing.T) {
 	}
 }
 
-func TestWindowOptionsRestoreMaximizedWithTheUnderlyingSize(t *testing.T) {
+// A maximized window must NOT be restored through StartState, however natural
+// that reads. Windows applies StartState first and the position block second,
+// and that block calls setPosition, which re-reads the window's bounds — the
+// maximized rect by then — swaps in X/Y, and hands the whole thing to
+// SetWindowPos with no SWP_NOSIZE. The window ends up drawn at maximized size
+// at the restore origin, hanging off the bottom-right, with WS_MAXIMIZE still
+// set so nothing corrects it. The options carry the restore rect; the maximize
+// happens once the window is live.
+func TestWindowOptionsRestoreMaximizedWithoutTheMaximizedStartState(t *testing.T) {
 	opts := sizerWith(t, &windowgeom.Geometry{Width: 1600, Height: 900, X: 40, Y: 40, Maximized: true})
-	if opts.StartState != application.WindowStateMaximised {
-		t.Errorf("StartState = %v, want the maximized start state", opts.StartState)
+	if opts.StartState != application.WindowStateNormal {
+		t.Errorf("StartState = %v, want normal — maximizing at creation moves the "+
+			"maximized frame to the restore origin", opts.StartState)
 	}
-	// The size travels with the flag: it is the size to return to when the
-	// user un-maximizes, not the size to open at.
+	// The rect is the size and place to come BACK to when the user
+	// un-maximizes, so it still has to travel in the options.
 	if opts.Width != 1600 || opts.Height != 900 {
 		t.Errorf("restore size = %dx%d, want 1600x900", opts.Width, opts.Height)
+	}
+	if opts.X != 40 || opts.Y != 40 {
+		t.Errorf("restore origin = %d/%d, want 40/40 — it also picks the monitor "+
+			"the window is created on, which is the monitor it maximizes onto",
+			opts.X, opts.Y)
 	}
 }
 
