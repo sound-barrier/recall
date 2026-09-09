@@ -99,6 +99,7 @@ var sentinels = []sentinel{
 	{"ErrRestoreInvalid", app.ErrRestoreInvalid, "restore: not a valid Recall database"},
 	{"ErrShareNeedsReplayCode", app.ErrShareNeedsReplayCode, "share needs a replay code on every match"},
 	{"ErrSelfUpdateUnavailable", app.ErrSelfUpdateUnavailable, "self-update unavailable on this install"},
+	{"ErrWindowSizeUnavailable", app.ErrWindowSizeUnavailable, "no desktop window on this install"},
 	{"ErrDuplicateHeroPosition", app.ErrDuplicateHeroPosition, "invalid heroes: two heroes share one position"},
 	{"ErrStatOutOfRange", app.ErrStatOutOfRange, "invalid stat: a numeric value is out of range"},
 	{"ErrUnknownHero", app.ErrUnknownHero, "unknown hero: not in the Overwatch roster"},
