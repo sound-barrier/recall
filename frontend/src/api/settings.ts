@@ -70,6 +70,14 @@ export function SetWatchEnabled(enabled: boolean): Promise<void> {
   return unwrapVoid(sdk.setWatchEnabled({ body: { enabled } }))
 }
 
+// ResetWindowSize forgets the remembered desktop window geometry and returns
+// the live window to the default size for its display. No arguments: the
+// default is computed Go-side from the monitor the window is actually on,
+// which the frontend has no way to know.
+export function ResetWindowSize(): Promise<void> {
+  return unwrapVoid(sdk.resetWindowSize())
+}
+
 export function GetExitOnClose(): Promise<boolean> {
   return unwrap(sdk.getExitOnClose()).then(d => d.exit_on_close)
 }
