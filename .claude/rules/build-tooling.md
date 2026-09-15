@@ -2,10 +2,9 @@
 paths:
   - "Taskfile.yml"
   - "mise.toml"
-  - "Dockerfile*"
+  - "build/**"
   - "scripts/**"
   - "lefthook.yml"
-  - "*.nsi"
   - "initialize.sh"
   - ".devcontainer/**"
 ---
@@ -16,10 +15,12 @@ paths:
 
 Live in `mise.toml` — `[tools]` for anything mise installs, `[env]` for the
 versions the tasks and hooks read themselves (`SPECTRAL_VERSION`,
-`TYPOS_VERSION`, `SEMGREP_VERSION`, `HONKIT_VERSION`, `SCHEMATHESIS_VERSION`,
-`JSONSCHEMA_RS_VERSION`, `GOBCO_VERSION`, `RUFF_VERSION`, `SQLFLUFF_VERSION`,
-`BIOME_VERSION`, and `TESSERACT_VERSION` — that last one informational
-major.minor, so a mismatch means re-baseline `testdata/*.golden.json` and bump).
+`TYPOS_VERSION`, `GOCYCLO_VERSION`, `SEMGREP_VERSION`, `HONKIT_VERSION`,
+`SCHEMATHESIS_VERSION`, `JSONSCHEMA_RS_VERSION`, `GOBCO_VERSION`,
+`RUFF_VERSION`, `SQLFLUFF_VERSION`, `BIOME_VERSION`, and `TESSERACT_VERSION` —
+that last one informational major.minor, so a mismatch means re-baseline
+`testdata/*.golden.json` and bump; `.devcontainer/postCreate.sh` compares the
+container's apt Tesseract against it and warns).
 
 Consumers no longer read a file; they read the environment mise puts them in:
 
@@ -29,16 +30,28 @@ Consumers no longer read a file; they read the environment mise puts them in:
   job regardless of `install_args`. That is also why `DEFAULT_MAX_FILES` must
   never be added to `[env]`: it would silently override the package-size gate.
 
-`task check-deps` validates the upstream pins plus the `crate-ci/typos@SHA  #
-vX.Y.Z` comment in `ci.yml`. **Swagger UI image** (`SWAGGER_IMAGE`) is the only
-unchecked pin.
+`task check-deps` compares against upstream and **fails** on drift: the wails3
+CLI, Spectral, typos, Semgrep, Honkit, schemathesis, jsonschema-rs, ruff,
+sqlfluff, Biome, Go and Node — plus two cross-file assertions, the
+`crate-ci/typos@SHA  # vX.Y.Z` comment in `ci.yml` and `.node-version` agreeing
+with `[tools] node`. Deliberately unchecked: the MEASUREMENT pins
+(`GOBCO_VERSION`, `TESSERACT_VERSION` — the version moves the number, so bumping
+them is a re-baseline decision, not a version bump), `GOCYCLO_VERSION`
+(`latest`), golangci-lint (exact-pinned so a bump is a deliberate
+run-the-sweep-and-fix-what-it-finds change) and `SWAGGER_IMAGE`.
+
+**Lockstep pin, both ecosystems**: `wails/v3` in `go.mod`, the `wails3` CLI in
+`[tools]`, and `@wailsio/runtime` in `frontend/package.json` are ONE version.
+Dependabot only sees `go.mod`, so it walks the module forward alone and silently
+splits the three — check the other two after any wails bump. The CLI generates
+the bindings the module must understand.
 
 ## Linting & dead code
 
 - **deadcode allow-list is `scripts/ci/deadcode-allow.txt`.** `task
-  dead-code-go`, `lefthook.yml` `pre-push.deadcode`, and `ci.yml` "Dead Go code"
-  all shell out to `scripts/ci/deadcode-check.sh` which reads one regex per line and
-  fails on non-empty residual. New intentional unreachable: append a line to the
+  dead-code-go`, `task verify`, and `ci.yml`'s "Dead Go code" step all shell out
+  to `scripts/ci/deadcode-check.sh`, which reads one regex per line and fails on
+  non-empty residual. New intentional unreachable: append a line to the
   allow-list, don't touch the three callers.
 - **`deadcode` always exits 0** — findings print to stdout but the exit code is
   never non-zero. To gate, capture stdout and assert it's empty (or grep-filter
@@ -48,12 +61,14 @@ unchecked pin.
   `{staged_files}` as positional args → bypasses extend-exclude unless
   `--force-exclude` is set. Keep the flag whenever handing typos explicit paths
   (else binary `testdata/*.png` get scanned as text).
-- **Pre-push hook runs `task cover`** — every `git push` reproduces Go + Vitest
-  coverage (~3-5 s). Gates on `GO_COVERAGE_MIN` + `vitest.config.ts`
-  `coverage.thresholds`. Skip with `LEFTHOOK_EXCLUDE=coverage git push` only if
-  you trust CI to catch it.
-- **`# hadolint ignore=DL4006`** above any Dockerfile `RUN` containing a shell
-  pipe; same shape as `# hadolint ignore=DL3008` for unpinned apt.
+- **Pre-push is the fast core, and coverage is NOT in it.** The jobs are
+  `actionlint`, `unit-go` (`go test -race -short ./...`), `unit-frontend`
+  (`npx vitest run`, no coverage instrumentation), `gen-types-drift`,
+  `test-skips`, `package-size`, `package-size-history`, and `conventional`. The
+  coverage GATE lives in CI and `task verify` — `GO_COVERAGE_MIN` plus
+  `vitest.config.ts` `coverage.thresholds`. Skip one job with
+  `LEFTHOOK_EXCLUDE=<job name> git push`, naming the job (e.g. `unit-go`), and
+  only when CI will catch what you skipped.
 
 ## Go-walker & embed gotchas
 
@@ -67,13 +82,6 @@ unchecked pin.
   `issues.exclude-dirs` (gosec is rolled into `task lint-go` — the standalone
   gosec job and its `-exclude-dir` flag are both gone). New whole-program Go
   tools should keep the filter.
-- **`Dockerfile.build` frontend-builder runs `npm ci` BEFORE copying full
-  `frontend/` source** — only `package.json`, `package-lock.json`, and
-  `frontend/scripts/seed-go-sentinel.cjs` are in the layer. The sentinel is
-  required because `package.json`'s `postinstall` invokes it; without the explicit
-  `COPY frontend/scripts/seed-go-sentinel.cjs ./scripts/...` line, npm ci dies and
-  every Docker build breaks. Any new postinstall hook referencing a project file
-  needs the same up-front COPY.
 
 ## Shell scripts
 
@@ -83,33 +91,52 @@ unchecked pin.
   CLAUDE.md, `frontend/CLAUDE.md`, `pkg/CLAUDE.md` and `.claude/rules/*.md`
   actually exists, and that nothing tells the reader to run `make`. Matching is
   backtick-anchored so English prose ("before declaring any task done") is not a
-  hit. A new nested CLAUDE.md goes on that script's `DOC_FILES` list.
+  hit. Rule files are picked up by a glob, so a new one needs nothing; a new
+  NESTED `CLAUDE.md` (say `pkg/db/CLAUDE.md`) has to be added to that script's
+  `DOC_FILES` loop by hand.
 - **Bundle-size budget lives in `scripts/ci/check-bundle-size.sh`** — the single
   source of truth for the initial/total JS+CSS KB thresholds, run by the `ci.yml`
   "Enforce bundle-size budget" step. Edit thresholds here, not in any CLAUDE.md or
   rule (those only point at it).
-- **`set -u` not `-e`** in shell scripts that should keep going after an
-  individual failure (`verify-stack.sh` is the canonical example).
+- **`set -euo pipefail` is the house header** (27 of the 33 scripts). Drop `-e`
+  only when the script's job is to keep going and report everything it found —
+  `scripts/ci/audit-bundle.sh` and `scripts/tour-test.sh` (`set -u`) — or when a
+  non-zero exit is the expected input to a retry, as in
+  `scripts/ci/govulncheck-retry.sh` (`set -uo pipefail`).
 - **Release-time shell lives in `scripts/release/`** (not inline in
   `release.yml`): `package-wails-windows.sh`, `compute-sha256.sh`,
-  `push-release-tag.sh`, plus `smoke/`. Each reads inputs from env vars set in the
-  workflow step. Add new release-time logic as a `scripts/release/*.sh` (covered
-  by `task lint-shell` via the `SHELL_SCRIPTS` glob). The Linux/macOS packagers
-  went with the Windows-only pivot — there is no `package-linux.sh`,
-  `make-dmg.sh` or `sign-image.sh`.
+  `push-release-tag.sh`, plus `smoke/smoke.sh`. Each reads inputs from env vars
+  set in the workflow step. Add new release-time logic as a `scripts/release/*.sh`
+  (covered by `task lint-shell` via the `SHELL_SCRIPTS` glob). The Linux/macOS
+  packagers went with the Windows-only pivot — there is no `package-linux.sh`,
+  `make-dmg.sh` or `sign-image.sh`, and no Dockerfile of any kind: the Windows
+  app cross-compiles natively (`CGO_ENABLED=0`, pure-Go WebView2 loader), so the
+  container build and its hadolint pragmas are gone with it.
 
 ## Installers & dev-server timing
 
-- **NSIS installer** — `wails build -nsis` needs the `nsis` apt package in the
-  `windows-builder` stage for `makensis`. `VIProductVersion` in `project.nsi` must
-  be numeric `x.x.x.x` — strip pre-release suffix before injecting
-  (`0.0.10-beta.0` → `0.0.10` via `grep -oE '^[0-9]+\.[0-9]+\.[0-9]+'`, fallback
-  `0.0.0` for `dev`). Output: `build/bin/${INFO_PROJECTNAME}-${ARCH}-installer.exe`.
-  Install path: `$PROGRAMFILES64\${INFO_PRODUCTNAME}` (no company subfolder).
-- **`wails dev` takes ~12-14 s** before its AssetServer (`:34115`) responds. When
-  probing routes via `curl` from a script, sleep at least 14 s after starting the
-  dev server. Vite (`:5173`) is up faster but doesn't see custom handlers.
-- **Smoke-test the server with isolated HOME** — `recall-server` from repo root
-  hits real user data. For fresh-install behavior:
+- **NSIS installer** — `task build-windows` runs `wails3 task windows:package`
+  (v3's Taskfile-native build under `build/`), which needs `makensis` on the HOST
+  (`brew install nsis` / `apt install nsis`); there is no builder container.
+  `VIProductVersion` in `build/windows/nsis/project.nsi` must be a numeric
+  `x.x.x.x`, which is why the Taskfile passes `PRODUCT_VERSION_NUMERIC` — the
+  release-please manifest version with any pre-release suffix stripped, falling
+  back to `0.0.0` for `dev`. Output lands at
+  `bin/recall-amd64-installer.exe`, copied to `dist/windows/`.
+- **The install is PER-USER, not machine-wide** — `INSTALL_SCOPE=user` puts
+  Recall in `$LOCALAPPDATA\Programs\Recall` with no UAC prompt, because the
+  in-app self-updater swaps the running exe in place and can't elevate.
+  `project.nsi` also removes any older machine-wide copy under
+  `$PROGRAMFILES64`. Don't "fix" the scope back to machine-wide without dealing
+  with the updater.
+- **`task dev` is `wails3 dev -config ./build/config.yml -port 9245`** (override
+  with `WAILS_VITE_PORT`), and it deletes the dev DB first — seed after boot.
+  The Vite dev server must bind `127.0.0.1`, not `::1`: `vite.config.ts` sets
+  `server.host` for exactly this reason, because Wails' proxy dials tcp4 and an
+  IPv6-only bind surfaces as `dial tcp4 127.0.0.1:<port>: connect: connection
+  refused` — which reads like a port conflict and isn't.
+- **Smoke-test the server with isolated HOME** — the `serveronly` binary from the
+  repo root hits real user data. For fresh-install behavior:
   `HOME=/tmp/recall-smoke RECALL_SERVER_ADDR=127.0.0.1:7099 ./recall-server` from
-  a dir with no `./screenshots`. Clean up with `rm -rf /tmp/recall-smoke/Library`.
+  a dir with no `./screenshots` (it otherwise listens on `127.0.0.1:7000`). Clean
+  up with `rm -rf /tmp/recall-smoke/Library`.
