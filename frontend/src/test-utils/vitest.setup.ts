@@ -1,9 +1,27 @@
-import { afterAll, afterEach, vi } from 'vitest'
+import { afterAll, afterEach, beforeEach, vi } from 'vitest'
 import { cleanup } from '@testing-library/vue'
 // Registers the jest-dom matchers (toBeInTheDocument, toBeDisabled, …)
 // on vitest's expect. Static import is safe: it touches only the
 // matcher registry, never the @/api module graph.
 import '@testing-library/jest-dom/vitest'
+// A dependency-free leaf of string constants — safe to import statically.
+import { ONBOARDING_COMPLETED_KEY } from '@/composables/shared/storageKeys'
+
+// Every test starts as a RETURNING player on an empty storage. Before
+// Vitest 5, Node 26's own (file-less, unusable) localStorage shadowed
+// happy-dom's, so every read threw and each guarded reader fell back to
+// its default — including the matches store's tour flag, which reads
+// "tour closed" on a throw. Now that the real Storage is reachable, an
+// unseeded key means "never finished onboarding" and the demo overlay
+// hides every seeded record. Clearing first also stops one test's saved
+// preference from leaking into the next test in the same file. A test
+// about first-run behavior removes the key (or installs its own storage
+// with installMemoryLocalStorage) in its own beforeEach, which runs after
+// this one.
+beforeEach(() => {
+  localStorage.clear()
+  localStorage.setItem(ONBOARDING_COMPLETED_KEY, 'true')
+})
 
 // Testing Library teardown. TL only auto-registers its cleanup when
 // test.globals is set (it isn't here), so the explicit hook is
