@@ -14,10 +14,16 @@
 
   "name": "Recall",
 
-  // Debian bookworm base. The whole toolchain — go, node, task (go-task),
+  // Debian trixie (13) base. The whole toolchain — go, node, task (go-task),
   // wails, every linter — is installed by mise in postCreate.sh from
   // mise.toml; only Tesseract + a few system packages come from apt there.
-  "image": "mcr.microsoft.com/devcontainers/base:bookworm",
+  //
+  // The base is trixie rather than bookworm for Tesseract: apt ships 5.5.0
+  // here against bookworm's 5.3.0, and postCreate.sh compares the installed
+  // major.minor against TESSERACT_VERSION because the parser goldens only
+  // reproduce byte-for-byte on a matching engine. On bookworm that check
+  // warned on every container build.
+  "image": "mcr.microsoft.com/devcontainers/base:trixie",
 
   "features": {
     // Docker-in-Docker so `task build-*` targets and `task swagger`
@@ -84,7 +90,7 @@
       ],
 
       "settings": {
-        // Use gofumpt as the formatter (matches `make fmt`). Gopls
+        // Use gofumpt as the formatter (matches `task fmt`). Gopls
         // ships gofumpt support built-in — turn it on instead of
         // shelling out to a separate binary.
         "go.useLanguageServer": true,
