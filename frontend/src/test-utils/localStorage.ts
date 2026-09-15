@@ -1,9 +1,12 @@
 import { vi } from 'vitest'
 
-// happy-dom's `localStorage` is absent in this version, and every
-// persisted-preference composable guards its reads in a try/catch — so
-// without a stand-in, a test that seeds a preference asserts nothing and
-// still passes. This installs a real in-memory one for the current test.
+// Under Vitest 4 on Node 26, happy-dom's `localStorage` was shadowed by
+// Node's unusable one, and every persisted-preference composable guards
+// its reads in a try/catch — so without a stand-in, a test that seeded a
+// preference asserted nothing and still passed. Vitest 5 exposes the real
+// Storage (vitest.setup.ts clears it per test); this still installs an
+// EMPTY in-memory one, which is what a first-run test wants — the setup
+// file pre-seeds onboarding as completed.
 //
 // It lived as a private copy in renderApp and renderWidget, and as a
 // hand-rolled literal in three dozen test files, before the third copy
