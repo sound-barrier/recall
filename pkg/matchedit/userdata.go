@@ -144,8 +144,14 @@ func validateRosterFields(in match.UserMatchDataInput) error {
 
 // overriddenHeroes collects every hero name the override set references —
 // the primary hero, the heroes-played list, stat cells, and SR rows.
+//
+// No capacity hint: summing three lengths that came off the wire is what
+// CodeQL's go/allocation-size-overflow objects to, and it is right that the
+// arithmetic is unchecked even though the overflow is unreachable behind the
+// request-body cap. These lists hold a handful of heroes, so letting append
+// grow the slice costs nothing worth an unchecked sum.
 func overriddenHeroes(in match.UserMatchDataInput) []string {
-	heroes := make([]string, 0, len(in.Heroes)+len(in.HeroStats)+len(in.SR)+1)
+	var heroes []string
 	if in.Hero != nil {
 		heroes = append(heroes, *in.Hero)
 	}
