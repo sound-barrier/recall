@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"recall/pkg/app"
@@ -37,7 +36,7 @@ func handleSetFocusItemStatus(a *app.App) http.HandlerFunc {
 		var body struct {
 			Status string `json:"status"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}

@@ -273,20 +273,70 @@ fi
 # DELETE methods are no longer excluded — the test server runs in an
 # isolated HOME so a DB-wiping DELETE only resets the scratch state.
 # OpenAPI 3.1 is first-class in v4 — no more --experimental flag.
-# Preflight: schemathesis calls CanonicalSchema.is_satisfiable(), which
-# jsonschema-rs 0.50.0 removed. pipx/mise resolve that transitive fresh, so a
-# machine can end up with a combination that dies 58 times over with a Python
-# AttributeError and no hint that a dependency, not the API, is at fault. Say
-# so up front instead. The pinned-good version is in mise.toml.
-if ! python3 -c 'import jsonschema_rs,sys; sys.exit(0 if hasattr(jsonschema_rs.CanonicalSchema,"is_satisfiable") else 1)' 2>/dev/null; then
-  if command -v schemathesis >/dev/null 2>&1; then
-    st_python="$(dirname "$(dirname "$(readlink -f "$(command -v schemathesis)")")")/bin/python"
-    if [[ -x "$st_python" ]] && ! "$st_python" -c 'import jsonschema_rs,sys; sys.exit(0 if hasattr(jsonschema_rs.CanonicalSchema,"is_satisfiable") else 1)' 2>/dev/null; then
-      echo "ERROR: schemathesis's jsonschema-rs is too new — CanonicalSchema.is_satisfiable is gone." >&2
-      echo "       Every operation will report a Runtime Error that has nothing to do with the API." >&2
-      echo "       Fix: pipx inject schemathesis \"jsonschema-rs==<JSONSCHEMA_RS_VERSION from mise.toml>\"" >&2
-      exit 1
-    fi
+# Preflight: jsonschema-rs is a TRANSITIVE dependency that pipx resolves fresh,
+# so it can drift away from the pin in mise.toml — and when it does, every
+# operation dies with a Python error that has nothing to do with the API. That
+# cost a day once: 0.50.0 removed CanonicalSchema.is_satisfiable, which
+# schemathesis 4.24.3 called on every run.
+#
+# This used to probe for that one symbol, which stopped meaning anything the
+# moment schemathesis stopped calling it — 4.27.1 doesn't, and its own
+# jsonschema-rs (>=0.56.0) doesn't ship it, so the probe failed a perfectly
+# healthy pair. Assert the two things that stay true instead: the version in
+# schemathesis's venv IS the pinned one, and that pin satisfies what THIS
+# schemathesis declares it needs (which catches a pin left behind by a
+# schemathesis bump — the other half of the same trap).
+jsonschema_rs_pin="$(sed -nE 's/^JSONSCHEMA_RS_VERSION[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "${REPO_ROOT}/mise.toml" | head -1)"
+if [[ -n "$jsonschema_rs_pin" ]] && command -v schemathesis >/dev/null 2>&1; then
+  st_python="$(dirname "$(dirname "$(readlink -f "$(command -v schemathesis)")")")/bin/python"
+  if [[ -x "$st_python" ]]; then
+    PIN="$jsonschema_rs_pin" "$st_python" - <<'PREFLIGHT' || exit 1
+import os, sys
+from importlib.metadata import PackageNotFoundError, requires, version
+
+pin = os.environ["PIN"]
+
+
+def fail(*lines):
+    for line in lines:
+        print(line, file=sys.stderr)
+    sys.exit(1)
+
+
+try:
+    installed = version("jsonschema_rs")
+except PackageNotFoundError:
+    fail(
+        "ERROR: schemathesis's venv has no jsonschema-rs at all.",
+        f'       Fix: pipx inject --force schemathesis "jsonschema-rs=={pin}"',
+    )
+
+if installed != pin:
+    fail(
+        f"ERROR: schemathesis resolved jsonschema-rs {installed}, but mise.toml pins {pin}.",
+        "       Every operation would report a Runtime Error that has nothing to do with the API.",
+        f'       Fix: pipx inject --force schemathesis "jsonschema-rs=={pin}"',
+    )
+
+# Plain `inject` silently declines when the package is already present, which
+# is why the fix above says --force.
+try:
+    from packaging.requirements import Requirement
+except ImportError:
+    sys.exit(0)  # No packaging in the venv: the equality check above still ran.
+
+wanted = [
+    r
+    for r in (Requirement(x) for x in (requires("schemathesis") or []))
+    if r.name.replace("_", "-").lower() == "jsonschema-rs"
+]
+if wanted and not wanted[0].specifier.contains(installed, prereleases=True):
+    fail(
+        f"ERROR: schemathesis {version('schemathesis')} needs jsonschema-rs"
+        f"{wanted[0].specifier}, but mise.toml pins {pin}.",
+        "       Fix: set JSONSCHEMA_RS_VERSION in mise.toml to a version in that range.",
+    )
+PREFLIGHT
   fi
 fi
 

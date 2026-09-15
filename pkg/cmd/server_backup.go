@@ -51,7 +51,7 @@ func handleDatabaseMaintenance(a *app.App) http.HandlerFunc {
 		var body struct {
 			Operation string `json:"operation"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -179,7 +179,7 @@ func decodeExportBundleBody(r *http.Request) (exportBundleRequest, error) {
 		IncludeHidden  json.RawMessage `json:"include_hidden"`
 		Share          json.RawMessage `json:"share"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := decodeJSONBody(r, &body); err != nil {
 		return exportBundleRequest{}, errors.New("invalid JSON body")
 	}
 	matchKeys, err := decodeRequiredStringArray("match_keys", body.MatchKeys)
@@ -222,7 +222,7 @@ func decodeOptionalShare(field string, raw json.RawMessage) (*app.SharePlayer, e
 		return nil, fmt.Errorf("%s must be an object, not null", field)
 	}
 	var share app.SharePlayer
-	if err := json.Unmarshal(trimmed, &share); err != nil {
+	if err := decodeJSONBytes(trimmed, &share); err != nil {
 		return nil, fmt.Errorf("%s: %w", field, err)
 	}
 	return &share, nil

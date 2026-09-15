@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -65,7 +64,7 @@ func handleSetMatchPin(a *app.App) http.HandlerFunc {
 		var body struct {
 			Pinned *bool `json:"pinned"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -105,7 +104,7 @@ func handleSetMatchVisibility(a *app.App) http.HandlerFunc {
 		var body struct {
 			Hidden *bool `json:"hidden"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -142,7 +141,7 @@ func handleResolveMatch(a *app.App) http.HandlerFunc {
 		var body struct {
 			ResolvedTo string `json:"resolved_to"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -195,7 +194,7 @@ func decodeAnnotationInput(w http.ResponseWriter, r *http.Request, matchKey stri
 		Tags            []*string `json:"tags"`
 		ExclusionReason string    `json:"exclusion_reason"`
 	}
-	if err := json.Unmarshal(raw, &body); err != nil {
+	if err := decodeJSONBytes(raw, &body); err != nil {
 		writeProblem(w, r, probInvalidBody, "invalid JSON body")
 		return app.AnnotationInput{}, false
 	}
@@ -265,7 +264,7 @@ func handleSetMatchMoment(a *app.App) http.HandlerFunc {
 			return
 		}
 		var in matchedit.MomentInput
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		if err := decodeJSONBody(r, &in); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -343,7 +342,7 @@ func handleUpdateMatchData(a *app.App) http.HandlerFunc {
 			return
 		}
 		var input match.UserMatchDataInput
-		if err := json.Unmarshal(raw, &input); err != nil {
+		if err := decodeJSONBytes(raw, &input); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -386,7 +385,7 @@ func handleSetMatchReview(a *app.App) http.HandlerFunc {
 		var body struct {
 			ReviewedBy string `json:"reviewed_by"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -426,7 +425,7 @@ func handleSetMatchQueue(a *app.App) http.HandlerFunc {
 		var body struct {
 			QueueType string `json:"queue_type"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -465,7 +464,7 @@ func handleSetMatchPlayMode(a *app.App) http.HandlerFunc {
 		var body struct {
 			PlayMode string `json:"play_mode"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}

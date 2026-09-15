@@ -23,25 +23,14 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("POST /api/v1/matches", handleCreateManualMatch(a))
 	apiMux.HandleFunc("POST /api/v1/matches/transfers", handleMoveMatches(a))
 
-	// Explicit 405 stubs for `/matches/transfers`. Without these,
-	// `GET / PUT / DELETE /api/v1/matches/transfers` route to the
-	// {match_key} wildcard handler (the literal segment only wins on
-	// the methods we register) — DELETE would try to hard-delete a
-	// match keyed "transfers".
-	apiMux.HandleFunc("GET /api/v1/matches/transfers", methodNotAllowed("POST"))
-	apiMux.HandleFunc("PUT /api/v1/matches/transfers", methodNotAllowed("POST"))
-	apiMux.HandleFunc("DELETE /api/v1/matches/transfers", methodNotAllowed("POST"))
-
-	// Same 405 stub pattern for the bulk endpoints — without
-	// these, GET /api/v1/matches/play-mode would resolve to the
-	// {match_key} wildcard with matchKey="play-mode" and return 404.
-	// (Schemathesis's unsupported_method check expects 405.)
-	apiMux.HandleFunc("GET /api/v1/matches/play-mode", methodNotAllowed("PUT"))
-	apiMux.HandleFunc("POST /api/v1/matches/play-mode", methodNotAllowed("PUT"))
-	apiMux.HandleFunc("DELETE /api/v1/matches/play-mode", methodNotAllowed("PUT"))
-	apiMux.HandleFunc("GET /api/v1/matches/queue", methodNotAllowed("PUT"))
-	apiMux.HandleFunc("POST /api/v1/matches/queue", methodNotAllowed("PUT"))
-	apiMux.HandleFunc("DELETE /api/v1/matches/queue", methodNotAllowed("PUT"))
+	// 405 on every other method for the literal sub-paths, so a wrong verb
+	// can't fall through to the {match_key} wildcard (DELETE would try to
+	// hard-delete a match keyed "transfers"; GET /matches/play-mode would
+	// 404 as a missing match) and so the Allow header names one verb. See
+	// registerLiteralPath.
+	registerLiteralPath(apiMux, "/api/v1/matches/transfers", http.MethodPost)
+	registerLiteralPath(apiMux, "/api/v1/matches/play-mode", http.MethodPut)
+	registerLiteralPath(apiMux, "/api/v1/matches/queue", http.MethodPut)
 
 	// Per-{match_key} sub-resource handlers live in server_matches_item.go.
 	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}", handleHardDeleteMatch(a))
@@ -163,7 +152,7 @@ func handleClearMatches(a *app.App) http.HandlerFunc {
 func handleCreateManualMatch(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var input match.ManualMatchInput
-		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		if err := decodeJSONBody(r, &input); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -207,7 +196,7 @@ func handleMoveMatches(a *app.App) http.HandlerFunc {
 			MatchKeys     []*string `json:"match_keys"`
 			TargetProfile *string   `json:"target_profile"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -247,7 +236,7 @@ func handleBulkSetMatchQueue(a *app.App) http.HandlerFunc {
 			MatchKeys []string `json:"match_keys"`
 			QueueType string   `json:"queue_type"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -268,7 +257,7 @@ func handleBulkSetMatchPlayMode(a *app.App) http.HandlerFunc {
 			MatchKeys []string `json:"match_keys"`
 			PlayMode  string   `json:"play_mode"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}

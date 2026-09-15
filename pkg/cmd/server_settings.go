@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"recall/pkg/app"
@@ -121,7 +120,7 @@ func handleSetWatcher(a *app.App) http.HandlerFunc {
 		var body struct {
 			Enabled *bool `json:"enabled"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Enabled == nil {
+		if err := decodeJSONBody(r, &body); err != nil || body.Enabled == nil {
 			writeProblem(w, r, probInvalidBody, "body must be {\"enabled\":<bool>}")
 			return
 		}
@@ -145,7 +144,7 @@ func handleSetCloseBehavior(a *app.App) http.HandlerFunc {
 		var body struct {
 			ExitOnClose *bool `json:"exit_on_close"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ExitOnClose == nil {
+		if err := decodeJSONBody(r, &body); err != nil || body.ExitOnClose == nil {
 			writeProblem(w, r, probInvalidBody, "body must be {\"exit_on_close\":<bool>}")
 			return
 		}
@@ -189,7 +188,7 @@ func handleSetAutoBackup(a *app.App) http.HandlerFunc {
 		var body struct {
 			IntervalDays *int `json:"interval_days"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.IntervalDays == nil {
+		if err := decodeJSONBody(r, &body); err != nil || body.IntervalDays == nil {
 			writeProblem(w, r, probInvalidBody, "body must be {\"interval_days\":<int>}")
 			return
 		}

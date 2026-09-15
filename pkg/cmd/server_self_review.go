@@ -61,7 +61,7 @@ func handleListSelfReviews(a *app.App) http.HandlerFunc {
 func handleCreateSelfReview(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var in review.CreateInput
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		if err := decodeJSONBody(r, &in); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -96,7 +96,7 @@ func handleUpdateSelfReview(a *app.App) http.HandlerFunc {
 			return
 		}
 		var in review.UpdateInput
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		if err := decodeJSONBody(r, &in); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -133,7 +133,7 @@ func handleSetSelfReviewMatches(a *app.App) http.HandlerFunc {
 		var body struct {
 			MatchKeys []string `json:"match_keys"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -157,7 +157,7 @@ func handleSetSelfReviewFocusItems(a *app.App) http.HandlerFunc {
 		var body struct {
 			Items *[]review.FocusItem `json:"items"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -216,7 +216,7 @@ func handlePutSelfReviewNote(a *app.App) http.HandlerFunc {
 			return
 		}
 		var in coach.NoteInput
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		if err := decodeJSONBody(r, &in); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -261,7 +261,7 @@ func handlePutSelfReviewMoment(a *app.App) http.HandlerFunc {
 			return
 		}
 		var in matchedit.MomentInput
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		if err := decodeJSONBody(r, &in); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}

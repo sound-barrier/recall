@@ -65,3 +65,34 @@ func TestSupportedMethods_StillRouteOnLiteralPaths(t *testing.T) {
 		t.Errorf("PUT /profiles/active got 405 — live handler shadowed by stub")
 	}
 }
+
+// The `Allow` header on a 405 must name what the resource actually
+// supports. Registering one 405 stub per wrong verb made Go's ServeMux
+// treat those verbs as REGISTERED, so its own automatic 405 (for any
+// verb with no stub — OPTIONS is the one schemathesis sends) answered
+// with `Allow: DELETE, GET, POST, PUT`: three methods the resource
+// refuses, advertised to every client that asks what it can do.
+func TestUnsupportedMethod_AllowNamesOnlyTheLiveVerb(t *testing.T) {
+	_, mux := newTestApp(t, dbtest.New())
+
+	cases := []struct {
+		path, wantAllow string
+	}{
+		{"/api/v1/matches/play-mode", http.MethodPut},
+		{"/api/v1/matches/queue", http.MethodPut},
+		{"/api/v1/matches/transfers", http.MethodPost},
+		{"/api/v1/profiles/active", http.MethodPut},
+	}
+
+	for _, c := range cases {
+		t.Run(c.path, func(t *testing.T) {
+			rec := fire(t, mux, http.MethodOptions, c.path, nil)
+			if rec.Code != http.StatusMethodNotAllowed {
+				t.Fatalf("got %d, want 405", rec.Code)
+			}
+			if got := rec.Header().Get("Allow"); got != c.wantAllow {
+				t.Errorf("Allow = %q, want %q", got, c.wantAllow)
+			}
+		})
+	}
+}
