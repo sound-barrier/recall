@@ -32,6 +32,10 @@ frontend/package.json.md5
 /Recall.app/
 /recall
 /seed-dev
+# cmd/ helpers, which CI and the Taskfile only ever `go run` — a built
+# copy at the root is always a local artifact (one rode into e9b41a74).
+/roster-watch
+/roster-watch.exe
 # Server-mode binaries (go build -tags serveronly)
 /Recall-server
 /Recall-server.exe

@@ -855,5 +855,5 @@ tasks:
     desc: Remove dist/, build/bin/, frontend/dist, frontend/node_modules, stray repo-root binaries
     cmds:
       - rm -rf {{.DIST_DIR}} build/bin frontend/dist frontend/node_modules
-      - rm -rf Recall Recall.exe Recall.app recall Recall-server Recall-server.exe recall-server
+      - rm -rf Recall Recall.exe Recall.app recall Recall-server Recall-server.exe recall-server roster-watch roster-watch.exe
       - echo "[ recall ] dist/, build/bin/, frontend/dist, frontend/node_modules, stray repo-root binaries removed"
