@@ -91,6 +91,14 @@ default" as `DELETE` on the setting.
   (`/matches/{matchKey}/annotation` — body carries only annotation fields, not
   `match_key`).
 - Query params for variants of the same operation (`/exports?format=json|csv`).
+- **Decode a body with `decodeJSONBody(r, &dst)`** (or `decodeJSONBytes` when
+  the handler already slurped the bytes to tell a literal `null` apart from an
+  absent field), never `json.NewDecoder(r.Body).Decode` directly. JSON Schema
+  types describe the VALUE, so `{"interval_days": 7.0}` is a valid
+  `type: integer` and every client generated from the spec may send it —
+  encoding/json judges the spelling instead and 400s it. The helper normalizes
+  an integral number to its integer form first; `7.5` still fails, because that
+  one is a real type error.
 
 ## Schema conventions
 

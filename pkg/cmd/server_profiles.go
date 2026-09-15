@@ -21,13 +21,10 @@ func registerProfileRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("POST /api/v1/profiles/test/seed", handleSeedTestProfile(a))
 	apiMux.HandleFunc("PUT /api/v1/profiles/active", handleSwitchProfile(a))
 
-	// Explicit 405 stubs for `/profiles/active`. Without these,
-	// `GET / POST / DELETE /api/v1/profiles/active` route to
-	// `{name}` and try to operate on a profile literally named
-	// "active". Same collision pattern as `/matches/transfers`.
-	apiMux.HandleFunc("GET /api/v1/profiles/active", methodNotAllowed("PUT"))
-	apiMux.HandleFunc("POST /api/v1/profiles/active", methodNotAllowed("PUT"))
-	apiMux.HandleFunc("DELETE /api/v1/profiles/active", methodNotAllowed("PUT"))
+	// 405 on every other method for `/profiles/active`, so a wrong verb
+	// can't route to `{name}` and operate on a profile literally named
+	// "active". Same collision as `/matches/transfers`.
+	registerLiteralPath(apiMux, "/api/v1/profiles/active", http.MethodPut)
 
 	apiMux.HandleFunc("PUT /api/v1/profiles/{name}", handleRenameProfile(a))
 	apiMux.HandleFunc("DELETE /api/v1/profiles/{name}", handleDeleteProfile(a))
@@ -44,7 +41,7 @@ func handleCreateProfile(a *app.App) http.HandlerFunc {
 		var body struct {
 			Name string `json:"name"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -86,7 +83,7 @@ func handleSwitchProfile(a *app.App) http.HandlerFunc {
 		var body struct {
 			Name string `json:"name"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -110,7 +107,7 @@ func handleRenameProfile(a *app.App) http.HandlerFunc {
 		var body struct {
 			NewName string `json:"new_name"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}

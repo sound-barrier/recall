@@ -8,12 +8,15 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
+	"math"
 	"net/http"
 	"net/http/pprof"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -99,6 +102,110 @@ func RunServer(a *app.App, assets embed.FS) {
 	}
 }
 
+// decodeJSONBody decodes the request body into dst, the way every handler
+// that reads a JSON body should.
+//
+// It exists because JSON Schema and encoding/json disagree about what an
+// integer is. `{"interval_days": 7.0}` is a valid `type: integer` in JSON
+// Schema — the type describes the VALUE, and 7.0 has no fractional part —
+// so api/openapi.yaml advertises it as acceptable and every client
+// generated from that spec is entitled to send it. encoding/json looks at
+// the SPELLING instead and refuses a decimal point into an `int`, so the
+// server answered 400 to requests its own contract calls valid. A
+// JavaScript caller hits this by accident (JSON.stringify of a Number is
+// free to write either), which is how a generated client can be wrong
+// without anyone writing a wrong line.
+//
+// So an integral number is normalized to its integer spelling before the
+// decode. A genuinely fractional value (7.5) is left exactly as written and
+// still fails against an `int` field, because that one really is a type
+// error. Values too large for int64 are left alone for the same reason.
+func decodeJSONBody(r *http.Request, dst any) error {
+	raw, err := io.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	return decodeJSONBytes(raw, dst)
+}
+
+// decodeJSONBytes is decodeJSONBody for a handler that already holds the
+// body — the ones that read it first to tell a literal `null` from an absent
+// field. Same contract: an integral number decodes wherever an integer is
+// expected, however it was spelled.
+func decodeJSONBytes(raw []byte, dst any) error {
+	// UseNumber keeps every number as its literal text, so a value that
+	// needs no rewriting round-trips byte-for-byte.
+	var tree any
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	if err := dec.Decode(&tree); err != nil {
+		return err
+	}
+	normalized, changed := normalizeIntegralFloats(tree)
+	if !changed {
+		return json.Unmarshal(raw, dst)
+	}
+	rewritten, err := json.Marshal(normalized)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(rewritten, dst)
+}
+
+// normalizeIntegralFloats rewrites every number whose value is a whole one
+// but whose spelling is not (7.0, 7e0) into its integer form, anywhere in
+// the document — nested objects and arrays included, since the generated
+// body that first exposed this carried its float inside `heroes[]`. The
+// bool reports whether anything changed, so an untouched body can be
+// decoded from its original bytes.
+func normalizeIntegralFloats(v any) (any, bool) {
+	switch t := v.(type) {
+	case map[string]any:
+		changed := false
+		for key, val := range t {
+			next, c := normalizeIntegralFloats(val)
+			if c {
+				t[key] = next
+				changed = true
+			}
+		}
+		return t, changed
+	case []any:
+		changed := false
+		for i, val := range t {
+			next, c := normalizeIntegralFloats(val)
+			if c {
+				t[i] = next
+				changed = true
+			}
+		}
+		return t, changed
+	case json.Number:
+		return integerSpelling(t)
+	default:
+		return v, false
+	}
+}
+
+// integerSpelling returns n written as a plain integer when its value is a
+// whole number that int64 can hold, and reports whether it rewrote it.
+func integerSpelling(n json.Number) (json.Number, bool) {
+	text := n.String()
+	if !strings.ContainsAny(text, ".eE") {
+		return n, false // already an integer spelling
+	}
+	f, err := strconv.ParseFloat(text, 64)
+	if err != nil || f != math.Trunc(f) || math.IsInf(f, 0) {
+		return n, false
+	}
+	// Outside int64 the rewrite would lose the value, and the field it is
+	// headed for can't hold it either — leave it for the decoder to reject.
+	if f < math.MinInt64 || f > math.MaxInt64 {
+		return n, false
+	}
+	return json.Number(strconv.FormatInt(int64(f), 10)), true
+}
+
 // decodeRequiredString decodes a one-field JSON body of the shape
 // `{"<field>":"<value>"}` and rejects empty / absent / null values
 // uniformly. Used by simple PUT setters that take exactly one
@@ -113,7 +220,7 @@ func decodeRequiredString(r *http.Request, field string) (string, error) {
 	// true` is the default in OpenAPI 3.1 and schemathesis exercises
 	// it heavily.
 	body := map[string]json.RawMessage{}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := decodeJSONBody(r, &body); err != nil {
 		return "", fmt.Errorf("body must be {%q:\"...\"}", field)
 	}
 	raw, ok := body[field]
@@ -143,7 +250,7 @@ func decodeRequiredStringArray(field string, raw json.RawMessage) ([]string, err
 		return nil, fmt.Errorf("%s must be an array, not null", field)
 	}
 	var in []*string
-	if err := json.Unmarshal(trimmed, &in); err != nil {
+	if err := decodeJSONBytes(trimmed, &in); err != nil {
 		return nil, fmt.Errorf("%s: %w", field, err)
 	}
 	return derefStringArray(field, in)
@@ -164,7 +271,7 @@ func decodeOptionalBool(field string, raw json.RawMessage) (bool, error) {
 		return false, fmt.Errorf("%s must be a boolean, not null", field)
 	}
 	var b bool
-	if err := json.Unmarshal(trimmed, &b); err != nil {
+	if err := decodeJSONBytes(trimmed, &b); err != nil {
 		return false, fmt.Errorf("%s: %w", field, err)
 	}
 	return b, nil
@@ -332,16 +439,44 @@ func newAPIMux(a *app.App) *http.ServeMux {
 
 // methodNotAllowed returns a handler that responds 405 with an
 // `Allow` header listing the valid methods for the path (required
-// by RFC 9110 and asserted by schemathesis). Registered on the
-// exact verb+path combinations where a literal sub-path
-// (`/matches/transfers`, `/profiles/active`) would otherwise fall
-// through to a wildcard handler (`/matches/{match_key}`,
-// `/profiles/{name}`) on Go 1.22's ServeMux. Without these stubs, a
-// `DELETE /api/v1/matches/transfers` routes to HardDeleteMatch and
-// tries to operate on a match keyed "transfers".
+// by RFC 9110 and asserted by schemathesis).
 func methodNotAllowed(allow string) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Allow", allow)
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// standardMethods is every method a client might plausibly send: RFC 9110's
+// eight, plus PATCH.
+var standardMethods = []string{
+	http.MethodGet, http.MethodHead, http.MethodPost, http.MethodPut,
+	http.MethodPatch, http.MethodDelete, http.MethodConnect,
+	http.MethodOptions, http.MethodTrace,
+}
+
+// registerLiteralPath answers `path` on every method except `live`, which the
+// caller registers itself. Two things need this.
+//
+// A literal sub-path (`/matches/transfers`, `/profiles/active`) sits under a
+// wildcard (`/matches/{match_key}`, `/profiles/{name}`), and the literal only
+// wins on the methods actually registered for it — so without a stub,
+// `DELETE /api/v1/matches/transfers` routes to HardDeleteMatch and tries to
+// hard-delete a match keyed "transfers".
+//
+// The full sweep, rather than a stub per colliding verb, is about the `Allow`
+// header. Go's ServeMux synthesizes its own 405 for a method nothing is
+// registered for, and that response advertises every method that IS
+// registered — stubs included. So three stubs meant `OPTIONS
+// /api/v1/matches/play-mode` answered `Allow: DELETE, GET, HEAD, POST, PUT`:
+// four methods the resource refuses, promised to any client that asked what it
+// could do. Covering the whole method set means the mux's synthesized 405
+// never fires here and every answer carries the one true verb.
+func registerLiteralPath(mux *http.ServeMux, path, live string) {
+	for _, method := range standardMethods {
+		if method == live {
+			continue
+		}
+		mux.HandleFunc(method+" "+path, methodNotAllowed(live))
 	}
 }

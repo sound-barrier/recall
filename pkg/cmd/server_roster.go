@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -37,7 +36,7 @@ func handleSaveRosterMember(a *app.App) http.HandlerFunc {
 			DisplayName string `json:"display_name"`
 			Note        string `json:"note"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}

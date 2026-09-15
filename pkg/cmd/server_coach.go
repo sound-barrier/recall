@@ -125,7 +125,7 @@ func handleSetCoachSessionPlayer(a *app.App) http.HandlerFunc {
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		var b body
-		if err := json.NewDecoder(r.Body).Decode(&b); err != nil {
+		if err := decodeJSONBody(r, &b); err != nil {
 			writeProblem(w, r, probInvalidBody, `body must be {"handle":"...", "kind"?: "player"|"team"}`)
 			return
 		}
@@ -149,7 +149,7 @@ func handleOpenCoachReplaySession(a *app.App) http.HandlerFunc {
 		var body struct {
 			Codes json.RawMessage `json:"codes"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -197,7 +197,7 @@ func handleSetCoachSessionMatchContext(a *app.App) http.HandlerFunc {
 			return
 		}
 		var ctx coach.ObservedContext
-		if err := json.NewDecoder(r.Body).Decode(&ctx); err != nil {
+		if err := decodeJSONBody(r, &ctx); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -239,7 +239,7 @@ func handlePutCoachNote(a *app.App) http.HandlerFunc {
 			return
 		}
 		var in coach.NoteInput
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		if err := decodeJSONBody(r, &in); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -277,7 +277,7 @@ func handlePutCoachMoment(a *app.App) http.HandlerFunc {
 			return
 		}
 		var in coach.MomentInput
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		if err := decodeJSONBody(r, &in); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -316,7 +316,7 @@ func handlePutCoachFocusItems(a *app.App) http.HandlerFunc {
 		var body struct {
 			Items *[]coach.FocusItem `json:"items"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -351,7 +351,7 @@ func handleExportCoachNotes(a *app.App) http.HandlerFunc {
 		// with no session open the honest answer is 404, and decoding first
 		// would answer 400 for a request whose real problem is that there is
 		// nothing to export. Let it through and let the session check speak.
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil && !errors.Is(err, io.EOF) {
+		if err := decodeJSONBody(r, &body); err != nil && !errors.Is(err, io.EOF) {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
@@ -473,7 +473,7 @@ func handleSetCoachingSettings(a *app.App) http.HandlerFunc {
 			CoachName    *string `json:"coach_name"`
 			PlayerHandle *string `json:"player_handle"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, `body must be {"coach_name":"...","player_handle":"..."}`)
 			return
 		}
@@ -511,7 +511,7 @@ func decodeDecisions(r *http.Request) ([]coachreturn.Verdict, error) {
 	var body struct {
 		Decisions map[string]*string `json:"decisions"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := decodeJSONBody(r, &body); err != nil {
 		return nil, errors.New("invalid JSON body")
 	}
 	if body.Decisions == nil {
