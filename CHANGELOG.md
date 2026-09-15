@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.33.2](https://github.com/sound-barrier/recall/compare/v0.33.1...v0.33.2) (2026-09-15)
+
+
+### Bug Fixes
+
+* **api:** answer the requests the spec says are valid ([bb21467](https://github.com/sound-barrier/recall/commit/bb214677da55c353cdecdb88cb48554b67d6c55a))
+* **matchedit:** drop the unchecked capacity sum CodeQL flags ([f3ae9fc](https://github.com/sound-barrier/recall/commit/f3ae9fc340363a3aee448842b0a8435994410ad0))
+
+
+### Documentation
+
+* **rules:** re-verify build-tooling.md against the repo it describes ([079450e](https://github.com/sound-barrier/recall/commit/079450e37e5e52b7bdeb2644cfe99db18399124d))
+
+
+### Build & Packaging
+
+* **deps-dev:** move the unit suite to vitest 5 ([75945c6](https://github.com/sound-barrier/recall/commit/75945c6e06f3325bfcaceab74905e88b358003dc))
+* **deps:** bring every pinned tool up to current ([c17f64d](https://github.com/sound-barrier/recall/commit/c17f64d01458878541e312780cf06937998de817))
+* **deps:** bring the wails trio back to lockstep at beta.22 ([c6b1373](https://github.com/sound-barrier/recall/commit/c6b13733d4888f1be4cde6113d103e86a7f041d2))
+* **deps:** Bump github.com/wailsapp/wails/v3 ([351a834](https://github.com/sound-barrier/recall/commit/351a834f9a6afdbf5f7fe04f976886909bc4f0f4))
+* **deps:** Bump the actions group with 2 updates ([de4687e](https://github.com/sound-barrier/recall/commit/de4687ee229ba0d52a811c0e82b3cd91415cd341))
+* **deps:** Bump the go-deps group with 2 updates ([32f2c8a](https://github.com/sound-barrier/recall/commit/32f2c8a68f9f0b5d621ad9d79c1cb9a8434b04fe))
+* **deps:** take every npm dependency to its current release ([e67dbf0](https://github.com/sound-barrier/recall/commit/e67dbf0434ffcc5ebc5506d31d0ffea1acc20315))
+* **deps:** take the Go modules to their current releases ([98defee](https://github.com/sound-barrier/recall/commit/98defeed47cd5cddf3b3aac8e3d0d7a1f0480e51))
+* **devcontainer:** move the base image to Debian trixie ([442f9e0](https://github.com/sound-barrier/recall/commit/442f9e0d51a8604a05a24edbac1b6d12d7006101))
+* point go.mod's toolchain at the Go the pins now name ([33d5f97](https://github.com/sound-barrier/recall/commit/33d5f97fc6204d475eb22f0e09e568513c7006a2))
+
 ## [0.33.1](https://github.com/sound-barrier/recall/compare/v0.33.0...v0.33.1) (2026-09-09)
 
 
