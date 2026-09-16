@@ -32,7 +32,7 @@ Consumers no longer read a file; they read the environment mise puts them in:
 
 `task check-deps` compares against upstream and **fails** on drift: the wails3
 CLI, Spectral, typos, Semgrep, Honkit, schemathesis, jsonschema-rs, ruff,
-sqlfluff, Biome, Go and Node — plus two cross-file assertions, the
+sqlfluff, zizmor, Biome, Go and Node — plus two cross-file assertions, the
 `crate-ci/typos@SHA  # vX.Y.Z` comment in `ci.yml` and `.node-version` agreeing
 with `[tools] node`. Deliberately unchecked: the MEASUREMENT pins
 (`GOBCO_VERSION`, `TESSERACT_VERSION` — the version moves the number, so bumping

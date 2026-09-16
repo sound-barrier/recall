@@ -94,6 +94,20 @@ pre-commit:
       glob: "*.sh"
       run: shellcheck {staged_files}
 
+    # zizmor audits workflows + composite actions for security smells
+    # (config .github/zizmor.yml). --offline: a commit hook must not depend on
+    # the network or a token, so the API-backed audits (impostor commits,
+    # known-vulnerable actions, moved tags) run only in CI's lint job. It
+    # audits the whole repo rather than {staged_files}: an edit to
+    # .github/zizmor.yml changes what every workflow reports.
+    zizmor:
+      glob:
+        - ".github/workflows/*.{yml,yaml}"
+        - ".github/actions/*/action.{yml,yaml}"
+        - ".github/dependabot.yml"
+        - ".github/zizmor.yml"
+      run: zizmor --offline --no-progress .
+
     # ── TOML / SQL / JSON ─────────────────────────────────────────────
     # taplo formats staged TOML (config in .taplo.toml); stage_fixed
     # re-stages so the commit carries the canonical form. Mirrors shfmt.

@@ -20,7 +20,7 @@ name: PR coverage comment
 # so this only takes effect for PRs opened AFTER it merges to main.
 
 on:
-  workflow_run:
+  workflow_run:  # zizmor: ignore[dangerous-triggers] default-branch definition only; no PR checkout; fork runs skipped by the job if; artifacts are parsed as data by scripts/ci/render-pr-report.py
     workflows: [CI, E2E]
     types: [completed]
 

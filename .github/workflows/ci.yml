@@ -37,7 +37,7 @@ jobs:
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c  # v4.3.0
         with:
           install_args: >-
-            go node task ruff shfmt shellcheck jq taplo pipx:sqlfluff
+            go node task ruff shfmt shellcheck jq taplo zizmor pipx:sqlfluff
             go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
       # Package + directory file budgets. A gate, not a report. Runs FIRST in
@@ -49,6 +49,15 @@ jobs:
       # `task verify` run, so the local and CI signals are 1:1.
       - name: Enforce package + directory size budgets
         run: bash scripts/ci/check-package-size.sh
+
+      # Workflow + composite-action security audit (config .github/zizmor.yml).
+      # Online, unlike the lefthook hook: the token turns on impostor-commit,
+      # known-vulnerable-actions and ref-version-mismatch, which need the
+      # GitHub API. Runs before npm ci so node_modules is never walked.
+      - name: Audit workflows + actions (zizmor)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: zizmor --no-progress .
 
       # Wails v3's desktop code imports a CGo WebKit2GTK webview, so the default
       # build tags need these system libs to typecheck on the Ubuntu runner.
