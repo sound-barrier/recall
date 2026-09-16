@@ -29,7 +29,10 @@ permissions: {}  # deny all by default; each job declares only what it needs
 jobs:
   comment:
     # Only PR-originated runs carry a PR to comment on; skip push-to-main.
-    if: ${{ github.event.workflow_run.event == 'pull_request' }}
+    # Fork runs are skipped too: this job holds pull-requests: write, and the
+    # head-branch fallback below would resolve a fork branch that shares a
+    # maintainer branch's name to the maintainer's PR.
+    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -51,7 +54,7 @@ jobs:
         run: |
           num="$PR_FROM_EVENT"
           if [ -z "$num" ] || [ "$num" = "null" ]; then
-            num=$(gh pr list --repo "${{ github.repository }}" --head "$HEAD_BRANCH" \
+            num=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$HEAD_BRANCH" \
               --state open --json number --jq '.[0].number // empty' 2>/dev/null || true)
           fi
           echo "number=$num" >> "$GITHUB_OUTPUT"
@@ -176,7 +179,7 @@ jobs:
           PR_NUMBER: ${{ steps.pr.outputs.number }}
         run: |
           gh api --paginate \
-            "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+            "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
             --jq '.[]
               | select(.user.login == "github-actions[bot]")
               | select(
@@ -189,7 +192,7 @@ jobs:
                 [ -n "$id" ] || continue
                 echo "Deleting legacy CI comment $id"
                 gh api -X DELETE \
-                  "repos/${{ github.repository }}/issues/comments/${id}"
+                  "repos/${GITHUB_REPOSITORY}/issues/comments/${id}"
               done
 
       # One sticky on the `pr-report` header. recreate:false → update in place
