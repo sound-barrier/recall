@@ -461,10 +461,10 @@ Every third-party action referenced from `.github/workflows/` is pinned by **40-
 Format:
 
 ```yaml
-- uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+- uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 ```
 
-The SHA is the source of truth; the comment is for humans. **Two spaces before the `#`** to keep yamllint happy.
+The SHA is the source of truth; the comment is for humans. **Two spaces before the `#`** to keep yamllint happy. Name the **exact** release tag the SHA resolves to (`# v7.0.1`, never `# v7`): a major tag moves on every upstream release, so a major-only comment soon names a different commit than the pin.
 
 **Why:** a tag can be silently re-pointed to a malicious commit by a compromised maintainer account or stolen token. Pinning by SHA freezes the exact code that runs. This has happened in the wild — see `tj-actions/changed-files` (March 2025).
 
