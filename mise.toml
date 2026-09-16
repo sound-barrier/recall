@@ -110,6 +110,11 @@ zizmor = "1.30.1"
 # module has to understand, so a split between them fails at generate time, not
 # at build time.
 "go:github.com/wailsapp/wails/v3/cmd/wails3" = "v3.0.0-beta.22"
+# Secret scanner for commits and staged changes (config .gitleaks.toml). Built
+# from source and checked against the Go checksum database rather than trusting
+# a checksums file from the same release. The module path still reads
+# zricethezav although the repository moved to github.com/gitleaks.
+"go:github.com/zricethezav/gitleaks/v8" = "v8.30.1"
 
 # CI-only reporters (JUnit XML for the test job, Cobertura XML for the Go
 # coverage job). Devs get them too via `mise install`; CI installs them

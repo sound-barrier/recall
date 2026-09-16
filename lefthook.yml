@@ -161,6 +161,14 @@ pre-commit:
     typos:
       run: typos --force-exclude {staged_files}
 
+    # ── Secrets ───────────────────────────────────────────────────────
+    # gitleaks scans the staged diff before it becomes history, where a
+    # secret stays published even after a later commit deletes it (config
+    # .gitleaks.toml; `task secrets` and CI scan HEAD's whole history). No
+    # glob: a secret can land in any file type.
+    gitleaks:
+      run: gitleaks git --staged --redact --no-banner
+
     # ── Markdown ──────────────────────────────────────────────────────
     # Config in .markdownlint-cli2.yaml at the repo root. --fix runs
     # the autofix-safe rules (MD031 blanks-around-fences, MD022
