@@ -352,6 +352,7 @@ lefthook install        # wires the hooks into .git/hooks/{pre-commit,pre-push,c
 | `spectral`          | `api/openapi.yaml`              | `task lint-openapi` → `npx @stoplight/spectral-cli` (auto-pulled on demand by `npx`) |
 | `gen-types`         | `api/openapi.yaml`              | `task gen-types` — regenerates `frontend/src/client` and auto-stages it so the generated client is never out of sync with the spec. |
 | `yamllint`          | `*.{yml,yaml}` (excl. openapi)  | `yamllint`           (from `mise install`) |
+| `zizmor`            | `.github/workflows/*`, `.github/actions/*/action.*`, `.github/dependabot.yml`, `.github/zizmor.yml` | `zizmor --offline` — workflow + composite-action security audit (from `mise install`; CI's `lint` job runs it online) |
 | `taplo`             | `*.toml`                        | `taplo fmt` — formats + re-stages (from `mise install`) |
 | `sqlfluff`          | `*.sql`                         | `sqlfluff lint` (dialect sqlite — from `mise install`) |
 | `biome-json`        | `*.json`                        | `biome check --write` — formats/lints + re-stages (auto-pulled on demand by `npx`) |
@@ -473,6 +474,8 @@ The SHA is the source of truth; the comment is for humans. **Two spaces before t
 **Bumping an action:** Dependabot (configured in `.github/dependabot.yml`) understands the SHA + version-comment format and updates both fields on its weekly run. Most bumps will arrive as a Dependabot PR.
 
 **First-party composite actions** (`./.github/actions/foo`) are exempt — they live in the same repo as the workflow.
+
+**Allowed third-party actions:** zizmor's `forbidden-uses` audit (config in `.github/zizmor.yml`) fails any `uses:` whose owner or repository is not on its allow list, which mirrors the repository's Settings → Actions → General allowed-actions list. A new third-party action needs an entry in `.github/zizmor.yml` in the same PR, and the maintainer adds `owner/repo@*` to that repository setting before it merges.
 
 ### Tagging and releasing
 

@@ -82,6 +82,11 @@ taplo = "latest"
 trivy = "latest"
 lefthook = "latest"
 jq = "latest"
+# actionlint checks that a workflow is valid; zizmor checks that it is safe
+# (credential persistence, dangerous triggers, template injection, impostor
+# commits). Resolved from aqua, which verifies the release's GitHub
+# build-provenance attestation at install time.
+zizmor = "1.30.1"
 
 # Go-source tools built from source with the pinned Go → go: backend (same
 # import paths the old `go install` bootstrap used). golangci-lint lives here

@@ -1,0 +1,24 @@
+rules:
+  # zizmor 1.30 asks for `uses: $/...`; actionlint 1.7.12 rejects it
+  # (rhysd/actionlint#711) and scripts/ci/check-action-pins.sh reads it as an
+  # unpinned ref. Re-enable once actionlint accepts `$/`.
+  self-repository:
+    disable: true
+  # In-repo mirror of Settings > Actions > General > allowed actions. A new
+  # third-party action needs an entry here AND in that repository setting.
+  forbidden-uses:
+    config:
+      allow:
+        - actions/*
+        - github/*
+        - anchore/sbom-action
+        - aquasecurity/trivy-action
+        - crate-ci/typos
+        - dawidd6/action-download-artifact
+        - EndBug/label-sync
+        - EnricoMi/publish-unit-test-result-action
+        - googleapis/release-please-action
+        - jdx/mise-action
+        - marocchino/sticky-pull-request-comment
+        - raven-actions/actionlint
+        - softprops/action-gh-release

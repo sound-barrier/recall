@@ -247,7 +247,9 @@ jobs:
             recall-*.bat.sha256
             SHA256SUMS
 
-      - name: Create GitHub Release
+      # The zizmor ignore sits on the name line: trailing the uses: pin, it
+      # would hide the version comment from ref-version-mismatch.
+      - name: Create GitHub Release  # zizmor: ignore[superfluous-actions] one call creates the release and uploads every asset (immutable releases)
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64  # v3.0.3
         with:
           # Tags like v0.0.1-beta or v1.0.0-rc1 contain a hyphen → prerelease.
