@@ -202,15 +202,14 @@ jobs:
   # mise stays local-dev + the poly-tool lint job.
   test-unit:
     runs-on: ubuntu-latest
-    # Extra scopes are needed by EnricoMi/publish-unit-test-result-action so
-    # it can post the checks summary on pull requests. The workflow-level
-    # default is contents:read; per-job permissions replace rather than
-    # merge, so contents:read is re-listed below.
+    # EnricoMi/publish-unit-test-result-action needs only checks: write here:
+    # its README (at the pinned SHA) drops pull-requests: write under
+    # `comment_mode: off`, and issues: read applies to private repos only.
+    # Per-job permissions replace the workflow default rather than merge
+    # with it, so contents: read is re-listed.
     permissions:
       contents: read
       checks: write
-      pull-requests: write
-      issues: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
