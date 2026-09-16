@@ -5,6 +5,7 @@
 ## Installation
 
 * [Windows](install-windows.md)
+* [Code signing](code-signing-policy.md)
 
 ## Using Recall
 

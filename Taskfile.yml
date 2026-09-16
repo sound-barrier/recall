@@ -90,20 +90,55 @@ tasks:
   build-windows:
     desc: Windows/amd64 Wails v3 app + NSIS installer (native cross-compile) → dist/windows/
     # Native cross-compile (CGO_ENABLED=0 — v3's WebView2 loader is pure Go), so
-    # no Docker; needs wails3 + node + makensis (nsis) on PATH. wails3 generate
-    # syso embeds the icon/version; create:nsis:installer fetches the WebView2
-    # bootstrapper + runs makensis.
+    # no Docker; needs wails3 + node + makensis (nsis) on PATH.
+    #
+    # Split into exe-then-installer so the release can sign the exe BEFORE NSIS
+    # embeds it (see build-windows-installer). Running this task is unchanged:
+    # same two files, same place. Only release.yml uses the halves separately.
     cmds:
-      - echo "[ recall ] Building windows/amd64 Wails v3 app + NSIS installer (CGO_ENABLED=0, native)…"
-      # INSTALL_SCOPE=user → per-user install ($LOCALAPPDATA\Programs\Recall,
-      # no UAC prompt at install time) so the in-app self-updater can swap the
-      # running exe in place (Program Files needs elevation the updater helper
-      # doesn't do). The NSIS side also removes any prior machine-wide copy.
-      - wails3 task windows:package ARCH=amd64 PRODUCTION=true INSTALL_SCOPE=user PRODUCT_VERSION={{.BUILD_VERSION}} PRODUCT_VERSION_NUMERIC={{.BUILD_VERSION_NUMERIC}}
+      - task: build-windows-exe
+      - task: build-windows-installer
       - mkdir -p {{.DIST_WINDOWS}}
       - cp bin/recall-amd64-installer.exe {{.DIST_WINDOWS}}/
       - cp bin/Recall.exe {{.DIST_WINDOWS}}/
       - echo "[ recall ] ✓  dist/windows/recall-amd64-installer.exe"
+
+  build-windows-exe:
+    desc: Windows/amd64 app exe only, no installer → bin/Recall.exe
+    # wails3 generate syso embeds the icon + version resource, then a plain
+    # CGO_ENABLED=0 go build.
+    cmds:
+      - echo "[ recall ] Building windows/amd64 exe (CGO_ENABLED=0, native)…"
+      - wails3 task windows:build ARCH=amd64 PRODUCTION=true PRODUCT_VERSION={{.BUILD_VERSION}}
+
+  build-windows-installer:
+    desc: NSIS installer around the CURRENT bin/Recall.exe → bin/recall-amd64-installer.exe
+    # Deliberately NOT `wails3 task windows:create:nsis:installer`. That task
+    # declares `deps: [build]` with no up-to-date guard, so it rebuilds
+    # bin/Recall.exe unconditionally — which would throw away a signature
+    # applied between the two halves and ship an unsigned exe inside a signed
+    # installer. That is the exact gap this split exists to close, so the
+    # makensis line is invoked directly instead.
+    #
+    # It is a two-line copy of the upstream task's non-Windows branch
+    # (build/windows/Taskfile.yml, create:nsis:installer). Keep it in step when
+    # the wails trio is bumped — they move in lockstep per CLAUDE.md, so a bump
+    # is already a deliberate coordinated act, and CI's build-windows job runs
+    # this on every PR.
+    #
+    # INSTALL_SCOPE=user → per-user install ($LOCALAPPDATA\Programs\Recall, no
+    # UAC prompt at install time) so the in-app self-updater can swap the
+    # running exe in place (Program Files needs elevation the updater helper
+    # doesn't do). The NSIS side also removes any prior machine-wide copy.
+    cmds:
+      - echo "[ recall ] Packaging NSIS installer…"
+      - wails3 generate webview2bootstrapper -dir build/windows/nsis
+      - >-
+        cd build/windows/nsis &&
+        makensis -DWAILS_INSTALL_SCOPE=user -DREQUEST_EXECUTION_LEVEL=user
+        -DINFO_PRODUCTVERSION="{{.BUILD_VERSION_NUMERIC}}"
+        -DARG_WAILS_AMD64_BINARY="$(git rev-parse --show-toplevel)/bin/Recall.exe"
+        project.nsi
 
   build-mac:
     desc: macOS arm64 Wails app → dist/mac/Recall.app (macOS host + Xcode CLT required)

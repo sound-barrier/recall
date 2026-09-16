@@ -426,13 +426,15 @@ data structures rather than observable, public behavior.
   (`chore(main): release …`), push a `v*` tag, run `task release-beta` /
   `task release-fire`, fire `release.yml`, or `gh pr merge --admin` a release.
   When prep is done, print the one command the maintainer runs to publish, then stop.
-  - **Allowed prep — the `Release-As` commit may go straight to `main`.** To force
-    a specific version, Claude MAY push the documented `Release-As:` prep commit
-    directly to `main`: the `chore: cut vX.Y.Z` subject + `Release-As: X.Y.Z`
-    footer form in `RELEASES.md` (e.g. commit `3eb065a`). It only makes
-    release-please retarget the Release PR — it publishes nothing and is
-    reversible — so it's exempt from "no direct commits to main" above. The human
-    still merges the Release PR.
+  - **Allowed prep — the `Release-As` commit, via a PR like everything else.** To
+    force a specific version, Claude MAY prepare the documented `Release-As:`
+    prep commit — the `chore: cut vX.Y.Z` subject + `Release-As: X.Y.Z` footer
+    form in `RELEASES.md` — because it only makes release-please retarget the
+    Release PR: it publishes nothing and is reversible. It no longer goes
+    straight to `main`. Branch protection now requires a pull request and
+    forbids bypassing, so a direct push is rejected for everyone including the
+    maintainer; open a `chore/cut-vX.Y.Z` branch and PR it. The human still
+    merges both that PR and the Release PR.
 
 - **Breaking changes are fine — just declare them.** Pre-1.0 the project isn't
   contractually stable; any layer can change. Use `feat!:` (exclamation marks
