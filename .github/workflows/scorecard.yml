@@ -1,0 +1,56 @@
+# OpenSSF Scorecard: scores the repository's supply-chain posture (pinned
+# dependencies, token permissions, dangerous workflow patterns, branch
+# protection, ...) and publishes the result behind the README badge.
+#
+# publish_results makes api.scorecard.dev verify THIS file before it accepts a
+# result, and it rejects the run unless: no workflow-level env, defaults or
+# write scopes; id-token only in the scorecard job; that job has no env,
+# defaults, container or services, runs on a GitHub-hosted Ubuntu runner, and
+# every step is a `uses:` of checkout, upload-artifact, upload-sarif,
+# scorecard-action or harden-runner. A `run:` step here fails the whole run.
+#
+# The SARIF is kept as a short-lived run artifact and deliberately NOT uploaded
+# to code scanning: several checks (Code-Review, Contributors,
+# Branch-Protection under classic protection) cannot move for a solo-maintained
+# repository, and uploading would pin them as permanently open alerts.
+#
+# Scorecard refuses non-pull-request events off the default branch, so a
+# workflow_dispatch on a feature branch fails by design. Dispatch it on main.
+name: Scorecard
+
+on:
+  branch_protection_rule:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '27 7 * * 1'  # Monday, after CodeQL's 06:00
+  workflow_dispatch:
+
+permissions: {}  # deny all by default; each job declares only what it needs
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read  # check out the repository
+      id-token: write  # sign the published result behind the badge
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc  # v2.4.4
+        with:
+          results_file: scorecard-results.sarif
+          results_format: sarif
+          publish_results: true
+          # .gitattributes marks .github/ export-ignore, so the default archive
+          # mode would hide every workflow and dependabot.yml from the checks.
+          file_mode: git
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: scorecard-results
+          path: scorecard-results.sarif
+          retention-days: 5
