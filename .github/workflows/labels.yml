@@ -35,13 +35,14 @@ on:
         required: false
         default: false
 
-permissions:
-  contents: read
-  issues: write
+permissions: {}  # deny all by default; each job declares only what it needs
 
 jobs:
   sync:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read  # check out .github/labels.yml
+      issues: write  # labels are managed through the issues API
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:

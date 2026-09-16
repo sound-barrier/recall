@@ -24,16 +24,17 @@ on:
     workflows: [CI, E2E]
     types: [completed]
 
-permissions:
-  contents: read
-  actions: read         # dawidd6 reads artifacts from the triggering runs
-  pull-requests: write  # post/update the sticky comment
+permissions: {}  # deny all by default; each job declares only what it needs
 
 jobs:
   comment:
     # Only PR-originated runs carry a PR to comment on; skip push-to-main.
     if: ${{ github.event.workflow_run.event == 'pull_request' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read         # dawidd6 reads artifacts from the triggering runs
+      pull-requests: write  # post/update the sticky comment
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
