@@ -14,18 +14,16 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# contents: read   — check out code
-# actions: read    — required for private repos (no-op on public, included for portability)
-# security-events: write — upload SARIF results to GitHub Security tab
-permissions:
-  contents: read
-  actions: read
-  security-events: write
+permissions: {}  # deny all by default; each job declares only what it needs
 
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
+    permissions:
+      contents: read  # check out code
+      actions: read  # required for private repos (no-op on public, kept for portability)
+      security-events: write  # upload SARIF results to the GitHub Security tab
     strategy:
       fail-fast: false
       matrix:
