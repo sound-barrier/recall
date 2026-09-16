@@ -45,6 +45,8 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       # Building the wails3 CLI itself (mise/go install) pulls in v3's CGo GTK4
       # webview, so the Ubuntu runner needs the WebKit dev libs — even though the
@@ -99,6 +101,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
@@ -144,6 +148,7 @@ jobs:
       # runner filesystem and the step dies with exit 127.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
+          persist-credentials: false
           # Full history + tags so the roster-staging step can diff this tag
           # against the previous release and skip unchanged YAMLs.
           fetch-depth: 0
