@@ -5,7 +5,7 @@
 #
 # Policy: third-party actions must be pinned by 40-char commit SHA with
 # a trailing `# vX.Y.Z` comment, e.g.
-#   uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+#   uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 #
 # Tag pins (`uses: actions/checkout@v4`) are forbidden — a compromised
 # maintainer account or stolen token could silently re-point a tag to a

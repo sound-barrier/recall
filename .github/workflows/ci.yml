@@ -183,7 +183,7 @@ jobs:
       # syntax errors, and shellcheck issues in `run:` blocks. The
       # action ships the actionlint binary so no install step.
       - name: Lint workflows (actionlint)
-        uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7  # v2
+        uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7  # v2.2.0
 
       # Enforce the project's SHA-pinning policy for third-party
       # GitHub Actions. A tag-pinned action could be silently
@@ -294,7 +294,7 @@ jobs:
       # but EnricoMi below is what flips the workflow to red).
       - name: Upload unit-test JUnit XML
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: unit-test-results
           path: |
@@ -311,7 +311,7 @@ jobs:
       # coverage-comment job renders one combined sticky comment.
       - name: Publish unit-test results check
         if: always()
-        uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3  # v2
+        uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3  # v2.24.0
         with:
           check_name: Unit test results
           comment_mode: off
@@ -523,7 +523,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: frontend-coverage
           path: frontend/coverage/
@@ -592,7 +592,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: go-coverage
           path: coverage/go/
@@ -699,7 +699,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload condition coverage data
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: go-branch-coverage
           path: coverage/go/branch/
