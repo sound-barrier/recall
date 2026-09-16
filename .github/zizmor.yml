@@ -20,5 +20,6 @@ rules:
         - googleapis/release-please-action
         - jdx/mise-action
         - marocchino/sticky-pull-request-comment
+        - ossf/scorecard-action
         - raven-actions/actionlint
         - softprops/action-gh-release
