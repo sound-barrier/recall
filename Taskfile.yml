@@ -458,6 +458,19 @@ tasks:
       - trivy fs --scanners vuln --exit-code 1 --severity HIGH,CRITICAL .
       - echo "[ recall ] ✓  No HIGH/CRITICAL vulnerabilities found"
 
+  secrets:
+    desc: Scan the git history for secrets (gitleaks, config in .gitleaks.toml)
+    cmds:
+      - command -v gitleaks >/dev/null || { echo "[ recall ] ✗  gitleaks not installed — run 'mise install' (pinned in mise.toml)"; exit 1; }
+      - echo "[ recall ] Scanning git history for secrets (gitleaks)…"
+      # `git` mode, not `dir`: dir mode ignores .gitignore and reports scratch
+      # files under tmp/ that never reach the repository. The log options are
+      # gitleaks' defaults with HEAD in place of --all: CI's full-depth checkout
+      # fetches every branch, and a secret pushed to an unrelated one must not
+      # fail the build of the commit under test.
+      - gitleaks git --redact --no-banner --log-opts="--full-history --diff-filter=tuxdb HEAD" .
+      - echo "[ recall ] ✓  No secrets in git history"
+
   check-deps:
     desc: Check pinned tool versions against latest releases (read-only)
     cmds: [bash scripts/ci/check-deps.sh]
@@ -496,6 +509,8 @@ tasks:
       - cd frontend && npm run dead:ts
       - echo "[ recall ] verify — SAST…"
       - task: lint-semgrep
+      - echo "[ recall ] verify — secret scan…"
+      - task: secrets
       - echo "[ recall ] verify — Playwright smoke + API drift…"
       - bash scripts/ci/check-playwright-smoke.sh
       - bash scripts/ci/check-api-drift.sh

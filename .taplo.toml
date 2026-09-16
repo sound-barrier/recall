@@ -3,7 +3,7 @@
 #
 # Governs `task lint-toml` (`taplo fmt --check` + `taplo lint`) and the
 # lefthook `taplo` pre-commit hook. Scope: the repo's hand-authored TOML
-# (_typos.toml, mise.toml, ruff.toml, this file).
+# (_typos.toml, .gitleaks.toml, mise.toml, ruff.toml, this file).
 
 include = ["**/*.toml"]
 

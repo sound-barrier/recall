@@ -4,7 +4,7 @@
 # Usage: task check-deps   OR   bash scripts/ci/check-deps.sh
 #
 # All pins live in mise.toml: [tools] holds the binary versions (go, node,
-# wails, typos, ruff, schemathesis, zizmor) and [env] holds the version STRINGS
+# wails, typos, ruff, schemathesis, zizmor, gitleaks) and [env] holds the version STRINGS
 # the on-demand npx/pipx invocations interpolate (SPECTRAL_VERSION,
 # HONKIT_VERSION, …). This script parses mise.toml directly — no dependency on
 # the mise binary, so it runs in minimal CI runners too.
@@ -170,6 +170,9 @@ check "sqlfluff" "$SQLFLUFF_VERSION" "$SQLFLUFF_LATEST" "mise.toml [env]/[tools]
 
 # zizmor — workflow security audit; exact [tools] pin, GitHub releases.
 check "zizmor" "$(mise_pin zizmor)" "$(gh_latest zizmorcore/zizmor)" "mise.toml [tools]"
+
+# gitleaks — secret scanner; built from its Go module, released on GitHub.
+check "gitleaks" "$(mise_pin 'go:github.com/zricethezav/gitleaks/v8')" "$(gh_latest gitleaks/gitleaks)" "mise.toml [tools]"
 
 # Biome — JSON/JSONC lint + format; runs via npx, npm is the source of truth.
 BIOME_LATEST=$(npm_latest @biomejs/biome)

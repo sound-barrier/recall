@@ -1,0 +1,13 @@
+title = "recall gitleaks config"
+
+[extend]
+useDefault = true
+
+# Recall match keys (pkg/match/match_key.go: match-, unmatched-, ambiguous-)
+# sit beside key/MatchKey identifiers in test fixtures; generic-api-key read all
+# 24 of its history findings as this shape. Scoped to that rule and anchored to
+# the whole secret, so a real token beside a `key` still fails.
+[[allowlists]]
+description = "Recall match keys in test fixtures"
+targetRules = ["generic-api-key"]
+regexes = ['''^(?:match|unmatched|ambiguous)-[A-Za-z0-9_.-]+$''']

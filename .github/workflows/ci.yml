@@ -466,7 +466,29 @@ jobs:
   # hook — so contributors get fast feedback before push without
   # duplicating coverage with CodeQL.
 
-  # ── Job 6: Dead code analysis ────────────────────────────────────────────
+  # ── Job 6: Secret scan (gitleaks) ───────────────────────────────────────
+  # Walks every commit reachable from HEAD (a PR's merge commit), not just this
+  # change: a secret deleted in a later commit is still in the published
+  # history. Other fetched branches are not read, so they cannot fail this job.
+  # .gitleaks.toml extends the default rules with one allowlist for Recall match
+  # keys. Same command as `task secrets`; the lefthook pre-commit hook scans the
+  # staged diff before it is committed.
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0  # the scan reads the whole history, not the tip
+
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c  # v4.3.0
+        with:
+          install_args: go task go:github.com/zricethezav/gitleaks/v8
+
+      - name: Scan git history for secrets (gitleaks)
+        run: task secrets
+
+  # ── Job 7: Dead code analysis ───────────────────────────────────────────
   # deadcode does whole-program call-graph analysis for Go (serveronly variant
   # only — the Wails variant registers App methods via reflection so deadcode
   # would report false positives; golangci-lint `unused` covers that variant).
@@ -505,7 +527,7 @@ jobs:
       - name: Dead TypeScript code (knip)
         run: cd frontend && npm run dead:ts
 
-  # ── Job 7: Frontend coverage report ─────────────────────────────────────
+  # ── Job 8: Frontend coverage report ─────────────────────────────────────
   # Informational only — no thresholds enforced. The HTML report and lcov
   # file are uploaded as a workflow artifact so they can be downloaded from
   # the Actions run page for any push or PR.
@@ -551,7 +573,7 @@ jobs:
           path: frontend/coverage/
           retention-days: 30
 
-  # ── Job 8: Go coverage report ───────────────────────────────────────────
+  # ── Job 9: Go coverage report ───────────────────────────────────────────
   # Informational only — no thresholds enforced. The HTML report and func
   # summary are uploaded as a workflow artifact so they can be downloaded
   # from the Actions run page for any push or PR.
@@ -622,7 +644,7 @@ jobs:
           path: coverage/go/
           retention-days: 30
 
-  # ── Job 9: OpenAPI ↔ implementation drift check ─────────────────────────
+  # ── Job 10: OpenAPI ↔ implementation drift check ────────────────────────
   # Spectral checks the spec is well-formed; schemathesis checks the spec
   # matches the running server. Fuzzes spec-derived requests against a
   # freshly-built serveronly binary and verifies every response conforms to
@@ -675,7 +697,7 @@ jobs:
         # frontend/dist are missing.
         run: SKIP_FRONTEND_BUILD=1 bash scripts/ci/check-api-drift.sh
 
-  # ── Job 10: Go condition (branch) coverage ──────────────────────────────
+  # ── Job 11: Go condition (branch) coverage ──────────────────────────────
   # REPORT-ONLY (continue-on-error) — it can never red a run. gobco measures
   # each condition's true AND false arm, which the coverage-go job's statement
   # coverage cannot see: an `if a && b` reads as covered the moment the line

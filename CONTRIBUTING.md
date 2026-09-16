@@ -356,6 +356,7 @@ lefthook install        # wires the hooks into .git/hooks/{pre-commit,pre-push,c
 | `taplo`             | `*.toml`                        | `taplo fmt` — formats + re-stages (from `mise install`) |
 | `sqlfluff`          | `*.sql`                         | `sqlfluff lint` (dialect sqlite — from `mise install`) |
 | `biome-json`        | `*.json`                        | `biome check --write` — formats/lints + re-stages (auto-pulled on demand by `npx`) |
+| `gitleaks`          | *(all staged files)*            | `gitleaks git --staged` — blocks a commit that adds a secret (config `.gitleaks.toml`; from `mise install`). `task secrets` and CI's `secrets` job scan every commit reachable from HEAD. |
 
 **`pre-push`** — runs on `git push`: the **fast core only** (~25s) — the checks most likely to turn a push into a red CI round-trip. Everything heavier still gates in CI and is bundled into **`task verify`** when you want the full battery locally before pushing.
 
