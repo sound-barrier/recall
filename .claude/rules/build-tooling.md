@@ -15,10 +15,10 @@ paths:
 
 Live in `mise.toml` — `[tools]` for anything mise installs, `[env]` for the
 versions the tasks and hooks read themselves (`SPECTRAL_VERSION`,
-`TYPOS_VERSION`, `SEMGREP_VERSION`, `HONKIT_VERSION`,
-`SCHEMATHESIS_VERSION`, `JSONSCHEMA_RS_VERSION`, `GOBCO_VERSION`,
-`RUFF_VERSION`, `SQLFLUFF_VERSION`, `BIOME_VERSION`, and `TESSERACT_VERSION` —
-that last one informational major.minor, so a mismatch means re-baseline
+`TYPOS_VERSION`, `SEMGREP_VERSION`, `HONKIT_VERSION`, `SCHEMATHESIS_VERSION`,
+`JSONSCHEMA_RS_VERSION`, `GOBCO_VERSION`, `RUFF_VERSION`, `SQLFLUFF_VERSION`,
+`BIOME_VERSION`, `MARKDOWNLINT_CLI2_VERSION`, and `TESSERACT_VERSION` — that
+last one informational major.minor, so a mismatch means re-baseline
 `testdata/*.golden.json` and bump; `.devcontainer/postCreate.sh` compares the
 container's apt Tesseract against it and warns).
 
@@ -52,14 +52,19 @@ lock entry, or no URL for the runner's platform, fails the job. The rules:
   for a new lock, so regenerate the lock with the exact pinned binary
   (downloaded and checksum-verified), never a newer local mise, and never run
   `mise lock --upgrade` with a different binary.
+- **CI's setup-go jobs bypass mise for their Go tools** (go-junit-report,
+  govulncheck, deadcode, task, gocover-cobertura, gobco) to keep setup-go's Go
+  build cache, so each `go install <module>@vX.Y.Z` in `ci.yml` and `e2e.yml`
+  names the `[tools]` pin literally. A bump edits both.
 - **`pipx.uvx = false` is load-bearing.** With uv on PATH, newer mise records uv
   dependency graphs for pipx tools that uv-less CI runners cannot replay under
   `--locked`.
 
 `task check-deps` compares against upstream and **fails** on drift: the wails3
 CLI, Spectral, typos, Semgrep, Honkit, schemathesis, jsonschema-rs, ruff,
-sqlfluff, zizmor, gitleaks, Biome, Go and Node — plus two cross-file assertions, the
-`crate-ci/typos@SHA  # vX.Y.Z` comment in `ci.yml` and `.node-version` agreeing
+sqlfluff, zizmor, gitleaks, Biome, markdownlint-cli2, Go and Node — plus two
+cross-file assertions, the `crate-ci/typos@SHA  # vX.Y.Z` comment in `ci.yml`
+and `.node-version` agreeing
 with `[tools] node`. Deliberately unchecked: the MEASUREMENT pins
 (`GOBCO_VERSION`, `TESSERACT_VERSION` — the version moves the number, so bumping
 them is a re-baseline decision, not a version bump), golangci-lint (a bump is a

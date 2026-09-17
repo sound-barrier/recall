@@ -165,7 +165,7 @@ jobs:
           mkdir -p coverage/e2e/go
           go tool covdata textfmt -i="${GITHUB_WORKSPACE}/coverage/e2e/go-covdata" -o coverage/e2e/go/coverage.out
           go tool cover -func=coverage/e2e/go/coverage.out > coverage/e2e/go/coverage.txt
-          go install github.com/boumenot/gocover-cobertura@latest
+          go install github.com/boumenot/gocover-cobertura@v1.5.0  # = mise.toml [tools]
           # GOFLAGS=-tags=serveronly so gocover-cobertura's internal `go list`
           # sees the serveronly build-tag files (app_server.go, main_server.go)
           # that the instrumented binary — and thus the profile — include.

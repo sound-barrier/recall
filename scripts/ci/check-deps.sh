@@ -51,6 +51,7 @@ JSONSCHEMA_RS_VERSION=$(mise_pin JSONSCHEMA_RS_VERSION)
 RUFF_VERSION=$(mise_pin RUFF_VERSION)
 SQLFLUFF_VERSION=$(mise_pin SQLFLUFF_VERSION)
 BIOME_VERSION=$(mise_pin BIOME_VERSION)
+MARKDOWNLINT_CLI2_VERSION=$(mise_pin MARKDOWNLINT_CLI2_VERSION)
 
 # Color support — disabled when stdout is not a terminal.
 if [ -t 1 ]; then
@@ -181,6 +182,9 @@ check "gitleaks" "$(mise_pin 'go:github.com/zricethezav/gitleaks/v8')" "$(gh_lat
 # Biome — JSON/JSONC lint + format; runs via npx, npm is the source of truth.
 BIOME_LATEST=$(npm_latest @biomejs/biome)
 check "Biome" "$BIOME_VERSION" "$BIOME_LATEST" "mise.toml [env]"
+
+MARKDOWNLINT_LATEST=$(npm_latest markdownlint-cli2)
+check "markdownlint" "$MARKDOWNLINT_CLI2_VERSION" "$MARKDOWNLINT_LATEST" "mise.toml [env]"
 
 # Verify the literal typos action SHA-pin comment matches the mise pin.
 # GitHub Actions `uses:` refs cannot interpolate expressions, so the
