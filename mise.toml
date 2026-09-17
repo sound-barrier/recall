@@ -6,7 +6,10 @@
 # the tools they call.
 #
 # After cloning:   mise trust && mise install
-# Update a pin:    edit below, then `mise install` (or `task check-deps`).
+# Update pins:     `task update-mise` (bumps every [tools] pin except go,
+#                  golangci-lint, gobco and wails3, which each move as their
+#                  own change), or edit one below and run `mise install`.
+#                  `task check-deps` compares the pins against upstream.
 #
 # Tesseract (the OCR runtime the parser shells out to) and the container
 # runtime (podman/docker) are NOT managed here — they're system packages
@@ -27,11 +30,10 @@ RECALL_DATA_DIR = "{{config_root}}/data"
 # the `task check-deps` upstream comparison.
 SPECTRAL_VERSION = "6.16.3"
 TYPOS_VERSION = "v1.50.2"
-GOCYCLO_VERSION = "latest"
 SEMGREP_VERSION = "1.177.0"
 HONKIT_VERSION = "6.2.2"
 # gobco (condition/branch coverage) is a MEASUREMENT tool: the version changes
-# the number it reports, so it is exact-pinned rather than "latest". CI greps
+# the number it reports, so a bump is a re-baseline decision. CI greps
 # every ^[A-Z_]+_VERSION line here into $GITHUB_ENV, so the branch-coverage job
 # installs this exact version without a second copy of the string.
 GOBCO_VERSION = "v1.3.4"
@@ -60,28 +62,34 @@ BIOME_VERSION = "2.5.13"
 GOTOOLCHAIN = "local"
 
 [tools]
+# Every entry is an exact release, never "latest" or a bare major: a floating
+# pin installs whatever upstream published that morning, so two machines (or a
+# CI rerun) can lint with different tools, and a compromised release lands
+# everywhere at once. Bump deliberately, and only to a release at least seven
+# days old, the same cooldown the npm and Go dependencies keep.
+
 # Language runtimes (match go.mod / CI).
 go = "1.27.1"
 # Keep in sync with the root .node-version (consumed by actions/setup-node
 # in CI); `task check-deps` asserts the two agree.
-node = "26"
+node = "26.8.2"
 
 # The task runner itself, so `mise install` bootstraps a complete toolchain
 # on any platform (CI / Linux). Homebrew users can also `brew install
 # go-task/tap/go-task`; whichever is first on PATH wins.
-task = "latest"
+task = "3.53.1"
 
 # Linters / formatters / scanners — registry-backed prebuilt binaries.
-shellcheck = "latest"
-shfmt = "latest"
-actionlint = "latest"
-yamllint = "latest"
+shellcheck = "0.11.0"
+shfmt = "3.14.1"
+actionlint = "1.7.12"
+yamllint = "1.38.0"
 typos = "1.50.2"
 ruff = "0.16.7"
-taplo = "latest"
-trivy = "latest"
-lefthook = "latest"
-jq = "latest"
+taplo = "0.10.0"
+trivy = "0.74.0"
+lefthook = "2.1.12"
+jq = "1.8.2"
 # actionlint checks that a workflow is valid; zizmor checks that it is safe
 # (credential persistence, dangerous triggers, template injection, impostor
 # commits). Resolved from aqua, which verifies the release's GitHub
@@ -93,12 +101,12 @@ zizmor = "1.30.1"
 # (not the registry) on purpose: a prebuilt binary compiled with an older Go
 # rejects a project targeting a newer Go directive, so it must be compiled with
 # this toolchain's Go — exactly what `go install …@latest` did in CI before.
-# Exact-pinned (was "latest"): a lint-version change alters what the gate
-# flags, so bumps are deliberate — pick the version, run the sweep, fix what
-# it surfaces, commit both together.
+# A lint-version change alters what the gate flags, so a golangci-lint bump
+# is its own change: pick the version, run the sweep, fix what it surfaces,
+# commit both together.
 "go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint" = "v2.13.2"
-"go:golang.org/x/tools/cmd/deadcode" = "latest"
-"go:golang.org/x/vuln/cmd/govulncheck" = "latest"
+"go:golang.org/x/tools/cmd/deadcode" = "v0.50.0"
+"go:golang.org/x/vuln/cmd/govulncheck" = "v1.8.0"
 # Condition (branch) coverage — an informational report, never a gate. Go's
 # own -cover only does statements; gobco instruments each boolean expression
 # and reports the conditions never observed BOTH true and false. Exact-pinned
@@ -119,8 +127,8 @@ zizmor = "1.30.1"
 # CI-only reporters (JUnit XML for the test job, Cobertura XML for the Go
 # coverage job). Devs get them too via `mise install`; CI installs them
 # selectively via the jobs' install_args.
-"go:github.com/jstemmer/go-junit-report/v2" = "latest"
-"go:github.com/boumenot/gocover-cobertura" = "latest"
+"go:github.com/jstemmer/go-junit-report/v2" = "v2.1.0"
+"go:github.com/boumenot/gocover-cobertura" = "v1.5.0"
 
 # Python tools (isolated venvs) → pipx backend.
 "pipx:semgrep" = "1.177.0"

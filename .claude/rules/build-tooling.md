@@ -15,7 +15,7 @@ paths:
 
 Live in `mise.toml` — `[tools]` for anything mise installs, `[env]` for the
 versions the tasks and hooks read themselves (`SPECTRAL_VERSION`,
-`TYPOS_VERSION`, `GOCYCLO_VERSION`, `SEMGREP_VERSION`, `HONKIT_VERSION`,
+`TYPOS_VERSION`, `SEMGREP_VERSION`, `HONKIT_VERSION`,
 `SCHEMATHESIS_VERSION`, `JSONSCHEMA_RS_VERSION`, `GOBCO_VERSION`,
 `RUFF_VERSION`, `SQLFLUFF_VERSION`, `BIOME_VERSION`, and `TESSERACT_VERSION` —
 that last one informational major.minor, so a mismatch means re-baseline
@@ -36,9 +36,9 @@ sqlfluff, zizmor, gitleaks, Biome, Go and Node — plus two cross-file assertion
 `crate-ci/typos@SHA  # vX.Y.Z` comment in `ci.yml` and `.node-version` agreeing
 with `[tools] node`. Deliberately unchecked: the MEASUREMENT pins
 (`GOBCO_VERSION`, `TESSERACT_VERSION` — the version moves the number, so bumping
-them is a re-baseline decision, not a version bump), `GOCYCLO_VERSION`
-(`latest`), golangci-lint (exact-pinned so a bump is a deliberate
-run-the-sweep-and-fix-what-it-finds change) and `SWAGGER_IMAGE`.
+them is a re-baseline decision, not a version bump), golangci-lint (a bump is a
+deliberate run-the-sweep-and-fix-what-it-finds change), the other exact
+`[tools]` pins (bumped together by `task update-mise`) and `SWAGGER_IMAGE`.
 
 **Lockstep pin, both ecosystems**: `wails/v3` in `go.mod`, the `wails3` CLI in
 `[tools]`, and `@wailsio/runtime` in `frontend/package.json` are ONE version.

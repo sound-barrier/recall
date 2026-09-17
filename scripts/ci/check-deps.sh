@@ -9,12 +9,15 @@
 # HONKIT_VERSION, …). This script parses mise.toml directly — no dependency on
 # the mise binary, so it runs in minimal CI runners too.
 #
-# Auto-managed tools are intentionally omitted (they track @latest via mise or
-# Dependabot, so there is no fixed pin to compare):
-#   • golangci-lint, shfmt, govulncheck, deadcode,
-#     gocyclo, lefthook, trivy, jq, taplo  — mise "latest"
+# Not compared here:
+#   • the other exact [tools] pins (task, shellcheck, shfmt, actionlint,
+#     yamllint, taplo, trivy, lefthook, jq, deadcode, govulncheck, …) — bump
+#     them together with `task update-mise`, which honors the 7-day cooldown
 #   • ESLint, typescript-eslint, stylelint, htmlhint, vue-tsc — Dependabot npm
 #   • trivy-action, setup-go, setup-node — Dependabot Actions
+#
+# Upstream "latest" includes releases younger than seven days, so a ✗ here is
+# a prompt to look, not a reason to bump past the cooldown.
 #
 # Requires: curl, jq
 
@@ -44,6 +47,7 @@ TYPOS_VERSION=$(mise_pin TYPOS_VERSION)
 SEMGREP_VERSION=$(mise_pin SEMGREP_VERSION)
 HONKIT_VERSION=$(mise_pin HONKIT_VERSION)
 SCHEMATHESIS_VERSION=$(mise_pin SCHEMATHESIS_VERSION)
+JSONSCHEMA_RS_VERSION=$(mise_pin JSONSCHEMA_RS_VERSION)
 RUFF_VERSION=$(mise_pin RUFF_VERSION)
 SQLFLUFF_VERSION=$(mise_pin SQLFLUFF_VERSION)
 BIOME_VERSION=$(mise_pin BIOME_VERSION)
@@ -122,7 +126,7 @@ info() {
 }
 
 printf '\n%bChecking pinned tool versions against latest releases…%b\n' "$BOLD" "$RESET"
-printf '%b(golangci-lint/shfmt/govulncheck → @latest; package.json + Actions → Dependabot)%b\n\n' \
+printf '%b(other [tools] pins → task update-mise; package.json + Actions → Dependabot)%b\n\n' \
   "$DIM" "$RESET"
 printf '  %-14s  %-14s  %-14s\n' "Tool" "Pinned" "Latest"
 printf '  %s\n' "────────────────────────────────────────────────────────────────────"
@@ -196,30 +200,26 @@ else
 fi
 
 # ── Toolchain versions (informational) ─────────────────────────────────────
-# mise installs the latest patch within the pinned major (node) or major.minor
-# (go), so only a new minor/major matters.
+# Both are exact pins, so these rows only say how far behind they are.
 
 GO_PINNED=$(mise_pin 'go')
 GO_LATEST_FULL=$(curl -fsSL 'https://go.dev/VERSION?m=text' | head -1 | sed 's/^go//')
 GO_LATEST_MINOR=$(printf '%s' "$GO_LATEST_FULL" | cut -d. -f1-2)
 GO_PINNED_MINOR=$(printf '%s' "$GO_PINNED" | cut -d. -f1-2)
 if [ "$GO_PINNED_MINOR" = "$GO_LATEST_MINOR" ]; then
-  info "Go" "$GO_PINNED" "$GO_LATEST_FULL" "latest patch auto-installed"
+  info "Go" "$GO_PINNED" "$GO_LATEST_FULL" "mise.toml + go.mod"
 else
   info "Go" "$GO_PINNED" "$GO_LATEST_FULL" \
     "new minor — mise.toml + ci.yml + release.yml"
 fi
 
+# Compared within the pinned major: a new major is a migration, not a bump.
 NODE_PINNED=$(mise_pin 'node')
+NODE_PINNED_MAJOR=$(printf '%s' "$NODE_PINNED" | cut -d. -f1)
 NODE_LATEST=$(curl -fsSL 'https://nodejs.org/dist/index.json' \
-  | jq -r '.[0].version | ltrimstr("v")')
-NODE_LATEST_MAJOR=$(printf '%s' "$NODE_LATEST" | cut -d. -f1)
-if [ "$NODE_PINNED" = "$NODE_LATEST_MAJOR" ]; then
-  info "Node" "$NODE_PINNED" "$NODE_LATEST" "latest patch auto-installed"
-else
-  info "Node" "$NODE_PINNED" "$NODE_LATEST" \
-    "new major — mise.toml + ci.yml"
-fi
+  | jq -r --arg major "v${NODE_PINNED_MAJOR}." \
+    '[.[] | select(.version | startswith($major))] | first | .version | ltrimstr("v")')
+info "Node" "$NODE_PINNED" "$NODE_LATEST" "newest ${NODE_PINNED_MAJOR}.x — mise.toml + .node-version"
 
 # ── .node-version ↔ mise.toml sync ────────────────────────────────────
 # CI's actions/setup-node reads the root .node-version; local dev reads
