@@ -43,6 +43,8 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 | `task check-deps` | Compare pinned tools vs latest. |
 | `task roster-watch` | Report where the shipped roster has fallen behind the game (read-only). Exit 1 = drift, 2 = a source could not be read. |
 | `task update-signing -- keygen -out PATH` | Maintainer-only (`cmd/update-signing`): create the Ed25519 key that signs self-update releases. Writes the one-line private key to a new 0600 file in a directory that already exists, outside the current directory and every git work tree, and prints the public key PEM on stdout. A refused run generates nothing, but a shell redirect of stdout has already created its empty target. Run it in your own terminal, never in CI or an agent session. |
+| `task update-signing -- sign FILE...` | Maintainer-only: write `FILE.sig` beside each file, the raw 64-byte Ed25519 signature over `"recall-update-signature-v1\n"` + the file's base name + `"\n"` + its raw SHA-256. The key comes only from the `RECALL_UPDATE_SIGNING_KEY` environment variable and is never echoed: an unset or undecodable key fails the run, a key that is not the one pinned in `pkg/updatesig/public_key.pem` is refused, and an existing `.sig` is never replaced. The release job is what signs a release. |
+| `task update-signing -- verify FILE...` | Check each file against its `FILE.sig` with the pinned public key, the check an installed Recall makes before it updates. Prints `OK FILE` per pass and fails when any file has no signature or does not verify. Needs no secret, so anyone can run it on a downloaded release asset. For `sign` and `verify` alike: `task` runs the tool from the repo root, so give each FILE as an absolute path, and a failure exits non-zero without the tool's own code, since `go run` reports any failure as 1 and go-task replaces that with its own. Only a built binary (`go build -o build/bin/update-signing ./cmd/update-signing`) keeps the codes that tell a failed file (1) from a usage, key or I/O error (2). |
 | `task trivy` | Trivy scan (Go + npm); fails on HIGH/CRITICAL. |
 | `task secrets` | gitleaks over every commit reachable from HEAD, never other branches (`gitleaks git`, config `.gitleaks.toml`); fails on any finding. `git` mode rather than `dir`, so gitignored scratch files are never read. CI's `secrets` job runs the same task; the lefthook pre-commit hook scans the staged diff. |
 | `task cloc` / `cloc-detail` | LOC summary. |
@@ -83,7 +85,7 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 | `pkg/matchedit` | Shared validation for the things a note and a moment both are. |
 | `pkg/bundle` | Export/import of the share bundle a player sends a coach. |
 | `pkg/sse` | The server-sent-event hub the parse run reports through. |
-| `pkg/updatesig` | The update-signing key's encodings and the guard that keeps `keygen` from writing a key into a work tree. Standard library only, because the release job that holds the key compiles it. |
+| `pkg/updatesig` | The update-signing contract: the pinned release public key (`public_key.pem`, embedded), signing and verifying release assets, the key's encodings, and the guard that keeps `keygen` from writing a key into a work tree. Standard library only, because the release job that holds the key compiles it. |
 
 `.devcontainer/devcontainer.json` + `postCreate.sh` mirror the Brewfile on a
 Debian + Docker-in-Docker base for VS Code Dev Containers / Codespaces. The Wails

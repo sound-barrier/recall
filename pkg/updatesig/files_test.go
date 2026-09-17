@@ -1,6 +1,7 @@
 package updatesig_test
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"io/fs"
@@ -192,4 +193,144 @@ func sameDir(t *testing.T, a, b string) bool {
 		t.Fatalf("stat %s / %s: %v / %v", a, b, errA, errB)
 	}
 	return os.SameFile(infoA, infoB)
+}
+
+// signingLayout is a release asset in a scratch directory.
+type signingLayout struct {
+	asset, sig string
+	contents   []byte
+}
+
+func newSigningLayout(t *testing.T) signingLayout {
+	t.Helper()
+	layout := signingLayout{
+		asset:    filepath.Join(t.TempDir(), "recall-0.33.5-windows-amd64.exe"),
+		contents: []byte("recall 0.33.5 windows updater"),
+	}
+	layout.sig = layout.asset + updatesig.SignatureSuffix
+	if err := os.WriteFile(layout.asset, layout.contents, 0o600); err != nil {
+		t.Fatalf("write asset: %v", err)
+	}
+	return layout
+}
+
+// moveSignedPair moves asset and its signature file together to to.
+func moveSignedPair(t *testing.T, asset, to string) {
+	t.Helper()
+	for _, suffix := range []string{"", updatesig.SignatureSuffix} {
+		if err := os.Rename(asset+suffix, to+suffix); err != nil {
+			t.Fatalf("move %s: %v", asset+suffix, err)
+		}
+	}
+}
+
+func TestSignFile_WritesSignatureVerifyFileAccepts(t *testing.T) {
+	pub, priv := newKeyPair(t)
+	layout := newSigningLayout(t)
+
+	if err := updatesig.SignFile(layout.asset, priv, pub); err != nil {
+		t.Fatalf("SignFile: %v", err)
+	}
+
+	sig, err := os.ReadFile(layout.sig)
+	if err != nil {
+		t.Fatalf("read signature: %v", err)
+	}
+	if len(sig) != updatesig.SignatureSize {
+		t.Errorf("signature file is %d bytes, want the raw %d-byte signature", len(sig), updatesig.SignatureSize)
+	}
+	if err := updatesig.Verify(pub, filepath.Base(layout.asset), sha256.Sum256(layout.contents), sig); err != nil {
+		t.Errorf("the signature file does not verify over the asset's name and digest: %v", err)
+	}
+	if err := updatesig.VerifyFile(layout.asset, pub); err != nil {
+		t.Errorf("VerifyFile of a file SignFile signed = %v, want nil", err)
+	}
+}
+
+// The signature binds the asset's name, not the directory it was signed in:
+// the release job signs in one directory and publishes from another.
+func TestVerifyFile_AcceptsSignedFileMovedToAnotherDirectory(t *testing.T) {
+	pub, priv := newKeyPair(t)
+	layout := newSigningLayout(t)
+	if err := updatesig.SignFile(layout.asset, priv, pub); err != nil {
+		t.Fatalf("SignFile: %v", err)
+	}
+	moved := filepath.Join(t.TempDir(), filepath.Base(layout.asset))
+	moveSignedPair(t, layout.asset, moved)
+
+	if err := updatesig.VerifyFile(moved, pub); err != nil {
+		t.Errorf("VerifyFile after moving the signed pair = %v, want nil", err)
+	}
+}
+
+func TestSignFile_RefusesKeyThatIsNotTrusted(t *testing.T) {
+	trusted, _ := newKeyPair(t)
+	_, other := newKeyPair(t)
+	layout := newSigningLayout(t)
+
+	if err := updatesig.SignFile(layout.asset, other, trusted); !errors.Is(err, updatesig.ErrKeyMismatch) {
+		t.Fatalf("SignFile with an untrusted key = %v, want ErrKeyMismatch", err)
+	}
+	if _, err := os.Lstat(layout.sig); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("a refused SignFile left %s behind (stat: %v)", layout.sig, err)
+	}
+}
+
+func TestSignFile_RefusesToOverwriteSignature(t *testing.T) {
+	pub, priv := newKeyPair(t)
+	layout := newSigningLayout(t)
+	const published = "the signature already published"
+	if err := os.WriteFile(layout.sig, []byte(published), 0o600); err != nil {
+		t.Fatalf("seed existing signature: %v", err)
+	}
+
+	if err := updatesig.SignFile(layout.asset, priv, pub); !errors.Is(err, fs.ErrExist) {
+		t.Fatalf("SignFile over an existing signature = %v, want fs.ErrExist", err)
+	}
+	kept, err := os.ReadFile(layout.sig)
+	if err != nil {
+		t.Fatalf("read existing signature: %v", err)
+	}
+	if string(kept) != published {
+		t.Errorf("existing signature changed to %q", kept)
+	}
+}
+
+func TestVerifyFile_MissingSignature(t *testing.T) {
+	pub, _ := newKeyPair(t)
+	layout := newSigningLayout(t)
+
+	err := updatesig.VerifyFile(layout.asset, pub)
+	if !errors.Is(err, updatesig.ErrMissingSignature) || !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("VerifyFile with no signature file = %v, want ErrMissingSignature wrapping fs.ErrNotExist", err)
+	}
+}
+
+func TestVerifyFile_FileChangedAfterSigning(t *testing.T) {
+	pub, priv := newKeyPair(t)
+	layout := newSigningLayout(t)
+	if err := updatesig.SignFile(layout.asset, priv, pub); err != nil {
+		t.Fatalf("SignFile: %v", err)
+	}
+	if err := os.WriteFile(layout.asset, []byte("recall 0.33.5 windows updater, tampered"), 0o600); err != nil {
+		t.Fatalf("tamper with asset: %v", err)
+	}
+
+	if err := updatesig.VerifyFile(layout.asset, pub); !errors.Is(err, updatesig.ErrBadSignature) {
+		t.Errorf("VerifyFile of a file changed after signing = %v, want ErrBadSignature", err)
+	}
+}
+
+func TestVerifyFile_RenamedSignedFile(t *testing.T) {
+	pub, priv := newKeyPair(t)
+	layout := newSigningLayout(t)
+	if err := updatesig.SignFile(layout.asset, priv, pub); err != nil {
+		t.Fatalf("SignFile: %v", err)
+	}
+	renamed := filepath.Join(filepath.Dir(layout.asset), "recall-0.99.0-windows-amd64.exe")
+	moveSignedPair(t, layout.asset, renamed)
+
+	if err := updatesig.VerifyFile(renamed, pub); !errors.Is(err, updatesig.ErrBadSignature) {
+		t.Errorf("VerifyFile of a signed file under a newer name = %v, want ErrBadSignature", err)
+	}
 }

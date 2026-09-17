@@ -669,7 +669,7 @@ tasks:
       - go run ./cmd/roster-watch --accepted scripts/ci/roster-watch-accepted.txt
 
   update-signing:
-    desc: 'Maintainer update-signing tool (usage: task update-signing -- keygen -out PATH). keygen runs in your own terminal, never in CI'
+    desc: 'Maintainer update-signing tool (usage: task update-signing -- keygen -out PATH | sign FILE... | verify FILE...). keygen runs in your own terminal, never in CI; sign reads RECALL_UPDATE_SIGNING_KEY'
     cmds:
       - go run ./cmd/update-signing {{.CLI_ARGS}}
 

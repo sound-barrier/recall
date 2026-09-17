@@ -65,5 +65,5 @@ pkg/app/duplicate_sweep_test.go:215:		t.Skip("host cannot convert the wall clock
 # symlinks (an unprivileged Windows account may not), and the case-variant
 # case needs a case-insensitive filesystem, so it always skips on Linux CI
 # and runs on the macOS volume where the maintainer runs keygen.
-pkg/updatesig/files_test.go:152:		t.Skipf("symlinks unavailable here: %v", err)
-pkg/updatesig/files_test.go:167:		t.Skip("case-sensitive filesystem: the variant is a different directory")
+pkg/updatesig/files_test.go:153:		t.Skipf("symlinks unavailable here: %v", err)
+pkg/updatesig/files_test.go:168:		t.Skip("case-sensitive filesystem: the variant is a different directory")
