@@ -1,0 +1,55 @@
+name: Set up mise (pinned)
+description: >
+  Install the pinned mise binary and the requested slice of mise.toml's
+  toolchain, and load mise.toml [env] into $GITHUB_ENV. The only place the repo
+  calls jdx/mise-action, so the mise version and its checksum live in one file.
+
+# Without `sha256`, mise-action checks a fresh download against the release's
+# minisign-signed SHASUMS256.txt but never re-checks a binary restored from its
+# cache. With `sha256` set, it skips minisign and hashes the installed binary on
+# every run, cache hit or not, so on a cache miss this hash is the trust root
+# for every tool mise installs afterwards.
+#
+# A cache hit is weaker. mise-action runs the restored binary (`mise version`,
+# and `mise self-update` on a version mismatch) BEFORE it compares the hash, and
+# never re-verifies the tool installs restored with it, which `mise install`
+# then skips as present. There the Actions cache is the trust root, so a job
+# holding a write or OIDC token should pass cache: 'false'.
+#
+# The hash is the RAW linux-x64 binary, which is what mise-action extracts on
+# an x64 ubuntu runner. It fails closed anywhere else (macOS, Windows, arm64,
+# musl), so only use this action on x64 Linux runners.
+#
+# Bumping mise: take the `./mise-vX.Y.Z-linux-x64` line (not a .tar.* line)
+# from that release's SHASUMS256.txt, after verifying SHASUMS256.txt.minisig
+# against mise's minisign key, and change `version` and `sha256` together.
+
+inputs:
+  install_args:
+    description: Tools to install, passed to `mise install` (for example `go task`).
+    required: true
+  cache:
+    description: >
+      'false' neither restores nor saves the ~/.local/share/mise cache, for jobs
+      whose output must not depend on a cache another run wrote.
+    required: false
+    default: 'true'
+  github_token:
+    description: >
+      Exported as MISE_GITHUB_TOKEN to every later step in the job. Pass '' when
+      the tools need no GitHub API and the job token is worth more than the
+      rate limit. mise-action then logs a "No MISE_GITHUB_TOKEN provided"
+      warning annotation on every run; that is expected, not a regression.
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c  # v4.3.0
+      with:
+        version: '2026.9.3'
+        sha256: 981bd9179cc089114a87b491fce2c4007ab05b5445dee7ad08e87e5dffcc154d
+        install_args: ${{ inputs.install_args }}
+        cache: ${{ inputs.cache }}
+        github_token: ${{ inputs.github_token }}

@@ -34,7 +34,7 @@ jobs:
       # loads mise.toml [env] (SPECTRAL_VERSION, …, GOTOOLCHAIN=local) into
       # $GITHUB_ENV regardless of install_args. Replaces setup-go + the
       # tool-versions.env grep + every per-tool `go install`/pipx step.
-      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c  # v4.3.0
+      - uses: ./.github/actions/setup-mise
         with:
           install_args: >-
             go node task ruff shfmt shellcheck jq taplo zizmor pipx:sqlfluff
@@ -158,7 +158,7 @@ jobs:
 
       # OpenAPI spec — Spectral with the spectral:oas ruleset + project
       # overrides in .spectral.yaml. SPECTRAL_VERSION comes from mise.toml
-      # [env] (loaded into $GITHUB_ENV by mise-action).
+      # [env] (loaded into $GITHUB_ENV by setup-mise).
       - name: Lint OpenAPI (Spectral)
         run: task lint-openapi
 
@@ -493,7 +493,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0  # the scan reads the whole history, not the tip
 
-      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c  # v4.3.0
+      - uses: ./.github/actions/setup-mise
         with:
           install_args: go task go:github.com/zricethezav/gitleaks/v8
 
