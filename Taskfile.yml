@@ -136,6 +136,7 @@ tasks:
     desc: Run all linters
     cmds:
       - task: lint-go
+      - task: check-go-mod-tidy
       - task: lint-js
       - task: lint-arch
       - task: lint-dupes
@@ -168,6 +169,15 @@ tasks:
       - GOOS=windows golangci-lint run ./...
       - GOOS=windows golangci-lint run --build-tags serveronly ./...
       - echo "[ recall ] ✓  Go lint clean"
+
+  # release.yml's Wails build runs `go mod tidy` itself, so an untidy go.mod
+  # would be rewritten silently on the release runner, never in review.
+  check-go-mod-tidy:
+    desc: Fail if go.mod/go.sum would change under go mod tidy
+    cmds:
+      - echo "[ recall ] Checking go.mod/go.sum are tidy…"
+      - go mod tidy -diff
+      - echo "[ recall ] ✓  go.mod/go.sum tidy"
 
   lint-js:
     desc: Lint JavaScript/Vue (eslint)

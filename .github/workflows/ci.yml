@@ -50,6 +50,13 @@ jobs:
       - name: Enforce package + directory size budgets
         run: bash scripts/ci/check-package-size.sh
 
+      # go.mod/go.sum must already be what `go mod tidy` writes: the release
+      # build runs tidy itself, so drift would otherwise be rewritten on the
+      # release runner instead of failing review. Needs only go, not
+      # frontend/dist or the webview libs, so it fails before the slow steps.
+      - name: Check go.mod/go.sum are tidy
+        run: task check-go-mod-tidy
+
       # Workflow + composite-action security audit (config .github/zizmor.yml).
       # Online, unlike the lefthook hook: the token turns on impostor-commit,
       # known-vulnerable-actions and ref-version-mismatch, which need the
