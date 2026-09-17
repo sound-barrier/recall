@@ -139,7 +139,8 @@ the bindings the module must understand.
 - **Release-time shell lives in `scripts/release/`** (not inline in
   `release.yml`): `package-wails-windows.sh`, `compute-sha256.sh`,
   `push-release-tag.sh`, `verify-release-ref.sh` (the tag guard `release.yml`'s
-  `verify-ref` job runs), plus `smoke/smoke.sh`, which CI's `lint` job runs.
+  `verify-ref` job runs), `fire-release.sh` (`task release-fire`, which runs that
+  guard before it dispatches), plus `smoke/smoke.sh`, which CI's `lint` job runs.
   Each reads inputs from env vars set in the workflow step. Add new release-time
   logic as a `scripts/release/*.sh` (covered by `task lint-shell` via the
   `SHELL_SCRIPTS` glob). The Linux/macOS
