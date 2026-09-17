@@ -18,6 +18,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/applog"
+	"recall/pkg/gamedata"
 )
 
 // initSelfUpdater configures the framework updater for in-app binary
@@ -123,7 +124,16 @@ func newSelfUpdateHTTPClient(timeouts selfUpdateTimeouts) *http.Client {
 	transport.DialContext = (&net.Dialer{Timeout: timeouts.dial}).DialContext
 	transport.TLSHandshakeTimeout = timeouts.tlsHandshake
 	transport.ResponseHeaderTimeout = timeouts.responseHeader
-	return &http.Client{Timeout: timeouts.transfer, Transport: transport}
+	return &http.Client{
+		Timeout:   timeouts.transfer,
+		Transport: transport,
+		// The exe and SHA256SUMS arrive through redirects, and a hop off
+		// HTTPS or off GitHub would let someone else choose both. The Wails
+		// provider defers to this policy and then skips its own hop cap
+		// (providers/github/github.go:253-258 at v3.0.0-beta.22), so the
+		// policy has to end a loop itself, which the shared guard does.
+		CheckRedirect: gamedata.CheckUpdateRedirect,
+	}
 }
 
 // wailsSelfUpdater adapts *updater.Updater onto the app.SelfUpdater
