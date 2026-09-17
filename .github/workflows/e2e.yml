@@ -5,11 +5,14 @@
 #
 # Workflow ALWAYS triggers (no `paths:` filter at the workflow level)
 # so the `playwright` context required by branch protection is always
-# reported. A `Detect e2e-relevant changes` step short-circuits the
-# heavy steps when nothing in frontend/, pkg/, *.go, or the OpenAPI
-# spec changed — docs-only and release-please PRs go green in ~10s
-# instead of leaving `playwright` stuck on "Expected — Waiting for
-# status to be reported".
+# reported: a required workflow skipped by a path filter stays
+# "Expected — Waiting for status to be reported" and blocks the merge.
+# Instead, a `Detect e2e-relevant changes` step skips the heavy steps
+# and posts success only when EVERY changed path is on the safe list in
+# scripts/ci/e2e-relevant-changes.sh (docs, top-level markdown, GitHub
+# metadata, the release-please manifest), so docs-only and
+# release-please PRs go green in ~10s. It fails closed: any other path,
+# an empty change list, or a diff that errors runs the whole suite.
 #
 # Mirrors the local `task test-e2e` recipe:
 #   1. build the frontend (Vite → frontend/dist)
@@ -69,14 +72,17 @@ jobs:
           else
             base="$(git rev-parse "${HEAD_SHA}^" 2>/dev/null || echo "$HEAD_SHA")"
           fi
-          changed="$(git diff --name-only "${base}..${HEAD_SHA}" || true)"
-          relevant=false
-          if printf '%s\n' "$changed" | grep -qE '^(frontend/|pkg/|api/openapi\.yaml$|\.github/workflows/e2e\.yml$)|\.go$'; then
-            relevant=true
+          # --no-renames: a rename otherwise lists only its new path, and
+          # a file moved from frontend/ into docs/ would skip the suite.
+          if changed="$(git diff --no-renames --name-only "${base}..${HEAD_SHA}")"; then
+            decision="$(printf '%s\n' "$changed" | bash scripts/ci/e2e-relevant-changes.sh)"
+          else
+            echo "::warning::git diff ${base}..${HEAD_SHA} failed — running Playwright (fail closed)."
+            decision="relevant=true"
           fi
-          echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
-          if [ "$relevant" = "false" ]; then
-            echo "::notice::No e2e-relevant changes (diff: ${base}..${HEAD_SHA}) — skipping Playwright, posting success."
+          echo "$decision" >> "$GITHUB_OUTPUT"
+          if [ "$decision" = "relevant=false" ]; then
+            echo "::notice::Only known-safe paths changed (diff: ${base}..${HEAD_SHA}) — skipping Playwright, posting success."
           fi
 
       # go (build serveronly) + node (frontend build + Playwright) from
