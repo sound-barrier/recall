@@ -45,7 +45,7 @@ vars:
   # The exact shell-script set the old Makefile's $(wildcard …) produced
   # (NOT all of scripts/ — gen-goldens.sh at the scripts/ root is excluded).
   SHELL_SCRIPTS:
-    sh: ls scripts/*.sh scripts/lib/*.sh scripts/db/*.sh scripts/ci/*.sh scripts/release/*.sh scripts/release/smoke/*.sh initialize.sh .devcontainer/postCreate.sh 2>/dev/null | tr '\n' ' '
+    sh: ls scripts/*.sh scripts/lib/*.sh scripts/db/*.sh scripts/ci/*.sh scripts/release/*.sh scripts/release/smoke/*.sh scripts/release/smoke/lib/*.sh scripts/release/smoke/cases/*.sh initialize.sh .devcontainer/postCreate.sh 2>/dev/null | tr '\n' ' '
   GO_COVERAGE_MIN: '{{.GO_COVERAGE_MIN | default "84"}}'
   E2E_HOME: '{{.E2E_HOME | default "/tmp/recall-e2e"}}'
   # seed-dev knobs.
