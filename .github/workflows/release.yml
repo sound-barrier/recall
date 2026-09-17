@@ -39,8 +39,13 @@ jobs:
   # commit that gets built, attested and published. Every other job depends
   # on this one. It does not stop a tag pushed on purpose: both triggers run
   # this file and the script as they are at the tagged commit, so a tag on a
-  # commit that edits either skips the check. Stopping that takes a reviewer
-  # who compares the run's commit with main before anything publishes. The
+  # commit that edits either skips the check, and the edited file sets every
+  # job's permissions and which jobs wait for approval. Such a run can attest
+  # under this workflow's name and publish a release without anyone's
+  # approval; only who can push v* tags limits that. The `release`
+  # environment's reviewer, who compares the run's commit with main before
+  # approving, keeps RECALL_UPDATE_SIGNING_KEY from it, so its exe carries no
+  # valid .sig and a Recall that checks signatures refuses the update. The
   # checks, and why each exists, are in scripts/release/verify-release-ref.sh.
   verify-ref:
     runs-on: ubuntu-latest
@@ -64,13 +69,13 @@ jobs:
   # v3's WebView2 loader is pure Go, so this cross-compiles CGO_ENABLED=0 from
   # Linux — no mingw, no Docker. wails3 generate syso embeds the icon/version;
   # create:nsis:installer fetches the WebView2 bootstrapper + runs makensis.
+  # The build runs npm, wails3 and makensis, so it gets a read-only token and
+  # no OIDC token: it can neither publish nor attest what it built.
   build-windows:
     needs: [verify-ref]
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
-      attestations: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -104,16 +109,8 @@ jobs:
           VERSION: ${{ github.ref_name }}
         run: bash scripts/release/package-wails-windows.sh
 
-      - name: Attest build provenance
-        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
-        with:
-          # The raw exe (`…-windows-amd64.exe`) is the in-app updater target;
-          # the installer (`…-windows-amd64-installer.exe`) is the human
-          # download. `…-windows-amd64.exe` matches only the former.
-          subject-path: |
-            recall-*-windows-amd64-installer.exe
-            recall-*-windows-amd64.exe
-
+      # The raw exe (`…-windows-amd64.exe`) is the in-app updater target; the
+      # installer (`…-windows-amd64-installer.exe`) is the human download.
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
@@ -121,6 +118,7 @@ jobs:
           path: |
             recall-*-windows-amd64-installer.exe
             recall-*-windows-amd64.exe
+          if-no-files-found: error
 
   # ── Job 2: Generate SBOM from BUILT ARTIFACTS ────────────────────────
   # Improvement #3 (audit): SBOM now describes the shipped bits, not
@@ -142,8 +140,8 @@ jobs:
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
+          name: build-wails-windows
           path: artifacts
-          merge-multiple: true
 
       - name: Compute artifact version
         id: ver
@@ -165,23 +163,25 @@ jobs:
         with:
           name: sbom
           path: recall-${{ steps.ver.outputs.version }}-sbom.spdx.json
+          if-no-files-found: error
 
-  # ── Job 3: Create GitHub Release with the Windows binaries attached ──
-  # github.ref_name is used only in an `actions/` `with:` expression, not
-  # interpolated into any run: shell command — safe from injection.
-  release:
+  # ── Job 3: Sign, checksum and attest every release asset ─────────────
+  # The one job that can read RECALL_UPDATE_SIGNING_KEY or mint an
+  # attestation, and the only job that names the `release` environment: it
+  # waits for a maintainer's approval, which comes after the build and SBOM it
+  # would sign have finished, and one approval covers the release. Any code in
+  # this job can read the key out of the runner's memory, so it runs first-party
+  # actions and this repository's code only, and builds the signer from
+  # source with no cache and no module download.
+  sign-attest:
     needs: [build-windows, sbom]
     runs-on: ubuntu-latest
+    environment: release
     permissions:
-      contents: write
-      id-token: write    # needed by Sigstore to mint a short-lived cert
-      attestations: write  # needed to write SLSA provenance for sha256 files
+      contents: read
+      id-token: write      # Sigstore certificate for the attestation
+      attestations: write  # store the attestation on the repository
     steps:
-      # Checkout is required even though this job only consumes artifacts
-      # from earlier jobs — the "Generate SHA256 checksums" step shells
-      # out to scripts/release/compute-sha256.sh, which lives in the
-      # source tree. Without checkout the script is absent from the
-      # runner filesystem and the step dies with exit 127.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
@@ -189,10 +189,40 @@ jobs:
           # against the previous release and skip unchanged YAMLs.
           fetch-depth: 0
 
-      # Download all artifacts into the current directory (merge-multiple flattens them).
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+      - name: Compute artifact version
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      # cache: false, because a cache saved by any main-branch run could
+      # otherwise feed the toolchain that builds the signer.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         with:
-          merge-multiple: true
+          go-version-file: go.mod
+          cache: false
+
+      # pkg/updatesig and cmd/update-signing import only the standard library
+      # (a test holds the package to that), so the build needs no download:
+      # GOPROXY=off turns a new dependency into a failed build here instead
+      # of unreviewed code running beside the key.
+      - name: Build the update signer
+        env:
+          GOTOOLCHAIN: local
+          GOPROXY: 'off'
+          GOFLAGS: -mod=readonly
+          CGO_ENABLED: '0'
+        run: go build -trimpath -o "$RUNNER_TEMP/update-signing" ./cmd/update-signing
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: build-wails-windows
+          path: release-assets
+
+      - name: Download SBOM artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: sbom
+          path: release-assets
 
       # Stage the parser's reference data (heroes.yaml + maps.yaml) as
       # release-versioned assets. The frontend's "verify reference data"
@@ -201,10 +231,6 @@ jobs:
       # filename keeps each release's data self-describing and prevents an
       # old asset from being mistaken for a newer one if a verifier
       # downloads from the wrong release page.
-      - name: Compute artifact version
-        id: ver
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-
       - name: Stage reference data YAMLs
         env:
           # Route the tag through an env var rather than interpolating
@@ -221,14 +247,18 @@ jobs:
           # assets and makes the app's "what's new" hint noisy; the app walks
           # back to the most recent release that still carries each file
           # (gamedata.FetchReleaseRosters), so omitting an unchanged one is safe.
-          prev_tag="$(git describe --tags --abbrev=0 "v${VERSION}^" 2>/dev/null || true)"
-          echo "Previous release tag: ${prev_tag:-<none>}"
+          # The diff base is the previous stable tag, never a prerelease: an rc
+          # is a draft until a maintainer publishes it, and may never be, and
+          # the walk-back cannot see a draft, so a stable release that skipped
+          # a roster only the rc carried would leave clients without it.
+          prev_tag="$(git describe --tags --abbrev=0 --exclude='v*-*' "v${VERSION}^" 2>/dev/null || true)"
+          echo "Previous stable release tag: ${prev_tag:-<none>}"
           for name in heroes maps screenshot_sources seasons ranks patches; do
             src="pkg/parser/${name}.yaml"
             if [ -z "$prev_tag" ] \
                || ! git rev-parse -q --verify "${prev_tag}:${src}" >/dev/null 2>&1 \
                || ! git diff --quiet "${prev_tag}" HEAD -- "$src"; then
-              cp "$src" "recall-${VERSION}-${name}.yaml"
+              cp "$src" "release-assets/recall-${VERSION}-${name}.yaml"
               echo "staged  recall-${VERSION}-${name}.yaml (changed since ${prev_tag:-<no previous release>})"
             else
               echo "skipped ${name}.yaml (unchanged since ${prev_tag})"
@@ -236,53 +266,91 @@ jobs:
           done
 
       # The Windows DB-reset helper (also bundled in the installer). A
-      # checked-in source file copied straight into the workspace, like
-      # the reference YAMLs — so it's signed + attested the same way.
+      # checked-in source file copied straight into the release assets, like
+      # the reference YAMLs — so it's checksummed + attested the same way.
       - name: Stage Windows reset-DB helper script
         env:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
-          cp scripts/windows/Reset-Database.bat "recall-${VERSION}-Reset-Database.bat"
+          cp scripts/windows/Reset-Database.bat "release-assets/recall-${VERSION}-Reset-Database.bat"
 
-      # SLSA build provenance on the reference-data YAMLs. The Windows build
-      # job attested its own outputs in-job; the YAMLs aren't built by any
-      # earlier job (they're checked-in source copied straight into the
-      # workspace), so the attestation has to fire here in the release job.
-      # Verify with:
-      #   gh attestation verify recall-X.Y.Z-heroes.yaml \
-      #     --repo sound-barrier/recall
-      - name: Attest reference data provenance
-        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
-        with:
-          subject-path: |
-            recall-*-heroes.yaml
-            recall-*-maps.yaml
-            recall-*-screenshot_sources.yaml
-            recall-*-seasons.yaml
-            recall-*-ranks.yaml
-            recall-*-patches.yaml
-            recall-*-Reset-Database.bat
+      # The only step with the key in its environment. The signer refuses a
+      # key other than the one pinned in pkg/updatesig/public_key.pem and
+      # never replaces an existing .sig.
+      - name: Sign the updater exe and installer
+        env:
+          RECALL_UPDATE_SIGNING_KEY: ${{ secrets.RECALL_UPDATE_SIGNING_KEY }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          "$RUNNER_TEMP/update-signing" sign \
+            "release-assets/recall-${VERSION}-windows-amd64.exe" \
+            "release-assets/recall-${VERSION}-windows-amd64-installer.exe"
 
-      # Per-artifact .sha256 files for every release binary and reference-
-      # data YAML, plus the combined SHA256SUMS the in-app updater consumes.
-      # Each .sha256 contains the SHA256 hash of exactly one artifact.
+      # The check an installed Recall makes before it updates, run without the
+      # key: a signature this refuses never reaches a release.
+      - name: Verify signatures
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          "$RUNNER_TEMP/update-signing" verify \
+            "release-assets/recall-${VERSION}-windows-amd64.exe" \
+            "release-assets/recall-${VERSION}-windows-amd64-installer.exe"
+
+      # Inside release-assets, so SHA256SUMS and every .sha256 name each asset
+      # without a directory: the updater and the roster fetch look assets up by
+      # bare name, and a prefixed name would leave old clients unverified.
       # Users verify with: sha256sum --check recall-<version>-windows-amd64.exe.sha256
       - name: Generate SHA256 checksums
-        run: bash scripts/release/compute-sha256.sh
+        working-directory: release-assets
+        run: bash ../scripts/release/compute-sha256.sh
 
-      # Attest the sha256 files so users can prove the checksums themselves
-      # came from CI, not a tampered release page. Chain:
-      #   gh attestation verify <file>.sha256 → sha256sum --check <file>.sha256
-      # This closes the loop: even the fallback verification path is signed.
-      - name: Attest SHA256 checksums
+      # One attestation over every asset, the signatures and checksums with
+      # them, so a checksum or .sig can be proven to come from this workflow
+      # too. Verify with:
+      #   gh attestation verify recall-X.Y.Z-windows-amd64.exe \
+      #     --repo sound-barrier/recall
+      - name: Attest build provenance
+        id: provenance
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
         with:
           subject-path: |
-            recall-*.exe.sha256
-            recall-*.yaml.sha256
-            recall-*.bat.sha256
-            SHA256SUMS
+            release-assets/recall-*.exe
+            release-assets/recall-*.exe.sig
+            release-assets/recall-*.yaml
+            release-assets/recall-*.bat
+            release-assets/recall-*.sha256
+            release-assets/SHA256SUMS
 
+      - name: Check the release asset set
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: bash scripts/release/check-release-assets.sh release-assets "$VERSION"
+
+      - name: Upload release assets
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: release-assets
+          path: release-assets/
+          if-no-files-found: error
+
+  # ── Job 4: Create GitHub Release with the signed assets attached ──
+  # Publishes exactly what sign-attest checked, and holds nothing but a token
+  # that can write releases. It names no environment, so publishing needs no
+  # second approval, and "Re-run failed jobs" retries it alone.
+  release:
+    needs: [sign-attest]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # create the release and upload its assets
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: release-assets
+          path: release-assets
+
+      # github.ref_name is used only in a `with:` expression, not interpolated
+      # into any run: shell command — safe from injection.
       # The zizmor ignore sits on the name line: trailing the uses: pin, it
       # would hide the version comment from ref-version-mismatch.
       - name: Create GitHub Release  # zizmor: ignore[superfluous-actions] one call creates the release and uploads every asset (immutable releases)
@@ -290,13 +358,14 @@ jobs:
         with:
           # Tags like v0.0.1-beta or v1.0.0-rc1 contain a hyphen → prerelease.
           prerelease: ${{ contains(github.ref_name, '-') }}
+          # Releases here are immutable, and GitHub takes no upload once a
+          # release is published. The action drafts a stable release, uploads
+          # to it, then publishes it, but it creates a prerelease already
+          # published unless told to keep a draft. So a prerelease stays a
+          # draft with every asset attached, for a maintainer to publish.
+          draft: ${{ contains(github.ref_name, '-') }}
           generate_release_notes: true
-          files: |
-            recall-*.exe
-            recall-*.exe.sha256
-            recall-*.yaml
-            recall-*.yaml.sha256
-            recall-*.bat
-            recall-*.bat.sha256
-            recall-*-sbom.spdx.json
-            SHA256SUMS
+          # Everything sign-attest checked, and nothing else.
+          working_directory: release-assets
+          files: '*'
+          fail_on_unmatched_files: true

@@ -10,9 +10,13 @@
 #      renaming it breaks every shipped client). It also serves manual
 #      "verify your download" use.
 #
-# Called by release.yml's "Generate SHA256 checksums" step.
-# No required env vars; operates on whatever recall-* artifacts the
-# previous download-artifact step staged.
+# Called by release.yml's "Generate SHA256 checksums" step, inside the
+# sign-attest job's asset directory, so every name it writes is bare: the
+# updater and the roster fetch look assets up by bare name. No required env
+# vars; operates on the recall-* artifacts in the current directory.
+#
+# The .sig files stay out. Each one already binds its asset's name and
+# digest under the release key, and the attestation covers it.
 
 set -euo pipefail
 
