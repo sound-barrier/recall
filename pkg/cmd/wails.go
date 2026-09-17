@@ -111,9 +111,9 @@ func RunWails(a *app.App, assets embed.FS) {
 	a.WindowSize = sizer
 	setupSystemTray(wailsApp, win, a)
 
-	// In-app binary self-updater (Windows + Linux). Returns nil — leaving
-	// a.SelfUpdate unset and CanSelfUpdate false — on dev builds, macOS,
-	// and unwritable installs, so the About dialog falls back to the
+	// In-app binary self-updater (Windows only). Returns nil — leaving
+	// a.SelfUpdate unset and CanSelfUpdate false — on dev builds, non-Windows
+	// builds, and unwritable installs, so the About dialog falls back to the
 	// "Open release page" link there. Never reached in server mode
 	// (RunServer is a different entry point; this file is !serveronly).
 	a.SelfUpdate = initSelfUpdater(wailsApp, a)

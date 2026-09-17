@@ -4,10 +4,12 @@ package cmd
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/updater"
@@ -51,28 +53,53 @@ func initSelfUpdater(wailsApp *application.App, a *app.App) app.SelfUpdater {
 		return nil
 	}
 
-	gh, err := github.New(github.Config{
-		Repository:    "sound-barrier/recall",
-		ChecksumAsset: "SHA256SUMS",
-		AssetMatcher:  recallAssetMatcher,
-	})
+	cfg, err := newSelfUpdateConfig(v, newSelfUpdateHTTPClient(selfUpdateClientTimeouts))
 	if err != nil {
 		log.Warn("self-update off: github provider init failed", "err", err)
 		return nil
 	}
-
-	// CurrentVersion is v-less (the provider strips the leading v from
-	// tags on its side); release ldflags carry the tag WITH the v.
-	if err := wailsApp.Updater.Init(updater.Config{
-		CurrentVersion: strings.TrimPrefix(v, "v"),
-		Providers:      []updater.Provider{gh},
-		Window:         updater.WindowNone, // headless — the About dialog is the UI
-	}); err != nil {
+	if err := wailsApp.Updater.Init(cfg); err != nil {
 		log.Warn("self-update off: updater init failed", "err", err)
 		return nil
 	}
 	log.Info("self-update ready", "version", v)
 	return &wailsSelfUpdater{u: wailsApp.Updater}
+}
+
+// newSelfUpdateConfig builds the updater configuration for Recall's GitHub
+// releases, fetching everything through client.
+func newSelfUpdateConfig(version string, client *http.Client) (updater.Config, error) {
+	gh, err := github.New(github.Config{
+		Repository:    "sound-barrier/recall",
+		ChecksumAsset: "SHA256SUMS",
+		AssetMatcher:  recallAssetMatcher,
+		HTTPClient:    client,
+	})
+	if err != nil {
+		return updater.Config{}, err
+	}
+	// CurrentVersion is v-less (the provider strips the leading v from
+	// tags on its side); release ldflags carry the tag WITH the v.
+	return updater.Config{
+		CurrentVersion: strings.TrimPrefix(version, "v"),
+		Providers:      []updater.Provider{gh},
+		Window:         updater.WindowNone, // headless — the About dialog is the UI
+	}, nil
+}
+
+// selfUpdateTimeouts is the self-update client's time policy, held as data so
+// tests can run the production policy on a compressed clock.
+type selfUpdateTimeouts struct {
+	total time.Duration
+}
+
+// selfUpdateClientTimeouts is the policy of the client the GitHub provider
+// builds when it is handed none (providers/github/github.go:98-101 at
+// wails/v3 v3.0.0-beta.22).
+var selfUpdateClientTimeouts = selfUpdateTimeouts{total: 30 * time.Second}
+
+func newSelfUpdateHTTPClient(timeouts selfUpdateTimeouts) *http.Client {
+	return &http.Client{Timeout: timeouts.total}
 }
 
 // wailsSelfUpdater adapts *updater.Updater onto the app.SelfUpdater
