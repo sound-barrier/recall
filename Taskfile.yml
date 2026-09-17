@@ -454,23 +454,29 @@ tasks:
       - echo "[ recall ] ✓  Dependencies updated"
 
   update-mise:
-    desc: Bump version-pinned mise tools to their latest versions
+    desc: Bump the routine mise [tools] pins to their newest releases at least seven days old, then refresh mise.lock
     cmds:
-      - echo "[ recall ] Bumping version-pinned mise tools to latest…"
-      # --bump rewrites each exact [tools] pin to its newest release and
-      # installs it; --local leaves the global mise config alone. The excluded
-      # pins move only as their own change: go with go.mod, golangci-lint with
-      # the sweep its new checks need, gobco as a coverage re-baseline, and
-      # wails3 in lockstep with go.mod's wails/v3 and @wailsio/runtime. The
-      # [env] version strings and .node-version are not touched, so sync those
-      # by hand.
+      - echo "[ recall ] Bumping mise [tools] pins…"
+      # --bump rewrites each exact [tools] pin to the newest release
+      # minimum_release_age allows and installs it; --local leaves the global
+      # mise config alone. The excluded pins move only as their own change: go
+      # with go.mod, golangci-lint with the sweep its new checks need, gobco as
+      # a coverage re-baseline, and wails3 in lockstep with go.mod's wails/v3
+      # and @wailsio/runtime. mise lock then records each lockfile_platforms
+      # URL and, wherever upstream publishes one, its checksum. Neither touches
+      # the [env] version strings or .node-version.
       - >-
         mise upgrade --bump --local
         --exclude go
         --exclude go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint
         --exclude go:github.com/rillig/gobco
         --exclude go:github.com/wailsapp/wails/v3/cmd/wails3
-      - echo "[ recall ] ✓  mise [tools] bumped. Sync the matching [env] version strings + run 'task check-deps'."
+      - mise lock
+      # A tool whose upstream publishes no checksum (taplo) comes back from a
+      # bump URL-only, and --locked would then install whatever that URL serves.
+      - '[ "$(grep -c "^url = " mise.lock)" -eq "$(grep -c "^checksum = " mise.lock)" ] || { echo "[ recall ] ✗  mise.lock has a platform entry with no checksum — hash its release asset by hand (see the taplo pin in mise.toml)"; exit 1; }'
+      - echo "[ recall ] ✓  mise.toml + mise.lock bumped. Sync .node-version with [tools] node and the matching [env] version strings, then run 'task check-deps'."
+      - echo "[ recall ]    Bumping mise itself is separate — see CONTRIBUTING.md (Tool pins and the mise lockfile)."
 
   trivy:
     desc: Trivy vulnerability scan (fails on HIGH/CRITICAL)

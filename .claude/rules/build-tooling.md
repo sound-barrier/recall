@@ -26,9 +26,35 @@ Consumers no longer read a file; they read the environment mise puts them in:
 
 - **Locally** — `mise activate` exports `[env]`, so `Taskfile.yml` and
   `lefthook.yml` reference `$SPECTRAL_VERSION` and friends directly.
-- **CI** — `jdx/mise-action` loads `mise.toml [env]` into `$GITHUB_ENV` for every
-  job regardless of `install_args`. That is also why `DEFAULT_MAX_FILES` must
-  never be added to `[env]`: it would silently override the package-size gate.
+- **CI** — `.github/actions/setup-mise` (the repo's only `jdx/mise-action` call)
+  loads `mise.toml [env]` into `$GITHUB_ENV` for every job regardless of
+  `install_args`. That is also why `DEFAULT_MAX_FILES` must never be added to
+  `[env]`: it would silently override the package-size gate.
+
+**`mise.lock` is committed, and CI installs from it with `--locked`.** Every
+`[tools]` entry is an exact release; the lock adds each core/aqua tool's URL and
+checksum for the four `lockfile_platforms` (go:/pipx: entries are version-only).
+mise-action adds `--locked` on its own whenever a lock exists, so a tool with no
+lock entry, or no URL for the runner's platform, fails the job. The rules:
+
+- **Bump tools with `task update-mise`** (`mise upgrade --bump --local`, which
+  `minimum_release_age = "7d"` holds to week-old releases, then `mise lock`).
+  It excludes go, golangci-lint, gobco and wails3: each moves only as its own
+  change (go.mod, a lint sweep, a coverage re-baseline, the wails lockstep).
+  Commit `mise.toml` and `mise.lock` together, and sync `.node-version`.
+- **taplo's checksums are hand-hashed.** Upstream publishes none, so `mise lock`
+  writes its entries URL-only; `mise lock` keeps the added SHA-256 lines, a
+  taplo bump drops them, and `task update-mise` fails until they are back.
+- **The mise version is one value in three places**: `version` + `sha256`
+  (raw `linux-x64` binary) in `.github/actions/setup-mise/action.yml`,
+  `min_version` in `mise.toml`, and the mise that wrote `mise.lock`. mise
+  2026.9.3–2026.9.6 read only lockfile version 1 and newer mise writes version 2
+  for a new lock, so regenerate the lock with the exact pinned binary
+  (downloaded and checksum-verified), never a newer local mise, and never run
+  `mise lock --upgrade` with a different binary.
+- **`pipx.uvx = false` is load-bearing.** With uv on PATH, newer mise records uv
+  dependency graphs for pipx tools that uv-less CI runners cannot replay under
+  `--locked`.
 
 `task check-deps` compares against upstream and **fails** on drift: the wails3
 CLI, Spectral, typos, Semgrep, Honkit, schemathesis, jsonschema-rs, ruff,
