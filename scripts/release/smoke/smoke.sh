@@ -41,6 +41,8 @@ REPO_ROOT="$(cd "${RELEASE_DIR}/../.." && pwd)"
 . "${SCRIPT_DIR}/cases/fire-release.sh"
 # shellcheck source=cases/check-release-assets.sh
 . "${SCRIPT_DIR}/cases/check-release-assets.sh"
+# shellcheck source=cases/verify-asset-digests.sh
+. "${SCRIPT_DIR}/cases/verify-asset-digests.sh"
 
 main() {
   printf 'Smoke-testing scripts/release/*.sh\n'
@@ -50,6 +52,7 @@ main() {
   smoke_push_release_tag
   smoke_fire_release
   smoke_check_release_assets
+  smoke_verify_asset_digests
   report_results
 }
 
