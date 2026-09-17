@@ -23,7 +23,7 @@ paths:
 | `docs/seasons-comparison-design.md` | Developers | Why the Compare tab computes seasons the way it does. |
 | `CONTRIBUTING.md`, `RELEASES.md` | Developers | Build, lint, release, commit-message rules. |
 | `CODE_OF_CONDUCT.md` | Repo participants | Two rules: be respectful, project is free with no SLAs. ~50 lines. |
-| `SECURITY.md` | Security reporters | Latest-release-only support; file via GitHub Security Advisories (private), no SLA. |
+| `SECURITY.md` | Security reporters + cautious users | Latest-release-only support; file via GitHub Security Advisories (private), no SLA. Also owns the update trust model: what the updater trusts, checks and cannot stop. |
 | `.github/ISSUE_TEMPLATE/*.yml` + `pull_request_template.md` | Issue/PR authors | YAML Issue Forms; PR template carries commit-style + TDD + docs checklist. |
 | `.github/CODEOWNERS` | PR routing | Catch-all `* @jacob-delgado`. Last-matching-rule-wins. |
 | `.github/labels.yml` | Triagers | Declarative label defs synced by `labels.yml` workflow. |
