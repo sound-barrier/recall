@@ -30,7 +30,7 @@ paths:
 
 Load-bearing cross-doc anchors:
 `docs/install-windows.md#verifying-your-download`,
-`CONTRIBUTING.md#building`, `CONTRIBUTING.md#pre-commit-hooks-lefthook`. Rename a
+`CONTRIBUTING.md#building`, `CONTRIBUTING.md#git-hooks-lefthook`. Rename a
 heading and you'll silently break the inbound link.
 
 ## `docs/` is the source of truth; `book/` is metadata only

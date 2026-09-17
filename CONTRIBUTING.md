@@ -28,7 +28,7 @@ the detailed internal conventions see [`CLAUDE.md`](CLAUDE.md).
   - [Preparing frontend/dist in CI jobs](#preparing-frontenddist-in-ci-jobs)
   - [Pinning GitHub Actions](#pinning-github-actions)
   - [Tagging and releasing](#tagging-and-releasing)
-- [Releases](RELEASES.md) — separate doc; covers cutting stable releases and prereleases, `task release-beta` / `task release-fire` shortcuts, and recovery procedures.
+- [Releases](RELEASES.md) — separate doc; covers cutting stable releases and prereleases, approving the signing job, the `task release-fire` shortcut, and recovery procedures.
 - [Test-only APIs](#test-only-apis)
 - [Bug-report bundles](#bug-report-bundles)
   - [What's in a bundle](#whats-in-a-bundle)
@@ -499,19 +499,21 @@ The SHA is the source of truth; the comment is for humans. **Two spaces before t
 Moved to its own doc — see [RELEASES.md](RELEASES.md). It covers:
 
 - the release-please → `v*` tag → `release.yml` flow (with a `mermaid` diagram and a stable-vs-prerelease comparison table),
-- the `task release-beta VERSION=…` shortcut for cutting prereleases,
+- approving the `release` deployment that signs every release, and what to check first,
+- the update signing key: custody, rotation, loss, and the first signed release,
 - `task release-fire TAG=…` for the rare case where `release.yml` doesn't auto-fire,
-- one-time repo setup (`RELEASE_PLEASE_TOKEN` PAT, workflow permissions),
+- one-time repo setup (workflow permissions, the `release` environment and its secret),
 - recovery procedures (emergency manual tag, skipping/pausing release-please).
 
 The 30-second version for prereleases:
 
 ```sh
-task release-beta VERSION=0.0.13-beta.0
-git push origin main
-# … merge the Release PR release-please opens …
-# If RELEASE_PLEASE_TOKEN is configured, release.yml fires on its own.
-# Otherwise:
+# 1. Add a "Release-As: 0.0.13-beta.0" footer to a commit that changes a file,
+#    and merge its PR (Rebase and merge drops an empty commit).
+# 2. Merge the Release PR release-please opens.
+# 3. Actions -> the Release run -> Review deployments -> release -> Approve and deploy.
+# 4. Publish the draft prerelease it creates.
+# Only if no Release run appeared after step 2:
 task release-fire TAG=v0.0.13-beta.0
 ```
 

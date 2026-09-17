@@ -603,10 +603,14 @@ tasks:
         git commit -s --allow-empty -m "chore: cut v{{.VERSION}}" -m "Release-As: {{.VERSION}}"
         echo
         echo "[ recall ] ✓  empty commit created. Next steps:"
-        echo "    1.  git push origin main"
-        echo "    2.  merge the release-please PR titled 'chore(main): release v{{.VERSION}}'"
-        echo "    3.  if RELEASE_PLEASE_TOKEN is configured, release.yml fires automatically."
-        echo "        Otherwise:  task release-fire TAG=v{{.VERSION}}"
+        echo "    1.  land the Release-As footer on main through a PR. main takes no direct"
+        echo "        push, and Rebase and merge drops an empty commit, so drop this one"
+        echo "        now (git reset --soft HEAD~1) and put the footer on a commit that"
+        echo "        changes a file (RELEASES.md, Cutting a prerelease)"
+        echo "    2.  merge the release-please PR titled 'chore(main): release {{.VERSION}}'"
+        echo "    3.  approve the release deployment: Actions -> the Release run for"
+        echo "        v{{.VERSION}} -> Review deployments -> release -> Approve and deploy"
+        echo "    4.  a prerelease publishes as a draft: review it, then publish it by hand"
 
   # The tag reaches the script shell-quoted, never spliced into the line bare,
   # and the script verifies it before anything is dispatched. It is not a
