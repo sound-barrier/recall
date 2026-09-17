@@ -1,16 +1,23 @@
 # Recall
 
 [![CI](https://github.com/sound-barrier/recall/actions/workflows/ci.yml/badge.svg)](https://github.com/sound-barrier/recall/actions/workflows/ci.yml)
+[![E2E](https://github.com/sound-barrier/recall/actions/workflows/e2e.yml/badge.svg)](https://github.com/sound-barrier/recall/actions/workflows/e2e.yml)
+[![Golden corpus](https://github.com/sound-barrier/recall/actions/workflows/golden-corpus.yml/badge.svg)](https://github.com/sound-barrier/recall/actions/workflows/golden-corpus.yml)
 [![Release](https://github.com/sound-barrier/recall/actions/workflows/release.yml/badge.svg)](https://github.com/sound-barrier/recall/actions/workflows/release.yml)
 [![Pages](https://github.com/sound-barrier/recall/actions/workflows/pages.yml/badge.svg)](https://github.com/sound-barrier/recall/actions/workflows/pages.yml)
 [![CodeQL](https://github.com/sound-barrier/recall/actions/workflows/codeql.yml/badge.svg)](https://github.com/sound-barrier/recall/actions/workflows/codeql.yml)
+[![Scorecard](https://github.com/sound-barrier/recall/actions/workflows/scorecard.yml/badge.svg)](https://github.com/sound-barrier/recall/actions/workflows/scorecard.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/sound-barrier/recall/badge)](https://scorecard.dev/viewer/?uri=github.com/sound-barrier/recall)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14677/badge)](https://www.bestpractices.dev/projects/14677)
 [![Latest release](https://img.shields.io/github/v/release/sound-barrier/recall)](https://github.com/sound-barrier/recall/releases/latest)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
-[![Go](https://img.shields.io/badge/go-1.26-00ADD8?logo=go&logoColor=white)](https://go.dev/)
+[![Go](https://img.shields.io/badge/go-1.27-00ADD8?logo=go&logoColor=white)](https://go.dev/)
 [![Vue](https://img.shields.io/badge/vue-3-4FC08D?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
 [![Docs](https://img.shields.io/badge/docs-sound--barrier.github.io%2Frecall-7B36ED?logo=gitbook&logoColor=white)](https://sound-barrier.github.io/recall/)
 [![API](https://img.shields.io/badge/API-Swagger%20UI-85EA2D?logo=swagger&logoColor=black)](https://sound-barrier.github.io/recall/api/)
+[![Conventional Commits](https://img.shields.io/badge/commits-Conventional-fe5196?logo=conventionalcommits&logoColor=white)](https://www.conventionalcommits.org/en/v1.0.0/)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-defined-purple)](CODE_OF_CONDUCT.md)
+[![Security policy](https://img.shields.io/badge/security-policy-critical)](SECURITY.md)
 [![Backlog](https://img.shields.io/badge/backlog-public-orange)](TECHNICAL_DEBT.md)
 
 **Recall** turns your Overwatch match history into a clear picture of how you're
