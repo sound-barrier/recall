@@ -384,6 +384,19 @@ jobs:
             release-assets/recall-*.sha256
             release-assets/SHA256SUMS
 
+      # The attestation's Sigstore bundle, one JSON line covering every subject
+      # above, so a download verifies without GitHub's attestation API
+      # (`gh attestation verify ASSET --bundle recall-X.Y.Z.intoto.jsonl
+      # --repo sound-barrier/recall`) and Scorecard finds provenance on the
+      # release. It cannot be a subject of the attestation it holds, and needs
+      # no checksum: its own signature covers it. The name matches neither the
+      # updater's exe nor a compute-sha256.sh glob.
+      - name: Publish the provenance bundle
+        env:
+          BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: cp "$BUNDLE" "release-assets/recall-${VERSION}.intoto.jsonl"
+
       - name: Check the release asset set
         env:
           VERSION: ${{ steps.ver.outputs.version }}

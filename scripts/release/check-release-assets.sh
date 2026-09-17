@@ -19,6 +19,7 @@
 #   recall-V-sbom.spdx.json
 #   the .sha256 of each exe, of the .bat and of the SBOM
 #   SHA256SUMS, naming recall-V-windows-amd64.exe without a directory
+#   recall-V.intoto.jsonl, the provenance bundle: JSON lines, not empty
 # Allowed besides: recall-V-<roster>.yaml with its .sha256, for each roster
 # release.yml's staging step writes, since a roster YAML ships only in a
 # release where it changed. Nothing else is allowed, hidden files and
@@ -54,11 +55,12 @@ parse_args() {
   EXE="recall-${VERSION}-windows-amd64.exe"
   INSTALLER="recall-${VERSION}-windows-amd64-installer.exe"
   BAT="recall-${VERSION}-Reset-Database.bat"
+  BUNDLE="recall-${VERSION}.intoto.jsonl"
   SIGNATURES=("${EXE}.sig" "${INSTALLER}.sig")
   REQUIRED=("$EXE" "$INSTALLER" "${SIGNATURES[@]}" "$BAT"
     "recall-${VERSION}-sbom.spdx.json"
     "${EXE}.sha256" "${INSTALLER}.sha256" "${BAT}.sha256"
-    "recall-${VERSION}-sbom.spdx.json.sha256" SHA256SUMS)
+    "recall-${VERSION}-sbom.spdx.json.sha256" SHA256SUMS "$BUNDLE")
 }
 
 check_required() {
@@ -88,6 +90,16 @@ check_sums_name_exe() {
     fi
   done <"${DIR}/SHA256SUMS"
   problem "SHA256SUMS has no digest for ${EXE} under that bare name, the one the updater looks up"
+}
+
+check_bundle_shape() {
+  local path="${DIR}/${BUNDLE}"
+  [ -f "$path" ] || return 0
+  if [ ! -s "$path" ]; then
+    problem "${BUNDLE} is empty"
+  elif [ "$(head -c 1 "$path")" != "{" ]; then
+    problem "${BUNDLE} does not start with a JSON object"
+  fi
 }
 
 is_required() { # <name>
@@ -133,6 +145,7 @@ main() {
   check_required
   check_signature_sizes
   check_sums_name_exe
+  check_bundle_shape
   check_entries
   if [ "$PROBLEMS" -gt 0 ]; then
     printf '%d problem(s) with the release assets in %s\n' "$PROBLEMS" "$DIR" >&2
