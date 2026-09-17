@@ -101,7 +101,7 @@ func newSelfUpdateConfig(version string, client *http.Client) (updater.Config, e
 // message, matched anywhere because Wails prefixes the provider's text. The
 // token is the sentinel's whole text, not something a formatter adds around
 // it, so any wrap of the sentinel carries it; change the text only in lockstep
-// with the frontend.
+// with UPDATE_REFUSAL_TOKEN in frontend/src/self-update-events.ts.
 var errUpdateRefused = errors.New("update refused")
 
 func refuseRelease(rel *updater.Release, reason string) error {

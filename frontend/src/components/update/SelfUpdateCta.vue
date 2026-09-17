@@ -1,10 +1,11 @@
 <script setup lang="ts">
-// In-app self-update CTA — progress bar / Install / Restart / error. A private
-// partial of AboutModal's "Recall app" section (parallel to UpdateDiffManifest):
-// the parent gates rendering on `info.available && canSelfUpdate` and supplies
-// the shared `update-check-modal-btn*` chrome via `:deep()`. The self-update
-// state machine lives in the app store — this component only renders the
-// `SelfUpdateState` bundle and re-emits install / restart.
+// In-app self-update CTA — progress bar / Install / Restart / error / refusal.
+// A private partial of AboutModal's "Recall app" section (parallel to
+// UpdateDiffManifest): the parent gates rendering on
+// `info.available && canSelfUpdate` and supplies the shared
+// `update-check-modal-btn*` chrome via `:deep()`. The self-update state machine
+// lives in the app store — this component only renders the `SelfUpdateState`
+// bundle and re-emits install / restart.
 
 import { computed } from 'vue'
 import type { SelfUpdateState } from '@/self-update-events'
@@ -16,27 +17,58 @@ const emit = defineEmits<{
   restart: []
 }>()
 
+// After a refusal the control still runs the whole pass, and it downloads and
+// installs a release that now verifies, so the label names both steps rather
+// than promising a check alone.
+const RETRY_LABEL: Partial<Record<SelfUpdateState['phase'], string>> = {
+  error:   'Try again',
+  refused: 'Check and install again',
+}
+const installLabel = computed(() => RETRY_LABEL[props.state.phase] ?? 'Install update')
+
 // Phase groupings for the CTA template.
 const busy = computed(() =>
   ['starting', 'downloading', 'verifying', 'installing', 'restarting'].includes(props.state.phase))
+// Every phase is a key, so a NEW phase has to be placed on purpose. The
+// progress bar only renders while `busy`, so the idle, ready, error and
+// refused entries never reach the screen.
+const PROGRESS_LABEL: Record<SelfUpdateState['phase'], string> = {
+  starting:    'Starting…',
+  downloading: 'Downloading…',
+  verifying:   'Verifying…',
+  installing:  'Installing…',
+  restarting:  'Restarting…',
+  idle:        'Starting…',
+  ready:       'Starting…',
+  error:       'Starting…',
+  refused:     'Starting…',
+}
 const progressLabel = computed(() => {
-  const s = props.state
-  switch (s.phase) {
-    case 'downloading': return s.pct != null ? `Downloading… ${s.pct}%` : 'Downloading…'
-    case 'verifying':   return 'Verifying…'
-    case 'installing':  return 'Installing…'
-    case 'restarting':  return 'Restarting…'
-    // The CTA only renders while `busy`, so these never reach the screen —
-    // named rather than defaulted so a NEW phase has to be placed on purpose.
-    case 'starting':
-    case 'idle':
-    case 'ready':
-    case 'error':       return 'Starting…'
-  }
+  const { phase, pct } = props.state
+  if (phase === 'downloading' && pct != null) return `Downloading… ${pct}%`
+  return PROGRESS_LABEL[phase]
 })
 </script>
 
 <template>
+  <div
+    v-if="state.phase === 'refused'"
+    class="update-check-modal-selfupdate-refused"
+    role="alert"
+  >
+    <strong>Update not installed</strong>
+    <p class="update-check-modal-selfupdate-refused-line">
+      Recall couldn't verify this update as an official Recall release, so it
+      didn't install it. Nothing on your computer was changed.
+    </p>
+    <!-- In the attack case the refused release is the payload, so this line
+         must never send anyone to fetch it by hand. -->
+    <p class="update-check-modal-selfupdate-refused-line">
+      Don't install this release by hand. Wait for the next release, or check
+      Recall's Security advisories page on GitHub.
+    </p>
+  </div>
+
   <div
     v-if="busy"
     class="update-check-modal-selfupdate-progress"
@@ -74,7 +106,7 @@ const progressLabel = computed(() => {
     data-self-update-install
     @click="emit('install')"
   >
-    {{ state.phase === 'error' ? 'Try again' : 'Install update' }}
+    {{ installLabel }}
   </button>
 
   <p
@@ -139,5 +171,19 @@ const progressLabel = computed(() => {
   margin: 0;
   font-size: var(--type-sm);
   color: var(--loss);
+}
+
+.update-check-modal-selfupdate-refused {
+  margin-bottom: var(--space-3);
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--loss);
+  font-size: var(--type-sm);
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.update-check-modal-selfupdate-refused-line {
+  margin: var(--space-2) 0 0;
+  color: var(--text-dim);
 }
 </style>

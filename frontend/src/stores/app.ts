@@ -8,7 +8,7 @@ import {
   runUpdateCheck, useDataLocationQuery, useUpdateCheckQuery, useVersionQuery,
 } from '@/queries/system'
 import {
-  SelfUpdateEvents,
+  SelfUpdateEvents, updaterErrorPhase,
   type SelfUpdateProgress, type SelfUpdateError, type SelfUpdateState,
 } from '@/self-update-events'
 import type { ViewId } from '@/composables/shared/keyboard/useTabKeyboardNav'
@@ -138,7 +138,16 @@ export const useAppStore = defineStore('app', () => {
   // the framework's wails:updater:* events (bridged through EventsOn)
   // move the phase. State lives here (not in the modal) so a background
   // download keeps its progress across About close/reopen.
-  const selfUpdate = ref<SelfUpdateState>({ phase: 'idle', pct: null, error: '' })
+  const updaterState = ref<SelfUpdateState>({ phase: 'idle', pct: null, error: '' })
+  // A refusal speaks for the release the update check named when it arrived.
+  // Recall can sit in the tray while a newer release ships, and the notice
+  // would then vouch for a release the updater never saw, so once the check
+  // names a different latest release the dialog reads idle again.
+  const refusedRelease = ref<string | undefined>()
+  const selfUpdate = computed<SelfUpdateState>(() =>
+    updaterState.value.phase === 'refused' && updateInfo.value?.latest !== refusedRelease.value
+      ? { phase: 'idle', pct: null, error: '' }
+      : updaterState.value)
 
   // Register the updater event handlers once. EventsOn has replace
   // semantics per name, so a repeat call is harmless; wiring lazily on
@@ -148,19 +157,24 @@ export const useAppStore = defineStore('app', () => {
   function wireSelfUpdateEvents() {
     if (selfUpdateWired) return
     selfUpdateWired = true
-    EventsOn(SelfUpdateEvents.CheckStarted, () => { selfUpdate.value = { phase: 'starting', pct: null, error: '' } })
-    EventsOn(SelfUpdateEvents.DownloadStarted, () => { selfUpdate.value = { phase: 'downloading', pct: null, error: '' } })
+    EventsOn(SelfUpdateEvents.CheckStarted, () => { updaterState.value = { phase: 'starting', pct: null, error: '' } })
+    EventsOn(SelfUpdateEvents.DownloadStarted, () => { updaterState.value = { phase: 'downloading', pct: null, error: '' } })
     EventsOn<SelfUpdateProgress>(SelfUpdateEvents.DownloadProgress, (p) => {
       const pct = p && p.total > 0 ? Math.round((p.written / p.total) * 100) : null
-      selfUpdate.value = { phase: 'downloading', pct, error: '' }
+      updaterState.value = { phase: 'downloading', pct, error: '' }
     })
-    EventsOn(SelfUpdateEvents.DownloadComplete, () => { selfUpdate.value = { phase: 'verifying', pct: 100, error: '' } })
-    EventsOn(SelfUpdateEvents.Verifying, () => { selfUpdate.value = { phase: 'verifying', pct: 100, error: '' } })
-    EventsOn(SelfUpdateEvents.Installing, () => { selfUpdate.value = { phase: 'installing', pct: 100, error: '' } })
-    EventsOn(SelfUpdateEvents.UpdateReady, () => { selfUpdate.value = { phase: 'ready', pct: 100, error: '' } })
-    EventsOn(SelfUpdateEvents.NoUpdate, () => { selfUpdate.value = { phase: 'idle', pct: null, error: '' } })
+    EventsOn(SelfUpdateEvents.DownloadComplete, () => { updaterState.value = { phase: 'verifying', pct: 100, error: '' } })
+    EventsOn(SelfUpdateEvents.Verifying, () => { updaterState.value = { phase: 'verifying', pct: 100, error: '' } })
+    EventsOn(SelfUpdateEvents.Installing, () => { updaterState.value = { phase: 'installing', pct: 100, error: '' } })
+    EventsOn(SelfUpdateEvents.UpdateReady, () => { updaterState.value = { phase: 'ready', pct: 100, error: '' } })
+    EventsOn(SelfUpdateEvents.NoUpdate, () => { updaterState.value = { phase: 'idle', pct: null, error: '' } })
     EventsOn<SelfUpdateError>(SelfUpdateEvents.Error, (e) => {
-      selfUpdate.value = { phase: 'error', pct: null, error: e?.message || 'Update failed. Please try again.' }
+      if (updaterErrorPhase(e?.message) === 'refused') {
+        refusedRelease.value = updateInfo.value?.latest
+        updaterState.value = { phase: 'refused', pct: null, error: '' }
+        return
+      }
+      updaterState.value = { phase: 'error', pct: null, error: e?.message || 'Update failed. Please try again.' }
     })
   }
 
@@ -169,22 +183,22 @@ export const useAppStore = defineStore('app', () => {
   // POST (409 self-update-unavailable) lands in the error phase.
   async function startSelfUpdate() {
     wireSelfUpdateEvents()
-    selfUpdate.value = { phase: 'starting', pct: null, error: '' }
+    updaterState.value = { phase: 'starting', pct: null, error: '' }
     try {
       await StartSelfUpdate()
     } catch (e) {
-      selfUpdate.value = { phase: 'error', pct: null, error: plainLanguageError(String(e)) }
+      updaterState.value = { phase: 'error', pct: null, error: plainLanguageError(String(e)) }
     }
   }
 
   // Apply a staged update: swap the binary and relaunch. On success the
   // process exits, so this only returns on failure.
   async function restartToApply() {
-    selfUpdate.value = { ...selfUpdate.value, phase: 'restarting' }
+    updaterState.value = { ...updaterState.value, phase: 'restarting' }
     try {
       await RestartToApply()
     } catch (e) {
-      selfUpdate.value = { phase: 'error', pct: null, error: plainLanguageError(String(e)) }
+      updaterState.value = { phase: 'error', pct: null, error: plainLanguageError(String(e)) }
     }
   }
 

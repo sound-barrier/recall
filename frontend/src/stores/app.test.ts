@@ -95,6 +95,12 @@ describe('app store — About + checkForUpdates', () => {
   })
 })
 
+// A refusal as the wails:updater:error event carries it, behind Wails' prefixes.
+const REFUSED_RELEASE = {
+  stage: 'check',
+  message: 'updater: all providers failed: github: update refused: release 0.34.0 is not covered by its SHA256SUMS',
+}
+
 describe('app store — self-update', () => {
   it('starts in the idle phase', () => {
     const app = useAppStore()
@@ -152,6 +158,33 @@ describe('app store — self-update', () => {
 
     fire(SelfUpdateEvents.Error, { stage: 'download', message: 'checksum mismatch' })
     expect(app.selfUpdate).toMatchObject({ phase: 'error', error: 'checksum mismatch' })
+  })
+
+  it('surfaces a refused release as the refused phase instead of the raw updater text', async () => {
+    api.StartSelfUpdate.mockResolvedValue(undefined)
+    const app = useAppStore()
+    await app.startSelfUpdate()
+
+    fire(SelfUpdateEvents.Error, REFUSED_RELEASE)
+    expect(app.selfUpdate).toEqual({ phase: 'refused', pct: null, error: '' })
+  })
+
+  // Recall runs in the tray for days, so a newer release can ship while a
+  // refusal is still on record, and the notice must not vouch for it.
+  it('drops a refusal once the update check names a different latest release', async () => {
+    api.CheckForUpdate.mockResolvedValue({ checked: true, current: '1.0.0', latest: '0.34.0', available: true })
+    api.StartSelfUpdate.mockResolvedValue(undefined)
+    const app = useAppStore()
+    await app.checkForUpdates()
+    await app.startSelfUpdate()
+    fire(SelfUpdateEvents.Error, REFUSED_RELEASE)
+
+    await app.checkForUpdates()
+    expect(app.selfUpdate.phase).toBe('refused')
+
+    api.CheckForUpdate.mockResolvedValue({ checked: true, current: '1.0.0', latest: '0.34.1', available: true })
+    await app.checkForUpdates()
+    expect(app.selfUpdate).toEqual({ phase: 'idle', pct: null, error: '' })
   })
 
   it('resets to idle on a no-update event', async () => {
