@@ -122,11 +122,14 @@ tasks:
       - echo "[ recall ] ✓  dist/mac/Recall.app"
 
   # ── Quality ────────────────────────────────────────────────────────────
+  # Advisory, never a gate: counts vary with every commit and no threshold
+  # would mean anything. Production Go comes from the app's import graph, so
+  # the report needs no list of which packages ship.
   cloc:
-    desc: Count lines of source code, summary table (config in .clocrc)
+    desc: Count source lines — tracked repo, production Go + TypeScript, test-to-production ratios (advisory)
     deps: [tools-install]
     cmds:
-      - tools/node_modules/.bin/cloc --config .clocrc .
+      - bash scripts/cloc-report.sh
 
   cloc-detail:
     desc: Count lines of source code, per-file breakdown

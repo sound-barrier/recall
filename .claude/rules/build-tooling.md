@@ -79,8 +79,8 @@ Honkit, markdownlint-cli2, cloc, …) is an exact `devDependency` in
 `tools/package-lock.json`, and run from `tools/node_modules/.bin`. The rules:
 
 - **`task tools-install` is the one installer** (`npm ci --prefix tools
-  --ignore-scripts`). `lint-json`, `lint-md`, `lint-openapi` and `pages-build`
-  depend on it; CI's `lint` job runs it as its own step.
+  --ignore-scripts`). `lint-json`, `lint-md`, `lint-openapi`, `pages-build`,
+  `cloc` and `cloc-detail` depend on it; CI's `lint` job runs it as its own step.
 - **It writes `tools/node_modules/go.mod`**, the same Go-walker sentinel the
   frontend's postinstall drops (flatted ships Go source here too). A bare
   `npm ci --prefix tools` skips it, so anything that runs Go afterwards must use
@@ -169,7 +169,7 @@ the bindings the module must understand.
   source of truth for the initial/total JS+CSS KB thresholds, run by the `ci.yml`
   "Enforce bundle-size budget" step. Edit thresholds here, not in any CLAUDE.md or
   rule (those only point at it).
-- **`set -euo pipefail` is the house header** (36 of the 41 executable
+- **`set -euo pipefail` is the house header** (37 of the 42 executable
   scripts under `scripts/`; the eight sourced libraries, `scripts/lib/_db.sh`
   and `scripts/release/smoke/{lib,cases}/`, are not counted). Drop `-e` only
   when the script's job is to keep going and report everything it found —
