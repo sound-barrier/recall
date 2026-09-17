@@ -71,7 +71,7 @@ The toolchain is managed by [mise](https://mise.jdx.dev): Go, Node, the Wails v3
 ./initialize.sh        # then:  task init  (once task is on PATH)
 ```
 
-The script is idempotent and detects the platform: on macOS it runs `brew bundle` (mise + the system-only packages — Tesseract, Podman, pipx, cloc); on Debian it apt-installs those plus the WebKitGTK dev headers and installs mise via its one-line installer. Both paths then run `mise install` (provisioning the whole pinned toolchain from `mise.toml`), `cd frontend && npm ci`, and `lefthook install` to wire the git hooks.
+The script is idempotent and detects the platform: on macOS it runs `brew bundle` (mise + the system-only packages — Tesseract, Podman, pipx, cloc); on Debian it apt-installs those plus the WebKitGTK dev headers and installs the pinned mise release with `scripts/install-mise.sh`, which checks its SHA-256 first. Both paths then run `mise install` (provisioning the whole pinned toolchain from `mise.toml`), `cd frontend && npm ci`, and `lefthook install` to wire the git hooks.
 
 After setup, activate mise in your shell so the toolchain + project env (`RECALL_DATA_DIR`, the version pins) load automatically on `cd` — add `eval "$(mise activate zsh)"` (or `bash`) to your shell rc. This replaces the old direnv/`.envrc` setup.
 
@@ -174,7 +174,7 @@ sudo apt install -y tesseract-ocr sqlite3 cloc pipx docker.io  # or podman
 # mise — provisions Go, Node, the Wails v3 CLI (wails3), task, and every linter
 # (golangci-lint, taplo, sqlfluff, yamllint, trivy,
 # typos, ruff, gosec, semgrep, schemathesis, …) from mise.toml.
-curl -fsSL https://mise.run | sh
+bash scripts/install-mise.sh   # the mise release CI pins, SHA-256-checked
 export PATH="$HOME/.local/bin:$PATH"
 mise trust && mise install
 
@@ -324,7 +324,7 @@ Every `[tools]` entry in `mise.toml` is an exact release, and the committed `mis
 - **Bump the tools:** `task update-mise` runs `mise upgrade --bump --local`, which `minimum_release_age = "7d"` limits to releases at least a week old, then `mise lock`. It leaves out the pins that move only as their own change: `go` (with `go.mod`), golangci-lint (with the sweep its new checks need), gobco (a coverage re-baseline) and the wails3 CLI (in lockstep with `go.mod` and `@wailsio/runtime`). Sync `.node-version` with `[tools] node` and any matching `[env]` version string, run `task check-deps`, and commit `mise.toml` and `mise.lock` together.
 - **taplo's checksums:** taplo publishes none, so `mise lock` records only its URLs, and the four `checksum` lines in `mise.lock` were hashed from the release assets by hand. `mise lock` keeps them, but a taplo bump writes URL-only entries, and `task update-mise` fails until each has its SHA-256 again.
 - **Add or change one tool:** edit `mise.toml`, then run `mise install` (`lockfile = true` keeps `mise.lock` current) or `mise lock`.
-- **Bump mise itself:** the version lives in three places that move in one commit: `version` and `sha256` in `.github/actions/setup-mise/action.yml` (the `./mise-vX.Y.Z-linux-x64` line of that release's `SHASUMS256.txt`), `min_version` in `mise.toml`, and `mise.lock`, regenerated with that exact mise binary. mise 2026.9.3 through 2026.9.6 read only lockfile version 1, while newer releases write version 2 for a new lockfile, so download the pinned release for your platform, check its SHA-256 against `SHASUMS256.txt`, and run `mise lock` with it rather than with a newer local mise.
+- **Bump mise itself:** the version lives in four places that move in one commit: `version` and `sha256` in `.github/actions/setup-mise/action.yml` (the `./mise-vX.Y.Z-linux-x64` line of that release's `SHASUMS256.txt`), `MISE_VERSION` and the linux-x64 and linux-arm64 hashes in `scripts/install-mise.sh`, `min_version` in `mise.toml`, and `mise.lock`, regenerated with that exact mise binary. mise 2026.9.3 through 2026.9.6 read only lockfile version 1, while newer releases write version 2 for a new lockfile, so download the pinned release for your platform, check its SHA-256 against `SHASUMS256.txt`, and run `mise lock` with it rather than with a newer local mise.
 - `mise.local.lock` (written by `mise lock --local` for a personal `mise.local.toml`) is gitignored.
 
 ### npm supply-chain cooldown

@@ -92,11 +92,12 @@ Cflags:
 Libs:
 PC
 
-    # mise is not in Debian's repos — install via the official one-liner.
-    # It lands in ~/.local/bin; add that to PATH for the rest of this run.
+    # mise is not in Debian's repos. install-mise.sh downloads the release
+    # CI pins and checks its SHA-256 before installing it to ~/.local/bin; add
+    # that to PATH for the rest of this run.
     if ! command -v mise >/dev/null 2>&1; then
-      log "Installing mise (https://mise.run)…"
-      curl -fsSL https://mise.run | sh
+      log "Installing mise (pinned, checksum-verified)…"
+      bash "$(dirname "${BASH_SOURCE[0]}")/scripts/install-mise.sh"
     fi
     export PATH="${HOME}/.local/bin:${PATH}"
     ;;
@@ -107,9 +108,9 @@ command -v mise >/dev/null 2>&1 || die "mise not on PATH after install. See http
 # ─── Toolchain via mise ──────────────────────────────────────────────
 # Reads mise.toml: go, node, task, wails, the Go/JS/shell linters and
 # formatters (golangci-lint, shfmt, yamllint, actionlint,
-# typos, ruff, trivy, lefthook, jq, govulncheck, deadcode,
-# gocyclo) and the pipx SAST/fuzz tools (semgrep,
-# schemathesis). Pinned versions live there — `task check-deps` validates them.
+# typos, ruff, trivy, lefthook, jq, govulncheck, deadcode)
+# and the pipx SAST/fuzz tools (semgrep, schemathesis). Pinned
+# versions live there and in mise.lock — `task check-deps` validates them.
 log "mise trust && mise install (toolchain + linters)…"
 mise trust
 mise install

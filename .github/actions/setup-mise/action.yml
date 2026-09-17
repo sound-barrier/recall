@@ -23,9 +23,11 @@ description: >
 # Bumping mise: take the `./mise-vX.Y.Z-linux-x64` line (not a .tar.* line)
 # from that release's SHASUMS256.txt, after verifying SHASUMS256.txt.minisig
 # against mise's minisign key. In the same commit, change `version` and
-# `sha256`, set mise.toml's min_version to the same version, and regenerate
-# mise.lock with that exact mise binary: mise-action installs with --locked
-# whenever the lock exists, and a mise older than the lockfile format fails.
+# `sha256`, set mise.toml's min_version and scripts/install-mise.sh (the
+# devcontainer and Debian bootstrap, with its linux-arm64 hash too) to the same
+# version, and regenerate mise.lock with that exact mise binary: mise-action
+# installs with --locked whenever the lock exists, and a mise older than the
+# lockfile format fails.
 
 inputs:
   install_args:

@@ -130,6 +130,7 @@ only on URL.
 | `db-list.sh` / `db-show.sh` / `db-delete.sh` / `db-export.sh` / `clear-db.sh` / `db-stats.sh` / `db-where.sh` / `db-orphans.sh` / `db-reparse.sh` | SQLite CRUD + diagnostics. `db-show` accepts id/match_key/filename substring; `db-orphans` finds child rows whose parent vanished; `db-reparse` queues a re-parse. |
 | `_lib.sh` | Shared `docker_config_aside()` helper for the gcloud cred-helper trap. |
 | `check-deps.sh` | Compares pinned tool versions vs latest GitHub releases. |
+| `install-mise.sh` | Installs the mise release CI pins into `~/.local/bin`, SHA-256-checked (Linux: `initialize.sh`, devcontainer). Its version must match `.github/actions/setup-mise` and `mise.toml` `min_version`. |
 | `check-action-pins.sh` | Validates every `uses:` is SHA-pinned with a `# vX.Y.Z` comment. |
 | `deadcode-check.sh` | Runs `deadcode` against `serveronly`, filters via `scripts/ci/deadcode-allow.txt`, fails on non-empty residual. |
 | `render-pr-report.py` | Renders the markdown PR report from CI artifacts. |

@@ -20,10 +20,11 @@
 # (go: and pipx: tools are version-only). CI installs with --locked, so a
 # prebuilt tool a CI job runs is the one reviewed in this repo.
 #
-# min_version equals the mise that .github/actions/setup-mise pins and that
-# wrote mise.lock: mise 2026.9.3 through 2026.9.6 read only lockfile version 1,
-# and a newer local mise writes version 2 for a NEW lockfile. Bump the two
-# together, and regenerate the lock with that exact binary.
+# min_version equals the mise that .github/actions/setup-mise and
+# scripts/install-mise.sh pin and that wrote mise.lock: mise 2026.9.3 through
+# 2026.9.6 read only lockfile version 1, and a newer local mise writes version 2
+# for a NEW lockfile. Bump them together, and regenerate the lock with that
+# exact binary.
 min_version = "2026.9.3"
 
 [settings]

@@ -45,8 +45,10 @@ lock entry, or no URL for the runner's platform, fails the job. The rules:
 - **taplo's checksums are hand-hashed.** Upstream publishes none, so `mise lock`
   writes its entries URL-only; `mise lock` keeps the added SHA-256 lines, a
   taplo bump drops them, and `task update-mise` fails until they are back.
-- **The mise version is one value in three places**: `version` + `sha256`
+- **The mise version is one value in four places**: `version` + `sha256`
   (raw `linux-x64` binary) in `.github/actions/setup-mise/action.yml`,
+  `MISE_VERSION` + both Linux hashes in `scripts/install-mise.sh` (the
+  devcontainer and Debian bootstrap, replacing `curl mise.run | sh`),
   `min_version` in `mise.toml`, and the mise that wrote `mise.lock`. mise
   2026.9.3–2026.9.6 read only lockfile version 1 and newer mise writes version 2
   for a new lock, so regenerate the lock with the exact pinned binary
