@@ -252,7 +252,7 @@ changed bullets carry an inline re-evaluation note:
   (Re-evaluated 2026-08-22: 168→177→189.)
 - **In-app self-update is Windows-only, one accepted cosmetic gap.** Recall
   ships a Windows desktop app only, so the Wails v3 `pkg/updater` flow (About
-  dialog → Install → SHA256SUMS-verified swap → Restart) runs on Windows and is
+  dialog → Install → SHA256SUMS- and signature-verified swap → Restart) runs on Windows and is
   gated off everywhere else — non-Windows builds (macOS is a dev-only target),
   dev builds, and legacy machine-scope Program Files installs that aren't
   user-writable all surface the "Open release page" fallback

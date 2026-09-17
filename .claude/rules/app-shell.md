@@ -112,7 +112,8 @@ past test cycle was spent tracking this down — don't repeat).
 ## Test seams
 
 **Outbound HTTP uses a `var url = "..."` seam, not an injected `*http.Client`.**
-`pkg/app/update.go` exposes `releasesURL` as a package var so
-`check_for_update_test.go` can swap to an `httptest.NewServer` URL. Same pattern
+`pkg/release/release.go` exposes `ReleasesURL` (and `pkg/gamedata/fetch_gamedata.go`
+its release and Pages URLs) as package vars so `pkg/app/check_for_update_test.go`
+can swap to an `httptest.NewServer` URL. Same pattern
 works for any package-level test mutation (`withVersion(t, "0.1.0-dev")` swaps the
 ldflags-injected `Version`). Recipe: `prev := X; X = newVal; t.Cleanup(func() { X = prev })`.

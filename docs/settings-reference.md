@@ -322,18 +322,26 @@ filename grammars). The data files travel separately from the app so
 a new hero added in a roster patch can land in your install the same
 day, without waiting for a Recall release.
 
-### Check for updates (masthead button)
+### Check for updates (About Recall)
 
-The masthead's right-hand block shows the running Recall version + a
-**Check for updates** button. Clicking it queries GitHub's releases
-API and the project's GitHub Pages live-data channel in parallel,
-then opens a modal with two sections.
+Open **About Recall** from the ⋮ menu (or click **Check now** on the
+reminder banner below). Opening it queries GitHub's releases API and
+the project's GitHub Pages live-data channel in parallel, then shows
+the result in two sections.
 
 **Recall app** — shows the running version vs the latest release.
-The first ~500 chars of the release notes render inline; the **Open
-release page** button takes you to the full GitHub release page so
-you can download the new installer. (Recall does not auto-update
-itself; this is a deliberate opt-in step.)
+The first ~500 chars of the release notes render inline. On an
+installed Windows release, **Install update** downloads the new build,
+checks it against the release's `SHA256SUMS` and against its `.sig`
+signature from Recall's release key, stages it, and then offers
+**Restart now to apply**. Recall never updates itself without that
+click. If the release fails those checks, the dialog shows **Update
+not installed** and changes nothing: don't install that release by
+hand; wait for the next release, or check the project's
+[Security advisories](https://github.com/sound-barrier/recall/security/advisories)
+page. **Open release page** takes you to the full GitHub release page,
+and is the only path on a development build or on a legacy machine-wide
+install Recall can't write to.
 
 **Game data** — shows what's different between the rosters bundled
 into your binary, anything you've previously applied, and the live
@@ -404,9 +412,9 @@ Not strictly a "setting" but worth knowing about:
 
 - The version chip shows the running Recall version (or `vX.Y.Z-dev`
   on builds from source).
-- The **Check for updates** button next to the chip is the entry
-  point to the [Updates & game data](#updates--game-data) flow above
-  — there's no silent on-mount network call.
+- Updates are checked from **About Recall** in the ⋮ menu, not from a
+  separate button — see [Updates & game data](#updates--game-data) above.
+  There's no silent on-mount network call.
 
 ## Next chapter
 

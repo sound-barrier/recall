@@ -1,9 +1,12 @@
 # Installing Recall on Windows
 
 Recall supports Windows 10 (22H2+) and Windows 11 on x64 hardware. The
-desktop app ships as a signed-by-CI but not-EV-signed NSIS installer
-(`.exe`), so Windows SmartScreen will prompt for confirmation on first
-run — see section 3 below for the SmartScreen approval dance.
+desktop app ships as an NSIS installer (`.exe`) that has no Windows
+code-signing certificate, so Windows SmartScreen will prompt for
+confirmation on first run — see section 3 below for the SmartScreen
+approval dance. From the first signed release on, each release is also
+signed with Recall's own release key, which you can check yourself (see
+[Verifying your download](#verifying-your-download)).
 
 ## 1. Download
 
@@ -39,13 +42,12 @@ and on the desktop (if you left the shortcut checkbox ticked).
 
 ## 3. First launch — approve SmartScreen
 
-Recall is signed by GitHub Actions' OIDC keyless flow, which is good
-enough for [`gh attestation verify`](https://cli.github.com/manual/gh_attestation_verify)
-but **not** good enough to silence Windows SmartScreen on its own.
-SmartScreen wants an **EV** (Extended Validation) code-signing
-certificate — those cost USD 300+/year and the project doesn't have
-one. So the first time you double-click `Recall.exe`, Windows will
-show:
+Recall's releases carry a build attestation from GitHub and, from the
+first signed release on, a signature from the project's own release key
+that Recall's updater checks too. Both let you check where a file came
+from. Neither is a Windows code-signing certificate, which is what
+SmartScreen looks for, and the project doesn't have one. So the first
+time you double-click `Recall.exe`, Windows will show:
 
 > **Windows protected your PC**
 > Microsoft Defender SmartScreen prevented an unrecognized app from
@@ -61,8 +63,8 @@ You only need to do this once per installed version. After Windows has
 
 > **Verifying the binary before you trust it** — section
 > [Verifying your download](#verifying-your-download) below covers the
-> SHA256 check + the GitHub-attested build provenance. Both close the
-> "is this the binary CI actually built?" gap that SmartScreen's
+> checksum, the release signature and GitHub's build attestation. They
+> close the "is this really Recall's release?" gap that SmartScreen's
 > prompt opens.
 
 ## 4. Install Tesseract 5.x
@@ -117,16 +119,40 @@ Open **About Recall** (the ⋮ menu → About) to check for updates. It
 surfaces both Recall releases AND roster patches (new heroes / maps /
 capture-tool grammars) the parser ships separately from the binary.
 See [Updates & game data](settings-reference.md#updates--game-data)
-for the flow + the SHA-256 verification path. No silent on-mount
+for the flow and the checksum and signature checks. No silent on-mount
 network calls — the check only fires when you open About.
 
-When a new Recall release is available, you can install it from right
-there: Recall downloads the new build, verifies its SHA-256 against
-the release's `SHA256SUMS`, swaps itself in place under
-`%LocalAppData%\Programs\Recall`, and relaunches. (An "Open release
-page" link is always available as a fallback — and is the only path on
-a machine-wide install that predates the per-user move, where the
-program folder isn't writable without elevation.)
+When a new Recall release is available, click **Install update** right
+there: Recall downloads the new build, checks it and stages it, then
+offers **Restart now to apply**, which swaps it in place under
+`%LocalAppData%\Programs\Recall` and relaunches. **Open release page**
+is the path when Recall can't update itself, as on a machine-wide
+install that predates the per-user move, where the program folder isn't
+writable without elevation. It is not a way around **Update not
+installed** (below): don't install a refused release from that page.
+
+Before it installs anything, Recall checks that the update is an
+official Recall release:
+
+- The release's `SHA256SUMS` file must list the new build's SHA-256
+  fingerprint, and the download must match it.
+- The build's signature file (`.sig`) must have been made with Recall's
+  release key, which is built into the copy of Recall you already have.
+  The signature covers the file's name as well as its contents, so an
+  older build can't be passed off as a newer one.
+
+If a release fails these checks, About shows **Update not installed**
+and nothing on your computer changes. (A download that arrives damaged
+shows an error instead, and you can try again.) **Don't install that
+release by hand.** Wait for the next release, or check Recall's
+[Security advisories](https://github.com/sound-barrier/recall/security/advisories)
+page on GitHub.
+
+> Copies of Recall older than the first signed release check only the
+> `SHA256SUMS` fingerprint, so the signature check applies to every
+> update after that one.
+> [SECURITY.md](https://github.com/sound-barrier/recall/blob/main/SECURITY.md)
+> explains exactly what the updater trusts and checks.
 
 ## Where Recall stores its data
 
@@ -179,8 +205,8 @@ deletes it once you confirm. Two ways to run it:
   the app. This is the "clean install" path: no separate download needed.
 - **Prefer to download it?** Grab `recall-{version}-Reset-Database.bat`
   from the [Releases](https://github.com/sound-barrier/recall/releases)
-  page and double-click it. It's signed + attested like every other
-  release asset — verify it the same way (see
+  page and double-click it. It has a checksum and a build attestation
+  like the installer — verify it the same way (see
   [Verifying your download](#verifying-your-download)).
 
 **Close Recall first.** The script warns you if it's still running, backs
@@ -203,6 +229,13 @@ Recall is closed.
 
 ## Verifying your download
 
+Each release lets you check a download up to three ways: releases from
+before signed updates have no signature, so they skip the second. All
+three are optional; the first takes a few seconds and needs nothing
+extra.
+
+### Is the file intact? (checksum)
+
 Every release ships a `.sha256` companion file. PowerShell can verify
 the download against it:
 
@@ -212,23 +245,80 @@ $actual   = (Get-FileHash recall-{version}-windows-amd64-installer.exe -Algorith
 if ($expected -eq $actual) { 'OK' } else { 'MISMATCH' }
 ```
 
-`OK` means the file is intact. `MISMATCH` means re-download it.
+`OK` means the file is intact. `MISMATCH` means re-download it. A
+checksum says nothing about who made the file: whoever could replace
+the installer could replace its `.sha256` too. The next two checks
+cover that.
 
-For the strongest guarantee that the binary actually came from this
-project's CI (not a tampered mirror), install the
-[GitHub CLI](https://cli.github.com/) and run:
+### Did Recall's release key sign it? (signature)
+
+The installer and the updater exe each come with a `.sig` file: the
+same signature Recall's updater checks before it installs an update.
+Releases from before signed updates have no `.sig` files.
+
+To check a signature you need a bash shell with OpenSSL 3, such as Git
+Bash or WSL (run `openssl version` to check). In the folder holding
+your download and its `.sig` file:
+
+1. Download Recall's public key for that release and check its
+   fingerprint:
+
+   ```sh
+   curl -fsSLO https://raw.githubusercontent.com/sound-barrier/recall/v{version}/pkg/updatesig/public_key.pem
+   openssl pkey -pubin -in public_key.pem -outform DER | openssl dgst -sha256
+   ```
+
+   The output must end with
+   `f0a7689b393a24397d4a230e09e53101cdfe401ade3793ab658ebfa9efbf6761`,
+   the fingerprint published in
+   [SECURITY.md](https://github.com/sound-barrier/recall/blob/main/SECURITY.md).
+
+2. Check the installer:
+
+   ```sh
+   name=recall-{version}-windows-amd64-installer.exe
+   { printf 'recall-update-signature-v1\n%s\n' "$name"; openssl dgst -sha256 -binary "$name"; } > msg.bin
+   openssl pkeyutl -verify -pubin -inkey public_key.pem -rawin -in msg.bin -sigfile "$name.sig"
+   ```
+
+   For the updater exe, set `name=recall-{version}-windows-amd64.exe`
+   and run the last two lines again.
+
+`Signature Verified Successfully` means Recall's release key signed
+that exact file. `Signature Verification Failure` means don't run it.
+The signature covers the file's name, so the file must keep the exact
+name it was published under: rename a copy your browser saved as
+`recall-… (1).exe` back first.
+
+### Which workflow built it? (attestation)
+
+GitHub records a build attestation for each release file (all but the
+attestation bundle itself), naming the workflow and tag that produced
+it. To check one, install the [GitHub CLI](https://cli.github.com/)
+2.68.0 or newer, sign in with `gh auth login`, and run:
 
 ```powershell
 gh attestation verify recall-{version}-windows-amd64-installer.exe `
-  --repo sound-barrier/recall
+  --repo sound-barrier/recall `
+  --signer-workflow sound-barrier/recall/.github/workflows/release.yml `
+  --source-ref refs/tags/v{version}
 ```
 
-This walks the SLSA-provenance attestation that release.yml writes
-for every Windows artifact. A passing check means the binary was
-produced by a specific commit on `main` by the published GitHub
-Actions workflow — not just "the hash matches the .sha256 file"
-(which says nothing about who produced the file in the first place).
+`✓ Verification succeeded!` means the file was built by Recall's
+`release.yml` workflow running on the `v{version}` tag.
 
-The same two checks work on the reset helper — swap in
-`recall-{version}-Reset-Database.bat` (it ships its own `.sha256` and is
-attested alongside the installer).
+To skip signing in, download the release's
+`recall-{version}.intoto.jsonl` too and add
+`--bundle recall-{version}.intoto.jsonl` to the same command. It still
+needs `--repo`, and it still downloads Sigstore's trusted root, so it
+is not an offline check. Releases from before signed updates have no
+bundle file, so for those you sign in.
+
+An attestation shows which workflow file and tag built a file, but it
+cannot tell a reviewed workflow from an edited one. The signature check
+above is the one that needs Recall's release key, which only an
+approved release run can use.
+
+The checksum and attestation checks work on the reset helper too —
+swap in `recall-{version}-Reset-Database.bat` (it ships its own
+`.sha256` and is attested alongside the installer). It has no `.sig`.

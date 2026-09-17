@@ -67,7 +67,7 @@ database — Recall rebuilds an empty one on next launch and re-parses your
 screenshots folder, so your matches come back.
 
 Use the guided reset script (it backs up first): double-click
-`C:\Program Files\recall\Reset-Database.bat`, which ships with the installer, or
+`%LocalAppData%\Programs\Recall\Reset-Database.bat`, which ships with the installer, or
 download `recall-{version}-Reset-Database.bat` from the
 [releases page](https://github.com/sound-barrier/recall/releases). Full steps —
 and what's kept vs. lost — are in
@@ -125,8 +125,8 @@ The same two steps delete any profile you no longer want.
 ## A new hero or map shows as "Unknown" — do I need to reinstall?
 
 No. Recall ships its hero/map roster separately from the app, so a new season's
-content can be recognized without a reinstall. Click **Check for updates** in the
-masthead; if a roster update is available, apply it and re-parse (or let the
+content can be recognized without a reinstall. Open **About Recall** from the ⋮
+menu; if a roster update is available, apply it and re-parse (or let the
 watcher do it). Previously-Unknown screenshots for the new content get recognized
 on the next parse — you don't re-capture anything. See
 [Updates & game data](settings-reference.md#updates--game-data).
