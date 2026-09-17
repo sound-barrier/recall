@@ -7,6 +7,7 @@ readonly ASSETS_EXE="recall-${ASSETS_VERSION}-windows-amd64.exe"
 readonly ASSETS_INSTALLER="recall-${ASSETS_VERSION}-windows-amd64-installer.exe"
 readonly ASSETS_BAT="recall-${ASSETS_VERSION}-Reset-Database.bat"
 readonly ASSETS_SBOM="recall-${ASSETS_VERSION}-sbom.spdx.json"
+readonly ASSETS_BUNDLE="recall-${ASSETS_VERSION}.intoto.jsonl"
 
 check_assets() { # <arguments...>
   bash "${RELEASE_DIR}/check-release-assets.sh" "$@"
@@ -21,7 +22,7 @@ smoke_check_release_assets() {
   for name in "$ASSETS_EXE" "$ASSETS_INSTALLER" "${ASSETS_EXE}.sig" \
     "${ASSETS_INSTALLER}.sig" "$ASSETS_BAT" "$ASSETS_SBOM" \
     "${ASSETS_EXE}.sha256" "${ASSETS_INSTALLER}.sha256" "${ASSETS_BAT}.sha256" \
-    "${ASSETS_SBOM}.sha256" SHA256SUMS; do
+    "${ASSETS_SBOM}.sha256" SHA256SUMS "$ASSETS_BUNDLE"; do
     run_in_temp _assets_rejects "rejects a set without ${name}" "$name" \
       rm "release-assets/${name}"
   done
@@ -33,6 +34,11 @@ smoke_check_release_assets() {
     "${ASSETS_EXE}.sig" _write_bytes 63 "release-assets/${ASSETS_EXE}.sig"
   run_in_temp _assets_rejects "rejects a 65-byte installer signature" \
     "${ASSETS_INSTALLER}.sig" _write_bytes 65 "release-assets/${ASSETS_INSTALLER}.sig"
+  run_in_temp _assets_rejects "rejects an empty provenance bundle" \
+    "${ASSETS_BUNDLE} is empty" _write_bytes 0 "release-assets/${ASSETS_BUNDLE}"
+  run_in_temp _assets_rejects "rejects a provenance bundle that is not JSON lines" \
+    "${ASSETS_BUNDLE} does not start with a JSON object" \
+    _write_bytes 64 "release-assets/${ASSETS_BUNDLE}"
   run_in_temp _assets_rejects "rejects a roster YAML without its checksum" \
     "recall-${ASSETS_VERSION}-heroes.yaml" _plant_yaml_without_checksum
   run_in_temp _assets_rejects "rejects a YAML the staging step never writes" \
@@ -80,6 +86,8 @@ _stage_release_assets() {
     _sum_line "$name" >"release-assets/${name}.sha256"
     _sum_line "$name" >>release-assets/SHA256SUMS
   done
+  printf '{"mediaType":"application/vnd.dev.sigstore.bundle.v0.3+json"}\n' \
+    >"release-assets/${ASSETS_BUNDLE}"
 }
 
 _sum_line() { # <name>

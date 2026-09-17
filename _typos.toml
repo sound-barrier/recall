@@ -41,6 +41,9 @@ axe = "axe"
 # Acceptable alternate spelling of "unparsable". Both are correct;
 # match-helpers.ts uses this form, no need to bikeshed it.
 unparseable = "unparseable"
+# in-toto's attestation bundle extension, `.intoto.jsonl`: the name
+# Scorecard's Signed-Releases check looks for on a release asset.
+intoto = "intoto"
 
 [files]
 extend-exclude = [
