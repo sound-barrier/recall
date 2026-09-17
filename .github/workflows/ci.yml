@@ -155,6 +155,12 @@ jobs:
       - name: Lint shell scripts (shellcheck + shfmt)
         run: task lint-shell
 
+      # The release scripts otherwise run only while a release is being cut,
+      # so a broken tag guard would first show up on a real release. The suite
+      # works in throwaway temp-dir repos and needs only git, jq and sha256sum.
+      - name: Smoke-test release scripts
+        run: task smoke-release-scripts
+
       # OpenAPI spec — Spectral with the spectral:oas ruleset + project
       # overrides in .spectral.yaml. SPECTRAL_VERSION comes from mise.toml
       # [env] (loaded into $GITHUB_ENV by setup-mise).

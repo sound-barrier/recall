@@ -144,6 +144,7 @@ tasks:
       - task: lint-html
       - task: lint-py
       - task: lint-shell
+      - task: smoke-release-scripts
       - task: lint-yaml
       - task: lint-toml
       - task: lint-sql
