@@ -59,3 +59,11 @@ pkg/app/parse_played_at_utc_test.go:44:		t.Skip("host cannot convert the wall cl
 # hard-coded Z string agreed with it in exactly one timezone — green on a
 # UTC-6 laptop and red on CI.
 pkg/app/duplicate_sweep_test.go:215:		t.Skip("host cannot convert the wall clock")
+
+# pkg/updatesig/files_test.go — keygen's output-path guard. Environment
+# gates, not flake suppression: the symlink case needs a host that allows
+# symlinks (an unprivileged Windows account may not), and the case-variant
+# case needs a case-insensitive filesystem, so it always skips on Linux CI
+# and runs on the macOS volume where the maintainer runs keygen.
+pkg/updatesig/files_test.go:152:		t.Skipf("symlinks unavailable here: %v", err)
+pkg/updatesig/files_test.go:167:		t.Skip("case-sensitive filesystem: the variant is a different directory")

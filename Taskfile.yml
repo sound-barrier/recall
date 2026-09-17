@@ -668,6 +668,11 @@ tasks:
       # read" (2), and go-task rewrites a failing command's exit code.
       - go run ./cmd/roster-watch --accepted scripts/ci/roster-watch-accepted.txt
 
+  update-signing:
+    desc: 'Maintainer update-signing tool (usage: task update-signing -- keygen -out PATH). keygen runs in your own terminal, never in CI'
+    cmds:
+      - go run ./cmd/update-signing {{.CLI_ARGS}}
+
   bug-finder:
     desc: Build recall-bug-finder CLI to build/bin/ (maintainer-only — not released)
     cmds:
