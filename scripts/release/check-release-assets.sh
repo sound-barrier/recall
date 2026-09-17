@@ -17,7 +17,7 @@
 #   the .sig of each, exactly 64 bytes
 #   recall-V-Reset-Database.bat
 #   recall-V-sbom.spdx.json
-#   the .sha256 of each exe and of the .bat
+#   the .sha256 of each exe, of the .bat and of the SBOM
 #   SHA256SUMS, naming recall-V-windows-amd64.exe without a directory
 # Allowed besides: recall-V-<roster>.yaml with its .sha256, for each roster
 # release.yml's staging step writes, since a roster YAML ships only in a
@@ -57,7 +57,8 @@ parse_args() {
   SIGNATURES=("${EXE}.sig" "${INSTALLER}.sig")
   REQUIRED=("$EXE" "$INSTALLER" "${SIGNATURES[@]}" "$BAT"
     "recall-${VERSION}-sbom.spdx.json"
-    "${EXE}.sha256" "${INSTALLER}.sha256" "${BAT}.sha256" SHA256SUMS)
+    "${EXE}.sha256" "${INSTALLER}.sha256" "${BAT}.sha256"
+    "recall-${VERSION}-sbom.spdx.json.sha256" SHA256SUMS)
 }
 
 check_required() {

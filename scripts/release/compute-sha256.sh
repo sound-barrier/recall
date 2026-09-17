@@ -21,12 +21,13 @@
 set -euo pipefail
 
 # Collect the Windows release artifacts once: the installer + raw updater
-# exe (both `recall-*.exe`), the reference-data YAMLs, and the reset-DB
-# helper. The raw `…-windows-amd64.exe` is the in-app updater's swap target,
-# so its hash MUST be in SHA256SUMS.
+# exe (both `recall-*.exe`), the reference-data YAMLs, the reset-DB helper
+# and the SBOM. The raw `…-windows-amd64.exe` is the in-app updater's swap
+# target, so its hash MUST be in SHA256SUMS; the updater matches that exact
+# name, so the other lines never reach it.
 files=()
 for f in \
-  recall-*.exe recall-*.yaml recall-*.bat; do
+  recall-*.exe recall-*.yaml recall-*.bat recall-*-sbom.spdx.json; do
   [ -f "$f" ] && files+=("$f")
 done
 

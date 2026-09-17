@@ -380,6 +380,7 @@ jobs:
             release-assets/recall-*.exe.sig
             release-assets/recall-*.yaml
             release-assets/recall-*.bat
+            release-assets/recall-*-sbom.spdx.json
             release-assets/recall-*.sha256
             release-assets/SHA256SUMS
 

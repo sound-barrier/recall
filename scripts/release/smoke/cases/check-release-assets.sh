@@ -21,7 +21,7 @@ smoke_check_release_assets() {
   for name in "$ASSETS_EXE" "$ASSETS_INSTALLER" "${ASSETS_EXE}.sig" \
     "${ASSETS_INSTALLER}.sig" "$ASSETS_BAT" "$ASSETS_SBOM" \
     "${ASSETS_EXE}.sha256" "${ASSETS_INSTALLER}.sha256" "${ASSETS_BAT}.sha256" \
-    SHA256SUMS; do
+    "${ASSETS_SBOM}.sha256" SHA256SUMS; do
     run_in_temp _assets_rejects "rejects a set without ${name}" "$name" \
       rm "release-assets/${name}"
   done
@@ -76,7 +76,7 @@ _stage_release_assets() {
   done
   _write_bytes 64 "release-assets/${ASSETS_EXE}.sig"
   _write_bytes 64 "release-assets/${ASSETS_INSTALLER}.sig"
-  for name in "$ASSETS_EXE" "$ASSETS_INSTALLER" "$ASSETS_BAT"; do
+  for name in "$ASSETS_EXE" "$ASSETS_INSTALLER" "$ASSETS_BAT" "$ASSETS_SBOM"; do
     _sum_line "$name" >"release-assets/${name}.sha256"
     _sum_line "$name" >>release-assets/SHA256SUMS
   done
