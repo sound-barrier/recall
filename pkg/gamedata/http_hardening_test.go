@@ -3,6 +3,7 @@ package gamedata_test
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"net/http"
 	"net/url"
 	"strings"
@@ -19,7 +20,8 @@ func TestUpdateAllowedHost(t *testing.T) {
 		{"api.github.com", true},
 		{"github.com", true},
 		{"sound-barrier.github.io", true},
-		{"objects.githubusercontent.com", true}, // release downloads 302 here
+		{"objects.githubusercontent.com", true},        // where release downloads used to 302
+		{"release-assets.githubusercontent.com", true}, // where they 302 today
 		{"raw.githubusercontent.com", true},
 		{"evil.example.com", false},
 		{"github.com.evil.example.com", false}, // suffix-confusion attempt
@@ -52,6 +54,7 @@ func TestNewUpdateClient_RedirectGuard(t *testing.T) {
 	for _, ok := range []string{
 		"https://github.com/sound-barrier/recall/releases/download/v1/x",
 		"https://objects.githubusercontent.com/abc",
+		"https://release-assets.githubusercontent.com/github-production-release-asset/1/abc",
 		"https://api.github.com/x",
 		"https://sound-barrier.github.io/recall/data/heroes.yaml",
 	} {
@@ -61,17 +64,19 @@ func TestNewUpdateClient_RedirectGuard(t *testing.T) {
 	}
 
 	// Off-allowlist host → refuse.
-	if err := c.CheckRedirect(mkReq("https://evil.example.com/x"), nil); err == nil {
-		t.Error("expected off-allowlist host redirect to be refused")
+	if err := c.CheckRedirect(mkReq("https://evil.example.com/x"), nil); !errors.Is(err, gamedata.ErrRedirectRefused) {
+		t.Errorf("off-allowlist host redirect = %v, want ErrRedirectRefused", err)
 	}
 	// Non-HTTPS downgrade → refuse.
-	if err := c.CheckRedirect(mkReq("http://github.com/x"), nil); err == nil {
-		t.Error("expected non-HTTPS redirect to be refused")
+	if err := c.CheckRedirect(mkReq("http://github.com/x"), nil); !errors.Is(err, gamedata.ErrRedirectRefused) {
+		t.Errorf("non-HTTPS redirect = %v, want ErrRedirectRefused", err)
 	}
-	// Redirect-loop cap → refuse after 10 hops.
-	via := make([]*http.Request, 10)
-	if err := c.CheckRedirect(mkReq("https://github.com/x"), via); err == nil {
-		t.Error("expected the 11th redirect to be refused")
+	// Redirect-loop cap → refuse once ten requests are behind it.
+	if err := c.CheckRedirect(mkReq("https://github.com/x"), make([]*http.Request, 9)); err != nil {
+		t.Errorf("redirect with nine requests behind it = %v, want followed", err)
+	}
+	if err := c.CheckRedirect(mkReq("https://github.com/x"), make([]*http.Request, 10)); !errors.Is(err, gamedata.ErrRedirectRefused) {
+		t.Errorf("redirect with ten requests behind it = %v, want ErrRedirectRefused", err)
 	}
 }
 

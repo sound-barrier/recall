@@ -9,6 +9,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"recall/pkg/gamedata"
 )
 
 // These drive the self-updater end to end against a fake GitHub: the provider
@@ -98,5 +100,61 @@ func TestSelfUpdate_FinishesASlowButSteadyDownload(t *testing.T) {
 	}
 	if err := u.DownloadAndInstall(t.Context()); err != nil {
 		t.Fatalf("a download still progressing after two minutes was abandoned: %v", err)
+	}
+}
+
+func TestSelfUpdateCheck_RefusesRedirectToPlainHTTP(t *testing.T) {
+	release := publishedRelease()
+	release.redirectTo = map[string]string{checksumAsset: "http://github.com/plain/" + checksumAsset}
+
+	_, err := checkLatest(t, selfUpdateConfigAgainst(t, serveFakeGitHub(t, release), 1))
+	if !errors.Is(err, gamedata.ErrRedirectRefused) {
+		t.Fatalf("Check with SHA256SUMS redirected to plain HTTP = %v, want ErrRedirectRefused", err)
+	}
+}
+
+func TestSelfUpdateDownload_RefusesRedirectOffGitHub(t *testing.T) {
+	release := publishedRelease()
+	release.redirectTo = map[string]string{latestExe: "https://updates.example.invalid/" + latestExe}
+	u := newTestUpdater(t, selfUpdateConfigAgainst(t, serveFakeGitHub(t, release), 1))
+
+	if _, err := u.Check(t.Context()); err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if err := u.DownloadAndInstall(t.Context()); !errors.Is(err, gamedata.ErrRedirectRefused) {
+		t.Fatalf("download redirected off GitHub = %v, want ErrRedirectRefused", err)
+	}
+	if staged := u.DownloadedPath(); staged != "" {
+		t.Errorf("staged %s from a host that is not GitHub", staged)
+	}
+}
+
+// The Wails provider stops counting hops once a client brings its own
+// redirect policy, so that policy has to end a loop itself.
+func TestSelfUpdateDownload_RefusesEndlessRedirects(t *testing.T) {
+	release := publishedRelease()
+	release.extraHops = map[string]int{latestExe: 50}
+	u := newTestUpdater(t, selfUpdateConfigAgainst(t, serveFakeGitHub(t, release), 1))
+
+	if _, err := u.Check(t.Context()); err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if err := u.DownloadAndInstall(t.Context()); !errors.Is(err, gamedata.ErrRedirectRefused) {
+		t.Fatalf("download redirected 50 times = %v, want ErrRedirectRefused", err)
+	}
+}
+
+// github.com hands every asset download to release-assets.githubusercontent.com
+// (checked with `curl -sI` against v0.33.2), sometimes after hops of its own.
+func TestSelfUpdate_FollowsGitHubRedirectsToReleaseAssets(t *testing.T) {
+	release := publishedRelease()
+	release.extraHops = map[string]int{latestExe: 3, checksumAsset: 3}
+	u := newTestUpdater(t, selfUpdateConfigAgainst(t, serveFakeGitHub(t, release), 1))
+
+	if _, err := u.Check(t.Context()); err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if err := u.DownloadAndInstall(t.Context()); err != nil {
+		t.Fatalf("download through github.com's redirects to release-assets: %v", err)
 	}
 }
