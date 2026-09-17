@@ -576,23 +576,14 @@ tasks:
         echo "    3.  if RELEASE_PLEASE_TOKEN is configured, release.yml fires automatically."
         echo "        Otherwise:  task release-fire TAG=v{{.VERSION}}"
 
+  # The tag reaches the script shell-quoted, never spliced into the line bare,
+  # and the script verifies it before anything is dispatched. It is not a
+  # task-level env: entry because go-task lets a TAG already exported in the
+  # shell override one, and the tag on the command line must win.
   release-fire:
     desc: 'Manually fire release.yml on an existing tag (usage: task release-fire TAG=v0.0.13-beta.0)'
     cmds:
-      - |
-        if [ -z "{{.TAG}}" ]; then
-          echo "[ recall ] ✗  TAG is required (e.g. task release-fire TAG=v0.0.13-beta.0)"; exit 2
-        fi
-        command -v gh >/dev/null 2>&1 || {
-          echo "[ recall ] ✗  gh CLI not installed (brew install gh, then gh auth login)"; exit 2;
-        }
-        if ! git ls-remote --exit-code --tags origin "{{.TAG}}" >/dev/null 2>&1; then
-          echo "[ recall ] ✗  tag {{.TAG}} not found on origin"; exit 2
-        fi
-        gh workflow run release.yml --ref "{{.TAG}}"
-        echo
-        echo "[ recall ] ✓  release.yml dispatched for {{.TAG}}."
-        echo "    Watch progress:  gh run list --workflow release.yml --limit 1"
+      - TAG={{shellQuote (default "" .TAG)}} bash scripts/release/fire-release.sh
 
   # ── Test ───────────────────────────────────────────────────────────────
   test:
