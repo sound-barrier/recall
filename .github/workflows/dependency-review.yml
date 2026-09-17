@@ -17,3 +17,11 @@ jobs:
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294  # v5.0.0
         with:
           fail-on-severity: high
+          # The action's default scope is runtime only, which let a high
+          # advisory in any npm devDependency through. Development deps are
+          # not test-only here: Vite and its plugins build the bundle
+          # embedded in Recall.exe, and they are 594 of the 671 packages in
+          # frontend/package-lock.json. `unknown` covers anything the
+          # dependency graph cannot classify. Only dependencies this PR
+          # adds are judged, so an existing dev advisory reds no open PR.
+          fail-on-scopes: runtime, development, unknown
