@@ -16,6 +16,9 @@ var (
 	DirWritable        = dirWritable
 )
 
+// ErrUpdateRefused is the sentinel every refusal of a release wraps.
+var ErrUpdateRefused = errUpdateRefused
+
 // NewSelfUpdateConfig builds the production updater configuration around a
 // caller's client, so a test can route that client to a fake GitHub.
 var NewSelfUpdateConfig = newSelfUpdateConfig
