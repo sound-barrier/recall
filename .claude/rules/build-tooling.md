@@ -176,8 +176,11 @@ the bindings the module must understand.
   `push-release-tag.sh`, `verify-release-ref.sh` (the tag guard `release.yml`'s
   `verify-ref` job runs), `fire-release.sh` (`task release-fire`, which runs that
   guard before it dispatches), `check-release-assets.sh` (the `sign-attest` job's
-  last check on the asset directory the `release` job publishes whole), plus
-  `smoke/smoke.sh`, which CI's `lint` job runs. Each takes its inputs from env
+  last check on the asset directory the `release` job publishes whole),
+  `verify-asset-digests.sh` (every job that downloads an artifact holds it to
+  the digests its producer recorded as job outputs; `sign-attest` also to the
+  file names that producer hands off), plus `smoke/smoke.sh`,
+  which CI's `lint` job runs. Each takes its inputs from env
   vars or arguments set in the workflow step. Add new release-time
   logic as a `scripts/release/*.sh` (covered by `task lint-shell` via the
   `SHELL_SCRIPTS` glob), and its smoke cases as

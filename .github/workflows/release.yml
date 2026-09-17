@@ -76,6 +76,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      sums: ${{ steps.digests.outputs.sums }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -109,6 +111,17 @@ jobs:
           VERSION: ${{ github.ref_name }}
         run: bash scripts/release/package-wails-windows.sh
 
+      # Every job that downloads these checks them against this output with
+      # scripts/release/verify-asset-digests.sh, which explains why.
+      - name: Record artifact digests
+        id: digests
+        run: |
+          {
+            echo 'sums<<SUMS_END'
+            sha256sum -- recall-*-windows-amd64-installer.exe recall-*-windows-amd64.exe
+            echo 'SUMS_END'
+          } >> "$GITHUB_OUTPUT"
+
       # The raw exe (`…-windows-amd64.exe`) is the in-app updater target; the
       # installer (`…-windows-amd64-installer.exe`) is the human download.
       - name: Upload Windows artifacts
@@ -133,6 +146,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      sums: ${{ steps.digests.outputs.sums }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -142,6 +157,11 @@ jobs:
         with:
           name: build-wails-windows
           path: artifacts
+
+      - name: Verify Windows artifact digests
+        env:
+          BUILD_SUMS: ${{ needs.build-windows.outputs.sums }}
+        run: bash scripts/release/verify-asset-digests.sh artifacts "$BUILD_SUMS"
 
       - name: Compute artifact version
         id: ver
@@ -157,6 +177,17 @@ jobs:
           output-file: recall-${{ steps.ver.outputs.version }}-sbom.spdx.json
           upload-artifact: false
           upload-release-assets: false
+
+      - name: Record SBOM digest
+        id: digests
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          {
+            echo 'sums<<SUMS_END'
+            sha256sum -- "recall-${VERSION}-sbom.spdx.json"
+            echo 'SUMS_END'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Upload SBOM artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
@@ -181,6 +212,8 @@ jobs:
       contents: read
       id-token: write      # Sigstore certificate for the attestation
       attestations: write  # store the attestation on the repository
+    outputs:
+      sums: ${{ steps.digests.outputs.sums }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -216,13 +249,42 @@ jobs:
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
           name: build-wails-windows
-          path: release-assets
+          path: build-artifacts
 
       - name: Download SBOM artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
           name: sbom
-          path: release-assets
+          path: sbom-artifact
+
+      # Each producer in its own directory, held to its own digests and to the
+      # names it hands off. The sbom job runs third-party code before it
+      # records its digests, so a manifest checked by bytes alone could vouch
+      # for an extra file there, and that file would be checksummed, attested
+      # and published.
+      - name: Verify downloaded artifact digests
+        env:
+          BUILD_SUMS: ${{ needs.build-windows.outputs.sums }}
+          SBOM_SUMS: ${{ needs.sbom.outputs.sums }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          bash scripts/release/verify-asset-digests.sh build-artifacts "$BUILD_SUMS" \
+            "recall-${VERSION}-windows-amd64.exe" \
+            "recall-${VERSION}-windows-amd64-installer.exe"
+          bash scripts/release/verify-asset-digests.sh sbom-artifact "$SBOM_SUMS" \
+            "recall-${VERSION}-sbom.spdx.json"
+
+      # A new directory holding the three verified files and nothing else, so
+      # every later step stages into a directory no producer wrote.
+      - name: Start the release asset directory
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          mkdir release-assets
+          mv "build-artifacts/recall-${VERSION}-windows-amd64.exe" \
+            "build-artifacts/recall-${VERSION}-windows-amd64-installer.exe" \
+            "sbom-artifact/recall-${VERSION}-sbom.spdx.json" \
+            release-assets/
 
       # Stage the parser's reference data (heroes.yaml + maps.yaml) as
       # release-versioned assets. The frontend's "verify reference data"
@@ -326,6 +388,16 @@ jobs:
           VERSION: ${{ steps.ver.outputs.version }}
         run: bash scripts/release/check-release-assets.sh release-assets "$VERSION"
 
+      - name: Record release asset digests
+        id: digests
+        working-directory: release-assets
+        run: |
+          {
+            echo 'sums<<SUMS_END'
+            sha256sum -- *
+            echo 'SUMS_END'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Upload release assets
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
@@ -334,20 +406,31 @@ jobs:
           if-no-files-found: error
 
   # ── Job 4: Create GitHub Release with the signed assets attached ──
-  # Publishes exactly what sign-attest checked, and holds nothing but a token
-  # that can write releases. It names no environment, so publishing needs no
-  # second approval, and "Re-run failed jobs" retries it alone.
+  # Publishes exactly what sign-attest checked and recorded, and holds nothing
+  # but a token that can write releases. It names no environment, so
+  # publishing needs no second approval, and "Re-run failed jobs" retries it
+  # alone.
   release:
     needs: [sign-attest]
     runs-on: ubuntu-latest
     permissions:
       contents: write  # create the release and upload its assets
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/release
+
       - name: Download release assets
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
           name: release-assets
           path: release-assets
+
+      - name: Verify release asset digests
+        env:
+          ASSET_SUMS: ${{ needs.sign-attest.outputs.sums }}
+        run: bash scripts/release/verify-asset-digests.sh release-assets "$ASSET_SUMS"
 
       # github.ref_name is used only in a `with:` expression, not interpolated
       # into any run: shell command — safe from injection.
