@@ -28,6 +28,16 @@ version: 2
 # you read; one folded into a five-update patch PR is one you merge by
 # reflex — dawidd6/action-download-artifact v21->v23 rode in exactly that
 # way, onto a release whose own upstream issue says to revert it.
+#
+# HAND-MERGED: composite-action bumps. The actions under .github/actions/
+# set up the release toolchain: setup-mise wraps jdx/mise-action, which
+# installs mise and every pinned tool, and wails-build-env runs it for the
+# build of the Windows exe users download. A bump there changes what builds
+# a release, so it arrives in its own `actions-composite*` PR labeled
+# `release-toolchain`, and the maintainer reads and merges it by hand. It
+# never rides in the auto-merged `actions` group, which is why the
+# workflow pins and the composite pins are two update entries rather than
+# one entry with two directories.
 
 updates:
   # Go modules — updates go.mod deps and the `go X.Y` toolchain directive.
@@ -68,7 +78,28 @@ updates:
     cooldown:
       default-days: 7
 
-  # GitHub Actions workflow pins (setup-go, setup-node, checkout, etc.)
+  # npm CLIs the lint tasks, hooks and Pages build run (Biome, Spectral,
+  # Honkit, markdownlint-cli2). A separate entry so a tool bump never rides
+  # in the app's npm-deps PR; tools/.npmrc applies the same 7-day
+  # min-release-age when Dependabot rebuilds tools/package-lock.json.
+  - package-ecosystem: "npm"
+    directory: "/tools"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      tools-deps:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      tools-deps-major:
+        patterns: ["*"]
+        update-types: ["major"]
+    cooldown:
+      default-days: 7
+
+  # GitHub Actions workflow pins (setup-go, setup-node, checkout, etc.).
+  # "/" reads .github/workflows/*.yml and a root action.yml only, never
+  # .github/actions/, so it does not overlap the composite entry below.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -89,5 +120,25 @@ updates:
     # are SHA pins (scripts/ci/check-action-pins.sh enforces that), which
     # makes a silently re-pointed tag the thing to worry about; a week of
     # daylight is cheap insurance.
+    cooldown:
+      default-days: 7
+
+  # Composite actions under .github/actions/ (setup-mise, wails-build-env,
+  # prepare-frontend-dist, linux-webview-deps). HAND-MERGED — see the header.
+  # The glob gives each composite directory its own manifest.
+  - package-ecosystem: "github-actions"
+    directories: ["/.github/actions/*"]
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    # Replaces the default labels, so the two Dependabot sets are restated.
+    labels: ["dependencies", "github_actions", "release-toolchain"]
+    groups:
+      actions-composite:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      actions-composite-major:
+        patterns: ["*"]
+        update-types: ["major"]
     cooldown:
       default-days: 7

@@ -41,7 +41,7 @@
   color: "0075ca"
 
 - name: refactor
-  description: Code refactor — no behaviour change (Conventional Commits)
+  description: Code refactor — no behavior change (Conventional Commits)
   color: "c5def5"
 
 - name: test
@@ -116,6 +116,10 @@
 - name: dependencies
   description: Dependency update (auto-applied by Dependabot)
   color: "0366d6"
+
+- name: release-toolchain
+  description: Dependabot bump to a composite action under .github/actions/ — merge by hand, never auto-merge
+  color: "d93f0b"
 
 - name: breaking change
   description: Backwards-incompatible change — flags PRs that would need a major version bump
