@@ -210,6 +210,11 @@ jobs:
       - name: Enforce SHA-pinned actions
         run: bash scripts/ci/check-action-pins.sh
 
+      # Branch protection requires ci-gate, not the individual jobs, so a job
+      # missing from ci-gate's needs can fail and the PR still merges.
+      - name: Check ci-gate covers every job
+        run: bash scripts/ci/check-ci-gate-needs.sh
+
   # ── Job 2: Unit tests + type/spec drift ─────────────────────────────────
   # Go (-race -short) + Vitest with JUnit output, vue-tsc, and the
   # gen-types drift gate. Split out of `lint` so a failing test reports
@@ -796,8 +801,9 @@ jobs:
   # name made every new job a separate settings change that was easy to
   # forget, and left a renamed job's old context blocking every PR. With the
   # gate required, a ci.yml job gates merges exactly when it is listed in
-  # needs: ADD EVERY NEW JOB HERE. branch-coverage is the one exception,
-  # because it is report-only.
+  # needs: ADD EVERY NEW JOB HERE. scripts/ci/check-ci-gate-needs.sh fails
+  # lint when one is missing. branch-coverage is the one exception, because
+  # it is report-only.
   #
   # `if: always()` because a job whose needs failed is skipped, and a skipped
   # required check counts as passing: without it, one red job would leave the
