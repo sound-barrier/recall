@@ -29,6 +29,7 @@ resolve paths relative to their own location.
 | `ci/check-tool-pins.sh` | Fail when a tool pin floats: non-exact mise.toml pins, a mise.lock that disagrees or was rewritten, `@latest` or an on-demand package fetch (`npx <pkg>@<version>`, `npx --yes`, `pnpm dlx`, `uvx`, …) in a workflow, Taskfile, hook or script, a `go install` literal off its pin, a direct `jdx/mise-action`, a mismatched mise bootstrap, or a non-exact `tools/` pin. `task check-tool-pins`, `task lint` and CI's lint job. |
 | `_db.sh` | Internal library sourced by `db-*.sh` (DB-path resolution + schema-version detection); not run directly. |
 | `install-mise.sh` | Install the mise release CI pins into `~/.local/bin` after checking its SHA-256 (Linux; used by `initialize.sh` and the devcontainer). |
+| `cloc-report.sh` | `task cloc`: the tracked-repo table (`.clocrc`), production Go (packages the app compiles in, via `go list -deps`) and hand-written frontend line counts, then test-to-production ratios. Advisory, never a gate. |
 
 ---
 

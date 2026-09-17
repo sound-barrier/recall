@@ -299,7 +299,7 @@ task trivy          # vulnerability scan — fails on HIGH/CRITICAL findings
 task dead-code      # whole-program dead Go code (serveronly) + unused TS exports (knip)
 task dead-code-go   # Go only: deadcode -tags serveronly ./...
 task dead-code-ts   # TypeScript only: knip (unused exports, files, deps)
-task cloc           # count lines of source code (excludes deps, build artifacts, generated files)
+task cloc           # line counts: tracked repo, production Go + TypeScript, test-to-production ratios
 task icon           # resync build/appicon.png from assets/icon.png (macOS only; run after updating the icon)
 ```
 
