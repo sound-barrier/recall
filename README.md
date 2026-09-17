@@ -75,7 +75,7 @@ The desktop app is the simplest way to use Recall. Five steps from zero to your 
 
 Recall recognizes four capture-tool filename shapes automatically: **Nvidia Overlay** (`Overwatch 2 Screenshot YYYY.MM.DD - HH.MM.SS.ff.png`), **OW's default PrntScn** (`ScreenShot_YY-MM-DD_HH-MM-SS-fff.jpg`), **Windows Snip** (`Screenshot YYYY-MM-DD HHMMSS.png`), and **Steam's in-game F12** (`YYYYMMDDHHMMSS_N.jpg`).
 
-The masthead's **Check for updates** button compares your installed Recall against the latest release on GitHub AND surfaces any new heroes / maps / capture-tool grammars added since your build shipped — apply them in-place without reinstalling. The app also shows a quiet "you haven't checked in a while" banner roughly every 90 days so a stale install gets nudged. See [Updates & game data](docs/settings-reference.md#updates--game-data) for the full flow.
+**About Recall** (the ⋮ menu) compares your installed Recall against the latest release on GitHub, installs a newer release in place once it has checked the release's signature, AND surfaces any new heroes / maps / capture-tool grammars added since your build shipped — apply them in-place without reinstalling. The app also shows a quiet "you haven't checked in a while" banner roughly every 90 days so a stale install gets nudged. See [Updates & game data](docs/settings-reference.md#updates--game-data) for the full flow.
 
 That's all most users need. (Trends over time — SR, win-rate, per-match stats — now live right in the Matches tab.)
 
@@ -98,19 +98,30 @@ Every release binary ships with a `.sha256` checksum file. On Windows, PowerShel
   (Get-Content recall-{version}-windows-amd64-installer.exe.sha256).Split()[0].ToUpper()
 ```
 
-`True` / `OK` means the file is intact; any mismatch means re-download.
+`True` means the file is intact; `False` means re-download.
 
-For stronger supply-chain guarantees, every binary **and its `.sha256`
-file** are also signed with [SLSA provenance](https://slsa.dev/) via
-GitHub's Sigstore integration. Verify with the
-[GitHub CLI](https://cli.github.com/):
+A checksum proves only that the file arrived intact, not who made it.
+For that, the release files carry a [SLSA provenance](https://slsa.dev/)
+attestation from GitHub's Sigstore integration, and from the first
+signed release on, the installer and the updater exe each also carry a
+`.sig` signature from Recall's release key (the same signature the
+in-app updater checks). Verify the attestation with the
+[GitHub CLI](https://cli.github.com/) 2.68.0 or newer:
 
-```sh
-gh attestation verify recall-{version}-windows-amd64-installer.exe --repo sound-barrier/recall
+```powershell
+gh attestation verify recall-{version}-windows-amd64-installer.exe `
+  --repo sound-barrier/recall `
+  --signer-workflow sound-barrier/recall/.github/workflows/release.yml `
+  --source-ref refs/tags/v{version}
 ```
 
+The [Windows install guide](docs/install-windows.md#verifying-your-download)
+walks through all three checks, including the OpenSSL signature check.
+
 Every release also includes `recall-{version}-sbom.spdx.json` — a
-software bill of materials listing every dependency.
+software bill of materials listing every dependency. From the first
+signed release on, it also includes `recall-{version}.intoto.jsonl`,
+the attestation bundle for verifying without signing in to GitHub.
 
 ## Capturing matches
 
@@ -228,7 +239,7 @@ To start fresh, recover from a corrupted database, or recover after a **schema-c
 |---|---|
 | `Remove-Item -Recurse "$env:AppData\Recall\profiles\<name>\db\"` | `Remove-Item -Recurse "$env:AppData\Recall"` |
 
-**Windows — guided script (backs up first):** double-click `C:\Program Files\recall\Reset-Database.bat` (it ships with the installer), or download `recall-{version}-Reset-Database.bat` from [Releases](https://github.com/sound-barrier/recall/releases). It backs the database up before deleting and asks to confirm — handy when a schema-changing update left the app unable to open. Steps + what's lost vs. kept: [Resetting your database](docs/install-windows.md#resetting-your-database-no-migrations-yet).
+**Windows — guided script (backs up first):** double-click `%LocalAppData%\Programs\Recall\Reset-Database.bat` (it ships with the installer), or download `recall-{version}-Reset-Database.bat` from [Releases](https://github.com/sound-barrier/recall/releases). It backs the database up before deleting and asks to confirm — handy when a schema-changing update left the app unable to open. Steps + what's lost vs. kept: [Resetting your database](docs/install-windows.md#resetting-your-database-no-migrations-yet).
 
 A softer in-app option exists too (when the app still opens): **Settings → Advanced → Clear Database** wipes the active profile's matches but keeps its settings + the ignored-screenshots suppress list (tick the opt-out checkbox to also clear that list). The two-step arm/confirm prevents accidental wipes.
 </details>

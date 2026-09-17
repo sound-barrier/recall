@@ -105,10 +105,10 @@ ride a binary release and never a data update:
 
 | Channel | Producer | Consumer entry point | URL shape |
 |---|---|---|---|
-| **Release-bundled** | `.github/workflows/release.yml` (`recall-<version>-{file}.yaml` + `.sha256` + SLSA attestation) | `pkg/app/update.go::fetchReleaseRosters` | `https://github.com/sound-barrier/recall/releases/download/v<v>/recall-<v>-<file>` |
-| **Live from main** | `.github/workflows/pages.yml` (re-deploys on every push that touches `pkg/parser/*.yaml`) | `pkg/app/update.go::fetchMainRosters` | `https://sound-barrier.github.io/recall/data/<file>` (+ `<file>.sha256`, + `version.json`) |
+| **Release-bundled** | `.github/workflows/release.yml` (`recall-<version>-{file}.yaml` + `.sha256` + SLSA attestation) | `pkg/gamedata/fetch_gamedata.go::FetchReleaseRosters` | `https://github.com/sound-barrier/recall/releases/download/v<v>/recall-<v>-<file>` |
+| **Live from main** | `.github/workflows/pages.yml` (re-deploys on every push that touches `pkg/parser/*.yaml`) | `pkg/gamedata/fetch_gamedata.go::fetchMainRosters` | `https://sound-barrier.github.io/recall/data/<file>` (+ `<file>.sha256`, + `version.json`) |
 
-Both feed `pkg/app/apply_data_update.go::commitVerifiedAssets` which
+Both feed `pkg/gamedata/apply_data_update.go::commitVerifiedAssets` which
 SHA-256-verifies, atomically writes under `<RECALL_DATA_DIR>/data/`,
 triggers `parser.Reload()`, and updates `manifest.json`. Adding a new
 YAML file to the bundle takes a path-filter edit in `pages.yml` + a

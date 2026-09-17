@@ -1,6 +1,6 @@
 # Privacy
 
-**Last updated: 2026-09-05**
+**Last updated: 2026-09-17**
 
 Recall does not collect your data. There is no account, no server, no
 telemetry, and nothing to opt out of.
@@ -32,12 +32,13 @@ help, and uninstalling leaves them for you to remove.
 
 Only update checks, and only when you ask for one.
 
-When you press **Check for updates**, Recall makes plain HTTP GET requests to:
+When you open **About Recall**, which checks for updates, Recall makes plain
+HTTP GET requests to:
 
 | Host | For |
 |---|---|
-| `api.github.com`, `github.com` | whether a newer release exists |
-| `objects.githubusercontent.com` | the release file itself, if you install it |
+| `api.github.com`, `github.com` | whether a newer release exists, and the hero and map lists it ships |
+| `release-assets.githubusercontent.com` | where GitHub redirects release downloads: those lists and, only if you choose **Install update**, the new build, its checksum list (`SHA256SUMS`) and its signature (`.sig`) |
 | `sound-barrier.github.io` | the hero, map and season reference lists |
 
 These requests are **downloads**. They carry no request body, no query
@@ -87,7 +88,7 @@ deserve to know what the app is doing rather than discover it.
 |---|---|
 | Watches a folder for new image files | This is the whole product: it notices a new screenshot and reads it. The folder is one you choose, and watching can be turned off. |
 | Runs a hidden child process | Recall calls Tesseract, the OCR program, once per screenshot. The window is hidden so a black console box does not flash over your game. Nothing else is run. |
-| Replaces its own program file when updating | That is what installing an update means. It happens only when you accept an update. |
+| Replaces its own program file when updating | That is what installing an update means. It happens only when you accept an update, and only after the update's signature from Recall's release key checks out. |
 | The installer force-closes a running Recall | Windows will not let a program be overwritten while running. The installer closes it first, then upgrades. |
 
 All of it is open source. If any claim on this page is wrong, the code that
