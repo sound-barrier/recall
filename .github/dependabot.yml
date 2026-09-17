@@ -15,16 +15,19 @@ version: 2
 # updates". Dependabot security PRs still open immediately, so this trades
 # nothing away on the CVE path.
 #
-# Day counts are deliberately short. The point is to skip the first 72h
-# where a broken release usually gets pulled, not to run months behind:
-#   patch  3d  — usually the fix for someone else's bad afternoon
-#   minor  7d  — carries new code; one weekend of other people's CI
-#   major      — same window, but its OWN grouped PR per ecosystem (see the
-#                `*-major` groups). A major arriving alone is a major you
-#                read; one folded into a five-update patch PR is one you
-#                merge by reflex — dawidd6/action-download-artifact v21->v23
-#                rode in exactly that way, onto a release whose own upstream
-#                issue says to revert it.
+# Every version update waits one flat 7 days, patch and minor alike: the
+# week-long age gate CLAUDE.md sets for both ecosystems. A patch release is
+# no less likely to be the compromised one, and for Go this is the only
+# mechanical gate (npm also has frontend/.npmrc min-release-age=7), so a
+# shorter patch window would let a days-old module into go.sum on a green
+# auto-merge. Setting only `default-days` is how that reads: when no
+# semver-*-days key is present, Dependabot applies it to every update type.
+#
+# Majors wait the same window but arrive in their OWN grouped PR per
+# ecosystem (see the `*-major` groups). A major arriving alone is a major
+# you read; one folded into a five-update patch PR is one you merge by
+# reflex — dawidd6/action-download-artifact v21->v23 rode in exactly that
+# way, onto a release whose own upstream issue says to revert it.
 
 updates:
   # Go modules — updates go.mod deps and the `go X.Y` toolchain directive.
@@ -45,8 +48,6 @@ updates:
         update-types: ["major"]
     cooldown:
       default-days: 7
-      semver-minor-days: 7
-      semver-patch-days: 3
 
   # npm (Vue frontend) — Vue, Vite, typescript-eslint, vue-tsc, vitest, etc.
   - package-ecosystem: "npm"
@@ -66,8 +67,6 @@ updates:
         update-types: ["major"]
     cooldown:
       default-days: 7
-      semver-minor-days: 7
-      semver-patch-days: 3
 
   # GitHub Actions workflow pins (setup-go, setup-node, checkout, etc.)
   - package-ecosystem: "github-actions"
