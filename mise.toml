@@ -50,15 +50,14 @@ pipx.uvx = false
 # pkg/app/settings.go for the fall-through.
 RECALL_DATA_DIR = "{{config_root}}/data"
 
-# Version pins consumed as STRINGS by the Taskfile (task lint-openapi /
-# pages-build / lint-semgrep), the scripts (check-deps, check-api-drift),
-# and CI (was `tool-versions.env`). The matching tool binaries are pinned in
-# [tools] below; these strings drive the on-demand npx/pipx invocations and
-# the `task check-deps` upstream comparison.
-SPECTRAL_VERSION = "6.16.3"
+# Version pins consumed as STRINGS by the Taskfile (task lint-semgrep), the
+# scripts (check-deps, check-api-drift), and CI (was `tool-versions.env`). The
+# matching tool binaries are pinned in [tools] below; these strings drive the
+# pipx invocations outside mise and the `task check-deps` upstream comparison.
+# The npm CLIs (Biome, Spectral, Honkit, markdownlint-cli2) are pinned in
+# tools/package-lock.json instead.
 TYPOS_VERSION = "v1.50.2"
 SEMGREP_VERSION = "1.177.0"
-HONKIT_VERSION = "6.2.2"
 # gobco (condition/branch coverage) is a MEASUREMENT tool: the version changes
 # the number it reports, so a bump is a re-baseline decision. CI's
 # branch-coverage job greps this into $GITHUB_ENV to label its summary; its
@@ -81,12 +80,6 @@ JSONSCHEMA_RS_VERSION = "0.56.0"
 TESSERACT_VERSION = "5.5.3"
 RUFF_VERSION = "0.16.7"
 SQLFLUFF_VERSION = "4.3.0"
-# markdownlint-cli2 runs on demand via npx (task lint-md, the lefthook hook and
-# CI's lint job); without a version npx took whatever npm served that day.
-MARKDOWNLINT_CLI2_VERSION = "0.23.2"
-# Biome runs on-demand via npx (like Spectral/markdownlint), so it's a version
-# string here rather than a [tools] binary.
-BIOME_VERSION = "2.5.13"
 
 # Pin Go to the exact mise-installed toolchain so `go build`/`go test` never
 # auto-download a different one (parity with what actions/setup-go@v6 set in CI).

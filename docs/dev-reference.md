@@ -26,7 +26,7 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 
 | Command | Purpose |
 |---|---|
-| `task init` | Fresh-clone setup via `initialize.sh`: installs mise + system packages (Tesseract, container runtime, pipx, cloc), then `mise install` (Go, Node, `wails3`, every linter), Debian GTK4 + WebKitGTK 6.0 dev libs, `npm ci`, `lefthook install`. Idempotent. |
+| `task init` | Fresh-clone setup via `initialize.sh`: installs mise + system packages (Tesseract, container runtime, pipx, cloc), then `mise install` (Go, Node, `wails3`, every linter), Debian GTK4 + WebKitGTK 6.0 dev libs, `npm ci`, `task tools-install`, `lefthook install`. Idempotent. |
 | `task dev` | Hot-reload Wails v3 dev server (`wails3 dev`, macOS / Debian / Ubuntu). Deletes the dev DB first (fresh schema every boot). |
 | `task build-windows` | Windows/amd64 Wails v3 app + NSIS installer → `dist/windows/` via a **native** cross-compile (`CGO_ENABLED=0` — v3's WebView2 loader is pure Go, no Docker; needs `wails3` + node + `makensis`). The shipped release target. |
 | `task build-mac` | macOS Wails app → `dist/mac/Recall.app` (macOS host). **Local dev target only — not released.** |
@@ -36,6 +36,7 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 | `mise install` | Provision the pinned toolchain from `mise.toml` ([tools] + [env]). |
 | `eval "$(mise activate zsh)"` | One-time shell hook (or `bash`) so the toolchain + `RECALL_DATA_DIR` load automatically on `cd`. |
 | `cd frontend && npm ci` | Install frontend deps (required after clone / `task clean`). |
+| `task tools-install` | Install the npm CLIs pinned in `tools/package-lock.json` (Biome, Spectral, Honkit, markdownlint-cli2) with `npm ci --ignore-scripts`, plus the `tools/node_modules/go.mod` sentinel that keeps them out of `go list ./...`. `lint-json`, `lint-md`, `lint-openapi` and `pages-build` run it first; skipped when `tools/` is unchanged. |
 | `task fmt` | Go (`golangci-lint fmt` — gci import groups + gofmt -s) + shell (`shfmt -w -i 2 -ci -bn`). Sub-targets `fmt-go`, `fmt-shell`. |
 | `task lint` | golangci-lint (both tags), ESLint, Stylelint, HTMLHint, shellcheck + shfmt diff, the release-script smoke suite (`smoke-release-scripts`), yamllint, taplo (TOML), sqlfluff (SQL), Biome (JSON), Spectral, typos, markdownlint, actionlint + zizmor (`lint-actions`), semgrep — plus the structural gates: dependency-cruiser (`lint-arch`), jscpd (`lint-dupes`), knip (`dead-code-ts`), `check-go-mod-tidy` (`go mod tidy -diff`), `check-doc-paths`, `check-test-exports`. NOT the bundle budget or the API-drift fuzz: those need a build or a server, so they live in `task verify` and CI. |
 | `task clean` | Remove `dist/`, `build/bin/`, `frontend/{dist,node_modules}`. |

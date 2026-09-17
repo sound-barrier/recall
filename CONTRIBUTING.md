@@ -287,6 +287,7 @@ task fmt            # format all Go source files (golangci-lint fmt — gci impo
 task lint           # all linters: golangci-lint (both build tags), ESLint, Stylelint, HTMLHint, yamllint, Spectral, taplo (TOML), sqlfluff (SQL), Biome (JSON)
 task lint-yaml      # yamllint only
 task lint-openapi   # Spectral only (api/openapi.yaml)
+task tools-install  # the pinned npm CLIs (Biome, Spectral, Honkit, markdownlint-cli2) into tools/node_modules
 task test           # Go unit tests (-race) + Vitest frontend tests (parser golden-file tests skip unless RECALL_FIXTURE_DIR is set)
 task cover          # Go + frontend coverage reports (umbrella; both gate on thresholds)
 task cover-go       # Go coverage; fails when total < GO_COVERAGE_MIN (default in Taskfile.yml vars)
@@ -329,7 +330,7 @@ Every `[tools]` entry in `mise.toml` is an exact release, and the committed `mis
 
 ### npm supply-chain cooldown
 
-`frontend/.npmrc` sets `min-release-age=7` so every `npm install` from inside `frontend/` rejects npm package versions younger than seven days. This catches the typical hijacked-publish → npm-unpublish window — Shai-Hulud, the 2025 worm wave, and the recent compromises of `@ctrl/tinycolor` et al. were all detected and pulled inside 72 h. Dependabot honors `.npmrc` when it builds the updated tree, so a malicious publish that lands during its weekly window won't generate a PR until the cooldown elapses (by which point npm has usually pulled it).
+`frontend/.npmrc` and `tools/.npmrc` set `min-release-age=7` so every `npm install` into `frontend/` or `tools/` rejects npm package versions younger than seven days. This catches the typical hijacked-publish → npm-unpublish window — Shai-Hulud, the 2025 worm wave, and the recent compromises of `@ctrl/tinycolor` et al. were all detected and pulled inside 72 h. Dependabot honors `.npmrc` when it builds the updated tree, so a malicious publish that lands during its weekly window won't generate a PR until the cooldown elapses (by which point npm has usually pulled it).
 
 Requires npm ≥ 11.0; CI (`actions/setup-node` with Node 26) ships npm 11 already. `npm ci` is unaffected — it installs exact versions from the lockfile without re-resolving — so checkouts and CI builds remain reproducible.
 
@@ -337,6 +338,7 @@ Requires npm ≥ 11.0; CI (`actions/setup-node` with Node 26) ships npm 11 alrea
 
 ```sh
 npm --prefix frontend install <pkg> --min-release-age=0
+npm --prefix tools install <pkg> --min-release-age=0   # the lint and docs CLIs
 ```
 
 Bypasses the cooldown for that one invocation only. Commit the lockfile change with a `fix:` or `chore(security):` prefix and call out the override in the commit body so future readers understand why a fresh version landed inside the window.
@@ -360,13 +362,13 @@ lefthook install        # wires the hooks into .git/hooks/{pre-commit,pre-push,c
 | `golangci-lint`     | `*.go`                          | `golangci-lint run --fix` (linters — from `mise install`) |
 | `eslint`            | `frontend/src/**/*.{ts,vue}`    | `eslint` + `typescript-eslint` (auto-installed by `cd frontend && npm ci`) |
 | `stylelint`         | `frontend/src/**/*.{css,vue}`   | `stylelint`          (auto-installed by `cd frontend && npm ci`) |
-| `spectral`          | `api/openapi.yaml`              | `task lint-openapi` → `npx @stoplight/spectral-cli` (auto-pulled on demand by `npx`) |
+| `spectral`          | `api/openapi.yaml`              | `spectral lint --fail-severity=warn`, what `task lint-openapi` runs (from `task tools-install`; the hook fails with a pointer to it rather than installing) |
 | `gen-types`         | `api/openapi.yaml`              | `task gen-types` — regenerates `frontend/src/client` and auto-stages it so the generated client is never out of sync with the spec. |
 | `yamllint`          | `*.{yml,yaml}` (excl. openapi)  | `yamllint`           (from `mise install`) |
 | `zizmor`            | `.github/workflows/*`, `.github/actions/*/action.*`, `.github/dependabot.yml`, `.github/zizmor.yml` | `zizmor --offline` — workflow + composite-action security audit (from `mise install`; CI's `lint` job runs it online) |
 | `taplo`             | `*.toml`                        | `taplo fmt` — formats + re-stages (from `mise install`) |
 | `sqlfluff`          | `*.sql`                         | `sqlfluff lint` (dialect sqlite — from `mise install`) |
-| `biome-json`        | `*.json`                        | `biome check --write` — formats/lints + re-stages (auto-pulled on demand by `npx`) |
+| `biome-json`        | `*.json`                        | `biome check --write` — formats/lints + re-stages (from `task tools-install`; the hook fails with a pointer to it rather than installing) |
 | `gitleaks`          | *(all staged files)*            | `gitleaks git --staged` — blocks a commit that adds a secret (config `.gitleaks.toml`; from `mise install`). `task secrets` and CI's `secrets` job scan every commit reachable from HEAD. |
 
 **`pre-push`** — runs on `git push`: the **fast core only** (~25s) — the checks most likely to turn a push into a red CI round-trip. Everything heavier still gates in CI and is bundled into **`task verify`** when you want the full battery locally before pushing.

@@ -59,6 +59,7 @@ extend-exclude = [
   # Lockfiles: tons of base64-y hashes, no source content worth
   # scanning. (frontend/node_modules/ is .gitignored already.)
   "frontend/package-lock.json",
+  "tools/package-lock.json",
   "go.sum",
   # Parser golden-file fixture PNGs. typos walks them as text —
   # the deflate stream looks enough like UTF-8 to trip the

@@ -1,0 +1,14 @@
+{
+  "name": "recall-tools",
+  "private": true,
+  "description": "Pinned npm CLIs for Taskfile, lefthook and CI; never shipped",
+  "devDependencies": {
+    "@biomejs/biome": "2.5.14",
+    "@stoplight/spectral-cli": "6.16.3",
+    "honkit": "6.2.2",
+    "markdownlint-cli2": "0.23.2"
+  },
+  "overrides": {
+    "smol-toml": "1.7.2"
+  }
+}

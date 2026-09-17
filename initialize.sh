@@ -119,6 +119,9 @@ mise install
 log "frontend: npm ci"
 mise exec -- bash -c 'cd frontend && npm ci --no-audit --no-fund'
 
+log "tools: npm ci (Biome, Spectral, Honkit, markdownlint-cli2)"
+mise exec -- task tools-install
+
 log "lefthook install (wires .git/hooks/{pre-commit, commit-msg, pre-push})"
 mise exec -- lefthook install
 

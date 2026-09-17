@@ -47,6 +47,8 @@ on:
       - 'pkg/parser/seasons.yaml'
       - 'pkg/parser/ranks.yaml'
       - 'pkg/parser/patches.yaml'
+      - 'tools/package.json'
+      - 'tools/package-lock.json'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -61,8 +63,8 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
-# Honkit pin (HONKIT_VERSION) lives in mise.toml [env], shared with the
-# `task pages-build` target. setup-mise loads it into $GITHUB_ENV below.
+# Honkit is pinned in tools/package-lock.json, shared with the
+# `task pages-build` target.
 
 jobs:
   deploy:
@@ -78,17 +80,21 @@ jobs:
           # from the roster files' last-change commit, not just the shallow tip.
           fetch-depth: 0
 
-      # node (for the Honkit npx build) from mise.toml's pin; also loads
-      # mise.toml [env] (HONKIT_VERSION) into $GITHUB_ENV so the build step
-      # below interpolates the same version a local `task pages-build` uses.
-      # `task check-deps` validates the pin against upstream. No token: node
-      # needs no GitHub API, and the export would hand this job's pages: write
-      # token to every later step, including the npx build. The rate-limit
-      # warning mise-action logs without a token is expected.
+      # node (for the Honkit build) from mise.toml's pin. No token: node needs
+      # no GitHub API, and the export would hand this job's pages: write token
+      # to every later step, including the Honkit build. The rate-limit warning
+      # mise-action logs without a token is expected.
       - uses: ./.github/actions/setup-mise
         with:
           install_args: node
           github_token: ''
+
+      # Honkit exactly as tools/package-lock.json records it, with install
+      # scripts off. npm directly rather than `task tools-install`: this job
+      # has no task binary, and it runs no Go, so the Go-walker sentinel that
+      # task writes into tools/node_modules is not needed here.
+      - name: Install pinned npm tools (tools/)
+        run: npm ci --prefix tools --ignore-scripts --no-audit --no-fund
 
       # Stage book/ + the chapter copies into a fresh build
       # directory so the committed book/ stays pure metadata. Two
@@ -136,7 +142,7 @@ jobs:
       # the staged book dir.
       - name: Build the book (Honkit)
         working-directory: _stage/book
-        run: npx --yes "honkit@${HONKIT_VERSION}" build . _book
+        run: '"${GITHUB_WORKSPACE}/tools/node_modules/.bin/honkit" build . _book'
 
       # Final Pages tree:
       #   _site/                — book index.html + per-chapter HTML
