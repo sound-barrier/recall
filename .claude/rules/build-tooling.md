@@ -62,6 +62,16 @@ lock entry, or no URL for the runner's platform, fails the job. The rules:
 - **`pipx.uvx = false` is load-bearing.** With uv on PATH, newer mise records uv
   dependency graphs for pipx tools that uv-less CI runners cannot replay under
   `--locked`.
+- **`scripts/ci/check-tool-pins.sh` enforces these rules and the `tools/` ones
+  below** (`task check-tool-pins`, in `task lint` and CI's lint job): exact
+  `[tools]` and `[env]` `*_VERSION` values, `mise.lock` agreeing with them and
+  uncommitted changes absent, `.node-version`, the `go install` literals,
+  `jdx/mise-action` only in `setup-mise` with one mise version and hash across
+  the four places, no `@latest` or on-demand package fetch
+  (`npx <pkg>@<version>`, `npx --yes`, `pnpm dlx`, `uvx`, …) anywhere a tool is
+  installed, and exact `tools/` pins. npx assumes `--yes` in CI, so a bare
+  `npx <name>` is fine only where a committed lockfile installs `<name>`. It
+  fails with an annotation naming the line; fix the pin, never the check.
 
 **The npm CLIs live in `tools/`, not `[env]`.** Biome, Spectral, Honkit and
 markdownlint-cli2 are exact `devDependencies` in `tools/package.json`, locked by

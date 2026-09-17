@@ -158,6 +158,7 @@ tasks:
       - task: check-test-exports
       - task: dead-code-ts
       - task: lint-actions
+      - task: check-tool-pins
       - task: lint-semgrep
 
   lint-go:
@@ -342,6 +343,10 @@ tasks:
   check-doc-paths:
     desc: Assert every task, script and chapter named in the standards files exists
     cmds: [bash scripts/ci/check-doc-paths.sh]
+
+  check-tool-pins:
+    desc: Fail when a tool pin floats (mise.toml, mise.lock, go install literals, the mise bootstrap, tools/)
+    cmds: [bash scripts/ci/check-tool-pins.sh]
 
   check-package-size:
     desc: Assert no Go package / frontend dir exceeds its declared file budget

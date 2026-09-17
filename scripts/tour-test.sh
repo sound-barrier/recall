@@ -226,7 +226,7 @@ if [ "$MODE" = "wails" ]; then
   Install it (the repo pins it in mise.toml):
       mise install
   or directly:
-      go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha2.107
+      go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.22
   Then re-run, or use --mode=server for a browser-based smoke test.
 EOF
     exit 1
