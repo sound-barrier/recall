@@ -295,7 +295,7 @@ tasks:
       - echo "[ recall ] ✓  Markdown lint clean"
 
   lint-actions:
-    desc: Lint .github/workflows/*.yml via actionlint, enforce SHA-pinned external actions, and audit workflows + actions with zizmor
+    desc: Lint .github/workflows/*.yml via actionlint, enforce SHA-pinned external actions and ci-gate coverage, and audit workflows + actions with zizmor
     cmds:
       - command -v actionlint >/dev/null || { echo "[ recall ] ✗  actionlint not installed — brew install actionlint (or see initialize.sh for Debian)"; exit 1; }
       - command -v zizmor >/dev/null || { echo "[ recall ] ✗  zizmor not installed — run 'mise install' (pinned in mise.toml)"; exit 1; }
@@ -303,11 +303,13 @@ tasks:
       - actionlint .github/workflows/*.yml
       - echo "[ recall ] Enforcing SHA-pinned external actions…"
       - bash scripts/ci/check-action-pins.sh
+      - echo "[ recall ] Checking ci-gate needs every ci.yml job…"
+      - bash scripts/ci/check-ci-gate-needs.sh
       # Online when GH_TOKEN or GITHUB_TOKEN is set, offline otherwise; the
       # offline run skips only the audits that need the GitHub API.
       - echo "[ recall ] Auditing workflows + actions (zizmor)…"
       - zizmor --no-progress .
-      - echo "[ recall ] ✓  workflows clean + actions SHA-pinned + zizmor clean"
+      - echo "[ recall ] ✓  workflows clean + actions SHA-pinned + ci-gate complete + zizmor clean"
 
   # gosec (Go SAST) is rolled into lint-go's golangci-lint (the `gosec` linter,
   # both build tags) — no separate task or `gosec` binary install needed.
