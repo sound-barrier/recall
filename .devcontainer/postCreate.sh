@@ -2,7 +2,7 @@
 # Recall devcontainer post-create script.
 #
 # Runs once after the image is built. Installs the *system* packages mise
-# can't manage (Tesseract OCR, sqlite3, cloc, pipx) then hands the whole
+# can't manage (Tesseract OCR, sqlite3, pipx) then hands the whole
 # toolchain off to mise (https://mise.jdx.dev), which reads mise.toml and
 # installs pinned go, node, task (go-task), wails, and every linter. This
 # mirrors a host `./initialize.sh` run, minus macOS-only bits — the
@@ -17,12 +17,11 @@ WORKSPACE=/workspaces/recall
 log() { printf '\033[1;34m[ postCreate ]\033[0m %s\n' "$*"; }
 
 # ─── System packages (everything mise can't provide) ──────────────────
-log "apt packages: tesseract, sqlite3, cloc, pipx, build deps…"
+log "apt packages: tesseract, sqlite3, pipx, build deps…"
 sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   tesseract-ocr \
   sqlite3 \
-  cloc \
   pipx \
   ca-certificates \
   curl \
@@ -82,7 +81,7 @@ log "git submodule update --init testdata/images (parser golden fixtures)"
 log "frontend: npm ci"
 (cd "${WORKSPACE}" && mise exec -- bash -c 'cd frontend && npm ci --no-audit --no-fund')
 
-log "tools: npm ci (Biome, Spectral, Honkit, markdownlint-cli2)"
+log "tools: npm ci (the CLIs pinned in tools/package.json)"
 (cd "${WORKSPACE}" && mise exec -- task tools-install)
 
 log "lefthook install (wires .git/hooks/{pre-commit,commit-msg})"

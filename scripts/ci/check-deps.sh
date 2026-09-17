@@ -14,7 +14,7 @@
 #     yamllint, taplo, trivy, lefthook, jq, deadcode, govulncheck, …) — bump
 #     them together with `task update-mise`, which honors the 7-day cooldown
 #   • ESLint, typescript-eslint, stylelint, htmlhint, vue-tsc — Dependabot npm
-#   • Biome, Spectral, Honkit, markdownlint-cli2 — pinned in tools/package.json,
+#   • the npm CLIs (Biome, Spectral, cloc, …) — pinned in tools/package.json,
 #     where tools/.npmrc's 7-day age gate applies to every bump
 #   • trivy-action, setup-go, setup-node — Dependabot Actions
 #

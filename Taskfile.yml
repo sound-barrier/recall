@@ -22,9 +22,9 @@ silent: true
 # Version pins (SEMGREP_VERSION, SCHEMATHESIS_VERSION, …) and RECALL_DATA_DIR
 # come from mise's [env] — provided by `mise activate` (or `mise exec -- task
 # …`). Tasks read them as shell `$VARS`, so run `task` inside the
-# mise-managed environment (see mise.toml). The npm CLIs (Biome, Spectral,
-# Honkit, markdownlint-cli2) are pinned in tools/package-lock.json instead and
-# run from tools/node_modules/.bin after `task tools-install`.
+# mise-managed environment (see mise.toml). The npm CLIs listed in
+# tools/package.json are pinned in tools/package-lock.json instead and run from
+# tools/node_modules/.bin after `task tools-install`.
 vars:
   # DOCKER is still used by the swagger task (docker-run Swagger UI). The
   # Dockerfile-based Linux/server builds were removed with the Windows-only
@@ -124,15 +124,15 @@ tasks:
   # ── Quality ────────────────────────────────────────────────────────────
   cloc:
     desc: Count lines of source code, summary table (config in .clocrc)
+    deps: [tools-install]
     cmds:
-      - command -v cloc >/dev/null || { echo "cloc not installed — brew install cloc (or apt install cloc)"; exit 1; }
-      - cloc --config .clocrc .
+      - tools/node_modules/.bin/cloc --config .clocrc .
 
   cloc-detail:
     desc: Count lines of source code, per-file breakdown
+    deps: [tools-install]
     cmds:
-      - command -v cloc >/dev/null || { echo "cloc not installed — brew install cloc (or apt install cloc)"; exit 1; }
-      - cloc --config .clocrc --by-file-by-lang .
+      - tools/node_modules/.bin/cloc --config .clocrc --by-file-by-lang .
 
   lint:
     desc: Run all linters
@@ -517,7 +517,7 @@ tasks:
   # `npm ci` installs exactly what the lock names, so tools/.npmrc's seven-day
   # age gate applies when a pin is bumped, not on every install.
   tools-install:
-    desc: Install the pinned npm CLIs (Biome, Spectral, Honkit, markdownlint-cli2) into tools/node_modules
+    desc: Install the npm CLIs pinned in tools/package.json into tools/node_modules
     run: once
     sources:
       - tools/package.json

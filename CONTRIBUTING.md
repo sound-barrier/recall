@@ -287,7 +287,7 @@ task fmt            # format all Go source files (golangci-lint fmt — gci impo
 task lint           # all linters: golangci-lint (both build tags), ESLint, Stylelint, HTMLHint, yamllint, Spectral, taplo (TOML), sqlfluff (SQL), Biome (JSON)
 task lint-yaml      # yamllint only
 task lint-openapi   # Spectral only (api/openapi.yaml)
-task tools-install  # the pinned npm CLIs (Biome, Spectral, Honkit, markdownlint-cli2) into tools/node_modules
+task tools-install  # the npm CLIs pinned in tools/package.json into tools/node_modules
 task test           # Go unit tests (-race) + Vitest frontend tests (parser golden-file tests skip unless RECALL_FIXTURE_DIR is set)
 task cover          # Go + frontend coverage reports (umbrella; both gate on thresholds)
 task cover-go       # Go coverage; fails when total < GO_COVERAGE_MIN (default in Taskfile.yml vars)
