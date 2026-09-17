@@ -286,24 +286,13 @@ pre-push:
           exit 1
         fi
 
-# Commit-message format check (optional but pairs with release-please).
-# Enable conventional commits via `commit-msg` hook — see release-please
-# workflow for how commit messages drive automated versioning.
+# Commit-message format check. release-please reads the Conventional Commits
+# prefix to pick the version bump, so the rule lives in one script that CI's
+# commit-lint job also runs over every pull request commit: a subject skipped
+# here with LEFTHOOK_EXCLUDE=conventional still cannot merge.
 commit-msg:
   commands:
+    # Keep the name `conventional`: CONTRIBUTING.md documents
+    # LEFTHOOK_EXCLUDE=conventional, which matches on it.
     conventional:
-      # Match: feat:, fix:, chore:, docs:, refactor:, test:, perf:,
-      # build:, ci:, revert:, style:. Optional scope in parens.
-      # Optional `!` for breaking changes. Reject anything else.
-      run: |
-        first_line=$(head -n1 "{1}")
-        if echo "$first_line" | grep -qE '^(feat|fix|chore|docs|refactor|test|perf|build|ci|revert|style)(\([a-z0-9_-]+\))?!?: .+'; then
-          exit 0
-        fi
-        echo "Commit subject must follow Conventional Commits format:"
-        echo "  <type>(<scope>)?(!)?: <description>"
-        echo "  e.g. feat(parser): add Suravasa map alias"
-        echo "       fix: rename brand-grey CSS var to brand-gray"
-        echo "Allowed types: feat, fix, chore, docs, refactor, test, perf, build, ci, revert, style"
-        echo "Bypass: LEFTHOOK_EXCLUDE=conventional git commit ..."
-        exit 1
+      run: bash scripts/ci/check-commit-subjects.sh --message-file "{1}"

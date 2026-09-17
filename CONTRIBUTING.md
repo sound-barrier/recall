@@ -372,7 +372,7 @@ Moved to CI-only (and `task verify`): the coverage gate, bundle-size budget, Pla
 
 If a tool isn't installed, the corresponding hook fails — install it (or skip the hook for one push/commit, see below).
 
-**`commit-msg`** — runs on every `git commit`. Validates the subject line format (no file glob — always runs):
+**`commit-msg`** — runs on every `git commit`. Validates the subject line format (no file glob — always runs). The rule lives in `scripts/ci/check-commit-subjects.sh`, and CI's `commit-lint` job runs the same script over every non-merge commit a pull request adds, so a subject that skipped the hook, or was written in GitHub's web UI (Copilot Autofix, "Apply suggestions from code review", the Revert button), cannot merge until it is reworded:
 
 Subject must match `<type>(<scope>)?(!)?: <description>`. Allowed types:
 
