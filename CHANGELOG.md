@@ -1,5 +1,81 @@
 # Changelog
 
+## [0.33.3](https://github.com/sound-barrier/recall/compare/v0.33.2...v0.33.3) (2026-09-17)
+
+
+### Features
+
+* **about:** explain a refused update ([861254b](https://github.com/sound-barrier/recall/commit/861254bbaf743c8668769f2e60d9bbf464ad8701))
+* **selfupdate:** install only releases signed by the release key ([9184460](https://github.com/sound-barrier/recall/commit/91844606a1c5916c9ea558f54126ac620fbf8b69))
+
+
+### Bug Fixes
+
+* **release-please:** check manifest, release PR and tag before tagging ([ca622c6](https://github.com/sound-barrier/recall/commit/ca622c6223a76c079507550caee22a3c9ed3b1f8))
+* **release:** verify the tag's commit before release-fire dispatches ([264d5b0](https://github.com/sound-barrier/recall/commit/264d5b025785c3a9ee667a63ea44109470c66907))
+* **selfupdate:** hold update fetches to the GitHub redirect guard ([d270454](https://github.com/sound-barrier/recall/commit/d270454adcf6eab4856c1b8054144eafb0f1025b))
+* **selfupdate:** let the update download finish on slow links ([7b2f1ce](https://github.com/sound-barrier/recall/commit/7b2f1ced797a5240f82c3c63ee207cd9d1396e5e))
+* **selfupdate:** refuse a release that SHA256SUMS does not cover ([27aaaa9](https://github.com/sound-barrier/recall/commit/27aaaa97e57f0c376e66dd05fe61a947e7ee8dc6))
+
+
+### Refactors
+
+* **release:** split the release smoke suite by script ([d0049c2](https://github.com/sound-barrier/recall/commit/d0049c2addfa093094c4a29e24741113edfeee15))
+* **selfupdate:** build the updater config behind a test seam ([7cf6524](https://github.com/sound-barrier/recall/commit/7cf6524d0417ec57285dcc34667c2b59e435a895))
+
+
+### Documentation
+
+* explain signed self-updates and how to verify a download ([1a2ed97](https://github.com/sound-barrier/recall/commit/1a2ed978b1046279ef5e23783e804575e5e93c29))
+* **readme:** add Scorecard, Best Practices and gate badges ([2c1c656](https://github.com/sound-barrier/recall/commit/2c1c6562eade06f9b664a01d11a2e083a28fe37e))
+* **releases:** document approval, key custody and first signed release ([495ef21](https://github.com/sound-barrier/recall/commit/495ef21cf255dcbfaee3059bb8cbe95092d22f48))
+* **rules:** bring ci-cd.md in line with the gated workflows ([ee5f4e8](https://github.com/sound-barrier/recall/commit/ee5f4e8459baf6e96aaf3a2d49d166fa8bb6e9a7))
+* **security:** rescope SECURITY.md and add the update trust model ([b10bf90](https://github.com/sound-barrier/recall/commit/b10bf901d0a1a76d38e7d878b8468fb7673925e7))
+
+
+### Build & Packaging
+
+* **deps:** Bump the actions group with 3 updates ([767ae58](https://github.com/sound-barrier/recall/commit/767ae582ff8fa2beea808e0d4d3c198645219223))
+* **deps:** let Dependabot update composite actions and tools/ ([db02960](https://github.com/sound-barrier/recall/commit/db02960dcefa3aecc14dbbf89c8b0186ac7b948d))
+* **mise:** commit mise.lock so CI installs tools --locked ([54c4269](https://github.com/sound-barrier/recall/commit/54c42696f5ffe738f898708cb91e4002d6e976a0))
+* **mise:** pin every floating tool to an exact release ([c3a1bc0](https://github.com/sound-barrier/recall/commit/c3a1bc0e01f835b0c24de17bbcb287e80b986496))
+* pin and checksum the mise bootstrap in setup scripts ([d7d6ff8](https://github.com/sound-barrier/recall/commit/d7d6ff8c3df4b7f7a108621a399cc2980b61ef26))
+* **release:** add a keygen command for the update-signing key ([7245963](https://github.com/sound-barrier/recall/commit/7245963fd549e6fa3246138c2ddba42c9e5a9c34))
+* **release:** bind every artifact hand-off to its producer's digest ([c2f1941](https://github.com/sound-barrier/recall/commit/c2f194109d26187430dc6653089e466eea7e1809))
+* **release:** checksum and attest the SBOM ([a5da455](https://github.com/sound-barrier/recall/commit/a5da4553a73a972524c47122cf3eff265f3a0882))
+* **release:** pin the update-signing key and add sign and verify ([7ec5273](https://github.com/sound-barrier/recall/commit/7ec527346130d5fe7d6191945357883fe1364188))
+* **release:** provision the release toolchain without the mise cache ([197df08](https://github.com/sound-barrier/recall/commit/197df08984a7cd0a51a9a57fb168c9726d455be2))
+* **release:** publish the provenance bundle as a release asset ([d2f5593](https://github.com/sound-barrier/recall/commit/d2f5593c726a7bceea0ccb0294ee307f007a5d6f))
+* **release:** refuse tags that are not a release-please commit on main ([761abd5](https://github.com/sound-barrier/recall/commit/761abd5a65be647020709d44d94a510084f75dce))
+* **release:** sign and attest in an approval-gated, isolated job ([d39158c](https://github.com/sound-barrier/recall/commit/d39158c2b21051863bffca1056fabc02c381dd14))
+* **tools:** lock the npm CLIs in tools/ behind a 7-day age gate ([cd6b2d9](https://github.com/sound-barrier/recall/commit/cd6b2d997e78b2dd72b757e0c505a6b438fc52aa))
+
+
+### CI
+
+* audit workflows and actions with zizmor ([dfaf85e](https://github.com/sound-barrier/recall/commit/dfaf85e944c7b4bdeb3fc5d4bfce8cf083122d0c))
+* **deps:** fail dependency review on dev and unknown scopes ([3c44538](https://github.com/sound-barrier/recall/commit/3c44538cd93b1696ae8408eed17e72c14c9010b9))
+* **deps:** hold Dependabot patch bumps for the full seven days ([7af574f](https://github.com/sound-barrier/recall/commit/7af574fbaaa310b62babbfb8eaebe78834242443))
+* drop test-unit's unused pull-request and issue scopes ([f23adcd](https://github.com/sound-barrier/recall/commit/f23adcd8bd1976eefdc83604e211a1d2d269cea7))
+* **e2e:** run Playwright unless every changed path is known-safe ([86a76ac](https://github.com/sound-barrier/recall/commit/86a76aca1b122dcca8e032d94b6672f9dc41a59b))
+* fail the build when a tool pin floats ([e971cce](https://github.com/sound-barrier/recall/commit/e971ccef0e375a27de71a86368d3daf88479ced1))
+* gate merges on one ci-gate job instead of per-job checks ([40c4796](https://github.com/sound-barrier/recall/commit/40c4796437809c4f4eec75e285ba645a85d8c52f))
+* grant write scopes per job instead of per workflow ([159ad65](https://github.com/sound-barrier/recall/commit/159ad6545ddbf4ea26b2f481070ab2b3153afbf0))
+* hold every pull request commit to Conventional Commits ([42da959](https://github.com/sound-barrier/recall/commit/42da959a74d87a0a954d5163bd25a5c80e8e5fa7))
+* install CI-only Go tools and actionlint at their pinned versions ([4a217e3](https://github.com/sound-barrier/recall/commit/4a217e3ae96f8d2c6be431fa6a2bd9172a59002c))
+* install mise from one pinned, checksummed composite action ([71c4ca7](https://github.com/sound-barrier/recall/commit/71c4ca7226e4f492cefd10722bcb60a1cfe6f660))
+* keep the checkout token out of jobs that never push ([f933ede](https://github.com/sound-barrier/recall/commit/f933edeac49acf4229bfe5378864335332dba328))
+* **lint:** fail when a ci.yml job is missing from ci-gate ([5464d10](https://github.com/sound-barrier/recall/commit/5464d10c886b8c499d688b3fafd0fd95aa9cd2b9))
+* **lint:** fail when go.mod or go.sum is not tidy ([4bbbd42](https://github.com/sound-barrier/recall/commit/4bbbd42a9f6c512ffa539b01b596724cc7a70e9e))
+* name exact release tags in action version comments ([1daae3a](https://github.com/sound-barrier/recall/commit/1daae3a69ff51e269132fb6a868cbd3cbf3ef304))
+* **pages:** build read-only and stage roster data only at deploy ([5565032](https://github.com/sound-barrier/recall/commit/5565032dc521168c2facef9d22ea5b8f8100fafd))
+* publish OpenSSF Scorecard results ([5536c56](https://github.com/sound-barrier/recall/commit/5536c56f6863647f1edb3e3ae08639d6c0b8d120))
+* **release-please:** move tagging into its own least-privilege job ([e9b3461](https://github.com/sound-barrier/recall/commit/e9b3461ffde63da9553b6054acf415bb9233a102))
+* **roster-watch:** split the scrape from the write-scoped proposal ([c91faf4](https://github.com/sound-barrier/recall/commit/c91faf4abb5af303f2a1e2ed2d77667ba73231eb))
+* run the release-script smoke suite on every CI run ([73a0dc4](https://github.com/sound-barrier/recall/commit/73a0dc42802a8b1fc6ce76265e8eb2266974cba7))
+* scan the git history for secrets with gitleaks ([56d0c6d](https://github.com/sound-barrier/recall/commit/56d0c6d820a95ad524d78b5f9e3fe8b3b7a2ac7c))
+* skip fork runs in the PR coverage comment workflow ([36cdcfe](https://github.com/sound-barrier/recall/commit/36cdcfe14a7f76d5be00fd461dab382d7fec4768))
+
 ## [0.33.2](https://github.com/sound-barrier/recall/compare/v0.33.1...v0.33.2) (2026-09-15)
 
 
