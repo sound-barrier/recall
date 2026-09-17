@@ -38,9 +38,10 @@ pipx ensurepath
 export PATH="$HOME/.local/bin:$PATH"
 
 # ─── mise: the rest of the toolchain ──────────────────────────────────
+# The mise release CI pins, SHA-256-checked before it is installed.
 if ! command -v mise >/dev/null 2>&1; then
-  log "Installing mise (https://mise.run)…"
-  curl -fsSL https://mise.run | sh
+  log "Installing mise (pinned, checksum-verified)…"
+  bash "${WORKSPACE}/scripts/install-mise.sh"
 fi
 export PATH="$HOME/.local/bin:$PATH"
 

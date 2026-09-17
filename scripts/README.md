@@ -27,6 +27,7 @@ resolve paths relative to their own location.
 | [`clear-db.sh`](#clear-dbsh) | Wipe every parent table + VACUUM; equivalent to the UI's Clear Database button. |
 | [`check-deps.sh`](#check-depssh) | Compare pinned tool versions (Wails, hadolint, lefthook, trivy) against latest GitHub releases. |
 | `_db.sh` | Internal library sourced by `db-*.sh` (DB-path resolution + schema-version detection); not run directly. |
+| `install-mise.sh` | Install the mise release CI pins into `~/.local/bin` after checking its SHA-256 (Linux; used by `initialize.sh` and the devcontainer). |
 
 ---
 
