@@ -131,7 +131,9 @@ the bindings the module must understand.
 - **Pre-push is the fast core, and coverage is NOT in it.** The jobs are
   `actionlint`, `unit-go` (`go test -race -short ./...`), `unit-frontend`
   (`npx vitest run`, no coverage instrumentation), `gen-types-drift`,
-  `test-skips`, `package-size`, `package-size-history`, and `conventional`. The
+  `test-skips`, `package-size`, and `package-size-history`. `conventional` is
+  not one of them: it is the `commit-msg` hook, and CI's `commit-lint` job runs
+  the same `scripts/ci/check-commit-subjects.sh` over every PR commit. The
   coverage GATE lives in CI and `task verify` — `GO_COVERAGE_MIN` plus
   `vitest.config.ts` `coverage.thresholds`. Skip one job with
   `LEFTHOOK_EXCLUDE=<job name> git push`, naming the job (e.g. `unit-go`), and
@@ -166,11 +168,15 @@ the bindings the module must understand.
   source of truth for the initial/total JS+CSS KB thresholds, run by the `ci.yml`
   "Enforce bundle-size budget" step. Edit thresholds here, not in any CLAUDE.md or
   rule (those only point at it).
-- **`set -euo pipefail` is the house header** (27 of the 33 scripts). Drop `-e`
-  only when the script's job is to keep going and report everything it found —
+- **`set -euo pipefail` is the house header** (36 of the 41 executable
+  scripts under `scripts/`; the eight sourced libraries, `scripts/lib/_db.sh`
+  and `scripts/release/smoke/{lib,cases}/`, are not counted). Drop `-e` only
+  when the script's job is to keep going and report everything it found —
   `scripts/ci/audit-bundle.sh` and `scripts/tour-test.sh` (`set -u`) — or when a
   non-zero exit is the expected input to a retry, as in
   `scripts/ci/govulncheck-retry.sh` (`set -uo pipefail`).
+  `scripts/ci/check-playwright-smoke.sh` and `scripts/ci/check-test-skips.sh`
+  still use the older `set -eu`.
 - **Release-time shell lives in `scripts/release/`** (not inline in
   `release.yml`): `package-wails-windows.sh`, `compute-sha256.sh`,
   `push-release-tag.sh`, `verify-release-ref.sh` (the tag guard `release.yml`'s
