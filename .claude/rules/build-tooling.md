@@ -143,7 +143,10 @@ the bindings the module must understand.
   guard before it dispatches), plus `smoke/smoke.sh`, which CI's `lint` job runs.
   Each reads inputs from env vars set in the workflow step. Add new release-time
   logic as a `scripts/release/*.sh` (covered by `task lint-shell` via the
-  `SHELL_SCRIPTS` glob). The Linux/macOS
+  `SHELL_SCRIPTS` glob), and its smoke cases as
+  `scripts/release/smoke/cases/<script>.sh`: `smoke.sh` is only the runner, and
+  the shared accounting, `run_case`, scratch repositories and gh stub live in
+  `scripts/release/smoke/lib/_harness.sh`. The Linux/macOS
   packagers went with the Windows-only pivot — there is no `package-linux.sh`,
   `make-dmg.sh` or `sign-image.sh`, and no Dockerfile of any kind: the Windows
   app cross-compiles natively (`CGO_ENABLED=0`, pure-Go WebView2 loader), so the
