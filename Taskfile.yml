@@ -901,6 +901,7 @@ tasks:
       - cp docs/unknown-screenshots.md dist/pages-stage/unknown-screenshots.md
       - cp docs/feedback.md dist/pages-stage/feedback.md
       - cp docs/faq.md dist/pages-stage/faq.md
+      - cp docs/privacy.md dist/pages-stage/privacy.md
       - mkdir -p dist/pages-stage/testdata
       - cp testdata/*.png dist/pages-stage/testdata/
       - mkdir -p dist/pages-stage/screenshots
