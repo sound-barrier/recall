@@ -21,7 +21,7 @@ import (
 // test stands for thirty seconds of a real link.
 const selfUpdateSpeedup = 60
 
-func TestSelfUpdate_InstallsReleaseThatMatchesSHA256SUMS(t *testing.T) {
+func TestSelfUpdate_InstallsReleaseSignedByTheReleaseKey(t *testing.T) {
 	release := publishedRelease()
 	u := newTestUpdater(t, selfUpdateConfigAgainst(t, serveFakeGitHub(t, release), 1))
 
@@ -44,16 +44,20 @@ func TestSelfUpdate_InstallsReleaseThatMatchesSHA256SUMS(t *testing.T) {
 	}
 }
 
-func TestSelfUpdate_RefusesDownloadThatDiffersFromSHA256SUMS(t *testing.T) {
+// SHA256SUMS and the signature both vouch for one exe, and the download
+// delivers another: the check passes, and the download must not.
+func TestSelfUpdate_RefusesDownloadThatDiffersFromTheSignedDigest(t *testing.T) {
 	release := publishedRelease()
-	release.assets[checksumAsset] = sha256sums(map[string][]byte{latestExe: []byte("the exe that was checksummed")})
+	vouchedFor := []byte("the exe that was checksummed and signed")
+	release.assets[checksumAsset] = sha256sums(map[string][]byte{latestExe: vouchedFor})
+	release.assets[latestExeSignature] = signatureOf(releaseKey, latestExe, vouchedFor)
 	u := newTestUpdater(t, selfUpdateConfigAgainst(t, serveFakeGitHub(t, release), 1))
 
 	if _, err := u.Check(t.Context()); err != nil {
 		t.Fatalf("Check: %v", err)
 	}
 	if err := u.DownloadAndInstall(t.Context()); err == nil {
-		t.Fatal("installed an exe whose digest SHA256SUMS does not list")
+		t.Fatal("installed an exe whose digest is not the one SHA256SUMS lists and the release key signed")
 	}
 	if staged := u.DownloadedPath(); staged != "" {
 		t.Errorf("staged %s despite the digest mismatch", staged)
@@ -148,7 +152,7 @@ func TestSelfUpdateDownload_RefusesEndlessRedirects(t *testing.T) {
 // (checked with `curl -sI` against v0.33.2), sometimes after hops of its own.
 func TestSelfUpdate_FollowsGitHubRedirectsToReleaseAssets(t *testing.T) {
 	release := publishedRelease()
-	release.extraHops = map[string]int{latestExe: 3, checksumAsset: 3}
+	release.extraHops = map[string]int{latestExe: 3, checksumAsset: 3, latestExeSignature: 3}
 	u := newTestUpdater(t, selfUpdateConfigAgainst(t, serveFakeGitHub(t, release), 1))
 
 	if _, err := u.Check(t.Context()); err != nil {

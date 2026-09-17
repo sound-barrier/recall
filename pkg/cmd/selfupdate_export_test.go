@@ -20,7 +20,8 @@ var (
 var ErrUpdateRefused = errUpdateRefused
 
 // NewSelfUpdateConfig builds the production updater configuration around a
-// caller's client, so a test can route that client to a fake GitHub.
+// caller's client and release key, so a test can route that client to a fake
+// GitHub and pin a throwaway key in place of the real one.
 var NewSelfUpdateConfig = newSelfUpdateConfig
 
 // NewSelfUpdateHTTPClient builds the production self-update client with every
