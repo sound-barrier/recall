@@ -21,7 +21,7 @@ the right tool.
 ## End-to-end result (the decisive test)
 
 `tesseract -l <model>` on the 53 held-out crops, with the parser's production
-invocation (`--psm 7` + digit whitelist). Run via `spike/finetune/eval_e2e.py`:
+invocation (`--psm 7` + digit whitelist). Run via [`spike/finetune/eval_e2e.py`](https://github.com/sound-barrier/recall/blob/0abf48c5c73e5d9baec83ab27864d4bef218751d/spike/finetune/eval_e2e.py):
 
 | Invocation | Exact-read accuracy |
 |---|---|
@@ -56,17 +56,17 @@ are multi-value, and the OW font is proprietary so synthetic generation is out
 (and "Big Noodle" is copyrighted — can't be bundled). The trick reuses the EasyOCR
 spike's finding that a neural detector localizes OW numbers well:
 
-1. **`label.py`** runs RapidOCR (ONNX, ~150 MB, *local-only*, never committed) as a
+1. **[`label.py`](https://github.com/sound-barrier/recall/blob/0abf48c5c73e5d9baec83ab27864d4bef218751d/spike/finetune/label.py)** runs RapidOCR (ONNX, ~150 MB, *local-only*, never committed) as a
    pure *detector*, keeps only detections whose digits match a known-correct value
    in the golden, and emits a tight crop of the **original** image + a `.gt.txt`.
    Ground truth is **verified against the golden**, not trusted to the detector.
-2. **`train.sh`** turns each crop into a `.lstmf`, holds out ~12% of source images
+2. **[`train.sh`](https://github.com/sound-barrier/recall/blob/0abf48c5c73e5d9baec83ab27864d4bef218751d/spike/finetune/train.sh)** turns each crop into a `.lstmf`, holds out ~12% of source images
    (a **by-image** split — verified zero train/eval image overlap), and fine-tunes
    the **float** `tessdata_best` `eng` LSTM (the system's fast integer model can't
    be trained), then `lstmeval`s base vs tuned.
-3. **`eval_e2e.py`** runs the production-style `-l eng` vs `-l ow` comparison — the
+3. **[`eval_e2e.py`](https://github.com/sound-barrier/recall/blob/0abf48c5c73e5d9baec83ab27864d4bef218751d/spike/finetune/eval_e2e.py)** runs the production-style `-l eng` vs `-l ow` comparison — the
    one that actually decided the spike.
-4. **`setup.sh`** provisions the local-only tooling.
+4. **[`setup.sh`](https://github.com/sound-barrier/recall/blob/0abf48c5c73e5d9baec83ab27864d4bef218751d/spike/finetune/setup.sh)** provisions the local-only tooling.
 
 **Data:** 382 GT-verified number crops from 181 images — **317 from `screenshots/`**
 (owleague 237, nvidia 36, snip 15, …) + 65 from `testdata/`, rich in the 3-4 digit
@@ -86,7 +86,12 @@ rank-SR / damage values.
 
 ## Reproduce
 
+The four scripts were removed from the tree once the spike was done; this
+writeup is what stays. They are preserved at commit
+[`0abf48c5`](https://github.com/sound-barrier/recall/tree/0abf48c5c73e5d9baec83ab27864d4bef218751d/spike/finetune), so restore them from there first:
+
 ```sh
+git checkout 0abf48c5c73e5d9baec83ab27864d4bef218751d -- spike/finetune
 bash spike/finetune/setup.sh                                  # local tools (gitignored)
 spike/finetune/.venv/bin/python spike/finetune/label.py testdata screenshots/*
 ITER=400 bash spike/finetune/train.sh                        # crop-level CER (misleading)
@@ -94,4 +99,4 @@ spike/finetune/.venv/bin/python spike/finetune/eval_e2e.py   # end-to-end -l eng
 ```
 
 Everything under `spike/finetune/` except the four scripts + `.gitignore` is local
-and gitignored (venv, models, crops, checkpoints) — none of it is committed.
+and gitignored (venv, models, crops, checkpoints) — none of it was ever committed.

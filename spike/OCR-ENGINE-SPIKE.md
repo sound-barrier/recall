@@ -3,7 +3,7 @@
 A staged spike to answer: **is EasyOCR better than Tesseract for reading Overwatch
 screenshots?** Stage 1 (done, below) is a lightweight raw-OCR legibility comparison
 over the 40 human-verified `testdata/` goldens. Reproduce with
-`spike/ocr-compare.py` (see its header for the method).
+[`spike/ocr-compare.py`](https://github.com/sound-barrier/recall/blob/0abf48c5c73e5d9baec83ab27864d4bef218751d/spike/ocr-compare.py) (see its header for the method).
 
 ## Verdict
 
@@ -124,7 +124,12 @@ numerics, Tesseract for sparse labels.**
 
 ## Reproduce
 
+`ocr-compare.py` and its pinned [`requirements.txt`](https://github.com/sound-barrier/recall/blob/0abf48c5c73e5d9baec83ab27864d4bef218751d/spike/requirements.txt) were
+removed from the tree once the spike was done; this writeup is what stays.
+Restore both from commit `0abf48c5` first:
+
 ```sh
+git checkout 0abf48c5c73e5d9baec83ab27864d4bef218751d -- spike/ocr-compare.py spike/requirements.txt
 screenshots/easyocr-project/.venv/bin/python spike/ocr-compare.py --corpus testdata
 # --limit N for a quick smoke; --md PATH to write this report's data section
 ```

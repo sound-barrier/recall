@@ -8,8 +8,8 @@ app-shell), which load on their own globs and are complementary to this file:
 this one is about the language, those are about the subject.
 
 > The handful of Go files outside `pkg/` — `main.go`, `main_server.go`,
-> `assets.go`, `cmd/bug-finder`, `cmd/seed-dev`, `spike/onnx` — are covered by a
-> pointer rule scoped to `**/*.go`, because a nested file cannot reach them.
+> `assets.go`, `cmd/bug-finder`, `cmd/roster-watch`, `cmd/seed-dev` — are covered
+> by a pointer rule scoped to `**/*.go`, because a nested file cannot reach them.
 
 ## The baseline, and where we depart from it
 
