@@ -14,7 +14,33 @@
 # Tesseract (the OCR runtime the parser shells out to) and the container
 # runtime (podman/docker) are NOT managed here — they're system packages
 # installed via Homebrew / apt (see Brewfile + initialize.sh).
-min_version = "2024.1.0"
+#
+# mise.lock records the exact version of every [tools] entry and, for each core
+# and aqua tool, its download URL and SHA-256 on every lockfile_platforms entry
+# (go: and pipx: tools are version-only). CI installs with --locked, so a
+# prebuilt tool a CI job runs is the one reviewed in this repo.
+#
+# min_version equals the mise that .github/actions/setup-mise pins and that
+# wrote mise.lock: mise 2026.9.3 through 2026.9.6 read only lockfile version 1,
+# and a newer local mise writes version 2 for a NEW lockfile. Bump the two
+# together, and regenerate the lock with that exact binary.
+min_version = "2026.9.3"
+
+[settings]
+# Read mise.lock on every install and keep it current when a pin changes.
+lockfile = true
+# CI (linux-x64) plus every platform a contributor can develop on, including
+# devcontainers on Apple Silicon (linux-arm64). Resolving only these keeps the
+# lock free of platforms nobody installs on.
+lockfile_platforms = ["linux-x64", "linux-arm64", "macos-arm64", "macos-x64"]
+# `task update-mise` and any fuzzy request only move to releases at least seven
+# days old, the cooldown the npm and Go dependencies keep. Exact pins are not
+# filtered, and pipx tools' transitive dependencies are not age-gated.
+minimum_release_age = "7d"
+# With uv on PATH, newer mise records a uv dependency graph for pipx tools that
+# the uv-less CI runners cannot replay under --locked. pipx keeps those entries
+# version-only.
+pipx.uvx = false
 
 [env]
 # Keep settings + the SQLite DB under the repo's data/ dir so it's easy to
@@ -86,6 +112,9 @@ actionlint = "1.7.12"
 yamllint = "1.38.0"
 typos = "1.50.2"
 ruff = "0.16.7"
+# taplo publishes no checksums, so `mise lock` records only its URLs. Its
+# SHA-256 lines in mise.lock were hashed from the release assets by hand; `mise
+# lock` keeps them, but a version bump writes URL-only entries to hash again.
 taplo = "0.10.0"
 trivy = "0.74.0"
 lefthook = "2.1.12"

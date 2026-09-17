@@ -22,6 +22,7 @@ the detailed internal conventions see [`CLAUDE.md`](CLAUDE.md).
   - [Server binary (dev/test)](#server-binary-devtest)
   - [Other build commands](#other-build-commands)
 - [Maintenance](#maintenance)
+  - [Tool pins and the mise lockfile](#tool-pins-and-the-mise-lockfile)
   - [npm supply-chain cooldown](#npm-supply-chain-cooldown)
   - [Git hooks (lefthook)](#git-hooks-lefthook)
   - [Preparing frontend/dist in CI jobs](#preparing-frontenddist-in-ci-jobs)
@@ -315,6 +316,16 @@ Zero tolerance for flaky tests. Three rules enforce this:
 The scan covers Go module dependencies and npm packages.
 
 Project environment variables (`RECALL_DATA_DIR` + the tool-version pins) live in `mise.toml`'s `[env]` table and load automatically once mise is activated (`eval "$(mise activate zsh)"`). To set an additional override, add it to `[env]` in `mise.toml` (or export it in your shell). This replaces the old direnv/`.envrc` flow.
+
+### Tool pins and the mise lockfile
+
+Every `[tools]` entry in `mise.toml` is an exact release, and the committed `mise.lock` records each tool's download URL and checksum for linux-x64, linux-arm64, macos-arm64 and macos-x64 (Go-module and pipx tools are recorded by version only). CI installs mise through `.github/actions/setup-mise`, which pins the mise version and the SHA-256 of its binary, and runs `mise install --locked`: a tool missing from the lock, or without a URL for the runner's platform, fails the job instead of being resolved on the spot.
+
+- **Bump the tools:** `task update-mise` runs `mise upgrade --bump --local`, which `minimum_release_age = "7d"` limits to releases at least a week old, then `mise lock`. It leaves out the pins that move only as their own change: `go` (with `go.mod`), golangci-lint (with the sweep its new checks need), gobco (a coverage re-baseline) and the wails3 CLI (in lockstep with `go.mod` and `@wailsio/runtime`). Sync `.node-version` with `[tools] node` and any matching `[env]` version string, run `task check-deps`, and commit `mise.toml` and `mise.lock` together.
+- **taplo's checksums:** taplo publishes none, so `mise lock` records only its URLs, and the four `checksum` lines in `mise.lock` were hashed from the release assets by hand. `mise lock` keeps them, but a taplo bump writes URL-only entries, and `task update-mise` fails until each has its SHA-256 again.
+- **Add or change one tool:** edit `mise.toml`, then run `mise install` (`lockfile = true` keeps `mise.lock` current) or `mise lock`.
+- **Bump mise itself:** the version lives in three places that move in one commit: `version` and `sha256` in `.github/actions/setup-mise/action.yml` (the `./mise-vX.Y.Z-linux-x64` line of that release's `SHASUMS256.txt`), `min_version` in `mise.toml`, and `mise.lock`, regenerated with that exact mise binary. mise 2026.9.3 through 2026.9.6 read only lockfile version 1, while newer releases write version 2 for a new lockfile, so download the pinned release for your platform, check its SHA-256 against `SHASUMS256.txt`, and run `mise lock` with it rather than with a newer local mise.
+- `mise.local.lock` (written by `mise lock --local` for a personal `mise.local.toml`) is gitignored.
 
 ### npm supply-chain cooldown
 
