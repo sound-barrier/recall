@@ -20,7 +20,9 @@ import (
 
 // refusalToken is how the About dialog tells a refused update from a failed
 // one: Wails flattens the error into the wails:updater:error message, so the
-// dialog has only the text to go on.
+// dialog has only the text to go on. The dialog's copy of it is
+// UPDATE_REFUSAL_TOKEN in frontend/src/self-update-events.ts, pinned to the
+// same literal by self-update-events.test.ts; change both together.
 const refusalToken = "update refused"
 
 func TestSelfUpdateCheck_RefusesReleaseWithoutSHA256SUMS(t *testing.T) {

@@ -440,7 +440,11 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # lines, the codes dialog joining the send dialog's grammar. Measured 421518B.
 # 2026-08: 423000 -> 427000 -- the same campaign's scoped styles: the
 # dossier panel, the orphan drawer, the fork row. Measured 424565B.
-: "${MAX_TOTAL_CSS_BYTES:=427000}"
+# 2026-09: 427000 -> 428000 -- the About dialog's refused-update notice
+# (two rules, +315B). A clean build of the branch base measured 426897B,
+# so only 103B of the 2.4KB the note above implies was left. Measured
+# 427212B.
+: "${MAX_TOTAL_CSS_BYTES:=428000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never

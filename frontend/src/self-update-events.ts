@@ -35,13 +35,26 @@ export interface SelfUpdateError {
 // The About dialog's self-update lifecycle, owned by the app store and
 // passed to AboutModal. `pct` is null while indeterminate (no total
 // received yet); `error` carries a user-facing message in the 'error'
-// phase.
+// phase. 'refused' is a release Recall would not install because it could
+// not be verified; the dialog explains that itself, so `error` stays empty.
 type SelfUpdatePhase =
   | 'idle' | 'starting' | 'downloading' | 'verifying'
-  | 'installing' | 'ready' | 'restarting' | 'error'
+  | 'installing' | 'ready' | 'restarting' | 'error' | 'refused'
 
 export interface SelfUpdateState {
   phase: SelfUpdatePhase
   pct: number | null
   error: string
+}
+
+// The text of errUpdateRefused in pkg/cmd/selfupdate.go, the sentinel every
+// refusal of a release wraps. Wails flattens the Go error into the
+// wails:updater:error message with its own prefixes in front, so only the
+// text reaches the page and it is matched anywhere in the message. Keep it
+// in lockstep with the Go sentinel, like the event names above.
+export const UPDATE_REFUSAL_TOKEN = 'update refused'
+
+/** Tells a release Recall refused to install from an update that failed. */
+export function updaterErrorPhase(message: string | undefined): Extract<SelfUpdatePhase, 'error' | 'refused'> {
+  return message?.includes(UPDATE_REFUSAL_TOKEN) ? 'refused' : 'error'
 }

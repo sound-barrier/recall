@@ -5,6 +5,7 @@ import { flushPromises } from '@/test-utils'
 import AboutModal from '@/components/update/AboutModal.vue'
 import * as api from '@/api'
 import type { UpdateInfo } from '@/api'
+import type { SelfUpdateState } from '@/self-update-events'
 
 // Default fixture: a recall.app binary update is available AND the
 // main game-data channel has a new commit with three changes (2 new
@@ -34,7 +35,7 @@ interface ModalProps {
   updateInfo: UpdateInfo | null
   currentVersion: string
   checking: boolean
-  selfUpdate?: { phase: 'idle' | 'downloading' | 'ready' | 'error'; pct: number | null; error: string }
+  selfUpdate?: SelfUpdateState
 }
 
 function renderModal(props: ModalProps) {
@@ -267,6 +268,14 @@ describe('AboutModal', () => {
       expect(installBtn()).not.toBeInTheDocument()
     })
 
+    it('names the progressbar for the busy phase it is in', () => {
+      renderModal({
+        open: true, updateInfo: selfUpdatable, currentVersion: '1.0.0', checking: false,
+        selfUpdate: { phase: 'verifying', pct: 100, error: '' },
+      })
+      expect(screen.getByRole('progressbar', { name: 'Verifying…' })).toHaveTextContent('Verifying…')
+    })
+
     it('offers Restart now once the update is staged', async () => {
       const { emitted } = renderModal({
         open: true, updateInfo: selfUpdatable, currentVersion: '1.0.0', checking: false,
@@ -284,6 +293,37 @@ describe('AboutModal', () => {
       expect(screen.getByRole('alert')).toHaveTextContent('checksum mismatch')
       // The Install control returns (labeled as a retry) so the user can retry.
       expect(installBtn()).toHaveTextContent('Try again')
+    })
+
+    describe('a refused release', () => {
+      const refused = { phase: 'refused' as const, pct: null, error: '' }
+
+      // In the attack case the refused release is the payload, so the notice
+      // must never send anyone to fetch it by hand.
+      it('explains what happened, that nothing changed, and not to install the release by hand', () => {
+        renderModal({ open: true, updateInfo: selfUpdatable, currentVersion: '1.0.0', checking: false, selfUpdate: refused })
+        const refusal = screen.getByRole('alert')
+        expect(refusal).toHaveTextContent("couldn't verify this update")
+        expect(refusal).toHaveTextContent("didn't install it")
+        expect(refusal).toHaveTextContent('Nothing on your computer was changed')
+        expect(refusal).toHaveTextContent("Don't install this release by hand")
+        expect(refusal).toHaveTextContent('Wait for the next release')
+        expect(refusal).not.toHaveTextContent(/download/i)
+      })
+
+      it('keeps the release page one click away', async () => {
+        const open = vi.spyOn(api, 'OpenURL').mockImplementation(() => {})
+        renderModal({ open: true, updateInfo: selfUpdatable, currentVersion: '1.0.0', checking: false, selfUpdate: refused })
+        await user().click(screen.getByRole('button', { name: 'Open release page' }))
+        expect(open).toHaveBeenCalledWith('https://example/v1.2.3')
+      })
+
+      it('names both the check and the install its retry control runs', async () => {
+        const { emitted } = renderModal({ open: true, updateInfo: selfUpdatable, currentVersion: '1.0.0', checking: false, selfUpdate: refused })
+        expect(screen.queryByRole('button', { name: /Install update|Try again/ })).not.toBeInTheDocument()
+        await user().click(screen.getByRole('button', { name: 'Check and install again' }))
+        expect(emitted('install')).toHaveLength(1)
+      })
     })
   })
 })

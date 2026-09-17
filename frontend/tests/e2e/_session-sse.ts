@@ -4,7 +4,9 @@
  * Two specs need the same thing: put matches on the wire, tell the app a
  * parse finished, and watch what a LIVE session makes appear. Both the
  * session tally and the focus nudge key off that moment, so the mock that
- * produces it belongs here rather than copied into each.
+ * produces it belongs here rather than copied into each. The self-update
+ * spec uses the same mock, because the updater's wails:updater:* events
+ * reach the page over this stream too.
  */
 import { type Page } from '@playwright/test'
 
@@ -50,11 +52,16 @@ export async function installSSEMock(page: Page): Promise<void> {
   })
 }
 
+/** Fire one event, with an optional payload, from the page. */
+export function emitSSEEvent(page: Page, name: string, data?: unknown): Promise<void> {
+  return page.evaluate(([n, d]) => {
+    ;(window as unknown as { __recallSSE: { emit: (x: string, y?: unknown) => void } }).__recallSSE.emit(n, d)
+  }, [name, data] as const)
+}
+
 /** Fire one parse event from the page. */
 export function emitParseEvent(page: Page, name = 'parse-complete'): Promise<void> {
-  return page.evaluate((n) => {
-    ;(window as unknown as { __recallSSE: { emit: (x: string, d?: unknown) => void } }).__recallSSE.emit(n)
-  }, name)
+  return emitSSEEvent(page, name)
 }
 
 /**
