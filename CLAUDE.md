@@ -395,10 +395,12 @@ data structures rather than observable, public behavior.
 
 - **Commits**: Conventional Commits prefix (`feat` `fix` `chore` `docs`
   `refactor` `test` `perf` `build` `ci` `revert` `style`) enforced by lefthook's
-  `commit-msg` + Linux-kernel-style body (subject ≤ 72 chars imperative
-  no-period; body wrapped at 72 explaining *why*). One logical change per commit.
-  release-please reads the prefix for version bumps. Bypass once with
-  `LEFTHOOK_EXCLUDE=conventional`. Example in CONTRIBUTING.md.
+  `commit-msg` and, on every PR commit, CI's `commit-lint` job (one rule:
+  `scripts/ci/check-commit-subjects.sh`) + Linux-kernel-style body (subject ≤ 72
+  chars imperative no-period; body wrapped at 72 explaining *why*). One logical
+  change per commit. release-please reads the prefix for version bumps.
+  `LEFTHOOK_EXCLUDE=conventional` skips only the local hook; CI still rejects the
+  subject. Example in CONTRIBUTING.md.
 
 - **Pull requests only; no direct commits to main.** Every change lands via a
   branch + PR + green CI. Branch naming mirrors the Conventional Commits prefix

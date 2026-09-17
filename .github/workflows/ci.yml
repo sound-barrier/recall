@@ -704,7 +704,35 @@ jobs:
         # frontend/dist are missing.
         run: SKIP_FRONTEND_BUILD=1 bash scripts/ci/check-api-drift.sh
 
-  # ── Job 11: Go condition (branch) coverage ──────────────────────────────
+  # ── Job 11: Commit subjects ─────────────────────────────────────────────
+  # Every commit a pull request adds must carry a Conventional Commits subject,
+  # because PRs land by rebase and release-please reads each subject on main.
+  # The lefthook commit-msg hook runs the same script, but it can be bypassed
+  # locally and never sees commits written in GitHub's web UI. Merge commits
+  # are skipped. The range starts at the merge base with the current base
+  # branch, not the event's base.sha, so a stale base never pulls main's own
+  # history into the check. Pull requests only: push runs report skipped.
+  commit-lint:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0  # origin/<base branch> and every PR commit
+
+      - name: Check every pull request commit subject
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          base="$(git merge-base "origin/${BASE_REF}" "${HEAD_SHA}")"
+          bash scripts/ci/check-commit-subjects.sh "${base}..${HEAD_SHA}"
+
+  # ── Job 12: Go condition (branch) coverage ──────────────────────────────
   # REPORT-ONLY (continue-on-error) — it can never red a run. gobco measures
   # each condition's true AND false arm, which the coverage-go job's statement
   # coverage cannot see: an `if a && b` reads as covered the moment the line
