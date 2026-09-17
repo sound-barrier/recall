@@ -62,7 +62,7 @@ concurrency:
   cancel-in-progress: false
 
 # Honkit pin (HONKIT_VERSION) lives in mise.toml [env], shared with the
-# `task pages-build` target. mise-action loads it into $GITHUB_ENV below.
+# `task pages-build` target. setup-mise loads it into $GITHUB_ENV below.
 
 jobs:
   deploy:
@@ -81,10 +81,14 @@ jobs:
       # node (for the Honkit npx build) from mise.toml's pin; also loads
       # mise.toml [env] (HONKIT_VERSION) into $GITHUB_ENV so the build step
       # below interpolates the same version a local `task pages-build` uses.
-      # `task check-deps` validates the pin against upstream.
-      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c  # v4.3.0
+      # `task check-deps` validates the pin against upstream. No token: node
+      # needs no GitHub API, and the export would hand this job's pages: write
+      # token to every later step, including the npx build. The rate-limit
+      # warning mise-action logs without a token is expected.
+      - uses: ./.github/actions/setup-mise
         with:
           install_args: node
+          github_token: ''
 
       # Stage book/ + the chapter copies into a fresh build
       # directory so the committed book/ stays pure metadata. Two

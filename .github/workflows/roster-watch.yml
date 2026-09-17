@@ -80,10 +80,14 @@ jobs:
           # find. Same reason pages.yml fetches everything.
           fetch-depth: 0
 
-      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c  # v4.3.0
+      - uses: ./.github/actions/setup-mise
         with:
           # Only Go — the watch needs no linters and no frontend toolchain.
           install_args: go
+          # Go needs no GitHub API, and the export would hand this job's write
+          # token to every later step, including the scrape. The rate-limit
+          # warning mise-action logs without a token is expected.
+          github_token: ''
 
       - name: Read the roster against the game
         id: watch

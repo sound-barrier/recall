@@ -43,7 +43,7 @@ jobs:
           # testdata/images — the recall-testdata fixture submodule.
           submodules: true
 
-      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c  # v4.3.0
+      - uses: ./.github/actions/setup-mise
         with:
           # Only Go — the corpus needs no linters or frontend toolchain.
           install_args: go
