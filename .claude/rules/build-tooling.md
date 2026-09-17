@@ -7,6 +7,7 @@ paths:
   - "lefthook.yml"
   - "initialize.sh"
   - ".devcontainer/**"
+  - "tools/**"
 ---
 
 # Build & tooling conventions
@@ -14,18 +15,18 @@ paths:
 ## Pinned tool versions
 
 Live in `mise.toml` — `[tools]` for anything mise installs, `[env]` for the
-versions the tasks and hooks read themselves (`SPECTRAL_VERSION`,
-`TYPOS_VERSION`, `SEMGREP_VERSION`, `HONKIT_VERSION`, `SCHEMATHESIS_VERSION`,
-`JSONSCHEMA_RS_VERSION`, `GOBCO_VERSION`, `RUFF_VERSION`, `SQLFLUFF_VERSION`,
-`BIOME_VERSION`, `MARKDOWNLINT_CLI2_VERSION`, and `TESSERACT_VERSION` — that
-last one informational major.minor, so a mismatch means re-baseline
+versions the tasks and CI read themselves (`TYPOS_VERSION`, `SEMGREP_VERSION`,
+`SCHEMATHESIS_VERSION`, `JSONSCHEMA_RS_VERSION`, `GOBCO_VERSION`,
+`RUFF_VERSION`, `SQLFLUFF_VERSION`, and `TESSERACT_VERSION` — that last one
+informational major.minor, so a mismatch means re-baseline
 `testdata/*.golden.json` and bump; `.devcontainer/postCreate.sh` compares the
-container's apt Tesseract against it and warns).
+container's apt Tesseract against it and warns). The npm CLIs are the
+exception, pinned in `tools/` (below).
 
 Consumers no longer read a file; they read the environment mise puts them in:
 
-- **Locally** — `mise activate` exports `[env]`, so `Taskfile.yml` and
-  `lefthook.yml` reference `$SPECTRAL_VERSION` and friends directly.
+- **Locally** — `mise activate` exports `[env]`, so `Taskfile.yml`
+  references `$SEMGREP_VERSION` and friends directly.
 - **CI** — `.github/actions/setup-mise` (the repo's only `jdx/mise-action` call)
   loads `mise.toml [env]` into `$GITHUB_ENV` for every job regardless of
   `install_args`. That is also why `DEFAULT_MAX_FILES` must never be added to
@@ -62,16 +63,38 @@ lock entry, or no URL for the runner's platform, fails the job. The rules:
   dependency graphs for pipx tools that uv-less CI runners cannot replay under
   `--locked`.
 
+**The npm CLIs live in `tools/`, not `[env]`.** Biome, Spectral, Honkit and
+markdownlint-cli2 are exact `devDependencies` in `tools/package.json`, locked by
+`tools/package-lock.json`, and run from `tools/node_modules/.bin`. The rules:
+
+- **`task tools-install` is the one installer** (`npm ci --prefix tools
+  --ignore-scripts`). `lint-json`, `lint-md`, `lint-openapi` and `pages-build`
+  depend on it; CI's `lint` job runs it as its own step.
+- **It writes `tools/node_modules/go.mod`**, the same Go-walker sentinel the
+  frontend's postinstall drops (flatted ships Go source here too). A bare
+  `npm ci --prefix tools` skips it, so anything that runs Go afterwards must use
+  the task; `pages.yml` calls npm directly only because it runs no Go.
+- **Hooks never install.** pre-commit is parallel and two concurrent `npm ci`
+  runs into `tools/` corrupt it, so the `spectral`, `biome-json` and
+  `markdownlint` hooks run `tools/node_modules/.bin` directly rather than a task
+  that depends on `tools-install`; they only check that the binary exists and
+  point at `task tools-install`.
+- **`tools/.npmrc` keeps `min-release-age=7`, `save-exact=true` and
+  `ignore-scripts=true`.** Bump a CLI with `npm --prefix tools install
+  <pkg>@<version>`; `devDependencies` keeps the tree out of Trivy's default scan
+  and in dependency review's development scope.
+
 `task check-deps` compares against upstream and **fails** on drift: the wails3
-CLI, Spectral, typos, Semgrep, Honkit, schemathesis, jsonschema-rs, ruff,
-sqlfluff, zizmor, gitleaks, Biome, markdownlint-cli2, Go and Node — plus two
+CLI, typos, Semgrep, schemathesis, jsonschema-rs, ruff, sqlfluff, zizmor,
+gitleaks, Go and Node — plus two
 cross-file assertions, the `crate-ci/typos@SHA  # vX.Y.Z` comment in `ci.yml`
 and `.node-version` agreeing
 with `[tools] node`. Deliberately unchecked: the MEASUREMENT pins
 (`GOBCO_VERSION`, `TESSERACT_VERSION` — the version moves the number, so bumping
 them is a re-baseline decision, not a version bump), golangci-lint (a bump is a
 deliberate run-the-sweep-and-fix-what-it-finds change), the other exact
-`[tools]` pins (bumped together by `task update-mise`) and `SWAGGER_IMAGE`.
+`[tools]` pins (bumped together by `task update-mise`), the `tools/` npm CLIs
+and `SWAGGER_IMAGE`.
 
 **Lockstep pin, both ecosystems**: `wails/v3` in `go.mod`, the `wails3` CLI in
 `[tools]`, and `@wailsio/runtime` in `frontend/package.json` are ONE version.
@@ -111,8 +134,9 @@ the bindings the module must understand.
   `frontend/node_modules/go.mod` so the walker stops there; `frontend/dist` stays
   in the recall module for `//go:embed`. Belt-and-suspenders:
   `scripts/ci/deadcode-check.sh` filters `node_modules` out of `go list`, and
-  golangci-lint excludes `frontend/node_modules` via `.golangci.yml`'s
-  `issues.exclude-dirs` (gosec is rolled into `task lint-go` — the standalone
+  golangci-lint excludes `frontend/node_modules` and `tools/node_modules` in
+  both of `.golangci.yml`'s `exclusions.paths` lists, for a tree installed
+  without its sentinel (gosec is rolled into `task lint-go` — the standalone
   gosec job and its `-exclude-dir` flag are both gone). New whole-program Go
   tools should keep the filter.
 

@@ -1,6 +1,6 @@
 # markdownlint-cli2 config — covers everything matched by the `globs`
 # below. Run via `task lint-md`, the pre-commit hook, or
-# `npx markdownlint-cli2 --fix` to auto-fix the safe rules.
+# `tools/node_modules/.bin/markdownlint-cli2 --fix` to auto-fix the safe rules.
 #
 # Rule reference: https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
 
@@ -15,6 +15,7 @@ ignores:
   - "frontend/test-results/**"     # Playwright failure artifacts (also gitignored)
   - "frontend/playwright-report/**"
   - "node_modules/**"
+  - "tools/node_modules/**"  # the pinned npm CLIs (task tools-install)
   - "dist/**"
   - "build/**"
   - "book/_book/**"

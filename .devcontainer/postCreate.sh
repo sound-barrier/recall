@@ -82,6 +82,9 @@ log "git submodule update --init testdata/images (parser golden fixtures)"
 log "frontend: npm ci"
 (cd "${WORKSPACE}" && mise exec -- bash -c 'cd frontend && npm ci --no-audit --no-fund')
 
+log "tools: npm ci (Biome, Spectral, Honkit, markdownlint-cli2)"
+(cd "${WORKSPACE}" && mise exec -- task tools-install)
+
 log "lefthook install (wires .git/hooks/{pre-commit,commit-msg})"
 (cd "${WORKSPACE}" && mise exec -- lefthook install)
 

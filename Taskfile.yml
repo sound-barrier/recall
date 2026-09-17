@@ -19,10 +19,12 @@ version: '3'
 # command's own stdout/stderr still streams through.
 silent: true
 
-# Version pins (SPECTRAL_VERSION, HONKIT_VERSION, SEMGREP_VERSION, …) and
-# RECALL_DATA_DIR come from mise's [env] — provided by `mise activate` (or
-# `mise exec -- task …`). Tasks read them as shell `$VARS`, so run `task`
-# inside the mise-managed environment (see mise.toml).
+# Version pins (SEMGREP_VERSION, SCHEMATHESIS_VERSION, …) and RECALL_DATA_DIR
+# come from mise's [env] — provided by `mise activate` (or `mise exec -- task
+# …`). Tasks read them as shell `$VARS`, so run `task` inside the
+# mise-managed environment (see mise.toml). The npm CLIs (Biome, Spectral,
+# Honkit, markdownlint-cli2) are pinned in tools/package-lock.json instead and
+# run from tools/node_modules/.bin after `task tools-install`.
 vars:
   # DOCKER is still used by the swagger task (docker-run Swagger UI). The
   # Dockerfile-based Linux/server builds were removed with the Windows-only
@@ -275,9 +277,10 @@ tasks:
 
   lint-json:
     desc: Lint + format-check JSON/JSONC (Biome, config in biome.jsonc)
+    deps: [tools-install]
     cmds:
       - echo "[ recall ] Linting JSON (biome)…"
-      - 'npx --yes "@biomejs/biome@$BIOME_VERSION" check .'
+      - tools/node_modules/.bin/biome check .
       - echo "[ recall ] ✓  JSON lint clean"
 
   lint-typos:
@@ -290,9 +293,10 @@ tasks:
 
   lint-md:
     desc: Lint Markdown via markdownlint-cli2 (config in .markdownlint-cli2.yaml)
+    deps: [tools-install]
     cmds:
       - echo "[ recall ] Linting Markdown (markdownlint-cli2)…"
-      - 'npx --yes "markdownlint-cli2@${MARKDOWNLINT_CLI2_VERSION:?run inside mise, which sets it from mise.toml [env]}"'
+      - tools/node_modules/.bin/markdownlint-cli2
       - echo "[ recall ] ✓  Markdown lint clean"
 
   lint-actions:
@@ -349,9 +353,10 @@ tasks:
 
   lint-openapi:
     desc: Lint api/openapi.yaml (Spectral, spectral:oas ruleset)
+    deps: [tools-install]
     cmds:
       - echo "[ recall ] Linting OpenAPI (spectral)…"
-      - 'npx --yes "@stoplight/spectral-cli@$SPECTRAL_VERSION" lint api/openapi.yaml --fail-severity=warn'
+      - tools/node_modules/.bin/spectral lint api/openapi.yaml --fail-severity=warn
 
   check-api-drift:
     desc: Fuzz live server against api/openapi.yaml (schemathesis)
@@ -502,6 +507,28 @@ tasks:
   check-deps:
     desc: Check pinned tool versions against latest releases (read-only)
     cmds: [bash scripts/ci/check-deps.sh]
+
+  # The npm CLIs the lint and pages tasks run, from tools/package-lock.json.
+  # `npm ci` installs exactly what the lock names, so tools/.npmrc's seven-day
+  # age gate applies when a pin is bumped, not on every install.
+  tools-install:
+    desc: Install the pinned npm CLIs (Biome, Spectral, Honkit, markdownlint-cli2) into tools/node_modules
+    run: once
+    sources:
+      - tools/package.json
+      - tools/package-lock.json
+      - tools/.npmrc
+    generates:
+      - tools/node_modules/.package-lock.json
+      - tools/node_modules/go.mod
+    cmds:
+      - echo "[ recall ] Installing pinned npm tools (tools/)…"
+      - npm ci --prefix tools --ignore-scripts --no-audit --no-fund
+      # flatted ships a Go port under node_modules, which `go list ./...`,
+      # golangci-lint and deadcode would otherwise absorb into the recall
+      # module. A go.mod here stops Go's package walk at this directory, as
+      # frontend/scripts/seed-go-sentinel.cjs does for frontend/node_modules.
+      - printf 'module recall-tools-node-modules-boundary\n' > tools/node_modules/go.mod
 
   verify:
     desc: The full pre-merge battery on demand — everything the slimmed pre-push no longer runs (CI still gates all of it)
@@ -859,8 +886,8 @@ tasks:
 
   pages-build:
     desc: Build the docs book + Swagger UI under dist/pages/ (mirrors CI)
+    deps: [tools-install]
     cmds:
-      - command -v npx >/dev/null || { echo "[ recall ] ✗  npx not installed — install Node 22+"; exit 1; }
       - echo "[ recall ] Staging book/ + docs/ into dist/pages-stage/…"
       - rm -rf dist/pages dist/pages-stage
       - mkdir -p dist/pages-stage
@@ -879,8 +906,8 @@ tasks:
       - mkdir -p dist/pages-stage/screenshots
       - cp docs/screenshots/*.png dist/pages-stage/screenshots/
       - rm -f dist/pages-stage/.gitignore
-      - echo "[ recall ] Running honkit@$HONKIT_VERSION…"
-      - cd dist/pages-stage && npx --yes "honkit@$HONKIT_VERSION" build . _book >/dev/null
+      - echo "[ recall ] Running honkit…"
+      - cd dist/pages-stage && "{{.ROOT_DIR}}/tools/node_modules/.bin/honkit" build . _book >/dev/null
       - mkdir -p dist/pages/api
       - cp -R dist/pages-stage/_book/. dist/pages/
       - cp docs/api/index.html dist/pages/api/index.html

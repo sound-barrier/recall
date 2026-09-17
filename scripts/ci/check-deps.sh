@@ -3,17 +3,19 @@
 # Read-only: prints what is out of date, makes no changes.
 # Usage: task check-deps   OR   bash scripts/ci/check-deps.sh
 #
-# All pins live in mise.toml: [tools] holds the binary versions (go, node,
-# wails, typos, ruff, schemathesis, zizmor, gitleaks) and [env] holds the version STRINGS
-# the on-demand npx/pipx invocations interpolate (SPECTRAL_VERSION,
-# HONKIT_VERSION, …). This script parses mise.toml directly — no dependency on
-# the mise binary, so it runs in minimal CI runners too.
+# The pins it reads live in mise.toml: [tools] holds the binary versions (go,
+# node, wails, typos, ruff, schemathesis, zizmor, gitleaks) and [env] holds the
+# version STRINGS the pipx invocations interpolate (SEMGREP_VERSION,
+# SCHEMATHESIS_VERSION, …). This script parses mise.toml directly — no
+# dependency on the mise binary, so it runs in minimal CI runners too.
 #
 # Not compared here:
 #   • the other exact [tools] pins (task, shellcheck, shfmt, actionlint,
 #     yamllint, taplo, trivy, lefthook, jq, deadcode, govulncheck, …) — bump
 #     them together with `task update-mise`, which honors the 7-day cooldown
 #   • ESLint, typescript-eslint, stylelint, htmlhint, vue-tsc — Dependabot npm
+#   • Biome, Spectral, Honkit, markdownlint-cli2 — pinned in tools/package.json,
+#     where tools/.npmrc's 7-day age gate applies to every bump
 #   • trivy-action, setup-go, setup-node — Dependabot Actions
 #
 # Upstream "latest" includes releases younger than seven days, so a ✗ here is
@@ -42,16 +44,12 @@ mise_pin() {
     | sed -E 's/^[^=]*=[[:space:]]*"([^"]+)".*/\1/'
 }
 
-SPECTRAL_VERSION=$(mise_pin SPECTRAL_VERSION)
 TYPOS_VERSION=$(mise_pin TYPOS_VERSION)
 SEMGREP_VERSION=$(mise_pin SEMGREP_VERSION)
-HONKIT_VERSION=$(mise_pin HONKIT_VERSION)
 SCHEMATHESIS_VERSION=$(mise_pin SCHEMATHESIS_VERSION)
 JSONSCHEMA_RS_VERSION=$(mise_pin JSONSCHEMA_RS_VERSION)
 RUFF_VERSION=$(mise_pin RUFF_VERSION)
 SQLFLUFF_VERSION=$(mise_pin SQLFLUFF_VERSION)
-BIOME_VERSION=$(mise_pin BIOME_VERSION)
-MARKDOWNLINT_CLI2_VERSION=$(mise_pin MARKDOWNLINT_CLI2_VERSION)
 
 # Color support — disabled when stdout is not a terminal.
 if [ -t 1 ]; then
@@ -85,10 +83,6 @@ gh_latest() {
 gh_latest_matching() {
   curl -fsSL "https://api.github.com/repos/${1}/releases?per_page=50" \
     | jq -r --arg re "${2}" '[.[] | select(.tag_name | test($re))] | first | .tag_name // empty'
-}
-
-npm_latest() {
-  curl -fsSL "https://registry.npmjs.org/${1}/latest" | jq -r .version
 }
 
 strip_v() { printf '%s' "${1#v}"; }
@@ -142,17 +136,11 @@ WAILS_PINNED=$(mise_pin 'go:github.com/wailsapp/wails/v3/cmd/wails3')
 WAILS_LATEST=$(gh_latest_matching wailsapp/wails '^v3\.')
 check "Wails CLI" "$WAILS_PINNED" "$WAILS_LATEST" "mise.toml [tools]"
 
-SPECTRAL_LATEST=$(npm_latest @stoplight/spectral-cli)
-check "Spectral" "$SPECTRAL_VERSION" "$SPECTRAL_LATEST" "mise.toml [env]"
-
 TYPOS_LATEST=$(gh_latest crate-ci/typos)
 check "typos" "$TYPOS_VERSION" "$TYPOS_LATEST" "mise.toml [env]/[tools]"
 
 SEMGREP_LATEST=$(gh_latest semgrep/semgrep)
 check "Semgrep" "$SEMGREP_VERSION" "$SEMGREP_LATEST" "mise.toml [env]/[tools]"
-
-HONKIT_LATEST=$(npm_latest honkit)
-check "Honkit" "$HONKIT_VERSION" "$HONKIT_LATEST" "mise.toml [env]"
 
 # schemathesis — Python package; PyPI is the source of truth.
 SCHEMATHESIS_LATEST=$(curl -fsSL https://pypi.org/pypi/schemathesis/json | jq -r .info.version)
@@ -178,13 +166,6 @@ check "zizmor" "$(mise_pin zizmor)" "$(gh_latest zizmorcore/zizmor)" "mise.toml 
 
 # gitleaks — secret scanner; built from its Go module, released on GitHub.
 check "gitleaks" "$(mise_pin 'go:github.com/zricethezav/gitleaks/v8')" "$(gh_latest gitleaks/gitleaks)" "mise.toml [tools]"
-
-# Biome — JSON/JSONC lint + format; runs via npx, npm is the source of truth.
-BIOME_LATEST=$(npm_latest @biomejs/biome)
-check "Biome" "$BIOME_VERSION" "$BIOME_LATEST" "mise.toml [env]"
-
-MARKDOWNLINT_LATEST=$(npm_latest markdownlint-cli2)
-check "markdownlint" "$MARKDOWNLINT_CLI2_VERSION" "$MARKDOWNLINT_LATEST" "mise.toml [env]"
 
 # Verify the literal typos action SHA-pin comment matches the mise pin.
 # GitHub Actions `uses:` refs cannot interpolate expressions, so the

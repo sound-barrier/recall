@@ -106,6 +106,7 @@ linters:
       # npm packages can ship Go source (flatted bundles a Go port of its
       # codec); nothing under node_modules is ours to lint.
       - frontend/node_modules
+      - tools/node_modules
     rules:
       # gosec is rolled in from the standalone `gosec` job, which ran with its
       # default `-tests=false` — it never scanned test files. Mirror that: a
@@ -137,6 +138,7 @@ formatters:
       # Same carve-out as linters.exclusions — vendored npm Go ports are not
       # ours to format.
       - frontend/node_modules
+      - tools/node_modules
   enable:
     - gofmt
     - gci

@@ -35,8 +35,8 @@ jobs:
       # mise.lock — go, node, task, golangci-lint (built from source with this
       # Go so it accepts the project's go directive — a prebuilt binary on an
       # older Go would reject it), ruff, shfmt, shellcheck, jq, taplo, zizmor,
-      # actionlint, sqlfluff — and loads mise.toml [env] (SPECTRAL_VERSION, …,
-      # GOTOOLCHAIN=local) into $GITHUB_ENV regardless of install_args.
+      # actionlint, sqlfluff — and loads mise.toml [env] (GOTOOLCHAIN=local, the
+      # *_VERSION strings) into $GITHUB_ENV regardless of install_args.
       - uses: ./.github/actions/setup-mise
         with:
           install_args: >-
@@ -165,9 +165,15 @@ jobs:
       - name: Smoke-test release scripts
         run: task smoke-release-scripts
 
+      # Spectral, Biome and markdownlint-cli2 run from tools/node_modules/.bin,
+      # installed exactly as tools/package-lock.json records them (npm ci,
+      # install scripts off). The tasks below also depend on tools-install;
+      # this step makes the install its own timed, separately failing step.
+      - name: Install pinned npm tools (tools/)
+        run: task tools-install
+
       # OpenAPI spec — Spectral with the spectral:oas ruleset + project
-      # overrides in .spectral.yaml. SPECTRAL_VERSION comes from mise.toml
-      # [env] (loaded into $GITHUB_ENV by setup-mise).
+      # overrides in .spectral.yaml.
       - name: Lint OpenAPI (Spectral)
         run: task lint-openapi
 
@@ -179,8 +185,7 @@ jobs:
       - name: Lint SQL (sqlfluff)
         run: task lint-sql
 
-      # JSON/JSONC lint + format-check via Biome (npx; config biome.jsonc).
-      # BIOME_VERSION comes from mise.toml [env] (loaded into $GITHUB_ENV).
+      # JSON/JSONC lint + format-check via Biome (config biome.jsonc).
       - name: Lint JSON (Biome)
         run: task lint-json
 
@@ -190,11 +195,9 @@ jobs:
       - name: Spell-check (typos)
         uses: crate-ci/typos@512fc24f32f44ab01972217aaaf3dc86ec234d53  # v1.50.2
 
-      # Markdown lint — mirrors `task lint-md`. Config in
-      # .markdownlint-cli2.yaml at the repo root; npx fetches the
-      # MARKDOWNLINT_CLI2_VERSION pin from mise.toml [env].
+      # Markdown lint. Config in .markdownlint-cli2.yaml at the repo root.
       - name: Lint Markdown (markdownlint-cli2)
-        run: npx --yes "markdownlint-cli2@${MARKDOWNLINT_CLI2_VERSION:?setup-mise sets it from mise.toml [env]}"
+        run: task lint-md
 
       # markdownlint checks how the prose is formatted; this checks whether what
       # the prose NAMES exists. The rules files spent months citing a Makefile,

@@ -38,16 +38,17 @@ heading and you'll silently break the inbound link.
 The Honkit-built site at <https://sound-barrier.github.io/recall/> renders
 `docs/*.md` chapters. The Pages workflow + `task pages-build` stage `book/` +
 chapter copies into `_stage/book/` (CI) or `dist/pages-stage/` (local) and run
-Honkit there. `book/` keeps only `book.json`, `SUMMARY.md`, `README.md`,
-`.gitignore`. **New chapter**: drop `.md` into `docs/`, add to `book/SUMMARY.md`,
-extend the `cp` step in both `pages.yml` and the `pages-build` task.
+Honkit there, the version `tools/package-lock.json` pins. `book/` keeps only
+`book.json`, `SUMMARY.md`, `README.md`, `.gitignore`. **New chapter**: drop
+`.md` into `docs/`, add to `book/SUMMARY.md`, extend the `cp` step in both
+`pages.yml` and the `pages-build` task.
 
 ## Honkit failure modes
 
 - **Honkit fails silently in two ways producing a 1-page book.** (1) Reads
   `.gitignore` from its source dir and drops matching files (chapter filenames in
   `book/.gitignore` makes them all vanish). (2) Resolves `SUMMARY.md` paths
-  relative to `cwd`, not the source arg — `npx honkit build book book/_book` from
+  relative to `cwd`, not the source arg — `honkit build book book/_book` from
   repo root parses SUMMARY but can't find chapters. Both surface as `info: found 1
   pages`. The staging-dir workaround sidesteps both.
 - **Honkit asset-copies any non-markdown file in its source dir** while preserving

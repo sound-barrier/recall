@@ -60,13 +60,17 @@ pre-commit:
       stage_fixed: true
 
     # ── OpenAPI ───────────────────────────────────────────────────────
-    # Defer to the task; its glob already scopes this to api/openapi.yaml,
-    # which is the only spec, so linting the staged file == `task
-    # lint-openapi`. The Spectral pin lives in mise.toml [env]
-    # (SPECTRAL_VERSION) and is injected by mise activation.
+    # The glob scopes this to api/openapi.yaml, the only spec, so it runs
+    # what `task lint-openapi` runs, minus that task's tools-install
+    # dependency. Spectral is pinned in tools/package-lock.json. Like
+    # biome-json and markdownlint below, the hook only checks that it is
+    # installed: pre-commit runs in parallel, and an `npm ci` here would
+    # delete tools/node_modules under those hooks mid-run.
     spectral:
       glob: "api/openapi.yaml"
-      run: task lint-openapi
+      run: >-
+        test -x tools/node_modules/.bin/spectral || { echo 'run: task tools-install'; exit 1; };
+        tools/node_modules/.bin/spectral lint api/openapi.yaml --fail-severity=warn
 
     gen-types:
       glob: "api/openapi.yaml"
@@ -125,8 +129,10 @@ pre-commit:
 
     # Biome checks + formats staged JSON/JSONC (config in biome.jsonc,
     # which excludes generated JSON — testdata goldens, package-lock,
-    # e2e snapshots). --write autofixes; stage_fixed re-stages. Runs via
-    # npx (BIOME_VERSION from mise.toml [env]) like the Spectral/md hooks.
+    # e2e snapshots). --write autofixes; stage_fixed re-stages. Biome is
+    # pinned in tools/package-lock.json. The hook only checks that it is
+    # installed: pre-commit runs in parallel, and two concurrent `npm ci`
+    # runs into tools/ corrupt node_modules.
     # --no-errors-on-unmatched: lefthook passes {staged_files} explicitly,
     # which bypasses biome.json's `files.includes` exclusions — so a commit
     # whose staged JSON is ENTIRELY excluded (e.g. only Playwright
@@ -135,7 +141,9 @@ pre-commit:
     # "no files for inspection" skip; nothing to check is not a failure.
     biome-json:
       glob: "*.json"
-      run: npx --yes "@biomejs/biome@$BIOME_VERSION" check --write --no-errors-on-unmatched {staged_files}
+      run: >-
+        test -x tools/node_modules/.bin/biome || { echo 'run: task tools-install'; exit 1; };
+        tools/node_modules/.bin/biome check --write --no-errors-on-unmatched {staged_files}
       stage_fixed: true
 
     # ── Python ────────────────────────────────────────────────────────
@@ -174,10 +182,14 @@ pre-commit:
     # the autofix-safe rules (MD031 blanks-around-fences, MD022
     # blanks-around-headings, MD004 ul-style); errors that remain
     # after --fix are real bugs (broken anchors, missing alt text).
+    # markdownlint-cli2 is pinned in tools/package-lock.json; like biome-json,
+    # the hook checks that it is installed rather than installing it.
     markdownlint:
       glob: "*.md"
       exclude: "CHANGELOG.md"
-      run: npx --yes "markdownlint-cli2@${MARKDOWNLINT_CLI2_VERSION:?run inside mise, which sets it from mise.toml [env]}" --fix {staged_files}
+      run: >-
+        test -x tools/node_modules/.bin/markdownlint-cli2 || { echo 'run: task tools-install'; exit 1; };
+        tools/node_modules/.bin/markdownlint-cli2 --fix {staged_files}
       stage_fixed: true
 
 # Pre-push: the FAST core only (~a minute) — the checks most likely to

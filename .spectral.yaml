@@ -1,6 +1,6 @@
 # Spectral ruleset for api/openapi.yaml. Extends the built-in
 # spectral:oas (OpenAPI Specification) rules. Run via `task lint-openapi`
-# (or directly: `npx @stoplight/spectral-cli lint api/openapi.yaml`).
+# (or directly: `tools/node_modules/.bin/spectral lint api/openapi.yaml`).
 #
 # Tune by overriding individual rule severities below. Each rule has a
 # stable name — full list at https://docs.stoplight.io/docs/spectral/.
