@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"testing"
+	"time"
 )
 
 // These drive the self-updater end to end against a fake GitHub: the provider
@@ -70,10 +71,32 @@ func TestSelfUpdateCheck_FindsNothingWhenTheLatestIsInstalled(t *testing.T) {
 func TestSelfUpdateCheck_AbandonsAServerThatNeverAnswers(t *testing.T) {
 	release := publishedRelease()
 	release.stallAPI = true
+	cfg := selfUpdateConfigAgainst(t, serveFakeGitHub(t, release), selfUpdateSpeedup)
 
-	_, err := checkLatest(t, selfUpdateConfigAgainst(t, serveFakeGitHub(t, release), selfUpdateSpeedup))
+	started := time.Now()
+	_, err := checkLatest(t, cfg)
 	var netErr net.Error
 	if !errors.As(err, &netErr) || !netErr.Timeout() {
 		t.Fatalf("Check against a server that never answers = %v, want a timeout", err)
+	}
+	// Ten times the half second a 30-second phase timeout takes here, and far
+	// short of any budget sized for a whole download.
+	if held := time.Since(started); held > 5*time.Second {
+		t.Errorf("a server that never answered held the check for %v", held)
+	}
+}
+
+// The v0.33.2 updater exe is 23,473,152 bytes, which takes about two minutes
+// over a 1.5 Mbps link: slow, but a link people update over.
+func TestSelfUpdate_FinishesASlowButSteadyDownload(t *testing.T) {
+	release := publishedRelease()
+	release.dribble = map[string]time.Duration{latestExe: 2 * time.Minute / selfUpdateSpeedup}
+	u := newTestUpdater(t, selfUpdateConfigAgainst(t, serveFakeGitHub(t, release), selfUpdateSpeedup))
+
+	if _, err := u.Check(t.Context()); err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if err := u.DownloadAndInstall(t.Context()); err != nil {
+		t.Fatalf("a download still progressing after two minutes was abandoned: %v", err)
 	}
 }
