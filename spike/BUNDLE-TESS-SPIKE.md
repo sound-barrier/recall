@@ -15,7 +15,7 @@ binary over a system one.
 
 ## Result (macOS / arm64)
 
-`spike/bundle-tess/bundle.sh` produces a fully relocated bundle:
+[`spike/bundle-tess/bundle.sh`](https://github.com/sound-barrier/recall/blob/0abf48c5c73e5d9baec83ab27864d4bef218751d/spike/bundle-tess/bundle.sh) produces a fully relocated bundle:
 
 | | |
 |---|---|
@@ -95,11 +95,15 @@ Bundling Tesseract wins on every axis that matters here.
 
 ## Reproduce
 
+`bundle.sh` was removed from the tree once the spike was done; this writeup is
+what stays. The script is preserved at commit
+[`0abf48c5`](https://github.com/sound-barrier/recall/tree/0abf48c5c73e5d9baec83ab27864d4bef218751d/spike/bundle-tess), so restore it from there first:
+
 ```sh
+git checkout 0abf48c5c73e5d9baec83ab27864d4bef218751d -- spike/bundle-tess
 brew install dylibbundler      # one-time
 bash spike/bundle-tess/bundle.sh
 ```
 
-The bundle (`spike/bundle-tess/bundle/`) is gitignored — only `bundle.sh` + this
-writeup are committed. `eng.traineddata` is fetched from the build machine's
-tesseract, never committed.
+The bundle (`spike/bundle-tess/bundle/`) is gitignored and was never committed.
+`eng.traineddata` is fetched from the build machine's tesseract, never committed.

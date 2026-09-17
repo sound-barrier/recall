@@ -70,7 +70,7 @@ a wider band, loosen the per-region whitelists, make region detection layout-rob
 
 ## Part 2 — Tier A in-process prototype (built; it works)
 
-`spike/onnx/main.go` runs the PP-OCRv3 **rec** model **in-process in Go via
+[`spike/onnx/main.go`](https://github.com/sound-barrier/recall/blob/0abf48c5c73e5d9baec83ab27864d4bef218751d/spike/onnx/main.go) runs the PP-OCRv3 **rec** model **in-process in Go via
 `onnxruntime_go` (CGo)** — no Python, no sidecar — on the held-out number crops
 (preprocess → infer → greedy CTC decode with the model's embedded 6623-char dict).
 
@@ -90,8 +90,9 @@ So Tier A is **feasible and small (~44 MB)** — but Part 1 says it's not worth 
 for the generalization concern, and the prototype reading 12/12 = tesseract's 12/12
 is itself one more data point that the engine isn't the differentiator.
 
-The Go module is isolated (`spike/onnx/go.mod`) so the main build is untouched; the
-dylib, model, and dict are local/gitignored (from `spike/finetune/setup.sh`).
+The Go module was isolated ([`spike/onnx/go.mod`](https://github.com/sound-barrier/recall/blob/0abf48c5c73e5d9baec83ab27864d4bef218751d/spike/onnx/go.mod)) so the main build
+stayed untouched; the dylib, model, and dict were local/gitignored (from
+`spike/finetune/setup.sh`).
 
 ## Caveats
 
@@ -107,10 +108,14 @@ dylib, model, and dict are local/gitignored (from `spike/finetune/setup.sh`).
 
 ## Reproduce
 
+The prototype and [`generalization.py`](https://github.com/sound-barrier/recall/blob/0abf48c5c73e5d9baec83ab27864d4bef218751d/spike/onnx/generalization.py) were removed
+from the tree once the spike was done; this writeup is what stays. Restore them,
+and the fine-tune spike's setup they depend on, from commit `0abf48c5` first:
+
 ```sh
+git checkout 0abf48c5c73e5d9baec83ab27864d4bef218751d -- spike/onnx spike/finetune
 spike/finetune/.venv/bin/python spike/onnx/generalization.py
 ```
 
 Needs the RapidOCR venv from the fine-tune spike (`spike/finetune/setup.sh`) +
-`tesseract` on PATH. The venv/models stay gitignored; only this script + writeup
-are committed.
+`tesseract` on PATH. The venv and models were never committed.
