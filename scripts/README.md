@@ -25,7 +25,8 @@ resolve paths relative to their own location.
 | [`db-reparse.sh`](#db-reparsesh) | Drop one match's rows so the next Parse re-OCRs the PNG files fresh. |
 | [`db-export.sh`](#db-exportsh) | Dump every match as newline-delimited JSON (per-type rows preserved). |
 | [`clear-db.sh`](#clear-dbsh) | Wipe every parent table + VACUUM; equivalent to the UI's Clear Database button. |
-| [`check-deps.sh`](#check-depssh) | Compare pinned tool versions (Wails, hadolint, lefthook, trivy) against latest GitHub releases. |
+| [`check-deps.sh`](#check-depssh) | Compare the mise.toml pins (Wails CLI, typos, Semgrep, schemathesis, ruff, sqlfluff, zizmor, gitleaks, Go, Node) against upstream releases. Read-only. |
+| `ci/check-tool-pins.sh` | Fail when a tool pin floats: non-exact mise.toml pins, a mise.lock that disagrees or was rewritten, `@latest` or an on-demand package fetch (`npx <pkg>@<version>`, `npx --yes`, `pnpm dlx`, `uvx`, …) in a workflow, Taskfile, hook or script, a `go install` literal off its pin, a direct `jdx/mise-action`, a mismatched mise bootstrap, or a non-exact `tools/` pin. `task check-tool-pins`, `task lint` and CI's lint job. |
 | `_db.sh` | Internal library sourced by `db-*.sh` (DB-path resolution + schema-version detection); not run directly. |
 | `install-mise.sh` | Install the mise release CI pins into `~/.local/bin` after checking its SHA-256 (Linux; used by `initialize.sh` and the devcontainer). |
 
