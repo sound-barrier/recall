@@ -59,9 +59,10 @@ TYPOS_VERSION = "v1.50.2"
 SEMGREP_VERSION = "1.177.0"
 HONKIT_VERSION = "6.2.2"
 # gobco (condition/branch coverage) is a MEASUREMENT tool: the version changes
-# the number it reports, so a bump is a re-baseline decision. CI greps
-# every ^[A-Z_]+_VERSION line here into $GITHUB_ENV, so the branch-coverage job
-# installs this exact version without a second copy of the string.
+# the number it reports, so a bump is a re-baseline decision. CI's
+# branch-coverage job greps this into $GITHUB_ENV to label its summary; its
+# `go install` names the version literally, so bump that line with this one
+# and the [tools] pin.
 GOBCO_VERSION = "v1.3.4"
 SCHEMATHESIS_VERSION = "4.27.1"
 # jsonschema-rs is a TRANSITIVE dependency of schemathesis, and pinning
@@ -79,6 +80,9 @@ JSONSCHEMA_RS_VERSION = "0.56.0"
 TESSERACT_VERSION = "5.5.3"
 RUFF_VERSION = "0.16.7"
 SQLFLUFF_VERSION = "4.3.0"
+# markdownlint-cli2 runs on demand via npx (task lint-md, the lefthook hook and
+# CI's lint job); without a version npx took whatever npm served that day.
+MARKDOWNLINT_CLI2_VERSION = "0.23.2"
 # Biome runs on-demand via npx (like Spectral/markdownlint), so it's a version
 # string here rather than a [tools] binary.
 BIOME_VERSION = "2.5.13"
@@ -138,9 +142,8 @@ zizmor = "1.30.1"
 "go:golang.org/x/vuln/cmd/govulncheck" = "v1.8.0"
 # Condition (branch) coverage — an informational report, never a gate. Go's
 # own -cover only does statements; gobco instruments each boolean expression
-# and reports the conditions never observed BOTH true and false. Exact-pinned
-# (see GOBCO_VERSION in [env], which CI reads) because the version moves the
-# number.
+# and reports the conditions never observed BOTH true and false. The version
+# moves the number, so a bump is a re-baseline (see GOBCO_VERSION in [env]).
 "go:github.com/rillig/gobco" = "v1.3.4"
 # Wails v3 CLI (beta) — drives the v3 Taskfile-native build under build/. Keep
 # in lockstep with the wails/v3 module in go.mod: the CLI generates bindings the
@@ -154,8 +157,9 @@ zizmor = "1.30.1"
 "go:github.com/zricethezav/gitleaks/v8" = "v8.30.1"
 
 # CI-only reporters (JUnit XML for the test job, Cobertura XML for the Go
-# coverage job). Devs get them too via `mise install`; CI installs them
-# selectively via the jobs' install_args.
+# coverage job). Devs get them too via `mise install`. CI's setup-go jobs run
+# `go install <module>@<this version>` instead (as they do for deadcode,
+# govulncheck, gobco and task), so a bump here edits those lines too.
 "go:github.com/jstemmer/go-junit-report/v2" = "v2.1.0"
 "go:github.com/boumenot/gocover-cobertura" = "v1.5.0"
 

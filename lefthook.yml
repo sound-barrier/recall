@@ -177,7 +177,7 @@ pre-commit:
     markdownlint:
       glob: "*.md"
       exclude: "CHANGELOG.md"
-      run: npx --yes markdownlint-cli2 --fix {staged_files}
+      run: npx --yes "markdownlint-cli2@${MARKDOWNLINT_CLI2_VERSION:?run inside mise, which sets it from mise.toml [env]}" --fix {staged_files}
       stage_fixed: true
 
 # Pre-push: the FAST core only (~a minute) — the checks most likely to

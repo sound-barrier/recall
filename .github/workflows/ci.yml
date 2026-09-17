@@ -27,18 +27,17 @@ jobs:
         with:
           persist-credentials: false
 
-      # mise provisions this job's slice of the toolchain from mise.toml —
-      # go, node, task, golangci-lint (built from source with this Go so it
-      # accepts the project's go directive — a prebuilt binary on an older Go
-      # would reject it), shfmt, shellcheck, ruff, jq, go-junit-report — and
-      # loads mise.toml [env] (SPECTRAL_VERSION, …, GOTOOLCHAIN=local) into
-      # $GITHUB_ENV regardless of install_args. Replaces setup-go + the
-      # tool-versions.env grep + every per-tool `go install`/pipx step.
+      # mise provisions this job's slice of the toolchain from mise.toml and
+      # mise.lock — go, node, task, golangci-lint (built from source with this
+      # Go so it accepts the project's go directive — a prebuilt binary on an
+      # older Go would reject it), ruff, shfmt, shellcheck, jq, taplo, zizmor,
+      # actionlint, sqlfluff — and loads mise.toml [env] (SPECTRAL_VERSION, …,
+      # GOTOOLCHAIN=local) into $GITHUB_ENV regardless of install_args.
       - uses: ./.github/actions/setup-mise
         with:
           install_args: >-
-            go node task ruff shfmt shellcheck jq taplo zizmor pipx:sqlfluff
-            go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint
+            go node task ruff shfmt shellcheck jq taplo zizmor actionlint
+            pipx:sqlfluff go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
       # Package + directory file budgets. A gate, not a report. Runs FIRST in
       # this job because it needs nothing but git and awk — a structural
@@ -182,10 +181,10 @@ jobs:
         uses: crate-ci/typos@512fc24f32f44ab01972217aaaf3dc86ec234d53  # v1.50.2
 
       # Markdown lint — mirrors `task lint-md`. Config in
-      # .markdownlint-cli2.yaml at the repo root; npx pulls the
-      # version on demand so no global install is required.
+      # .markdownlint-cli2.yaml at the repo root; npx fetches the
+      # MARKDOWNLINT_CLI2_VERSION pin from mise.toml [env].
       - name: Lint Markdown (markdownlint-cli2)
-        run: npx --yes markdownlint-cli2
+        run: npx --yes "markdownlint-cli2@${MARKDOWNLINT_CLI2_VERSION:?setup-mise sets it from mise.toml [env]}"
 
       # markdownlint checks how the prose is formatted; this checks whether what
       # the prose NAMES exists. The rules files spent months citing a Makefile,
@@ -198,10 +197,11 @@ jobs:
         run: bash scripts/ci/check-doc-paths.sh
 
       # GitHub Actions workflow lint — catches deprecated inputs,
-      # syntax errors, and shellcheck issues in `run:` blocks. The
-      # action ships the actionlint binary so no install step.
+      # syntax errors, and shellcheck issues in `run:` blocks. actionlint and
+      # the shellcheck it shells out to both come from mise.lock; the
+      # raven-actions wrapper this replaced downloaded "latest" unchecked.
       - name: Lint workflows (actionlint)
-        uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7  # v2.2.0
+        run: actionlint
 
       # Enforce the project's SHA-pinning policy for third-party
       # GitHub Actions. A tag-pinned action could be silently
@@ -246,8 +246,11 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      # Every go install in CI names a literal version equal to the mise.toml
+      # [tools] pin, and goes through setup-go so the job keeps its Go build
+      # cache. Bump both together.
       - name: Install go-junit-report
-        run: go install github.com/jstemmer/go-junit-report/v2@latest
+        run: go install github.com/jstemmer/go-junit-report/v2@v2.1.0  # = mise.toml [tools]
 
       # Wails v3's desktop code imports a CGo WebKit2GTK webview, so the
       # default build tags need these system libs to compile the tests.
@@ -455,7 +458,7 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Install govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.8.0  # = mise.toml [tools]
       # Wails v3's desktop code imports a CGo WebKit2GTK webview — the default
       # build tags need these system libs to build on the Ubuntu runner.
       - uses: ./.github/actions/linux-webview-deps
@@ -521,7 +524,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Install deadcode
-        run: go install golang.org/x/tools/cmd/deadcode@latest
+        run: go install golang.org/x/tools/cmd/deadcode@v0.50.0  # = mise.toml [tools]
 
       - name: Install frontend dependencies
         run: cd frontend && npm ci
@@ -600,10 +603,11 @@ jobs:
         with:
           go-version-file: go.mod
       # task drives the cover-go recipe; gocover-cobertura converts the profile.
+      # Both versions = mise.toml [tools] (task is the go-task module).
       - name: Install task + gocover-cobertura
         run: |
-          go install github.com/go-task/task/v3/cmd/task@latest
-          go install github.com/boumenot/gocover-cobertura@latest
+          go install github.com/go-task/task/v3/cmd/task@v3.53.1
+          go install github.com/boumenot/gocover-cobertura@v1.5.0
 
       # Wails v3's desktop code imports a CGo WebKit2GTK webview — the default
       # build tags need these system libs to build on the Ubuntu runner.
@@ -761,14 +765,15 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # mise.toml [env] is the version truth for the pinned CLIs; same grep the
-      # schemathesis job uses. gobco is exact-pinned because a version change
-      # changes the number this job reports.
+      # GOBCO_VERSION labels the summary below. The install names the version
+      # literally, like every other go install here, so the command that runs
+      # is the one a reviewer reads; both equal mise.toml's gobco pin, which is
+      # exact because a version change changes the number this job reports.
       - name: Load tool versions from mise.toml
         run: grep -E '^[A-Z_]+_VERSION *= *"' mise.toml | tr -d ' "' >> "$GITHUB_ENV"
 
       - name: Install gobco
-        run: go install "github.com/rillig/gobco@${GOBCO_VERSION}"
+        run: go install github.com/rillig/gobco@v1.3.4  # = mise.toml [tools]
 
       - uses: ./.github/actions/linux-webview-deps
 

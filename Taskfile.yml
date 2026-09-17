@@ -291,7 +291,7 @@ tasks:
     desc: Lint Markdown via markdownlint-cli2 (config in .markdownlint-cli2.yaml)
     cmds:
       - echo "[ recall ] Linting Markdown (markdownlint-cli2)…"
-      - npx --yes markdownlint-cli2
+      - 'npx --yes "markdownlint-cli2@${MARKDOWNLINT_CLI2_VERSION:?run inside mise, which sets it from mise.toml [env]}"'
       - echo "[ recall ] ✓  Markdown lint clean"
 
   lint-actions:
@@ -475,7 +475,7 @@ tasks:
       # A tool whose upstream publishes no checksum (taplo) comes back from a
       # bump URL-only, and --locked would then install whatever that URL serves.
       - '[ "$(grep -c "^url = " mise.lock)" -eq "$(grep -c "^checksum = " mise.lock)" ] || { echo "[ recall ] ✗  mise.lock has a platform entry with no checksum — hash its release asset by hand (see the taplo pin in mise.toml)"; exit 1; }'
-      - echo "[ recall ] ✓  mise.toml + mise.lock bumped. Sync .node-version with [tools] node and the matching [env] version strings, then run 'task check-deps'."
+      - echo "[ recall ] ✓  mise.toml + mise.lock bumped. Sync .node-version with [tools] node, the matching [env] version strings and the literal go install versions in .github/workflows/{ci,e2e}.yml, then run 'task check-deps'."
       - echo "[ recall ]    Bumping mise itself is separate — see CONTRIBUTING.md (Tool pins and the mise lockfile)."
 
   trivy:
