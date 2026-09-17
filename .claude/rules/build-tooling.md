@@ -138,9 +138,11 @@ the bindings the module must understand.
   `scripts/ci/govulncheck-retry.sh` (`set -uo pipefail`).
 - **Release-time shell lives in `scripts/release/`** (not inline in
   `release.yml`): `package-wails-windows.sh`, `compute-sha256.sh`,
-  `push-release-tag.sh`, plus `smoke/smoke.sh`. Each reads inputs from env vars
-  set in the workflow step. Add new release-time logic as a `scripts/release/*.sh`
-  (covered by `task lint-shell` via the `SHELL_SCRIPTS` glob). The Linux/macOS
+  `push-release-tag.sh`, `verify-release-ref.sh` (the tag guard `release.yml`'s
+  `verify-ref` job runs), plus `smoke/smoke.sh`, which CI's `lint` job runs.
+  Each reads inputs from env vars set in the workflow step. Add new release-time
+  logic as a `scripts/release/*.sh` (covered by `task lint-shell` via the
+  `SHELL_SCRIPTS` glob). The Linux/macOS
   packagers went with the Windows-only pivot — there is no `package-linux.sh`,
   `make-dmg.sh` or `sign-image.sh`, and no Dockerfile of any kind: the Windows
   app cross-compiles natively (`CGO_ENABLED=0`, pure-Go WebView2 loader), so the
