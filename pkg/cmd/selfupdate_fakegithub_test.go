@@ -20,6 +20,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -247,15 +248,36 @@ func dribbleBody(w http.ResponseWriter, r *http.Request, body []byte, over time.
 }
 
 // fakeUpdaterHost is the application side of the updater, reduced to what a
-// headless Check and DownloadAndInstall touch.
-type fakeUpdaterHost struct{}
+// headless Check and DownloadAndInstall touch. It keeps the error events the
+// About dialog would receive.
+type fakeUpdaterHost struct {
+	mu     sync.Mutex
+	errors []updater.ErrorInfo
+}
 
-var _ updater.Host = fakeUpdaterHost{}
+var _ updater.Host = (*fakeUpdaterHost)(nil)
 
-func (fakeUpdaterHost) Emit(string, ...any) bool                              { return true }
-func (fakeUpdaterHost) OnEvent(string, func(any)) func()                      { return func() {} }
-func (fakeUpdaterHost) OpenWindow(updater.WindowOptions) updater.WindowHandle { return nil }
-func (fakeUpdaterHost) Quit()                                                 {}
+func (h *fakeUpdaterHost) Emit(name string, data ...any) bool {
+	if name != updater.EventError || len(data) != 1 {
+		return true
+	}
+	if info, ok := data[0].(updater.ErrorInfo); ok {
+		h.mu.Lock()
+		h.errors = append(h.errors, info)
+		h.mu.Unlock()
+	}
+	return true
+}
+
+func (h *fakeUpdaterHost) errorEvents() []updater.ErrorInfo {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return slices.Clone(h.errors)
+}
+
+func (*fakeUpdaterHost) OnEvent(string, func(any)) func()                      { return func() {} }
+func (*fakeUpdaterHost) OpenWindow(updater.WindowOptions) updater.WindowHandle { return nil }
+func (*fakeUpdaterHost) Quit()                                                 {}
 
 // selfUpdateConfigAgainst builds the production updater configuration, with
 // the production client sped up by speedup and routed to fake.
@@ -274,12 +296,17 @@ func selfUpdateConfigAgainst(t *testing.T, fake *fakeGitHub, speedup int) update
 // downloads under the test's temp dir.
 func newTestUpdater(t *testing.T, cfg updater.Config) *updater.Updater {
 	t.Helper()
+	return newTestUpdaterWithHost(t, cfg, &fakeUpdaterHost{})
+}
+
+func newTestUpdaterWithHost(t *testing.T, cfg updater.Config, host *fakeUpdaterHost) *updater.Updater {
+	t.Helper()
 	cfg.Platform, cfg.Arch = "windows", "amd64"
 	staging := t.TempDir()
 	for _, variable := range []string{"TMPDIR", "TMP", "TEMP"} {
 		t.Setenv(variable, staging)
 	}
-	u := updater.New(fakeUpdaterHost{})
+	u := updater.New(host)
 	if err := u.Init(cfg); err != nil {
 		t.Fatalf("updater Init: %v", err)
 	}

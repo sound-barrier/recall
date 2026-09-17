@@ -4,6 +4,10 @@ package cmd
 
 import (
 	"context"
+	"crypto/sha256"
+	"errors"
+	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -84,9 +88,67 @@ func newSelfUpdateConfig(version string, client *http.Client) (updater.Config, e
 	// tags on its side); release ldflags carry the tag WITH the v.
 	return updater.Config{
 		CurrentVersion: strings.TrimPrefix(version, "v"),
-		Providers:      []updater.Provider{gh},
+		Providers:      []updater.Provider{&trustedReleaseProvider{inner: gh}},
 		Window:         updater.WindowNone, // headless — the About dialog is the UI
 	}, nil
+}
+
+// errUpdateRefused is the one sentinel every refusal of a release wraps, and
+// its text is a wire contract. Wails flattens provider errors into the text of
+// the wails:updater:error event (updater.go:222 and :524-533 at
+// v3.0.0-beta.22), so errors.Is does not reach the About dialog; the dialog
+// tells a refusal from a failure by the token "update refused" in that
+// message, matched anywhere because Wails prefixes the provider's text. The
+// token is the sentinel's whole text, not something a formatter adds around
+// it, so any wrap of the sentinel carries it; change the text only in lockstep
+// with the frontend.
+var errUpdateRefused = errors.New("update refused")
+
+func refuseRelease(rel *updater.Release, reason string) error {
+	return fmt.Errorf("%w: release %s %s", errUpdateRefused, rel.Version, reason)
+}
+
+// trustedReleaseProvider refuses a release the updater would otherwise install
+// unverified. The Wails GitHub provider fails open: with no SHA256SUMS asset,
+// or one that does not list the exe, it returns the release with no
+// Verification at all (providers/github/github.go:173-178, :323-325 and :374
+// at v3.0.0-beta.22), and the updater installs a release without one unchecked
+// (download.go:117-120). Name and Download delegate, so events still name
+// "github" and the download is the provider's own.
+type trustedReleaseProvider struct {
+	inner updater.Provider
+}
+
+var _ updater.Provider = (*trustedReleaseProvider)(nil)
+
+func (p *trustedReleaseProvider) Name() string { return p.inner.Name() }
+
+func (p *trustedReleaseProvider) Check(ctx context.Context, req updater.CheckRequest) (*updater.Release, error) {
+	rel, err := p.inner.Check(ctx, req)
+	if err != nil || rel == nil {
+		return rel, err
+	}
+	if err := requireChecksummedDigest(rel); err != nil {
+		return nil, err
+	}
+	return rel, nil
+}
+
+func (p *trustedReleaseProvider) Download(ctx context.Context, rel *updater.Release, dst io.Writer, onProgress func(written, total int64)) error {
+	return p.inner.Download(ctx, rel, dst, onProgress)
+}
+
+// requireChecksummedDigest refuses rel unless SHA256SUMS gave its exe a
+// SHA-256 digest, the one digest the updater then holds the download to.
+func requireChecksummedDigest(rel *updater.Release) error {
+	verification := rel.Verification
+	switch {
+	case verification == nil:
+		return refuseRelease(rel, "is not covered by its SHA256SUMS")
+	case verification.DigestAlgo != "sha256" || len(verification.Digest) != sha256.Size:
+		return refuseRelease(rel, "has a SHA256SUMS entry that is not a SHA-256 digest")
+	}
+	return nil
 }
 
 // The self-update client times each phase of a fetch on its own and the whole
