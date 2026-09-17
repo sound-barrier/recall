@@ -41,7 +41,26 @@ chapter copies into `_stage/book/` (CI) or `dist/pages-stage/` (local) and run
 Honkit there, the version `tools/package-lock.json` pins. `book/` keeps only
 `book.json`, `SUMMARY.md`, `README.md`, `.gitignore`. **New chapter**: drop
 `.md` into `docs/`, add to `book/SUMMARY.md`, extend the `cp` step in both
-`pages.yml` and the `pages-build` task.
+`pages.yml` (the `build` job's "Stage book build directory") and the
+`pages-build` task.
+
+## `pages.yml` is two jobs: build read-only, deploy without npm
+
+- **`build`** (`contents: read`, `setup-mise` with `cache: 'false'`) runs `npm ci
+  --prefix tools` and Honkit, then uploads the rendered book as the run artifact
+  `pages-book`. Never name it `github-pages`: `deploy-pages` publishes the one
+  artifact of that name, which only `upload-pages-artifact` in `deploy` creates.
+- **`deploy`** (`needs: build`; `pages: write`, `id-token: write`; the
+  `github-pages` environment) downloads the book into `_site/`, then stages
+  `_site/api/` and `_site/data/` from its OWN full-history checkout after `rm
+  -rf` of each, so the reference-data YAML, the `.sha256` sidecars the app
+  verifies and `version.json` never come from a job that ran npm code. Keep mise,
+  npm and third-party actions out of this job.
+- **Where a change goes**: a chapter or book asset → `build`'s staging step; a
+  new file in the data channel → `deploy`'s "Stage live reference-data channel"
+  step plus the `paths:` trigger. A branch dispatch builds green and has its
+  deploy refused by the `github-pages` environment's branch policy, which is
+  expected.
 
 ## Honkit failure modes
 
