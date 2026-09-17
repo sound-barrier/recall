@@ -54,7 +54,7 @@ RECALL_DATA_DIR = "{{config_root}}/data"
 # scripts (check-deps, check-api-drift), and CI (was `tool-versions.env`). The
 # matching tool binaries are pinned in [tools] below; these strings drive the
 # pipx invocations outside mise and the `task check-deps` upstream comparison.
-# The npm CLIs (Biome, Spectral, Honkit, markdownlint-cli2) are pinned in
+# The npm CLIs listed in tools/package.json are pinned in
 # tools/package-lock.json instead.
 TYPOS_VERSION = "v1.50.2"
 SEMGREP_VERSION = "1.177.0"

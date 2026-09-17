@@ -38,6 +38,3 @@ brew "podman-compose"
 # pipx — Python apps in isolated venvs. mise's `pipx:` backend (semgrep,
 # schemathesis) shells out to pipx, so it must exist before `mise install`.
 brew "pipx"
-
-# Line-count tool (used by `task cloc`). Not in mise's registry.
-brew "cloc"

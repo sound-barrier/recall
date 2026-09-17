@@ -46,7 +46,7 @@ log "Platform: $PLATFORM"
 case "$PLATFORM" in
   macos)
     command -v brew >/dev/null 2>&1 || die "Homebrew not found. Install from https://brew.sh."
-    log "brew bundle (mise + tesseract + podman + pipx + cloc; idempotent)…"
+    log "brew bundle (mise + tesseract + podman + pipx; idempotent)…"
     brew bundle --quiet
     ;;
 
@@ -56,7 +56,6 @@ case "$PLATFORM" in
     sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       tesseract-ocr \
       sqlite3 \
-      cloc \
       pipx \
       ca-certificates \
       curl \
@@ -119,7 +118,7 @@ mise install
 log "frontend: npm ci"
 mise exec -- bash -c 'cd frontend && npm ci --no-audit --no-fund'
 
-log "tools: npm ci (Biome, Spectral, Honkit, markdownlint-cli2)"
+log "tools: npm ci (the CLIs pinned in tools/package.json)"
 mise exec -- task tools-install
 
 log "lefthook install (wires .git/hooks/{pre-commit, commit-msg, pre-push})"

@@ -126,7 +126,7 @@ false` except `release-please.yml`'s `tag-and-dispatch`, which pushes a tag.
   Their Go tools install as `go install <module>@vX.Y.Z  # = mise.toml [tools]`
   with the literal version, never `@latest`; check-tool-pins holds each literal
   to its pin.
-- **The npm CLIs** (Biome, Spectral, Honkit, markdownlint-cli2) install from
+- **The npm CLIs** listed in `tools/package.json` install from
   `tools/package-lock.json` (`task tools-install`; `pages.yml` runs
   `npm ci --prefix tools` itself), behind `tools/.npmrc`'s 7-day
   `min-release-age`.

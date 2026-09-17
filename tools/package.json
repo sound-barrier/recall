@@ -5,6 +5,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.14",
     "@stoplight/spectral-cli": "6.16.3",
+    "cloc": "2.6.0-cloc",
     "honkit": "6.2.2",
     "markdownlint-cli2": "0.23.2"
   },

@@ -73,8 +73,9 @@ lock entry, or no URL for the runner's platform, fails the job. The rules:
   `npx <name>` is fine only where a committed lockfile installs `<name>`. It
   fails with an annotation naming the line; fix the pin, never the check.
 
-**The npm CLIs live in `tools/`, not `[env]`.** Biome, Spectral, Honkit and
-markdownlint-cli2 are exact `devDependencies` in `tools/package.json`, locked by
+**The npm CLIs live in `tools/`, not `[env]`.** Each one (Biome, Spectral,
+Honkit, markdownlint-cli2, cloc, …) is an exact `devDependency` in
+`tools/package.json`, the one list of them, locked by
 `tools/package-lock.json`, and run from `tools/node_modules/.bin`. The rules:
 
 - **`task tools-install` is the one installer** (`npm ci --prefix tools
