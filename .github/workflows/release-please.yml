@@ -12,9 +12,10 @@ name: release-please
 #   2. release-please-action opens/updates a release PR with version bump
 #      + changelog.
 #   3. Maintainer merges the release PR.
-#   4. The "Push tag for merged release-please PR" step in THIS
-#      workflow (via scripts/release/push-release-tag.sh) detects the
-#      `chore(main): release X.Y.Z` merge commit, pushes the
+#   4. This workflow's `tag-and-dispatch` job runs on the
+#      `chore(main): release X.Y.Z` merge commit. Its
+#      scripts/release/push-release-tag.sh checks the manifest, the
+#      merged release PR and any existing tag, then pushes the
 #      v<version> tag, calls `gh workflow run release.yml --ref vX.Y.Z`
 #      to fire the release workflow, and flips the PR label from
 #      `autorelease: pending` to `autorelease: tagged`.
@@ -67,16 +68,17 @@ on:
   push:
     branches: [main]
 
-permissions:
-  contents: write     # release-please-action commits + tag pushes
-  pull-requests: write  # release-please-action opens release PRs;
-  # gh pr edit flips labels
-  actions: write      # push-release-tag.sh calls `gh workflow run
-  # release.yml --ref vX.Y.Z` after pushing the tag
+# Two jobs, so the third-party release-please-action never holds the token
+# that pushes tags and dispatches release.yml. tag-and-dispatch runs only a
+# first-party action and repository code.
+permissions: {}
 
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # commits the version bump + CHANGELOG to its PR branch
+      pull-requests: write  # opens and updates the release PR
     steps:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7  # v5.0.0
         with:
@@ -89,17 +91,31 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+  # needs: release-please keeps the old step order, so the action's
+  # outstanding-PR check never races this job's label flip. The subject
+  # filter is only a cheap skip for ordinary pushes; the script re-checks
+  # the subject along with everything else before it tags.
+  tag-and-dispatch:
+    needs: release-please
+    if: "startsWith(github.event.head_commit.message, 'chore(main): release ')"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # git push of the release tag
+      actions: write  # gh workflow run release.yml
+      pull-requests: write  # the commit's PR lookup + the label flip
+    steps:
       # Checkout with the same token, so the subsequent `git push` of
       # the release tag uses GITHUB_TOKEN as the credential. The
       # anti-loop guard does suppress release.yml's `push: tags`
       # trigger for this push, but push-release-tag.sh calls
       # `gh workflow run release.yml` directly to fire it anyway —
       # see the header comment above.
-      # fetch-depth: 0 because `git ls-remote` is remote-only but
-      # `git rev-parse HEAD` and `git tag` need local history.
+      # fetch-depth: 0 because the script checks the tag against local
+      # history and verify-release-ref.sh walks origin/main.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          # push-release-tag.sh pushes the release tag with this credential.
+          # Kept on purpose: push-release-tag.sh pushes the release tag
+          # with this credential. The job uploads no artifacts.
           persist-credentials: true
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
@@ -111,9 +127,8 @@ jobs:
           # script reads it from this env var rather than letting the
           # workflow interpolate it into the run: command line.
           HEAD_COMMIT_MSG: ${{ github.event.head_commit.message }}
-          # GH_TOKEN powers both `gh workflow run release.yml`
-          # (needs the actions: write permission granted at the job
-          # level above) and `gh pr edit ... --label ...` (needs
-          # pull-requests: write).
+          # GH_TOKEN powers `gh api` (the release PR lookup),
+          # `gh workflow run release.yml` (actions: write) and
+          # `gh pr edit ... --label ...` (pull-requests: write).
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/release/push-release-tag.sh
