@@ -733,6 +733,7 @@ jobs:
           bash scripts/ci/check-commit-subjects.sh "${base}..${HEAD_SHA}"
 
   # ── Job 12: Go condition (branch) coverage ──────────────────────────────
+  # Deliberately NOT in ci-gate's needs: a report must never gate a merge.
   # REPORT-ONLY (continue-on-error) — it can never red a run. gobco measures
   # each condition's true AND false arm, which the coverage-go job's statement
   # coverage cannot see: an `if a && b` reads as covered the moment the line
@@ -789,3 +790,48 @@ jobs:
           name: go-branch-coverage
           path: coverage/go/branch/
           retention-days: 30
+
+  # ── Job 13: ci-gate ─────────────────────────────────────────────────────
+  # The one ci.yml check branch protection requires. Requiring each job by
+  # name made every new job a separate settings change that was easy to
+  # forget, and left a renamed job's old context blocking every PR. With the
+  # gate required, a ci.yml job gates merges exactly when it is listed in
+  # needs: ADD EVERY NEW JOB HERE. branch-coverage is the one exception,
+  # because it is report-only.
+  #
+  # `if: always()` because a job whose needs failed is skipped, and a skipped
+  # required check counts as passing: without it, one red job would leave the
+  # gate skipped and the PR mergeable. The step fails on any result other
+  # than success or skipped (failure, cancelled). skipped passes because
+  # commit-lint runs on pull requests only; a real job given an `if:` that is
+  # false on PRs would pass the same way without running. A PR run canceled
+  # by a newer push reports red here, which is expected.
+  ci-gate:
+    name: ci-gate
+    if: always()
+    needs:
+      - lint
+      - test-unit
+      - build-windows
+      - trivy
+      - govulncheck
+      - secrets
+      - dead-code
+      - coverage-frontend
+      - coverage-go
+      - schemathesis
+      - commit-lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Verify every gated job succeeded
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          echo "${RESULTS}" | jq -r 'to_entries[] | "  \(.key): \(.value.result)"'
+          if echo "${RESULTS}" | jq -e 'to_entries | map(select(.value.result != "success" and .value.result != "skipped")) | length > 0' >/dev/null; then
+            echo '::error::A gated job did not succeed. See the list above.'
+            exit 1
+          fi
