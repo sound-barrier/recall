@@ -80,9 +80,10 @@ markdownlint-cli2 are exact `devDependencies` in `tools/package.json`, locked by
   that depends on `tools-install`; they only check that the binary exists and
   point at `task tools-install`.
 - **`tools/.npmrc` keeps `min-release-age=7`, `save-exact=true` and
-  `ignore-scripts=true`.** Bump a CLI with `npm --prefix tools install
-  <pkg>@<version>`; `devDependencies` keeps the tree out of Trivy's default scan
-  and in dependency review's development scope.
+  `ignore-scripts=true`.** Dependabot's `/tools` entry bumps the CLIs in their
+  own `tools-deps` PRs; by hand, `npm --prefix tools install <pkg>@<version>`.
+  `devDependencies` keeps the tree out of Trivy's default scan and in dependency
+  review's development scope.
 
 `task check-deps` compares against upstream and **fails** on drift: the wails3
 CLI, typos, Semgrep, schemathesis, jsonschema-rs, ruff, sqlfluff, zizmor,
