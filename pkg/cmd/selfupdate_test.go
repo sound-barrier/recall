@@ -14,13 +14,16 @@ import (
 )
 
 // The full Windows-only asset inventory a release publishes — order
-// deliberately puts the installer AHEAD of the raw exe so the matcher's
-// exact-suffix match is proven independent of position (the installer
-// ends in `-installer.exe`, not `windows-amd64.exe`).
+// deliberately puts the installer and the signatures AHEAD of the raw exe so
+// the matcher's exact-suffix match is proven independent of position (the
+// installer ends in `-installer.exe` and a signature in `.exe.sig`, not
+// `windows-amd64.exe`).
 func fullReleaseAssets() []github.ReleaseAsset {
 	names := []string{
 		"recall-0.23.0-windows-amd64-installer.exe", // human download — NOT the updater target
-		"recall-0.23.0-windows-amd64.exe",           // the raw Windows updater target
+		"recall-0.23.0-windows-amd64-installer.exe.sig",
+		"recall-0.23.0-windows-amd64.exe.sig",
+		"recall-0.23.0-windows-amd64.exe", // the raw Windows updater target
 		"recall-0.23.0-heroes.yaml",
 		"recall-0.23.0-maps.yaml",
 		"recall-0.23.0-screenshot_sources.yaml",

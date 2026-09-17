@@ -175,8 +175,10 @@ the bindings the module must understand.
   `release.yml`): `package-wails-windows.sh`, `compute-sha256.sh`,
   `push-release-tag.sh`, `verify-release-ref.sh` (the tag guard `release.yml`'s
   `verify-ref` job runs), `fire-release.sh` (`task release-fire`, which runs that
-  guard before it dispatches), plus `smoke/smoke.sh`, which CI's `lint` job runs.
-  Each reads inputs from env vars set in the workflow step. Add new release-time
+  guard before it dispatches), `check-release-assets.sh` (the `sign-attest` job's
+  last check on the asset directory the `release` job publishes whole), plus
+  `smoke/smoke.sh`, which CI's `lint` job runs. Each takes its inputs from env
+  vars or arguments set in the workflow step. Add new release-time
   logic as a `scripts/release/*.sh` (covered by `task lint-shell` via the
   `SHELL_SCRIPTS` glob), and its smoke cases as
   `scripts/release/smoke/cases/<script>.sh`: `smoke.sh` is only the runner, and
