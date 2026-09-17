@@ -14,6 +14,13 @@
 #
 # It cannot become a required status check — it never runs on pull_request — so
 # a Blizzard redesign fails this lane and nothing else.
+#
+# Two jobs, so the token that can push never meets the code that reads the web.
+# `watch` scrapes, installs Tesseract from a PPA and runs the golden corpus with
+# a read-only token, then uploads its YAML edits as a patch. `propose` holds
+# contents: write and pull-requests: write, runs no downloaded toolchain, and
+# applies that patch only if it edits nothing but existing pkg/parser/*.yaml
+# files, before it pushes the branch and opens the draft PR.
 name: Roster watch
 
 on:
@@ -68,13 +75,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
-      contents: write        # push the proposal branch
-      pull-requests: write   # open / update the draft PR
+      contents: read
+    outputs:
+      code: ${{ steps.watch.outputs.code }}
+      proposed: ${{ steps.package.outputs.proposed }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          # roster-watch-pr.sh force-pushes the proposal branch with this credential.
-          persist-credentials: true
+          persist-credentials: false
           # Full history: the published-channel check compares against the last
           # commit that TOUCHED a roster file, which a shallow clone cannot
           # find. Same reason pages.yml fetches everything.
@@ -84,9 +92,9 @@ jobs:
         with:
           # Only Go — the watch needs no linters and no frontend toolchain.
           install_args: go
-          # Go needs no GitHub API, and the export would hand this job's write
-          # token to every later step, including the scrape. The rate-limit
-          # warning mise-action logs without a token is expected.
+          # Go needs no GitHub API, and the export would hand this job's token
+          # to every later step, including the scrape. The rate-limit warning
+          # mise-action logs without a token is expected.
           github_token: ''
 
       - name: Read the roster against the game
@@ -140,10 +148,106 @@ jobs:
           fi
           cat golden.txt >> "${GITHUB_STEP_SUMMARY}"
 
-      - name: Open or update the draft pull request
+      # The proposal is the tool's YAML edits as a patch, plus the report and
+      # the corpus result that become the PR body. Nothing else leaves this job.
+      - name: Package the proposal
+        id: package
         if: steps.watch.outputs.code == '1'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPORT_FILE: report.md
-          GOLDEN_FILE: golden.txt
-        run: bash scripts/ci/roster-watch-pr.sh
+          PROPOSAL_DIR: ${{ runner.temp }}/proposal
+        run: |
+          if git diff --quiet -- 'pkg/parser/*.yaml'; then
+            echo "proposed=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          mkdir -p "${PROPOSAL_DIR}"
+          git diff --binary -- 'pkg/parser/*.yaml' > "${PROPOSAL_DIR}/roster.patch"
+          cp report.md golden.txt "${PROPOSAL_DIR}/"
+          echo "proposed=true" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload the proposal
+        if: steps.package.outputs.proposed == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: roster-watch-proposal
+          path: ${{ runner.temp }}/proposal/
+          if-no-files-found: error
+          retention-days: 3
+
+  propose:
+    needs: watch
+    if: needs.watch.outputs.proposed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write        # push the proposal branch
+      pull-requests: write   # open / update the draft PR
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: roster-watch-proposal
+          path: ${{ runner.temp }}/proposal
+
+      # The patch came from a job that ran web-scraping and PPA code, so it is
+      # untrusted here. `git apply --include` alone is no boundary: its pattern
+      # lets `*` cross `/` and it matches a rename by its target. The boundary
+      # is the `git status` check after the apply, which allows only edits to
+      # existing pkg/parser/<name>.yaml files. The checks before it stop a
+      # hostile patch from touching the checkout at all: its headers, and every
+      # name git reads from it (old or new, header-less hunks included), must
+      # be such a file.
+      - name: Apply the proposal (pkg/parser YAML edits only)
+        env:
+          PATCH: ${{ runner.temp }}/proposal/roster.patch
+        run: |
+          set -euo pipefail
+          headers="$(grep -E '^diff --git ' "${PATCH}" || true)"
+          if [ -z "${headers}" ]; then
+            echo "::error::the roster patch has no git diff header"
+            exit 1
+          fi
+          if grep -vE '^diff --git a/(pkg/parser/[a-z_]+\.yaml) b/\1$' <<<"${headers}"; then
+            echo "::error::the roster patch names a path other than pkg/parser/<name>.yaml (above)"
+            exit 1
+          fi
+          if grep -nE '^(rename|copy) (from|to|old|new) |^(new|deleted) file mode |^(old|new) mode ' "${PATCH}"; then
+            echo "::error::the roster patch renames, copies, creates, deletes or re-modes a file (above)"
+            exit 1
+          fi
+          # One `Checking patch <name>...` line per patch git parsed, or
+          # `<old> => <new>...` when the names differ (numstat shows only <new>).
+          if ! checked="$(LC_ALL=C git apply --check --verbose "${PATCH}" 2>&1)"; then
+            printf '%s\n' "${checked}"
+            echo "::error::the roster patch does not apply"
+            exit 1
+          fi
+          if grep -E '^Checking patch ' <<<"${checked}" \
+            | grep -vE '^Checking patch pkg/parser/[a-z_]+\.yaml\.\.\.$'; then
+            echo "::error::git reads the roster patch as touching a path other than pkg/parser/<name>.yaml (above)"
+            exit 1
+          fi
+          git apply --include='pkg/parser/*.yaml' --verbose "${PATCH}"
+          status="$(git status --porcelain=v1 --untracked-files=all)"
+          if [ -z "${status}" ]; then
+            echo "::error::the roster patch applied no change"
+            exit 1
+          fi
+          if grep -vE '^ M pkg/parser/[a-z_]+\.yaml$' <<<"${status}"; then
+            echo "::error::after the roster patch the checkout differs outside pkg/parser/<name>.yaml (above)"
+            exit 1
+          fi
+
+      # The token reaches git only in this step, through gh's credential
+      # helper, never through .git/config.
+      - name: Open or update the draft pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPORT_FILE: ${{ runner.temp }}/proposal/report.md
+          GOLDEN_FILE: ${{ runner.temp }}/proposal/golden.txt
+        run: |
+          gh auth setup-git
+          bash scripts/ci/roster-watch-pr.sh

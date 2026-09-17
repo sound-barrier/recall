@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 # Open or update the roster-watch draft PR.
 #
-# Called by .github/workflows/roster-watch.yml after the tool has written its
-# proposed entries. Uses git + gh rather than a third-party pull-request action:
+# Called by the `propose` job of .github/workflows/roster-watch.yml, after it
+# has applied the `watch` job's patch of pkg/parser/*.yaml edits to a fresh
+# checkout. The checkout keeps no credential; the push authenticates through
+# `gh auth setup-git`, run in the same step with GH_TOKEN set.
+#
+# Uses git + gh rather than a third-party pull-request action:
 # scripts/release/push-release-tag.sh already establishes the bot identity and
 # the gh idiom here, and a PR this consequential should be openable by reading
 # one shell script rather than auditing an action.
@@ -14,7 +18,7 @@
 # Inputs (env):
 #   REPORT_FILE  path to the Markdown report the tool produced
 #   GOLDEN_FILE  path to the golden-corpus result, or unset when it did not run
-#   GH_TOKEN     for gh
+#   GH_TOKEN     for gh, and for git push through gh's credential helper
 set -euo pipefail
 
 BRANCH="chore/roster-watch"
