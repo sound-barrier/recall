@@ -5,6 +5,8 @@ package cmd_test
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
@@ -27,6 +29,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/updater"
 
 	"recall/pkg/cmd"
+	"recall/pkg/updatesig"
 )
 
 // The fake release sits one version ahead of the installed build, and its
@@ -37,6 +40,8 @@ const (
 	latestExe        = "recall-0.34.0-windows-amd64.exe"
 	latestInstaller  = "recall-0.34.0-windows-amd64-installer.exe"
 	checksumAsset    = "SHA256SUMS"
+
+	latestExeSignature = latestExe + updatesig.SignatureSuffix
 )
 
 const (
@@ -44,11 +49,34 @@ const (
 	releaseAssetsURL      = "https://release-assets.githubusercontent.com/github-production-release-asset/"
 )
 
+// releaseKey stands in for Recall's release signing key, which no test holds:
+// a throwaway key this test binary makes for itself. The updater under test
+// pins its public half, and publishedRelease signs with it.
+var releaseKey = newThrowawayKey()
+
+func newThrowawayKey() ed25519.PrivateKey {
+	seed := make([]byte, ed25519.SeedSize)
+	// crypto/rand.Read never returns an error (Go 1.24 onward).
+	_, _ = rand.Read(seed)
+	return ed25519.NewKeyFromSeed(seed)
+}
+
+// signatureOf is the signature file the release pipeline publishes beside the
+// asset named name.
+func signatureOf(key ed25519.PrivateKey, name string, body []byte) []byte {
+	return updatesig.Sign(key, name, sha256.Sum256(body))
+}
+
 // fakeRelease is the latest release a fakeGitHub publishes, and how the fake
 // misbehaves while serving it.
 type fakeRelease struct {
 	tag    string
 	assets map[string][]byte
+	// downloadURL lists an asset under this browser_download_url instead of
+	// its github.com one.
+	downloadURL map[string]string
+	// status answers an asset's download with this HTTP status instead.
+	status map[string]int
 	// redirectTo sends an asset's github.com download to this URL instead of
 	// to release-assets.githubusercontent.com.
 	redirectTo map[string]string
@@ -61,17 +89,20 @@ type fakeRelease struct {
 	stallAPI bool
 }
 
-// publishedRelease is what a release publishes today for the updater to read:
-// the updater exe, the installer, and a SHA256SUMS covering both.
+// publishedRelease is what a release publishes for the updater to read: the
+// updater exe, the installer, a SHA256SUMS covering both, and each one's
+// signature by the release key.
 func publishedRelease() fakeRelease {
 	exe := bytes.Repeat([]byte("recall 0.34.0 windows updater\n"), 4096)
 	installer := []byte("recall 0.34.0 windows installer\n")
 	return fakeRelease{
 		tag: latestTag,
 		assets: map[string][]byte{
-			latestExe:       exe,
-			latestInstaller: installer,
-			checksumAsset:   sha256sums(map[string][]byte{latestExe: exe, latestInstaller: installer}),
+			latestExe:          exe,
+			latestInstaller:    installer,
+			checksumAsset:      sha256sums(map[string][]byte{latestExe: exe, latestInstaller: installer}),
+			latestExeSignature: signatureOf(releaseKey, latestExe, exe),
+			latestInstaller + updatesig.SignatureSuffix: signatureOf(releaseKey, latestInstaller, installer),
 		},
 	}
 }
@@ -94,6 +125,9 @@ type fakeGitHub struct {
 	https   *httptest.Server
 	plain   *httptest.Server
 	closing chan struct{}
+
+	mu        sync.Mutex
+	requested []string
 }
 
 func serveFakeGitHub(t *testing.T, release fakeRelease) *fakeGitHub {
@@ -144,6 +178,9 @@ func (f *fakeGitHub) dial(ctx context.Context, network, addr string) (net.Conn, 
 }
 
 func (f *fakeGitHub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	f.mu.Lock()
+	f.requested = append(f.requested, path.Base(r.URL.Path))
+	f.mu.Unlock()
 	switch {
 	case r.Host == "api.github.com":
 		f.serveLatestRelease(w, r)
@@ -152,6 +189,13 @@ func (f *fakeGitHub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		f.serveAsset(w, r)
 	}
+}
+
+// wasAsked reports whether any request, to any host, named the file name.
+func (f *fakeGitHub) wasAsked(name string) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Contains(f.requested, name)
 }
 
 type releaseJSON struct {
@@ -191,12 +235,16 @@ func (f *fakeGitHub) serveLatestRelease(w http.ResponseWriter, r *http.Request) 
 		PublishedAt: time.Date(2026, time.September, 1, 12, 0, 0, 0, time.UTC),
 	}
 	for i, name := range slices.Sorted(maps.Keys(f.release.assets)) {
+		downloadURL := "https://github.com" + releaseDownloadPrefix + f.release.tag + "/" + name
+		if listed := f.release.downloadURL[name]; listed != "" {
+			downloadURL = listed
+		}
 		body.Assets = append(body.Assets, assetJSON{
 			ID:                 int64(i + 1),
 			Name:               name,
 			ContentType:        "application/octet-stream",
 			Size:               int64(len(f.release.assets[name])),
-			BrowserDownloadURL: "https://github.com" + releaseDownloadPrefix + f.release.tag + "/" + name,
+			BrowserDownloadURL: downloadURL,
 		})
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -218,6 +266,10 @@ func (f *fakeGitHub) redirectDownload(w http.ResponseWriter, r *http.Request) {
 
 func (f *fakeGitHub) serveAsset(w http.ResponseWriter, r *http.Request) {
 	name := path.Base(r.URL.Path)
+	if code := f.release.status[name]; code != 0 {
+		http.Error(w, http.StatusText(code), code)
+		return
+	}
 	body, ok := f.release.assets[name]
 	if !ok {
 		http.NotFound(w, r)
@@ -279,13 +331,17 @@ func (*fakeUpdaterHost) OnEvent(string, func(any)) func()                      {
 func (*fakeUpdaterHost) OpenWindow(updater.WindowOptions) updater.WindowHandle { return nil }
 func (*fakeUpdaterHost) Quit()                                                 {}
 
-// selfUpdateConfigAgainst builds the production updater configuration, with
-// the production client sped up by speedup and routed to fake.
+// selfUpdateConfigAgainst builds the production updater configuration, pinning
+// releaseKey, with the production client sped up by speedup and routed to fake.
 func selfUpdateConfigAgainst(t *testing.T, fake *fakeGitHub, speedup int) updater.Config {
 	t.Helper()
 	client := cmd.NewSelfUpdateHTTPClient(speedup)
 	fake.route(t, client)
-	cfg, err := cmd.NewSelfUpdateConfig(installedVersion, client)
+	pinned, ok := releaseKey.Public().(ed25519.PublicKey)
+	if !ok {
+		t.Fatalf("release key's public half is %T", releaseKey.Public())
+	}
+	cfg, err := cmd.NewSelfUpdateConfig(installedVersion, client, pinned)
 	if err != nil {
 		t.Fatalf("NewSelfUpdateConfig: %v", err)
 	}

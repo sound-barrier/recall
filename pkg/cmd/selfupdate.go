@@ -4,12 +4,14 @@ package cmd
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -23,6 +25,7 @@ import (
 	"recall/pkg/app"
 	"recall/pkg/applog"
 	"recall/pkg/gamedata"
+	"recall/pkg/updatesig"
 )
 
 // initSelfUpdater configures the framework updater for in-app binary
@@ -59,7 +62,14 @@ func initSelfUpdater(wailsApp *application.App, a *app.App) app.SelfUpdater {
 		return nil
 	}
 
-	cfg, err := newSelfUpdateConfig(v, newSelfUpdateHTTPClient(selfUpdateClientTimeouts))
+	// Without the pinned key no release can be verified, so self-update stays
+	// off rather than installing anything unchecked.
+	releaseKey, err := updatesig.PublicKey()
+	if err != nil {
+		log.Warn("self-update off: release signing key unreadable", "err", err)
+		return nil
+	}
+	cfg, err := newSelfUpdateConfig(v, newSelfUpdateHTTPClient(selfUpdateClientTimeouts), releaseKey)
 	if err != nil {
 		log.Warn("self-update off: github provider init failed", "err", err)
 		return nil
@@ -73,8 +83,9 @@ func initSelfUpdater(wailsApp *application.App, a *app.App) app.SelfUpdater {
 }
 
 // newSelfUpdateConfig builds the updater configuration for Recall's GitHub
-// releases, fetching everything through client.
-func newSelfUpdateConfig(version string, client *http.Client) (updater.Config, error) {
+// releases, fetching everything through client and installing only releases
+// signed by releaseKey.
+func newSelfUpdateConfig(version string, client *http.Client, releaseKey ed25519.PublicKey) (updater.Config, error) {
 	gh, err := github.New(github.Config{
 		Repository:    "sound-barrier/recall",
 		ChecksumAsset: "SHA256SUMS",
@@ -88,7 +99,7 @@ func newSelfUpdateConfig(version string, client *http.Client) (updater.Config, e
 	// tags on its side); release ldflags carry the tag WITH the v.
 	return updater.Config{
 		CurrentVersion: strings.TrimPrefix(version, "v"),
-		Providers:      []updater.Provider{&trustedReleaseProvider{inner: gh}},
+		Providers:      []updater.Provider{&trustedReleaseProvider{inner: gh, client: client, releaseKey: releaseKey}},
 		Window:         updater.WindowNone, // headless — the About dialog is the UI
 	}, nil
 }
@@ -108,15 +119,32 @@ func refuseRelease(rel *updater.Release, reason string) error {
 	return fmt.Errorf("%w: release %s %s", errUpdateRefused, rel.Version, reason)
 }
 
+func refuseReleaseBecause(rel *updater.Release, cause error) error {
+	return fmt.Errorf("%w: release %s: %w", errUpdateRefused, rel.Version, cause)
+}
+
 // trustedReleaseProvider refuses a release the updater would otherwise install
 // unverified. The Wails GitHub provider fails open: with no SHA256SUMS asset,
 // or one that does not list the exe, it returns the release with no
 // Verification at all (providers/github/github.go:173-178, :323-325 and :374
 // at v3.0.0-beta.22), and the updater installs a release without one unchecked
-// (download.go:117-120). Name and Download delegate, so events still name
-// "github" and the download is the provider's own.
+// (download.go:117-120). Check also requires the exe to be named for its
+// release and signed, name and digest, by releaseKey. Name and Download
+// delegate, so events still name "github" and the download is the provider's
+// own.
+//
+// Wails can check an Ed25519 signature itself, through Verification.Signature
+// and Config.PublicKey, and both are deliberately left unset. Its verifier
+// checks a signature over the bare digest (verify.go:120 at v3.0.0-beta.22),
+// which binds neither the file name nor the version: it would reject Recall's
+// signatures, which cover the name, and a bare-digest signature would still
+// pass an older signed exe republished under a newer tag. The updater still
+// hashes the download as it streams and compares that, in constant time, with
+// the digest Check has authenticated (download.go:105-109 and verify.go:78-82).
 type trustedReleaseProvider struct {
-	inner updater.Provider
+	inner      updater.Provider
+	client     *http.Client
+	releaseKey ed25519.PublicKey
 }
 
 var _ updater.Provider = (*trustedReleaseProvider)(nil)
@@ -129,6 +157,12 @@ func (p *trustedReleaseProvider) Check(ctx context.Context, req updater.CheckReq
 		return rel, err
 	}
 	if err := requireChecksummedDigest(rel); err != nil {
+		return nil, err
+	}
+	if err := requireExeNamedForRelease(rel); err != nil {
+		return nil, err
+	}
+	if err := p.requireReleaseSignature(ctx, rel); err != nil {
 		return nil, err
 	}
 	return rel, nil
@@ -149,6 +183,87 @@ func requireChecksummedDigest(rel *updater.Release) error {
 		return refuseRelease(rel, "has a SHA256SUMS entry that is not a SHA-256 digest")
 	}
 	return nil
+}
+
+// requireExeNamedForRelease refuses rel unless its exe carries the name
+// scripts/release/package-wails-windows.sh gives the exe of that very release.
+// A signature covers the exe's name but not the tag it is published under, so
+// this is what keeps an older signed exe, name and all, from installing as a
+// newer release.
+func requireExeNamedForRelease(rel *updater.Release) error {
+	want := "recall-" + rel.Version + "-" + rel.Artifact.Platform + "-" + rel.Artifact.Arch + ".exe"
+	if rel.Artifact.Filename != want {
+		return refuseRelease(rel, "offers "+rel.Artifact.Filename+", which is not named for that release")
+	}
+	return nil
+}
+
+// requireReleaseSignature refuses rel unless releaseKey signed its exe's name
+// and the digest SHA256SUMS gave it. A signature that could not be fetched is
+// an error rather than a refusal: it says nothing about the release, and a
+// retry may succeed.
+func (p *trustedReleaseProvider) requireReleaseSignature(ctx context.Context, rel *updater.Release) error {
+	sigURL, err := releaseSignatureURL(rel)
+	if err != nil {
+		return err
+	}
+	sig, err := p.fetchReleaseSignature(ctx, sigURL)
+	switch {
+	case errors.Is(err, updatesig.ErrMissingSignature):
+		return refuseReleaseBecause(rel, err)
+	case err != nil:
+		return err
+	}
+	// requireChecksummedDigest has already held the digest to sha256.Size.
+	digest := [sha256.Size]byte(rel.Verification.Digest)
+	if err := updatesig.Verify(p.releaseKey, rel.Artifact.Filename, digest, sig); err != nil {
+		return refuseReleaseBecause(rel, err)
+	}
+	return nil
+}
+
+// releaseSignatureURL is where rel's exe signature is published: beside the
+// exe, at the URL the release JSON gave it. The redirect guard sees only the
+// hops after a first request, so that first URL is held to github.com over
+// HTTPS here, before anything is asked of its host.
+func releaseSignatureURL(rel *updater.Release) (string, error) {
+	exeURL, ok := rel.Metadata["github.asset.url"].(string)
+	if !ok {
+		return "", refuseRelease(rel, "gives no download URL for its exe")
+	}
+	sigURL, err := url.Parse(exeURL + updatesig.SignatureSuffix)
+	if err != nil || sigURL.Scheme != "https" || sigURL.Host != "github.com" {
+		return "", refuseRelease(rel, "does not publish its signature on github.com over HTTPS")
+	}
+	return sigURL.String(), nil
+}
+
+// fetchReleaseSignature downloads a signature file through the self-update
+// client, so its redirects answer to the same guard as the exe's. A 404 is
+// updatesig.ErrMissingSignature.
+func (p *trustedReleaseProvider) fetchReleaseSignature(ctx context.Context, sigURL string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, sigURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("fetch update signature: %w", err)
+	}
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fetch update signature: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	switch resp.StatusCode {
+	case http.StatusOK:
+	case http.StatusNotFound:
+		return nil, updatesig.ErrMissingSignature
+	default:
+		return nil, fmt.Errorf("fetch update signature: HTTP %d", resp.StatusCode)
+	}
+	// One byte past a signature is enough to tell that a body is too long.
+	sig, err := io.ReadAll(io.LimitReader(resp.Body, updatesig.SignatureSize+1))
+	if err != nil {
+		return nil, fmt.Errorf("read update signature: %w", err)
+	}
+	return sig, nil
 }
 
 // The self-update client times each phase of a fetch on its own and the whole
