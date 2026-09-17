@@ -33,11 +33,39 @@ concurrency:
 # self-hosted server container were removed — see RELEASES.md. macOS stays a
 # development target (`task dev`) but is never released.
 jobs:
+  # ── Job 0: Refuse any ref that is not a release-please release commit ──
+  # Both triggers take whatever v* tag they are given, and tags are not
+  # branch-protected, so a mistaken or stray tag would otherwise choose the
+  # commit that gets built, attested and published. Every other job depends
+  # on this one. It does not stop a tag pushed on purpose: both triggers run
+  # this file and the script as they are at the tagged commit, so a tag on a
+  # commit that edits either skips the check. Stopping that takes a reviewer
+  # who compares the run's commit with main before anything publishes. The
+  # checks, and why each exists, are in scripts/release/verify-release-ref.sh.
+  verify-ref:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+          # Every branch and tag: the ancestry check walks origin/main.
+          fetch-depth: 0
+
+      - name: Verify the tag is a release-please commit on main
+        env:
+          TAG: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: bash scripts/release/verify-release-ref.sh
+
   # ── Job 1: Windows app + NSIS installer (native cross-compile, no Docker) ──
   # v3's WebView2 loader is pure Go, so this cross-compiles CGO_ENABLED=0 from
   # Linux — no mingw, no Docker. wails3 generate syso embeds the icon/version;
   # create:nsis:installer fetches the WebView2 bootstrapper + runs makensis.
   build-windows:
+    needs: [verify-ref]
     runs-on: ubuntu-latest
     permissions:
       contents: read

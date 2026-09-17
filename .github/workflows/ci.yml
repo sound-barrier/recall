@@ -26,6 +26,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
+          # The release-script smoke suite checks verify-release-ref.sh against
+          # a published release tag and origin/main, so it needs every branch,
+          # tag and commit. A shallow clone fails that step rather than skip it.
+          fetch-depth: 0
 
       # mise provisions this job's slice of the toolchain from mise.toml and
       # mise.lock — go, node, task, golangci-lint (built from source with this
