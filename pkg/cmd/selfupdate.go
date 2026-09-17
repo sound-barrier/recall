@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -87,19 +88,42 @@ func newSelfUpdateConfig(version string, client *http.Client) (updater.Config, e
 	}, nil
 }
 
+// The self-update client times each phase of a fetch on its own and the whole
+// transfer generously. The client the GitHub provider builds when handed none
+// (providers/github/github.go:98-101 at wails/v3 v3.0.0-beta.22) has one
+// 30-second total that also covers reading the body, and that cannot carry
+// the 23,473,152-byte v0.33.2 exe over a link slower than about 6.3 Mbps.
+// StartSelfUpdate runs under context.Background() (pkg/app/selfupdate.go), so
+// the transfer budget is the only bound on a trickling download, and the
+// phase timeouts keep a dead server from holding a check for all of it.
+const (
+	selfUpdateDialTimeout           = 30 * time.Second
+	selfUpdateTLSHandshakeTimeout   = 30 * time.Second
+	selfUpdateResponseHeaderTimeout = 30 * time.Second
+	selfUpdateTransferBudget        = 30 * time.Minute
+)
+
 // selfUpdateTimeouts is the self-update client's time policy, held as data so
 // tests can run the production policy on a compressed clock.
 type selfUpdateTimeouts struct {
-	total time.Duration
+	dial, tlsHandshake, responseHeader, transfer time.Duration
 }
 
-// selfUpdateClientTimeouts is the policy of the client the GitHub provider
-// builds when it is handed none (providers/github/github.go:98-101 at
-// wails/v3 v3.0.0-beta.22).
-var selfUpdateClientTimeouts = selfUpdateTimeouts{total: 30 * time.Second}
+var selfUpdateClientTimeouts = selfUpdateTimeouts{
+	dial:           selfUpdateDialTimeout,
+	tlsHandshake:   selfUpdateTLSHandshakeTimeout,
+	responseHeader: selfUpdateResponseHeaderTimeout,
+	transfer:       selfUpdateTransferBudget,
+}
 
 func newSelfUpdateHTTPClient(timeouts selfUpdateTimeouts) *http.Client {
-	return &http.Client{Timeout: timeouts.total}
+	// A clone keeps net/http's proxy-from-environment, HTTP/2 and connection
+	// pooling; only the timeouts differ.
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.DialContext = (&net.Dialer{Timeout: timeouts.dial}).DialContext
+	transport.TLSHandshakeTimeout = timeouts.tlsHandshake
+	transport.ResponseHeaderTimeout = timeouts.responseHeader
+	return &http.Client{Timeout: timeouts.transfer, Transport: transport}
 }
 
 // wailsSelfUpdater adapts *updater.Updater onto the app.SelfUpdater

@@ -25,7 +25,11 @@ var NewSelfUpdateConfig = newSelfUpdateConfig
 // second of wall clock. A speedup of 1 is the production client.
 func NewSelfUpdateHTTPClient(speedup int) *http.Client {
 	scale := time.Duration(speedup)
+	production := selfUpdateClientTimeouts
 	return newSelfUpdateHTTPClient(selfUpdateTimeouts{
-		total: selfUpdateClientTimeouts.total / scale,
+		dial:           production.dial / scale,
+		tlsHandshake:   production.tlsHandshake / scale,
+		responseHeader: production.responseHeader / scale,
+		transfer:       production.transfer / scale,
 	})
 }
