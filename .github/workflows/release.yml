@@ -81,7 +81,15 @@ jobs:
       # Windows target is CGO_ENABLED=0.
       - uses: ./.github/actions/linux-webview-deps
 
+      # No shared mise cache. A tag run can restore any cache a push-to-main
+      # run saved, and those jobs run npm packages, test code and third-party
+      # actions before the cache is written. mise trusts a restored install
+      # without re-checking it (setup-mise's header explains how), so a
+      # tampered Go, wails3 or task there would build the shipped binary. The
+      # tools install fresh from mise.lock instead.
       - uses: ./.github/actions/wails-build-env
+        with:
+          cache: 'false'
 
       - name: Install makensis
         run: |
