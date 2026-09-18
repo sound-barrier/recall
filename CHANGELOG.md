@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.33.4](https://github.com/sound-barrier/recall/compare/v0.33.3...v0.33.4) (2026-09-18)
+
+
+### Build & Packaging
+
+* report production Go and TypeScript lines in task cloc ([9f33fd7](https://github.com/sound-barrier/recall/commit/9f33fd77040119454d2b3941e478a6240997e326))
+* **tools:** pin cloc in tools/ instead of Homebrew and apt ([f0307a3](https://github.com/sound-barrier/recall/commit/f0307a38f9b5305c1af4dcd90bc5ef2be6b7f9cd))
+
 ## [0.33.3](https://github.com/sound-barrier/recall/compare/v0.33.2...v0.33.3) (2026-09-17)
 
 
