@@ -1,0 +1,28 @@
+{
+  "screenshot_type": "rank",
+  "result": {
+    "playlist": "competitive",
+    "result": "defeat",
+    "hero": "juno",
+    "role": "support",
+    "rank": "platinum",
+    "level": 3,
+    "rank_progress": 8,
+    "change_percent": -30,
+    "sr": [
+      {
+        "hero": "juno",
+        "sr": 2253
+      },
+      {
+        "hero": "wuyang",
+        "sr": 2210
+      },
+      {
+        "hero": "mizuki",
+        "sr": 2086
+      }
+    ],
+    "rank_percentile": 49
+  }
+}
