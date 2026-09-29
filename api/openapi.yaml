@@ -2686,10 +2686,16 @@ paths:
         every ledgered failed screenshot still on disk under
         `screenshots/<filename>`, the app logs (`logs/recall.log` plus
         the rotated `.1` when present), and a root `manifest.json`
-        (`recall-diagnostic/v1`) carrying the app version, an
-        environment snapshot (OS/arch, Tesseract path + version), and
-        each failure's error, attempt count, and decoded image
-        resolution.
+        (`recall-diagnostic/v2`) carrying the app version, an
+        environment snapshot (OS/arch, Tesseract path + version +
+        installed languages), a parser fingerprint (output generation
+        and each roster YAML's source + SHA-256), and each failure's
+        error, attempt count, parked flag, and decoded image
+        resolution. The most recently failed files still on disk (up
+        to ten) are also re-parsed by the exporting build: the
+        manifest records that diagnosis (probe ladder, outcome, what
+        each OCR region read) and `debug/<filename>/` holds its crops
+        and readings.
 
         Deliberately excludes `settings.json` and the database — the
         bundle is for parser triage and stays safe to share. No request

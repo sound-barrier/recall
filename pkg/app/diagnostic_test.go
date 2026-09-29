@@ -65,7 +65,7 @@ func TestApp_ExportDiagnosticBundle_AssemblesLedgerLogsAndEnv(t *testing.T) {
 		} `json:"failures"`
 	}
 	mustNoErr(t, json.Unmarshal(manifestRaw, &m))
-	if m.Schema != "recall-diagnostic/v1" || m.Environment.OS == "" {
+	if m.Schema != "recall-diagnostic/v2" || m.Environment.OS == "" {
 		t.Errorf("manifest = schema %q os %q", m.Schema, m.Environment.OS)
 	}
 	if len(m.Failures) != 1 || m.Failures[0].Filename != "bad.png" || !m.Failures[0].Included {
