@@ -116,3 +116,4 @@ a folder silently regrows what it just shed.
 | 2026-08-31 | seasonal-recap-and-attachments | frontend/src/styles | 20 → 21 | `season-recap.css` — the standalone recap's geometry, beside `coach-sheet.css`, which cannot live in the app.css index either. |
 | 2026-08-31 | seasonal-recap-and-attachments | frontend/tests/e2e/dossier | 24 → 25 | `season-recap.spec.ts` — saved from Compare, but what it asserts is a season aggregate, and the page's offline-forever rules against the REAL stylesheets. |
 | 2026-09-28 | diagnostic-parse-failures | pkg/parser | 26 → 27 | `parse_history.go` — the career HISTORY list's probe; a new screenshot type, twin of `parse_allheroes.go`. |
+| 2026-09-28 | diagnostic-parse-failures | pkg/parser | 27 → 28 | `diagnose.go` — the probe ladder re-run with its intermediates kept, for the diagnostic bundle. |

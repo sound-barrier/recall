@@ -1,6 +1,8 @@
 package parser_test
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"sync"
@@ -179,4 +181,35 @@ func TestReload_SeasonsAlsoSwaps(t *testing.T) {
 	if !found {
 		t.Errorf("Seasons() does not contain the override after reload; got %+v", parser.Seasons())
 	}
+}
+
+// A diagnostic bundle has to say which roster data the parser ran with: a
+// stale or hand-edited override is a parse bug's likeliest non-code cause.
+func TestDataFiles_NamesEachYAMLsSourceAndHash(t *testing.T) {
+	tmp := t.TempDir()
+	override := []byte("tank:\n  - TestNewTank\nsupport: []\ndps: []\n")
+	if err := os.WriteFile(filepath.Join(tmp, "heroes.yaml"), override, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	swapDataDir(t, tmp)
+	if err := parser.Reload(); err != nil {
+		t.Fatalf("Reload: %v", err)
+	}
+
+	byName := map[string]parser.DataFile{}
+	for _, f := range parser.DataFiles() {
+		byName[f.Name] = f
+	}
+	heroes, maps := byName["heroes.yaml"], byName["maps.yaml"]
+	if heroes.Source != "override" || heroes.SHA256 != sha256Hex(override) {
+		t.Errorf("heroes.yaml = %+v, want override with the override's hash", heroes)
+	}
+	if maps.Source != "embedded" || len(maps.SHA256) != 64 {
+		t.Errorf("maps.yaml = %+v, want embedded with a sha256", maps)
+	}
+}
+
+func sha256Hex(b []byte) string {
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
 }

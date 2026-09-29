@@ -1,7 +1,9 @@
 package parser
 
 import (
+	"crypto/sha256"
 	_ "embed"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
@@ -122,6 +124,9 @@ type owDataset struct {
 	// overlapping the band. Dropped from the unrecognized-chip signal, because
 	// reporting it as unexplained would be false.
 	notModifiers []string
+
+	// dataFiles records, per YAML, which bytes this snapshot was built from.
+	dataFiles []DataFile
 
 	// Combined load error from this snapshot's construction. nil
 	// means every YAML loaded cleanly; non-nil means at least one
@@ -277,8 +282,10 @@ func Reload() error {
 func loadInto(ds *owDataset, name string, embedded []byte, fn func(*owDataset, []byte) error) error {
 	if user := tryUserBytes(name); user != nil {
 		if err := fn(ds, user); err == nil {
+			ds.dataFiles = append(ds.dataFiles, newDataFile(name, "override", user))
 			return nil
 		} else {
+			ds.dataFiles = append(ds.dataFiles, newDataFile(name, "embedded", embedded))
 			// User file failed parse — fall back to embedded but
 			// surface the user-side error so the UI can flag it.
 			if errEmb := fn(ds, embedded); errEmb != nil {
@@ -287,10 +294,31 @@ func loadInto(ds *owDataset, name string, embedded []byte, fn func(*owDataset, [
 			return fmt.Errorf("%s: user file invalid, fell back to embedded: %w", name, err)
 		}
 	}
+	ds.dataFiles = append(ds.dataFiles, newDataFile(name, "embedded", embedded))
 	if err := fn(ds, embedded); err != nil {
 		return fmt.Errorf("%s (embedded): %w", name, err)
 	}
 	return nil
+}
+
+// DataFile names one roster-data YAML the current dataset was built from:
+// Source is "embedded" (shipped in the binary) or "override" (a file in the
+// user data dir that parsed cleanly), and SHA256 hashes the bytes used.
+type DataFile struct {
+	Name   string `json:"name"`
+	Source string `json:"source"`
+	SHA256 string `json:"sha256"`
+}
+
+func newDataFile(name, source string, b []byte) DataFile {
+	sum := sha256.Sum256(b)
+	return DataFile{Name: name, Source: source, SHA256: hex.EncodeToString(sum[:])}
+}
+
+// DataFiles reports which bytes each roster YAML came from — a stale or
+// hand-edited override is a parse bug's likeliest non-code cause.
+func DataFiles() []DataFile {
+	return append([]DataFile(nil), loadDataset().dataFiles...)
 }
 
 // tryUserBytes returns the user override file bytes for `name` under
