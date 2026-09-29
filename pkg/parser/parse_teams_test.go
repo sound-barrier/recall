@@ -254,10 +254,11 @@ func TestOCRRowCells_EscalatesSegmentationOnlyUntilDigitsAppear(t *testing.T) {
 
 // The gray inverted crop sits the OW font's "5" on a mid-gray field where
 // Tesseract reads it as "3" (deaths) or "9" (a healing 3,572 stored as 3,972)
-// in every segmentation mode; a hard black-on-white binarization reads it
-// right. So the binarized read is the first rung, and when it yields digits
-// the gray ladder never runs.
-func TestOCRRowCells_BinarizedReadWinsOverTheGrayLadder(t *testing.T) {
+// in every segmentation mode. So the binarized read is the first rung, and
+// when it yields digits the gray ladder never runs. This pins that ORDER with
+// stubbed readings; whether the binarized read is actually right is pinned by
+// the TEAMS goldens, which a stub cannot speak to.
+func TestOCRRowCells_BinarizedReadIsConsultedBeforeTheGrayLadder(t *testing.T) {
 	calls := stubOCRTrace(t, map[string]string{
 		"col_d_bin": "5", "col_d": "3",
 	})
