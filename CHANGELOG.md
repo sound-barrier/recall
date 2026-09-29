@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.33.4](https://github.com/sound-barrier/recall/compare/v0.33.3...v0.33.4) (2026-09-29)
+
+
+### Features
+
+* **app:** log one line per parse run with its tally ([7e47912](https://github.com/sound-barrier/recall/commit/7e479124177ec57ff1638d3919c95fe66541764f))
+* **bundle:** make the diagnostic bundle self-diagnosing ([5a4d033](https://github.com/sound-barrier/recall/commit/5a4d0330f59f3f6abe47b4b3fd3f509a8979e32e))
+* **parser:** diagnose a screenshot with every intermediate kept ([c4a914f](https://github.com/sound-barrier/recall/commit/c4a914f4aa460884d848b9773a52c5ebcd7bb19d))
+
+
+### Bug Fixes
+
+* **app:** keep recognized non-match screens out of match data ([9436113](https://github.com/sound-barrier/recall/commit/943611390ea7a5b1242d62447f4c7c81060181ee))
+* **app:** log every parse run's outcome with a readable duration ([21ea8f5](https://github.com/sound-barrier/recall/commit/21ea8f535a79e0b933a8f02cf1158d7283d08a7d))
+* **applog:** keep writing the log file when stderr is gone ([b376dc0](https://github.com/sound-barrier/recall/commit/b376dc0d995e75965791eaa34b59ae5128a79e20))
+* **app:** retry parked failures once the parser that failed them changes ([9efffb2](https://github.com/sound-barrier/recall/commit/9efffb215915f58a04040869023d9d0974540b57))
+* **bundle:** name a debug dir only when a diagnosis wrote one ([af4d3b5](https://github.com/sound-barrier/recall/commit/af4d3b580839afba5024b012f393b2104d6adce9))
+* **parser:** binarize TEAMS stat cells before the gray OCR ladder ([c4ca9a9](https://github.com/sound-barrier/recall/commit/c4ca9a9a42f160ae25e3059ed245e8a091b2ade6))
+* **parser:** bound the TEAMS row search by the friendly table ([51f1c58](https://github.com/sound-barrier/recall/commit/51f1c5805a7cb845c5a85f03ee8a3284b7cc395f))
+* **parser:** bump the parser generation for the TEAMS and rank fixes ([b3c6d1a](https://github.com/sound-barrier/recall/commit/b3c6d1a2cfc6f2fe97c5bc0d28f2c018db15f2a2))
+* **parser:** find the TEAMS highlighted row below the image midline ([0cff823](https://github.com/sound-barrier/recall/commit/0cff8231097e5a86d5f8cbc1cc6228ff9b896af2))
+* **parser:** name a rejected override and find the language header ([1686b34](https://github.com/sound-barrier/recall/commit/1686b34a38975a4fdc2da0f91c7e2a759e112377))
+* **parser:** read a settled rank screen behind a bright hero model ([85d237a](https://github.com/sound-barrier/recall/commit/85d237aedbf1bb2a202efcee9b01d4312c610daa))
+* **parser:** recognize the career HISTORY list instead of failing it ([b0cacdf](https://github.com/sound-barrier/recall/commit/b0cacdf03f84f260d9ae06e1e5fed5ae9ead109f))
+* **parser:** upscale TEAMS cells bilinearly before the threshold ([0cf01de](https://github.com/sound-barrier/recall/commit/0cf01decfa060a5e2deb90743551953e0b8a3437))
+
+
+### Build & Packaging
+
+* **deps-dev:** Bump markdownlint-cli2 ([e326c7a](https://github.com/sound-barrier/recall/commit/e326c7afbf921b86d314130de6071f2baef6f471))
+* **deps:** Bump github.com/wailsapp/wails/v3 ([6716b69](https://github.com/sound-barrier/recall/commit/6716b6938404d22638603d21a4c6c5a44eed2334))
+* **deps:** Bump the actions group with 3 updates ([f951a95](https://github.com/sound-barrier/recall/commit/f951a955e0ec53f547bd3007181b69c476f98914))
+* report production Go and TypeScript lines in task cloc ([9f33fd7](https://github.com/sound-barrier/recall/commit/9f33fd77040119454d2b3941e478a6240997e326))
+* **tools:** pin cloc in tools/ instead of Homebrew and apt ([f0307a3](https://github.com/sound-barrier/recall/commit/f0307a38f9b5305c1af4dcd90bc5ef2be6b7f9cd))
+
+
+### Tests
+
+* **fixtures:** pin the six diagnostic-bundle captures as goldens ([a89c396](https://github.com/sound-barrier/recall/commit/a89c396c8fea9f4d3d3452eaabb66c3d8ce9903f))
+* **fixtures:** point the submodule at the merged fixture commit ([664c5c9](https://github.com/sound-barrier/recall/commit/664c5c91d9d212e6294ca0db2171bb8f87224253))
+* register the fake-Tesseract skips the new tests carry ([0925255](https://github.com/sound-barrier/recall/commit/0925255bcb3a9b0af277608c36112a0385014075))
+
 ## [0.33.3](https://github.com/sound-barrier/recall/compare/v0.33.2...v0.33.3) (2026-09-17)
 
 
