@@ -31,7 +31,13 @@ import "fmt"
 // 1: signed, nullable rank movement and progress (an unread pill stopped
 //
 //	claiming the rank moved by nothing).
-const Generation = 1
+//
+// 2: TEAMS stat cells read binarized (the OW font's 5 stopped reading as 3
+//
+//	or 9) from the whole highlighted row, found below the midline too; a
+//	rank card behind a bright hero model reads its tier, progress,
+//	percentile and SR cards instead of coming back empty.
+const Generation = 2
 
 type MatchResult struct {
 	Map string `json:"map"`
