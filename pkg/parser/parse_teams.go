@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"slices"
 )
 
 // parseTeams handles the in-game and post-match TEAMS screens: two team
@@ -42,13 +43,15 @@ func findHighlightedRowY(img image.Image) (int, int) {
 	rowAvg := blueRowAverages(img, W/8, W*9/16)
 
 	// Row height is roughly H/24 — shorter than a real row (~H/15), so the
-	// window fits inside one row without spanning two. The search stops at
-	// two-thirds of the image, NOT the midline: the VS divider sits near 58%
-	// of the height, so the fifth friendly row crosses H/2. Enemy rows are
-	// red and never pass the blue filter.
+	// window fits inside one row without spanning two. The search covers the
+	// friendly table only: the midline is NOT its edge (the VS divider sits
+	// near 58% of the height, so the fifth friendly row crosses H/2), and the
+	// enemy table's color is the player's to change, so "enemy rows are red"
+	// cannot bound it either.
 	rowHeight := max(H/24, 20)
+	top, bottom := friendlyTableSpan(rowAvg, max(H/40, 4))
 	bestSum, bestY := -1, -1
-	for y := 0; y+rowHeight < H*2/3; y++ {
+	for y := top; y+rowHeight <= bottom; y++ {
 		sum := 0
 		for k := range rowHeight {
 			sum += rowAvg[y+k]
@@ -59,11 +62,33 @@ func findHighlightedRowY(img image.Image) (int, int) {
 		}
 	}
 	if bestSum <= 0 {
-		// No blue anywhere: not a scoreboard, so decline rather than hand
-		// back an arbitrary window the column scan would read zeros from.
+		// No blue table: not a scoreboard, so decline rather than hand back
+		// an arbitrary window the column scan would read zeros from.
 		return -1, -1
 	}
 	return growToHighlightedBand(rowAvg, bestY, bestY+rowHeight, bestSum/rowHeight)
+}
+
+// friendlyTableSpan returns [top, bottom) of the first blue block — the
+// friendly table — ending where a run of at least gap non-table rows begins
+// (the VS divider). Row separators are a few pixels; the divider is far
+// taller than gap. (0, 0) when there is no blue at all.
+func friendlyTableSpan(rowAvg []int, gap int) (top, bottom int) {
+	top = slices.IndexFunc(rowAvg, func(v int) bool { return v > 0 })
+	if top < 0 {
+		return 0, 0
+	}
+	run := 0
+	for y := top; y < len(rowAvg); y++ {
+		if rowAvg[y] > 0 {
+			run = 0
+			continue
+		}
+		if run++; run == gap {
+			return top, y - gap + 1
+		}
+	}
+	return top, len(rowAvg)
 }
 
 // growToHighlightedBand widens [top, bot) while neighboring rows stay within
