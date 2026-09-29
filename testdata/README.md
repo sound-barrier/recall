@@ -174,6 +174,15 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
     each fall back to one on a miss.
 
     The golden is deliberately a PARTIAL: `rank`/`defeat` with an empty tier.
+  - **Occluded SETTLED screen, ×1** (2026-09-25 diagnostic bundle) — a
+    settled card behind a bright model, where even detection failed: the gray
+    RANK PROGRESS caption washed out, and only the white `HIGHER RANKED THAN`
+    caption survives (now a rank anchor). Every reader has a threshold
+    fallback that runs only when its first pass came back empty; the level is
+    read from the badge's hexagon numeral, gated on a settled caption. The
+    golden pins defeat / Platinum 3 / 8% / −30% / 49% / Juno 2253, Wuyang
+    2210, Mizuki 2086 — and leaves the SR *changes* unread, since the red
+    digits do not survive a threshold (the pixels show −8/−5/−4).
     `PLATINUM 5` is faint purple on the model's teal and survives no
     threshold, scale or PSM tried (a sweep over 4 bands × 5 thresholds × 3
     PSMs found nothing), so the row says what it read and stays silent about
@@ -214,6 +223,14 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
       and endorsement badges around names; the capturing player's team shows
       an all-zero E/A column pair (correct reads — silent zeros are what the
       parser must NOT confuse with failed reads).
+- [x] TEAMS — **user in the fifth friendly row at 1440p** (×3, 2026-09-25
+      diagnostic bundle): that row crosses the image midline, where the old
+      top-half-only search clamped the highlighted-row window to a sliver and
+      read 0–3 of the 6 columns. 2026.09.20 also pins a death count of **5**
+      that both the inverted-gray read ("3") and a nearest-neighbor
+      threshold ("2") got wrong; the cells now read through a bilinear upscale
+      before the threshold. (The JPG fixture's healing golden was corrected
+      from 3972 to the 3,572 its pixels show in the same change.)
 - [ ] in-game TAB screenshot (different layout, right panel populated)
 - [x] non-match screen → `history` — the career **HISTORY / Game Reports**
       browser (a list of past matches), recognized by its `RESETS EVERY PATCH`
@@ -221,8 +238,8 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
       row, no match data. This fixture used to pin `unknown`, but that was a
       pixel accident — `parseTeams` happened to find six zero-reading clusters
       on it, while two other HISTORY captures (2026-09 diagnostic bundle) made
-      it ERROR and parked in the failed-files ledger. A probe makes the outcome
-      deliberate.
+      it ERROR and parked in the failed-files ledger. Those two captures are
+      now fixtures as well (×3 in all). A probe makes the outcome deliberate.
 - [x] cross-capture-tool robustness — the same Ilios/Lucio match via Windows
       PrintScreen (low-quality JPG). TEAMS reads cleanly (9/10/5), but the
       SUMMARY performance card **over-reads eliminations as 74** on the noisy
