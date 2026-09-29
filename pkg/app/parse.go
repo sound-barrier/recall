@@ -224,7 +224,7 @@ func (a *App) parsedSkipSet(dirID int64, force bool) (skip, parked map[string]bo
 		}
 		// Best-effort like the other suppression loads: a load error means
 		// an empty set, and the files simply retry this run.
-		capReached, _ := a.store.LoadFailedFilenames(dirID, parkedAttemptCap)
+		capReached, _ := a.store.LoadFailedFilenames(dirID, parkedAttemptCap, parser.Generation)
 		for f := range capReached {
 			if !skip[f] {
 				parked[f] = true

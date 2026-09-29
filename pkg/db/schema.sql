@@ -593,7 +593,8 @@ CREATE TABLE IF NOT EXISTS failed_files (
   error TEXT NOT NULL DEFAULT '',
   attempts INTEGER NOT NULL DEFAULT 1,
   first_failed_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
-  last_failed_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+  last_failed_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  parser_generation INTEGER
 ) STRICT;
 -- statement-end
 
