@@ -55,6 +55,13 @@ func percentileCases() []percentileCase {
 			want: -1,
 		},
 		{
+			// The occluded-card threshold read clips the caption's first
+			// letter. RANKED THAN still pins the number to the caption.
+			name: "caption with its first letter clipped",
+			band: "WW ry 7 t © PAIN J ny 2a a oN \\vf Ci} RANK PROGRESS: IGHER RANKED THAN 49% €",
+			want: 49,
+		},
+		{
 			name: "empty band",
 			band: "",
 			want: -1,

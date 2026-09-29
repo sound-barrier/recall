@@ -43,22 +43,88 @@ func rankTierLevel(img image.Image, work string) (rank string, level int, bandTe
 			rank, level = r2, l2
 		}
 	}
+	if rank == "" {
+		if r, l, band, ok := rankTierOccluded(img, work, tierRect); ok {
+			return r, l, band
+		}
+	}
 	return rank, level, tierText
+}
+
+// settledRankCaptions are the captions only a SETTLED rank card carries; the
+// occluded tier read is gated on one of them.
+var settledRankCaptions = []string{"RANK PROGRESS", "RANKED THAN"}
+
+// rankTierOccluded reads the tier when a bright hero model behind the card
+// defeated both inverted passes (they read noise like "KED THAN 495"). Three
+// threshold reads, each chosen by sweeping thresholds and PSMs over the
+// 2026-09-24 occluded capture's crops:
+//
+//   - the band at 235 resolves the tier WORD ("PLATING" → platinum) but not
+//     its numeral, which reads with stray digits ("PLATING 34");
+//   - the level comes from the badge's hexagon numeral instead, which reads
+//     correctly at 200 on every settled capture in the corpus (1, 1, 2, 3);
+//   - the band at 220 is the only read that keeps the percentile's digits.
+//
+// The badge is where the SETTLED layout puts it, so the whole read is gated on
+// a settled caption: the placement layout draws its badge higher, and reading
+// that rect there would mint a division from the model's pixels. Anything the
+// reads do not confirm stays empty — ok is false and the caller keeps its
+// honest-empty result.
+func rankTierOccluded(img image.Image, work string, tierRect image.Rectangle) (rank string, level int, bandText string, ok bool) {
+	tierText, _ := ocrThreshold(img, tierRect, ocrSpec{workDir: work, name: "rank_tier_occluded", scale: 3, thresh: 235, psm: "6", whitelist: rankTierWhitelist})
+	if !containsAny(strings.ToUpper(tierText), settledRankCaptions) {
+		return "", 0, "", false
+	}
+	rank, _ = snapTier(strings.ToLower(tierText))
+	level = rankBadgeLevel(img, work)
+	if rank == "" || level == 0 {
+		return "", 0, "", false
+	}
+	pctText, _ := ocrThreshold(img, tierRect, ocrSpec{workDir: work, name: "rank_percentile_occluded", scale: 3, thresh: 220, psm: "6"})
+	return rank, level, pctText, true
+}
+
+// rankBadgeLevel reads the division numeral (1-5) from the settled card's
+// badge hexagon; 0 when it does not read.
+func rankBadgeLevel(img image.Image, work string) int {
+	bounds := img.Bounds()
+	W, H := bounds.Dx(), bounds.Dy()
+	badgeRect := image.Rect(W*47/100, H*52/100, W*53/100, H*62/100)
+	text, _ := ocrThreshold(img, badgeRect, ocrSpec{workDir: work, name: "rank_badge", scale: 3, thresh: 200, psm: "8", whitelist: "12345"})
+	text = strings.TrimSpace(text)
+	if len(text) != 1 {
+		return 0
+	}
+	level, err := strconv.Atoi(text)
+	if err != nil {
+		return 0
+	}
+	return level
+}
+
+func containsAny(s string, subs []string) bool {
+	for _, sub := range subs {
+		if strings.Contains(s, sub) {
+			return true
+		}
+	}
+	return false
 }
 
 var (
 	// Anchored on the WORDS, not on "some percentage in this band". The band
 	// also holds "RANK PROGRESS: 67%", which sits on the same row and would win
-	// a bare `(\d+)%` scan. RANKED is spelled loosely because the caption's tail
-	// clips at the crop's right edge ("HIGHER RANKED THAN 57% ¢") and OCR
-	// wobbles on the surrounding glyphs, but the two words either side of the
-	// number are what make the match unambiguous.
+	// a bare `(\d+)%` scan. RANKED THAN either side of the number is what makes
+	// the match unambiguous — no other caption on the card carries it. HIGHER
+	// is deliberately NOT required: the caption's first letters are the ones
+	// the occluded-card threshold read clips ("IGHER RANKED THAN 49%").
 	//
 	// [ \t] rather than \s, deliberately: \s matches a newline, so if the
 	// caption's own number were ever clipped away the match would jump to the
 	// NEXT OCR line and store whatever percentage began it — and the line
 	// above this one in the band is "RANK PROGRESS: 67%".
-	rankPercentileRe = regexp.MustCompile(`(?i)HIGHER[ \t]+RANKED[ \t]+THAN[ \t]+(\d{1,3})[ \t]*%`)
+	rankPercentileRe = regexp.MustCompile(`(?i)RANKED[ \t]+THAN[ \t]+(\d{1,3})[ \t]*%`)
 )
 
 // extractRankPercentile reads the season-4 "HIGHER RANKED THAN 57% OF PLAYERS"
