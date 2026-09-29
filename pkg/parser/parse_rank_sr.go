@@ -23,6 +23,14 @@ func rankSRPanel(img image.Image, work string, res *MatchResult) {
 	srRect := image.Rect(W*82/100, H*22/100, W*99/100, H*75/100)
 	srText, _ := ocrInverted(img, srRect, ocrSpec{workDir: work, name: "rank_sr", psm: "11", whitelist: ""})
 	res.SR = extractSR(srText)
+	if len(res.SR) == 0 {
+		// A bright hero model behind the cards inverts to noise. A 235
+		// threshold keeps the white hero names and SR digits; the red/green
+		// change digits do not survive it, so those changes stay unread (nil)
+		// rather than picking up a neighbor's stray digit.
+		occluded, _ := ocrThreshold(img, srRect, ocrSpec{workDir: work, name: "rank_sr_occluded", scale: 3, thresh: 235, psm: "11"})
+		res.SR = withoutChanges(extractSR(occluded))
+	}
 	if anyZeroSR(res.SR) {
 		backfillSRDigits(res.SR, img, work, W, H)
 	}
@@ -113,6 +121,13 @@ func asciiLower(s string) string {
 		}
 	}
 	return string(b)
+}
+
+func withoutChanges(srs []HeroSR) []HeroSR {
+	for i := range srs {
+		srs[i].Change = nil
+	}
+	return srs
 }
 
 func anyZeroSR(srs []HeroSR) bool {

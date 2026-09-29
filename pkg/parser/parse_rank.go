@@ -33,10 +33,16 @@ import (
 // Both placement anchors are matched because they are independent OCR risks on
 // the same screen: one is a long sentence that can garble mid-word, the other a
 // short label beside a digit pair.
+//
+// "RANKED THAN" is the settled screen's percentile caption (HIGHER RANKED THAN
+// 49% OF PLAYERS). RANK PROGRESS is set in gray, and when a bright hero model
+// sits behind the card it washes out in both probe passes; the percentile
+// caption is white-bold and survives the threshold pass.
 var rankScreenAnchors = []string{
 	"RANK PROGRESS",
 	"PLACEMENT PROGRESS",
 	"PREDICTED RANK",
+	"RANKED THAN",
 }
 
 // isRankScreenshot detects the post-match competitive rank screen, settled or

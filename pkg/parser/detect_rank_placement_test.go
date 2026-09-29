@@ -65,6 +65,27 @@ HIGHER RANKED THAN 57% ¢`})
 	}
 }
 
+// A bright hero model behind the card washes out the gray RANK PROGRESS
+// caption in both passes; the white-bold percentile caption is what survives
+// the threshold pass. Verbatim OCR from
+// "Overwatch 2 Screenshot 2026.09.24 - 21.14.15.53.png" (diagnostic bundle
+// 2026-09-25), which failed to parse on three attempts — the occluded pass's
+// tail only, since its leading garble trips the spell-check gate.
+func TestIsRankScreenshot_AcceptsAnOccludedScreenByItsPercentileCaption(t *testing.T) {
+	stubOCR(t, map[string]string{
+		"detect_rank":          "» \\\n\na \\ \\ :\n\nDe\n\n~\n\nIN\n\n¢\n\nyw @\n\nKED THAN 495\n\na",
+		"detect_rank_occluded": "8% |\nWW ° 7 4 BER RANKED THAN 496",
+	})
+
+	ok, err := parser.IsRankScreenshot(tinyImage(), t.TempDir())
+	if err != nil {
+		t.Fatalf("IsRankScreenshot: %v", err)
+	}
+	if !ok {
+		t.Error("occluded rank screen not detected — it falls through to parseTeams and fails")
+	}
+}
+
 // Widening a detector is how a classifier starts eating screens it should
 // leave alone, and rank runs FIRST in the probe ladder — anything it claims
 // never reaches the summary/personal/teams probes at all. These are the bands

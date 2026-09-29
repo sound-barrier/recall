@@ -40,8 +40,21 @@ func rankBannerResult(img image.Image, work string) string {
 	// recovers it. This matters more than a missing pill: on a placement screen
 	// there are no modifiers, so resultFromModifiers cannot cover for it and the
 	// row would carry no result at all.
-	occluded, _ := ocrThreshold(img, bannerRect, ocrSpec{workDir: work, name: "rank_banner_occluded", scale: 2, thresh: 180, psm: "11"})
-	return detectResult(occluded)
+	//
+	// One threshold does not fit every model: 180 reads the teal-lit placement
+	// capture but leaves a pale-blue backdrop's banner as noise ("NMDETITINIC"),
+	// which 200 resolves ("DEFERT"). 220 over-erodes it ("DEFFAT"), so the
+	// ladder stops at 200.
+	for _, rung := range []struct {
+		name   string
+		thresh uint8
+	}{{"rank_banner_occluded", 180}, {"rank_banner_occluded_200", 200}} {
+		occluded, _ := ocrThreshold(img, bannerRect, ocrSpec{workDir: work, name: rung.name, scale: 2, thresh: rung.thresh, psm: "11"})
+		if res := detectResult(occluded); res != "" {
+			return res
+		}
+	}
+	return ""
 }
 
 // rankProgressPct reads the rank-progress bar's "RANK PROGRESS: 21%" caption
@@ -54,14 +67,28 @@ func rankProgressPct(img image.Image, work string) *int {
 	W, H := bounds.Dx(), bounds.Dy()
 	progValRect := image.Rect(W*36/100, H*71/100, W*52/100, H*78/100)
 	progValText, _ := ocrRaw(img, progValRect, ocrSpec{workDir: work, name: "rank_progress", scale: 6, psm: "7", whitelist: "-0123456789%"})
-	if m := rankProgressRe.FindStringSubmatch(progValText); m != nil {
-		pct, _ := strconv.Atoi(m[1])
+	if pct, ok := rankProgressValue(progValText); ok {
+		return &pct
+	}
+	// Over a bright hero model the cyan value has no contrast left in a raw
+	// read; a threshold keeps its bright core.
+	occluded, _ := ocrThreshold(img, progValRect, ocrSpec{workDir: work, name: "rank_progress_occluded", scale: 6, thresh: 180, psm: "7", whitelist: "-0123456789%"})
+	if pct, ok := rankProgressValue(occluded); ok {
 		return &pct
 	}
 	// nil, not 0: 0% is the BOTTOM of a division, a real place to be. Returning
 	// it for "the caption did not read" would put a legitimate-looking value on
 	// a screen that never showed one.
 	return nil
+}
+
+func rankProgressValue(text string) (int, bool) {
+	m := rankProgressRe.FindStringSubmatch(text)
+	if m == nil {
+		return 0, false
+	}
+	pct, err := strconv.Atoi(m[1])
+	return pct, err == nil
 }
 
 // rankChangePct reads the signed rank-movement pill drawn inside the progress
