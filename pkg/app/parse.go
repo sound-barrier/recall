@@ -87,6 +87,7 @@ func (a *App) validateParsePreconditions() (string, error) {
 // completion the same way — the linchpin that lets the server return
 // 202 up-front instead of holding the request open for the whole run.
 func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir string) error {
+	started := time.Now()
 	// A force run (Re-parse All) rewrites every row from OCR — take a
 	// silent safety snapshot first (backup_auto.go; never blocks).
 	if force {
@@ -102,7 +103,7 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	if err != nil {
 		return err
 	}
-	parsed, _, err := a.parsedSkipSet(dirID, force)
+	parsed, parked, err := a.parsedSkipSet(dirID, force)
 	if err != nil {
 		return err
 	}
@@ -151,6 +152,13 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	a.optimizeAfterParse(len(st.matchesUpdated))
 	// Periodic safety net — writes a snapshot iff one is due (backup_scheduler.go).
 	a.maybeAutoBackup()
+	// One line per run, so a diagnostic bundle's log says whether a parse
+	// ran, what it skipped, and what it read — not only which files failed.
+	applog.Subsystem("parse").Info("parse run finished",
+		"force", force, "parsed", st.filesParsed, "failed", st.filesFailed,
+		"skipped", len(parsed), "parked", len(parked),
+		"matches_updated", len(st.matchesUpdated),
+		"duration", time.Since(started).Round(time.Millisecond))
 	// Authoritative completion signal for EVERY parse path. The frontend
 	// drives parseBusy off this (not a held-open request), and the watcher
 	// no longer emits it separately. The distinct-match count feeds the desktop
