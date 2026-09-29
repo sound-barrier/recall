@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"recall/pkg/db"
+	"recall/pkg/parser"
 )
 
 func (f *Fake) RecordFailedFile(filename string, dirID int64, errMsg string) error {
@@ -22,18 +23,19 @@ func (f *Fake) RecordFailedFile(filename string, dirID int64, errMsg string) err
 	row.Error = errMsg
 	row.Attempts++
 	row.LastFailedAt = now
+	row.ParserGeneration = parser.Generation
 	f.FailedFiles[filename] = row
 	return nil
 }
 
 // LoadFailedFilenames mirrors SQLStore: one folder's filenames at or
-// past minAttempts.
-func (f *Fake) LoadFailedFilenames(dirID int64, minAttempts int) (map[string]bool, error) {
+// past minAttempts, recorded under the given parser generation.
+func (f *Fake) LoadFailedFilenames(dirID int64, minAttempts, generation int) (map[string]bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	out := map[string]bool{}
 	for name, row := range f.FailedFiles {
-		if row.ScreenshotsDirID == dirID && row.Attempts >= minAttempts {
+		if row.ScreenshotsDirID == dirID && row.Attempts >= minAttempts && row.ParserGeneration == generation {
 			out[name] = true
 		}
 	}

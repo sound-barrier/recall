@@ -1,5 +1,7 @@
 package db
 
+import "recall/pkg/parser"
+
 // Failed-file ledger — per-file OCR failure records backing the Unknown
 // tab's "Failed to read" triage section and the diagnostic bundle. A row
 // exists while the file's most recent parse attempt failed; a later
@@ -8,30 +10,36 @@ package db
 // but once attempts reaches the app layer's cap the file is PARKED —
 // LoadFailedFilenames(cap) feeds it into the normal run's skip set so
 // the pending count stops promising work that will fail again. Re-parse
-// All bypasses the cap; Retry (deleting the row) resets it.
+// All bypasses the cap; Retry (deleting the row) resets it. Parking is a
+// verdict on the parser that failed the file: each row carries that
+// parser's generation, and only rows stamped with the generation asking
+// park, so an upgraded parser gets every parked file one more run.
 
 func (s *SQLStore) RecordFailedFile(filename string, dirID int64, errMsg string) error {
 	_, err := s.db.Exec(
-		`INSERT INTO failed_files (filename, screenshots_dir_id, error) VALUES (?, ?, ?)
+		`INSERT INTO failed_files (filename, screenshots_dir_id, error, parser_generation) VALUES (?, ?, ?, ?)
 		 ON CONFLICT(filename) DO UPDATE SET
 		   error              = excluded.error,
 		   screenshots_dir_id = excluded.screenshots_dir_id,
 		   attempts           = attempts + 1,
-		   last_failed_at     = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`,
-		filename, dirID, errMsg,
+		   last_failed_at     = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'),
+		   parser_generation  = excluded.parser_generation`,
+		filename, dirID, errMsg, parser.Generation,
 	)
 	return err
 }
 
 // LoadFailedFilenames returns one folder's filenames with attempts >=
-// minAttempts — the parked-set loader for the parse skip set's hot path.
+// minAttempts recorded under parser generation `generation` — the
+// parked-set loader for the parse skip set's hot path.
 // Dir-scoped for the same reason the parsed skip set is: filename is a
 // basename, and a failure recorded while a different folder was watched
 // must not park a same-named capture in this one.
-func (s *SQLStore) LoadFailedFilenames(dirID int64, minAttempts int) (map[string]bool, error) {
+func (s *SQLStore) LoadFailedFilenames(dirID int64, minAttempts, generation int) (map[string]bool, error) {
 	rows, err := s.db.Query(
-		`SELECT filename FROM failed_files WHERE screenshots_dir_id = ? AND attempts >= ?`,
-		dirID, minAttempts,
+		`SELECT filename FROM failed_files
+		 WHERE screenshots_dir_id = ? AND attempts >= ? AND parser_generation = ?`,
+		dirID, minAttempts, generation,
 	)
 	if err != nil {
 		return nil, err
@@ -56,7 +64,8 @@ func (s *SQLStore) RemoveFailedFile(filename string) error {
 // ListFailedFiles returns every failure row, most recently failed first.
 func (s *SQLStore) ListFailedFiles() ([]FailedFileRow, error) {
 	rows, err := s.db.Query(
-		`SELECT filename, screenshots_dir_id, error, attempts, first_failed_at, last_failed_at
+		`SELECT filename, screenshots_dir_id, error, attempts, first_failed_at, last_failed_at,
+		        COALESCE(parser_generation, 0)
 		 FROM failed_files ORDER BY last_failed_at DESC, filename ASC`,
 	)
 	if err != nil {
@@ -66,7 +75,7 @@ func (s *SQLStore) ListFailedFiles() ([]FailedFileRow, error) {
 	out := make([]FailedFileRow, 0)
 	for rows.Next() {
 		var r FailedFileRow
-		if err := rows.Scan(&r.Filename, &r.ScreenshotsDirID, &r.Error, &r.Attempts, &r.FirstFailedAt, &r.LastFailedAt); err != nil {
+		if err := rows.Scan(&r.Filename, &r.ScreenshotsDirID, &r.Error, &r.Attempts, &r.FirstFailedAt, &r.LastFailedAt, &r.ParserGeneration); err != nil {
 			return nil, err
 		}
 		out = append(out, r)

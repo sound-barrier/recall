@@ -304,7 +304,7 @@ type Store interface {
 	RecordFailedFile(filename string, dirID int64, errMsg string) error
 	RemoveFailedFile(filename string) error
 	ListFailedFiles() ([]FailedFileRow, error)
-	LoadFailedFilenames(dirID int64, minAttempts int) (map[string]bool, error)
+	LoadFailedFilenames(dirID int64, minAttempts, generation int) (map[string]bool, error)
 
 	// All-Heroes-screenshots surface — recognized-but-unstored skip list.
 	// The PERSONAL "All Heroes" aggregate view carries no data worth

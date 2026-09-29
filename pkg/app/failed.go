@@ -3,7 +3,9 @@ package app
 import (
 	"fmt"
 
+	"recall/pkg/db"
 	"recall/pkg/matchedit"
+	"recall/pkg/parser"
 )
 
 // parkedAttemptCap is how many failed parse attempts a file gets before
@@ -16,6 +18,15 @@ import (
 // of time. Re-parse All bypasses the cap; Retry deletes the ledger row,
 // which resets it.
 const parkedAttemptCap = 3
+
+// isParked reports whether normal runs skip a ledger row: at the cap, under
+// THIS parser (a failure is a verdict on the parser that produced it, so an
+// upgrade earns one more run), and with nothing stored in the row's own dir —
+// a degraded row has parent rows there and never parks. The skip set draws
+// the same line via LoadFailedFilenames.
+func isParked(r db.FailedFileRow, storedInDir map[string]bool) bool {
+	return r.Attempts >= parkedAttemptCap && r.ParserGeneration == parser.Generation && !storedInDir[r.Filename]
+}
 
 // FailedFile is the wire shape for one OCR-failure ledger row — the
 // Unknown tab's "Failed to read" triage section. Error carries the most
@@ -90,7 +101,7 @@ func (a *App) GetFailedFiles() ([]FailedFile, error) {
 			Filename:      r.Filename,
 			Error:         r.Error,
 			Attempts:      r.Attempts,
-			Parked:        r.Attempts >= parkedAttemptCap && !stored[r.Filename],
+			Parked:        isParked(r, stored),
 			FirstFailedAt: r.FirstFailedAt,
 			LastFailedAt:  r.LastFailedAt,
 		}

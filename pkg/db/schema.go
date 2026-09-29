@@ -67,6 +67,10 @@ var additiveColumns = []struct{ table, column, ddl string }{
 	{"coach_note_moments", "image_sha256", "TEXT"},
 	{"match_coach_note_moments", "image_sha256", "TEXT"},
 	{"self_review_note_moments", "image_sha256", "TEXT"},
+	// The parser generation whose run recorded the failure. NULL on a row
+	// from before the column: no parser can claim it, so it parks under
+	// none and gets one more run.
+	{"failed_files", "parser_generation", "INTEGER"},
 }
 
 // ensureAdditiveColumns adds any additiveColumns missing from an already-created

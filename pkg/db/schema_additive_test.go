@@ -18,6 +18,54 @@ func TestEnsureAdditiveColumns_AddsMissingColumnIdempotently(t *testing.T) {
 	mustNoErr(t, err)
 	defer func() { _ = d.Close() }()
 
+	createOldTables(t, d)
+
+	if has, err := db.ColumnExists(d, "summary_screenshots", "played_at_utc"); err != nil || has {
+		t.Fatalf("precondition: column should be absent (has=%v err=%v)", has, err)
+	}
+
+	if err := db.EnsureAdditiveColumns(d); err != nil {
+		t.Fatalf("ensureAdditiveColumns: %v", err)
+	}
+	for _, tbl := range []string{"summary_screenshots", "user_match_data"} {
+		assertHasColumn(t, d, tbl, "played_at_utc")
+	}
+	assertHasColumn(t, d, "failed_files", "parser_generation")
+	// An insert referencing the new column now works.
+	if _, err := d.Exec(`INSERT INTO summary_screenshots (filename, played_at_utc) VALUES ('a.png', '2026-01-15T19:00:00Z')`); err != nil {
+		t.Errorf("insert into added column: %v", err)
+	}
+
+	// The registry is walked whole, not just its first entry: a second table's
+	// column has to arrive too, or a later addition could silently do nothing.
+	assertHasColumn(t, d, "rank_screenshots", "rank_percentile")
+
+	// Idempotent: a second run is a no-op, not a "duplicate column" error.
+	if err := db.EnsureAdditiveColumns(d); err != nil {
+		t.Errorf("second ensure should be a no-op: %v", err)
+	}
+}
+
+// assertHasColumn fails unless table.column exists.
+func assertHasColumn(t *testing.T, d *sql.DB, table, column string) {
+	t.Helper()
+	has, err := db.ColumnExists(d, table, column)
+	if err != nil {
+		t.Errorf("%s.%s: %v", table, column, err)
+		return
+	}
+	if !has {
+		t.Errorf("%s.%s missing after ensureAdditiveColumns", table, column)
+	}
+}
+
+// createOldTables builds every table the additiveColumns registry names, each
+// in its pre-column shape. Every one must exist: ensureAdditiveColumns does
+// NOT skip a missing table — that would turn a typo'd table name into a
+// permanent silent no-op — so this fixture keeps pace with the registry.
+func createOldTables(t *testing.T, d *sql.DB) {
+	t.Helper()
+	var err error
 	// An "old" summary_screenshots without played_at_utc.
 	_, err = d.Exec(`CREATE TABLE summary_screenshots (
 		id INTEGER PRIMARY KEY, filename TEXT, date TEXT, finished_at TEXT)`)
@@ -69,40 +117,8 @@ func TestEnsureAdditiveColumns_AddsMissingColumnIdempotently(t *testing.T) {
 		mustNoErr(t, err)
 	}
 
-	if has, err := db.ColumnExists(d, "summary_screenshots", "played_at_utc"); err != nil || has {
-		t.Fatalf("precondition: column should be absent (has=%v err=%v)", has, err)
-	}
-
-	if err := db.EnsureAdditiveColumns(d); err != nil {
-		t.Fatalf("ensureAdditiveColumns: %v", err)
-	}
-	for _, tbl := range []string{"summary_screenshots", "user_match_data"} {
-		assertHasColumn(t, d, tbl, "played_at_utc")
-	}
-	// An insert referencing the new column now works.
-	if _, err := d.Exec(`INSERT INTO summary_screenshots (filename, played_at_utc) VALUES ('a.png', '2026-01-15T19:00:00Z')`); err != nil {
-		t.Errorf("insert into added column: %v", err)
-	}
-
-	// The registry is walked whole, not just its first entry: a second table's
-	// column has to arrive too, or a later addition could silently do nothing.
-	assertHasColumn(t, d, "rank_screenshots", "rank_percentile")
-
-	// Idempotent: a second run is a no-op, not a "duplicate column" error.
-	if err := db.EnsureAdditiveColumns(d); err != nil {
-		t.Errorf("second ensure should be a no-op: %v", err)
-	}
-}
-
-// assertHasColumn fails unless table.column exists.
-func assertHasColumn(t *testing.T, d *sql.DB, table, column string) {
-	t.Helper()
-	has, err := db.ColumnExists(d, table, column)
-	if err != nil {
-		t.Errorf("%s.%s: %v", table, column, err)
-		return
-	}
-	if !has {
-		t.Errorf("%s.%s missing after ensureAdditiveColumns", table, column)
-	}
+	// An "old" failed_files from before a failure named the parser behind it.
+	_, err = d.Exec(`CREATE TABLE failed_files (
+		filename TEXT PRIMARY KEY, attempts INTEGER NOT NULL DEFAULT 1)`)
+	mustNoErr(t, err)
 }

@@ -48,6 +48,9 @@ type FailedFileRow struct {
 	Attempts         int
 	FirstFailedAt    string
 	LastFailedAt     string
+	// ParserGeneration is parser.Generation as of the run that last failed
+	// this file; 0 for a row recorded before generations were stamped.
+	ParserGeneration int
 }
 
 // PlayModeState is one row of match_play_mode. `PlayMode` is the

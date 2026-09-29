@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"recall/pkg/db"
+	"recall/pkg/parser"
 )
 
 func TestSQLStore_RecordFailedFile_UpsertIncrementsAttempts(t *testing.T) {
@@ -164,12 +165,39 @@ func TestStoreContract_LoadFailedFilenames_FiltersByDirAndMinAttempts(t *testing
 			seedFailures(t, s, "thrice.png", dirID, 3)
 			seedFailures(t, s, "elsewhere.png", otherID, 3)
 
-			got, err := s.LoadFailedFilenames(dirID, 3)
+			got, err := s.LoadFailedFilenames(dirID, 3, parser.Generation)
 			if err != nil {
 				t.Fatalf("LoadFailedFilenames: %v", err)
 			}
 			if got["once.png"] || got["elsewhere.png"] || !got["thrice.png"] || len(got) != 1 {
 				t.Errorf("LoadFailedFilenames(dir, 3) = %v, want exactly thrice.png", got)
+			}
+		})
+	}
+}
+
+// Parking is a verdict on one parser. A file that failed three times under
+// the last parser has not failed under this one — the 2026-09-25 bundle's
+// captures sat parked until someone ran Re-parse All, while the build that
+// read them shipped. So a row parks only at the cap AND stamped with the
+// generation asking; an upgrade gives every parked file one more normal run.
+func TestStoreContract_FailedFiles_ParkOnlyUnderTheParserThatFailedThem(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			dirID := mustEnsureDir(t, s, "/screens/main")
+			seedFailures(t, s, "thrice.png", dirID, 3)
+
+			rows, err := s.ListFailedFiles()
+			mustNoErr(t, err)
+			if len(rows) != 1 || rows[0].ParserGeneration != parser.Generation {
+				t.Fatalf("ledger row = %+v, want it stamped with generation %d", rows, parser.Generation)
+			}
+			if got, _ := s.LoadFailedFilenames(dirID, 3, parser.Generation); !got["thrice.png"] {
+				t.Errorf("parked set under the failing parser = %v, want thrice.png", got)
+			}
+			if got, _ := s.LoadFailedFilenames(dirID, 3, parser.Generation+1); len(got) != 0 {
+				t.Errorf("parked set under a newer parser = %v, want none", got)
 			}
 		})
 	}
