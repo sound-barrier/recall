@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -169,8 +170,9 @@ func Run(pre image.Image, spec Spec) (string, error) {
 }
 
 // ListLanguages returns the language packs `tesseract --list-langs` reports,
-// in its order. The first line of its output is a header naming the tessdata
-// dir; every other non-empty line is one language.
+// in its order: every non-empty line after its "List of available languages"
+// header. The header is found, not assumed to be the first line — a build can
+// print a warning ahead of it.
 func ListLanguages() ([]string, error) {
 	bound := timeout()
 	ctx, cancel := context.WithTimeout(context.Background(), bound)
@@ -191,10 +193,20 @@ func ListLanguages() ([]string, error) {
 	if strings.TrimSpace(out) == "" {
 		out = stderr.String()
 	}
+	return languagesAfterHeader(out)
+}
+
+func languagesAfterHeader(out string) ([]string, error) {
 	lines := strings.Split(strings.ReplaceAll(out, "\r\n", "\n"), "\n")
+	header := slices.IndexFunc(lines, func(l string) bool {
+		return strings.HasPrefix(strings.TrimSpace(l), "List of available languages")
+	})
+	if header < 0 {
+		return nil, fmt.Errorf("tesseract --list-langs: no language list in %q", out)
+	}
 	var langs []string
-	for i, line := range lines {
-		if line = strings.TrimSpace(line); i > 0 && line != "" {
+	for _, line := range lines[header+1:] {
+		if line = strings.TrimSpace(line); line != "" {
 			langs = append(langs, line)
 		}
 	}
