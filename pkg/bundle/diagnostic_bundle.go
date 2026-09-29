@@ -91,7 +91,7 @@ type diagnosticTrace struct {
 	Error    string                `json:"error"`
 	Probes   []parser.ProbeStep    `json:"probes"`
 	OCR      map[string]string     `json:"ocr"`
-	DebugDir string                `json:"debug_dir"`
+	DebugDir string                `json:"debug_dir,omitempty"`
 }
 
 type diagnosticManifest struct {
@@ -209,16 +209,19 @@ func addDiagnosticTrace(zw *zip.Writer, in DiagnosticInputs, filename string) (*
 	if !ok || strings.ContainsAny(filename, `/\`) || strings.ContainsRune(filename, 0) {
 		return nil, nil
 	}
-	trace := &diagnosticTrace{Type: d.Type, Error: d.Error, Probes: d.Probes, OCR: d.OCR, DebugDir: "debug/" + filename}
+	trace := &diagnosticTrace{Type: d.Type, Error: d.Error, Probes: d.Probes, OCR: d.OCR}
 	names := make([]string, 0, len(d.Files))
 	for name := range d.Files {
-		names = append(names, name)
+		if !strings.ContainsAny(name, `/\`) {
+			names = append(names, name)
+		}
+	}
+	if len(names) == 0 {
+		return trace, nil // debug_dir stays empty: there is no folder to name
 	}
 	sort.Strings(names)
+	trace.DebugDir = "debug/" + filename
 	for _, name := range names {
-		if strings.ContainsAny(name, `/\`) {
-			continue
-		}
 		if err := bundleWriteRaw(zw, trace.DebugDir+"/"+name, d.Files[name], in.Now); err != nil {
 			return nil, fmt.Errorf("diagnostic bundle: write debug %s: %w", name, err)
 		}

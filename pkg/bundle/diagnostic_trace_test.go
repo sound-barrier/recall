@@ -112,3 +112,31 @@ func TestExportDiagnostic_CarriesTheParserFingerprint(t *testing.T) {
 		t.Errorf("tesseract languages = %v", m.Environment.TesseractLanguages)
 	}
 }
+
+// A file that never decoded has a diagnosis (its error is the finding) but no
+// crops. Its debug_dir must not name a folder the zip does not contain.
+func TestExportDiagnostic_NamesNoDebugDirWithoutFiles(t *testing.T) {
+	in := tracedInputs(t)
+	in.Diagnoses = map[string]parser.Diagnosis{
+		"corrupt.png": {Type: parser.TypeUnknown, Error: "decoding image: png: invalid format"},
+	}
+	data, err := bundle.ExportDiagnostic(in)
+	if err != nil {
+		t.Fatalf("ExportDiagnostic: %v", err)
+	}
+	var m traceManifest
+	if err := json.Unmarshal(readZip(t, data)["manifest.json"], &m); err != nil {
+		t.Fatalf("manifest decode: %v", err)
+	}
+	for _, f := range m.Failures {
+		if f.Filename != "corrupt.png" {
+			continue
+		}
+		if f.Diagnosis == nil || f.Diagnosis.Error == "" {
+			t.Fatalf("corrupt.png diagnosis = %+v, want its decode error", f.Diagnosis)
+		}
+		if f.Diagnosis.DebugDir != "" {
+			t.Errorf("debug_dir = %q for a diagnosis with no files", f.Diagnosis.DebugDir)
+		}
+	}
+}
