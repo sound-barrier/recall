@@ -21,4 +21,5 @@ rules:
         - jdx/mise-action
         - marocchino/sticky-pull-request-comment
         - ossf/scorecard-action
+        - signpath/github-action-submit-signing-request
         - softprops/action-gh-release
