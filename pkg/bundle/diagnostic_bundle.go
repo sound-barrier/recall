@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"recall/pkg/db"
+	"recall/pkg/parser"
 )
 
 // Diagnostic bundle — a ZIP the user attaches to a bug report (or hands
@@ -36,6 +37,17 @@ type DiagnosticEnv struct {
 	TesseractPath    string `json:"tesseract_path"`
 	TesseractVersion string `json:"tesseract_version"`
 	TesseractFound   bool   `json:"tesseract_found"`
+	// TesseractLanguages is `tesseract --list-langs`; empty when it could
+	// not be read. A missing "eng" explains an OCR that reads nothing.
+	TesseractLanguages []string `json:"tesseract_languages"`
+}
+
+// DiagnosticParser fingerprints the parser the exporting build runs: its
+// output generation and the roster data it loaded (and from where).
+type DiagnosticParser struct {
+	Generation int               `json:"generation"`
+	DataFiles  []parser.DataFile `json:"data_files"`
+	LoadError  string            `json:"load_error,omitempty"`
 }
 
 // DiagnosticInputs is everything ExportDiagnostic needs, pre-resolved.
@@ -50,6 +62,12 @@ type DiagnosticInputs struct {
 	Version     string
 	Env         DiagnosticEnv
 	Now         time.Time
+	// Parked marks the ledger rows normal runs no longer retry.
+	Parked map[string]bool
+	// Diagnoses holds a fresh re-parse per failed filename; a failure
+	// without one (past the app's cap, or not on disk) carries no trace.
+	Diagnoses map[string]parser.Diagnosis
+	Parser    DiagnosticParser
 }
 
 type diagnosticFailure struct {
@@ -61,6 +79,19 @@ type diagnosticFailure struct {
 	SourceDir     string `json:"source_dir"`
 	Resolution    string `json:"resolution"`
 	Included      bool   `json:"included"`
+	Parked        bool   `json:"parked"`
+	// Diagnosis is this build's re-parse of the file; nil when none ran.
+	Diagnosis *diagnosticTrace `json:"diagnosis"`
+}
+
+// diagnosticTrace is a Diagnosis as the manifest carries it: the crops and
+// readings themselves go under DebugDir in the zip.
+type diagnosticTrace struct {
+	Type     parser.ScreenshotType `json:"type"`
+	Error    string                `json:"error"`
+	Probes   []parser.ProbeStep    `json:"probes"`
+	OCR      map[string]string     `json:"ocr"`
+	DebugDir string                `json:"debug_dir"`
 }
 
 type diagnosticManifest struct {
@@ -68,6 +99,7 @@ type diagnosticManifest struct {
 	ExportedAt    string              `json:"exported_at"`
 	RecallVersion string              `json:"recall_version"`
 	Environment   DiagnosticEnv       `json:"environment"`
+	Parser        DiagnosticParser    `json:"parser"`
 	FailedCount   int                 `json:"failed_count"`
 	Failures      []diagnosticFailure `json:"failures"`
 	Logs          []string            `json:"logs"`
@@ -75,8 +107,9 @@ type diagnosticManifest struct {
 
 // ExportDiagnostic builds the ZIP in memory:
 //
-//	manifest.json          recall-diagnostic/v1 envelope
+//	manifest.json          recall-diagnostic/v2 envelope
 //	screenshots/<name>     each failed file still present on disk
+//	debug/<name>/<file>    each diagnosed file's crops + OCR readings
 //	logs/<basename>        each LogPaths entry that exists
 //
 // Missing screenshots and absent log files are skipped silently (the
@@ -92,6 +125,10 @@ func ExportDiagnostic(in DiagnosticInputs) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+		f.Parked = in.Parked[row.Filename]
+		if f.Diagnosis, err = addDiagnosticTrace(zw, in, row.Filename); err != nil {
+			return nil, err
+		}
 		failures = append(failures, f)
 	}
 	sort.Slice(failures, func(i, j int) bool { return failures[i].Filename < failures[j].Filename })
@@ -102,10 +139,11 @@ func ExportDiagnostic(in DiagnosticInputs) ([]byte, error) {
 	}
 
 	manifest := diagnosticManifest{
-		Schema:        "recall-diagnostic/v1",
+		Schema:        "recall-diagnostic/v2",
 		ExportedAt:    in.Now.UTC().Format(time.RFC3339),
 		RecallVersion: in.Version,
 		Environment:   in.Env,
+		Parser:        in.Parser,
 		FailedCount:   len(failures),
 		Failures:      failures,
 		Logs:          logs,
@@ -161,6 +199,31 @@ func addDiagnosticScreenshot(zw *zip.Writer, in DiagnosticInputs, row db.FailedF
 	}
 	f.Included = true
 	return f, nil
+}
+
+// addDiagnosticTrace writes one diagnosed file's work files under
+// debug/<filename>/ and returns its manifest entry; nil when the file was
+// not diagnosed or its name is unsafe as a zip path.
+func addDiagnosticTrace(zw *zip.Writer, in DiagnosticInputs, filename string) (*diagnosticTrace, error) {
+	d, ok := in.Diagnoses[filename]
+	if !ok || strings.ContainsAny(filename, `/\`) || strings.ContainsRune(filename, 0) {
+		return nil, nil
+	}
+	trace := &diagnosticTrace{Type: d.Type, Error: d.Error, Probes: d.Probes, OCR: d.OCR, DebugDir: "debug/" + filename}
+	names := make([]string, 0, len(d.Files))
+	for name := range d.Files {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		if strings.ContainsAny(name, `/\`) {
+			continue
+		}
+		if err := bundleWriteRaw(zw, trace.DebugDir+"/"+name, d.Files[name], in.Now); err != nil {
+			return nil, fmt.Errorf("diagnostic bundle: write debug %s: %w", name, err)
+		}
+	}
+	return trace, nil
 }
 
 // resolveFailedFileDir resolves the on-disk dir for a failed file's row —

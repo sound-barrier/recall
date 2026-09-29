@@ -142,7 +142,7 @@ func assertDiagnosticInventory(t *testing.T, entries map[string][]byte) {
 
 func assertDiagnosticManifestEnvelope(t *testing.T, m diagManifest) {
 	t.Helper()
-	if m.Schema != "recall-diagnostic/v1" {
+	if m.Schema != "recall-diagnostic/v2" {
 		t.Errorf("schema = %q", m.Schema)
 	}
 	if m.RecallVersion != "0.26.0-test" || m.FailedCount != 3 {
