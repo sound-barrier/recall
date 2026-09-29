@@ -55,8 +55,33 @@ func AttachFile(path string) (func() error, error) {
 	if err != nil {
 		return nil, fmt.Errorf("applog: open log file: %w", err)
 	}
-	initTo(io.MultiWriter(os.Stderr, f))
+	initTo(everySink{f, os.Stderr})
 	return f.Close, nil
+}
+
+// everySink writes each line to every sink, whatever the others do.
+// io.MultiWriter stops at the first failing writer, and a Windows release
+// build (-H windowsgui) launched without a console fails every stderr write
+// — with stderr listed first, the log file never received a line. The file
+// goes first regardless, and the write only fails when no sink took it.
+type everySink []io.Writer
+
+func (sinks everySink) Write(p []byte) (int, error) {
+	var firstErr error
+	delivered := false
+	for _, w := range sinks {
+		if _, err := w.Write(p); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		delivered = true
+	}
+	if !delivered {
+		return 0, firstErr
+	}
+	return len(p), nil
 }
 
 // initTo is Init's body against an arbitrary writer; Init keeps its

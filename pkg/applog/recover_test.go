@@ -77,6 +77,43 @@ func TestAttachFile_MirrorsLogLinesToDisk(t *testing.T) {
 	}
 }
 
+// A Windows release build links -H windowsgui, so a process launched from the
+// Start menu has no console and every write to stderr fails. io.MultiWriter
+// stops at the first failing writer, so with stderr listed first the file
+// never received a line — the 2026-09-25 diagnostic bundle's recall.log held
+// two lines from July and none of the parse failures logged since. A closed
+// file stands in for the missing console handle.
+func TestAttachFile_KeepsWritingTheFileWhenStderrIsDead(t *testing.T) {
+	_, dead, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	_ = dead.Close()
+	stderr := os.Stderr
+	os.Stderr = dead
+	path := filepath.Join(t.TempDir(), "recall.log")
+	closeFn, err := applog.AttachFile(path)
+	if err != nil {
+		os.Stderr = stderr
+		t.Fatalf("AttachFile: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = closeFn()
+		os.Stderr = stderr
+		applog.Init()
+	})
+
+	slog.Warn("parse failed", "filename", "a.png")
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read log file: %v", err)
+	}
+	if !strings.Contains(string(data), "parse failed") {
+		t.Errorf("a dead stderr starved the log file; got %q", string(data))
+	}
+}
+
 func TestAttachFile_RotatesOversizedLogOnAttach(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "recall.log")
