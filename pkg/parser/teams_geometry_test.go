@@ -67,37 +67,58 @@ func TestFindHighlightedRowY_NoBlueReturnsMinusOne(t *testing.T) {
 	fillRect(img, image.Rect(0, 0, W, H), black)
 	yTop, yBot := parser.FindHighlightedRowY(img)
 	if yTop != -1 || yBot != -1 {
-		// An all-black image has no blue pixels; the rowAvg slice
-		// stays zero everywhere. The sliding window picks the first
-		// window (y=0) but its sum is 0 — same as every other
-		// position. The function returns the lowest-y best.
-		// "No highlighted row" is signaled differently — by the
-		// caller noticing the row band is bordered by black on
-		// both sides. The function itself can still pick a
-		// (somewhat arbitrary) window when there's no blue at all.
-		// We just verify it returns a reasonable shape.
-		if yBot-yTop < 20 {
-			t.Errorf("returned a sub-rowHeight window even on no-blue input: yTop=%d yBot=%d", yTop, yBot)
-		}
+		t.Errorf("an image with no blue has no highlighted row, got %d..%d", yTop, yBot)
 	}
 }
 
-func TestFindHighlightedRowY_IgnoresBottomHalfOfImage(t *testing.T) {
-	// Paint a brighter blue band in the BOTTOM half — function should
-	// still NOT pick it, because the enemy-team table lives below the
-	// center divider and we explicitly clamp to the top half.
+func TestFindHighlightedRowY_FindsARowThatCrossesTheMidline(t *testing.T) {
+	// At 1440p the VS divider sits near 58% of the height, so the fifth
+	// friendly row straddles H/2 (a user on support 2 lands there). A
+	// top-half clamp saw only a sliver of it and every column scan failed.
 	const W, H = 960, 480
 	img := image.NewRGBA(image.Rect(0, 0, W, H))
 	fillRect(img, image.Rect(0, 0, W, H), black)
 	xMin, xMax := W/8, W*9/16
-	// Friendly (top) — baseline blue.
+	fillRect(img, image.Rect(xMin, 60, xMax, 220), tableBlue)
+	fillRect(img, image.Rect(xMin, 220, xMax, 268), highlightedBlue)
+
+	yTop, yBot := parser.FindHighlightedRowY(img)
+	if yTop != 220 || yBot != 268 {
+		t.Errorf("highlighted row = %d..%d, want the whole band 220..268", yTop, yBot)
+	}
+}
+
+func TestFindHighlightedRowY_CoversTheWholeRowNotJustTheSearchWindow(t *testing.T) {
+	// A scoreboard row is ~H/15 tall, the search window H/24. Returning the
+	// window alone put the digits against a cell edge, where Tesseract
+	// misreads them — the band returned must be the full highlighted row.
+	const W, H = 960, 480
+	img := image.NewRGBA(image.Rect(0, 0, W, H))
+	fillRect(img, image.Rect(0, 0, W, H), black)
+	xMin, xMax := W/8, W*9/16
+	fillRect(img, image.Rect(xMin, 40, xMax, 100), tableBlue)
+	fillRect(img, image.Rect(xMin, 100, xMax, 132), highlightedBlue)
+
+	yTop, yBot := parser.FindHighlightedRowY(img)
+	if yTop != 100 || yBot != 132 {
+		t.Errorf("highlighted row = %d..%d, want the whole band 100..132", yTop, yBot)
+	}
+}
+
+func TestFindHighlightedRowY_IgnoresTheBottomThirdOfImage(t *testing.T) {
+	// Enemy rows are red and never pass the blue filter; the bottom-third
+	// clamp is a backstop so nothing blue below the tables (menus, chat)
+	// can win the search.
+	const W, H = 960, 480
+	img := image.NewRGBA(image.Rect(0, 0, W, H))
+	fillRect(img, image.Rect(0, 0, W, H), black)
+	xMin, xMax := W/8, W*9/16
 	fillRect(img, image.Rect(xMin, 50, xMax, 90), tableBlue)
-	// Enemy (bottom) — brighter blue.
 	fillRect(img, image.Rect(xMin, 360, xMax, 400), highlightedBlue)
 
 	yTop, _ := parser.FindHighlightedRowY(img)
-	if yTop >= H/2 {
-		t.Errorf("findHighlightedRowY picked a y past the center divider (%d ≥ %d)", yTop, H/2)
+	if yTop >= H*2/3 {
+		t.Errorf("findHighlightedRowY picked a y in the bottom third (%d ≥ %d)", yTop, H*2/3)
 	}
 }
 

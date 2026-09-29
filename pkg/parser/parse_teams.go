@@ -31,23 +31,24 @@ func parseTeams(img image.Image, work string) (*MatchResult, error) {
 	return res, nil
 }
 
-// findHighlightedRowY locates the highlighted row's Y range by finding the
-// single-row-height Y window with the brightest blue background in the friendly
-// team table. The friendly team's rows all share a similar blue, but the user's
-// row is rendered in a brighter shade — so the row with the highest average
-// (G+B) is the highlighted one regardless of resolution or layout.
+// findHighlightedRowY locates the highlighted row's Y range. The friendly
+// team's rows all share a similar blue, but the user's row is rendered in a
+// brighter shade — so a single-row-height window with the highest average
+// (G+B) lands inside it regardless of resolution or layout, and the returned
+// range is that window grown to the whole highlighted band.
 func findHighlightedRowY(img image.Image) (int, int) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
 	rowAvg := blueRowAverages(img, W/8, W*9/16)
 
-	// Slide a single-row-height window and pick the position with highest
-	// average brightness. Row height is roughly H/24 — covers a single row but
-	// not multiple stacked rows. We only consider the top half of the image
-	// since the friendly team always sits above the center VS divider.
+	// Row height is roughly H/24 — shorter than a real row (~H/15), so the
+	// window fits inside one row without spanning two. The search stops at
+	// two-thirds of the image, NOT the midline: the VS divider sits near 58%
+	// of the height, so the fifth friendly row crosses H/2. Enemy rows are
+	// red and never pass the blue filter.
 	rowHeight := max(H/24, 20)
 	bestSum, bestY := -1, -1
-	for y := 0; y+rowHeight < H/2; y++ {
+	for y := 0; y+rowHeight < H*2/3; y++ {
 		sum := 0
 		for k := range rowHeight {
 			sum += rowAvg[y+k]
@@ -57,10 +58,26 @@ func findHighlightedRowY(img image.Image) (int, int) {
 			bestY = y
 		}
 	}
-	if bestY < 0 {
+	if bestSum <= 0 {
+		// No blue anywhere: not a scoreboard, so decline rather than hand
+		// back an arbitrary window the column scan would read zeros from.
 		return -1, -1
 	}
-	return bestY, bestY + rowHeight
+	return growToHighlightedBand(rowAvg, bestY, bestY+rowHeight, bestSum/rowHeight)
+}
+
+// growToHighlightedBand widens [top, bot) while neighboring rows stay within
+// 5% of the window's mean brightness. Returning the bare window put the digits
+// against a cell edge, where Tesseract misreads them (a clean 5 read as 3).
+func growToHighlightedBand(rowAvg []int, top, bot, windowMean int) (int, int) {
+	floor := windowMean * 95 / 100
+	for top > 0 && rowAvg[top-1] >= floor {
+		top--
+	}
+	for bot < len(rowAvg) && rowAvg[bot] >= floor {
+		bot++
+	}
+	return top, bot
 }
 
 // blueRowAverages computes, for each Y, the average (G+B) over
