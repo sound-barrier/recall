@@ -44,8 +44,8 @@ func upsertRowInSnapshot[T any](
 }
 
 // applyToSnapshot mirrors insertParsed's store write onto the carried
-// snapshot. all_heroes records only a skip-list filename — no match row
-// to mirror.
+// snapshot. all_heroes and history record only a skip-list filename — no
+// match row to mirror.
 func (st *parseRunState) applyToSnapshot(filename, key string, t parser.ScreenshotType, r *parser.MatchResult) {
 	// Mirror the store's sibling wipe first: a reclassified file must
 	// vanish from the old type's slice, or every match-updated event and
@@ -82,7 +82,7 @@ func (st *parseRunState) applyToSnapshot(filename, key string, t parser.Screensh
 			func(x db.RankRow) string { return x.Filename },
 			func(x db.RankRow) string { return x.ParsedAt },
 			func(x *db.RankRow, ts string) { x.ParsedAt = ts })
-	case parser.TypeAllHeroes:
+	case parser.TypeAllHeroes, parser.TypeHistory:
 	case parser.TypeUnknown:
 		st.snap.Unknowns = upsertRowInSnapshot(st.snap.Unknowns,
 			buildUnknownRow(filename, key, st.dirID), now,

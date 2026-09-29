@@ -160,7 +160,11 @@ pkg/db                                        37
 # under the player. A sibling of seasons.go in every way — same embed, same
 # publish-and-update path, same RFC 3339 parse — and a separate file because a
 # season and a patch are different facts that happen to share a shape.
-pkg/parser                                    26
+#
+# 26 -> 27 for parse_history.go, the probe for the career HISTORY list. A new
+# screenshot type is the textbook bump: the package already spells each
+# screen's probe + parser pair file-per-file (parse_allheroes.go is its twin).
+pkg/parser                                    27
 
 # pkg/fixtures — the seed generator: one plausible account, spelled
 # file-per-thing-it-generates (heroes, roles, annotations, chaos, the rank

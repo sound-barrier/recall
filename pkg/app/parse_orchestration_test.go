@@ -115,7 +115,9 @@ func TestApp_ParseScreenshots_DispatchesEachScreenshotType(t *testing.T) {
 		// all_heroes is recognized but deliberately stores no match row — only
 		// the skip-registry filename, so a re-parse does not re-OCR it.
 		parser.TypeAllHeroes: {&parser.MatchResult{AllHeroes: true}, func(f *dbtest.Fake) int { return len(f.AllHeroes) }},
-		parser.TypeUnknown:   {&parser.MatchResult{}, func(f *dbtest.Fake) int { return len(f.Unknowns) }},
+		// history is the same kind of recognized-skip registry entry.
+		parser.TypeHistory: {&parser.MatchResult{HistoryScreen: true}, func(f *dbtest.Fake) int { return len(f.History) }},
+		parser.TypeUnknown: {&parser.MatchResult{}, func(f *dbtest.Fake) int { return len(f.Unknowns) }},
 	}
 
 	// The vocabulary is the checklist: a seventh screenshot type fails here

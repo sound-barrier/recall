@@ -180,6 +180,7 @@ func TestStoreContract_ClearEmptiesEverySurfaceAndStaysUsable(t *testing.T) {
 			seedFullMatch(t, s, key, "a.png")
 			mustNoErr(t, s.AddIgnoredScreenshot("b.png"))
 			mustNoErr(t, s.UpsertAllHeroesScreenshot("all.png"))
+			mustNoErr(t, s.UpsertHistoryScreenshot("history.png"))
 
 			mustNoErr(t, s.Clear())
 
@@ -189,6 +190,18 @@ func TestStoreContract_ClearEmptiesEverySurfaceAndStaysUsable(t *testing.T) {
 				t.Fatalf("insert after Clear: %v", err)
 			}
 		})
+	}
+}
+
+// assertRecognizedRegistriesCleared checks the recognized-skip registries,
+// which a surviving Clear would leave skipping files forever.
+func assertRecognizedRegistriesCleared(t *testing.T, s db.Store) {
+	t.Helper()
+	if ah, _ := s.LoadAllHeroesFilenames(); len(ah) != 0 {
+		t.Errorf("all-heroes list survived Clear: %v", ah)
+	}
+	if h, _ := s.LoadHistoryFilenames(); len(h) != 0 {
+		t.Errorf("history list survived Clear: %v", h)
 	}
 }
 
@@ -203,9 +216,7 @@ func assertClearedSurfaces(t *testing.T, s db.Store) {
 	if names, _ := s.LoadIgnoredFilenames(); len(names) != 0 {
 		t.Errorf("ignored list survived Clear: %v", names)
 	}
-	if ah, _ := s.LoadAllHeroesFilenames(); len(ah) != 0 {
-		t.Errorf("all-heroes list survived Clear: %v", ah)
-	}
+	assertRecognizedRegistriesCleared(t, s)
 	if ud, _ := s.LoadAllUserMatchData(); len(ud) != 0 {
 		t.Errorf("user data survived Clear: %v", ud)
 	}

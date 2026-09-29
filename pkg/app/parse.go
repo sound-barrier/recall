@@ -203,14 +203,16 @@ func (a *App) parsedSkipSet(dirID int64, force bool) (skip, parked map[string]bo
 		if err != nil {
 			return nil, nil, err
 		}
-		// All-Heroes screens carry no stored parent row, so LoadAllFilenames
-		// misses them; union their recognized-skip list here so a normal
-		// re-parse doesn't re-OCR them. Skipped only on a normal run (not
-		// force): the recognition is automatic, so a full ReParseAll should
-		// reconsider it.
-		recognized, _ := a.store.LoadAllHeroesFilenames()
-		for f := range recognized {
-			skip[f] = true
+		// All-Heroes and history screens carry no stored parent row, so
+		// LoadFilenamesForDir misses them; union their recognized-skip
+		// registries here so a normal re-parse doesn't re-OCR them. Skipped
+		// only on a normal run (not force): the recognition is automatic, so
+		// a full ReParseAll should reconsider it.
+		for _, load := range []func() (map[string]bool, error){a.store.LoadAllHeroesFilenames, a.store.LoadHistoryFilenames} {
+			recognized, _ := load()
+			for f := range recognized {
+				skip[f] = true
+			}
 		}
 		// Best-effort like the other suppression loads: a load error means
 		// an empty set, and the files simply retry this run.
@@ -544,6 +546,12 @@ func (a *App) insertParsed(filename, key string, t parser.ScreenshotType, dirID 
 		// Record only the filename so the next parse run skips it (no re-OCR),
 		// without a garbage match row or an Unknown-tab entry.
 		return a.store.UpsertAllHeroesScreenshot(filename)
+	case parser.TypeHistory:
+		// Not a match screen: record only the filename, like all_heroes. It
+		// DOES evict sibling rows (above) — before its probe existed a history
+		// list could land on the Unknown tab by pixel accident, and that row
+		// must go once the screen is recognized.
+		return a.store.UpsertHistoryScreenshot(filename)
 	case parser.TypeUnknown:
 		return a.store.UpsertUnknown(buildUnknownRow(filename, key, dirID))
 	}

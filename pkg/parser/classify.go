@@ -1,7 +1,7 @@
 package parser
 
 // ScreenshotType is which of Overwatch's end-of-match screens a parse came
-// from. It is a named type rather than a bare string because its six values
+// from. It is a named type rather than a bare string because its values
 // are spelled across seven packages — table names, bundle sections, view
 // names, the per-type Upsert dispatch — and a bare string let a seventh
 // screen be added without any of them noticing (TECHNICAL_DEBT.md section 11).
@@ -13,6 +13,9 @@ const (
 	TypePersonal  ScreenshotType = "personal"
 	TypeRank      ScreenshotType = "rank"
 	TypeAllHeroes ScreenshotType = "all_heroes"
+	// TypeHistory is the career profile's match-history list: recognized so
+	// it is neither a failure nor an Unknown row, never parsed or stored.
+	TypeHistory ScreenshotType = "history"
 	// TypeUnknown is the parse that matched nothing. It is a real member of
 	// the vocabulary, not an error: unknown screenshots get a row, a table and
 	// a triage tab of their own.
@@ -24,7 +27,7 @@ const (
 // re-listing it — the parse-dispatch test covered four of these six for
 // months while its name promised all of them.
 var ScreenshotTypes = []ScreenshotType{
-	TypeAllHeroes, TypeRank, TypeSummary, TypeTeams, TypePersonal, TypeUnknown,
+	TypeAllHeroes, TypeHistory, TypeRank, TypeSummary, TypeTeams, TypePersonal, TypeUnknown,
 }
 
 // Classify infers the screenshot category from which fields the parser
@@ -60,6 +63,7 @@ var screenshotTypeChecks = []struct {
 	match func(*MatchResult) bool
 }{
 	{TypeAllHeroes, func(r *MatchResult) bool { return r.AllHeroes }},
+	{TypeHistory, func(r *MatchResult) bool { return r.HistoryScreen }},
 	// The parseRank marker outranks field sniffing: a rank screen whose
 	// tier OCR garbled still has rank-shaped partials (result pill,
 	// progress, SR cards) that would otherwise land it in summary/unknown.

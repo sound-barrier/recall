@@ -43,7 +43,8 @@ TEAMS has no `result` / `date` / `game_length`; a RANK has
 no `map` / combat stats; an `all_heroes` golden carries only the
 recognition marker (`all_heroes: true`), since the PERSONAL "All
 Heroes" aggregate is detected but its stats are deliberately not
-parsed. Showing only the fields a screenshot type
+parsed; a `history` golden likewise carries only `history: true`, since
+the career HISTORY list is not a match screen. Showing only the fields a screenshot type
 *can* populate keeps `0` / `""` from looking like "the parser saw
 0 deaths" when it actually means "this screen has no deaths to
 parse".
@@ -214,9 +215,14 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
       an all-zero E/A column pair (correct reads — silent zeros are what the
       parser must NOT confuse with failed reads).
 - [ ] in-game TAB screenshot (different layout, right panel populated)
-- [x] non-match screen → `unknown` — the career **HISTORY / Game Reports**
-      browser (a list of past matches). Guards that the classifier leaves
-      non-match screens on the Unknown tab rather than mis-parsing the list.
+- [x] non-match screen → `history` — the career **HISTORY / Game Reports**
+      browser (a list of past matches), recognized by its `RESETS EVERY PATCH`
+      caption and recorded in a skip registry: no failed-files row, no Unknown
+      row, no match data. This fixture used to pin `unknown`, but that was a
+      pixel accident — `parseTeams` happened to find six zero-reading clusters
+      on it, while two other HISTORY captures (2026-09 diagnostic bundle) made
+      it ERROR and parked in the failed-files ledger. A probe makes the outcome
+      deliberate.
 - [x] cross-capture-tool robustness — the same Ilios/Lucio match via Windows
       PrintScreen (low-quality JPG). TEAMS reads cleanly (9/10/5), but the
       SUMMARY performance card **over-reads eliminations as 74** on the noisy
