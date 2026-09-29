@@ -138,10 +138,12 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	// Stop button back to Run; skip the normal error return because the user
 	// asked for this.
 	if errors.Is(err, context.Canceled) {
+		st.logRun("parse run canceled", force, len(parked), started)
 		a.emitParseCanceled()
 		return nil
 	}
 	if err != nil {
+		st.logRun("parse run failed", force, len(parked), started, "err", err)
 		return err
 	}
 	// Only now, with the run's capture sets complete, can a re-captured
@@ -152,13 +154,7 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	a.optimizeAfterParse(len(st.matchesUpdated))
 	// Periodic safety net — writes a snapshot iff one is due (backup_scheduler.go).
 	a.maybeAutoBackup()
-	// One line per run, so a diagnostic bundle's log says whether a parse
-	// ran, what it skipped, and what it read — not only which files failed.
-	applog.Subsystem("parse").Info("parse run finished",
-		"force", force, "parsed", st.filesParsed, "failed", st.filesFailed,
-		"skipped", len(parsed), "parked", len(parked),
-		"matches_updated", len(st.matchesUpdated),
-		"duration", time.Since(started).Round(time.Millisecond))
+	st.logRun("parse run finished", force, len(parked), started)
 	// Authoritative completion signal for EVERY parse path. The frontend
 	// drives parseBusy off this (not a held-open request), and the watcher
 	// no longer emits it separately. The distinct-match count feeds the desktop
@@ -334,6 +330,20 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 	ev.HeroCorrections = st.heroCorrections
 	ev.MapCorrections = st.mapCorrections
 	a.emitParseProgress(ev)
+}
+
+// logRun leaves one line per run — finished, canceled or failed — so a
+// diagnostic bundle's log says whether a parse ran and what it read, not only
+// which files failed. parked counts this folder's files held back at the cap.
+// duration is text: the shipped log is JSON, where a time.Duration would be
+// bare nanoseconds.
+func (st *parseRunState) logRun(msg string, force bool, parked int, started time.Time, extra ...any) {
+	attrs := append([]any{
+		"force", force, "parsed", st.filesParsed, "failed", st.filesFailed,
+		"parked", parked, "matches_updated", len(st.matchesUpdated),
+		"duration", time.Since(started).Round(time.Millisecond).String(),
+	}, extra...)
+	applog.Subsystem("parse").Info(msg, attrs...)
 }
 
 // handleParseFailure skips insert/aggregate on a per-file parse failure but

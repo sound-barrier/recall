@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"log/slog"
 	"strings"
@@ -33,7 +34,7 @@ func captureAppLogs(t *testing.T) *lockedBuffer {
 	buf := &lockedBuffer{}
 	prev := slog.Default()
 	t.Cleanup(func() { slog.SetDefault(prev) })
-	slog.SetDefault(slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	slog.SetDefault(slog.New(slog.NewJSONHandler(buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
 	return buf
 }
 
@@ -55,19 +56,42 @@ func TestParseScreenshots_LogsOneLineWithTheRunTally(t *testing.T) {
 		t.Fatalf("ParseScreenshots: %v", err)
 	}
 
-	out := logs.String()
-	var line string
-	for l := range strings.SplitSeq(out, "\n") {
-		if strings.Contains(l, "parse run finished") {
-			line = l
-		}
-	}
-	if line == "" {
-		t.Fatalf("no parse-run line in the log:\n%s", out)
-	}
-	for _, want := range []string{"parsed=1", "failed=1", "force=false", "skipped=", "parked=", "duration="} {
+	line := logLine(t, logs.String(), "parse run finished")
+	// JSON, as the shipped log is: a time.Duration there is bare nanoseconds
+	// ("duration":2881000000) unless it is written as text.
+	for _, want := range []string{`"parsed":1`, `"failed":1`, `"force":false`, `"parked":0`, `"duration":"`} {
 		if !strings.Contains(line, want) {
-			t.Errorf("run line missing %q: %s", want, line)
+			t.Errorf("run line missing %s: %s", want, line)
 		}
 	}
+}
+
+// A run the user stops is a run too — without a line, a bundle's log cannot
+// show one started and was abandoned.
+func TestParseScreenshots_LogsACanceledRun(t *testing.T) {
+	a, _ := newParseReadyApp(t)
+	logs := captureAppLogs(t)
+	stubParse(t, func(progress parser.ProgressFunc) error {
+		progress(1, 2, "good.png", &parser.MatchResult{Result: "victory"}, nil)
+		return context.Canceled
+	})
+
+	if err := a.ParseScreenshots(); err != nil {
+		t.Fatalf("ParseScreenshots: %v", err)
+	}
+	line := logLine(t, logs.String(), "parse run canceled")
+	if !strings.Contains(line, `"parsed":1`) {
+		t.Errorf("canceled-run line missing its tally: %s", line)
+	}
+}
+
+func logLine(t *testing.T, out, msg string) string {
+	t.Helper()
+	for l := range strings.SplitSeq(out, "\n") {
+		if strings.Contains(l, msg) {
+			return l
+		}
+	}
+	t.Fatalf("no %q line in the log:\n%s", msg, out)
+	return ""
 }
