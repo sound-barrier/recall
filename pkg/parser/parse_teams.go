@@ -136,28 +136,47 @@ func ocrRowCells(img image.Image, yTop, yBot int, workDir string) ([6]int, error
 	margin := max(H/80, 8)
 	for i, col := range cols {
 		rect := image.Rect(col.Min.X-margin, yTop+1, col.Max.X+margin, yBot-1)
-		var nums []int
-		attempts := []struct{ psm, whitelist string }{
-			{"7", "0123456789,"},
-			{"10", "0123456789,"},
-			{"10", ""},
-			{"8", ""},
+		n, err := ocrStatCell(img, rect, workDir, cellNames[i])
+		if err != nil {
+			return out, fmt.Errorf("%s: %w", cellNames[i], err)
 		}
-		for _, a := range attempts {
-			text, err := ocrInverted(img, rect, ocrSpec{workDir: workDir, name: cellNames[i], psm: a.psm, whitelist: a.whitelist})
-			if err != nil {
-				return out, fmt.Errorf("%s: %w", cellNames[i], err)
-			}
-			nums = extractInts(text)
-			if len(nums) > 0 {
-				break
-			}
-		}
-		if len(nums) > 0 {
-			out[i] = nums[0]
-		}
+		out[i] = n
 	}
 	return out, nil
+}
+
+// grayCellAttempts is the inverted-gray segmentation ladder a stat cell falls
+// back to when the binarized read finds no digits.
+var grayCellAttempts = []struct{ psm, whitelist string }{
+	{"7", "0123456789,"},
+	{"10", "0123456789,"},
+	{"10", ""},
+	{"8", ""},
+}
+
+// ocrStatCell reads one stat cell, 0 when nothing yields a digit. The
+// binarized read goes first: on the inverted-gray crop Tesseract reads the OW
+// font's "5" as "3" or "9" in every segmentation mode, and a hard
+// black-on-white threshold (the white digits clear 150; the row blue does not)
+// reads it right.
+func ocrStatCell(img image.Image, rect image.Rectangle, workDir, name string) (int, error) {
+	text, err := ocrThreshold(img, rect, ocrSpec{workDir: workDir, name: name + "_bin", scale: 3, thresh: 150, psm: "7", whitelist: "0123456789,"})
+	if err != nil {
+		return 0, err
+	}
+	if nums := extractInts(text); len(nums) > 0 {
+		return nums[0], nil
+	}
+	for _, a := range grayCellAttempts {
+		text, err := ocrInverted(img, rect, ocrSpec{workDir: workDir, name: name, psm: a.psm, whitelist: a.whitelist})
+		if err != nil {
+			return 0, err
+		}
+		if nums := extractInts(text); len(nums) > 0 {
+			return nums[0], nil
+		}
+	}
+	return 0, nil
 }
 
 // findRowXExtent returns the X range over which the highlighted row's blue
