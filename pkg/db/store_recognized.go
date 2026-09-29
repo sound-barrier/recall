@@ -1,5 +1,7 @@
 package db
 
+import "strings"
+
 // Recognized-but-unstored skip registries. Some screens the parser recognizes
 // carry nothing worth storing as match data; the write path records only the
 // filename, and presence IS the recognized state — like ignored_screenshots it
@@ -19,6 +21,43 @@ package db
 // are cleared from these alongside the parent tables whenever it is
 // reclassified or dismissed, or a stale entry would keep skipping its re-OCR.
 var recognizedRegistryTables = []string{"all_heroes_screenshots", "history_screenshots"}
+
+// recognizedFilenamesSQL selects every filename in any recognized-skip
+// registry, for a NOT IN filter.
+func recognizedFilenamesSQL() string {
+	selects := make([]string, len(recognizedRegistryTables))
+	for i, t := range recognizedRegistryTables {
+		selects[i] = "SELECT filename FROM " + t
+	}
+	return strings.Join(selects, " UNION ")
+}
+
+// DeleteUnknownScreenshot retires the Unknown state of a file the parser now
+// recognizes as a non-match screen: its unknown_screenshots row, its own
+// pending ambiguity candidates, and the candidates of any key that row was
+// the last to back. Typed rows are never touched — they are data, and a
+// recognition that misfired must not cost them. Idempotent.
+func (s *SQLStore) DeleteUnknownScreenshot(filename string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	keys := map[string]bool{}
+	if err := collectMatchKeys(tx, "unknown_screenshots", filename, keys); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM unknown_screenshots WHERE filename = ?`, filename); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM ambiguous_candidates WHERE filename = ?`, filename); err != nil {
+		return err
+	}
+	if err := dropOrphanedCandidates(tx, keys); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
 
 func (s *SQLStore) UpsertAllHeroesScreenshot(filename string) error {
 	return s.upsertRecognized("all_heroes_screenshots", filename)

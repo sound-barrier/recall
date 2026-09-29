@@ -36,6 +36,7 @@ type storeLayers struct {
 	Ingested    map[string]db.IngestedFile
 	Failed      []db.FailedFileRow
 	AllHeroes   map[string]bool
+	History     map[string]bool
 	CoachLayer  map[string][]db.MatchCoachNote
 	Returns     []db.CoachReturn
 	Settings    app.Settings
@@ -76,6 +77,7 @@ func snapshotLayers(t *testing.T, a *app.App, s db.Store) storeLayers {
 		Ingested:    mustGet(s.LoadIngestedFiles()),
 		Failed:      mustGet(s.ListFailedFiles()),
 		AllHeroes:   mustGet(s.LoadAllHeroesFilenames()),
+		History:     mustGet(s.LoadHistoryFilenames()),
 		CoachLayer:  mustGet(s.LoadMatchCoachNotes()),
 		Returns:     mustGet(s.LoadCoachReturns()),
 		Settings:    *app.SettingsOf(a),
@@ -108,6 +110,7 @@ func seedCoachHistory(t *testing.T, s db.Store) {
 	mustNoErr(t, s.UpsertIngestedFile("coach-own.png", "hash-1", ""))
 	mustNoErr(t, s.RecordFailedFile("blurry.png", 0, "no text"))
 	mustNoErr(t, s.UpsertAllHeroesScreenshot("all-heroes.png"))
+	mustNoErr(t, s.UpsertHistoryScreenshot("history.png"))
 	_, err := s.UpsertMatchCoachNote(db.MatchCoachNote{
 		NoteID: "11111111-2222-4333-8444-555555555555", MatchKey: coachOwnMatch,
 		CoachName: "Wren", SessionDate: "2026-04-01", Text: "wider angles",

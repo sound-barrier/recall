@@ -285,25 +285,13 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 		Type:     parser.Classify(result),
 		Data:     result,
 	}
-	if parseErr != nil {
-		ev.Error = parseErr.Error()
-	}
-	// Skip insert/aggregate on per-file parse failure but still emit the
-	// progress event so the user sees an accurate file count. Record the
-	// failure in the ledger so the Unknown tab can triage it — a UX
-	// nicety, not a correctness invariant, so a store error only logs.
-	// The file is re-attempted next run, until the ledger row reaches
-	// parkedAttemptCap and normal runs park it.
 	if parseErr != nil || result == nil {
-		errMsg := "parser returned no result"
-		if parseErr != nil {
-			errMsg = parseErr.Error()
-		}
-		if err := a.store.RecordFailedFile(filename, st.dirID, errMsg); err != nil {
-			applog.Subsystem("parse").Warn("record failed file", "filename", filename, "err", err)
-		}
-		st.filesFailed++
-		a.emitParseProgress(ev)
+		st.handleParseFailure(filename, parseErr, ev)
+		return
+	}
+
+	if isRecognizedNonMatch(ev.Type) {
+		st.handleRecognized(filename, result, ev)
 		return
 	}
 
@@ -346,6 +334,25 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 	ev.HeroCorrections = st.heroCorrections
 	ev.MapCorrections = st.mapCorrections
 	a.emitParseProgress(ev)
+}
+
+// handleParseFailure skips insert/aggregate on a per-file parse failure but
+// still emits the progress event so the user sees an accurate file count. The
+// failure is ledgered so the Unknown tab can triage it — a UX nicety, not a
+// correctness invariant, so a store error only logs. The file is re-attempted
+// next run, until the ledger row reaches parkedAttemptCap and normal runs
+// park it.
+func (st *parseRunState) handleParseFailure(filename string, parseErr error, ev ParseProgressEvent) {
+	errMsg := "parser returned no result"
+	if parseErr != nil {
+		errMsg = parseErr.Error()
+		ev.Error = errMsg
+	}
+	if err := st.app.store.RecordFailedFile(filename, st.dirID, errMsg); err != nil {
+		applog.Subsystem("parse").Warn("record failed file", "filename", filename, "err", err)
+	}
+	st.filesFailed++
+	st.app.emitParseProgress(ev)
 }
 
 // recordLeakedFailure ledgers a file whose parse succeeded but whose
@@ -530,11 +537,9 @@ func (a *App) insertParsed(filename, key string, t parser.ScreenshotType, dirID 
 	// A re-parse can reclassify a file (a parser fix reading a screen that
 	// once stored as another type); wipe its rows from the sibling type
 	// tables first or the stale row aggregates beside the new one forever.
-	// EXCEPT toward all_heroes: it stores no data, only a skip-registry
-	// filename, so evicting a real typed row in its favor converts a probe
-	// false-positive into silent permanent loss (rowless, skip-listed, no
-	// ledger entry, and the deterministic misread repeats every re-parse).
-	if t != parser.TypeAllHeroes {
+	// EXCEPT toward a recognized non-match screen, which never evicts a typed
+	// row (parse_recognized.go says why).
+	if !isRecognizedNonMatch(t) {
 		if err := a.store.DeleteScreenshotSiblings(filename, t); err != nil {
 			return err
 		}
@@ -548,18 +553,11 @@ func (a *App) insertParsed(filename, key string, t parser.ScreenshotType, dirID 
 		return a.store.UpsertPersonal(buildPersonalRow(filename, key, dirID, r))
 	case parser.TypeRank:
 		return a.store.UpsertRank(buildRankRow(filename, key, dirID, r))
-	case parser.TypeAllHeroes:
-		// Recognized but intentionally not stored as match data: its combat
-		// totals duplicate the TEAMS screen and its card icons defeat the OCR.
-		// Record only the filename so the next parse run skips it (no re-OCR),
-		// without a garbage match row or an Unknown-tab entry.
-		return a.store.UpsertAllHeroesScreenshot(filename)
-	case parser.TypeHistory:
-		// Not a match screen: record only the filename, like all_heroes. It
-		// DOES evict sibling rows (above) — before its probe existed a history
-		// list could land on the Unknown tab by pixel accident, and that row
-		// must go once the screen is recognized.
-		return a.store.UpsertHistoryScreenshot(filename)
+	case parser.TypeAllHeroes, parser.TypeHistory:
+		// Recognized but not match data: only the filename is recorded, so
+		// the next parse run skips it (no re-OCR) without a garbage match row
+		// or an Unknown-tab entry.
+		return a.recordRecognized(filename, t)
 	case parser.TypeUnknown:
 		return a.store.UpsertUnknown(buildUnknownRow(filename, key, dirID))
 	}

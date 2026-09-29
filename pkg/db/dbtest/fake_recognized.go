@@ -34,6 +34,19 @@ func (f *Fake) LoadHistoryFilenames() (map[string]bool, error) {
 	return maps.Clone(nonNil(f.History)), nil
 }
 
+// DeleteUnknownScreenshot mirrors SQLStore: the file's Unknown row and its own
+// pending candidates go, plus the candidates of any key that row alone backed;
+// typed rows stay.
+func (f *Fake) DeleteUnknownScreenshot(filename string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	oldKeys := map[string]bool{}
+	f.Unknowns = deleteByFilename(f.Unknowns, filename, func(key string) { oldKeys[key] = true })
+	delete(f.Ambiguous, filename)
+	f.scrubDeadKeyCandidatesLocked(oldKeys)
+	return nil
+}
+
 func addRecognized(set map[string]bool, filename string) map[string]bool {
 	if set == nil {
 		set = map[string]bool{}

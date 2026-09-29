@@ -224,19 +224,20 @@ func (f *Fake) StaleParseCount(current int) (int, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	keys := map[string]struct{}{}
-	// Mirrors SQLStore's exclusion of all-heroes-registered files: their rows are
-	// deliberately kept but can never be improved by a re-parse.
-	skip := func(filename string) bool { return f.AllHeroes[filename] }
-	staleKeys(f.Summaries, current, keys, func(r db.SummaryRow) (string, int) {
-		if skip(r.Filename) {
+	// Mirrors SQLStore's exclusion of recognized-registry files, in every
+	// table: their rows are deliberately kept but a re-parse cannot improve
+	// them. (It once applied to summaries only, which the SQL never did.)
+	gen := func(filename, key string, g int) (string, int) {
+		if f.AllHeroes[filename] || f.History[filename] {
 			return "", current
 		}
-		return r.MatchKey, r.ParserGeneration
-	})
-	staleKeys(f.Teams, current, keys, func(r db.TeamsRow) (string, int) { return r.MatchKey, r.ParserGeneration })
-	staleKeys(f.Personals, current, keys, func(r db.PersonalRow) (string, int) { return r.MatchKey, r.ParserGeneration })
-	staleKeys(f.Ranks, current, keys, func(r db.RankRow) (string, int) { return r.MatchKey, r.ParserGeneration })
-	staleKeys(f.Unknowns, current, keys, func(r db.UnknownRow) (string, int) { return r.MatchKey, r.ParserGeneration })
+		return key, g
+	}
+	staleKeys(f.Summaries, current, keys, func(r db.SummaryRow) (string, int) { return gen(r.Filename, r.MatchKey, r.ParserGeneration) })
+	staleKeys(f.Teams, current, keys, func(r db.TeamsRow) (string, int) { return gen(r.Filename, r.MatchKey, r.ParserGeneration) })
+	staleKeys(f.Personals, current, keys, func(r db.PersonalRow) (string, int) { return gen(r.Filename, r.MatchKey, r.ParserGeneration) })
+	staleKeys(f.Ranks, current, keys, func(r db.RankRow) (string, int) { return gen(r.Filename, r.MatchKey, r.ParserGeneration) })
+	staleKeys(f.Unknowns, current, keys, func(r db.UnknownRow) (string, int) { return gen(r.Filename, r.MatchKey, r.ParserGeneration) })
 	return len(keys), nil
 }
 
