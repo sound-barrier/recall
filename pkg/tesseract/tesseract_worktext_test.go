@@ -66,3 +66,27 @@ func TestListLanguages_ReadsTheInstalledLanguages(t *testing.T) {
 		t.Errorf("languages = %v, want [eng osd]", langs)
 	}
 }
+
+// Older builds (and the stderr fallback) can put a warning line ahead of the
+// header; only the header line is skipped, never "whatever came first".
+func TestListLanguages_SkipsTheHeaderWhereverItIs(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake tesseract is a shell script")
+	}
+	bin := t.TempDir()
+	fake := filepath.Join(bin, "tesseract")
+	script := "#!/bin/sh\nprintf 'Warning: TESSDATA_PREFIX is set\\r\\nList of available languages in \"C:/tessdata/\" (1):\\r\\neng\\r\\n'\n"
+	if err := os.WriteFile(fake, []byte(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	tesseract.SetPath(fake)
+	t.Cleanup(func() { tesseract.SetPath("tesseract") })
+
+	langs, err := tesseract.ListLanguages()
+	if err != nil {
+		t.Fatalf("ListLanguages: %v", err)
+	}
+	if strings.Join(langs, ",") != "eng" {
+		t.Errorf("languages = %q, want [eng]", langs)
+	}
+}

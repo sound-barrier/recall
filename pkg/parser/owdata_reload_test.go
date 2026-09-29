@@ -213,3 +213,21 @@ func sha256Hex(b []byte) string {
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])
 }
+
+// An override that fails to parse falls back to the embedded bytes. Reporting
+// that as plain "embedded" would look exactly like having no override at all
+// — and a broken hand-edited override is the case the fingerprint exists for.
+func TestDataFiles_NamesARejectedOverride(t *testing.T) {
+	tmp := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmp, "maps.yaml"), []byte("control: [unterminated\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	swapDataDir(t, tmp)
+	_ = parser.Reload() // the rejected override is reported as an error too
+
+	for _, f := range parser.DataFiles() {
+		if f.Name == "maps.yaml" && f.Source != "embedded (override rejected)" {
+			t.Errorf("maps.yaml source = %q, want the fallback named", f.Source)
+		}
+	}
+}

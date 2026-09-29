@@ -285,7 +285,7 @@ func loadInto(ds *owDataset, name string, embedded []byte, fn func(*owDataset, [
 			ds.dataFiles = append(ds.dataFiles, newDataFile(name, "override", user))
 			return nil
 		} else {
-			ds.dataFiles = append(ds.dataFiles, newDataFile(name, "embedded", embedded))
+			ds.dataFiles = append(ds.dataFiles, newDataFile(name, "embedded (override rejected)", embedded))
 			// User file failed parse — fall back to embedded but
 			// surface the user-side error so the UI can flag it.
 			if errEmb := fn(ds, embedded); errEmb != nil {
@@ -302,8 +302,10 @@ func loadInto(ds *owDataset, name string, embedded []byte, fn func(*owDataset, [
 }
 
 // DataFile names one roster-data YAML the current dataset was built from:
-// Source is "embedded" (shipped in the binary) or "override" (a file in the
-// user data dir that parsed cleanly), and SHA256 hashes the bytes used.
+// Source is "embedded" (shipped in the binary), "override" (a file in the
+// user data dir that parsed cleanly), or "embedded (override rejected)" (an
+// override that failed to parse, replaced by the embedded bytes). SHA256
+// hashes the bytes used.
 type DataFile struct {
 	Name   string `json:"name"`
 	Source string `json:"source"`
