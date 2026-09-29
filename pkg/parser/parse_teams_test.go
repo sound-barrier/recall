@@ -248,7 +248,28 @@ func TestOCRRowCells_EscalatesSegmentationOnlyUntilDigitsAppear(t *testing.T) {
 		t.Errorf("col_e segmentation ladder = %v, want [7 10 10 8]", psms)
 	}
 	if n := len(callsNamed(*calls, "col_a")); n != 1 {
-		t.Errorf("col_a was OCR'd %d times; a cell that reads on the first attempt must not escalate", n)
+		t.Errorf("col_a was OCR'd %d times; a cell that reads on the first gray attempt must not escalate", n)
+	}
+}
+
+// The gray inverted crop sits the OW font's "5" on a mid-gray field where
+// Tesseract reads it as "3" (deaths) or "9" (a healing 3,572 stored as 3,972)
+// in every segmentation mode; a hard black-on-white binarization reads it
+// right. So the binarized read is the first rung, and when it yields digits
+// the gray ladder never runs.
+func TestOCRRowCells_BinarizedReadWinsOverTheGrayLadder(t *testing.T) {
+	calls := stubOCRTrace(t, map[string]string{
+		"col_d_bin": "5", "col_d": "3",
+	})
+	res, err := parser.ParseTeams(teamsBoard(), t.TempDir())
+	if err != nil {
+		t.Fatalf("ParseTeams: %v", err)
+	}
+	if res.Deaths != 5 {
+		t.Errorf("deaths = %d, want 5 from the binarized read", res.Deaths)
+	}
+	if n := len(callsNamed(*calls, "col_d")); n != 0 {
+		t.Errorf("gray ladder ran %d times after the binarized read found digits", n)
 	}
 }
 
