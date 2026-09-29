@@ -112,3 +112,27 @@ func TestDeleteScreenshotSiblings_ClearsAllHeroesRegistry(t *testing.T) {
 		})
 	}
 }
+
+// The history registry obeys the same rule: a file recognized as the career
+// HISTORY list, then reclassified by a later parser, must leave it.
+func TestDeleteScreenshotSiblings_ClearsHistoryRegistry(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			mustNoErr(t, s.UpsertHistoryScreenshot("h.png"))
+			mustNoErr(t, s.DeleteScreenshotSiblings("h.png", "teams"))
+			skips, err := s.LoadHistoryFilenames()
+			mustNoErr(t, err)
+			if skips["h.png"] {
+				t.Error("history registry must forget a reclassified file")
+			}
+			mustNoErr(t, s.UpsertHistoryScreenshot("keep.png"))
+			mustNoErr(t, s.DeleteScreenshotSiblings("keep.png", "history"))
+			skips, err = s.LoadHistoryFilenames()
+			mustNoErr(t, err)
+			if !skips["keep.png"] {
+				t.Error("history keepType must preserve the registry row")
+			}
+		})
+	}
+}

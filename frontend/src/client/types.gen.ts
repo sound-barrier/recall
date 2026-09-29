@@ -1938,6 +1938,10 @@ export type MatchAnnotation = {
  * the TEAMS screen and its stat-card icons defeat the OCR), so
  * it appears in the live parse-progress event but never in a
  * match's `source_types`.
+ * * `history` — the career profile's HISTORY → GAME REPORTS list.
+ * Not a match screen: recognized so it is neither a failure nor
+ * an Unknown row, and like `all_heroes` it appears only in the
+ * live parse-progress event.
  * * `unknown` — the OCR classifier couldn't pick a type from
  * the file. Surfaced in the Unknown tab for triage; the
  * row's per-screenshot data lives in `unknown_screenshots`
@@ -1945,7 +1949,7 @@ export type MatchAnnotation = {
  * or drop).
  *
  */
-export type ScreenshotType = 'summary' | 'teams' | 'personal' | 'rank' | 'all_heroes' | 'unknown';
+export type ScreenshotType = 'summary' | 'teams' | 'personal' | 'rank' | 'all_heroes' | 'history' | 'unknown';
 
 /**
  * All parsed data for a match, merged across its source files.

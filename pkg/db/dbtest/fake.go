@@ -82,6 +82,10 @@ type Fake struct {
 	// recorded it so the next parse run skips it. Mirrors Ignored's role.
 	AllHeroes map[string]bool
 
+	// History is the same recognized-skip set for the career HISTORY list —
+	// the Fake analog of the history_screenshots table.
+	History map[string]bool
+
 	// FailedFiles is the OCR-failure ledger keyed by filename — the Fake
 	// analog of the failed_files table. RecordFailedFile upserts
 	// (attempts+1, refreshed error/last_failed_at); RemoveFailedFile
@@ -407,6 +411,7 @@ func (f *Fake) Clear() error {
 	f.Ignored = nil
 	f.IgnoredAt = nil
 	f.AllHeroes = nil
+	f.History = nil
 	// The player's own moments are match history too — the SQL Clear wipes
 	// match_moments, and the Fake once did not, which no assertion noticed.
 	f.MatchMoments = nil

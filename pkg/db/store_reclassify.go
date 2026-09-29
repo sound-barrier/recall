@@ -8,7 +8,7 @@ import (
 )
 
 // screenshotTypeTables maps the storage-side screenshot type to the table
-// its rows live in. The all_heroes registry rides along: a stale row there
+// its rows live in. The recognized-skip registries ride along: a stale row there
 // makes future parse runs skip the file's re-OCR entirely, so a
 // reclassified screenshot must leave it too.
 var screenshotTypeTables = map[parser.ScreenshotType]string{
@@ -18,6 +18,7 @@ var screenshotTypeTables = map[parser.ScreenshotType]string{
 	parser.TypeRank:      "rank_screenshots",
 	parser.TypeUnknown:   "unknown_screenshots",
 	parser.TypeAllHeroes: "all_heroes_screenshots",
+	parser.TypeHistory:   "history_screenshots",
 }
 
 // DeleteScreenshotSiblings removes filename's rows from every screenshot
@@ -56,7 +57,7 @@ func (s *SQLStore) DeleteScreenshotSiblings(filename string, keepType parser.Scr
 }
 
 // DeleteScreenshotRows removes filename's rows from every screenshot
-// table (parents + the all_heroes registry; children CASCADE) plus the
+// table (parents + the recognized-skip registries; children CASCADE) plus the
 // file's own pending candidate set, in one transaction, and returns —
 // sorted — the match keys the delete left with zero parent rows. The
 // caller decides those keys' fate: the Dismiss path hard-deletes them so
@@ -84,7 +85,7 @@ func (s *SQLStore) DeleteScreenshotRows(filename string) ([]string, error) {
 			return nil, err
 		}
 	}
-	for _, t := range append(append([]string{}, parentTables...), "all_heroes_screenshots") {
+	for _, t := range append(append([]string{}, parentTables...), recognizedRegistryTables...) {
 		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
 		if _, err := tx.Exec(`DELETE FROM `+t+` WHERE filename = ?`, filename); err != nil {
 			return nil, err
@@ -123,9 +124,9 @@ func orphanedKeys(tx *sql.Tx, keys map[string]bool) ([]string, error) {
 }
 
 // deleteSiblingRows removes filename's rows from every screenshot table
-// (parents + the all_heroes registry) except keep's; children CASCADE.
+// (parents + the recognized-skip registries) except keep's; children CASCADE.
 func deleteSiblingRows(tx *sql.Tx, keep, filename string) error {
-	for _, t := range append(append([]string{}, parentTables...), "all_heroes_screenshots") {
+	for _, t := range append(append([]string{}, parentTables...), recognizedRegistryTables...) {
 		if t == keep {
 			continue
 		}

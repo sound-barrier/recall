@@ -195,6 +195,7 @@ func (s *SQLStore) Clear() error {
 		// history it describes silently withholds a screenshot forever.
 		"ingested_files",
 		"all_heroes_screenshots",
+		"history_screenshots",
 		"user_match_data",   // user_match_* children cascade on the match_key FK
 		"match_coach_notes", // tag children cascade
 		"coach_returns",     // coach_return_decisions cascade

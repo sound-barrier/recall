@@ -608,6 +608,16 @@ CREATE TABLE IF NOT EXISTS all_heroes_screenshots (
 ) STRICT;
 -- statement-end
 
+-- Recognized-but-unstored skip list for the career profile's HISTORY -> GAME
+-- REPORTS list. It is not a match screen, so the parser classifies it
+-- ("history") and extracts nothing; recording the filename keeps it out of the
+-- next OCR run, the failed-files ledger, and the Unknown tab.
+CREATE TABLE IF NOT EXISTS history_screenshots (
+  filename TEXT PRIMARY KEY,
+  recognized_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
+-- statement-end
+
 -- User match-data override layer. The single source for BOTH features:
 --   * editing an OCR match  -> a row with only the changed columns non-NULL
 --   * a hand-entered match  -> a row + children with NO screenshot rows anywhere

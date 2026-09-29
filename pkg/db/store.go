@@ -317,6 +317,11 @@ type Store interface {
 	UpsertAllHeroesScreenshot(filename string) error
 	LoadAllHeroesFilenames() (map[string]bool, error)
 
+	// History-screenshots surface — the same recognized-skip role for the
+	// career profile's HISTORY list, which is not a match screen at all.
+	UpsertHistoryScreenshot(filename string) error
+	LoadHistoryFilenames() (map[string]bool, error)
+
 	// Coaching surface — coach-authored notes keyed by player, the received
 	// layer keyed by match_key, staged returns, and the tracked-key
 	// registry. See store_coach.go.
@@ -487,9 +492,9 @@ func dirIDOrSentinel(n int64) int64 {
 }
 
 // staleParseTables are the pipeline parents whose rows carry a parser vintage.
-// ignored_screenshots and all_heroes_screenshots are deliberately absent: the
-// first is a user decision rather than parsed data, and the second stores only a
-// recognition marker there is nothing to re-read.
+// ignored_screenshots and the recognized-skip registries are deliberately
+// absent: the first is a user decision rather than parsed data, and the others
+// store only a recognition marker there is nothing to re-read.
 var staleParseTables = []string{
 	"summary_screenshots", "teams_screenshots",
 	"personal_screenshots", "rank_screenshots", "unknown_screenshots",

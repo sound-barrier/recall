@@ -127,6 +127,12 @@ type MatchResult struct {
 	// Parse-time only — never stored; mirrors the AllHeroes marker.
 	RankScreen bool `json:"rank_screen,omitempty"`
 
+	// HistoryScreen marks the career profile's HISTORY → GAME REPORTS list —
+	// not a match screen, so nothing is parsed from it, but recognizing it
+	// keeps it out of the failed-files ledger and the Unknown tab. The write
+	// path records only its filename so the next run skips it.
+	HistoryScreen bool `json:"history_screen,omitempty"`
+
 	// Warnings records non-fatal degradations of a parse that still
 	// SUCCEEDED — a stat cell whose OCR failed, a hero card that resolved a
 	// name but lost its timing. The screenshot is stored (a missing stat must

@@ -2,7 +2,7 @@ package dbtest
 
 // Reclassification hygiene — the Fake analog of SQLStore's
 // DeleteScreenshotSiblings. Mirrors its contract: drop filename from every
-// screenshot surface except keepType's, including the AllHeroes skip set.
+// screenshot surface except keepType's, including the recognized-skip sets.
 
 import (
 	"slices"
@@ -34,12 +34,15 @@ func (f *Fake) DeleteScreenshotSiblings(filename string, keepType parser.Screens
 	if keepType != "all_heroes" {
 		delete(f.AllHeroes, filename)
 	}
+	if keepType != "history" {
+		delete(f.History, filename)
+	}
 	f.scrubDeadKeyCandidatesLocked(oldKeys)
 	return nil
 }
 
 // DeleteScreenshotRows mirrors SQLStore's contract: drop filename's rows
-// from every screenshot surface (including the AllHeroes registry) and
+// from every screenshot surface (including the recognized-skip sets) and
 // its own pending candidate set — never IngestedFiles, whose cascade
 // would unregister byte-identical copies — returning, sorted, the keys
 // left with no parent rows.
@@ -54,6 +57,7 @@ func (f *Fake) DeleteScreenshotRows(filename string) ([]string, error) {
 	f.Ranks = deleteByFilename(f.Ranks, filename, collect)
 	f.Unknowns = deleteByFilename(f.Unknowns, filename, collect)
 	delete(f.AllHeroes, filename)
+	delete(f.History, filename)
 	delete(f.Ambiguous, filename)
 	f.scrubDeadKeyCandidatesLocked(touched)
 	orphans := []string{}

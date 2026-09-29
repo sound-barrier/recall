@@ -140,22 +140,25 @@ func TestStoreContract_DeleteScreenshotRows_DropsCandidatesReferencingAnEmptiedK
 	}
 }
 
-func TestStoreContract_DeleteScreenshotRows_ClearsAllHeroesRegistration(t *testing.T) {
+func TestStoreContract_DeleteScreenshotRows_ClearsRecognizedRegistrations(t *testing.T) {
 	for _, impl := range storeImpls {
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
 			mustNoErr(t, s.UpsertAllHeroesScreenshot("ah.png"))
+			mustNoErr(t, s.UpsertHistoryScreenshot("h.png"))
 
-			orphans, err := s.DeleteScreenshotRows("ah.png")
-			mustNoErr(t, err)
-
-			if len(orphans) != 0 {
-				t.Errorf("orphans = %v, want none for a registry-only file", orphans)
+			for _, f := range []string{"ah.png", "h.png"} {
+				orphans, err := s.DeleteScreenshotRows(f)
+				mustNoErr(t, err)
+				if len(orphans) != 0 {
+					t.Errorf("%s: orphans = %v, want none for a registry-only file", f, orphans)
+				}
 			}
-			ah, err := s.LoadAllHeroesFilenames()
-			mustNoErr(t, err)
-			if ah["ah.png"] {
+			if ah, _ := s.LoadAllHeroesFilenames(); ah["ah.png"] {
 				t.Errorf("all_heroes registration survived; the file would stay skip-listed")
+			}
+			if h, _ := s.LoadHistoryFilenames(); h["h.png"] {
+				t.Errorf("history registration survived; the file would stay skip-listed")
 			}
 		})
 	}

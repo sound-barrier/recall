@@ -56,6 +56,8 @@ var (
 	IsSummaryScreenshot   = isSummaryScreenshot
 	IsRankScreenshot      = isRankScreenshot
 	IsPersonalScreenshot  = isPersonalScreenshot
+	IsHistoryScreenshot   = isHistoryScreenshot
+	ParseImage            = parseImage
 	ParseRank             = parseRank
 	ExtractRankPercentile = extractRankPercentile
 	SignedPct             = signedPct

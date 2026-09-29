@@ -118,6 +118,13 @@ type AllHeroesGolden struct {
 	AllHeroes bool `json:"all_heroes"`
 }
 
+// HistoryGolden is the golden projection of the recognized-but-unparsed
+// career HISTORY list: only the recognition marker, since nothing on the
+// screen is match data.
+type HistoryGolden struct {
+	History bool `json:"history"`
+}
+
 // ToGolden projects a parsed MatchResult onto its screenshot-type
 // golden shape. The returned `any` holds one of *SummaryGolden,
 // *TeamsGolden, *PersonalGolden, *RankGolden, or — when
@@ -163,6 +170,8 @@ func ToGolden(r *MatchResult) any {
 		}
 	case TypeAllHeroes:
 		return &AllHeroesGolden{AllHeroes: true}
+	case TypeHistory:
+		return &HistoryGolden{History: true}
 	case TypeRank:
 		return &RankGolden{
 			Playlist:       r.Playlist,

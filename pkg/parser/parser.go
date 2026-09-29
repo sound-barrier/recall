@@ -65,6 +65,12 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 		_ = os.MkdirAll(work, 0o700)
 	}
 
+	return parseImage(img, work)
+}
+
+// parseImage walks the probe ladder over a decoded image, writing Tesseract's
+// work files under work.
+func parseImage(img image.Image, work string) (*MatchResult, error) {
 	// A probe error that survived the OCR retry ladder means no probe result
 	// is trustworthy — fail the file (ledger + retry next run) instead of
 	// falling through to parseTeams, whose pixel heuristics can manufacture
@@ -82,8 +88,8 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 }
 
 // screenshotProbes is the ordered detector ladder ParseScreenshot walks:
-// rank → summary → all-heroes → personal, with parseTeams as the fall-through
-// when no probe claims the image. Each probe is one cheap, read-only OCR pass
+// rank → summary → all-heroes → personal → history, with parseTeams as the
+// fall-through when no probe claims the image. Each probe is one cheap, read-only OCR pass
 // over a small region; the first probe that answers yes owns the parse.
 var screenshotProbes = []struct {
 	name  string
@@ -94,6 +100,7 @@ var screenshotProbes = []struct {
 	{"summary", isSummaryScreenshot, parseSummary},
 	{"all-heroes", isAllHeroesScreenshot, parseAllHeroes},
 	{"personal", isPersonalScreenshot, parsePersonal},
+	{"history", isHistoryScreenshot, parseHistory},
 }
 
 // parseSingleFunc is the indirection ParseScreenshotsDir routes each file
