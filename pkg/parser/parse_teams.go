@@ -156,11 +156,12 @@ var grayCellAttempts = []struct{ psm, whitelist string }{
 
 // ocrStatCell reads one stat cell, 0 when nothing yields a digit. The
 // binarized read goes first: on the inverted-gray crop Tesseract reads the OW
-// font's "5" as "3" or "9" in every segmentation mode, and a hard
+// font's "5" as "3" or "9" in every segmentation mode, and a smoothed
 // black-on-white threshold (the white digits clear 150; the row blue does not)
-// reads it right.
+// reads it right. 150 is the middle of the 120-170 window that read every
+// TEAMS capture in the corpus.
 func ocrStatCell(img image.Image, rect image.Rectangle, workDir, name string) (int, error) {
-	text, err := ocrThreshold(img, rect, ocrSpec{workDir: workDir, name: name + "_bin", scale: 3, thresh: 150, psm: "7", whitelist: "0123456789,"})
+	text, err := ocrSmoothThreshold(img, rect, ocrSpec{workDir: workDir, name: name + "_bin", scale: 3, thresh: 150, psm: "7", whitelist: "0123456789,"})
 	if err != nil {
 		return 0, err
 	}

@@ -100,3 +100,15 @@ func ocrThreshold(img image.Image, rect image.Rectangle, spec ocrSpec) (string, 
 	pre := preprocessHighContrast(sub, spec.scale, spec.thresh)
 	return runTesseractWithRetry(pre, spec)
 }
+
+// ocrSmoothThreshold is ocrThreshold with a bilinear upscale ahead of the
+// cutoff, for small digits. Thresholding a nearest-neighbor upscale keeps the
+// source's pixel staircase on every stroke, and on the OW scoreboard font that
+// is enough to flip a digit: across the TEAMS corpus no single cutoff read
+// every cell (150 read a 5 as 2, 120-135 read 481 as 431), while the smoothed
+// upscale read all of them at every cutoff from 120 to 170.
+func ocrSmoothThreshold(img image.Image, rect image.Rectangle, spec ocrSpec) (string, error) {
+	sub := crop(img, rect)
+	pre := preprocessSmoothThreshold(sub, spec.scale, spec.thresh)
+	return runTesseractWithRetry(pre, spec)
+}
