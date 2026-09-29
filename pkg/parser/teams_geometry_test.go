@@ -37,16 +37,17 @@ var (
 
 func TestFindHighlightedRowY_PicksTheBrightestBlueBand(t *testing.T) {
 	// 960×480 canvas — tall enough that H/24 = 20 pixels exceeds the
-	// 20-pixel rowHeight floor. We paint two row bands in the top half:
-	// a baseline tableBlue band at y=40..70 and a brighter highlighted
-	// band at y=120..150. The function should pick the highlighted one.
+	// 20-pixel rowHeight floor. One contiguous table, as on a real
+	// scoreboard: baseline tableBlue rows at y=40..120 and a brighter
+	// highlighted row at y=120..150. The function should pick the
+	// highlighted one.
 	const W, H = 960, 480
 	img := image.NewRGBA(image.Rect(0, 0, W, H))
 	fillRect(img, image.Rect(0, 0, W, H), black)
 	// Each row must be wide enough across xMin..xMax (W/8 .. W*9/16)
 	// to clear the "blue pixels > (xMax-xMin)/4" gate.
 	xMin, xMax := W/8, W*9/16
-	fillRect(img, image.Rect(xMin, 40, xMax, 70), tableBlue)
+	fillRect(img, image.Rect(xMin, 40, xMax, 120), tableBlue)
 	fillRect(img, image.Rect(xMin, 120, xMax, 150), highlightedBlue)
 
 	yTop, yBot := parser.FindHighlightedRowY(img)
@@ -102,6 +103,26 @@ func TestFindHighlightedRowY_CoversTheWholeRowNotJustTheSearchWindow(t *testing.
 	yTop, yBot := parser.FindHighlightedRowY(img)
 	if yTop != 100 || yBot != 132 {
 		t.Errorf("highlighted row = %d..%d, want the whole band 100..132", yTop, yBot)
+	}
+}
+
+// Overwatch lets a player recolor the enemy UI, so "enemy rows are red" is
+// not a guarantee. The search is bounded by the friendly table itself — the
+// first blue block, which ends at the VS gap — so a blue enemy table, however
+// bright, cannot win.
+func TestFindHighlightedRowY_StaysInsideTheFriendlyTable(t *testing.T) {
+	const W, H = 960, 480
+	img := image.NewRGBA(image.Rect(0, 0, W, H))
+	fillRect(img, image.Rect(0, 0, W, H), black)
+	xMin, xMax := W/8, W*9/16
+	fillRect(img, image.Rect(xMin, 60, xMax, 200), tableBlue)
+	fillRect(img, image.Rect(xMin, 200, xMax, 240), highlightedBlue)
+	// VS gap 240..270, then an enemy table recolored an even brighter blue.
+	fillRect(img, image.Rect(xMin, 270, xMax, 320), color.RGBA{R: 20, G: 180, B: 240, A: 255})
+
+	yTop, yBot := parser.FindHighlightedRowY(img)
+	if yTop != 200 || yBot != 240 {
+		t.Errorf("highlighted row = %d..%d, want the friendly band 200..240", yTop, yBot)
 	}
 }
 
