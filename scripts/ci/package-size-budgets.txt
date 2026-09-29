@@ -164,7 +164,12 @@ pkg/db                                        37
 # 26 -> 27 for parse_history.go, the probe for the career HISTORY list. A new
 # screenshot type is the textbook bump: the package already spells each
 # screen's probe + parser pair file-per-file (parse_allheroes.go is its twin).
-pkg/parser                                    27
+#
+# 27 -> 28 for diagnose.go: ParseScreenshot's sibling entry point, the same
+# probe ladder re-run with its intermediates kept for a diagnostic bundle.
+# It is about the parse, so it belongs beside it rather than in pkg/bundle,
+# which would have to reach into the ladder to trace it.
+pkg/parser                                    28
 
 # pkg/fixtures — the seed generator: one plausible account, spelled
 # file-per-thing-it-generates (heroes, roles, annotations, chaos, the rank

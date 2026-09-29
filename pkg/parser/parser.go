@@ -35,19 +35,9 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 	if _, err := exec.LookPath(tp); err != nil {
 		return nil, fmt.Errorf("tesseract not available at %q — configure the binary in Settings → Engine (%w)", tp, err)
 	}
-	// #nosec G304 -- imagePath comes from ParseScreenshotsDir which builds
-	// it via filepath.Join(screenshotsDir, fileInfo.Name()); screenshotsDir
-	// passed validateScreenshotsDir at the boundary (safePathChars regex +
-	// filepath.Clean equality), and fileInfo.Name() is just a basename.
-	f, err := os.Open(imagePath)
+	img, err := decodeImage(imagePath)
 	if err != nil {
 		return nil, err
-	}
-	defer func() { _ = f.Close() }() // read-only file; close error not actionable
-
-	img, _, err := image.Decode(f)
-	if err != nil {
-		return nil, fmt.Errorf("decoding image: %w", err)
 	}
 
 	work := os.Getenv("RECALL_DEBUG_DIR")
@@ -68,15 +58,42 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 	return parseImage(img, work)
 }
 
+// decodeImage opens and decodes one screenshot.
+func decodeImage(imagePath string) (image.Image, error) {
+	// #nosec G304 -- imagePath comes from ParseScreenshotsDir which builds
+	// it via filepath.Join(screenshotsDir, fileInfo.Name()); screenshotsDir
+	// passed validateScreenshotsDir at the boundary (safePathChars regex +
+	// filepath.Clean equality), and fileInfo.Name() is just a basename. The
+	// diagnostic export resolves its paths the same way.
+	f, err := os.Open(imagePath)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }() // read-only file; close error not actionable
+
+	img, _, err := image.Decode(f)
+	if err != nil {
+		return nil, fmt.Errorf("decoding image: %w", err)
+	}
+	return img, nil
+}
+
 // parseImage walks the probe ladder over a decoded image, writing Tesseract's
 // work files under work.
 func parseImage(img image.Image, work string) (*MatchResult, error) {
+	return parseImageTraced(img, work, nil)
+}
+
+// parseImageTraced is parseImage recording each rung it asks into trace
+// (nil records nothing).
+func parseImageTraced(img image.Image, work string, trace *[]ProbeStep) (*MatchResult, error) {
 	// A probe error that survived the OCR retry ladder means no probe result
 	// is trustworthy — fail the file (ledger + retry next run) instead of
 	// falling through to parseTeams, whose pixel heuristics can manufacture
 	// an all-zero row from a rank screen's blue background.
 	for _, p := range screenshotProbes {
 		ok, err := p.probe(img, work)
+		recordProbe(trace, p.name, ok, err)
 		if err != nil {
 			return nil, fmt.Errorf("%s probe: %w", p.name, err)
 		}
@@ -84,6 +101,7 @@ func parseImage(img image.Image, work string) (*MatchResult, error) {
 			return p.parse(img, work)
 		}
 	}
+	recordProbe(trace, "teams", true, nil)
 	return parseTeams(img, work)
 }
 

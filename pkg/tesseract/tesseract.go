@@ -159,10 +159,44 @@ func Run(pre image.Image, spec Spec) (string, error) {
 		return "", fmt.Errorf("tesseract failed: %w (%s)", err, stderr.String())
 	}
 	out := stdout.String()
-	if os.Getenv("RECALL_DEBUG_DIR") != "" {
-		// #nosec G703 -- workDir is from RECALL_DEBUG_DIR when this branch
-		// is reachable (the env var also gates this whole block).
-		_ = os.WriteFile(filepath.Join(spec.WorkDir, spec.Name+".txt"), []byte(out), 0o600)
-	}
+	// The reading is kept beside its crop in every run, not only under
+	// RECALL_DEBUG_DIR: a diagnostic export re-parses into a work dir and
+	// ships both, and the text is what decided the parse. Best-effort — the
+	// reading is already in hand; a failed debug write must not fail the OCR.
+	// #nosec G703 -- same WorkDir/Name contract as the crop written above.
+	_ = os.WriteFile(filepath.Join(spec.WorkDir, spec.Name+".txt"), []byte(out), 0o600)
 	return out, nil
+}
+
+// ListLanguages returns the language packs `tesseract --list-langs` reports,
+// in its order. The first line of its output is a header naming the tessdata
+// dir; every other non-empty line is one language.
+func ListLanguages() ([]string, error) {
+	bound := timeout()
+	ctx, cancel := context.WithTimeout(context.Background(), bound)
+	defer cancel()
+	// #nosec G204,G702 -- same validated-at-the-boundary binary path as Run.
+	cmd := exec.CommandContext(ctx, Path(), "--list-langs")
+	cmd.WaitDelay = bound
+	HideWindow(cmd)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("tesseract --list-langs: %w (%s)", err, stderr.String())
+	}
+	// Tesseract 5 prints the list to stdout; the Windows build this reports
+	// on could not be checked here, so an empty stdout falls back to stderr
+	// rather than reporting no languages at all.
+	out := stdout.String()
+	if strings.TrimSpace(out) == "" {
+		out = stderr.String()
+	}
+	lines := strings.Split(strings.ReplaceAll(out, "\r\n", "\n"), "\n")
+	var langs []string
+	for i, line := range lines {
+		if line = strings.TrimSpace(line); i > 0 && line != "" {
+			langs = append(langs, line)
+		}
+	}
+	return langs, nil
 }
