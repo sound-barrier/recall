@@ -96,7 +96,12 @@
 # name to the tag, refuse a blank one, refuse while a coach session is open),
 # but it is a responsibility of its own and belongs beside the store family
 # it fronts rather than inside a match file it has nothing to do with.
-pkg/app                                       52
+# 53: parse_recognized.go — the one policy for screens the parser recognizes
+# but that are not match data (All-Heroes, the career HISTORY list): no
+# correlation, no typed-row eviction, the Unknown row retired. parse.go was
+# already past 500 lines, so the policy gets its own file rather than growing
+# it further.
+pkg/app                                       53
 
 # pkg/db — the SQLite store: schema + additive-column registry, the migration
 # engine, per-screenshot-type CRUD, the Store interface and its *SQLStore

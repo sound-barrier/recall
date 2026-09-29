@@ -88,3 +88,54 @@ func TestApp_ReParseAll_HistoryEvictsItsStaleUnknownRow(t *testing.T) {
 		t.Errorf("history filename not recorded after reclassification; got=%v", recognized)
 	}
 }
+
+// A probe false positive must not cost a real row. History is the last probe
+// before the TEAMS fall-through, so a misfire lands on a genuine scoreboard;
+// recognizing a file as history keeps its typed row — the rule All-Heroes
+// already follows — and only the Unknown row, which claims nothing, is retired.
+func TestApp_ReParseAll_HistoryKeepsATypedRow(t *testing.T) {
+	a, fake := newParseReadyApp(t)
+	const filename = "Overwatch 2 Screenshot 2026.09.20 - 02.28.09.26.png"
+	stubParse(t, func(progress parser.ProgressFunc) error {
+		progress(1, 1, filename, &parser.MatchResult{Eliminations: 14, Assists: 14, Deaths: 5, Damage: 6146}, nil)
+		return nil
+	})
+	if err := a.ParseScreenshots(); err != nil {
+		t.Fatalf("first ParseScreenshots: %v", err)
+	}
+	stubParse(t, func(progress parser.ProgressFunc) error {
+		progress(1, 1, filename, &parser.MatchResult{HistoryScreen: true}, nil)
+		return nil
+	})
+	if err := a.ReParseAll(); err != nil {
+		t.Fatalf("ReParseAll: %v", err)
+	}
+	if len(fake.Teams) != 1 {
+		t.Errorf("a history misfire evicted the typed TEAMS row: %d teams rows left", len(fake.Teams))
+	}
+}
+
+// A screen that is not a match has no match to correlate with. History lists
+// are captured in menus between games, so running it through the timestamp
+// window could tie two neighboring matches and file the list as an ambiguous
+// screenshot waiting on the user.
+func TestApp_ParseScreenshots_HistoryRaisesNoAmbiguity(t *testing.T) {
+	a, fake := newParseReadyApp(t)
+	const (
+		before  = "Overwatch 2 Screenshot 2026.09.20 - 02.00.00.00.png"
+		after   = "Overwatch 2 Screenshot 2026.09.20 - 02.03.00.00.png"
+		history = "Overwatch 2 Screenshot 2026.09.20 - 02.01.30.00.png"
+	)
+	stubParse(t, func(progress parser.ProgressFunc) error {
+		progress(1, 3, before, &parser.MatchResult{Result: "victory", Map: "Ilios"}, nil)
+		progress(2, 3, after, &parser.MatchResult{Result: "defeat", Map: "Dorado"}, nil)
+		progress(3, 3, history, &parser.MatchResult{HistoryScreen: true}, nil)
+		return nil
+	})
+	if err := a.ParseScreenshots(); err != nil {
+		t.Fatalf("ParseScreenshots: %v", err)
+	}
+	if cands := fake.Ambiguous[history]; len(cands) != 0 {
+		t.Errorf("history list filed as ambiguous between %d matches", len(cands))
+	}
+}

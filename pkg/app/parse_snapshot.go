@@ -44,16 +44,16 @@ func upsertRowInSnapshot[T any](
 }
 
 // applyToSnapshot mirrors insertParsed's store write onto the carried
-// snapshot. all_heroes and history record only a skip-list filename — no
-// match row to mirror.
+// snapshot. all_heroes and history record only a skip-list filename — the
+// one thing to mirror is the Unknown row they retire.
 func (st *parseRunState) applyToSnapshot(filename, key string, t parser.ScreenshotType, r *parser.MatchResult) {
 	// Mirror the store's sibling wipe first: a reclassified file must
 	// vanish from the old type's slice, or every match-updated event and
 	// every later file's correlation in this run folds the purged row
 	// (first-non-empty prefers it — it has the older parsed_at). Skipped
-	// for all_heroes, matching insertParsed: a data-less registry entry
-	// never evicts a typed row.
-	if t != parser.TypeAllHeroes {
+	// for a recognized non-match screen, matching insertParsed: it never
+	// evicts a typed row.
+	if !isRecognizedNonMatch(t) {
 		st.dropSiblingRowsFromSnapshot(filename, t)
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
@@ -83,6 +83,8 @@ func (st *parseRunState) applyToSnapshot(filename, key string, t parser.Screensh
 			func(x db.RankRow) string { return x.ParsedAt },
 			func(x *db.RankRow, ts string) { x.ParsedAt = ts })
 	case parser.TypeAllHeroes, parser.TypeHistory:
+		// recordRecognized retired the Unknown row; mirror that.
+		st.snap.Unknowns = dropRowByFilename(st.snap.Unknowns, filename, func(x db.UnknownRow) string { return x.Filename })
 	case parser.TypeUnknown:
 		st.snap.Unknowns = upsertRowInSnapshot(st.snap.Unknowns,
 			buildUnknownRow(filename, key, st.dirID), now,
