@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.33.5](https://github.com/sound-barrier/recall/compare/v0.33.4...v0.33.5) (2026-09-30)
+
+
+### Documentation
+
+* explain the signing setup and the Defender false positive ([6692b90](https://github.com/sound-barrier/recall/commit/6692b9078b702d8d9757fdaa48a808163ec11064))
+* publish a code signing policy and draft the SignPath application ([88678f4](https://github.com/sound-barrier/recall/commit/88678f42e2107ba0ef1fb5d5912b2b8c89cb8b9d))
+* **signing:** point the SignPath reviewer at the privacy policy ([9f715e2](https://github.com/sound-barrier/recall/commit/9f715e2e5feef7e571579fed0f5e8e9b31c18078))
+* **signing:** state that main now enforces pull requests ([6ff4d51](https://github.com/sound-barrier/recall/commit/6ff4d514231c1e5a45a49cdbe52654b0dcf49af1))
+
+
+### Build & Packaging
+
+* **deps:** Bump brace-expansion from 1.1.18 to 1.1.21 in /tools ([fc03056](https://github.com/sound-barrier/recall/commit/fc03056d16546c93886b3bf55939a183c3c683c3))
+* **windows:** split the exe and installer into separate tasks ([022b8c5](https://github.com/sound-barrier/recall/commit/022b8c5507d6cd144ad83de7490e9530642a6ad9))
+
+
+### CI
+
+* **release:** Authenticode-sign the Windows artifacts ([f07e69a](https://github.com/sound-barrier/recall/commit/f07e69a50bf5219f53d9c5f931454f6037a307ba))
+* **zizmor:** allow SignPath's signing-request action ([411abca](https://github.com/sound-barrier/recall/commit/411abca1d957bf170bd31fd9c5d4a77ded1f9a00))
+
 ## [0.33.4](https://github.com/sound-barrier/recall/compare/v0.33.3...v0.33.4) (2026-09-29)
 
 
