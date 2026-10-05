@@ -46,7 +46,7 @@ defineProps<{
 <style scoped>
 .orphan-drawer {
   border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-overlay);
   background: var(--surface);
 }
 

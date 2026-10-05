@@ -206,7 +206,7 @@ const popoverStyle = computed(() =>
   background: var(--surface);
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
-  border-radius: var(--radius);
+  border-radius: var(--radius-overlay);
   box-shadow: 0 22px 48px -20px rgb(var(--shadow-rgb) / 55%);
   overflow-y: auto;
   scrollbar-width: thin;

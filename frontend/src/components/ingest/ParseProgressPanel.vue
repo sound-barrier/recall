@@ -167,7 +167,7 @@ defineEmits<{
   margin-top: 0.85rem;
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-surface);
   background: var(--surface-2);
   overflow: hidden;
   animation: view-fade-in 240ms var(--easing-out) both;

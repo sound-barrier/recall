@@ -326,7 +326,7 @@ watch(trapOpen, async (open) => {
   overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--accent);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-overlay);
   padding: 1.6rem 1.6rem 1.3rem;
   box-shadow:
     0 22px 60px color-mix(in srgb, var(--bg) 70%, transparent),

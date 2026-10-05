@@ -148,7 +148,7 @@
   align-items: center;
   gap: 0.7rem;
   padding: 0.55rem 0.75rem;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-overlay);
   box-shadow: 0 12px 32px color-mix(in srgb, var(--bg) 55%, transparent);
   font-size: var(--type-md);
 }

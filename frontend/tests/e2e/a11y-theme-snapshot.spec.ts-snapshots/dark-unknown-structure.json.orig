@@ -1,6 +1,6 @@
 {
   "htmlAttr": {
-    "dataTheme": "day"
+    "dataTheme": "dark"
   },
   "activeTab": {
     "id": "tab-unknown",
@@ -11,41 +11,41 @@
   "mastheadPresent": true,
   "cssTokens": {
     "--accent": "#fa9c1b",
-    "--accent-text": "#8f4500",
-    "--accent-glow": "#fa9c1b73",
+    "--accent-text": "#fa9c1b",
+    "--accent-glow": "#fa9c1b80",
     "--accent-soft": "#fa9c1b38",
-    "--text": "#1a1a1a",
-    "--text-dim": "#4a4a4a",
-    "--text-faint": "#5c5a52",
-    "--text-mute": "#6a675c",
-    "--surface": "#f5f3ed",
-    "--surface-2": "#e8e5dd",
-    "--surface-3": "#dcd8cd",
-    "--bg": "#efede6",
-    "--border": "#4a4a4a",
-    "--border-soft": "#b9b3a5",
-    "--border-strong": "#2a2a2a",
-    "--win": "#0c6b32",
-    "--loss": "#a82a3d",
-    "--draw": "#7a5010",
-    "--tank": "#1f5491",
-    "--dps": "#c4451f",
-    "--support": "#1e6f3a",
-    "--identity-accent": "#9c4012",
-    "--primary-text-on-accent": "#1a0a00",
-    "--paper": "#f7efd6",
-    "--paper-2": "#efe4c0",
-    "--paper-rule": "#4a4a4a38",
-    "--paper-edge": "#4a4a4a",
-    "--ink": "#1f1a14",
-    "--ink-dim": "#4a4238",
-    "--ink-faint": "#5f5749",
-    "--paper-accent": "#8f4500",
-    "--paper-win": "#0a5a2a",
-    "--paper-loss": "#9c2537",
-    "--paper-draw": "#6f480e",
-    "--paper-focus": "#8f4500",
-    "--paper-scheme": "light"
+    "--text": "#fff",
+    "--text-dim": "#e0ddd6",
+    "--text-faint": "#c5c2bb",
+    "--text-mute": "#b0ada6",
+    "--surface": "#303030",
+    "--surface-2": "#353535",
+    "--surface-3": "#3a3a3a",
+    "--bg": "#2a2a2a",
+    "--border": "#fa9c1b",
+    "--border-soft": "#4a4a4a",
+    "--border-strong": "#fa3",
+    "--win": "#4dff8e",
+    "--loss": "#f9a",
+    "--draw": "#ffd34d",
+    "--tank": "#6ab8ff",
+    "--dps": "#ff8a66",
+    "--support": "#7dffac",
+    "--identity-accent": "#e59a45",
+    "--primary-text-on-accent": "#2a1a00",
+    "--paper": "#262019",
+    "--paper-2": "#1b1712",
+    "--paper-rule": "#f2ede124",
+    "--paper-edge": "#877e6a",
+    "--ink": "#f2ede1",
+    "--ink-dim": "#c2bbab",
+    "--ink-faint": "#a49c8c",
+    "--paper-accent": "#f2a862",
+    "--paper-win": "#74c894",
+    "--paper-loss": "#f295a3",
+    "--paper-draw": "#ddb968",
+    "--paper-focus": "#f2a862",
+    "--paper-scheme": "dark"
   },
   "designSystem": {
     "eyebrow": {
@@ -63,7 +63,7 @@
         "uppercase"
       ],
       "color": [
-        "rgb(92, 90, 82)"
+        "rgb(197, 194, 187)"
       ],
       "backgroundColor": [
         "rgba(0, 0, 0, 0)"
@@ -87,15 +87,15 @@
         "none"
       ],
       "color": [
-        "rgb(26, 26, 26)"
+        "rgb(255, 255, 255)"
       ],
       "backgroundColor": [
-        "rgb(245, 243, 237)",
+        "rgb(48, 48, 48)",
         "rgba(0, 0, 0, 0)"
       ],
       "borderRadius": [
         "0px",
-        "6px"
+        "3px"
       ]
     },
     "panel": {
@@ -130,13 +130,13 @@
         "uppercase"
       ],
       "color": [
-        "rgb(143, 69, 0)",
-        "rgb(26, 26, 26)",
-        "rgb(92, 90, 82)"
+        "rgb(197, 194, 187)",
+        "rgb(250, 156, 27)",
+        "rgb(255, 255, 255)"
       ],
       "backgroundColor": [
-        "rgb(232, 229, 221)",
-        "rgb(245, 243, 237)",
+        "rgb(48, 48, 48)",
+        "rgb(53, 53, 53)",
         "rgba(0, 0, 0, 0)"
       ],
       "borderRadius": [
@@ -159,10 +159,10 @@
         "uppercase"
       ],
       "color": [
-        "rgb(26, 10, 0)"
+        "rgb(42, 26, 0)"
       ],
       "backgroundColor": [
-        "rgb(122, 80, 16)"
+        "rgb(255, 211, 77)"
       ],
       "borderRadius": [
         "999px"
@@ -186,14 +186,14 @@
         "uppercase"
       ],
       "color": [
-        "rgb(12, 107, 50)",
-        "rgb(26, 26, 26)",
-        "rgb(92, 90, 82)"
+        "rgb(197, 194, 187)",
+        "rgb(255, 255, 255)",
+        "rgb(77, 255, 142)"
       ],
       "backgroundColor": [
-        "rgb(232, 229, 221)",
+        "rgb(53, 53, 53)",
         "rgba(0, 0, 0, 0)",
-        "rgba(12, 107, 50, 0.14)"
+        "rgba(77, 255, 142, 0.14)"
       ],
       "borderRadius": [
         "2px"
@@ -218,7 +218,7 @@
       ],
       "color": [
         "rgb(245, 243, 238)",
-        "rgb(26, 26, 26)"
+        "rgb(255, 255, 255)"
       ],
       "backgroundColor": [
         "rgba(0, 0, 0, 0)"

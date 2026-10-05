@@ -118,7 +118,7 @@
 .unknown-card {
   position: relative;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-surface);
   background: var(--surface);
   overflow: hidden;
   transition: border-color var(--duration-prompt) ease, background var(--duration-prompt) ease;

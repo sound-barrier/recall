@@ -315,7 +315,7 @@ const levelTitle = computed(() => {
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 4%, transparent) 0%, transparent 42%),
     var(--surface);
-  border-radius: var(--radius);
+  border-radius: var(--radius-surface);
 }
 
 .hm-head {

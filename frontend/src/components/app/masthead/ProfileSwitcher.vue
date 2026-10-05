@@ -252,7 +252,7 @@ const {
   padding: 0.35rem;
   border: 1px solid var(--accent);
   background: var(--surface);
-  border-radius: var(--radius);
+  border-radius: var(--radius-overlay);
   box-shadow:
     0 6px 22px color-mix(in srgb, var(--bg) 55%, transparent),
     0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);

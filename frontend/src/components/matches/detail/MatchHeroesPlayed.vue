@@ -235,7 +235,7 @@ const topHeroesPlayed = computed(() => {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-left: 2px solid var(--accent-soft);
-  border-radius: var(--radius);
+  border-radius: var(--radius-surface);
   padding: 0.75rem 0.9rem;
 }
 

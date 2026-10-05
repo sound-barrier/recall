@@ -61,7 +61,7 @@ function review() {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
-  border-radius: var(--radius);
+  border-radius: var(--radius-surface);
 }
 
 .coach-inbox-eyebrow { flex: none; }

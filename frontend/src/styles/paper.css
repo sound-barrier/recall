@@ -39,7 +39,7 @@
   background: var(--paper);
   color: var(--ink);
   border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-surface);
 
   /* Native form controls (the note textarea, the clock input), scrollbars
      and autofill key their default chrome off color-scheme. The plate

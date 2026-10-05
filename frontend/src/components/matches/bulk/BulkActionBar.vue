@@ -348,7 +348,7 @@ function pickTag(v: string) {
   /* Opaque, not the usual translucent tint: the bar floats over row text,
      and rows bleeding through read as a rendering glitch. */
   background: color-mix(in srgb, var(--accent) 10%, var(--surface-3));
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-overlay);
 
   /* Above the rows and the sticky day rules it floats over; below every
      modal surface (the detail panel, lightbox and friends live at 100+). */
@@ -507,7 +507,7 @@ function pickTag(v: string) {
   margin: 0;
   background: var(--surface-3);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
+  border-radius: var(--radius-overlay);
   box-shadow: 0 8px 18px rgb(var(--shadow-rgb) / 30%);
 }
 

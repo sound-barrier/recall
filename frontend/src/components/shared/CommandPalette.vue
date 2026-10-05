@@ -140,7 +140,7 @@ function segments(label: string, hits: number[]): { text: string; hit: boolean }
   height: fit-content;
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-overlay);
   overflow: hidden;
 }
 

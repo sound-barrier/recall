@@ -158,7 +158,7 @@ const GROUP_OPTIONS: { value: GroupBy; label: string }[] = [
   min-width: 220px;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-overlay);
   box-shadow: 0 18px 38px -16px rgb(var(--shadow-rgb) / 55%);
   padding: 0.55rem;
   font-family: var(--mono);

@@ -34,7 +34,7 @@ function reload() {
   max-width: 32rem;
   padding: 1.4rem 1.6rem;
   border: 1px solid var(--loss);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-surface);
   background: var(--loss-soft);
   text-align: center;
 }
