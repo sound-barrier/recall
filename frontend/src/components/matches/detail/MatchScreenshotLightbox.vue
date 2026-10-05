@@ -200,7 +200,7 @@ function onNextClick() {
   background: rgb(0 0 0 / 92%);
   display: grid;
   place-items: center;
-  padding: var(--space-5);
+  padding: var(--space-6);
   cursor: zoom-out;
 }
 

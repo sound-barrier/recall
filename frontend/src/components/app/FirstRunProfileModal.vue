@@ -301,7 +301,7 @@ watch(trapOpen, async (open) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-5);
+  padding: var(--space-6);
   overflow-y: auto;
 }
 

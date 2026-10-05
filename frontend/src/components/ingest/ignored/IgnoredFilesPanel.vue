@@ -320,7 +320,7 @@ function onBackdropClick(e: MouseEvent) {
   background: rgb(0 0 0 / 70%);
   display: grid;
   place-items: center;
-  padding: var(--space-5);
+  padding: var(--space-6);
 }
 
 .ignored-panel {

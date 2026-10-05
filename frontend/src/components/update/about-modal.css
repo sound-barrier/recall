@@ -6,7 +6,7 @@
   display: grid;
   place-items: center;
   z-index: 1000;
-  padding: var(--space-5);
+  padding: var(--space-6);
 }
 
 .update-check-modal-box {
