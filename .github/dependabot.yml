@@ -59,6 +59,8 @@ multi-ecosystem-groups:
   weekly-deps:
     schedule:
       interval: "weekly"
+    # Group-only key: Dependabot rejects it on the member update entries.
+    open-pull-requests-limit: 5
 
 updates:
   # Go modules — updates go.mod deps and the `go X.Y` toolchain directive.
@@ -66,7 +68,6 @@ updates:
     directory: "/"
     multi-ecosystem-group: "weekly-deps"
     patterns: ["*"]
-    open-pull-requests-limit: 5
     groups:
       go-deps-major:
         patterns: ["*"]
@@ -82,7 +83,6 @@ updates:
     directory: "/frontend"
     multi-ecosystem-group: "weekly-deps"
     patterns: ["*"]
-    open-pull-requests-limit: 5
     groups:
       npm-deps-major:
         patterns: ["*"]
@@ -103,7 +103,6 @@ updates:
     directory: "/tools"
     multi-ecosystem-group: "weekly-deps"
     patterns: ["*"]
-    open-pull-requests-limit: 5
     groups:
       tools-deps-major:
         patterns: ["*"]
@@ -118,7 +117,6 @@ updates:
     directory: "/"
     multi-ecosystem-group: "weekly-deps"
     patterns: ["*"]
-    open-pull-requests-limit: 5
     groups:
       actions-major:
         patterns: ["*"]
