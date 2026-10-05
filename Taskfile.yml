@@ -57,7 +57,7 @@ vars:
   CHAOS: '{{.CHAOS | default "0"}}'
   STYLE: '{{.STYLE | default "flex"}}'
   SWAGGER_PORT: '{{.SWAGGER_PORT | default "8080"}}'
-  SWAGGER_IMAGE: '{{.SWAGGER_IMAGE | default "swaggerapi/swagger-ui:v5.32.6"}}'
+  SWAGGER_IMAGE: '{{.SWAGGER_IMAGE | default "swaggerapi/swagger-ui:v5.33.0"}}'
   PAGES_PORT: '{{.PAGES_PORT | default "4000"}}'
   # Wails v3 build vars — consumed by the per-platform build/ Taskfiles that
   # `wails3 build` / `wails3 package` drive.
