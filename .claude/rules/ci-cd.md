@@ -190,9 +190,11 @@ false` except `release-please.yml`'s `tag-and-dispatch`, which pushes a tag.
   `github-actions` `/.github/actions/*` (composite actions) stays separate.
   Group-only keys (`open-pull-requests-limit`, `commit-message`, …) must sit on
   the group — Dependabot rejects the config when a member entry sets one — and
-  a member entry's own `groups` is silently ignored, which is why majors are
-  excluded with a semver-major `ignore` rather than a `*-major` group. Majors
-  are bumped by hand; security updates are unaffected.
+  a member entry's own `groups` is silently ignored, so each member ignores
+  semver-major and a majors-only twin entry per ecosystem opens the
+  `*-major` PR. The twins exist only because their explicit
+  `target-branch: "main"` differs from the unset default — Dependabot rejects
+  two entries with the same ecosystem + directory + target-branch.
 - **Composite-action bumps are HAND-MERGED.** They change what builds a release
   (setup-mise wraps `jdx/mise-action`), so they arrive as `actions-composite*`
   PRs labeled `release-toolchain`; read the upstream diff and merge them
