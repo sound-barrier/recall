@@ -45,7 +45,7 @@ const rows = dossier.withWhomBreakdown(() => ({ limit: config.value.limit }))
 <style scoped>
 .breakdown-empty {
   margin: 0;
-  padding: 0.45rem 0;
+  padding: var(--space-2) 0;
   font-size: var(--type-md);
   font-style: italic;
   color: var(--text-faint);

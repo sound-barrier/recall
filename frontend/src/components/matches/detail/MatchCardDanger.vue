@@ -105,8 +105,8 @@ function unhide() {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-top: 1rem;
-  padding-top: 0.85rem;
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
   border-top: 1px dashed color-mix(in srgb, currentcolor 18%, transparent);
 }
 
@@ -121,7 +121,7 @@ function unhide() {
   color: var(--accent-text);
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 
 .danger-glyph {
@@ -134,7 +134,7 @@ function unhide() {
   appearance: none;
   background: transparent;
   border: 1px solid color-mix(in srgb, currentcolor 22%, transparent);
-  padding: 0.3rem 0.7rem;
+  padding: var(--space-1) var(--space-3);
   font-size: var(--type-md);
   font-family: inherit;
   letter-spacing: 0.06em;
@@ -145,7 +145,7 @@ function unhide() {
   transition: background var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: var(--space-1);
 }
 
 .danger-btn:hover {

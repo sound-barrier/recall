@@ -71,8 +71,8 @@ const emit = defineEmits<{
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 0.85rem;
-  padding: 0.55rem 0.5rem;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2);
   border-bottom: 1px solid var(--border-soft);
 }
 
@@ -111,7 +111,7 @@ const emit = defineEmits<{
 .ignored-meta {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--space-0-5);
   min-width: 0;
 }
 

@@ -233,8 +233,8 @@ const emit = defineEmits<{
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.55rem 0.9rem 0.55rem 0.7rem;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--border);
   background:
     repeating-linear-gradient(135deg, var(--surface-3) 0 12px, var(--surface-2) 12px 24px);
@@ -281,8 +281,8 @@ const emit = defineEmits<{
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.45rem 0.9rem;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--border);
   background: var(--surface-2);
 }
@@ -306,7 +306,7 @@ const emit = defineEmits<{
 
 .detail-film-room {
   appearance: none;
-  padding: 0.25rem 0.55rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.06em;
@@ -330,7 +330,7 @@ const emit = defineEmits<{
 .detail-toolbar-title {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.55rem;
+  gap: var(--space-2);
   font-family: var(--display);
   font-style: italic;
   font-size: var(--type-3xl);
@@ -381,7 +381,7 @@ const emit = defineEmits<{
   background: transparent;
   border: 1px solid var(--accent-soft);
   border-radius: var(--radius);
-  padding: 0.16rem 0.4rem;
+  padding: var(--space-0-5) var(--space-2);
   cursor: pointer;
 }
 
@@ -400,8 +400,8 @@ const emit = defineEmits<{
 .detail-prov-banner {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.45rem 1rem;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--border);
   border-left: 3px solid var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, var(--surface));
@@ -425,14 +425,14 @@ const emit = defineEmits<{
 .detail-toolbar-nav {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 
 .detail-pos {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.3rem;
-  padding: 0 0.35rem;
+  gap: var(--space-1);
+  padding: 0 var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-xs);
   letter-spacing: 0.08em;

@@ -1,5 +1,5 @@
 /* The return sheet. Scoped sibling rather than an inline block:
-   `<style scoped src>` keeps the hash scoping and the chunk placement
+   `\3c style scoped src>` keeps the hash scoping and the chunk placement
    identical, and the SFC is left holding markup and logic. Same shape as
    coach-room.css and coach-cue-row.css. */
 
@@ -27,7 +27,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.2rem;
+  padding: var(--space-5);
   background: color-mix(in srgb, var(--bg) 72%, transparent);
   backdrop-filter: blur(2px);
 }
@@ -35,17 +35,17 @@
 .coach-return-sheet {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: var(--space-3);
   width: min(660px, 100%);
   max-height: min(86vh, 900px);
-  padding: 1rem 1.1rem 1.1rem;
+  padding: var(--space-4) var(--space-4) var(--space-4);
   overflow: hidden;
 }
 
 .return-head {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 .return-title {
@@ -75,17 +75,17 @@
 
 .return-bulk {
   display: flex;
-  gap: 0.4rem;
-  padding-bottom: 0.5rem;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--paper-rule);
 }
 
 .return-cards {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--space-2);
   overflow-y: auto;
-  padding-right: 0.2rem;
+  padding-right: var(--space-1);
   scrollbar-width: thin;
 }
 
@@ -94,29 +94,29 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
-  gap: 0.5rem;
-  padding-top: 0.6rem;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
   border-top: 1px solid var(--paper-rule);
 }
 
 .return-focus {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 .return-focus-list {
   margin: 0;
-  padding-left: 1.1rem;
+  padding-left: var(--space-4);
   color: var(--ink);
 }
 
 .return-focus-list li {
-  margin: 0.15rem 0;
+  margin: var(--space-0-5) 0;
 }
 
 .return-focus-note {
-  margin: 0.1rem 0 0;
+  margin: var(--space-0-5) 0 0;
   font-size: var(--type-sm);
   color: var(--ink-dim);
 }
@@ -127,6 +127,6 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--space-4);
   flex-wrap: wrap;
 }

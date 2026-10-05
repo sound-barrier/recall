@@ -173,8 +173,8 @@ function confirm(): void {
 .coach-identity {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.9rem 1rem 1rem;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-4) var(--space-4);
   border: 2px solid var(--paper-accent);
 }
 
@@ -197,34 +197,34 @@ function confirm(): void {
 }
 
 .identity-hint {
-  margin: 0.35rem 0 0;
+  margin: var(--space-1) 0 0;
   font-size: var(--type-2xs);
   color: var(--ink-faint);
 }
 
 .identity-kind {
   display: flex;
-  gap: 0.35rem;
-  margin: 0.15rem 0 0.35rem;
+  gap: var(--space-1);
+  margin: var(--space-0-5) 0 var(--space-1);
 }
 
 .identity-form {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  margin-top: 0.2rem;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
 }
 
 .identity-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 
 .identity-input {
   flex: 1 1 10rem;
-  padding: 0.35rem 0.55rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--body);
   font-size: var(--type-lg);
   color: var(--ink);

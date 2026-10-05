@@ -55,9 +55,9 @@ function review() {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.55rem;
-  margin-bottom: 0.7rem;
-  padding: 0.5rem 0.75rem;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);

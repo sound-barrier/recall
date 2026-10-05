@@ -231,7 +231,7 @@ function onColumnChange(from: TableSortCol, e: Event) {
   position: fixed;
   z-index: 60;
   min-width: 290px;
-  padding: 0.55rem;
+  padding: var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-sm);
   letter-spacing: 0.04em;
@@ -246,7 +246,7 @@ function onColumnChange(from: TableSortCol, e: Event) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.45rem;
+  margin-bottom: var(--space-2);
 }
 
 .tsp-title {
@@ -259,7 +259,7 @@ function onColumnChange(from: TableSortCol, e: Event) {
 
 .tsp-close {
   appearance: none;
-  padding: 0.1rem 0.3rem;
+  padding: var(--space-0-5) var(--space-1);
   font-size: var(--type-sm);
   line-height: 1;
   color: var(--text-faint);
@@ -275,8 +275,8 @@ function onColumnChange(from: TableSortCol, e: Event) {
 }
 
 .tsp-empty {
-  margin: 0 0 0.45rem;
-  padding: 0 0.15rem;
+  margin: 0 0 var(--space-2);
+  padding: 0 var(--space-0-5);
   font-style: italic;
   color: var(--text-faint);
 }
@@ -289,9 +289,9 @@ function onColumnChange(from: TableSortCol, e: Event) {
 
 .tsp-level {
   display: flex;
-  gap: 0.35rem;
+  gap: var(--space-1);
   align-items: center;
-  padding: 0.22rem 0;
+  padding: var(--space-1) 0;
 }
 
 .tsp-rank {
@@ -304,7 +304,7 @@ function onColumnChange(from: TableSortCol, e: Event) {
 .tsp-select {
   flex: 1;
   min-width: 0;
-  padding: 0.25rem 0.3rem;
+  padding: var(--space-1) var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-xs);
   color: var(--text);
@@ -320,7 +320,7 @@ function onColumnChange(from: TableSortCol, e: Event) {
 
 .tsp-dir {
   flex: 0 0 auto;
-  padding: 0.25rem 0.4rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   font-weight: 700;
@@ -340,7 +340,7 @@ function onColumnChange(from: TableSortCol, e: Event) {
 
 .tsp-move {
   display: inline-flex;
-  gap: 0.15rem;
+  gap: var(--space-0-5);
 }
 
 .tsp-icon {
@@ -376,17 +376,17 @@ function onColumnChange(from: TableSortCol, e: Event) {
 
 .tsp-foot {
   display: flex;
-  gap: 0.4rem;
+  gap: var(--space-2);
   justify-content: space-between;
-  margin-top: 0.5rem;
-  padding-top: 0.45rem;
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
   border-top: 1px solid var(--border);
 }
 
 .tsp-add,
 .tsp-reset {
   appearance: none;
-  padding: 0.3rem 0.55rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-xs);
   font-weight: 700;

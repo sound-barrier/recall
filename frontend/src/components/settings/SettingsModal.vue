@@ -61,7 +61,7 @@ useModalFocusTrap(toRef(props, 'open'), {
   display: grid;
   place-items: center;
   z-index: 1000;
-  padding: 2rem 1.5rem;
+  padding: var(--space-8) var(--space-6);
 }
 
 .settings-modal-box {
@@ -91,7 +91,7 @@ useModalFocusTrap(toRef(props, 'open'), {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: 0.9rem 1.3rem 0.6rem;
+  padding: var(--space-4) var(--space-5) var(--space-2);
   background: var(--surface);
   border-bottom: 1px solid var(--border-soft);
 }
@@ -128,7 +128,7 @@ useModalFocusTrap(toRef(props, 'open'), {
   flex: 1 1 auto;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 1.3rem 1.4rem 1.6rem;
+  padding: var(--space-5) var(--space-6) var(--space-6);
 }
 
 .settings-modal-enter-active,

@@ -210,7 +210,7 @@ function onRowKeydown(index: number, e: KeyboardEvent): void {
 .sheet-block {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--space-1);
   align-items: flex-start;
 }
 
@@ -221,7 +221,7 @@ function onRowKeydown(index: number, e: KeyboardEvent): void {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 
 .focus-row {
@@ -229,7 +229,7 @@ function onRowKeydown(index: number, e: KeyboardEvent): void {
 
   /* Top-aligned: a wrapped row keeps its mark and tools at the first line. */
   align-items: flex-start;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 
 .focus-mark {
@@ -240,7 +240,7 @@ function onRowKeydown(index: number, e: KeyboardEvent): void {
 .focus-text {
   flex: 1;
   min-width: 0;
-  padding: 0.35rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--body);
   font-size: var(--type-lg);
   color: var(--ink);
@@ -257,7 +257,7 @@ function onRowKeydown(index: number, e: KeyboardEvent): void {
 .focus-undo {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
   margin: 0;
   font-size: var(--type-2xs);
   color: var(--ink-dim);
@@ -266,7 +266,7 @@ function onRowKeydown(index: number, e: KeyboardEvent): void {
 .focus-tools {
   flex: none;
   display: flex;
-  gap: 0.2rem;
+  gap: var(--space-1);
 }
 
 .focus-tool {
@@ -274,6 +274,6 @@ function onRowKeydown(index: number, e: KeyboardEvent): void {
 }
 
 .focus-add {
-  margin-top: 0.15rem;
+  margin-top: var(--space-0-5);
 }
 </style>

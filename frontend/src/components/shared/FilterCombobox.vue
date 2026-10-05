@@ -89,14 +89,14 @@ function onSelect(value: string) {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1);
-  margin-bottom: 0.3rem;
+  margin-bottom: var(--space-1);
 }
 
 .combo-pill {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 0.18rem 0.18rem 0.18rem 0.5rem;
+  padding: var(--space-0-5) var(--space-0-5) var(--space-0-5) var(--space-2);
   background: color-mix(in srgb, var(--accent) 18%, transparent);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
@@ -123,7 +123,7 @@ function onSelect(value: string) {
   background: transparent;
   border: 0;
   color: var(--accent-text);
-  padding: 0 0.3rem;
+  padding: 0 var(--space-1);
   cursor: pointer;
   font-size: var(--type-xl);
   line-height: 1;

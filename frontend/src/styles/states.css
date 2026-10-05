@@ -1,9 +1,9 @@
 /* ─── Empty / Error states ──────────────────────────────── */
 
 .error {
-  display: flex; align-items: center; gap: 0.55rem;
-  margin-top: 1rem;
-  padding: 0.7rem 1rem;
+  display: flex; align-items: center; gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
   background: var(--loss-soft);
   border-left: 2px solid var(--loss);
   color: var(--loss);
@@ -22,7 +22,7 @@
 .error-retry,
 .error-dismiss {
   flex: 0 0 auto;
-  padding: 0.25rem 0.6rem;
+  padding: var(--space-1) var(--space-2);
   background: transparent;
   border: 1px solid currentcolor;
   color: inherit;
@@ -40,15 +40,15 @@
 .error-dismiss:hover { background: color-mix(in srgb, currentcolor 12%, transparent); }
 
 .error-dismiss {
-  padding: 0.25rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   font-size: var(--type-lg);
   letter-spacing: 0;
 }
 
 .empty {
-  margin-top: 4rem;
+  margin-top: var(--space-16);
   text-align: center;
-  padding: 3rem 1rem;
+  padding: var(--space-12) var(--space-4);
 }
 
 .empty-mark {
@@ -56,7 +56,7 @@
   font-style: italic;
   font-size: 5rem;
   color: var(--text-mute);
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
 }
 
 .empty-title {
@@ -66,7 +66,7 @@
   letter-spacing: -0.01em;
   text-transform: uppercase;
   color: var(--text);
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
 }
 
 .empty-sub {
@@ -88,8 +88,8 @@
 .count {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.35rem;
-  margin-left: 0.4rem;
+  gap: var(--space-1);
+  margin-left: var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-md);
   color: var(--text-dim);
@@ -114,7 +114,7 @@
 .length {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text-faint);
@@ -135,8 +135,8 @@
 /* Read-only sample-profile notice — shown on the Parse tab and Settings when
    the active profile is immutable (the tour's "test" sample). */
 .readonly-note {
-  margin: 0.5rem 0 0;
-  padding: 0.5rem 0.75rem;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--radius-surface);
   background: color-mix(in srgb, var(--accent) 6%, var(--surface-2));

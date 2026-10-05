@@ -73,8 +73,8 @@ function onSavePreset() {
 
 <style scoped>
 .np-presets {
-  margin: 1rem -0.25rem 0.4rem;
-  padding: 0.6rem 0.6rem 0.7rem;
+  margin: var(--space-4) calc(-1 * var(--space-1)) var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-3);
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -84,13 +84,13 @@ function onSavePreset() {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 0.4rem;
+  margin-bottom: var(--space-2);
 }
 
 .np-presets-save {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 
 .np-presets-input {
@@ -99,7 +99,7 @@ function onSavePreset() {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0.32rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text);
@@ -110,11 +110,11 @@ function onSavePreset() {
 
 .np-presets-list {
   list-style: none;
-  margin: 0.5rem 0 0;
+  margin: var(--space-2) 0 0;
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 .np-preset {
@@ -129,7 +129,7 @@ function onSavePreset() {
   appearance: none;
   background: transparent;
   border: 0;
-  padding: 0.25rem 0.55rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-xs);
   letter-spacing: 0.06em;
@@ -148,7 +148,7 @@ function onSavePreset() {
   background: transparent;
   border: 0;
   border-left: 1px solid var(--border);
-  padding: 0.25rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-lg);
   line-height: 1;

@@ -111,8 +111,8 @@ const MARK_TITLE = {
 .self-review-card {
   display: grid;
   grid-template-columns: 1.15rem minmax(0, 1fr);
-  gap: 0.5rem;
-  padding: 0 0.75rem 0.75rem 0;
+  gap: var(--space-2);
+  padding: 0 var(--space-3) var(--space-3) 0;
   overflow: hidden;
 }
 
@@ -121,9 +121,9 @@ const MARK_TITLE = {
 .src-rail {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--space-1);
   align-items: center;
-  padding: 0.5rem 0;
+  padding: var(--space-2) 0;
   background: repeating-linear-gradient(to bottom, var(--border-strong) 0 4px, transparent 4px 12px);
 }
 
@@ -137,7 +137,7 @@ const MARK_TITLE = {
 .src-body {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -145,7 +145,7 @@ const MARK_TITLE = {
    biggest thing on the card, not a kicker smaller than its own excerpt. */
 .src-head {
   margin: 0;
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-2) var(--space-3);
   font-family: var(--display);
   font-size: var(--type-3xl);
   font-style: italic;
@@ -172,7 +172,7 @@ const MARK_TITLE = {
 .src-warn {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 
 .src-warn-line {
@@ -185,13 +185,13 @@ const MARK_TITLE = {
 .src-warn-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 
 .src-foot {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: var(--space-2);
   margin-top: auto;
 }
 </style>

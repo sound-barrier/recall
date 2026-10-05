@@ -20,9 +20,9 @@
     minmax(0, 1fr)       /* meta */
     6rem;                /* result chip — match the chip's own width */
 
-  gap: 0.85rem;
+  gap: var(--space-3);
   align-items: center;
-  padding: 0.55rem 0.85rem;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
   background: var(--surface);
   border-radius: var(--radius);
@@ -82,7 +82,7 @@
 .leaf-when {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: var(--space-0-5);
   font-family: var(--mono);
   font-feature-settings: "tnum";
   line-height: 1;
@@ -105,7 +105,7 @@
 .leaf-map-block {
   display: flex;
   flex-direction: column;
-  gap: 0.18rem;
+  gap: var(--space-0-5);
   min-width: 0;
 }
 
@@ -189,7 +189,7 @@
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-faint);
-  padding: 0.1rem 0.4rem;
+  padding: var(--space-0-5) var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface-2);
@@ -200,7 +200,7 @@
 .leaf-hero-block {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--space-0-5);
   min-width: 0;
 }
 
@@ -208,7 +208,7 @@
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 1px 2px;
+  gap: 1px var(--space-0-5);
   min-width: 0;
   line-height: 1;
 }
@@ -220,7 +220,7 @@
   appearance: none;
   border: 0;
   background: transparent;
-  padding: 0.05rem 0.2rem;
+  padding: var(--space-0-5) var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-lg);
   font-weight: 700;
@@ -237,7 +237,7 @@
 .leaf-role {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 1px 3px;
+  gap: 1px var(--space-0-5);
 }
 
 /* Each role is a clickable filter chip (open-queue matches show several). Keeps
@@ -246,7 +246,7 @@
   appearance: none;
   border: 0;
   background: transparent;
-  padding: 0 0.2rem;
+  padding: 0 var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-3xs);
   letter-spacing: 0.18em;
@@ -268,7 +268,7 @@
   font-family: var(--mono);
   font-feature-settings: "tnum";
   white-space: nowrap;
-  padding: 0 0.3rem;
+  padding: 0 var(--space-1);
 }
 
 .stat-num {
@@ -283,7 +283,7 @@
 .stat-sep {
   color: var(--text-faint);
   font-size: var(--type-lg);
-  padding: 0 0.25rem;
+  padding: 0 var(--space-1);
   font-weight: 400;
 }
 
@@ -305,7 +305,7 @@
 .leaf-tag {
   font-family: var(--mono);
   font-size: var(--type-2xs);
-  padding: 0.12rem 0.36rem;
+  padding: var(--space-0-5) var(--space-1);
   border: 1px solid var(--accent-soft);
   border-radius: var(--radius);
   color: var(--accent-text);
@@ -322,7 +322,7 @@
   font-family: var(--mono);
   font-size: var(--type-2xs);
   font-weight: 800;
-  padding: 0.1rem 0.4rem;
+  padding: var(--space-0-5) var(--space-2);
   border: 1px solid var(--border-strong);
   color: var(--text-dim);
   border-radius: var(--radius);
@@ -352,7 +352,7 @@
   font-size: var(--type-xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  padding: 0.32rem 0.85rem;
+  padding: var(--space-1) var(--space-3);
   border-radius: var(--radius);
   font-weight: 800;
   border: 1px solid var(--border);

@@ -245,7 +245,7 @@ const runParseTitle = computed(() => {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: var(--space-3);
   cursor: pointer;
   user-select: none;
 }
@@ -321,8 +321,8 @@ const runParseTitle = computed(() => {
 .setting-meta {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  margin-top: 0.55rem;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text-faint);
@@ -343,7 +343,7 @@ const runParseTitle = computed(() => {
 }
 
 .block-mark {
-  margin-right: 0.15rem;
+  margin-right: var(--space-0-5);
   font-size: var(--type-lg);
   filter: saturate(0.85);
 }
@@ -352,17 +352,17 @@ const runParseTitle = computed(() => {
 
 .readiness-list {
   list-style: none;
-  margin: 0.65rem 0 0;
+  margin: var(--space-3) 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: var(--space-2);
 }
 
 .readiness-item {
   display: flex;
   align-items: baseline;
-  gap: 0.55rem;
+  gap: var(--space-2);
   font-size: var(--type-lg);
   color: var(--text);
 }

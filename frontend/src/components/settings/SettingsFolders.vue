@@ -202,11 +202,11 @@ async function copyPath(path: string, which: 'db' | 'settings') {
    path in the middle, action buttons (Copy / Open) on the right.
    Reads like a HUD readout with affordances per row. */
 .data-loc-grid {
-  margin-top: 0.65rem;
+  margin-top: var(--space-3);
   display: grid;
   grid-template-columns: 6.4em minmax(0, 1fr) auto;
-  gap: 0.45rem 0.85rem;
-  padding: 0.65rem 0.7rem;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-3);
   background: var(--surface);
   border-left: 2px solid var(--accent);
   font-size: var(--type-md);
@@ -230,7 +230,7 @@ async function copyPath(path: string, which: 'db' | 'settings') {
 
 .data-loc-actions {
   display: inline-flex;
-  gap: 0.35rem;
+  gap: var(--space-1);
   place-self: center end;
 }
 
@@ -251,7 +251,7 @@ async function copyPath(path: string, which: 'db' | 'settings') {
   display: inline-flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 
 .detect-btn {

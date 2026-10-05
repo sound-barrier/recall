@@ -202,7 +202,7 @@ function grandViews(col: number | 'total'): CellView[] {
 
 .pivot-crosstab th,
 .pivot-crosstab td {
-  padding: 0.3rem 0.6rem;
+  padding: var(--space-1) var(--space-2);
   border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
   white-space: nowrap;
 }

@@ -179,7 +179,7 @@ async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
    pile rather than a heading level nothing else uses. */
 .focus-band-head {
   margin: 0;
-  padding-bottom: 0.35rem;
+  padding-bottom: var(--space-1);
   font-family: var(--display);
   font-size: var(--type-3xl);
   font-style: italic;
@@ -200,14 +200,14 @@ async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 
 .focus-band-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.6rem;
+  gap: var(--space-2);
 }
 
 .focus-band-text {
@@ -220,7 +220,7 @@ async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
 }
 
 .focus-band-from {
-  margin: 0.1rem 0 0;
+  margin: var(--space-0-5) 0 0;
   font-size: var(--type-sm);
   color: var(--ink-faint);
 }
@@ -251,7 +251,7 @@ async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
 .focus-band-actions {
   flex: none;
   display: flex;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 .focus-band-done .focus-band-line {
@@ -262,7 +262,7 @@ async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
 .focus-band-retired {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--space-1);
   align-items: flex-start;
 }
 </style>

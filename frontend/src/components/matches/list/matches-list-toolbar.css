@@ -2,10 +2,10 @@
   display: flex;
   align-items: end;
   justify-content: space-between;
-  gap: 0.85rem;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
-.leaves-head-left { display: flex; flex-direction: column; gap: 0.1rem; }
+.leaves-head-left { display: flex; flex-direction: column; gap: var(--space-0-5); }
 
 .leaves-eyebrow {
   /* --accent-text is the theme-aware "accent for text" token: bright
@@ -57,12 +57,12 @@
   appearance: none;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
   background: var(--accent);
   color: var(--primary-text-on-accent);
-  padding: 0.4rem 0.8rem;
+  padding: var(--space-2) var(--space-3);
   font-family: var(--body);
   font-size: var(--type-md);
   font-weight: 700;
@@ -94,7 +94,7 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-overlay);
   box-shadow: 0 12px 32px rgb(var(--shadow-rgb) / 40%);
-  padding: 0.25rem;
+  padding: var(--space-1);
 }
 
 .add-match-item {
@@ -102,7 +102,7 @@
   background: transparent;
   border: 0;
   border-radius: var(--radius);
-  padding: 0.4rem 0.6rem;
+  padding: var(--space-2) var(--space-2);
   text-align: left;
   font-family: var(--body);
   font-size: var(--type-md);
@@ -120,7 +120,7 @@
   background: transparent;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  padding: 0.4rem 0.8rem;
+  padding: var(--space-2) var(--space-3);
   font-family: var(--body);
   font-size: var(--type-md);
   font-weight: 600;
@@ -155,7 +155,7 @@
   background: transparent;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  padding: 0.4rem 0.8rem;
+  padding: var(--space-2) var(--space-3);
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -233,7 +233,7 @@
   background: transparent;
   border: 0;
   border-radius: 0;
-  padding: 0.4rem 0.8rem;
+  padding: var(--space-2) var(--space-3);
   font-family: var(--body);
   font-size: var(--type-md);
   font-weight: 600;
@@ -289,7 +289,7 @@
   /* Match the sort/density padding so the three controls share an
      exact button-row height. The .btn ghost padding (0.55 × 0.95)
      would push this control a few px taller than its peers. */
-  padding: 0.4rem 0.8rem;
+  padding: var(--space-2) var(--space-3);
 }
 
 .jump-to-undated[disabled] {

@@ -3,7 +3,7 @@
   --mr-cell: 13px;
   --mr-row: 1.55rem;
 
-  padding: 0.7rem 1.1rem 0.75rem;
+  padding: var(--space-3) var(--space-4) var(--space-3);
   border: 1px solid var(--border);
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 4%, transparent) 0%, transparent 42%),
@@ -14,8 +14,8 @@
 .mr-head {
   display: flex;
   align-items: baseline;
-  gap: 1.1rem;
-  margin-bottom: 0.6rem;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
   flex-wrap: wrap;
 }
 
@@ -30,7 +30,7 @@
 }
 
 .mr-scroll {
-  padding-bottom: 0.2rem;
+  padding-bottom: var(--space-1);
 }
 
 /* --heatmap-empty is a token now (styles/tokens.css) — it was declared
@@ -47,7 +47,7 @@
 
   /* grid-template-rows bound inline — the role-row count follows the
      gear's role filter. */
-  gap: 2px;
+  gap: var(--space-0-5);
   align-items: stretch;
   width: 100%;
 }
@@ -63,7 +63,7 @@
   background: transparent;
   cursor: pointer;
   align-self: end;
-  padding: 0 0 0.2rem;
+  padding: 0 0 var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-3xs);
   font-weight: 700;
@@ -100,7 +100,7 @@
   grid-column: 1;
   display: flex;
   align-items: center;
-  padding-right: 0.5rem;
+  padding-right: var(--space-2);
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', sans-serif;
   font-size: var(--type-xl);
   letter-spacing: 0.03em;
@@ -162,11 +162,11 @@
 /* A hairline before the first column of each game-mode group so the eye
    reads the blocks (Control | Escort | …) without a heavy divider. */
 .mr-group-start {
-  margin-left: 5px;
+  margin-left: var(--space-1);
 }
 
 .mr-loading {
-  margin: 0.4rem 0;
+  margin: var(--space-2) 0;
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text-faint);
@@ -174,7 +174,7 @@
 
 .mr-clear {
   appearance: none;
-  margin-left: 0.5rem;
+  margin-left: var(--space-2);
   border: 1px solid var(--accent);
   background: var(--accent-soft);
   color: var(--accent-text);
@@ -182,7 +182,7 @@
   font-size: var(--type-2xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 0.15rem 0.5rem;
+  padding: var(--space-0-5) var(--space-2);
   border-radius: var(--radius);
   cursor: pointer;
 }
@@ -216,14 +216,14 @@
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 0.5rem 0.9rem;
-  margin: 0.5rem 0 0;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-2) 0 0;
 
   /* Reserve the active row's height so the empty ↔ active swap never shifts the
      widget or the content below it. */
   min-height: 2.4rem;
   box-sizing: border-box;
-  padding: 0.4rem 0.55rem;
+  padding: var(--space-2) var(--space-2);
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--accent) 6%, transparent);

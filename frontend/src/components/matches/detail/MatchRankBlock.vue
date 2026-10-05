@@ -179,11 +179,11 @@ function saveRank() {
 }
 
 .rank-incomplete {
-  margin-top: 0.5rem;
+  margin-top: var(--space-2);
 }
 
 .rank-note {
-  margin: 0 0 0.5rem;
+  margin: 0 0 var(--space-2);
   font-size: var(--type-sm);
   color: var(--text-dim);
 }
@@ -192,13 +192,13 @@ function saveRank() {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .rank-fill-field {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: var(--space-1);
   font-size: var(--type-2xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -211,13 +211,13 @@ function saveRank() {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0.25rem 0.4rem;
+  padding: var(--space-1) var(--space-2);
 }
 
 /* Muted, but --text-dim not --text-mute: mute drops to 3.98:1 on Day's darker
    surfaces, and this is small content text that has to clear AA. */
 .rank-unknown-modifier {
-  margin: 0.35rem 0 0;
+  margin: var(--space-1) 0 0;
   font-size: var(--type-sm);
   color: var(--text-dim);
 }
@@ -238,7 +238,7 @@ function saveRank() {
    the flat look. */
 .rank-block.rare {
   position: relative;
-  padding: 0.85rem 1rem 0.9rem;
+  padding: var(--space-3) var(--space-4) var(--space-4);
   border-radius: var(--radius-lg);
   border: 1px solid var(--accent-soft);
   background:
@@ -263,7 +263,7 @@ function saveRank() {
 .rank-eyebrow {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
   color: var(--accent-bright);
   letter-spacing: 0.24em;
 }
@@ -279,9 +279,9 @@ function saveRank() {
 .rank-line {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.55rem;
+  gap: var(--space-2);
   align-items: center;
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
 }
 
 .rank-tier {
@@ -290,7 +290,7 @@ function saveRank() {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  padding: 0.2rem 0.6rem;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius);
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -340,7 +340,7 @@ function saveRank() {
 
 .rank-modifier {
   font-size: var(--type-2xs);
-  padding: 0.18rem 0.5rem;
+  padding: var(--space-0-5) var(--space-2);
   background: var(--surface-3);
   color: var(--text-dim);
   border: 1px solid var(--border);
@@ -351,13 +351,13 @@ function saveRank() {
 
 /* A <ul> for the semantics; the UA list box model is reset so the row
    paints exactly as the former flex <div> did. */
-.sr-line { display: flex; flex-wrap: wrap; gap: 0.7rem; list-style: none; margin: 0; padding: 0; }
+.sr-line { display: flex; flex-wrap: wrap; gap: var(--space-3); list-style: none; margin: 0; padding: 0; }
 
 .sr-entry {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.4rem;
-  padding: 0.25rem 0.55rem;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);

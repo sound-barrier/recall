@@ -94,7 +94,7 @@ function onGripKeydown(e: KeyboardEvent) {
   right: 8px;
   z-index: 6;
   display: inline-flex;
-  gap: 3px;
+  gap: var(--space-0-5);
   opacity: 0;
   transition: opacity var(--duration-fast) ease;
 }

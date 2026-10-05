@@ -29,10 +29,10 @@ function reload() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.6rem;
-  margin: 3rem auto;
+  gap: var(--space-2);
+  margin: var(--space-12) auto;
   max-width: 32rem;
-  padding: 1.4rem 1.6rem;
+  padding: var(--space-6) var(--space-6);
   border: 1px solid var(--loss);
   border-radius: var(--radius-surface);
   background: var(--loss-soft);
@@ -57,7 +57,7 @@ function reload() {
 
 .vle-reload {
   appearance: none;
-  margin-top: 0.3rem;
+  margin-top: var(--space-1);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
   background: transparent;
@@ -67,7 +67,7 @@ function reload() {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   font-weight: 700;
-  padding: 0.4rem 0.9rem;
+  padding: var(--space-2) var(--space-4);
   cursor: pointer;
   transition: background var(--duration-fast) ease, color var(--duration-fast) ease;
 }

@@ -62,9 +62,9 @@ const { shouldShowBanner, daysSinceLastCheck, dismiss } = useUpdateReminder(upda
 .update-reminder-banner {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
-  padding: 0.45rem 0.9rem;
-  margin: 0.5rem 0 0.7rem;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  margin: var(--space-2) 0 var(--space-3);
   border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
   border-left: 3px solid var(--accent);
   border-radius: var(--radius);
@@ -96,7 +96,7 @@ const { shouldShowBanner, daysSinceLastCheck, dismiss } = useUpdateReminder(upda
 .update-reminder-banner-copy {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--space-0-5);
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -128,7 +128,7 @@ const { shouldShowBanner, daysSinceLastCheck, dismiss } = useUpdateReminder(upda
   font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  padding: 0.34rem 0.7rem;
+  padding: var(--space-1) var(--space-3);
   border-radius: var(--radius);
   cursor: pointer;
   transition: background var(--duration-fast) ease, color var(--duration-fast) ease;

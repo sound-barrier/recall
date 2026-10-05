@@ -163,7 +163,7 @@ useModalFocusTrap(open, {
 }
 
 .coach-codes-title {
-  margin: 0.2rem 0 0;
+  margin: var(--space-1) 0 0;
   font-family: var(--display);
   font-size: var(--type-7xl);
   font-style: italic;
@@ -174,11 +174,11 @@ useModalFocusTrap(open, {
 }
 
 .coach-codes-for {
-  margin: 0.3rem 0 0;
+  margin: var(--space-1) 0 0;
 }
 
 .coach-codes-check {
-  margin: 0.15rem 0 0.35rem;
+  margin: var(--space-0-5) 0 var(--space-1);
 }
 
 .coach-codes-label {
@@ -200,7 +200,7 @@ useModalFocusTrap(open, {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 0.16rem 0.4rem;
+  padding: var(--space-0-5) var(--space-2);
   border: 1px solid var(--accent-soft);
   border-radius: var(--radius);
   background: color-mix(in srgb, var(--accent) 10%, var(--surface));
@@ -215,7 +215,7 @@ useModalFocusTrap(open, {
   /* A padded hit area: removing a mistyped code is the exact correction
      this dialog exists for, and a bare glyph made it a precision click. */
   padding: 0.25rem 0.45rem;
-  margin: -0.25rem -0.3rem -0.25rem -0.15rem;
+  margin: calc(-1 * var(--space-1)) calc(-1 * var(--space-1)) calc(-1 * var(--space-1)) calc(-1 * var(--space-0-5));
   background: none;
   color: inherit;
   cursor: pointer;

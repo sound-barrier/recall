@@ -231,7 +231,7 @@ const INTERVALS = [
   background: var(--surface-2);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius);
-  padding: 2px;
+  padding: var(--space-0-5);
   transition: border-color var(--duration-fast) ease;
 }
 
@@ -249,7 +249,7 @@ const INTERVALS = [
   align-items: center;
   justify-content: center;
   height: 34px;
-  padding: 0 0.7rem;
+  padding: 0 var(--space-3);
   background: transparent;
   border: 0;
   border-radius: var(--radius-hair);
@@ -279,6 +279,6 @@ const INTERVALS = [
 
 .auto-backup-stale {
   display: inline-flex;
-  margin-left: 0.5rem;
+  margin-left: var(--space-2);
 }
 </style>

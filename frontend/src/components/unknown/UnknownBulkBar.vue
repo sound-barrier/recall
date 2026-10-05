@@ -99,13 +99,13 @@ const target = computed(() => (props.rowNoun === 'screenshot'
 .unknown-bulk-bar {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-2);
   flex-wrap: wrap;
 
   /* No margin: the bar is a flex child of .unknown-list, whose own gap
      already separates it from the first card. A margin here would stack on
      top of that gap. */
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
   background: var(--surface-3);
@@ -132,7 +132,7 @@ const target = computed(() => (props.rowNoun === 'screenshot'
   font-family: var(--body);
   font-size: var(--type-sm);
   font-weight: 600;
-  padding: 0.35rem 0.7rem;
+  padding: var(--space-1) var(--space-3);
   border-radius: var(--radius);
   border: 1px solid var(--border-strong);
   background: var(--surface-2);

@@ -45,16 +45,16 @@ const emit = defineEmits<{ select: [matchKey: string] }>()
 /* The day label is written on the strip's paper leader, so it takes
    ink (.eyebrow.ink) on the hatch rather than the theme's faint text. */
 .reel-day-head {
-  margin: 0 0 0.4rem;
-  padding: 0.28rem 0.5rem;
+  margin: 0 0 var(--space-2);
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius);
 }
 
 .reel-day-frames {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  margin: 0 0 0.85rem;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-3);
   padding: 0;
   list-style: none;
 }

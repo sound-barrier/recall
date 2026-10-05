@@ -146,7 +146,7 @@ function segments(label: string, hits: number[]): { text: string; hit: boolean }
 
 .cmdk-input {
   width: 100%;
-  padding: 0.7rem 0.9rem;
+  padding: var(--space-3) var(--space-4);
   font-size: var(--type-lg);
   color: var(--text);
   background: var(--surface-2);
@@ -165,8 +165,8 @@ function segments(label: string, hits: number[]): { text: string; hit: boolean }
 .cmdk-opt {
   display: flex;
   align-items: baseline;
-  gap: 0.6rem;
-  padding: 0.45rem 0.9rem;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
   cursor: pointer;
 }
 
@@ -196,7 +196,7 @@ function segments(label: string, hits: number[]): { text: string; hit: boolean }
 
 .cmdk-empty {
   margin: 0;
-  padding: 0.7rem 0.9rem;
+  padding: var(--space-3) var(--space-4);
   font-size: var(--type-sm);
   color: var(--text-dim);
 }

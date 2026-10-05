@@ -66,10 +66,10 @@ const emit = defineEmits<{
 
 .focus-nudge-list {
   margin: 0;
-  padding-left: 1.1rem;
+  padding-left: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: var(--space-1);
 }
 
 .focus-nudge-from {

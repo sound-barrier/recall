@@ -111,14 +111,14 @@ function deltaClass(r: ComparisonRow) {
 <style scoped>
 .compare-table {
   width: 100%;
-  margin-top: 1rem;
+  margin-top: var(--space-4);
   border-collapse: collapse;
   font-size: var(--type-lg);
 }
 
 .compare-table th,
 .compare-table td {
-  padding: 0.42rem 0.6rem;
+  padding: var(--space-2) var(--space-2);
   border-bottom: 1px solid var(--border);
   text-align: right;
 }
@@ -139,7 +139,7 @@ function deltaClass(r: ComparisonRow) {
 }
 
 .compare-section-head {
-  padding: 1.1rem 0.6rem 0.35rem;
+  padding: var(--space-4) var(--space-2) var(--space-1);
   text-align: left;
   font-family: var(--mono);
   font-size: var(--type-2xs);
@@ -176,8 +176,8 @@ function deltaClass(r: ComparisonRow) {
   appearance: none;
   display: block;
   width: 100%;
-  margin: -0.42rem -0.6rem;
-  padding: 0.42rem 0.6rem;
+  margin: calc(-1 * var(--space-2));
+  padding: var(--space-2) var(--space-2);
   border: 0;
   background: transparent;
   color: inherit;
@@ -220,8 +220,8 @@ function deltaClass(r: ComparisonRow) {
 
 .compare-lown {
   display: inline-block;
-  margin-left: 0.3rem;
-  padding: 0 0.28rem;
+  margin-left: var(--space-1);
+  padding: 0 var(--space-1);
   border-radius: var(--radius);
 
   /* Soft-loss fill + line carries the "warning" semantic, but the TEXT is the
@@ -242,7 +242,7 @@ function deltaClass(r: ComparisonRow) {
 
   .compare-table th,
   .compare-table td {
-    padding: 0.38rem 0.4rem;
+    padding: var(--space-2) var(--space-2);
   }
 }
 </style>

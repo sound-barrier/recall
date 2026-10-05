@@ -1,5 +1,5 @@
 .hero-pool-band {
-  padding: 0.7rem 1.1rem 0.8rem;
+  padding: var(--space-3) var(--space-4) var(--space-3);
   border: 1px solid var(--border);
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 4%, transparent) 0%, transparent 40%),
@@ -10,8 +10,8 @@
 .hp-head {
   display: flex;
   align-items: center;
-  gap: 0.9rem;
-  margin-bottom: 0.6rem;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
   flex-wrap: wrap;
 }
 
@@ -30,7 +30,7 @@
   font-family: var(--mono);
   font-size: var(--type-xs);
   letter-spacing: 0.03em;
-  padding: 0.35rem 0.65rem;
+  padding: var(--space-1) var(--space-3);
   cursor: pointer;
 }
 
@@ -60,7 +60,7 @@
   font-size: var(--type-2xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 0.25rem 0.55rem;
+  padding: var(--space-1) var(--space-2);
   cursor: pointer;
 }
 
@@ -76,7 +76,7 @@
   color: var(--text-faint);
   font-size: var(--type-sm);
   line-height: 1;
-  padding: 0.25rem 0.4rem;
+  padding: var(--space-1) var(--space-2);
   cursor: pointer;
 }
 
@@ -89,7 +89,7 @@
 }
 
 .hp-empty {
-  margin: 0.3rem 0 0.4rem;
+  margin: var(--space-1) 0 var(--space-2);
   font-size: var(--type-md);
   font-style: italic;
   color: var(--text-faint);
@@ -100,7 +100,7 @@
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
-  padding-right: 0.2rem;
+  padding-right: var(--space-1);
 }
 
 .hp-scroll::-webkit-scrollbar { width: 8px; }
@@ -108,19 +108,19 @@
 .hp-scroll::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 .hp-scroll::-webkit-scrollbar-track { background: transparent; }
 
-.hp-role-group { margin-bottom: 0.7rem; }
+.hp-role-group { margin-bottom: var(--space-3); }
 
 .hp-role-header {
   appearance: none;
   display: flex;
   align-items: baseline;
-  gap: 0.6rem;
+  gap: var(--space-2);
   width: 100%;
   background: transparent;
   border: 0;
   border-bottom: 1px solid var(--hairline);
-  padding: 0.3rem 0.2rem;
-  margin-bottom: 0.25rem;
+  padding: var(--space-1) var(--space-1);
+  margin-bottom: var(--space-1);
   cursor: pointer;
   text-align: left;
 }
@@ -147,7 +147,7 @@
 .hp-role-none { color: var(--text-faint); font-style: italic; }
 
 .hp-combined-head {
-  margin: 0 0 0.4rem;
+  margin: 0 0 var(--space-2);
   display: flex;
   align-items: baseline;
   gap: var(--space-2);
@@ -161,23 +161,23 @@
 
 .hp-list {
   list-style: none;
-  margin: 0 0 0.3rem;
+  margin: 0 0 var(--space-1);
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--space-0-5);
 }
 
 .hp-hero {
   appearance: none;
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: var(--space-2);
   width: 100%;
   background: transparent;
   border: 0;
   border-radius: var(--radius-md);
-  padding: 0.2rem 0.3rem;
+  padding: var(--space-1) var(--space-1);
   font-size: var(--type-md);
   cursor: pointer;
   text-align: left;
@@ -201,7 +201,7 @@
   font-size: var(--type-3xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 0.05rem 0.3rem;
+  padding: var(--space-0-5) var(--space-1);
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
@@ -236,9 +236,9 @@
 
 .hp-discipline {
   display: flex;
-  gap: 0.4rem;
+  gap: var(--space-2);
   flex-wrap: wrap;
-  margin-top: 0.15rem;
+  margin-top: var(--space-0-5);
 }
 
 .hp-side {
@@ -246,7 +246,7 @@
   background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 0.2rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-xs);
   font-variant-numeric: tabular-nums;
@@ -265,8 +265,8 @@
 
 .hp-low-n {
   display: inline-block;
-  margin-left: 0.25rem;
-  padding: 0 0.28rem;
+  margin-left: var(--space-1);
+  padding: 0 var(--space-1);
   border-radius: var(--radius);
   background: var(--loss-soft);
   color: var(--text);

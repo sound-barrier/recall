@@ -73,8 +73,8 @@ const { data: owData } = useOWData()
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.6rem;
-  padding: 0.9rem 1rem;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-4);
   cursor: pointer;
   user-select: none;
   list-style: none;
@@ -85,7 +85,7 @@ const { data: owData } = useOWData()
 .capture-source-summary::before {
   content: '▸';
   display: inline-block;
-  margin-right: 0.4rem;
+  margin-right: var(--space-2);
   color: var(--text-faint);
   transition: transform var(--duration-fast) ease;
 }
@@ -103,12 +103,12 @@ details[open] > .capture-source-summary::before {
 }
 
 .capture-source-body {
-  padding: 0.2rem 1rem 1rem;
+  padding: var(--space-1) var(--space-4) var(--space-4);
 }
 
 .capture-source-table {
   width: 100%;
-  margin-top: 0.5rem;
+  margin-top: var(--space-2);
   border-collapse: collapse;
   font-family: var(--mono);
   font-size: var(--type-xs);
@@ -120,12 +120,12 @@ details[open] > .capture-source-summary::before {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-faint);
-  padding: 0.3rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   border-bottom: 1px solid var(--border);
 }
 
 .capture-source-table td {
-  padding: 0.45rem 0.5rem;
+  padding: var(--space-2) var(--space-2);
   border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
   color: var(--text);
   vertical-align: top;
@@ -142,7 +142,7 @@ details[open] > .capture-source-summary::before {
 }
 
 .reparse-progress-line {
-  margin: 0.55rem 0 0;
+  margin: var(--space-2) 0 0;
   font-family: var(--mono);
   font-size: var(--type-xs);
   letter-spacing: 0.06em;

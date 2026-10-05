@@ -276,11 +276,11 @@ onBeforeUnmount(() => {
 }
 
 .export-bundle-eyebrow {
-  margin: 0 0 0.3rem;
+  margin: 0 0 var(--space-1);
 }
 
 .export-bundle-title {
-  margin: 0 0 0.6rem;
+  margin: 0 0 var(--space-2);
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', sans-serif;
   font-size: var(--type-7xl);
   font-style: italic;
@@ -289,7 +289,7 @@ onBeforeUnmount(() => {
 }
 
 .export-bundle-desc {
-  margin: 0 0 1rem;
+  margin: 0 0 var(--space-4);
   font-size: var(--type-lg);
   color: var(--text-faint);
   line-height: 1.5;
@@ -298,7 +298,7 @@ onBeforeUnmount(() => {
 .export-bundle-desc code {
   font-family: var(--mono);
   font-size: var(--type-md);
-  padding: 0.05rem 0.3rem;
+  padding: var(--space-0-5) var(--space-1);
   background: var(--surface-2);
   border-radius: var(--radius);
 }
@@ -307,9 +307,9 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  padding: 0.45rem 0;
+  padding: var(--space-2) 0;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
 }
 
 .export-bundle-label {
@@ -332,7 +332,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 0.35rem 0;
+  padding: var(--space-1) 0;
   font-size: var(--type-lg);
   color: var(--text);
   cursor: pointer;
@@ -351,7 +351,7 @@ onBeforeUnmount(() => {
 
 .export-bundle-field-label {
   display: block;
-  margin: 0.8rem 0 0.3rem;
+  margin: var(--space-3) 0 var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   font-weight: 700;
@@ -362,7 +362,7 @@ onBeforeUnmount(() => {
 
 .export-bundle-input {
   width: 100%;
-  padding: 0.55rem 0.7rem;
+  padding: var(--space-2) var(--space-3);
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -378,7 +378,7 @@ onBeforeUnmount(() => {
 }
 
 .export-bundle-preview {
-  margin: 0.8rem 0 0;
+  margin: var(--space-3) 0 0;
   font-size: var(--type-md);
   color: var(--text-faint);
 }
@@ -394,7 +394,7 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
-  margin-top: 1.1rem;
+  margin-top: var(--space-4);
 }
 
 .export-bundle-cancel,
@@ -405,7 +405,7 @@ onBeforeUnmount(() => {
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  padding: 0.5rem 0.95rem;
+  padding: var(--space-2) var(--space-4);
   border-radius: var(--radius);
   cursor: pointer;
   transition: background var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;

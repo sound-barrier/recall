@@ -175,9 +175,9 @@ const probeDismissed = ref(false)
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.65rem;
-  margin-top: 0.7rem;
-  padding: 0.45rem 0.7rem;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -231,7 +231,7 @@ const probeDismissed = ref(false)
 }
 
 .engine-version {
-  padding: 0.1rem 0.4rem;
+  padding: var(--space-0-5) var(--space-2);
   background: var(--surface-3);
   font-family: var(--mono);
   font-size: var(--type-sm);
@@ -251,7 +251,7 @@ const probeDismissed = ref(false)
 }
 
 .engine-error {
-  margin-top: 0.55rem;
+  margin-top: var(--space-2);
   max-width: 60ch;
   font-family: var(--body);
   font-size: var(--type-lg);
@@ -260,7 +260,7 @@ const probeDismissed = ref(false)
 }
 
 .engine-meta {
-  margin-top: 0.55rem;
+  margin-top: var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text-faint);
@@ -268,7 +268,7 @@ const probeDismissed = ref(false)
 }
 
 .engine-meta code {
-  padding: 0.05rem 0.35rem;
+  padding: var(--space-0-5) var(--space-1);
   background: var(--surface-2);
   font-family: var(--mono);
   font-size: var(--type-sm);
@@ -286,7 +286,7 @@ const probeDismissed = ref(false)
   display: inline-flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 
 .engine-btn-group .detect-btn:not(:disabled).primary {
@@ -307,8 +307,8 @@ const probeDismissed = ref(false)
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
-  margin-top: 0.6rem;
-  padding: 0.6rem 0.85rem;
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   max-width: 60ch;
   background: color-mix(in srgb, var(--accent) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
@@ -321,7 +321,7 @@ const probeDismissed = ref(false)
 
 .engine-unsupported-warn .warn-icon {
   flex-shrink: 0;
-  margin-top: 0.12rem;
+  margin-top: var(--space-0-5);
   color: var(--accent-text);
 }
 

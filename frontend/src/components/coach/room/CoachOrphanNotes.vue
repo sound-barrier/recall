@@ -52,9 +52,9 @@ defineProps<{
 
 .orphan-summary {
   display: flex;
-  gap: 0.6rem;
+  gap: var(--space-2);
   align-items: baseline;
-  padding: 0.55rem 0.9rem;
+  padding: var(--space-2) var(--space-4);
   cursor: pointer;
   list-style: none;
 }
@@ -81,8 +81,8 @@ defineProps<{
 
 .orphan-note {
   display: grid;
-  gap: 0.12rem;
-  padding: 0.6rem 0.9rem;
+  gap: var(--space-0-5);
+  padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--border-soft);
 }
 

@@ -185,8 +185,8 @@ const { writesLocked, lockReason } = useWriteGate()
 .failed-section-head {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  margin-bottom: 0.35rem;
+  gap: var(--space-0-5);
+  margin-bottom: var(--space-1);
 }
 
 .failed-heading {
@@ -203,7 +203,7 @@ const { writesLocked, lockReason } = useWriteGate()
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.6rem;
+  gap: var(--space-2);
 }
 
 .failed-bundle-btn {
@@ -223,7 +223,7 @@ const { writesLocked, lockReason } = useWriteGate()
 }
 
 .failed-card {
-  padding-bottom: 0.5rem;
+  padding-bottom: var(--space-2);
 }
 
 .failed-card-head {
@@ -232,13 +232,13 @@ const { writesLocked, lockReason } = useWriteGate()
 
 .failed-error {
   margin: 0;
-  padding: 0 0.8rem;
+  padding: 0 var(--space-3);
   font-size: var(--type-sm);
   color: var(--loss);
   overflow-wrap: anywhere;
 }
 
 .failed-parked-badge {
-  margin-left: 0.4rem;
+  margin-left: var(--space-2);
 }
 </style>

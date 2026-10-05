@@ -205,13 +205,13 @@ const connector = computed(() => computeConnector(getTargetRect(), {
   background: var(--surface);
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
-  padding: 1.05rem 1.15rem 0.85rem;
+  padding: var(--space-4) var(--space-5) var(--space-3);
   box-shadow:
     0 26px 70px rgb(var(--shadow-rgb) / 60%),
     0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: var(--space-2);
 
   /* Stay invisible until syncPos's settle wait completes (the
      `tour-callout-ready` modifier flips on). The transition: left/
@@ -256,14 +256,14 @@ const connector = computed(() => computeConnector(getTargetRect(), {
   font-size: var(--type-3xs);
   letter-spacing: -0.1em;
   color: var(--text-faint);
-  margin-right: 0.15rem;
+  margin-right: var(--space-0-5);
   opacity: 0.7;
 }
 
 .tour-pips {
   display: inline-flex;
-  gap: 0.3rem;
-  margin-left: 0.55rem;
+  gap: var(--space-1);
+  margin-left: var(--space-2);
 }
 
 /* Skip-ahead jump points — the linear order stays the default flow,
@@ -304,7 +304,7 @@ const connector = computed(() => computeConnector(getTargetRect(), {
   grid-template-columns: auto 1fr;
   align-items: end;
   column-gap: var(--space-3);
-  margin-top: 0.05rem;
+  margin-top: var(--space-0-5);
 }
 
 .tour-callout-num {
@@ -326,7 +326,7 @@ const connector = computed(() => computeConnector(getTargetRect(), {
   color: var(--text);
   margin: 0;
   border-bottom: 2px solid var(--accent);
-  padding-bottom: 0.35rem;
+  padding-bottom: var(--space-1);
   align-self: end;
 }
 
@@ -341,20 +341,20 @@ const connector = computed(() => computeConnector(getTargetRect(), {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 0.55rem;
-  padding-top: 0.7rem;
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
   border-top: 1px dashed color-mix(in srgb, var(--text-faint) 38%, transparent);
 }
 
 .tour-callout-actions-primary {
   display: inline-flex;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 
 .tour-callout-skip {
   background: transparent;
   border: 0;
-  padding: 0.35rem 0.1rem;
+  padding: var(--space-1) var(--space-0-5);
   font-family: var(--mono);
   font-size: var(--type-xs);
   letter-spacing: 0.16em;

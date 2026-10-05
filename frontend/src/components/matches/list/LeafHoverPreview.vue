@@ -67,7 +67,7 @@ const styleObj = computed(() => ({
   background: var(--surface);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
-  padding: 2px;
+  padding: var(--space-0-5);
   box-shadow: 0 18px 36px -18px rgb(var(--shadow-rgb) / 55%);
 
   /* Compose translate transform from inline style — keeps the GPU
@@ -89,7 +89,7 @@ const styleObj = computed(() => ({
 .leaf-hover-prov {
   display: flex;
   justify-content: center;
-  padding-top: 2px;
+  padding-top: var(--space-0-5);
 }
 
 .leaf-hover-preview > .leaf-hover-prov:only-child {

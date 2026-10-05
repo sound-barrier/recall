@@ -116,10 +116,10 @@ function idxOr(): number { return props.idx ?? 0 }
   border: 1px solid var(--border);
   background: var(--surface-2);
   border-radius: var(--radius-surface);
-  padding: 0.55rem 0.7rem 0.6rem;
+  padding: var(--space-2) var(--space-3) var(--space-2);
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--space-0-5);
   position: relative;
   transition: transform var(--duration-prompt) cubic-bezier(0.2, 0.7, 0.3, 1),
               box-shadow var(--duration-prompt) ease,
@@ -130,7 +130,7 @@ function idxOr(): number { return props.idx ?? 0 }
   border: 1px solid var(--border);
   border-radius: var(--radius-surface);
   background: var(--surface);
-  padding: 0.55rem 0.7rem 0.65rem;
+  padding: var(--space-2) var(--space-3) var(--space-3);
   position: relative;
   transition: transform var(--duration-prompt) cubic-bezier(0.2, 0.7, 0.3, 1),
               box-shadow var(--duration-prompt) ease,
@@ -170,7 +170,7 @@ function idxOr(): number { return props.idx ?? 0 }
   right: 4px;
   z-index: 1;
   display: inline-flex;
-  gap: 3px;
+  gap: var(--space-0-5);
   opacity: 0;
   transition: opacity var(--duration-fast) ease;
 }

@@ -158,7 +158,7 @@ const emit = defineEmits<{
 .coverage-line {
   display: grid;
   grid-template-columns: minmax(9.5rem, max-content) 1fr;
-  gap: 0.7rem;
+  gap: var(--space-3);
   align-items: baseline;
   margin: 0;
   font-size: var(--type-md);
@@ -193,16 +193,16 @@ const emit = defineEmits<{
 @media (width <= 720px) {
   .coverage-line {
     grid-template-columns: 1fr;
-    gap: 0.2rem;
+    gap: var(--space-1);
   }
 }
 
 /* ─── Sources block ──────────────────────────────────────── */
 
 .sources-block {
-  margin-top: 0.2rem;
+  margin-top: var(--space-1);
   border-top: 1px dashed var(--border);
-  padding-top: 0.85rem;
+  padding-top: var(--space-3);
 }
 
 .sources-in-session {
@@ -216,7 +216,7 @@ const emit = defineEmits<{
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.45rem;
+  gap: var(--space-2);
   cursor: pointer;
   user-select: none;
   font-family: var(--mono);
@@ -232,11 +232,11 @@ const emit = defineEmits<{
   font-family: var(--mono);
   background: var(--surface-3);
   color: var(--text-dim);
-  padding: 0.05rem 0.4rem;
+  padding: var(--space-0-5) var(--space-2);
   border-radius: var(--radius);
   font-size: var(--type-2xs);
   letter-spacing: 0;
-  margin-left: 0.2rem;
+  margin-left: var(--space-1);
 }
 
 /* Coverage chips on the Sources toggle row — same .slot-chip styling
@@ -246,7 +246,7 @@ const emit = defineEmits<{
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.3rem;
+  gap: var(--space-1);
   margin-left: auto;
 }
 
@@ -268,8 +268,8 @@ const emit = defineEmits<{
    override in badges.css to stay legible; mixing --bg keeps the same
    depth on Night/HC and stops slamming Dark's mid-gray surfaces. */
 .sources {
-  margin-top: 0.55rem;
-  padding: 0.65rem 0.75rem;
+  margin-top: var(--space-2);
+  padding: var(--space-3) var(--space-3);
   background: color-mix(in srgb, var(--bg) 30%, transparent);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius);
@@ -285,8 +285,8 @@ const emit = defineEmits<{
 .source-type-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.28rem;
-  padding: 0.18rem 0.5rem;
+  gap: var(--space-1);
+  padding: var(--space-0-5) var(--space-2);
   border-radius: var(--radius);
   font-family: var(--mono);
   font-size: var(--type-2xs);
@@ -347,12 +347,12 @@ const emit = defineEmits<{
    form miscompiles in Vue scoped CSS, see CLAUDE.md. */
 
 .sources-explain {
-  margin-top: 0.7rem;
-  padding-top: 0.65rem;
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
   border-top: 1px dashed var(--hairline);
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: var(--space-2);
 }
 
 </style>

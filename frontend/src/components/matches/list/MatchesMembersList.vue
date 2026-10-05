@@ -234,7 +234,7 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 /* Flat-mode virtualization spacers. Pure height — no border,
@@ -252,9 +252,9 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
   grid-template-columns: auto 1fr;
   align-items: center;
   gap: var(--space-2);
-  padding: 0.45rem 0 0.15rem;
+  padding: var(--space-2) 0 var(--space-0-5);
 }
-.section-divider:first-child { padding-top: 0.1rem; }
+.section-divider:first-child { padding-top: var(--space-0-5); }
 
 /* The header doubles as a disclosure toggle — click (or Enter/Space)
    collapses the group to just this row, click again re-expands. */
@@ -264,8 +264,8 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
   border: 1px solid transparent;
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.12rem 0.45rem 0.12rem 0.25rem;
+  gap: var(--space-2);
+  padding: var(--space-0-5) var(--space-2) var(--space-0-5) var(--space-1);
   margin: 0;
   cursor: pointer;
   font-family: var(--mono);
@@ -317,7 +317,7 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
   font-size: var(--type-3xs);
   letter-spacing: 0.1em;
   color: var(--text-faint);
-  padding: 0.05rem 0.35rem;
+  padding: var(--space-0-5) var(--space-1);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface-2);
@@ -328,8 +328,8 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
    strip height change; grid template, fonts, and result-chip
    geometry stay so the eye reads rows the same way. */
 .leaves-list.density-compact :deep(.leaf-row) {
-  padding: 0.3rem 0.85rem;
-  gap: 0.65rem;
+  padding: var(--space-1) var(--space-3);
+  gap: var(--space-3);
 }
 .leaves-list.density-compact :deep(.leaf-strip) { height: 26px; }
 
@@ -348,10 +348,10 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
   text-align: center;
   font-family: var(--mono);
   color: var(--text-dim);
-  padding: 1.5rem 0;
+  padding: var(--space-6) 0;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--space-2);
   align-items: center;
 }
 
@@ -370,7 +370,7 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
    with the result chips above. */
 .leaves-foot {
   margin: 0;
-  padding: 0.9rem 0 1.1rem;
+  padding: var(--space-4) 0 var(--space-4);
   text-align: center;
   font-family: var(--mono);
   font-size: var(--type-2xs);
@@ -387,7 +387,7 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
 .leaves-foot-end {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-2);
 }
 
 .leaves-foot-rule {
@@ -403,7 +403,7 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
   background: transparent;
   border: 1px solid var(--accent);
   border-radius: var(--radius);
-  padding: 0.35rem 0.85rem;
+  padding: var(--space-1) var(--space-3);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.16em;
@@ -415,7 +415,7 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
 .leaves-empty-btn:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 
 .sd-rollup {
-  margin-left: 0.6rem;
+  margin-left: var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.08em;
@@ -426,7 +426,7 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
 /* The player's-clock label. --text-mute drops below AA on Day's darker
    surfaces, so this content line takes --text-dim. */
 .leaves-clock {
-  margin: 0 0 0.4rem;
+  margin: 0 0 var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-3xs);
   letter-spacing: 0.1em;

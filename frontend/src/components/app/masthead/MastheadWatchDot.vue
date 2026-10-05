@@ -47,7 +47,7 @@ const tooltip = computed(() => {
 .masthead-watch-dot {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   font-weight: 700;

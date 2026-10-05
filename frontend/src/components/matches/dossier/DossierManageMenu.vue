@@ -174,7 +174,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
   border-left: 3px solid var(--accent);
   border-radius: var(--radius-overlay);
   box-shadow: 0 22px 48px -20px rgb(var(--shadow-rgb) / 55%);
-  padding: 0.5rem 0.45rem 0.4rem;
+  padding: var(--space-2) var(--space-2) var(--space-2);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -183,7 +183,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
 }
 
 .dossier-manage-empty {
-  margin: 0.3rem 0.4rem;
+  margin: var(--space-1) var(--space-2);
   font-size: var(--type-md);
   color: var(--text-faint);
   font-style: italic;
@@ -192,7 +192,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
 .dossier-manage-group {
   display: flex;
   flex-direction: column;
-  gap: 0.12rem;
+  gap: var(--space-0-5);
 }
 
 .dossier-manage-group-title {
@@ -202,20 +202,20 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
   text-transform: uppercase;
   color: var(--accent-text);
   font-weight: 700;
-  padding: 0.15rem 0.4rem 0.25rem;
+  padding: var(--space-0-5) var(--space-2) var(--space-1);
 }
 
 .dossier-manage-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.6rem;
+  gap: var(--space-2);
   width: 100%;
   appearance: none;
   border: 1px solid transparent;
   background: transparent;
   border-radius: var(--radius);
-  padding: 0.34rem 0.45rem;
+  padding: var(--space-1) var(--space-2);
   cursor: pointer;
   color: var(--text);
   text-align: left;
@@ -249,8 +249,8 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
 
 .dossier-manage-foot {
   border-top: 1px solid var(--border);
-  padding-top: 0.4rem;
-  margin-top: 0.1rem;
+  padding-top: var(--space-2);
+  margin-top: var(--space-0-5);
 }
 
 .dossier-manage-reset {
@@ -263,7 +263,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
   font-size: var(--type-xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  padding: 0.4rem 0.5rem;
+  padding: var(--space-2) var(--space-2);
   border-radius: var(--radius);
   cursor: pointer;
   transition: color var(--duration-instant) ease, border-color var(--duration-instant) ease, background var(--duration-instant) ease;

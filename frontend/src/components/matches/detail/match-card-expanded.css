@@ -6,8 +6,8 @@
    anchor. */
 .unknown-alert {
   position: relative;
-  margin: 0 0 0.85rem;
-  padding: 0.65rem 0.9rem 0.65rem 1.05rem;
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-3) var(--space-4);
   background: var(--accent-soft);
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border-strong));
   border-radius: var(--radius-surface);
@@ -32,11 +32,11 @@
 .unknown-alert-eyebrow {
   display: inline-block;
   color: var(--accent-bright);
-  margin-bottom: 0.2rem;
+  margin-bottom: var(--space-1);
 }
 
 .unknown-alert-title {
-  margin: 0 0 0.25rem;
+  margin: 0 0 var(--space-1);
   font-family: var(--display);
   font-style: italic;
   font-size: var(--type-2xl);
@@ -63,13 +63,13 @@
      deepens, over Day's cream-orange it grays. Every token here flips
      with the theme and would raise the chip on one side or the other. */
   background: rgb(0 0 0 / 18%);
-  padding: 0.05rem 0.3rem;
+  padding: var(--space-0-5) var(--space-1);
   border-radius: var(--radius);
 }
 
 .unknown-alert-link {
   display: inline-block;
-  margin-top: 0.45rem;
+  margin-top: var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.18em;
@@ -113,12 +113,12 @@
 }
 
 .match-expanded {
-  margin-top: 0.95rem;
-  padding-top: 0.95rem;
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
   border-top: 1px dashed var(--border);
   display: flex;
   flex-direction: column;
-  gap: 1.1rem;
+  gap: var(--space-4);
 }
 
 /* Detail-panel top meta strip: When / Final Score / Parsed in
@@ -130,16 +130,16 @@
 .detail-meta-strip {
   display: flex;
   flex-wrap: wrap;
-  gap: 0 1.6rem;
+  gap: 0 var(--space-6);
   align-items: baseline;
-  padding-bottom: 0.55rem;
+  padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--border);
 }
 
 .meta-cell {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: var(--space-1);
   min-width: 0;
 }
 
@@ -160,7 +160,7 @@
 .meta-row {
   display: flex;
   align-items: baseline;
-  gap: 0.7rem;
+  gap: var(--space-3);
 }
 
 .meta-value {
@@ -181,7 +181,7 @@
    Score meta row; the parsed row gets a touch of breathing room
    so the two stack cleanly when both render. */
 .meta-row-parsed {
-  margin-top: 0.18rem;
+  margin-top: var(--space-0-5);
 }
 
 /* ─── Match Stats wrapper ────────────────────────────────── */
@@ -194,7 +194,7 @@
 .match-stats-block {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: var(--space-2);
 }
 
 .match-stats-block .block-eyebrow {

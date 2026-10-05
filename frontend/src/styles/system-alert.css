@@ -9,9 +9,9 @@
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 1.2rem;
-  padding: 1rem 1.2rem 1rem 1.4rem;
-  margin-bottom: 1.6rem;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-5) var(--space-4) var(--space-6);
+  margin-bottom: var(--space-6);
   background: linear-gradient(180deg, var(--brand-gray) 0%, var(--brand-gray-deep) 100%);
   border-radius: var(--radius);
   border: 1px solid var(--loss);
@@ -54,7 +54,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: 0.2rem;
+  margin-left: var(--space-1);
 }
 
 .system-alert-body {
@@ -62,7 +62,7 @@
 }
 
 .system-alert-eyebrow {
-  margin-bottom: 0.3rem;
+  margin-bottom: var(--space-1);
 }
 
 .system-alert-title {
@@ -73,7 +73,7 @@
   line-height: 1.05;
   text-transform: uppercase;
   color: var(--on-dark-plate);
-  margin-bottom: 0.35rem;
+  margin-bottom: var(--space-1);
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
@@ -94,7 +94,7 @@
      only; a recess sitting on the element's own dark fill stays literal
      black, because tinting it warm on Day would erase it. */
   background: rgb(0 0 0 / 40%);
-  padding: 0.15rem 0.45rem;
+  padding: var(--space-0-5) var(--space-2);
   border-radius: var(--radius);
   word-break: break-all;
   border: 1px solid color-mix(in srgb, var(--on-dark-plate) 8%, transparent);
@@ -112,11 +112,11 @@
 .btn.alert-cta {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: var(--space-2);
   background: var(--loss);
   color: var(--primary-text-on-accent);
   border: 1px solid var(--loss);
-  padding: 0.65rem 1rem;
+  padding: var(--space-3) var(--space-4);
   font-family: var(--body);
   font-size: var(--type-md);
   font-weight: 700;
@@ -173,7 +173,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.35rem;
+  gap: var(--space-1);
 }
 
 .app-version {
@@ -196,7 +196,7 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-feature-settings: "tnum";
-  padding: 0.22rem 0.55rem;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius);
   border: 1px solid;
   line-height: 1;
@@ -296,7 +296,7 @@
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-overlay);
-  padding: 2rem 2.2rem 1.6rem;
+  padding: var(--space-8) var(--space-8) var(--space-6);
   max-width: 420px;
   width: calc(100% - 3rem);
   box-shadow: 0 24px 60px rgb(var(--shadow-rgb) / 60%);
@@ -343,7 +343,7 @@
   flex-direction: column;
   max-height: calc(100dvh - 3rem);
   overflow: hidden;
-  padding: 1.6rem 1.6rem 1.3rem;
+  padding: var(--space-6) var(--space-6) var(--space-5);
   background: var(--surface);
   border: 1px solid var(--accent);
   border-radius: var(--radius-overlay);
@@ -368,7 +368,7 @@
 
 .modal-icon {
   color: var(--accent-text);
-  margin-bottom: 0.9rem;
+  margin-bottom: var(--space-4);
 }
 
 .modal-title {
@@ -377,7 +377,7 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text);
-  margin: 0 0 0.9rem;
+  margin: 0 0 var(--space-4);
 }
 
 .modal-body {
@@ -385,7 +385,7 @@
   font-size: var(--type-lg);
   color: var(--text-dim);
   line-height: 1.6;
-  margin: 0 0 0.6rem;
+  margin: 0 0 var(--space-2);
 }
 
 .modal-body strong {
@@ -401,7 +401,7 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-3);
-  margin-top: 1.5rem;
+  margin-top: var(--space-6);
 }
 
 .modal-fade-enter-active,

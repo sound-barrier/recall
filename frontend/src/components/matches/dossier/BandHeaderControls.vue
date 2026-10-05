@@ -149,7 +149,7 @@ const emit = defineEmits<{
   font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   font-weight: 600;
-  padding: 0.22rem 0.55rem;
+  padding: var(--space-1) var(--space-2);
   cursor: pointer;
   border-right: 1px solid var(--border);
   transition: color var(--duration-fast) ease, background var(--duration-fast) ease;
@@ -171,7 +171,7 @@ const emit = defineEmits<{
 /* Reset — clears the band's filter without a scroll to the chips rail. */
 .bh-reset {
   appearance: none;
-  margin-left: 0.4rem;
+  margin-left: var(--space-2);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
   background: transparent;
@@ -181,7 +181,7 @@ const emit = defineEmits<{
   letter-spacing: 0.1em;
   text-transform: uppercase;
   font-weight: 700;
-  padding: 0.22rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   cursor: pointer;
   transition: background var(--duration-fast) ease, color var(--duration-fast) ease;
 }
@@ -232,9 +232,9 @@ const emit = defineEmits<{
 .bh-legend {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: var(--space-3);
   list-style: none;
-  margin: 0 0 0 0.6rem;
+  margin: 0 0 0 var(--space-2);
   padding: 0;
   font-family: var(--mono);
   font-size: var(--type-2xs);
@@ -246,7 +246,7 @@ const emit = defineEmits<{
 .bh-legend li {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: var(--space-1);
 }
 
 /* Geometry only — the fill arrives with the .cell-* class the grids below
@@ -265,8 +265,8 @@ const emit = defineEmits<{
 .bh-ramp {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  margin-left: 0.6rem;
+  gap: var(--space-1);
+  margin-left: var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.1em;

@@ -201,8 +201,8 @@ const popoverStyle = computed(() =>
   width: 300px;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  padding: 0.75rem 0.8rem 0.7rem;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3) var(--space-3);
   background: var(--surface);
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
@@ -228,7 +228,7 @@ const popoverStyle = computed(() =>
   font-size: var(--type-2xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding: 0.22rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius);
   cursor: pointer;
   transition: color var(--duration-instant) ease, border-color var(--duration-instant) ease;
@@ -240,13 +240,13 @@ const popoverStyle = computed(() =>
 .mrc-group {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 .mrc-label {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-3xs);
   letter-spacing: 0.18em;
@@ -260,14 +260,14 @@ const popoverStyle = computed(() =>
   color: var(--accent-text);
   background: var(--accent-soft);
   border-radius: var(--radius-pill);
-  padding: 0 0.35rem;
+  padding: 0 var(--space-1);
   letter-spacing: 0;
 }
 
 .mrc-pills {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 .mrc-pill {
@@ -279,7 +279,7 @@ const popoverStyle = computed(() =>
   font-style: italic;
   font-size: var(--type-lg);
   letter-spacing: 0.02em;
-  padding: 0.18rem 0.6rem;
+  padding: var(--space-0-5) var(--space-2);
   border-radius: var(--radius);
   cursor: pointer;
   transition: color var(--duration-instant) ease, border-color var(--duration-instant) ease, background var(--duration-instant) ease;
@@ -301,7 +301,7 @@ const popoverStyle = computed(() =>
   color: var(--text);
   font-family: var(--mono);
   font-size: var(--type-sm);
-  padding: 0.32rem 0.45rem;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius);
 }
 .mrc-search:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
@@ -321,7 +321,7 @@ const popoverStyle = computed(() =>
 .mrc-map {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
   width: 100%;
   appearance: none;
   border: 0;
@@ -333,7 +333,7 @@ const popoverStyle = computed(() =>
   font-size: var(--type-lg);
   letter-spacing: 0.01em;
   text-align: left;
-  padding: 0.26rem 0.45rem;
+  padding: var(--space-1) var(--space-2);
   cursor: pointer;
   transition: background var(--duration-instant) ease, color var(--duration-instant) ease;
 }
@@ -352,7 +352,7 @@ const popoverStyle = computed(() =>
 }
 
 .mrc-empty {
-  padding: 0.4rem 0.45rem;
+  padding: var(--space-2) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text-faint);

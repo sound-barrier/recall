@@ -164,7 +164,7 @@ defineEmits<{
 <style scoped>
 .parse-progress-panel {
   grid-column: 1 / -1;
-  margin-top: 0.85rem;
+  margin-top: var(--space-3);
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
   border-radius: var(--radius-surface);
@@ -178,7 +178,7 @@ defineEmits<{
   grid-template-columns: auto 1fr auto auto;
   align-items: center;
   gap: var(--space-3);
-  padding: 0.65rem 1rem;
+  padding: var(--space-3) var(--space-4);
   cursor: pointer;
   user-select: none;
   transition: background var(--duration-instant) ease;
@@ -205,7 +205,7 @@ defineEmits<{
 .pp-scan-label {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 
 .pp-scan-dot {
@@ -261,7 +261,7 @@ defineEmits<{
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 0.5rem 1rem;
+  padding: var(--space-2) var(--space-4);
   border-top: 1px solid var(--border-soft);
   font-size: var(--type-sm);
 }
@@ -295,7 +295,7 @@ defineEmits<{
   border-radius: var(--radius);
   background: transparent;
   color: inherit;
-  padding: 0.3rem 0.85rem;
+  padding: var(--space-1) var(--space-3);
   font-family: var(--mono);
   font-size: var(--type-xs);
   letter-spacing: 0.12em;
@@ -311,15 +311,15 @@ defineEmits<{
   display: flex;
   align-items: flex-start;
   flex-wrap: wrap;
-  gap: 0.35rem 0.65rem;
-  padding: 0.55rem 1rem;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--border-soft);
 }
 
 .pp-arrow {
   font-size: var(--type-2xs);
   color: var(--accent-text);
-  margin-top: 0.1rem;
+  margin-top: var(--space-0-5);
   flex-shrink: 0;
   animation: pulse-dot 1s ease-in-out infinite;
 }
@@ -341,7 +341,7 @@ defineEmits<{
   font-size: var(--type-2xs);
   font-weight: 700;
   letter-spacing: 0.1em;
-  padding: 0.1rem 0.4rem;
+  padding: var(--space-0-5) var(--space-2);
   border-radius: var(--radius);
   border: 1px solid transparent;
   flex-shrink: 0;
@@ -356,9 +356,9 @@ defineEmits<{
 .pp-cur-fields {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem 0.5rem;
+  gap: var(--space-1) var(--space-2);
   width: 100%;
-  padding-left: 1rem;
+  padding-left: var(--space-4);
 }
 
 .pp-field {
@@ -388,14 +388,14 @@ defineEmits<{
 .pp-log {
   max-height: 140px;
   overflow-y: auto;
-  padding: 0.3rem 0;
+  padding: var(--space-1) 0;
 }
 
 .pp-log-entry {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 0.22rem 1rem;
+  padding: var(--space-1) var(--space-4);
   transition: background var(--duration-instant) ease;
 }
 

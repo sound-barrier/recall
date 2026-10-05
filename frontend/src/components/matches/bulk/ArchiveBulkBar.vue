@@ -129,8 +129,8 @@ const {
 .archive-action-bar {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  padding: 0.45rem 0.65rem;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
   border-radius: var(--radius);
@@ -138,7 +138,7 @@ const {
   top: 0.4rem;
   z-index: 4;
   box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 30%, transparent);
-  margin: 0 0 0.45rem;
+  margin: 0 0 var(--space-2);
 }
 
 .bab-glyph { color: var(--accent-text); font-size: var(--type-xl); line-height: 1; }
@@ -168,7 +168,7 @@ const {
 .archive-action-bar button {
   appearance: none;
   border-radius: var(--radius);
-  padding: 0.32rem 0.7rem;
+  padding: var(--space-1) var(--space-3);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.18em;
@@ -177,7 +177,7 @@ const {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: var(--space-1);
   line-height: 1;
 }
 

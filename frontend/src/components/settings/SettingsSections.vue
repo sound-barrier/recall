@@ -49,8 +49,8 @@ import SettingsWindow from '@/components/settings/SettingsWindow.vue'
    chunks into clear bands. The first section's hairline is suppressed
    (adjacent-sibling combinator) so it doesn't double against the top. */
 .settings-section + .settings-section {
-  margin-top: 1.4rem;
-  padding-top: 1.4rem;
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
   border-top: 1px solid var(--border-soft);
 }
 

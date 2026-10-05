@@ -15,9 +15,9 @@
 .coach-room {
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr) 300px;
-  gap: 1.1rem;
+  gap: var(--space-4);
   align-items: start;
-  padding: 0.4rem 0 2rem;
+  padding: var(--space-2) 0 var(--space-8);
 }
 
 /* The reel is its own scroll region, one viewport tall, so the strip
@@ -29,7 +29,7 @@
   flex-direction: column;
   min-width: 0;
   max-height: calc(100vh - 9rem);
-  padding: 0.75rem 0.6rem 0.6rem;
+  padding: var(--space-3) var(--space-2) var(--space-2);
   background: var(--surface-2);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-surface);
@@ -41,7 +41,7 @@
 .coach-room-desk {
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: var(--space-4);
   min-width: 0;
 }
 

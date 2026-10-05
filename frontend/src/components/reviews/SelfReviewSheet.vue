@@ -184,14 +184,14 @@ function onTitleInput(e: Event): void {
 .coach-sheet {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
-  padding: 1rem 1.05rem 1.1rem;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-4);
 }
 
 .sheet-block {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 /* The one place the read-only lock speaks on this sheet. The loss color
@@ -207,7 +207,7 @@ function onTitleInput(e: Event): void {
    coach sheet's "Reviewing Sable" wears — but as an input, because it is
    yours to name. */
 .self-sheet-title {
-  padding: 0.3rem 0.45rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--display);
   font-style: italic;
   font-size: var(--type-7xl);
@@ -245,8 +245,8 @@ function onTitleInput(e: Event): void {
 .sheet-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  padding-top: 0.5rem;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
   border-top: 1px solid var(--paper-rule);
 }
 
