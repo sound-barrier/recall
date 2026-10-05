@@ -357,7 +357,7 @@ defineExpose({ focus: focusField })
       @focusout="onFocusOut"
     >
       <div class="note-writer-tools">
-        <div class="note-toolbar" role="toolbar" aria-label="Formatting">
+        <div class="note-toolbar cluster cluster-wrap gap-1" role="toolbar" aria-label="Formatting">
           <button
             v-for="b in TOOLBAR_INLINE"
             :key="b.mark"
@@ -490,12 +490,6 @@ defineExpose({ focus: focusField })
   margin: 0 0 0.4rem;
 }
 
-.note-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  align-items: center;
-}
 
 .note-tool {
   min-width: 1.9rem;

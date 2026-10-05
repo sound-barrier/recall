@@ -42,7 +42,7 @@ const rows = computed(() => series.value.map((s) => {
     Not enough decisive games on any hero yet.
   </p>
   <ul v-else class="hero-trend-list">
-    <li v-for="row in rows" :key="row.name" class="hero-trend-row">
+    <li v-for="row in rows" :key="row.name" class="hero-trend-row cluster">
       <span class="bd-name">{{ row.name }}</span>
       <svg
         class="hero-trend-spark"
@@ -59,11 +59,6 @@ const rows = computed(() => series.value.map((s) => {
 </template>
 
 <style scoped>
-.hero-trend-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
 
 /* The line is the content; it takes the room the name and the number leave. */
 .hero-trend-spark {

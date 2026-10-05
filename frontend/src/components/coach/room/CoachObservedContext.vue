@@ -82,7 +82,7 @@ function commit(): void {
       What you saw
     </p>
     <div class="observed-grid">
-      <div class="observed-field">
+      <div class="observed-field stack gap-1">
         <label class="eyebrow" :for="`observed-map-${record.match_key}`">Map</label>
         <input
           :id="`observed-map-${record.match_key}`"
@@ -99,7 +99,7 @@ function commit(): void {
         </datalist>
       </div>
 
-      <div v-if="subjectKind !== 'team'" class="observed-field">
+      <div v-if="subjectKind !== 'team'" class="observed-field stack gap-1">
         <label class="eyebrow" :for="`observed-hero-${record.match_key}`">Hero</label>
         <input
           :id="`observed-hero-${record.match_key}`"
@@ -116,7 +116,7 @@ function commit(): void {
         </datalist>
       </div>
 
-      <div class="observed-field">
+      <div class="observed-field stack gap-1">
         <label class="eyebrow" :for="`observed-result-${record.match_key}`">Result</label>
         <select
           :id="`observed-result-${record.match_key}`"
@@ -139,7 +139,7 @@ function commit(): void {
         </select>
       </div>
 
-      <div class="observed-field">
+      <div class="observed-field stack gap-1">
         <label class="eyebrow" :for="`observed-date-${record.match_key}`">Date</label>
         <input
           :id="`observed-date-${record.match_key}`"
@@ -172,9 +172,4 @@ function commit(): void {
   gap: var(--space-2);
 }
 
-.observed-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
 </style>

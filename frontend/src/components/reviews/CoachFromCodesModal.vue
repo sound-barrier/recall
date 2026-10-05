@@ -106,7 +106,7 @@ useModalFocusTrap(open, {
       <p class="sheet-note coach-codes-check">
         Double-check each code: it's how the player's Recall finds the match.
       </p>
-      <div class="coach-codes-entry">
+      <div class="coach-codes-entry cluster">
         <input
           id="coach-code-input"
           v-model="draft"
@@ -186,11 +186,6 @@ useModalFocusTrap(open, {
   margin-bottom: var(--space-1);
 }
 
-.coach-codes-entry {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
-}
 
 .coach-codes-list {
   display: flex;

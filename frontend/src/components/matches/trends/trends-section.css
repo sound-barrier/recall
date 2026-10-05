@@ -4,11 +4,6 @@
   padding-top: 0.5rem;
 }
 
-.trends-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
 
 .trends-toggle {
   display: flex;

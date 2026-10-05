@@ -91,7 +91,7 @@ const emit = defineEmits<{
     </div>
     <div v-if="isSourcesOpen" class="sources">
       <div v-for="f in record.source_files" :key="f" class="source-file">
-        <div class="source-row">
+        <div class="source-row cluster cluster-wrap">
           <a
             class="source-name"
             :href="screenshotURL(f, record.source_dir_ids?.[f] ?? 0)"
@@ -281,12 +281,6 @@ const emit = defineEmits<{
    app.css — they're also used by UnknownMapsView. .source-row stays
    here (MatchCardExpanded-only). */
 
-.source-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
 
 .source-type-chip {
   display: inline-flex;
