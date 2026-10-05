@@ -23,16 +23,15 @@ version: 2
 # auto-merge. Setting only `default-days` is how that reads: when no
 # semver-*-days key is present, Dependabot applies it to every update type.
 #
-# MAJORS NEVER OPEN A VERSION PR for the grouped ecosystems below. A major
+# MAJORS STAY OUT OF THE WEEKLY PR and arrive in their own. A major
 # folded into an auto-merged patch PR is one you merge by reflex —
 # dawidd6/action-download-artifact v21->v23 rode in exactly that way, onto
 # a release whose own upstream issue says to revert it. Per-ecosystem
 # `*-major` groups used to give majors their own PR, but Dependabot
 # silently ignores an entry's `groups` once the entry joins a
 # multi-ecosystem group (#777 shipped two majors in weekly-deps that way),
-# so each grouped entry ignores semver-major instead. Bump majors by hand;
-# security updates still open their own PRs, since `ignore` and
-# `cooldown` apply to version updates only.
+# so each grouped entry ignores semver-major, and a majors-only twin entry
+# per ecosystem (the MAJORS block below) opens its own `*-major` PR.
 #
 # HAND-MERGED: composite-action bumps. The actions under .github/actions/
 # set up the release toolchain: setup-mise wraps jdx/mise-action, which
@@ -47,8 +46,9 @@ version: 2
 # ONE ROUTINE PR. Minor and patch bumps from Go, the frontend and tools
 # npm trees and the workflow action pins all land in a single weekly
 # `weekly-deps` PR (the multi-ecosystem group below) instead of one PR per
-# ecosystem — one CI run, one review, one auto-merge. Majors stay out and
-# the composite actions keep their own entry, for the reasons above.
+# ecosystem — one CI run, one review, one auto-merge. Majors get their own
+# PR per ecosystem and the composite actions keep their own entry, for the
+# reasons above.
 #
 # HELD DEPENDENCIES are ignored, because one blocked bump would hold the
 # whole combined PR red. Each hold is documented where it is enforced;
@@ -128,6 +128,86 @@ updates:
     # are SHA pins (scripts/ci/check-action-pins.sh enforces that), which
     # makes a silently re-pointed tag the thing to worry about; a week of
     # daylight is cheap insurance.
+    cooldown:
+      default-days: 7
+
+  # MAJORS, one PR per ecosystem. These twins of the four weekly-deps
+  # entries above take major bumps only. `target-branch: "main"` is what
+  # lets them exist: Dependabot rejects two entries with the same
+  # ecosystem + directory + target-branch, and an explicit "main" is a
+  # different value from the unset default even though both target main.
+  - package-ecosystem: "gomod"
+    directory: "/"
+    target-branch: "main"  # makes this entry distinct — see the header
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      go-deps-major:
+        patterns: ["*"]
+        update-types: ["major"]
+    ignore:
+      # Minor and patch ride in weekly-deps.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+      # Wails lockstep hold — see the header.
+      - dependency-name: "github.com/wailsapp/wails/v3"
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    target-branch: "main"  # makes this entry distinct — see the header
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      npm-deps-major:
+        patterns: ["*"]
+        update-types: ["major"]
+    ignore:
+      # Minor and patch ride in weekly-deps.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+      # TypeScript ceiling — see the header.
+      - dependency-name: "typescript"
+        versions: [">=6.1"]
+      # Wails lockstep hold — see the header.
+      - dependency-name: "@wailsio/runtime"
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: "npm"
+    directory: "/tools"
+    target-branch: "main"  # makes this entry distinct — see the header
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      tools-deps-major:
+        patterns: ["*"]
+        update-types: ["major"]
+    ignore:
+      # Minor and patch ride in weekly-deps.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "main"  # makes this entry distinct — see the header
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      actions-major:
+        patterns: ["*"]
+        update-types: ["major"]
+    ignore:
+      # Minor and patch ride in weekly-deps.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
     cooldown:
       default-days: 7
 
