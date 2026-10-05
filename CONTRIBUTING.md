@@ -488,7 +488,7 @@ The SHA is the source of truth; the comment is for humans. **Two spaces before t
 
 **Bumping an action:** Dependabot (configured in `.github/dependabot.yml`) understands the SHA + version-comment format and updates both fields on its weekly run. Most bumps will arrive as a Dependabot PR.
 
-**Composite-action bumps are merged by hand.** The actions under `.github/actions/` set up the release toolchain (`setup-mise` wraps `jdx/mise-action`, and `wails-build-env` runs it for the release build), so Dependabot proposes their bumps from a separate update entry, in `actions-composite` / `actions-composite-major` PRs labeled `release-toolchain`. Never auto-merge one: read the upstream release notes and diff, check the CI run, then merge it yourself. Workflow pins under `.github/workflows/` keep arriving in the `actions` group as before.
+**Composite-action bumps are merged by hand.** The actions under `.github/actions/` set up the release toolchain (`setup-mise` wraps `jdx/mise-action`, and `wails-build-env` runs it for the release build), so Dependabot proposes their bumps from a separate update entry, in `actions-composite` / `actions-composite-major` PRs labeled `release-toolchain`. Never auto-merge one: read the upstream release notes and diff, check the CI run, then merge it yourself. Everything else arrives together: minor and patch bumps for Go, both npm trees and the workflow pins under `.github/workflows/` ride one weekly `weekly-deps` PR, while majors still get one `*-major` PR per ecosystem.
 
 **First-party composite actions** (`./.github/actions/foo`) are exempt — they live in the same repo as the workflow.
 

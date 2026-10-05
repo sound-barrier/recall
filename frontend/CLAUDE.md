@@ -53,7 +53,9 @@ ordering). What follows is what Recall enforces on top, or has gotten wrong.
   `instanceof Node` check quietly starts answering false (bump all 13 in one
   commit, then run the 34-case fixture suites in `note-tiptap.test.ts`); the
   **`overrides` block** pins transitive-CVE fixes (drop an entry once the direct
-  dep ships a fixed tree). The wails trio spans both ecosystems and stays in the
+  dep ships a fixed tree). `.github/dependabot.yml` ignores typescript `>=6.1`
+  and `@wailsio/runtime` so a hold never blocks the combined weekly PR — lift a
+  hold by deleting its ignore in the same change. The wails trio spans both ecosystems and stays in the
   root file.
 
 ## Architecture
