@@ -31,7 +31,7 @@
     // sharing the host daemon socket. The DOCKER env-var override the
     // Taskfile expects defaults to `docker` — set DOCKER=podman only if
     // you swap the daemon out.
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+    "ghcr.io/devcontainers/features/docker-in-docker:4": {
       "version": "latest",
       "moby": true
     },
