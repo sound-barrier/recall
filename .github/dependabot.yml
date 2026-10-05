@@ -23,11 +23,16 @@ version: 2
 # auto-merge. Setting only `default-days` is how that reads: when no
 # semver-*-days key is present, Dependabot applies it to every update type.
 #
-# Majors wait the same window but arrive in their OWN grouped PR per
-# ecosystem (see the `*-major` groups). A major arriving alone is a major
-# you read; one folded into a five-update patch PR is one you merge by
-# reflex — dawidd6/action-download-artifact v21->v23 rode in exactly that
-# way, onto a release whose own upstream issue says to revert it.
+# MAJORS NEVER OPEN A VERSION PR for the grouped ecosystems below. A major
+# folded into an auto-merged patch PR is one you merge by reflex —
+# dawidd6/action-download-artifact v21->v23 rode in exactly that way, onto
+# a release whose own upstream issue says to revert it. Per-ecosystem
+# `*-major` groups used to give majors their own PR, but Dependabot
+# silently ignores an entry's `groups` once the entry joins a
+# multi-ecosystem group (#777 shipped two majors in weekly-deps that way),
+# so each grouped entry ignores semver-major instead. Bump majors by hand;
+# security updates still open their own PRs, since `ignore` and
+# `cooldown` apply to version updates only.
 #
 # HAND-MERGED: composite-action bumps. The actions under .github/actions/
 # set up the release toolchain: setup-mise wraps jdx/mise-action, which
@@ -42,9 +47,8 @@ version: 2
 # ONE ROUTINE PR. Minor and patch bumps from Go, the frontend and tools
 # npm trees and the workflow action pins all land in a single weekly
 # `weekly-deps` PR (the multi-ecosystem group below) instead of one PR per
-# ecosystem — one CI run, one review, one auto-merge. Majors keep their
-# per-ecosystem `*-major` group and the composite actions keep their own
-# entry, for the reasons above.
+# ecosystem — one CI run, one review, one auto-merge. Majors stay out and
+# the composite actions keep their own entry, for the reasons above.
 #
 # HELD DEPENDENCIES are ignored, because one blocked bump would hold the
 # whole combined PR red. Each hold is documented where it is enforced;
@@ -68,11 +72,10 @@ updates:
     directory: "/"
     multi-ecosystem-group: "weekly-deps"
     patterns: ["*"]
-    groups:
-      go-deps-major:
-        patterns: ["*"]
-        update-types: ["major"]
     ignore:
+      # Majors stay out of weekly-deps — see the header.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
       # Wails lockstep hold — see the header.
       - dependency-name: "github.com/wailsapp/wails/v3"
     cooldown:
@@ -83,11 +86,10 @@ updates:
     directory: "/frontend"
     multi-ecosystem-group: "weekly-deps"
     patterns: ["*"]
-    groups:
-      npm-deps-major:
-        patterns: ["*"]
-        update-types: ["major"]
     ignore:
+      # Majors stay out of weekly-deps — see the header.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
       # TypeScript ceiling — see the header.
       - dependency-name: "typescript"
         versions: [">=6.1"]
@@ -103,10 +105,10 @@ updates:
     directory: "/tools"
     multi-ecosystem-group: "weekly-deps"
     patterns: ["*"]
-    groups:
-      tools-deps-major:
-        patterns: ["*"]
-        update-types: ["major"]
+    ignore:
+      # Majors stay out of weekly-deps — see the header.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     cooldown:
       default-days: 7
 
@@ -117,10 +119,10 @@ updates:
     directory: "/"
     multi-ecosystem-group: "weekly-deps"
     patterns: ["*"]
-    groups:
-      actions-major:
-        patterns: ["*"]
-        update-types: ["major"]
+    ignore:
+      # Majors stay out of weekly-deps — see the header.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     # github-actions supports `default-days` only — the semver-*-days keys
     # are not available for this ecosystem, so one flat window it is. These
     # are SHA pins (scripts/ci/check-action-pins.sh enforces that), which
