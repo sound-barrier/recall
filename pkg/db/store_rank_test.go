@@ -31,7 +31,7 @@ func TestSQLStore_RankModifiers_UnknownValueCostsThePillNotTheRow(t *testing.T) 
 
 	got := loadOneRank(t, s)
 	if got.Rank != "platinum" || got.Level != 2 || *got.RankProgress != 67 {
-		t.Errorf("rank = %q %d @%d%%, want platinum 2 @67%%", got.Rank, got.Level, got.RankProgress)
+		t.Errorf("rank = %q %d @%d%%, want platinum 2 @67%%", got.Rank, got.Level, *got.RankProgress)
 	}
 	if len(got.SR) != 1 || got.SR[0].SR != 2065 {
 		t.Errorf("sr = %+v, want juno at 2065", got.SR)

@@ -110,7 +110,7 @@ func TestUpsertRank_SurvivesAModifierTheLocalSchemaRejects(t *testing.T) {
 	got := loadOneRank(t, s)
 	if got.Rank != "platinum" || got.Level != 2 || *got.RankProgress != 67 {
 		t.Errorf("rank = %q %d @%d%%, want platinum 2 @67%% — the measurement was lost",
-			got.Rank, got.Level, got.RankProgress)
+			got.Rank, got.Level, *got.RankProgress)
 	}
 	if len(got.SR) != 1 || got.SR[0].SR != 2065 {
 		t.Errorf("sr = %+v, want juno at 2065 — the SR line went with the row", got.SR)
