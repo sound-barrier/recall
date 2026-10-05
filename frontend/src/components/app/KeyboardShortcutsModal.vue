@@ -233,7 +233,7 @@ const visibleGroups = computed(() =>
   z-index: 1000;
   display: grid;
   place-items: center;
-  padding: var(--space-6);
+  padding: var(--space-8);
   background: color-mix(in srgb, var(--bg) 90%, transparent);
 }
 

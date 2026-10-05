@@ -12,7 +12,7 @@
 
 .sheet {
   margin: 0;
-  padding: var(--space-5) var(--space-3);
+  padding: var(--space-6) var(--space-3);
   background: var(--paper);
   color: var(--ink);
 }
@@ -51,7 +51,7 @@
 }
 
 .sheet-focus {
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-6);
 }
 
 .sheet-focus-list {
