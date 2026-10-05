@@ -57,14 +57,14 @@ RECALL_DATA_DIR = "{{config_root}}/data"
 # The npm CLIs listed in tools/package.json are pinned in
 # tools/package-lock.json instead.
 TYPOS_VERSION = "v1.50.2"
-SEMGREP_VERSION = "1.177.0"
+SEMGREP_VERSION = "1.178.0"
 # gobco (condition/branch coverage) is a MEASUREMENT tool: the version changes
 # the number it reports, so a bump is a re-baseline decision. CI's
 # branch-coverage job greps this into $GITHUB_ENV to label its summary; its
 # `go install` names the version literally, so bump that line with this one
 # and the [tools] pin.
 GOBCO_VERSION = "v1.3.4"
-SCHEMATHESIS_VERSION = "4.27.1"
+SCHEMATHESIS_VERSION = "4.28.0"
 # jsonschema-rs is a TRANSITIVE dependency of schemathesis, and pinning
 # schemathesis does not pin it: `pipx install schemathesis==X` resolves it
 # fresh on every CI run, which is a hole straight through the 7-day dependency
@@ -76,7 +76,7 @@ SCHEMATHESIS_VERSION = "4.27.1"
 # 58 Runtime Errors across two thirds of the API, on main and every branch
 # alike, with nothing in the repo having changed. Unpin it and that recurs the
 # next time the crate lands a breaking release.
-JSONSCHEMA_RS_VERSION = "0.56.0"
+JSONSCHEMA_RS_VERSION = "0.57.1"
 TESSERACT_VERSION = "5.5.3"
 RUFF_VERSION = "0.16.7"
 SQLFLUFF_VERSION = "4.3.0"
@@ -96,7 +96,7 @@ GOTOOLCHAIN = "local"
 go = "1.27.1"
 # Keep in sync with the root .node-version (consumed by actions/setup-node
 # in CI); `task check-deps` asserts the two agree.
-node = "26.8.2"
+node = "26.10.0"
 
 # The task runner itself, so `mise install` bootstraps a complete toolchain
 # on any platform (CI / Linux). Homebrew users can also `brew install
@@ -158,6 +158,6 @@ zizmor = "1.30.1"
 "go:github.com/boumenot/gocover-cobertura" = "v1.5.0"
 
 # Python tools (isolated venvs) → pipx backend.
-"pipx:semgrep" = "1.177.0"
-"pipx:schemathesis" = "4.27.1"
+"pipx:semgrep" = "1.178.0"
+"pipx:schemathesis" = "4.28.0"
 "pipx:sqlfluff" = "4.3.0"
