@@ -115,7 +115,7 @@ function idxOr(): number { return props.idx ?? 0 }
 .kpi-tile {
   border: 1px solid var(--border);
   background: var(--surface-2);
-  border-radius: var(--radius);
+  border-radius: var(--radius-surface);
   padding: 0.55rem 0.7rem 0.6rem;
   display: flex;
   flex-direction: column;
@@ -128,7 +128,7 @@ function idxOr(): number { return props.idx ?? 0 }
 
 .breakdown {
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-surface);
   background: var(--surface);
   padding: 0.55rem 0.7rem 0.65rem;
   position: relative;

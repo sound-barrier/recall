@@ -69,7 +69,7 @@ onBeforeUnmount(stopTimer)
   color: var(--text);
   background: var(--surface-2);
   border: 1px solid var(--win);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-overlay);
   transform: translateX(-50%);
 }
 

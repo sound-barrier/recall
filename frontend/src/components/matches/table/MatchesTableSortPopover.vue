@@ -238,7 +238,7 @@ function onColumnChange(from: TableSortCol, e: Event) {
   color: var(--text);
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-overlay);
   box-shadow: 0 18px 38px -16px rgb(var(--shadow-rgb) / 55%);
 }
 

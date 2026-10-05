@@ -67,7 +67,7 @@ useModalFocusTrap(toRef(props, 'open'), {
 .settings-modal-box {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-overlay);
 
   /* Wide enough that the section rows (label column + the 4-up theme swatches /
      detect-binary controls) lay out as they do on the Settings tab, rather than

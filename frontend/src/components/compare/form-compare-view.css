@@ -154,7 +154,7 @@
   margin: 1rem 0 0.4rem;
   padding: 1.1rem 1.2rem 1rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-surface);
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 5%, transparent) 0%, transparent 45%),
     var(--surface);

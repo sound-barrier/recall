@@ -4,7 +4,7 @@
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 4%, transparent) 0%, transparent 40%),
     var(--surface);
-  border-radius: var(--radius);
+  border-radius: var(--radius-surface);
 }
 
 .hp-head {

@@ -315,14 +315,21 @@
   --type-6xl: 1.5rem;
   --type-7xl: 1.65rem;
 
-  /* Corners. 2px is the house default (200+ uses) — chips, buttons,
-     inputs, most cards; 3px the slightly softer card/panel; 4px the
-     modal box; 1px the hairline tag. --radius-pill for anything whose
+  /* Corners, assigned by role so the hierarchy reads at a glance.
+     Controls stay crisp: --radius (chips, buttons, inputs), --radius-md
+     (compact selects/toggles), --radius-lg (scrollbar thumbs, small
+     floating buttons), --radius-hair (hairline tags). Containers step
+     up: --radius-surface for cards, tiles, panels and banners;
+     --radius-overlay for anything floating above the page — modals,
+     the palette, popovers, menus, drawers, toasts. A child never takes
+     a larger radius than its parent. --radius-pill for anything whose
      radius should exceed its own height. */
   --radius-hair: 1px;
   --radius: 2px;
   --radius-md: 3px;
   --radius-lg: 4px;
+  --radius-surface: 6px;
+  --radius-overlay: 10px;
   --radius-pill: 999px;
   --type-display-sm: 1.85rem;
   --type-display-md: 2.5rem;

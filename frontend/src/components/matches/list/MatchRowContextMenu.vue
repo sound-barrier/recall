@@ -366,7 +366,7 @@ function onHide() {
   padding: var(--space-1);
   background: var(--surface);
   border: 1px solid var(--accent);
-  border-radius: var(--radius);
+  border-radius: var(--radius-overlay);
   box-shadow: 0 16px 32px -16px rgb(var(--shadow-rgb) / 50%);
   display: flex;
   flex-direction: column;

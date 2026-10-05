@@ -228,7 +228,7 @@ void ({} as NamedCandidateStats)
   background: var(--surface-2);
   border: 1px solid var(--border-strong);
   border-left: 3px solid var(--border-strong);
-  border-radius: var(--radius);
+  border-radius: var(--radius-surface);
   padding: 0.65rem 0.85rem;
   text-align: left;
   display: flex;

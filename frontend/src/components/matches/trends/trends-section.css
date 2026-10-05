@@ -96,7 +96,7 @@
 .trend-card {
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-surface);
   padding: var(--space-3);
   min-width: 0;
   transition: box-shadow var(--duration-fast) ease, opacity var(--duration-fast) ease;

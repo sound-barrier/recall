@@ -1,55 +1,55 @@
 {
   "htmlAttr": {
-    "dataTheme": "day"
+    "dataTheme": "high-contrast"
   },
   "activeTab": {
-    "id": "tab-unknown",
+    "id": "tab-elo",
     "ariaSelected": "true",
-    "textContent": "04Unknown 2 unresolved"
+    "textContent": "06Elo Calculator"
   },
   "mainPresent": true,
   "mastheadPresent": true,
   "cssTokens": {
-    "--accent": "#fa9c1b",
-    "--accent-text": "#8f4500",
-    "--accent-glow": "#fa9c1b73",
-    "--accent-soft": "#fa9c1b38",
-    "--text": "#1a1a1a",
-    "--text-dim": "#4a4a4a",
-    "--text-faint": "#5c5a52",
-    "--text-mute": "#6a675c",
-    "--surface": "#f5f3ed",
-    "--surface-2": "#e8e5dd",
-    "--surface-3": "#dcd8cd",
-    "--bg": "#efede6",
-    "--border": "#4a4a4a",
-    "--border-soft": "#b9b3a5",
-    "--border-strong": "#2a2a2a",
-    "--win": "#0c6b32",
-    "--loss": "#a82a3d",
-    "--draw": "#7a5010",
-    "--tank": "#1f5491",
-    "--dps": "#c4451f",
-    "--support": "#1e6f3a",
-    "--identity-accent": "#9c4012",
-    "--primary-text-on-accent": "#1a0a00",
-    "--paper": "#f7efd6",
-    "--paper-2": "#efe4c0",
-    "--paper-rule": "#4a4a4a38",
-    "--paper-edge": "#4a4a4a",
-    "--ink": "#1f1a14",
-    "--ink-dim": "#4a4238",
-    "--ink-faint": "#5f5749",
-    "--paper-accent": "#8f4500",
-    "--paper-win": "#0a5a2a",
-    "--paper-loss": "#9c2537",
-    "--paper-draw": "#6f480e",
-    "--paper-focus": "#8f4500",
-    "--paper-scheme": "light"
+    "--accent": "#ffbf4d",
+    "--accent-text": "#ffbf4d",
+    "--accent-glow": "#ffbf4d99",
+    "--accent-soft": "#ffbf4d4d",
+    "--text": "#fff",
+    "--text-dim": "#fff",
+    "--text-faint": "#e6e6e6",
+    "--text-mute": "#d0d0d0",
+    "--surface": "#000",
+    "--surface-2": "#0a0a0a",
+    "--surface-3": "#141414",
+    "--bg": "#000",
+    "--border": "#fff",
+    "--border-soft": "#888",
+    "--border-strong": "#fff",
+    "--win": "#0f6",
+    "--loss": "#f35",
+    "--draw": "gold",
+    "--tank": "#6df",
+    "--dps": "#f86",
+    "--support": "#8fa",
+    "--identity-accent": "#ffbf4d",
+    "--primary-text-on-accent": "#000",
+    "--paper": "#000",
+    "--paper-2": "#0d0d0d",
+    "--paper-rule": "#fff6",
+    "--paper-edge": "#fff",
+    "--ink": "#fff",
+    "--ink-dim": "#fff",
+    "--ink-faint": "#e8e8e8",
+    "--paper-accent": "#ffb066",
+    "--paper-win": "#7ee0a0",
+    "--paper-loss": "#ff9aa8",
+    "--paper-draw": "#f0c76e",
+    "--paper-focus": "#fff",
+    "--paper-scheme": "dark"
   },
   "designSystem": {
     "eyebrow": {
-      "count": 1,
+      "count": 4,
       "fontSize": [
         "9.6px"
       ],
@@ -63,7 +63,7 @@
         "uppercase"
       ],
       "color": [
-        "rgb(92, 90, 82)"
+        "rgb(230, 230, 230)"
       ],
       "backgroundColor": [
         "rgba(0, 0, 0, 0)"
@@ -73,29 +73,40 @@
       ]
     },
     "card": {
-      "count": 4,
+      "count": 15,
       "fontSize": [
-        "14px"
+        "12.48px",
+        "14px",
+        "24px",
+        "9.6px"
       ],
       "letterSpacing": [
+        "0.24px",
+        "2.112px",
         "normal"
       ],
       "fontWeight": [
-        "400"
+        "400",
+        "700"
       ],
       "textTransform": [
-        "none"
+        "none",
+        "uppercase"
       ],
       "color": [
-        "rgb(26, 26, 26)"
+        "rgb(230, 230, 230)",
+        "rgb(255, 255, 255)"
       ],
       "backgroundColor": [
-        "rgb(245, 243, 237)",
+        "rgb(10, 10, 10)",
+        "rgb(102, 221, 255)",
+        "rgb(255, 191, 77)",
         "rgba(0, 0, 0, 0)"
       ],
       "borderRadius": [
         "0px",
-        "6px"
+        "3px",
+        "50%"
       ]
     },
     "panel": {
@@ -109,20 +120,22 @@
       "borderRadius": []
     },
     "button": {
-      "count": 12,
+      "count": 31,
       "fontSize": [
+        "10.56px",
+        "12.48px",
         "13.3333px",
-        "13.6px",
         "16px",
         "9.6px"
       ],
       "letterSpacing": [
+        "0.4224px",
+        "0.576px",
         "1.536px",
         "normal"
       ],
       "fontWeight": [
         "400",
-        "600",
         "700"
       ],
       "textTransform": [
@@ -130,18 +143,18 @@
         "uppercase"
       ],
       "color": [
-        "rgb(143, 69, 0)",
-        "rgb(26, 26, 26)",
-        "rgb(92, 90, 82)"
+        "rgb(230, 230, 230)",
+        "rgb(255, 255, 255)"
       ],
       "backgroundColor": [
-        "rgb(232, 229, 221)",
-        "rgb(245, 243, 237)",
+        "color(srgb 0.250588 0.195373 0.0970196)",
+        "rgb(10, 10, 10)",
         "rgba(0, 0, 0, 0)"
       ],
       "borderRadius": [
         "0px",
-        "2px"
+        "2px",
+        "3px"
       ]
     },
     "badge": {
@@ -159,55 +172,51 @@
         "uppercase"
       ],
       "color": [
-        "rgb(26, 10, 0)"
+        "rgb(0, 0, 0)"
       ],
       "backgroundColor": [
-        "rgb(122, 80, 16)"
+        "rgb(255, 215, 0)"
       ],
       "borderRadius": [
         "999px"
       ]
     },
     "chip": {
-      "count": 9,
+      "count": 1,
       "fontSize": [
         "9.6px"
       ],
       "letterSpacing": [
-        "0.672px",
         "1.536px"
       ],
       "fontWeight": [
-        "600",
         "700"
       ],
       "textTransform": [
-        "none",
         "uppercase"
       ],
       "color": [
-        "rgb(12, 107, 50)",
-        "rgb(26, 26, 26)",
-        "rgb(92, 90, 82)"
+        "rgb(255, 255, 255)"
       ],
       "backgroundColor": [
-        "rgb(232, 229, 221)",
-        "rgba(0, 0, 0, 0)",
-        "rgba(12, 107, 50, 0.14)"
+        "rgb(10, 10, 10)"
       ],
       "borderRadius": [
         "2px"
       ]
     },
     "heading": {
-      "count": 2,
+      "count": 7,
       "fontSize": [
         "32px",
-        "40.8px"
+        "40.8px",
+        "9.6px"
       ],
       "letterSpacing": [
         "-0.32px",
-        "1.632px"
+        "1.344px",
+        "1.632px",
+        "1.728px"
       ],
       "fontWeight": [
         "700",
@@ -217,8 +226,8 @@
         "uppercase"
       ],
       "color": [
-        "rgb(245, 243, 238)",
-        "rgb(26, 26, 26)"
+        "rgb(255, 191, 77)",
+        "rgb(255, 255, 255)"
       ],
       "backgroundColor": [
         "rgba(0, 0, 0, 0)"

@@ -10,7 +10,7 @@
   padding: 1rem 1.1rem 1.1rem;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-surface);
 }
 
 .card-head {

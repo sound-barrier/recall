@@ -138,7 +138,7 @@
   margin: 0.5rem 0 0;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-surface);
   background: color-mix(in srgb, var(--accent) 6%, var(--surface-2));
   color: var(--text-dim);
   font-size: var(--type-lg);

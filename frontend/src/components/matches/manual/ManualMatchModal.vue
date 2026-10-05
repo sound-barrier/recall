@@ -121,7 +121,7 @@ async function submit() {
   max-height: 92vh;
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-overlay);
   box-shadow: 0 18px 60px rgb(var(--shadow-rgb) / 45%);
   padding: 0.9rem 1rem 0;
   display: flex;

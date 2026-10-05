@@ -312,7 +312,7 @@ const probeDismissed = ref(false)
   max-width: 60ch;
   background: color-mix(in srgb, var(--accent) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-surface);
   font-family: var(--body);
   font-size: var(--type-md);
   color: color-mix(in srgb, var(--accent) 80%, var(--text));

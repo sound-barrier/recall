@@ -254,7 +254,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
   padding: var(--space-1);
   background: var(--surface-3);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-overlay);
   box-shadow: 0 8px 24px rgb(var(--shadow-rgb) / 35%);
 }
 

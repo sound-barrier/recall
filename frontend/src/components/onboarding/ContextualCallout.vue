@@ -163,7 +163,7 @@ const calloutStyle = computed(() => {
   z-index: 180;
   background: var(--surface);
   border: 1px solid var(--accent);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-overlay);
   padding: 0.85rem 1rem 0.95rem;
   box-shadow:
     0 16px 36px color-mix(in srgb, var(--bg) 60%, transparent),

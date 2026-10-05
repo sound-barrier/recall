@@ -158,7 +158,7 @@ function commit(): void {
 .observed {
   padding: var(--space-3);
   border: 1px dashed var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-surface);
   background: var(--surface-2);
 }
 

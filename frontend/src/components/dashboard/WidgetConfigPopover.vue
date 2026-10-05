@@ -254,7 +254,7 @@ function onCancel() {
   max-width: 320px;
   background: var(--surface-2);
   border: 1px solid var(--accent);
-  border-radius: var(--radius);
+  border-radius: var(--radius-overlay);
   box-shadow: 0 12px 32px -10px rgb(var(--shadow-rgb) / 45%);
   padding: 0.85rem 0.95rem 0.7rem;
   font-family: var(--mono);

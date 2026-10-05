@@ -1,6 +1,6 @@
 {
   "htmlAttr": {
-    "dataTheme": "day"
+    "dataTheme": "night"
   },
   "activeTab": {
     "id": "tab-unknown",
@@ -10,42 +10,42 @@
   "mainPresent": true,
   "mastheadPresent": true,
   "cssTokens": {
-    "--accent": "#fa9c1b",
-    "--accent-text": "#8f4500",
-    "--accent-glow": "#fa9c1b73",
-    "--accent-soft": "#fa9c1b38",
-    "--text": "#1a1a1a",
-    "--text-dim": "#4a4a4a",
-    "--text-faint": "#5c5a52",
-    "--text-mute": "#6a675c",
-    "--surface": "#f5f3ed",
-    "--surface-2": "#e8e5dd",
-    "--surface-3": "#dcd8cd",
-    "--bg": "#efede6",
-    "--border": "#4a4a4a",
-    "--border-soft": "#b9b3a5",
-    "--border-strong": "#2a2a2a",
-    "--win": "#0c6b32",
-    "--loss": "#a82a3d",
-    "--draw": "#7a5010",
-    "--tank": "#1f5491",
-    "--dps": "#c4451f",
-    "--support": "#1e6f3a",
-    "--identity-accent": "#9c4012",
+    "--accent": "#f5a623",
+    "--accent-text": "#f5a623",
+    "--accent-glow": "#f5a62361",
+    "--accent-soft": "#f5a62329",
+    "--text": "#ecedf0",
+    "--text-dim": "#9ca0ac",
+    "--text-faint": "#878a96",
+    "--text-mute": "#838690",
+    "--surface": "#13151a",
+    "--surface-2": "#181b22",
+    "--surface-3": "#1d2029",
+    "--bg": "#0a0b0d",
+    "--border": "#2c2f38",
+    "--border-soft": "#1a1d24",
+    "--border-strong": "#3a3e49",
+    "--win": "#4dff8e",
+    "--loss": "#ff5a73",
+    "--draw": "#ffc94d",
+    "--tank": "#6ab8ff",
+    "--dps": "#ff7a5a",
+    "--support": "#7dffac",
+    "--identity-accent": "#c9762e",
     "--primary-text-on-accent": "#1a0a00",
-    "--paper": "#f7efd6",
-    "--paper-2": "#efe4c0",
-    "--paper-rule": "#4a4a4a38",
-    "--paper-edge": "#4a4a4a",
-    "--ink": "#1f1a14",
-    "--ink-dim": "#4a4238",
-    "--ink-faint": "#5f5749",
-    "--paper-accent": "#8f4500",
-    "--paper-win": "#0a5a2a",
-    "--paper-loss": "#9c2537",
-    "--paper-draw": "#6f480e",
-    "--paper-focus": "#8f4500",
-    "--paper-scheme": "light"
+    "--paper": "#262019",
+    "--paper-2": "#1b1712",
+    "--paper-rule": "#f2ede124",
+    "--paper-edge": "#877e6a",
+    "--ink": "#f2ede1",
+    "--ink-dim": "#c2bbab",
+    "--ink-faint": "#a49c8c",
+    "--paper-accent": "#f2a862",
+    "--paper-win": "#74c894",
+    "--paper-loss": "#f295a3",
+    "--paper-draw": "#ddb968",
+    "--paper-focus": "#f2a862",
+    "--paper-scheme": "dark"
   },
   "designSystem": {
     "eyebrow": {
@@ -63,7 +63,7 @@
         "uppercase"
       ],
       "color": [
-        "rgb(92, 90, 82)"
+        "rgb(135, 138, 150)"
       ],
       "backgroundColor": [
         "rgba(0, 0, 0, 0)"
@@ -87,15 +87,15 @@
         "none"
       ],
       "color": [
-        "rgb(26, 26, 26)"
+        "rgb(236, 237, 240)"
       ],
       "backgroundColor": [
-        "rgb(245, 243, 237)",
+        "rgb(19, 21, 26)",
         "rgba(0, 0, 0, 0)"
       ],
       "borderRadius": [
         "0px",
-        "6px"
+        "3px"
       ]
     },
     "panel": {
@@ -130,13 +130,13 @@
         "uppercase"
       ],
       "color": [
-        "rgb(143, 69, 0)",
-        "rgb(26, 26, 26)",
-        "rgb(92, 90, 82)"
+        "rgb(135, 138, 150)",
+        "rgb(236, 237, 240)",
+        "rgb(245, 166, 35)"
       ],
       "backgroundColor": [
-        "rgb(232, 229, 221)",
-        "rgb(245, 243, 237)",
+        "rgb(19, 21, 26)",
+        "rgb(24, 27, 34)",
         "rgba(0, 0, 0, 0)"
       ],
       "borderRadius": [
@@ -162,7 +162,7 @@
         "rgb(26, 10, 0)"
       ],
       "backgroundColor": [
-        "rgb(122, 80, 16)"
+        "rgb(255, 201, 77)"
       ],
       "borderRadius": [
         "999px"
@@ -186,14 +186,14 @@
         "uppercase"
       ],
       "color": [
-        "rgb(12, 107, 50)",
-        "rgb(26, 26, 26)",
-        "rgb(92, 90, 82)"
+        "rgb(135, 138, 150)",
+        "rgb(236, 237, 240)",
+        "rgb(77, 255, 142)"
       ],
       "backgroundColor": [
-        "rgb(232, 229, 221)",
+        "rgb(24, 27, 34)",
         "rgba(0, 0, 0, 0)",
-        "rgba(12, 107, 50, 0.14)"
+        "rgba(77, 255, 142, 0.12)"
       ],
       "borderRadius": [
         "2px"
@@ -217,8 +217,8 @@
         "uppercase"
       ],
       "color": [
-        "rgb(245, 243, 238)",
-        "rgb(26, 26, 26)"
+        "rgb(236, 237, 240)",
+        "rgb(245, 243, 238)"
       ],
       "backgroundColor": [
         "rgba(0, 0, 0, 0)"

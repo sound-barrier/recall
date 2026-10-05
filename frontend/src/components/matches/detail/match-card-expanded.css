@@ -10,7 +10,7 @@
   padding: 0.65rem 0.9rem 0.65rem 1.05rem;
   background: var(--accent-soft);
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border-strong));
-  border-radius: var(--radius);
+  border-radius: var(--radius-surface);
   border-left: 4px solid var(--accent);
   overflow: hidden;
 }
