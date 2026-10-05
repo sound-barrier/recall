@@ -1,7 +1,7 @@
 .matches-set-workspace {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: var(--space-3);
 }
 
 /* Rail mode — switch to a 2-column grid with the always-visible
@@ -12,7 +12,7 @@
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: start;
-  gap: 1.1rem;
+  gap: var(--space-4);
 }
 
 .matches-content-column {
@@ -24,7 +24,7 @@
      list. The bands used to carry their own margin-bottom, which left
      the dossier→first-section gap tighter than the gaps between bands;
      the gap now owns all of it uniformly. */
-  gap: 1.2rem;
+  gap: var(--space-5);
   min-width: 0;
 }
 
@@ -34,7 +34,7 @@
   border: 1px solid var(--border);
   background: var(--surface);
   border-radius: var(--radius);
-  padding: 0.7rem 1rem 0.85rem;
+  padding: var(--space-3) var(--space-4) var(--space-3);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -123,9 +123,9 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.55rem;
-  padding: 0.5rem 0.75rem;
-  margin-bottom: 0.6rem;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);

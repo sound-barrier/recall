@@ -38,8 +38,8 @@ withDefaults(defineProps<{
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 0.9rem;
-  padding: 0.5rem 0;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
   border-top: 1px solid var(--paper-rule);
   border-bottom: 1px solid var(--paper-rule);
 }

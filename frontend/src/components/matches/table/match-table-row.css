@@ -31,7 +31,7 @@
 }
 
 .tc {
-  padding: 0.32rem 0.55rem;
+  padding: var(--space-1) var(--space-2);
   vertical-align: middle;
   font-family: var(--mono);
   font-size: var(--type-sm);
@@ -71,7 +71,7 @@
   border-right: 1px solid var(--border-strong);
 }
 .tc-date-d { color: var(--text); font-weight: 700; letter-spacing: 0.03em; }
-.tc-date-t { color: var(--text-faint); margin-left: 0.35rem; font-size: var(--type-2xs); }
+.tc-date-t { color: var(--text-faint); margin-left: var(--space-1); font-size: var(--type-2xs); }
 
 .tc-map {
   font-family: var(--display);
@@ -93,13 +93,13 @@
 }
 
 /* Each hero is a clickable filter chip — click filters the set by that hero. */
-.tc-hero-chips { display: inline-flex; flex-wrap: wrap; gap: 1px 2px; }
+.tc-hero-chips { display: inline-flex; flex-wrap: wrap; gap: 1px var(--space-0-5); }
 
 .tc-hero-chip {
   appearance: none;
   border: 0;
   background: transparent;
-  padding: 0 0.2rem;
+  padding: 0 var(--space-1);
   font: inherit;
   color: inherit;
   cursor: pointer;
@@ -111,13 +111,13 @@
 
 /* Each role is a clickable filter chip — click filters the set by that role
    (open-queue matches can show several). Keeps the faint uppercase look. */
-.tc-role-chips { display: inline-flex; flex-wrap: wrap; gap: 1px 3px; }
+.tc-role-chips { display: inline-flex; flex-wrap: wrap; gap: 1px var(--space-0-5); }
 
 .tc-role-chip {
   appearance: none;
   border: 0;
   background: transparent;
-  padding: 0 0.2rem;
+  padding: 0 var(--space-1);
   font: inherit;
   color: var(--text-faint);
   text-transform: uppercase;
@@ -155,14 +155,14 @@
 .tc-tag {
   font-size: var(--type-2xs);
   color: var(--accent-text);
-  margin-right: 0.3rem;
+  margin-right: var(--space-1);
 }
 
 /* Same tint convention as .leaf-stamp; the table is denser so the stamp is
    bare type with no plate. */
 .tc-stamp {
   font-weight: 800;
-  margin-right: 0.3rem;
+  margin-right: var(--space-1);
   font-size: var(--type-2xs);
   color: var(--text-dim);
 }
@@ -182,7 +182,7 @@
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-weight: 800;
-  padding: 0.18rem 0.5rem;
+  padding: var(--space-0-5) var(--space-2);
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--surface-2);
@@ -248,8 +248,8 @@
 .tc-filter-cell.is-filtered::after { opacity: 0.6; }
 
 .tc-map .tc-filter-cell {
-  padding: 0 0.25rem;
-  margin-inline: -0.25rem;
+  padding: 0 var(--space-1);
+  margin-inline: calc(-1 * var(--space-1));
   border-radius: var(--radius-md);
 }
 .tc-map .tc-filter-cell:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); }
@@ -257,7 +257,7 @@
 
 /* Mode / Queue cells are filter buttons now — give them padding + a hover wash. */
 .tc-mode .tc-filter-cell,
-.tc-queue .tc-filter-cell { padding: 0.05rem 0.3rem; border-radius: var(--radius-md); }
+.tc-queue .tc-filter-cell { padding: var(--space-0-5) var(--space-1); border-radius: var(--radius-md); }
 
 .tc-mode .tc-filter-cell:hover,
 .tc-queue .tc-filter-cell:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }

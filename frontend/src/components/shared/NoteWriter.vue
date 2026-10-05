@@ -487,7 +487,7 @@ defineExpose({ focus: focusField })
   gap: var(--space-2);
   align-items: center;
   justify-content: space-between;
-  margin: 0 0 0.4rem;
+  margin: 0 0 var(--space-2);
 }
 
 
@@ -511,13 +511,13 @@ defineExpose({ focus: focusField })
 .note-tool-sep {
   width: 1px;
   height: 1rem;
-  margin: 0 0.15rem;
+  margin: 0 var(--space-0-5);
   background: var(--hairline);
 }
 
 /* The plain surface (a match journal) has no paper tokens to borrow. */
 .note-tool-plain {
-  padding: 0.15rem 0.4rem;
+  padding: var(--space-0-5) var(--space-2);
   color: var(--text-dim);
   background: var(--surface-2);
   border: 1px solid var(--hairline);
@@ -536,7 +536,7 @@ defineExpose({ focus: focusField })
 }
 
 .note-mode-btn {
-  padding: 0.15rem 0.5rem;
+  padding: var(--space-0-5) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-3xs);
   letter-spacing: 0.06em;
@@ -567,7 +567,7 @@ defineExpose({ focus: focusField })
 .note-raw {
   width: 100%;
   min-height: 6.5rem;
-  padding: 0.5rem 0.6rem;
+  padding: var(--space-2) var(--space-2);
   font: inherit;
   color: inherit;
   background: var(--surface-2);

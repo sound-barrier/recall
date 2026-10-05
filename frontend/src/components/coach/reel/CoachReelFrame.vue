@@ -90,7 +90,7 @@ const accessibleName = computed(
   display: grid;
   grid-template-columns: 1.15rem minmax(0, 1fr);
   align-items: stretch;
-  gap: 0.35rem;
+  gap: var(--space-1);
 }
 
 /* Perforations. Two stops of a repeating gradient read as film holes
@@ -110,7 +110,7 @@ const accessibleName = computed(
 .frame-btn {
   display: grid;
   grid-template-columns: 3px minmax(0, 1fr);
-  gap: 0.5rem;
+  gap: var(--space-2);
   width: 100%;
   padding: 0;
   text-align: left;
@@ -139,16 +139,16 @@ const accessibleName = computed(
 .frame-body {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--space-0-5);
   min-width: 0;
-  padding: 0.45rem 0.55rem 0.5rem 0;
+  padding: var(--space-2) var(--space-2) var(--space-2) 0;
 }
 
 .frame-line {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.4rem;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -196,7 +196,7 @@ const accessibleName = computed(
    in full. */
 .frame-quote {
   display: -webkit-box;
-  margin-top: 0.15rem;
+  margin-top: var(--space-0-5);
   font-size: var(--type-2xs);
   line-height: 1.35;
 

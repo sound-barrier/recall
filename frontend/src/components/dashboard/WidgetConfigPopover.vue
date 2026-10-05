@@ -256,7 +256,7 @@ function onCancel() {
   border: 1px solid var(--accent);
   border-radius: var(--radius-overlay);
   box-shadow: 0 12px 32px -10px rgb(var(--shadow-rgb) / 45%);
-  padding: 0.85rem 0.95rem 0.7rem;
+  padding: var(--space-3) var(--space-4) var(--space-3);
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text);
@@ -265,9 +265,9 @@ function onCancel() {
 .wcp-head {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
-  padding-bottom: 0.55rem;
-  margin-bottom: 0.55rem;
+  gap: var(--space-0-5);
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-2);
   border-bottom: 1px solid var(--border);
 }
 
@@ -284,7 +284,7 @@ function onCancel() {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: var(--space-3);
 }
 
 .wcp-field-label {
@@ -293,7 +293,7 @@ function onCancel() {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-dim);
-  margin-bottom: 0.3rem;
+  margin-bottom: var(--space-1);
 }
 
 .wcp-segmented {
@@ -307,7 +307,7 @@ function onCancel() {
   appearance: none;
   background: transparent;
   border: none;
-  padding: 0.32rem 0.7rem;
+  padding: var(--space-1) var(--space-3);
   font-family: var(--mono);
   font-size: var(--type-sm);
   letter-spacing: 0.06em;
@@ -329,13 +329,13 @@ function onCancel() {
 .wcp-radios {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 .wcp-radio {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
   font-size: var(--type-sm);
   cursor: pointer;
 }
@@ -343,7 +343,7 @@ function onCancel() {
 .wcp-toggle {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
   font-size: var(--type-sm);
   cursor: pointer;
 }
@@ -351,9 +351,9 @@ function onCancel() {
 .wcp-foot {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding-top: 0.7rem;
-  margin-top: 0.7rem;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  margin-top: var(--space-3);
   border-top: 1px solid var(--border);
 }
 
@@ -362,7 +362,7 @@ function onCancel() {
 .wcp-btn {
   appearance: none;
   border-radius: var(--radius);
-  padding: 0.32rem 0.7rem;
+  padding: var(--space-1) var(--space-3);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.18em;

@@ -131,7 +131,7 @@ async function commit() {
 <style scoped>
 .coach-name-input {
   min-width: 12rem;
-  padding: 0.45rem 0.6rem;
+  padding: var(--space-2) var(--space-2);
   font-family: var(--body);
   font-size: var(--type-lg);
   color: var(--text);

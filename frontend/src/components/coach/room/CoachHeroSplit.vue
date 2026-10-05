@@ -40,7 +40,7 @@ withDefaults(defineProps<{
 .hero-split {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--space-1);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -49,7 +49,7 @@ withDefaults(defineProps<{
 .hs-row {
   display: grid;
   grid-template-columns: 7rem minmax(0, 1fr) 3rem;
-  gap: 0.6rem;
+  gap: var(--space-2);
   align-items: center;
 }
 
@@ -67,7 +67,7 @@ withDefaults(defineProps<{
   display: flex;
   align-items: center;
   height: 1.1rem;
-  padding: 0 0.4rem;
+  padding: 0 var(--space-2);
   background: var(--surface-3);
   border-radius: var(--radius);
   overflow: hidden;

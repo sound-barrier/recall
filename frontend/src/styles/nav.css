@@ -1,10 +1,10 @@
 /* ─── Page Nav (Settings / Ingest / Matches / Unknown) ──── */
 
 .page-nav {
-  margin-top: 1.1rem;
+  margin-top: var(--space-4);
   display: inline-flex;
   align-items: stretch;
-  gap: 1.8rem;
+  gap: var(--space-7);
   position: relative;
 }
 
@@ -29,13 +29,13 @@
   position: relative;
   background: transparent;
   border: none;
-  padding: 0.15rem 0 0.65rem;
+  padding: var(--space-0-5) 0 var(--space-3);
   cursor: pointer;
   color: var(--text-faint);
   display: inline-flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.15rem;
+  gap: var(--space-0-5);
   transition: color var(--duration-med) ease;
 }
 

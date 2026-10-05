@@ -149,7 +149,7 @@ const progressPct = computed(() => Math.round((remainingMs.value / DURATION_MS) 
    to the toast's rounded corner; the extra bottom padding is its track. */
 .dashboard-undo-toast {
   bottom: 1.4rem;
-  padding-bottom: 0.85rem;
+  padding-bottom: var(--space-3);
   border-color: var(--accent);
   overflow: hidden;
 }

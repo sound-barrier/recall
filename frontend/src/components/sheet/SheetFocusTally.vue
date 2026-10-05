@@ -37,13 +37,13 @@ withDefaults(defineProps<{
 .sheet-block {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 .sheet-tally {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--space-0-5);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -53,8 +53,8 @@ withDefaults(defineProps<{
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.12rem 0;
+  gap: var(--space-2);
+  padding: var(--space-0-5) 0;
   border-bottom: 1px dotted var(--paper-rule);
 }
 
@@ -76,5 +76,5 @@ withDefaults(defineProps<{
   color: var(--ink-faint);
 }
 
-.sheet-notes-line { margin-top: 0.3rem; }
+.sheet-notes-line { margin-top: var(--space-1); }
 </style>

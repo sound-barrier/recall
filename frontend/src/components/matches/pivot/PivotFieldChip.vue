@@ -176,8 +176,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
 .pivot-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.32rem;
-  padding: 0.22rem 0.4rem;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.06em;
@@ -229,7 +229,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
 }
 
 .pivot-chip-agg {
-  padding: 0.04rem 0.28rem;
+  padding: var(--space-0-5) var(--space-1);
   font-size: var(--type-4xs);
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -263,7 +263,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  margin: 0.1rem 0.3rem 0.3rem;
+  margin: var(--space-0-5) var(--space-1) var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-4xs);
   letter-spacing: 0.16em;
@@ -276,7 +276,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
   font-size: var(--type-4xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding: 0.1rem 0.35rem;
+  padding: var(--space-0-5) var(--space-1);
   color: var(--accent-text);
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--border));
@@ -290,7 +290,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
 
 .pivot-chip-menuitem {
   text-align: left;
-  padding: 0.3rem 0.4rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   color: var(--text);
@@ -321,8 +321,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
 .pivot-chip-check {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.22rem 0.4rem;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   color: var(--text);
@@ -363,7 +363,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
 }
 
 .pivot-chip-rule {
-  margin: 0.25rem 0.3rem;
+  margin: var(--space-1) var(--space-1);
   border: none;
   border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
 }

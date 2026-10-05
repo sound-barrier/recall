@@ -160,7 +160,7 @@ const GROUP_OPTIONS: { value: GroupBy; label: string }[] = [
   border: 1px solid var(--border);
   border-radius: var(--radius-overlay);
   box-shadow: 0 18px 38px -16px rgb(var(--shadow-rgb) / 55%);
-  padding: 0.55rem;
+  padding: var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-sm);
   letter-spacing: 0.04em;
@@ -171,7 +171,7 @@ const GROUP_OPTIONS: { value: GroupBy; label: string }[] = [
   appearance: none;
   border: 0;
   padding: 0;
-  margin: 0 0 0.4rem;
+  margin: 0 0 var(--space-2);
 }
 .sgp-group:last-child { margin-bottom: 0; }
 
@@ -180,8 +180,8 @@ const GROUP_OPTIONS: { value: GroupBy; label: string }[] = [
 .sgp-group-disabled .sgp-row:hover { background: transparent; }
 
 .sgp-hint {
-  margin: 0 0 0.3rem;
-  padding: 0 0.15rem;
+  margin: 0 0 var(--space-1);
+  padding: 0 var(--space-0-5);
   font-size: var(--type-2xs);
   letter-spacing: 0.06em;
   color: var(--text-faint);
@@ -194,14 +194,14 @@ const GROUP_OPTIONS: { value: GroupBy; label: string }[] = [
   text-transform: uppercase;
   color: var(--text-faint);
   font-weight: 700;
-  padding: 0 0.15rem 0.25rem;
+  padding: 0 var(--space-0-5) var(--space-1);
 }
 
 .sgp-row {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.32rem 0.45rem;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius);
   cursor: pointer;
   transition: background var(--duration-fast) ease, color var(--duration-fast) ease;

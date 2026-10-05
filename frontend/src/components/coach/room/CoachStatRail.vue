@@ -70,20 +70,20 @@ function eadLine(row: RailTendency): string {
 /* On paper with the sheet it sits above — this is part of the session's own
    stationery, not app chrome that happens to be nearby. */
 .coach-rail {
-  padding: 0.75rem 0.9rem;
-  margin-bottom: 0.75rem;
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-3);
 }
 
-.coach-rail-eyebrow { margin: 0 0 0.5rem; }
+.coach-rail-eyebrow { margin: 0 0 var(--space-2); }
 
 .coach-rail-row + .coach-rail-row {
-  margin-top: 0.7rem;
-  padding-top: 0.7rem;
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
   border-top: 1px solid var(--hairline);
 }
 
 .coach-rail-head {
-  margin: 0 0 0.3rem;
+  margin: 0 0 var(--space-1);
   font-size: var(--type-sm);
 }
 
@@ -93,7 +93,7 @@ function eadLine(row: RailTendency): string {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   height: 1.1rem;
 }
 
@@ -113,7 +113,7 @@ function eadLine(row: RailTendency): string {
 }
 
 .coach-rail-note {
-  margin: 0.25rem 0 0;
+  margin: var(--space-1) 0 0;
   font-size: var(--type-2xs);
   opacity: 0.75;
 }

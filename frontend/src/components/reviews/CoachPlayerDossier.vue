@@ -127,7 +127,7 @@ const subLine = computed(() => {
 /* The history reads as a column of dates with what each one covered — the
    shape of a logbook, which is what it is. */
 .dossier-sessions {
-  margin: 0 0 0.6rem;
+  margin: 0 0 var(--space-2);
   padding: 0;
   list-style: none;
 }
@@ -135,8 +135,8 @@ const subLine = computed(() => {
 .dossier-session {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.45rem;
-  padding: 0.25rem 0;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
   font-size: var(--type-2xs);
 }
 
@@ -153,9 +153,9 @@ const subLine = computed(() => {
   /* The row is a wrapping flex line — without a full-width basis the
      panel shrink-wraps beside the door button instead of below it. */
   flex: 1 1 100%;
-  gap: 0.35rem;
-  padding: 0.9rem 1rem 1rem;
-  margin: 0.35rem 0 0.2rem;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-4) var(--space-4);
+  margin: var(--space-1) 0 var(--space-1);
 }
 
 .dossier-eyebrow {
@@ -184,7 +184,7 @@ const subLine = computed(() => {
 
 .dossier-focus {
   margin: 0;
-  padding-left: 1.05rem;
+  padding-left: var(--space-4);
   font-size: var(--type-md);
   color: var(--ink);
 }
@@ -192,12 +192,12 @@ const subLine = computed(() => {
 .dossier-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.3rem;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
 }
 
 .dossier-notes {
-  margin-top: 0.35rem;
+  margin-top: var(--space-1);
   border-top: 1px solid var(--paper-rule);
 }
 
@@ -209,8 +209,8 @@ const subLine = computed(() => {
 
 .dossier-note {
   display: grid;
-  gap: 0.1rem;
-  padding: 0.55rem 0.1rem;
+  gap: var(--space-0-5);
+  padding: var(--space-2) var(--space-0-5);
   border-bottom: 1px solid var(--paper-rule);
 }
 
@@ -220,7 +220,7 @@ const subLine = computed(() => {
 
 .dossier-note-from {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-2);
   align-items: baseline;
 }
 

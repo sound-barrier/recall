@@ -5,7 +5,7 @@
   justify-content: center;
   min-width: 15px;
   height: 15px;
-  padding: 0 3px;
+  padding: 0 var(--space-0-5);
   background: var(--draw);
   color: var(--primary-text-on-accent);
   font-size: var(--type-2xs);
@@ -14,7 +14,7 @@
   border-radius: var(--radius-pill);
   line-height: 1;
   vertical-align: middle;
-  margin-left: 0.2rem;
+  margin-left: var(--space-1);
   letter-spacing: 0;
 }
 
@@ -25,7 +25,7 @@
   display: inline-block;
   width: 6px;
   height: 6px;
-  margin-left: 0.45rem;
+  margin-left: var(--space-2);
   border-radius: 50%;
   background: var(--accent);
   vertical-align: middle;
@@ -60,7 +60,7 @@
   position: relative;
   width: 18px;
   height: 18px;
-  margin-left: 0.45rem;
+  margin-left: var(--space-2);
   border-radius: 50%;
   border: 1px solid var(--border);
   color: var(--text-faint);
@@ -112,7 +112,7 @@
   transform: translateY(-4px);
   width: max-content;
   max-width: min(280px, calc(100vw - 2rem));
-  padding: 0.6rem 0.75rem;
+  padding: var(--space-2) var(--space-3);
   background: var(--surface-3);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
@@ -146,7 +146,7 @@
   font-family: var(--mono);
   font-size: var(--type-sm);
   background: var(--surface);
-  padding: 0.05rem 0.3rem;
+  padding: var(--space-0-5) var(--space-1);
   border-radius: var(--radius);
   color: var(--accent-text);
 }
@@ -170,8 +170,8 @@
   display: inline-flex;
   align-items: stretch;
   gap: 0;
-  margin-top: 0.65rem;
-  padding-right: 0.4rem;
+  margin-top: var(--space-3);
+  padding-right: var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-sm);
   letter-spacing: 0.02em;
@@ -208,7 +208,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 0.55rem 0 0.6rem;
+  padding: 0 var(--space-2) 0 var(--space-2);
   font-size: var(--type-2xl);
   font-weight: 700;
   line-height: 1;
@@ -220,7 +220,7 @@
 .probe-chip-text {
   display: inline-flex;
   align-items: center;
-  padding: 0.42rem 0.6rem 0.42rem 0;
+  padding: var(--space-2) var(--space-2) var(--space-2) 0;
   word-break: break-all;
   flex: 1;
 }
@@ -232,7 +232,7 @@
   color: currentcolor;
   font-size: var(--type-2xl);
   line-height: 1;
-  padding: 0 0.45rem;
+  padding: 0 var(--space-2);
   cursor: pointer;
   align-self: center;
   border-radius: var(--radius-hair);
@@ -248,7 +248,7 @@
 }
 
 .probe-tried {
-  margin-top: 0.45rem;
+  margin-top: var(--space-2);
   font-size: var(--type-sm);
   color: var(--text-faint);
 }
@@ -263,15 +263,15 @@
 }
 
 .probe-tried-list {
-  margin: 0.35rem 0 0;
-  padding-left: 1.3rem;
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-5);
   font-size: var(--type-sm);
   color: var(--text-dim);
   word-break: break-all;
 }
 
 .probe-tried-list li + li {
-  margin-top: 0.2rem;
+  margin-top: var(--space-1);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -303,8 +303,8 @@
 .match-tag {
   display: inline-flex;
   align-items: center;
-  gap: 0.42rem;
-  padding: 0.18rem 0.5rem 0.18rem 0.42rem;
+  gap: var(--space-2);
+  padding: var(--space-0-5) var(--space-2) var(--space-0-5) var(--space-2);
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -336,7 +336,7 @@
 .match-tag[data-tag="placement"] .match-tag-mark { background: var(--accent); }
 
 .match-tag.removable {
-  padding-right: 0.32rem;
+  padding-right: var(--space-1);
 }
 
 .match-tag-x {
@@ -345,7 +345,7 @@
   justify-content: center;
   width: 14px;
   height: 14px;
-  margin-left: 0.05rem;
+  margin-left: var(--space-0-5);
   border: 0;
   background: transparent;
   color: var(--text-faint);
@@ -361,8 +361,8 @@
 .match-tag-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 0.42rem;
-  padding: 0.18rem 0.55rem 0.18rem 0.42rem;
+  gap: var(--space-2);
+  padding: var(--space-0-5) var(--space-2) var(--space-0-5) var(--space-2);
   background: transparent;
   border: 1px dashed var(--border);
   border-radius: var(--radius);
@@ -401,7 +401,7 @@
 .match-tag-input {
   flex: 1 1 12ch;
   min-width: 10ch;
-  padding: 0.2rem 0.45rem;
+  padding: var(--space-1) var(--space-2);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -448,7 +448,7 @@
   z-index: 5;
   list-style: none;
   margin: 0;
-  padding: 0.2rem 0;
+  padding: var(--space-1) 0;
   background: var(--surface);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
@@ -458,7 +458,7 @@
 }
 
 .match-tag-suggestions li {
-  padding: 0.3rem 0.55rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-sm);
   letter-spacing: 0.06em;
@@ -476,14 +476,14 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.45rem;
-  margin-top: 0.6rem;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 
 .match-tags-row {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 0.32rem;
+  gap: var(--space-1);
 }
 
 [data-theme="day"] .match-tag {
@@ -511,10 +511,10 @@
 @media (width <= 580px) {
   .unknown-fields {
     grid-template-columns: repeat(2, 1fr);
-    padding: 0 1rem;
+    padding: 0 var(--space-4);
   }
-  .unknown-card-head { padding: 0.7rem 1rem; }
-  .unknown-expanded { padding: 0.85rem 1rem; }
+  .unknown-card-head { padding: var(--space-3) var(--space-4); }
+  .unknown-expanded { padding: var(--space-3) var(--space-4); }
 }
 
 /* ─── Dashboard widget inner content ──────────────────────────────
@@ -560,7 +560,7 @@
   letter-spacing: -0.02em;
 }
 
-.breakdown-head { margin-bottom: 0.3rem; }
+.breakdown-head { margin-bottom: var(--space-1); }
 
 .breakdown ul {
   list-style: none;
@@ -685,7 +685,7 @@
   display: inline-grid;
   grid-template-columns: 1fr 2.2rem;
   justify-items: end;
-  column-gap: 0.15rem;
+  column-gap: var(--space-0-5);
 }
 
 .bd-ci {
@@ -705,7 +705,7 @@
 .breakdown li .bd-low-n {
   grid-area: 1 / 2;
   place-self: center end;
-  margin-right: 4px;
+  margin-right: var(--space-1);
   margin-left: 0;
   background: var(--surface);
   z-index: 1;
@@ -786,11 +786,11 @@
    match-sample-helpers): thin samples stay visible but announce
    themselves instead of dominating the ranking. */
 .bd-low-n {
-  margin-left: 0.35rem;
+  margin-left: var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-3xs);
   letter-spacing: 0.08em;
-  padding: 0.05rem 0.3rem;
+  padding: var(--space-0-5) var(--space-1);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text-faint);

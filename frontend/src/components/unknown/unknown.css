@@ -12,13 +12,13 @@
   color: var(--draw);
   background: var(--draw-soft);
   font-style: normal;
-  padding: 0 0.25rem;
-  margin: 0 -0.05rem;
+  padding: 0 var(--space-1);
+  margin: 0 calc(-1 * var(--space-0-5));
   border-radius: var(--radius-hair);
 }
 
 .unknown-desc {
-  margin-top: 0.65rem;
+  margin-top: var(--space-3);
   color: var(--text-dim);
   font-size: var(--type-lg);
   line-height: 1.6;
@@ -31,8 +31,8 @@
    underline on hover/focus, no chrome around the whole strip. */
 .unknown-section-nav {
   display: flex;
-  gap: 1.4rem;
-  margin-top: 1.1rem;
+  gap: var(--space-6);
+  margin-top: var(--space-4);
   align-items: baseline;
 }
 
@@ -45,7 +45,7 @@
   color: var(--text-dim);
   text-decoration: none;
   border-bottom: 1px solid transparent;
-  padding-bottom: 0.15rem;
+  padding-bottom: var(--space-0-5);
   transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
 }
 
@@ -64,9 +64,9 @@
 .reference-gap-fix {
   display: flex;
   align-items: baseline;
-  gap: 0.45rem;
-  margin: 0.55rem 0 0;
-  padding-top: 0.5rem;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-2);
   border-top: 1px dashed var(--border);
   font-size: var(--type-md);
   color: var(--text-dim);
@@ -80,7 +80,7 @@
   color: var(--text);
   text-decoration: none;
   border-bottom: 1px solid var(--accent);
-  padding-bottom: 0.05rem;
+  padding-bottom: var(--space-0-5);
   transition: color var(--duration-fast) ease;
 }
 
@@ -94,7 +94,7 @@
   font-family: var(--mono);
   font-size: var(--type-sm);
   background: var(--surface-2);
-  padding: 0.05rem 0.3rem;
+  padding: var(--space-0-5) var(--space-1);
   border-radius: var(--radius-hair);
   color: var(--text);
 }
@@ -102,7 +102,7 @@
 .unknown-section-count {
   color: var(--text-faint);
   font-weight: 500;
-  margin-left: 0.25rem;
+  margin-left: var(--space-1);
 }
 
 /* ─── Unknown-record cards ───────────────────────────────── */
@@ -110,8 +110,8 @@
 .unknown-list {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
-  margin-top: 1.6rem;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
 }
 
 /* Each unknown record is a card with an amber left bar */
@@ -143,7 +143,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  padding: 0.8rem 1rem 0.8rem 1.4rem;
+  padding: var(--space-3) var(--space-4) var(--space-3) var(--space-6);
   cursor: pointer;
   user-select: none;
   transition: background var(--duration-fast) ease;
@@ -155,7 +155,7 @@
 .unknown-head-lhs {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: var(--space-3);
   min-width: 0;
   flex: 1;
 }
@@ -171,7 +171,7 @@
 .unknown-key-block {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: var(--space-0-5);
   min-width: 0;
 }
 
@@ -203,13 +203,13 @@
   background: color-mix(in srgb, var(--loss) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--loss) 50%, transparent);
   border-radius: var(--radius);
-  padding: 0.12rem 0.4rem;
+  padding: var(--space-0-5) var(--space-2);
 }
 
 .unknown-head-rhs {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: var(--space-3);
   flex-shrink: 0;
 }
 
@@ -219,14 +219,14 @@
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   border-top: 1px solid var(--border-soft);
-  padding: 0 1rem 0 1.4rem;
+  padding: 0 var(--space-4) 0 var(--space-6);
 }
 
 .field-cell {
   display: flex;
   flex-direction: column;
-  gap: 0.12rem;
-  padding: 0.5rem 0.5rem 0.5rem 0;
+  gap: var(--space-0-5);
+  padding: var(--space-2) var(--space-2) var(--space-2) 0;
   border-right: 1px solid var(--border-soft);
 }
 
@@ -263,7 +263,7 @@
 
 .unknown-expanded {
   border-top: 1px solid var(--border-soft);
-  padding: 1rem 1.4rem;
+  padding: var(--space-4) var(--space-6);
   background: var(--surface-2);
   display: flex;
   flex-direction: column;
@@ -277,7 +277,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding-top: 0.85rem;
+  padding-top: var(--space-3);
   border-top: 1px solid var(--border-soft);
 }
 
@@ -291,7 +291,7 @@
   font-size: var(--type-xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  padding: 0.4rem 0.85rem;
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius);
   cursor: pointer;
   transition:
@@ -357,7 +357,7 @@
 }
 
 .unknown-sources .block-eyebrow {
-  margin-bottom: 0.45rem;
+  margin-bottom: var(--space-2);
 }
 
 /* Rule 8: a loaned record has no image on this machine, so the strip says
@@ -371,14 +371,14 @@
 }
 
 .unknown-stats .block-eyebrow {
-  margin-bottom: 0.6rem;
+  margin-bottom: var(--space-2);
 }
 
 /* ─── Ambiguous-attribution section ──────────────────────── */
 
 .ambiguous-section {
-  margin-top: 1.4rem;
-  margin-bottom: 1.6rem;
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-6);
 }
 
 .needs-review-heading {
@@ -387,12 +387,12 @@
   font-weight: 600;
   color: var(--text);
   letter-spacing: 0.04em;
-  margin: 0 0 0.45rem;
+  margin: 0 0 var(--space-2);
   text-transform: uppercase;
 }
 
 .needs-review-desc {
-  margin: 0 0 0.85rem;
+  margin: 0 0 var(--space-3);
   color: var(--text-dim);
   font-size: var(--type-lg);
   line-height: 1.6;

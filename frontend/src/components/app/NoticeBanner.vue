@@ -61,10 +61,10 @@ onBeforeUnmount(stopTimer)
   z-index: 1600;
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-2);
   max-width: min(38rem, 92vw);
   margin: 0;
-  padding: 0.55rem 0.8rem;
+  padding: var(--space-2) var(--space-3);
   font-size: var(--type-md);
   color: var(--text);
   background: var(--surface-2);
@@ -86,7 +86,7 @@ onBeforeUnmount(stopTimer)
 
 .notice-dismiss {
   flex: none;
-  padding: 0 0.2rem;
+  padding: 0 var(--space-1);
   color: var(--text-dim);
   font-size: var(--type-sm);
   background: none;

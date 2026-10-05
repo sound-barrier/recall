@@ -140,20 +140,20 @@ const emit = defineEmits<{
 .coach-sheet {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
-  padding: 1rem 1.05rem 1.1rem;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-4);
 }
 
 .sheet-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .sheet-change {
   flex: none;
-  padding: 0.25rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   font-size: var(--type-xs);
   letter-spacing: 0.06em;
 }
@@ -171,7 +171,7 @@ const emit = defineEmits<{
 
 .sheet-message {
   margin: 0;
-  padding-left: 0.6rem;
+  padding-left: var(--space-2);
   font-size: var(--type-lg);
   line-height: 1.5;
   color: var(--ink-dim);
@@ -188,13 +188,13 @@ const emit = defineEmits<{
 .sheet-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  padding-top: 0.5rem;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
   border-top: 1px solid var(--paper-rule);
 }
 
 .sheet-blocked {
-  margin: 0.3rem 0 0;
+  margin: var(--space-1) 0 0;
   font-size: var(--type-xs);
   line-height: 1.4;
   color: var(--ink-dim);

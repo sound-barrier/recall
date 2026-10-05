@@ -222,7 +222,7 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
 <style scoped>
 /* ─── Root heatmap grid ─────────────────────────────────────────── */
 .heatmap-empty {
-  margin: 0.6rem 0 0.1rem;
+  margin: var(--space-2) 0 var(--space-0-5);
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text-faint);
@@ -232,14 +232,14 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
 .heatmap-grid {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin-top: 0.4rem;
+  gap: var(--space-0-5);
+  margin-top: var(--space-2);
 }
 
 .heatmap-row {
   display: grid;
   grid-template-columns: 6rem repeat(6, 1fr);
-  gap: 2px;
+  gap: var(--space-0-5);
   align-items: stretch;
 }
 
@@ -266,7 +266,7 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
 
 .heatmap-colhead {
   text-align: center;
-  padding: 0.1rem 0.2rem;
+  padding: var(--space-0-5) var(--space-1);
   color: inherit;
   font: inherit;
 }
@@ -276,7 +276,7 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
   font-size: var(--type-xl);
   letter-spacing: 0.03em;
   color: var(--text);
-  padding-right: 0.4rem;
+  padding-right: var(--space-2);
   display: flex;
   align-items: center;
   text-transform: capitalize;
@@ -304,13 +304,13 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
   appearance: none;
   border: none;
   border-radius: var(--radius);
-  padding: 0.25rem 0.2rem;
+  padding: var(--space-1) var(--space-1);
   cursor: pointer;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 0.05rem;
+  gap: var(--space-0-5);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   font-weight: 700;
@@ -366,14 +366,14 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
 .hm-selection {
   display: flex;
   align-items: center;
-  gap: 0.5rem 0.9rem;
-  margin: 0.6rem 0 0;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-2) 0 0;
 
   /* Reserve the active row's height so the empty ↔ active swap never shifts the
      match list below. */
   min-height: 2.1rem;
   box-sizing: border-box;
-  padding: 0.4rem 0.55rem;
+  padding: var(--space-2) var(--space-2);
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--accent) 6%, transparent);

@@ -153,7 +153,7 @@ const { writesLocked, lockedTitle, sessionActive } = useWriteGate()
 .candidate-picker {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: var(--space-2);
 }
 
 /* 2-column layout: candidate list on the left, side-by-side preview pane on the
@@ -169,7 +169,7 @@ const { writesLocked, lockedTitle, sessionActive } = useWriteGate()
 .candidate-list {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -178,7 +178,7 @@ const { writesLocked, lockedTitle, sessionActive } = useWriteGate()
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-2) var(--space-3);
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
@@ -197,7 +197,7 @@ const { writesLocked, lockedTitle, sessionActive } = useWriteGate()
 .candidate-preview-pane {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--space-2);
   position: sticky;
   top: 0.5rem;
 }
@@ -278,7 +278,7 @@ const { writesLocked, lockedTitle, sessionActive } = useWriteGate()
 .candidate-headline {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--space-0-5);
   min-width: 0;
   flex: 1;
 }
@@ -318,6 +318,6 @@ const { writesLocked, lockedTitle, sessionActive } = useWriteGate()
 
 .candidate-fresh {
   align-self: flex-start;
-  margin-top: 0.35rem;
+  margin-top: var(--space-1);
 }
 </style>

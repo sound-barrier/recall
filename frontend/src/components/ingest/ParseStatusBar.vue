@@ -217,7 +217,7 @@ function onJumpToIngest(e: MouseEvent) {
   display: flex;
   align-items: stretch;
   gap: 0;
-  padding: 0 18px;
+  padding: 0 var(--space-4);
   background: var(--surface-3);
   border-top: 1px solid var(--accent);
   box-shadow: 0 -8px 24px -10px rgb(var(--shadow-rgb) / 50%);
@@ -245,8 +245,8 @@ function onJumpToIngest(e: MouseEvent) {
 .group {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 16px;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
 }
 
 .rule {
@@ -258,7 +258,7 @@ function onJumpToIngest(e: MouseEvent) {
      luminance from the ground, Day steps DOWN), so a surface token
      picked to read as a hairline on one theme inverts on the other. */
   background: var(--border-soft);
-  margin: 8px 0;
+  margin: var(--space-2) 0;
 }
 
 /* --- group 1: pulse + label --- */
@@ -291,7 +291,7 @@ function onJumpToIngest(e: MouseEvent) {
 .counter {
   display: inline-flex;
   align-items: baseline;
-  gap: 4px;
+  gap: var(--space-1);
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', 'Russo One', sans-serif;
   font-size: var(--type-5xl);
   line-height: 1;
@@ -306,7 +306,7 @@ function onJumpToIngest(e: MouseEvent) {
 .ticks {
   display: grid;
   grid-template-columns: repeat(20, 6px);
-  gap: 3px;
+  gap: var(--space-0-5);
   align-items: center;
 }
 
@@ -339,7 +339,7 @@ function onJumpToIngest(e: MouseEvent) {
 .group-file {
   flex: 1 1 auto;
   min-width: 0; /* let the filename truncate */
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .type-tag {
@@ -351,7 +351,7 @@ function onJumpToIngest(e: MouseEvent) {
   text-transform: uppercase;
   color: var(--accent-text);
   background: var(--accent-soft);
-  padding: 3px 6px 2px;
+  padding: var(--space-0-5) var(--space-1) var(--space-0-5);
   border-radius: var(--radius);
 }
 
@@ -398,9 +398,9 @@ function onJumpToIngest(e: MouseEvent) {
   appearance: none;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   height: 28px;
-  padding: 0 12px;
+  padding: 0 var(--space-3);
   background: transparent;
   border: 1px solid var(--loss);
   border-radius: var(--radius-hair);

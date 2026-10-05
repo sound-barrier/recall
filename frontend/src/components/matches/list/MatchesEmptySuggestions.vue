@@ -43,12 +43,12 @@ defineProps<{
 
 <style scoped>
 .empty-suggestions {
-  margin-top: 1.5rem;
+  margin-top: var(--space-6);
   text-align: center;
 }
 
 .empty-suggestions-eyebrow {
-  margin: 0 0 0.6rem;
+  margin: 0 0 var(--space-2);
 }
 
 .empty-suggestions-list {
@@ -57,7 +57,7 @@ defineProps<{
   padding: 0;
   display: inline-flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--space-2);
   align-items: stretch;
 }
 
@@ -66,8 +66,8 @@ defineProps<{
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1.2rem;
-  padding: 0.55rem 0.85rem;
+  gap: var(--space-5);
+  padding: var(--space-2) var(--space-3);
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);

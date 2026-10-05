@@ -304,7 +304,7 @@ watch(
 
 <style scoped>
 .advanced-section {
-  margin-top: 2.6rem;
+  margin-top: var(--space-10);
 }
 
 /* Strip native disclosure triangle — replaced by our own ›. */
@@ -319,9 +319,9 @@ watch(
 .advanced-summary {
   display: flex;
   align-items: baseline;
-  gap: 0.7rem;
-  padding-bottom: 0.85rem;
-  margin-bottom: 0.4rem;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
   border-bottom: 1px solid var(--brand-gray);
   cursor: pointer;
   position: relative;
@@ -400,7 +400,7 @@ watch(
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
-  margin-top: 0.55rem;
+  margin-top: var(--space-2);
   font-size: var(--type-lg);
   color: var(--text-dim);
   cursor: pointer;
@@ -408,7 +408,7 @@ watch(
 }
 
 .clear-keep-ignored input[type="checkbox"] {
-  margin-top: 0.18rem;
+  margin-top: var(--space-0-5);
   flex-shrink: 0;
   accent-color: var(--accent);
 }

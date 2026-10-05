@@ -40,8 +40,8 @@ function showMe(): void {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.55rem;
-  padding: 0.5rem 0.75rem;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   margin: 0 0 var(--space-3);
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -56,7 +56,7 @@ function showMe(): void {
 }
 
 .whats-new-btn {
-  padding: 0.25rem 0.6rem;
+  padding: var(--space-1) var(--space-2);
   font-size: var(--type-2xs);
 }
 </style>

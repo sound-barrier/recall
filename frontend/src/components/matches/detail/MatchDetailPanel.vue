@@ -322,7 +322,7 @@ function onBackdropClick(e: MouseEvent) {
 .detail-body {
   flex: 1;
   overflow-y: auto;
-  padding: 0.85rem 1rem 2rem;
+  padding: var(--space-3) var(--space-4) var(--space-8);
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
 }

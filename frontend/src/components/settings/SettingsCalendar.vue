@@ -99,7 +99,7 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[weekStart.value] ?? 'Sund
 .weekstart-control {
   display: inline-flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 
 .weekstart-grid {
@@ -108,7 +108,7 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[weekStart.value] ?? 'Sund
   background: var(--surface-2);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius);
-  padding: 2px;
+  padding: var(--space-0-5);
   transition: border-color var(--duration-fast) ease;
 }
 

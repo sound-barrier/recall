@@ -294,15 +294,15 @@ function toggleReviewed(): void {
 .coach-note {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
-  padding: 0.9rem 1rem 1rem;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-4) var(--space-4);
 }
 
 .note-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.6rem;
+  gap: var(--space-2);
 }
 
 .note-save {
@@ -327,12 +327,12 @@ function toggleReviewed(): void {
 .note-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 .note-add { border-style: dashed; }
 
-.note-label { margin-top: 0.2rem; }
+.note-label { margin-top: var(--space-1); }
 
 /* The formatting row. Chips, not buttons with chrome — the note is a sheet
    of paper and the tools sit on it like a stamp set. */
@@ -347,7 +347,7 @@ function toggleReviewed(): void {
 
 .note-new-tag {
   width: 7rem;
-  padding: 0.22rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-xs);
 }
@@ -357,18 +357,18 @@ function toggleReviewed(): void {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.8rem;
+  gap: var(--space-3);
 }
 
 .note-clock-cell {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: var(--space-1);
 }
 
 .note-clock {
   width: 6rem;
-  padding: 0.3rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-feature-settings: "tnum";
 }
@@ -388,8 +388,8 @@ function toggleReviewed(): void {
 
 .note-foot {
   display: flex;
-  gap: 0.5rem;
-  padding-top: 0.4rem;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
   border-top: 1px solid var(--paper-rule);
 }
 </style>

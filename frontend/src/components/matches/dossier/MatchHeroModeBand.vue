@@ -310,7 +310,7 @@ const levelTitle = computed(() => {
 
 <style scoped>
 .hero-mode-band {
-  padding: 0.7rem 1.1rem 0.75rem;
+  padding: var(--space-3) var(--space-4) var(--space-3);
   border: 1px solid var(--border);
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 4%, transparent) 0%, transparent 42%),
@@ -321,8 +321,8 @@ const levelTitle = computed(() => {
 .hm-head {
   display: flex;
   align-items: baseline;
-  gap: 1.1rem;
-  margin-bottom: 0.6rem;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
   flex-wrap: wrap;
 }
 
@@ -330,7 +330,7 @@ const levelTitle = computed(() => {
 .hm-crumbs {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
@@ -344,7 +344,7 @@ const levelTitle = computed(() => {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   font-weight: 700;
-  padding: 0.2rem 0.55rem;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius);
   cursor: pointer;
   transition: background var(--duration-fast) ease, color var(--duration-fast) ease;
@@ -355,7 +355,7 @@ const levelTitle = computed(() => {
 .hm-crumb-list {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: var(--space-1);
   list-style: none;
   margin: 0;
   padding: 0;
@@ -364,7 +364,7 @@ const levelTitle = computed(() => {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.hm-crumb-item { display: inline-flex; align-items: center; gap: 0.3rem; }
+.hm-crumb-item { display: inline-flex; align-items: center; gap: var(--space-1); }
 
 .hm-crumb {
   appearance: none;
@@ -413,20 +413,20 @@ const levelTitle = computed(() => {
 .hm-maps {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
-  gap: 4px;
-  margin-top: 0.4rem;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
 }
 
 .hm-map-tile {
   appearance: none;
   border: none;
   border-radius: var(--radius);
-  padding: 0.4rem 0.5rem;
+  padding: var(--space-2) var(--space-2);
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.1rem;
+  gap: var(--space-0-5);
   min-height: 3.1rem;
   color: var(--bg);
   text-align: left;
@@ -469,7 +469,7 @@ const levelTitle = computed(() => {
 
 /* ─── Level 2 — recent matches list ─────────────────────────────── */
 .hm-drill-empty {
-  margin: 0.6rem 0 0.1rem;
+  margin: var(--space-2) 0 var(--space-0-5);
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text-faint);

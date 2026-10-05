@@ -269,8 +269,8 @@ function onBack()   { void tour.prev() }
   z-index: 2003;
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.32rem 0.7rem 0.3rem 0.45rem;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
 
   /* stylelint-disable-next-line scale-unlimited/declaration-strict-value --
      the marker floats over whatever the tour is pointing at, so its plate

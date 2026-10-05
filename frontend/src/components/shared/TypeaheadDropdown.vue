@@ -270,7 +270,7 @@ defineExpose({
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0.36rem 2.4rem 0.36rem 0.6rem;
+  padding: var(--space-1) var(--space-10) var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text);
@@ -288,7 +288,7 @@ defineExpose({
   background: transparent;
   border: 0;
   color: var(--text-faint);
-  padding: 0.2rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   cursor: pointer;
   font-size: var(--type-lg);
   line-height: 1;
@@ -304,8 +304,8 @@ defineExpose({
 
 .combo-list {
   list-style: none;
-  margin: 0.3rem 0 0;
-  padding: 0.2rem 0;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-1) 0;
   border: 1px solid var(--accent);
   background: var(--surface);
   border-radius: var(--radius);
@@ -318,8 +318,8 @@ defineExpose({
   display: grid;
   grid-template-columns: 1.4rem 1fr;
   align-items: center;
-  gap: 0.2rem;
-  padding: 0.32rem 0.6rem;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text);
@@ -356,7 +356,7 @@ defineExpose({
 .combo-empty {
   font-style: italic;
   color: var(--text-faint);
-  padding: 0.4rem 0.6rem !important;
+  padding: var(--space-2) var(--space-2) !important;
   cursor: default !important;
 }
 

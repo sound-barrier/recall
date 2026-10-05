@@ -52,9 +52,9 @@ function onDrop(e: DragEvent) {
 .pivot-shelf {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--space-2);
   min-height: 3.5rem;
-  padding: 0.5rem 0.55rem 0.6rem;
+  padding: var(--space-2) var(--space-2) var(--space-2);
   border: 1px dashed color-mix(in srgb, var(--border-strong) 70%, transparent);
   border-radius: var(--radius-surface);
   background: color-mix(in srgb, var(--surface-2) 55%, transparent);
@@ -77,13 +77,13 @@ function onDrop(e: DragEvent) {
 .pivot-shelf-body {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: var(--space-1);
   align-items: flex-start;
 }
 
 .pivot-shelf-empty {
   margin: 0;
-  padding: 0.1rem 0;
+  padding: var(--space-0-5) 0;
   font-family: var(--mono);
   font-size: var(--type-2xs);
   font-style: italic;

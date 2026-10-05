@@ -113,7 +113,7 @@ const topHeroesPlayed = computed(() => {
    block in its default-expanded form (the detail panel keys
    MatchCardExpanded by match_key). */
 
-.heroes-played.collapsed { margin-bottom: -0.2rem; }
+.heroes-played.collapsed { margin-bottom: calc(-1 * var(--space-1)); }
 
 .heroes-played-toggle {
   appearance: none;
@@ -121,7 +121,7 @@ const topHeroesPlayed = computed(() => {
   align-items: center;
   gap: var(--space-2);
   width: 100%;
-  padding: 0.35rem 0.45rem 0.35rem 0.1rem;
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-0-5);
   background: transparent;
   border: 0;
   color: inherit;
@@ -129,7 +129,7 @@ const topHeroesPlayed = computed(() => {
   text-align: left;
   cursor: pointer;
   border-radius: var(--radius);
-  margin-bottom: 0.55rem;
+  margin-bottom: var(--space-2);
   transition: background var(--duration-fast) ease;
 }
 
@@ -158,7 +158,7 @@ const topHeroesPlayed = computed(() => {
   align-items: center;
   justify-content: center;
   min-width: 1.1rem;
-  padding: 0 0.32rem;
+  padding: 0 var(--space-1);
   background: var(--surface-3);
   border: 1px solid var(--border);
   color: var(--text-dim);
@@ -174,8 +174,8 @@ const topHeroesPlayed = computed(() => {
   display: inline-flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 0.45rem;
-  margin-left: 0.35rem;
+  gap: var(--space-2);
+  margin-left: var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text-mute);
@@ -185,7 +185,7 @@ const topHeroesPlayed = computed(() => {
 .heroes-summary-entry {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.35rem;
+  gap: var(--space-1);
 }
 
 .heroes-summary-sep { color: var(--text-faint); }
@@ -206,7 +206,7 @@ const topHeroesPlayed = computed(() => {
 }
 
 .heroes-summary-more {
-  padding: 0.05rem 0.32rem;
+  padding: var(--space-0-5) var(--space-1);
   background: var(--surface-3);
   border: 1px dashed var(--border);
   color: var(--text-faint);
@@ -218,7 +218,7 @@ const topHeroesPlayed = computed(() => {
 .heroes-played-items {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: var(--space-3);
   animation: heroes-items-in var(--duration-med) ease both;
 }
 
@@ -236,14 +236,14 @@ const topHeroesPlayed = computed(() => {
   border: 1px solid var(--border);
   border-left: 2px solid var(--accent-soft);
   border-radius: var(--radius-surface);
-  padding: 0.75rem 0.9rem;
+  padding: var(--space-3) var(--space-4);
 }
 
 .hero-header {
   display: flex;
-  gap: 0.7rem;
+  gap: var(--space-3);
   align-items: baseline;
-  margin-bottom: 0.55rem;
+  margin-bottom: var(--space-2);
 }
 
 .hero-name {
@@ -254,7 +254,7 @@ const topHeroesPlayed = computed(() => {
   color: var(--accent-text);
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  padding: 0 0.15rem;
+  padding: 0 var(--space-0-5);
   cursor: pointer;
   transition: color var(--duration-prompt) ease, text-shadow var(--duration-med) ease;
 }
@@ -284,7 +284,7 @@ const topHeroesPlayed = computed(() => {
 
 .personal-item {
   background: var(--surface);
-  padding: 0.45rem 0.7rem;
+  padding: var(--space-2) var(--space-3);
   display: flex;
   justify-content: space-between;
   align-items: center;

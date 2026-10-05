@@ -1,6 +1,6 @@
 /* The 07 Reviews index. Scoped sibling rather than an inline block: the file
    was past the 500-line ceiling with markup, logic and 130 lines of styling in
-   it, and `<style scoped src>` keeps the hash scoping and the chunk placement
+   it, and `\3c style scoped src>` keeps the hash scoping and the chunk placement
    exactly as they were. Same shape as coach-room.css and coach-cue-row.css. */
 
 /* The description under the heading. --text-dim rather than --text-mute:
@@ -17,8 +17,8 @@
 .reviews-waiting {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  margin: 1.2rem 0 0;
+  gap: var(--space-2);
+  margin: var(--space-5) 0 0;
   padding: 0;
   list-style: none;
 }
@@ -31,8 +31,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.55rem;
-  padding: 0.5rem 0.75rem;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
@@ -51,7 +51,7 @@
 .reviews-start {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
   max-width: 62ch;
 }
 
@@ -62,16 +62,16 @@
 .reviews-start-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.35rem;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
 }
 
 /* The shelf: reviews as paper cards in a responsive row. */
 .reviews-shelf {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
-  gap: 0.9rem;
-  margin: 1.2rem 0 0;
+  gap: var(--space-4);
+  margin: var(--space-5) 0 0;
   padding: 0;
   list-style: none;
 }
@@ -79,7 +79,7 @@
 .review-card {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--space-2);
   padding: 0;
   overflow: hidden;
 }
@@ -89,7 +89,7 @@
    strip, one meaning, "this is a sitting". */
 .review-card-coach {
   margin: 0;
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-2) var(--space-3);
   font-family: var(--display);
   font-size: var(--type-3xl);
   font-style: italic;
@@ -100,11 +100,11 @@
 }
 
 .review-card-line {
-  margin: 0 0.75rem;
+  margin: 0 var(--space-3);
 }
 
 .review-card-summary {
-  margin: 0 0.75rem;
+  margin: 0 var(--space-3);
   font-size: var(--type-lg);
   line-height: 1.45;
   color: var(--ink);
@@ -113,8 +113,8 @@
 .review-card-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
-  margin: 0 0.75rem 0.75rem;
+  gap: var(--space-2);
+  margin: 0 var(--space-3) var(--space-3);
 }
 
 .review-card-open {
@@ -127,7 +127,7 @@
 }
 
 .reviews-empty {
-  margin: 1rem 0 0;
+  margin: var(--space-4) 0 0;
   font-size: var(--type-lg);
   line-height: 1.5;
   color: var(--text-faint);
@@ -139,5 +139,5 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }

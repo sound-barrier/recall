@@ -185,8 +185,8 @@ const {
   appearance: none;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.32rem 0.65rem 0.3rem;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3) var(--space-1);
   border: 1px solid var(--border);
   background: var(--surface-2);
   border-radius: var(--radius);
@@ -249,7 +249,7 @@ const {
   right: 0;
   z-index: 50;
   min-width: 14rem;
-  padding: 0.35rem;
+  padding: var(--space-1);
   border: 1px solid var(--accent);
   background: var(--surface);
   border-radius: var(--radius-overlay);
@@ -258,7 +258,7 @@ const {
     0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--space-0-5);
 }
 
 .profile-item {
@@ -268,7 +268,7 @@ const {
   gap: var(--space-2);
   align-items: center;
   width: 100%;
-  padding: 0.4rem 0.55rem;
+  padding: var(--space-2) var(--space-2);
   border: 0;
   background: transparent;
   border-radius: var(--radius);
@@ -315,15 +315,15 @@ const {
 .profile-menu-sep {
   height: 1px;
   background: color-mix(in srgb, var(--border) 70%, transparent);
-  margin: 0.2rem 0;
+  margin: var(--space-1) 0;
 }
 
 .profile-new-form {
   display: grid;
   grid-template-columns: 1fr auto auto;
-  gap: 0.3rem;
+  gap: var(--space-1);
   align-items: center;
-  padding: 0.35rem;
+  padding: var(--space-1);
 }
 
 .profile-new-input {
@@ -331,7 +331,7 @@ const {
   border: 1px solid var(--border);
   background: var(--surface-2);
   border-radius: var(--radius);
-  padding: 0.32rem 0.4rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text);
@@ -351,7 +351,7 @@ const {
 .profile-new-cancel {
   appearance: none;
   border-radius: var(--radius);
-  padding: 0.32rem 0.55rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.16em;
@@ -384,7 +384,7 @@ const {
 }
 
 .profile-new-hint {
-  margin: 0 0.5rem 0.2rem;
+  margin: 0 var(--space-2) var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-3xs);
   letter-spacing: 0.1em;
@@ -396,7 +396,7 @@ const {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
-  gap: 0.2rem;
+  gap: var(--space-1);
 }
 
 .profile-item-row.renaming {
@@ -411,7 +411,7 @@ const {
   cursor: pointer;
   font-size: var(--type-md);
   line-height: 1;
-  padding: 0.3rem 0.4rem;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius);
   opacity: 0;
   transition: opacity var(--duration-instant) ease, color var(--duration-instant) ease, background var(--duration-instant) ease;
@@ -430,7 +430,7 @@ const {
 .profile-rename-form {
   display: grid;
   grid-template-columns: 1fr auto auto;
-  gap: 0.3rem;
+  gap: var(--space-1);
   align-items: center;
   padding: var(--space-1);
 }
@@ -440,7 +440,7 @@ const {
   border: 1px solid var(--border);
   background: var(--surface-2);
   border-radius: var(--radius);
-  padding: 0.32rem 0.4rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text);
@@ -459,7 +459,7 @@ const {
 .profile-rename-cancel {
   appearance: none;
   border-radius: var(--radius);
-  padding: 0.32rem 0.55rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.16em;
@@ -492,7 +492,7 @@ const {
 }
 
 .profile-error {
-  margin: 0.35rem 0.5rem 0.1rem;
+  margin: var(--space-1) var(--space-2) var(--space-0-5);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.06em;

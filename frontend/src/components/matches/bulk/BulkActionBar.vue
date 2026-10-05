@@ -339,10 +339,10 @@ function pickTag(v: string) {
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 0.55rem;
+  gap: var(--space-2);
   width: max-content;
   max-width: min(96vw, 78rem);
-  padding: 0.45rem 0.65rem;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--accent);
 
   /* Opaque, not the usual translucent tint: the bar floats over row text,
@@ -372,7 +372,7 @@ function pickTag(v: string) {
 .bulk-action-bar button {
   appearance: none;
   border-radius: var(--radius);
-  padding: 0.32rem 0.7rem;
+  padding: var(--space-1) var(--space-3);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.18em;
@@ -381,7 +381,7 @@ function pickTag(v: string) {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: var(--space-1);
   line-height: 1;
 }
 
@@ -489,7 +489,7 @@ function pickTag(v: string) {
    mode menu to fit the search input + suggestion rows. */
 .bab-menu-tag {
   min-width: 16rem;
-  padding: 0.4rem;
+  padding: var(--space-2);
 }
 
 .bab-menu {
@@ -503,7 +503,7 @@ function pickTag(v: string) {
   z-index: 6;
   min-width: 12rem;
   list-style: none;
-  padding: 0.3rem;
+  padding: var(--space-1);
   margin: 0;
   background: var(--surface-3);
   border: 1px solid var(--border-strong);
@@ -516,7 +516,7 @@ function pickTag(v: string) {
   display: block;
   width: 100%;
   text-align: left;
-  padding: 0.4rem 0.55rem;
+  padding: var(--space-2) var(--space-2);
   border: 0;
   background: transparent;
   color: var(--text);
@@ -541,7 +541,7 @@ function pickTag(v: string) {
 
 .bab-menu-divider {
   height: 1px;
-  margin: 0.25rem 0;
+  margin: var(--space-1) 0;
   background: var(--border);
 }
 </style>

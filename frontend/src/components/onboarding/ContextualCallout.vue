@@ -164,7 +164,7 @@ const calloutStyle = computed(() => {
   background: var(--surface);
   border: 1px solid var(--accent);
   border-radius: var(--radius-overlay);
-  padding: 0.85rem 1rem 0.95rem;
+  padding: var(--space-3) var(--space-4) var(--space-4);
   box-shadow:
     0 16px 36px color-mix(in srgb, var(--bg) 60%, transparent),
     0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
@@ -196,7 +196,7 @@ const calloutStyle = computed(() => {
   font-size: var(--type-3xl);
   line-height: 1;
   cursor: pointer;
-  padding: 0 0.3rem;
+  padding: 0 var(--space-1);
   transition: color var(--duration-fast) ease;
 }
 
@@ -207,14 +207,14 @@ const calloutStyle = computed(() => {
 }
 
 .ctx-body {
-  margin: 0.5rem 0 0;
+  margin: var(--space-2) 0 0;
   font-size: var(--type-lg);
   color: var(--text-dim);
   line-height: 1.5;
 }
 
 .ctx-actions {
-  margin-top: 0.7rem;
+  margin-top: var(--space-3);
   display: flex;
   justify-content: flex-end;
 }
@@ -229,7 +229,7 @@ const calloutStyle = computed(() => {
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  padding: 0.4rem 0.85rem;
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius);
   cursor: pointer;
   transition: filter var(--duration-fast) ease;

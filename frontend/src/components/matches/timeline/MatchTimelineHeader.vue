@@ -163,7 +163,7 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
 
 <style scoped>
 .match-timeline {
-  padding: 0.7rem 1.1rem 0.65rem;
+  padding: var(--space-3) var(--space-4) var(--space-3);
   border: 1px solid var(--border);
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 4%, transparent) 0%, transparent 40%),
@@ -172,7 +172,7 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
 }
 
 .timeline-empty {
-  margin: 0.4rem 0;
+  margin: var(--space-2) 0;
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text-faint);
@@ -181,8 +181,8 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
 .timeline-head {
   display: flex;
   align-items: baseline;
-  gap: 1.1rem;
-  margin-bottom: 0.55rem;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
   flex-wrap: wrap;
 }
 
@@ -196,14 +196,14 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
 .timeline-body {
   display: flex;
   align-items: flex-start;
-  gap: 1.2rem;
+  gap: var(--space-5);
   overflow: auto hidden;
 }
 
 @media (width <= 720px) {
   .timeline-body {
     flex-direction: column;
-    gap: 0.8rem;
+    gap: var(--space-3);
   }
 }
 
@@ -213,11 +213,11 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
 .tl-selection {
   display: flex;
   align-items: center;
-  gap: 0.5rem 0.9rem;
-  margin: 0.6rem 0 0;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-2) 0 0;
   min-height: 2.1rem;
   box-sizing: border-box;
-  padding: 0.4rem 0.55rem;
+  padding: var(--space-2) var(--space-2);
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--accent) 6%, transparent);

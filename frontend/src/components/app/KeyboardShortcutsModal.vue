@@ -244,7 +244,7 @@ const visibleGroups = computed(() =>
   background: var(--surface);
   border: 1px solid var(--surface-3);
   border-left: 3px solid var(--accent);
-  padding: 1.6rem 1.8rem 1.2rem 1.4rem;
+  padding: var(--space-6) var(--space-7) var(--space-5) var(--space-6);
   box-shadow: 0 24px 64px rgb(var(--shadow-rgb) / 55%);
 }
 
@@ -252,7 +252,7 @@ const visibleGroups = computed(() =>
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  margin-bottom: 1.1rem;
+  margin-bottom: var(--space-4);
 }
 
 .kbd-modal-tag {
@@ -278,7 +278,7 @@ const visibleGroups = computed(() =>
 }
 
 .kbd-group {
-  margin-bottom: 1.1rem;
+  margin-bottom: var(--space-4);
 }
 
 .kbd-group-title {
@@ -287,29 +287,29 @@ const visibleGroups = computed(() =>
   letter-spacing: 0.22em;
   color: var(--text-dim);
   text-transform: uppercase;
-  margin: 0 0 0.55rem;
-  padding-bottom: 0.3rem;
+  margin: 0 0 var(--space-2);
+  padding-bottom: var(--space-1);
   border-bottom: 1px dashed color-mix(in srgb, var(--text-faint) 38%, transparent);
 }
 
 .kbd-list {
   display: grid;
   grid-template-columns: 9rem minmax(0, 1fr);
-  gap: 0.45rem 1rem;
+  gap: var(--space-2) var(--space-4);
   margin: 0;
 }
 
 .kbd-keys {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: var(--space-1);
   flex-wrap: wrap;
   margin: 0;
 }
 
 .kbd {
   display: inline-block;
-  padding: 0.12rem 0.4rem;
+  padding: var(--space-0-5) var(--space-2);
   background: var(--surface-3);
   border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--text-faint));
   font-family: var(--mono);
@@ -334,8 +334,8 @@ const visibleGroups = computed(() =>
 }
 
 .kbd-modal-footer {
-  margin-top: 0.6rem;
-  padding-top: 0.8rem;
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
   border-top: 1px dashed color-mix(in srgb, var(--text-faint) 38%, transparent);
   display: flex;
   justify-content: space-between;

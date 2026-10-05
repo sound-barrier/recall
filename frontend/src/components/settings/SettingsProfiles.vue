@@ -155,14 +155,14 @@ async function confirmDelete(name: string) {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .profile-mgmt-row {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.55rem 0.75rem;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   background: var(--surface-2);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius);
@@ -196,7 +196,7 @@ async function confirmDelete(name: string) {
   color: var(--text);
   background: transparent;
   border: 1px solid var(--accent);
-  padding: 0.2rem 0.45rem;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius);
 }
 
@@ -209,7 +209,7 @@ async function confirmDelete(name: string) {
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding: 0.35rem 0.7rem;
+  padding: var(--space-1) var(--space-3);
   border-radius: var(--radius);
   cursor: pointer;
   transition: background var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;

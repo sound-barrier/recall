@@ -28,7 +28,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.7rem;
+  gap: var(--space-3);
   min-height: 50vh;
   font-family: var(--mono);
   font-size: var(--type-sm);
@@ -39,7 +39,7 @@
 
 .view-lazy-dots {
   display: inline-flex;
-  gap: 0.32rem;
+  gap: var(--space-1);
 }
 
 .view-lazy-dot {

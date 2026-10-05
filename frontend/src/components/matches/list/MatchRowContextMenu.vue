@@ -370,7 +370,7 @@ function onHide() {
   box-shadow: 0 16px 32px -16px rgb(var(--shadow-rgb) / 50%);
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: var(--space-0-5);
   isolation: isolate;
 }
 
@@ -378,8 +378,8 @@ function onHide() {
   appearance: none;
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
-  padding: 0.45rem 0.6rem;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-sm);
   letter-spacing: 0.08em;
@@ -422,7 +422,7 @@ function onHide() {
 
 .match-row-ctx-sep {
   height: 1px;
-  margin: 0.2rem 0.4rem;
+  margin: var(--space-1) var(--space-2);
   background: color-mix(in srgb, var(--border) 70%, transparent);
 }
 

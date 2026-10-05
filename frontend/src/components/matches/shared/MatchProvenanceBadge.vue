@@ -91,8 +91,8 @@ const tip = computed(() => {
 .prov-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.12rem 0.4rem;
+  gap: var(--space-1);
+  padding: var(--space-0-5) var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface-2);
@@ -107,7 +107,7 @@ const tip = computed(() => {
 }
 
 .prov-compact {
-  padding: 0.16rem;
+  padding: var(--space-0-5);
   gap: 0;
 }
 

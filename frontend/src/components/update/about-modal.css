@@ -23,7 +23,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: 0.9rem 1.1rem 0.55rem;
+  padding: var(--space-4) var(--space-4) var(--space-2);
   border-bottom: 1px solid var(--border-soft);
 }
 
@@ -59,13 +59,13 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  padding: 1rem 1.1rem 1.2rem;
+  padding: var(--space-4) var(--space-4) var(--space-5);
 }
 
 .update-check-modal-loading {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-2);
   color: var(--text-dim);
   font-family: var(--mono);
   font-size: var(--type-sm);
@@ -78,14 +78,14 @@
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--accent-text);
-  margin: 0 0 0.5rem;
+  margin: 0 0 var(--space-2);
 }
 
 .update-check-modal-rows {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 0.25rem 0.85rem;
-  margin-bottom: 0.5rem;
+  gap: var(--space-1) var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .update-check-modal-row {
@@ -110,7 +110,7 @@
 .update-check-modal-update-flag {
   color: var(--accent-text);
   font-weight: 700;
-  margin-left: 0.4rem;
+  margin-left: var(--space-2);
 }
 
 .update-check-modal-devbuild-current {
@@ -119,7 +119,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--text);
-  margin: 0 0 0.15rem;
+  margin: 0 0 var(--space-0-5);
 }
 
 .update-check-modal-devbuild-note,
@@ -128,14 +128,14 @@
   font-size: var(--type-xs);
   letter-spacing: 0.06em;
   color: var(--text-dim);
-  margin: 0 0 0.45rem;
+  margin: 0 0 var(--space-2);
 }
 
 .update-check-modal-notes {
   font-size: var(--type-sm);
   color: var(--text-dim);
   line-height: 1.45;
-  margin: 0.25rem 0 0.5rem;
+  margin: var(--space-1) 0 var(--space-2);
   white-space: pre-line;
 }
 
@@ -144,30 +144,30 @@
   font-size: var(--type-sm);
   letter-spacing: 0.16em;
   color: var(--text-dim);
-  margin: 0.3rem 0;
+  margin: var(--space-1) 0;
 }
 
 .update-check-modal-error {
   background: color-mix(in srgb, var(--loss) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--loss) 50%, transparent);
   border-radius: var(--radius);
-  padding: 0.55rem 0.7rem;
+  padding: var(--space-2) var(--space-3);
   color: var(--loss);
   font-family: var(--mono);
   font-size: var(--type-sm);
-  margin: 0.5rem 0;
+  margin: var(--space-2) 0;
 }
 
 .update-check-modal-actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 0.5rem;
+  margin-top: var(--space-2);
 }
 
 .update-check-modal-actions-footer {
   border-top: 1px solid var(--border-soft);
-  padding-top: 0.7rem;
-  margin-top: 0.85rem;
+  padding-top: var(--space-3);
+  margin-top: var(--space-3);
 }
 
 /* `:deep()` so the shared btn chrome also reaches the SelfUpdateCta child's
@@ -179,7 +179,7 @@
   font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  padding: 0.38rem 0.85rem;
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius);
   cursor: pointer;
   transition: background var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
@@ -213,7 +213,7 @@
 
 .update-check-modal-btn-wide {
   width: 100%;
-  padding: 0.6rem 0.85rem;
+  padding: var(--space-2) var(--space-3);
   font-size: var(--type-sm);
   letter-spacing: 0.22em;
 }
@@ -232,7 +232,7 @@
   border: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
   border-top-color: var(--accent);
   vertical-align: -2px;
-  margin-right: 0.4rem;
+  margin-right: var(--space-2);
   animation: update-check-modal-spin 0.9s linear infinite;
 }
 
@@ -248,9 +248,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
+  gap: var(--space-0-5);
   text-align: center;
-  padding: 0.3rem 0 0.6rem;
+  padding: var(--space-1) 0 var(--space-2);
   border-bottom: 1px solid var(--border-soft);
 }
 
@@ -272,7 +272,7 @@
   font-size: var(--type-sm);
   letter-spacing: 0.08em;
   color: var(--text-dim);
-  margin: 0.15rem 0 0;
+  margin: var(--space-0-5) 0 0;
 }
 
 .about-tagline {
@@ -287,8 +287,8 @@
 .about-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem 0.85rem;
-  margin-bottom: 0.55rem;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .about-link {
@@ -331,7 +331,7 @@
   letter-spacing: 0.04em;
   line-height: 1.15;
   color: var(--text);
-  margin: 0.1rem 0 0.25rem;
+  margin: var(--space-0-5) 0 var(--space-1);
 }
 
 .update-check-modal-freshness {
@@ -339,11 +339,11 @@
   font-size: var(--type-2xs);
   letter-spacing: 0.1em;
   color: var(--text-dim);
-  margin: 0 0 0.7rem;
+  margin: 0 0 var(--space-3);
 }
 
 .update-check-modal-apply-row {
-  margin-top: 0.4rem;
+  margin-top: var(--space-2);
 }
 
 .update-check-modal-enter-active,

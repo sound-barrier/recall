@@ -101,7 +101,7 @@ const {
   right: 0;
   z-index: 50;
   min-width: 13rem;
-  padding: 0.35rem;
+  padding: var(--space-1);
   border: 1px solid var(--accent);
   background: var(--surface);
   border-radius: var(--radius-overlay);
@@ -110,16 +110,16 @@ const {
     0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--space-0-5);
 }
 
 .app-menu-item {
   appearance: none;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
   width: 100%;
-  padding: 0.4rem 0.6rem;
+  padding: var(--space-2) var(--space-2);
   border: 0;
   background: transparent;
   border-radius: var(--radius);
@@ -151,6 +151,6 @@ const {
 .app-menu-sep {
   height: 1px;
   background: color-mix(in srgb, var(--border) 70%, transparent);
-  margin: 0.2rem 0;
+  margin: var(--space-1) 0;
 }
 </style>

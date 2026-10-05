@@ -345,7 +345,7 @@ function onBackdropClick(e: MouseEvent) {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  padding: 0.85rem 1rem;
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--border-soft);
 }
 
@@ -360,7 +360,7 @@ function onBackdropClick(e: MouseEvent) {
 
 .ignored-count {
   display: inline-block;
-  padding: 0 0.4rem;
+  padding: 0 var(--space-2);
   font-size: var(--type-md);
   line-height: 1.4;
   background: var(--surface-2);
@@ -395,7 +395,7 @@ function onBackdropClick(e: MouseEvent) {
 }
 
 .ignored-empty {
-  padding: 1.75rem 1rem;
+  padding: var(--space-7) var(--space-4);
   color: var(--text-dim);
   text-align: center;
   margin: 0;
@@ -406,7 +406,7 @@ function onBackdropClick(e: MouseEvent) {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 0.7rem 1rem;
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--border-soft);
   background: var(--surface);
 }
@@ -419,7 +419,7 @@ function onBackdropClick(e: MouseEvent) {
 .ignored-list {
   list-style: none;
   margin: 0;
-  padding: 0.4rem 0.5rem;
+  padding: var(--space-2) var(--space-2);
   overflow-y: auto;
   flex: 1;
 }
@@ -444,8 +444,8 @@ function onBackdropClick(e: MouseEvent) {
 .ignored-foot {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.65rem 1rem;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--border-soft);
   font-size: var(--type-lg);
   color: var(--text-dim);

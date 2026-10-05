@@ -133,9 +133,9 @@ const probeDismissed = ref(false)
    heading directly instead of being buried in a row below. */
 .empty-hero {
   position: relative;
-  margin-top: 1rem;
-  margin-bottom: 2.4rem;
-  padding: 1.6rem 1.8rem 1.5rem;
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-10);
+  padding: var(--space-6) var(--space-7) var(--space-6);
   background: var(--surface);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
@@ -182,7 +182,7 @@ const probeDismissed = ref(false)
 .empty-hero-corner-br { bottom: 8px; right: 12px; border-left: 0;  border-top: 0; }
 
 .empty-hero-eyebrow {
-  margin: 0 0 0.55rem;
+  margin: 0 0 var(--space-2);
 }
 
 .empty-hero-title {
@@ -193,7 +193,7 @@ const probeDismissed = ref(false)
   line-height: 1.05;
   color: var(--text);
   text-transform: uppercase;
-  margin: 0 0 0.55rem;
+  margin: 0 0 var(--space-2);
 }
 
 .empty-hero-desc {
@@ -201,14 +201,14 @@ const probeDismissed = ref(false)
   color: var(--text-dim);
   line-height: 1.55;
   max-width: 62ch;
-  margin: 0 0 1.15rem;
+  margin: 0 0 var(--space-5);
 }
 
 .empty-hero-desc code {
   font-family: var(--mono);
   font-size: var(--type-md);
   background: var(--surface-3);
-  padding: 0.05rem 0.35rem;
+  padding: var(--space-0-5) var(--space-1);
   border-radius: var(--radius);
   color: var(--accent-text);
 }
@@ -216,8 +216,8 @@ const probeDismissed = ref(false)
 .empty-hero-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem;
-  margin-bottom: 0.4rem;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .btn-icon {
@@ -239,7 +239,7 @@ const probeDismissed = ref(false)
 /* ─── Sub-heading text in Settings sections ──────────────── */
 
 .settings-sub {
-  margin-top: 0.85rem;
+  margin-top: var(--space-3);
   color: var(--text-dim);
   font-size: var(--type-lg);
   line-height: 1.55;
@@ -282,7 +282,7 @@ const probeDismissed = ref(false)
 
 /* Armed-import + armed-clear rows share the same destructive bar. */
 .setting-row.danger-row {
-  padding-left: calc(1.4rem - 3px);
+  padding-left: calc(var(--space-6) - 3px);
   background: var(--loss-soft);
   border-left: 3px solid var(--loss-line);
   border-radius: var(--radius);
@@ -304,8 +304,8 @@ const probeDismissed = ref(false)
 .setting-meta {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  margin-top: 0.55rem;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text-faint);
@@ -317,7 +317,7 @@ const probeDismissed = ref(false)
 .setting-meta.success { color: var(--win); }
 
 .block-mark {
-  margin-right: 0.15rem;
+  margin-right: var(--space-0-5);
   font-size: var(--type-lg);
   filter: saturate(0.85);
 }

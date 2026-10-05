@@ -82,8 +82,8 @@ const emptyLine = computed(() => (yours.value
 .reel-head {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  padding: 0 0 0.6rem;
+  gap: var(--space-0-5);
+  padding: 0 0 var(--space-2);
   border-bottom: 1px solid var(--hairline);
 }
 
@@ -107,13 +107,13 @@ const emptyLine = computed(() => (yours.value
   flex: 1;
   min-height: 0;
   margin: 0;
-  padding: 0.7rem 0.2rem 0 0;
+  padding: var(--space-3) var(--space-1) 0 0;
   overflow-y: auto;
   list-style: none;
 }
 
 .reel-empty {
-  margin: 0.9rem 0 0;
+  margin: var(--space-4) 0 0;
   font-size: var(--type-md);
   color: var(--text-faint);
 }

@@ -1,5 +1,5 @@
 /* The Send-to-Coach dialog. Scoped sibling rather than an inline block:
-   `<style scoped src>` keeps the hash scoping and the chunk placement
+   `\3c style scoped src>` keeps the hash scoping and the chunk placement
    identical, and the SFC is left holding markup and logic. Same shape as
    coach-room.css and coach-cue-row.css. */
 
@@ -18,13 +18,13 @@
   bottom: 0;
   flex: none;
   height: 2.2rem;
-  margin-top: -2.2rem;
+  margin-top: calc(-1 * var(--space-8));
   pointer-events: none;
   background: linear-gradient(to bottom, transparent, var(--surface));
 }
 
 .send-to-coach-field-hint {
-  margin: 0.25rem 0 0;
+  margin: var(--space-1) 0 0;
   font-size: var(--type-xs);
   color: var(--text-dim);
 }
@@ -33,7 +33,7 @@
    behaves as the button every row's Remove needs it to be. */
 .send-to-coach-more {
   appearance: none;
-  margin: 0.35rem 0 0;
+  margin: var(--space-1) 0 0;
   padding: 0;
   background: transparent;
   border: 0;
@@ -46,14 +46,14 @@
 .send-to-coach-more:hover { color: var(--text); }
 
 .send-to-coach-blocked {
-  margin: 0.6rem 0 0;
+  margin: var(--space-2) 0 0;
   font-size: var(--type-xs);
   color: var(--text-dim);
   text-align: right;
 }
 
 .send-to-coach-title {
-  margin: 0.2rem 0 0;
+  margin: var(--space-1) 0 0;
   font-family: var(--display);
   font-size: var(--type-7xl);
   font-style: italic;
@@ -64,14 +64,14 @@
 }
 
 .send-to-coach-subject {
-  margin: 0.25rem 0 0.9rem;
+  margin: var(--space-1) 0 var(--space-4);
   font-size: var(--type-lg);
   color: var(--text-dim);
 }
 
 .send-to-coach-field-label {
   display: block;
-  margin: 0.9rem 0 0.25rem;
+  margin: var(--space-4) 0 var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.12em;
@@ -81,7 +81,7 @@
 
 .send-to-coach-input {
   width: 100%;
-  padding: 0.45rem 0.55rem;
+  padding: var(--space-2) var(--space-2);
   font-family: var(--body);
   font-size: var(--type-lg);
   color: var(--text);
@@ -98,7 +98,7 @@
 }
 
 .send-to-coach-summary {
-  margin: 1rem 0 0.3rem;
+  margin: var(--space-4) 0 var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.1em;
@@ -112,15 +112,15 @@
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--space-0-5);
 }
 
 .send-to-coach-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.6rem;
-  padding: 0.2rem 0.4rem;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius);
   font-size: var(--type-md);
   color: var(--text-dim);
@@ -156,9 +156,9 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.4rem;
-  margin-top: 0.6rem;
-  padding: 0.55rem 0.7rem;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border-left: 2px solid var(--loss);
   background: var(--loss-soft);
   border-radius: var(--radius);
@@ -171,8 +171,8 @@
 }
 
 .send-to-coach-warn {
-  margin: 1rem 0 0;
-  padding-left: 0.7rem;
+  margin: var(--space-4) 0 0;
+  padding-left: var(--space-3);
   border-left: 2px solid var(--accent);
   font-size: var(--type-md);
   line-height: 1.5;
@@ -182,16 +182,16 @@
 .send-to-coach-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 1.1rem;
-  padding-top: 0.9rem;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
   border-top: 1px solid var(--border-soft);
 }
 
 .send-to-coach-cancel,
 .send-to-coach-send {
   appearance: none;
-  padding: 0.4rem 0.9rem;
+  padding: var(--space-2) var(--space-4);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   font-weight: 700;
@@ -245,13 +245,13 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
-  margin: 0 0 0.6rem;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
 }
 
 .send-to-coach-suggest {
   appearance: none;
-  padding: 0.2rem 0.6rem;
+  padding: var(--space-1) var(--space-2);
   background: transparent;
   border: 1px dashed var(--border);
   border-radius: var(--radius);
@@ -269,7 +269,7 @@
 .send-to-coach-drop {
   appearance: none;
   margin-left: auto;
-  padding: 0 0.3rem;
+  padding: 0 var(--space-1);
   background: transparent;
   border: 0;
   color: var(--text-faint);

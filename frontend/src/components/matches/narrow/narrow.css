@@ -10,7 +10,7 @@
 .np-section {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 .np-section-head {
@@ -38,7 +38,7 @@
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0.22rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   color: var(--text-dim);
@@ -74,8 +74,8 @@
 .np-head {
   display: flex;
   align-items: baseline;
-  gap: 0.65rem;
-  padding-bottom: 0.35rem;
+  gap: var(--space-3);
+  padding-bottom: var(--space-1);
   border-bottom: 1px solid var(--border);
 }
 
@@ -105,7 +105,7 @@
   font-size: var(--type-4xl);
   line-height: 1;
   cursor: pointer;
-  padding: 0 0.3rem;
+  padding: 0 var(--space-1);
 }
 
 .np-close:hover { color: var(--accent-text); }
@@ -114,8 +114,8 @@
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.5rem;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--border);
   background: var(--surface-2);
   border-radius: var(--radius);
@@ -135,7 +135,7 @@
   font-family: var(--mono);
   font-size: var(--type-md);
   width: 100%;
-  padding: 0.1rem 0;
+  padding: var(--space-0-5) 0;
 }
 
 .np-search-input::placeholder { color: var(--text-faint); }
@@ -143,7 +143,7 @@
 .np-search-kbd {
   font-family: var(--mono);
   font-size: var(--type-2xs);
-  padding: 0.05rem 0.4rem;
+  padding: var(--space-0-5) var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text-faint);
@@ -156,19 +156,19 @@
 .np-cols {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: var(--space-3);
 }
 
 .np-col {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: var(--space-2);
 }
 
 .np-refine-row {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: var(--space-2);
 }
 
 .np-refine-hint {
@@ -182,7 +182,7 @@
 .np-thresholds {
   display: inline-flex;
   align-items: end;
-  gap: 0.6rem;
+  gap: var(--space-2);
 }
 
 .np-thresholds-or {
@@ -191,14 +191,14 @@
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-faint);
-  padding-bottom: 0.3rem;
+  padding-bottom: var(--space-1);
   font-weight: 700;
 }
 
 .np-num-label, .np-toggle-label {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.18em;
@@ -209,11 +209,11 @@
 .np-num-input {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: var(--space-1);
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0.2rem 0.45rem;
+  padding: var(--space-1) var(--space-2);
   width: max-content;
 }
 
@@ -236,7 +236,7 @@
 .np-toggle-label {
   flex-direction: row;
   align-items: center;
-  gap: 0.45rem;
+  gap: var(--space-2);
   text-transform: none;
   letter-spacing: 0.02em;
   font-size: var(--type-sm);
@@ -251,7 +251,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.6rem;
+  gap: var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text-dim);
@@ -267,7 +267,7 @@
 .np-since-anchor-actions {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 
 .np-since-anchor-open,
@@ -281,7 +281,7 @@
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  padding: 0.25rem 0.55rem;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius);
   cursor: pointer;
   transition: background var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
@@ -303,12 +303,12 @@
 .np-foot {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-2);
   position: sticky;
   bottom: 0;
   background: var(--surface);
-  margin: 0 -1rem;
-  padding: 0.55rem 1rem;
+  margin: 0 calc(-1 * var(--space-4));
+  padding: var(--space-2) var(--space-4);
   border-top: 1px solid var(--border);
   z-index: 1;
 }
@@ -323,5 +323,5 @@
 .np-foot-actions {
   margin-left: auto;
   display: inline-flex;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }

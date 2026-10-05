@@ -5,8 +5,8 @@
   justify-content: space-between;
   align-items: flex-end;
   gap: var(--space-8);
-  padding-bottom: 1.4rem;
-  margin-bottom: 1.6rem;
+  padding-bottom: var(--space-6);
+  margin-bottom: var(--space-6);
   border-bottom: 1px solid var(--hairline);
 }
 
@@ -24,8 +24,8 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
-  padding: 0.55rem 1.15rem 0.55rem 1rem;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-5) var(--space-2) var(--space-4);
   background: var(--brand-gray);
   border-radius: var(--radius);
   box-shadow:
@@ -241,7 +241,7 @@
 }
 
 .tagline {
-  margin-top: 0.7rem;
+  margin-top: var(--space-3);
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text-faint);
@@ -253,7 +253,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 1.15rem;
+  gap: var(--space-5);
 }
 
 /* .theme-toggle family + .theme-seg / .theme-icon / .theme-label /
@@ -262,8 +262,8 @@
 .scoreboard {
   display: grid;
   grid-template-columns: repeat(3, auto);
-  gap: 0.5rem 1.4rem;
-  padding: 0.1rem 0;
+  gap: var(--space-2) var(--space-6);
+  padding: var(--space-0-5) 0;
   border-radius: var(--radius);
 }
 
@@ -306,7 +306,7 @@
 .score-num.draw { color: var(--draw); }
 
 .score-label {
-  margin-top: 0.3rem;
+  margin-top: var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-xs);
   letter-spacing: 0.2em;
@@ -329,9 +329,9 @@
   grid-column: 1 / -1;
   align-items: baseline;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: var(--space-2);
   margin: 0;
-  padding-top: 0.45rem;
+  padding-top: var(--space-2);
 
   /* --hairline, not --border: the latter is the OW orange under Dark, which
      turns this quiet rule into a decorative underline. Same token the

@@ -49,14 +49,14 @@ const failed = computed(() => query.isError.value)
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 .focus-now-item {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .focus-now-text {
@@ -72,7 +72,7 @@ const failed = computed(() => query.isError.value)
 }
 
 .focus-now-empty {
-  margin: 0.3rem 0 0;
+  margin: var(--space-1) 0 0;
   font-size: var(--type-sm);
   color: var(--text-dim);
 }

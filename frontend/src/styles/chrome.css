@@ -24,7 +24,7 @@
   top: 0;
   left: 0;
   z-index: 1000;
-  padding: 0.6rem 1rem;
+  padding: var(--space-2) var(--space-4);
   background: var(--accent);
   color: var(--primary-text-on-accent);
   font-family: var(--mono);
@@ -86,6 +86,6 @@ main#main-content {
      their own inner content via --content-measure. */
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: 2.4rem 1.6rem 4rem;
+  padding: var(--space-10) var(--space-6) var(--space-16);
 }
 

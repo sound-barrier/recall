@@ -123,7 +123,7 @@ const progressLabel = computed(() => {
 .update-check-modal-selfupdate-progress {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--space-1);
 }
 
 .update-check-modal-selfupdate-bar {

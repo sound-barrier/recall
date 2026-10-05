@@ -113,7 +113,7 @@ function stepInto(target: StepTarget): void {
 }
 
 .coach-nav-btn {
-  padding: 0.25rem 0.6rem;
+  padding: var(--space-1) var(--space-2);
   font-size: var(--type-2xs);
 }
 </style>

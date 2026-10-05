@@ -1,7 +1,7 @@
 .leaves-table-wrap {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: var(--space-2);
 }
 
 .tablemode-bar {
@@ -26,7 +26,7 @@
 .cell-copy-hint kbd {
   font-family: var(--mono);
   font-size: 0.92em;
-  padding: 0.02rem 0.22rem;
+  padding: var(--space-0-5) var(--space-1);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-2);
@@ -49,7 +49,7 @@
   font-size: var(--type-2xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding: 0.3rem 0.7rem;
+  padding: var(--space-1) var(--space-3);
   color: var(--text-faint);
   background: var(--surface-2);
   border: none;
@@ -75,7 +75,7 @@
   font-size: var(--type-2xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 0.3rem 0.7rem;
+  padding: var(--space-1) var(--space-3);
   color: var(--text);
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -136,7 +136,7 @@
   top: 0;
   z-index: 2;
   text-align: left;
-  padding: 0.5rem 0.55rem;
+  padding: var(--space-2) var(--space-2);
   font-size: var(--type-3xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -201,7 +201,7 @@
 .th-inner {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 .th-caret {
@@ -217,7 +217,7 @@
   justify-content: center;
   min-width: 0.85rem;
   height: 0.85rem;
-  padding: 0 0.15rem;
+  padding: 0 var(--space-0-5);
   font-size: var(--type-4xs);
   font-weight: 700;
   line-height: 1;
@@ -232,7 +232,7 @@
 
 /* Tail foot row echoes the leaf-list foot tone. */
 .leaves-foot-row td {
-  padding: 0.9rem 0 1.1rem;
+  padding: var(--space-4) 0 var(--space-4);
   text-align: center;
   font-size: var(--type-2xs);
   letter-spacing: 0.14em;
@@ -244,5 +244,5 @@
 .leaves-foot-end {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-2);
 }

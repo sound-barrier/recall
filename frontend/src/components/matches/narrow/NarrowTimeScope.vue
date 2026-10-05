@@ -253,15 +253,15 @@ function clearDates() {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 0.4rem;
-  margin-top: 0.5rem;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 
 .np-phrase-label {
   display: flex;
   flex: 1 1 12rem;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: var(--space-1);
   font-size: var(--type-2xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -274,7 +274,7 @@ function clearDates() {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0.25rem 0.4rem;
+  padding: var(--space-1) var(--space-2);
 }
 
 .np-phrase-apply {
@@ -285,7 +285,7 @@ function clearDates() {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0.3rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
 }
 
 /* --text-dim, not --text-mute: mute drops below AA on Day's darker surfaces
@@ -299,7 +299,7 @@ function clearDates() {
 
 .np-daterange {
   display: flex;
-  gap: 0.4rem;
+  gap: var(--space-2);
   align-items: end;
   flex-wrap: wrap;
 }
@@ -307,7 +307,7 @@ function clearDates() {
 .np-date-label {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--space-0-5);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.18em;
@@ -320,7 +320,7 @@ function clearDates() {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0.25rem 0.4rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text);
@@ -334,7 +334,7 @@ function clearDates() {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
 }
 
 .np-season-label {
@@ -364,7 +364,7 @@ function clearDates() {
   background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0.25rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.16em;

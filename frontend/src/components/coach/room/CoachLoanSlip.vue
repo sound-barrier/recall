@@ -192,14 +192,14 @@ const requestEnd = () => coach.requestEndSession()
 
 .coach-slip {
   display: grid;
-  gap: 0.15rem;
-  padding: 0.55rem 0.75rem;
+  gap: var(--space-0-5);
+  padding: var(--space-2) var(--space-3);
   min-width: 15rem;
   text-align: left;
 }
 
 .coach-slip-eyebrow {
-  margin: 0 0 0.1rem;
+  margin: 0 0 var(--space-0-5);
 }
 
 .coach-slip-handle {
@@ -233,7 +233,7 @@ const requestEnd = () => coach.requestEndSession()
 }
 
 .coach-slip-promise {
-  margin: 0.15rem 0;
+  margin: var(--space-0-5) 0;
   font-family: var(--body);
   font-size: var(--type-2xs);
   font-style: italic;
@@ -243,12 +243,12 @@ const requestEnd = () => coach.requestEndSession()
 .coach-slip-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.35rem;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
 }
 
 .coach-slip-btn {
-  padding: 0.3rem 0.55rem;
+  padding: var(--space-1) var(--space-2);
   font-size: var(--type-3xs);
   letter-spacing: 0.1em;
 }

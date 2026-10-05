@@ -225,7 +225,7 @@ function pick(mode: ThemeMode) {
 .theme-swatch-row {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 0.7rem;
+  gap: var(--space-3);
 }
 
 .theme-swatch {
@@ -234,7 +234,7 @@ function pick(mode: ThemeMode) {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: 0.55rem;
+  padding: var(--space-2);
   background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -282,10 +282,10 @@ function pick(mode: ThemeMode) {
 
 .swatch-body {
   position: relative;
-  padding: 8px 10px;
+  padding: var(--space-2) var(--space-2);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-1);
 }
 
 .swatch-line {
@@ -312,7 +312,7 @@ function pick(mode: ThemeMode) {
 .swatch-label {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-xs);
   font-weight: 700;

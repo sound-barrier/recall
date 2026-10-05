@@ -183,7 +183,12 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # to be a trap at any window under ~840px. Total CSS went DOWN paying for this
 # (see the total's own row); the initial graph is where a cross-cutting family
 # belongs. Measured 80213B; ~1.8KB headroom.
-: "${MAX_INITIAL_CSS_BYTES:=82000}"
+# 2026-10: 82000 -> 86000 -- spacing joins the token scale: ~1,900
+# padding/margin/gap literals became var(--space-N) references, the same
+# raw-bytes trade as the 2026-07 token adoption. GZIPPED, all CSS went
+# DOWN 817B (63470 -> 62653) because ~150 distinct values collapsed onto
+# 11 stops that compress well. Measured 84441B.
+: "${MAX_INITIAL_CSS_BYTES:=86000}"
 # The Matches "Trends" charts pull in ECharts (tree-shaken to line + bar
 # charts, grid/tooltip/legend/markline/data-zoom/brush components, canvas
 # renderer). It rides in its own lazily-loaded chunk (TrendChart-*.js),
@@ -444,7 +449,9 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # (two rules, +315B). A clean build of the branch base measured 426897B,
 # so only 103B of the 2.4KB the note above implies was left. Measured
 # 427212B.
-: "${MAX_TOTAL_CSS_BYTES:=428000}"
+# 2026-10: 428000 -> 446000 -- the spacing-token snap (see the initial
+# CSS row): raw +16.6KB, gzipped -817B. Measured 443641B.
+: "${MAX_TOTAL_CSS_BYTES:=446000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never

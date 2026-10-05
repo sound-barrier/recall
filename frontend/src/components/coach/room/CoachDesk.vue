@@ -200,19 +200,19 @@ function onRemoveFrame(): void {
 .coach-desk {
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: var(--space-4);
   min-width: 0;
 }
 
 .desk-remove {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 
 .desk-empty {
   margin: 0;
-  padding: 2rem 1rem;
+  padding: var(--space-8) var(--space-4);
   font-size: var(--type-lg);
   color: var(--text-faint);
   text-align: center;

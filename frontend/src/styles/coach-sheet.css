@@ -107,7 +107,7 @@
 }
 
 .sheet-tag {
-  padding: 0.1rem 0.4rem;
+  padding: var(--space-0-5) var(--space-2);
   border: 1px solid var(--hairline);
   border-radius: var(--radius);
   font-size: var(--type-2xs);

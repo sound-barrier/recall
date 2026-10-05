@@ -110,7 +110,7 @@ async function submit() {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: 4vh 1rem;
+  padding: 4vh var(--space-4);
   background: color-mix(in srgb, var(--bg) 70%, transparent);
   backdrop-filter: blur(2px);
   overflow-y: auto;
@@ -123,7 +123,7 @@ async function submit() {
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-overlay);
   box-shadow: 0 18px 60px rgb(var(--shadow-rgb) / 45%);
-  padding: 0.9rem 1rem 0;
+  padding: var(--space-4) var(--space-4) 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -151,8 +151,8 @@ async function submit() {
 .mm-head {
   display: flex;
   align-items: baseline;
-  gap: 0.65rem;
-  padding-bottom: 0.35rem;
+  gap: var(--space-3);
+  padding-bottom: var(--space-1);
   border-bottom: 1px solid var(--border);
 }
 
@@ -175,7 +175,7 @@ async function submit() {
   font-size: var(--type-4xl);
   line-height: 1;
   cursor: pointer;
-  padding: 0 0.3rem;
+  padding: 0 var(--space-1);
 }
 
 .mm-close:hover { color: var(--accent-text); }
@@ -183,10 +183,10 @@ async function submit() {
 .mm-foot {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-2);
   background: var(--surface);
-  margin: 0 -1rem;
-  padding: 0.6rem 1rem;
+  margin: 0 calc(-1 * var(--space-4));
+  padding: var(--space-2) var(--space-4);
   border-top: 1px solid var(--border);
 }
 
@@ -200,14 +200,14 @@ async function submit() {
 
 .mm-foot-ready { color: var(--win); }
 
-.mm-foot-actions { margin-left: auto; display: inline-flex; gap: 0.4rem; }
+.mm-foot-actions { margin-left: auto; display: inline-flex; gap: var(--space-2); }
 
 .mm-btn {
   appearance: none;
   background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0.4rem 0.9rem;
+  padding: var(--space-2) var(--space-4);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.16em;

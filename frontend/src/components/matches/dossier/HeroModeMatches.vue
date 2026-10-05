@@ -58,7 +58,7 @@ function matchDateLabel(m: { date: string; finishedAt: string }): string {
 </template>
 
 <style scoped>
-.hm-matches { margin-top: 0.4rem; }
+.hm-matches { margin-top: var(--space-2); }
 
 .hm-match-list {
   list-style: none;
@@ -66,7 +66,7 @@ function matchDateLabel(m: { date: string; finishedAt: string }): string {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 /* Row is a button — reset the UA chrome the element brings, keep the grid. */
@@ -79,7 +79,7 @@ function matchDateLabel(m: { date: string; finishedAt: string }): string {
   grid-template-columns: 8rem 4.5rem 6rem 6rem 1fr;
   align-items: center;
   gap: var(--space-2);
-  padding: 0.32rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   background: var(--surface-2);
   border-radius: var(--radius);
   font-family: var(--mono);
@@ -99,7 +99,7 @@ function matchDateLabel(m: { date: string; finishedAt: string }): string {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding: 0.08rem 0.4rem;
+  padding: var(--space-0-5) var(--space-2);
   border-radius: var(--radius);
 }
 .res-victory { background: color-mix(in srgb, var(--win) 22%, transparent); color: var(--win); }
@@ -127,7 +127,7 @@ function matchDateLabel(m: { date: string; finishedAt: string }): string {
 }
 
 .hm-drill-empty {
-  margin: 0.6rem 0 0.1rem;
+  margin: var(--space-2) 0 var(--space-0-5);
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text-faint);

@@ -309,14 +309,14 @@ const liveSummary = computed(() => {
 }
 
 .compare-desc {
-  margin: 0.35rem 0 0;
+  margin: var(--space-1) 0 0;
   color: var(--text-dim);
   font-size: var(--type-lg);
 }
 
 .compare-mode {
   display: inline-flex;
-  margin-top: 1.1rem;
+  margin-top: var(--space-4);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -326,8 +326,8 @@ const liveSummary = computed(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 0.75rem 1rem;
-  margin: 1.2rem 0 0.4rem;
+  gap: var(--space-3) var(--space-4);
+  margin: var(--space-5) 0 var(--space-2);
 }
 
 .compare-field {
@@ -347,7 +347,7 @@ const liveSummary = computed(() => {
 }
 
 .compare-select {
-  padding: 0.4rem 0.5rem;
+  padding: var(--space-2) var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-2);
@@ -356,7 +356,7 @@ const liveSummary = computed(() => {
 }
 
 .compare-vs {
-  padding-bottom: 0.5rem;
+  padding-bottom: var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text-faint);
@@ -377,7 +377,7 @@ const liveSummary = computed(() => {
   font-family: var(--mono);
   font-size: var(--type-xs);
   letter-spacing: 0.04em;
-  padding: 0.45rem 0.7rem;
+  padding: var(--space-2) var(--space-3);
   cursor: pointer;
 }
 
@@ -396,7 +396,7 @@ const liveSummary = computed(() => {
 }
 
 .compare-scope-hint {
-  margin: 0.1rem 0 0;
+  margin: var(--space-0-5) 0 0;
   font-family: var(--mono);
   font-size: var(--type-xs);
   color: var(--text-faint);
@@ -407,7 +407,7 @@ const liveSummary = computed(() => {
 }
 
 .compare-note {
-  margin: 0.7rem 0 0;
+  margin: var(--space-3) 0 0;
   font-size: var(--type-sm);
   color: var(--text-dim);
 }
@@ -430,8 +430,8 @@ const liveSummary = computed(() => {
 
 .compare-lown {
   display: inline-block;
-  margin-left: 0.3rem;
-  padding: 0 0.28rem;
+  margin-left: var(--space-1);
+  padding: 0 var(--space-1);
   border-radius: var(--radius);
 
   /* Mirrors CompareTable's badge treatment — --text on the loss tint clears

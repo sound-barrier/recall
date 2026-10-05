@@ -74,21 +74,21 @@ function localTime(iso: string): string {
 .dbh-controls {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--space-2);
   align-items: stretch;
 }
 
 .dbh-report {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem 1.2rem;
-  margin: 0.6rem 0 0;
+  gap: var(--space-2) var(--space-5);
+  margin: var(--space-2) 0 0;
 }
 
 .dbh-item {
   display: flex;
   align-items: baseline;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 
 .dbh-item dt {

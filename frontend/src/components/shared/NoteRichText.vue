@@ -204,7 +204,7 @@ onBeforeUnmount(() => editor.value?.destroy())
    drift into looking different. */
 .note-rich-host :deep(.note-rich) {
   min-height: 6.5rem;
-  padding: 0.5rem 0.6rem;
+  padding: var(--space-2) var(--space-2);
   background: var(--surface-2);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-md);

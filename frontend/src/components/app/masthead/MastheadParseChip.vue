@@ -85,8 +85,8 @@ const pct = computed(() => {
 .masthead-parse-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
-  padding: 0.3rem 0.65rem;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
   background: var(--surface-2);
   border: 1px solid var(--accent-soft);
   border-radius: var(--radius-md);
@@ -122,7 +122,7 @@ const pct = computed(() => {
 .mpc-counter {
   display: inline-flex;
   align-items: baseline;
-  gap: 2px;
+  gap: var(--space-0-5);
   font-family: var(--mono);
   font-feature-settings: 'tnum' on, 'lnum' on;
 }

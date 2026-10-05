@@ -24,7 +24,7 @@
 }
 
 #panel-elo .elo-desc {
-  margin: 0.35rem 0 0;
+  margin: var(--space-1) 0 0;
   max-width: 60ch;
   color: var(--text-dim);
   font-size: var(--type-lg);
@@ -35,7 +35,7 @@
 
 #panel-elo .elo-tracks {
   display: inline-flex;
-  margin-top: 1.1rem;
+  margin-top: var(--space-4);
   border: 1px solid var(--border);
   border-radius: var(--radius-surface);
   overflow: hidden;
@@ -49,7 +49,7 @@
   font-family: var(--mono);
   font-size: var(--type-xs);
   letter-spacing: 0.04em;
-  padding: 0.45rem 0.85rem;
+  padding: var(--space-2) var(--space-3);
   cursor: pointer;
 }
 
@@ -77,7 +77,7 @@
 }
 
 #panel-elo .elo-track-n {
-  margin-left: 0.4rem;
+  margin-left: var(--space-2);
   color: var(--text-faint);
   font-variant-numeric: tabular-nums;
 }
@@ -95,12 +95,12 @@
 /* ─── Section bands (mirror .compare-section-head) ─── */
 
 #panel-elo .elo-band {
-  margin-top: 2.4rem;
+  margin-top: var(--space-10);
 }
 
 #panel-elo .elo-band-title {
-  margin: 0 0 0.9rem;
-  padding-bottom: 0.4rem;
+  margin: 0 0 var(--space-4);
+  padding-bottom: var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   font-weight: 700;
@@ -111,7 +111,7 @@
 }
 
 #panel-elo .elo-band-sub {
-  margin: 0 0 0.9rem;
+  margin: 0 0 var(--space-4);
   color: var(--text-faint);
   font-size: var(--type-md);
   font-style: italic;
@@ -120,13 +120,13 @@
 /* Only a sub sitting DIRECTLY under its band title snuggles up; a band-sub
    after a chart figure or grid must not be pulled into the frame above it. */
 #panel-elo .elo-band-title + .elo-band-sub {
-  margin-top: -0.4rem;
+  margin-top: calc(-1 * var(--space-2));
 }
 
 /* ─── The verdict: one loud answer (mirrors .form-verdict-card) ─── */
 
 #panel-elo .elo-answer {
-  padding: 1.1rem 1.3rem 1.2rem;
+  padding: var(--space-4) var(--space-5) var(--space-5);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background:
@@ -139,7 +139,7 @@
 }
 
 #panel-elo .elo-answer-head {
-  margin: 0.2rem 0 0;
+  margin: var(--space-1) 0 0;
   font-family: var(--display);
   /* stylelint-disable-next-line scale-unlimited/declaration-strict-value --
      the Elo verdict headline. Fluid display type: the config exempts
@@ -161,7 +161,7 @@
 #panel-elo .elo-answer-head.is-early { color: var(--neutral-text); }
 
 #panel-elo .elo-answer-sub {
-  margin: 0.55rem 0 0;
+  margin: var(--space-2) 0 0;
   max-width: 62ch;
   font-size: var(--type-lg);
   line-height: 1.5;
@@ -186,9 +186,9 @@
 #panel-elo .elo-verdict-adjust-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-  gap: 1.1rem;
-  margin-top: 0.2rem;
-  margin-bottom: 1rem;
+  gap: var(--space-4);
+  margin-top: var(--space-1);
+  margin-bottom: var(--space-4);
   align-items: start;
 }
 
@@ -196,7 +196,7 @@
 #panel-elo .elo-adjust-col {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: var(--space-3);
   min-width: 0;
 }
 
@@ -212,7 +212,7 @@
   max-height: clamp(14rem, 30vh, 18rem);
   overflow-y: auto;
   scrollbar-width: thin;
-  padding-right: 0.2rem;
+  padding-right: var(--space-1);
 }
 
 /* "Your edits, priced" — the measured → edited delta strip. */
@@ -221,11 +221,11 @@
   border-left: 3px solid var(--accent);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--accent) 7%, var(--surface-2));
-  padding: 0.55rem 0.8rem 0.6rem;
+  padding: var(--space-2) var(--space-3) var(--space-2);
 }
 
 #panel-elo .elo-delta-title {
-  margin: 0 0 0.35rem;
+  margin: 0 0 var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   font-weight: 700;
@@ -238,13 +238,13 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--space-0-5);
 }
 
 #panel-elo .elo-delta-row {
   display: flex;
   justify-content: space-between;
-  gap: 0.8rem;
+  gap: var(--space-3);
   font-size: var(--type-md);
 }
 
@@ -260,7 +260,7 @@
 }
 
 #panel-elo .elo-delta-foot {
-  margin: 0.35rem 0 0;
+  margin: var(--space-1) 0 0;
   font-size: var(--type-xs);
   font-style: italic;
   color: var(--text-faint);
@@ -273,7 +273,7 @@
 }
 
 #panel-elo .elo-edited-dot {
-  margin-left: 0.3rem;
+  margin-left: var(--space-1);
   font-size: var(--type-3xs);
   color: var(--accent-text);
   vertical-align: middle;
@@ -282,13 +282,13 @@
 #panel-elo .elo-results {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: var(--space-3);
 }
 
 #panel-elo .elo-cards {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: var(--space-3);
 }
 
 /* The honest-timeline strip under the two model cards: same plate as a
@@ -297,11 +297,11 @@
   border: 1px dashed var(--border);
   border-left: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
   border-radius: var(--radius-surface);
-  padding: 0.6rem 0.8rem;
+  padding: var(--space-2) var(--space-3);
 }
 
 #panel-elo .elo-timeline-label {
-  margin: 0 0 0.25rem;
+  margin: 0 0 var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.22em;
@@ -317,7 +317,7 @@
 }
 
 #panel-elo .elo-timeline-know {
-  margin-top: 0.3rem;
+  margin-top: var(--space-1);
   color: var(--text-faint);
 }
 
@@ -325,13 +325,13 @@
    knob — accented so the cause→effect link reads. */
 #panel-elo .elo-plateau {
   display: block;
-  margin-top: 0.3rem;
+  margin-top: var(--space-1);
   color: color-mix(in srgb, var(--accent) 75%, var(--text-dim));
   font-style: normal;
 }
 
 #panel-elo .elo-fine-print {
-  margin-top: 0.75rem;
+  margin-top: var(--space-3);
 }
 
 /* ─── Lift table: two ranked lists, stacking when narrow ─── */
@@ -340,7 +340,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
   gap: var(--space-4);
-  margin-top: 0.75rem;
+  margin-top: var(--space-3);
 }
 
 #panel-elo .elo-lift-table {
@@ -356,13 +356,13 @@
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--accent-text);
-  padding-bottom: 0.35rem;
+  padding-bottom: var(--space-1);
 }
 
 #panel-elo .elo-lift-table th,
 #panel-elo .elo-lift-table td {
   text-align: left;
-  padding: 0.3rem 0.6rem 0.3rem 0;
+  padding: var(--space-1) var(--space-2) var(--space-1) 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -380,11 +380,11 @@
 /* ─── Playbook band: one improvement arc, quiet sub-blocks ─── */
 
 #panel-elo .elo-playbook-block {
-  margin-top: 1.7rem;
+  margin-top: var(--space-7);
 }
 
 #panel-elo .elo-subhead {
-  margin: 0 0 0.55rem;
+  margin: 0 0 var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   font-weight: 700;
@@ -394,13 +394,13 @@
 }
 
 #panel-elo .elo-playbook-block .elo-subhead + .elo-band-sub {
-  margin-top: -0.35rem;
+  margin-top: calc(-1 * var(--space-1));
 }
 
 /* "Your next three moves" — the playbook's one loud card. */
 #panel-elo .elo-next-moves {
-  margin-top: 0.35rem;
-  padding: 0.75rem 0.95rem 0.85rem;
+  margin-top: var(--space-1);
+  padding: var(--space-3) var(--space-4) var(--space-3);
   border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
   border-left: 3px solid var(--accent);
   border-radius: var(--radius-surface);
@@ -420,18 +420,18 @@
 #panel-elo .elo-next-moves-list {
   list-style: none;
   counter-reset: moves;
-  margin: 0.55rem 0 0;
+  margin: var(--space-2) 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: var(--space-2);
 }
 
 #panel-elo .elo-next-moves-list li {
   counter-increment: moves;
   display: flex;
   align-items: baseline;
-  gap: 0.6rem;
+  gap: var(--space-2);
   font-size: var(--type-lg);
 }
 
@@ -466,17 +466,17 @@
   border-top-width: 2px;
   border-radius: var(--radius-surface);
   background: var(--surface-2);
-  padding: 0.7rem 0.9rem 0.85rem;
+  padding: var(--space-3) var(--space-4) var(--space-3);
 }
 
 #panel-elo .elo-card-dream { border-top-color: var(--elo-dream); }
 #panel-elo .elo-card-reality { border-top-color: var(--elo-reality); }
 
 #panel-elo .elo-card-eyebrow {
-  margin: 0 0 0.35rem;
+  margin: 0 0 var(--space-1);
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
 }
 
 #panel-elo .elo-card-swatch {
@@ -490,7 +490,7 @@
 #panel-elo .elo-card-reality .elo-card-swatch { background: var(--elo-reality); }
 
 #panel-elo .elo-card-head {
-  margin: 0 0 0.3rem;
+  margin: 0 0 var(--space-1);
   font-family: var(--display);
   font-size: var(--type-6xl);
   line-height: 1.05;
@@ -499,7 +499,7 @@
 }
 
 #panel-elo .elo-card-line {
-  margin: 0.15rem 0 0;
+  margin: var(--space-0-5) 0 0;
   font-size: var(--type-md);
   line-height: 1.45;
   color: var(--text-dim);
@@ -512,11 +512,11 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-surface);
   background: var(--surface-2);
-  padding: 0.5rem 0.5rem 0.35rem;
+  padding: var(--space-2) var(--space-2) var(--space-1);
 }
 
 #panel-elo .elo-chart-cap {
-  margin: 0.25rem 0.3rem 0.1rem;
+  margin: var(--space-1) var(--space-1) var(--space-0-5);
   font-size: var(--type-xs);
   line-height: 1.4;
   color: var(--text-faint);
@@ -527,7 +527,7 @@
 #panel-elo .elo-form {
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: var(--space-4);
 }
 
 #panel-elo .elo-fieldset {
@@ -538,7 +538,7 @@
 
 #panel-elo .elo-legend {
   padding: 0;
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.14em;
@@ -549,7 +549,7 @@
 #panel-elo .elo-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.7rem 0.9rem;
+  gap: var(--space-3) var(--space-4);
 }
 
 #panel-elo .elo-field {
@@ -569,7 +569,7 @@
 
 #panel-elo .elo-input {
   width: 100%;
-  padding: 0.4rem 0.5rem;
+  padding: var(--space-2) var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-2);
@@ -622,7 +622,7 @@
   color: var(--text-dim);
 }
 
-#panel-elo .elo-advanced[open] summary { margin-bottom: 0.55rem; }
+#panel-elo .elo-advanced[open] summary { margin-bottom: var(--space-2); }
 
 /* ─── Hero picker ─── */
 
@@ -638,7 +638,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 /* Rows mirror the Matches Hero Pool band (hp-hero): name · pool/off tag ·
@@ -666,8 +666,8 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  padding: 0.2rem 0.3rem;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-1);
   font-size: var(--type-md);
   cursor: pointer;
   border-radius: var(--radius-md);
@@ -693,8 +693,8 @@
 
 #panel-elo .elo-hero-toolbar {
   display: flex;
-  gap: 0.4rem;
-  margin: 0.15rem 0 0.45rem;
+  gap: var(--space-2);
+  margin: var(--space-0-5) 0 var(--space-2);
 }
 
 #panel-elo .elo-hero-select-btn {
@@ -707,7 +707,7 @@
   font-size: var(--type-2xs);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 0.18rem 0.5rem;
+  padding: var(--space-0-5) var(--space-2);
   cursor: pointer;
 }
 
@@ -740,7 +740,7 @@
   font-size: var(--type-3xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 0.05rem 0.3rem;
+  padding: var(--space-0-5) var(--space-1);
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
@@ -788,7 +788,7 @@
   flex: none;
   font-family: var(--mono);
   font-size: var(--type-2xs);
-  padding: 0 0.28rem;
+  padding: 0 var(--space-1);
   border-radius: var(--radius);
   background: var(--loss-soft);
   border: 1px solid var(--loss-line);
@@ -808,7 +808,7 @@
 #panel-elo .elo-nudge-btn {
   appearance: none;
   border: 0;
-  padding: 0.28rem 0.38rem;
+  padding: var(--space-1) var(--space-2);
   background: var(--surface-2);
   color: var(--text-dim);
   font-size: var(--type-2xs);
@@ -836,7 +836,7 @@
   align-items: center;
   justify-content: center;
   min-width: 1.6rem;
-  padding: 0 0.15rem;
+  padding: 0 var(--space-0-5);
   border-inline: 1px solid var(--border);
   background: var(--surface-2);
   font-family: var(--mono);
@@ -854,9 +854,9 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.6rem;
-  margin: 0.55rem 0 0;
-  padding: 0.45rem 0.6rem;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-2);
   border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
@@ -867,7 +867,7 @@
 #panel-elo .elo-nudge-reset {
   appearance: none;
   flex: none;
-  padding: 0.12rem 0.5rem;
+  padding: var(--space-0-5) var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface-2);
@@ -891,7 +891,7 @@
 #panel-elo .elo-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
-  gap: 0.6rem;
+  gap: var(--space-2);
 }
 
 #panel-elo .elo-cell {
@@ -899,7 +899,7 @@
   border-left-width: 3px;
   border-radius: var(--radius-md);
   background: var(--surface-2);
-  padding: 0.55rem 0.75rem 0.65rem;
+  padding: var(--space-2) var(--space-3) var(--space-3);
 }
 
 #panel-elo .elo-cell.good { border-left-color: var(--win); }
@@ -907,7 +907,7 @@
 #panel-elo .elo-cell.neutral { border-left-color: var(--accent); }
 
 #panel-elo .elo-cell-q {
-  margin: 0 0 0.2rem;
+  margin: 0 0 var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.12em;
@@ -916,10 +916,10 @@
 }
 
 #panel-elo .elo-cell-a {
-  margin: 0 0 0.3rem;
+  margin: 0 0 var(--space-1);
   display: flex;
   align-items: baseline;
-  gap: 0.4rem;
+  gap: var(--space-2);
   font-family: var(--display);
   font-size: var(--type-2xl);
   letter-spacing: 0.01em;

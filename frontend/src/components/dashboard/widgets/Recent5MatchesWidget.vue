@@ -50,8 +50,8 @@ const RESULT_LETTER: Record<PillResult, string> = { victory: 'W', defeat: 'L', d
 .recent-pills {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
-  padding: 0.1rem 0;
+  gap: var(--space-1);
+  padding: var(--space-0-5) 0;
 }
 
 .recent-pill {
@@ -60,7 +60,7 @@ const RESULT_LETTER: Record<PillResult, string> = { victory: 'W', defeat: 'L', d
   justify-content: center;
   min-width: 1.7rem;
   height: 1.7rem;
-  padding: 0 0.45rem;
+  padding: 0 var(--space-2);
   border-radius: var(--radius);
   border: 1px solid var(--border);
   font-family: var(--mono);
@@ -91,7 +91,7 @@ const RESULT_LETTER: Record<PillResult, string> = { victory: 'W', defeat: 'L', d
 
 .recent-empty {
   margin: 0;
-  padding: 0.45rem 0;
+  padding: var(--space-2) 0;
   font-size: var(--type-md);
   font-style: italic;
   color: var(--text-faint);

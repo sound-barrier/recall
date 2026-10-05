@@ -220,7 +220,7 @@ function onValueAct(index: number, payload: ChipActPayload) {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: 0.5rem 0;
+  padding: var(--space-2) 0;
 }
 
 .pivot-live {
@@ -238,7 +238,7 @@ function onValueAct(index: number, payload: ChipActPayload) {
 .pivot-builder {
   display: grid;
   grid-template-columns: minmax(9rem, 14rem) 1fr;
-  gap: 0.6rem;
+  gap: var(--space-2);
   align-items: start;
 }
 
@@ -268,7 +268,7 @@ function onValueAct(index: number, payload: ChipActPayload) {
   font-size: var(--type-2xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 0.3rem 0.6rem;
+  padding: var(--space-1) var(--space-2);
   color: var(--text);
   background: var(--surface-2);
   border: 1px solid var(--border);

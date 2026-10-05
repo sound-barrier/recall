@@ -183,7 +183,7 @@ function cancel() {
   background: var(--surface);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
-  padding: 0.05rem 0.1rem;
+  padding: var(--space-0-5) var(--space-0-5);
 }
 
 .stat-input[aria-invalid='true'] {
@@ -194,7 +194,7 @@ function cancel() {
    correction prompt without shoving the stats grid around. */
 .stat-error {
   display: block;
-  margin-top: 0.15rem;
+  margin-top: var(--space-0-5);
   font-size: var(--type-2xs);
   line-height: 1.1;
   color: var(--loss);
@@ -207,7 +207,7 @@ function cancel() {
   appearance: none;
   background: none;
   border: 0;
-  padding: 0 0 0 0.25rem;
+  padding: 0 0 0 var(--space-1);
   margin: 0;
   font-size: var(--type-sm);
   line-height: 1;

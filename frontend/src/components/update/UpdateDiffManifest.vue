@@ -62,10 +62,10 @@ defineProps<{
   font-size: var(--type-display-sm);
   font-weight: 400;
   letter-spacing: 0.06em;
-  margin: 0.2rem 0 0.65rem;
+  margin: var(--space-1) 0 var(--space-3);
   display: flex;
   align-items: baseline;
-  gap: 0.55rem;
+  gap: var(--space-2);
   line-height: 1.05;
   transition: opacity var(--duration-slow) ease;
 }
@@ -88,11 +88,11 @@ defineProps<{
 
 .update-check-modal-manifest {
   list-style: none;
-  margin: 0 0 0.6rem;
+  margin: 0 0 var(--space-2);
   padding: 0;
   display: grid;
   grid-template-columns: max-content max-content 1fr;
-  gap: 0.18rem 0.7rem;
+  gap: var(--space-0-5) var(--space-3);
   transition: opacity var(--duration-slow) ease;
 }
 
@@ -112,7 +112,7 @@ defineProps<{
   text-transform: uppercase;
   color: var(--accent-text);
   align-self: center;
-  padding: 0.1rem 0.4rem;
+  padding: var(--space-0-5) var(--space-2);
   border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
   border-radius: var(--radius);
   background: color-mix(in srgb, var(--accent) 4%, transparent);

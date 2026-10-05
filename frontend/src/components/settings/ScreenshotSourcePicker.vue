@@ -204,7 +204,7 @@ void ({} as NamedCandidateStats)
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  margin-top: 0.65rem;
+  margin-top: var(--space-3);
 }
 
 .src-grid {
@@ -229,7 +229,7 @@ void ({} as NamedCandidateStats)
   border: 1px solid var(--border-strong);
   border-left: 3px solid var(--border-strong);
   border-radius: var(--radius-surface);
-  padding: 0.65rem 0.85rem;
+  padding: var(--space-3) var(--space-3);
   text-align: left;
   display: flex;
   flex-direction: column;
@@ -296,19 +296,19 @@ void ({} as NamedCandidateStats)
   font-size: var(--type-2xs);
   letter-spacing: 0.08em;
   color: var(--text-dim);
-  margin-top: 0.05rem;
+  margin-top: var(--space-0-5);
 }
 
 .src-status {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-3xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-weight: 700;
-  margin-top: 0.15rem;
+  margin-top: var(--space-0-5);
 }
 
 .src-status-found  { color: var(--accent-bright); }
@@ -336,12 +336,12 @@ void ({} as NamedCandidateStats)
   appearance: none;
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-2);
   width: 100%;
   background: transparent;
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius);
-  padding: 0.65rem 0.85rem;
+  padding: var(--space-3) var(--space-3);
   font-family: var(--mono);
   font-size: var(--type-sm);
   letter-spacing: 0.16em;

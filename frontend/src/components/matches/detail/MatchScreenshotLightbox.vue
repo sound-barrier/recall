@@ -254,7 +254,7 @@ function onNextClick() {
   position: absolute;
   top: 1.2rem;
   left: 4rem;
-  padding: 0.25rem 0.55rem;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-lg);
   font-family: var(--mono);
   font-size: var(--type-sm);

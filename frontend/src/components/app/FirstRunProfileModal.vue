@@ -327,7 +327,7 @@ watch(trapOpen, async (open) => {
   background: var(--surface);
   border: 1px solid var(--accent);
   border-radius: var(--radius-overlay);
-  padding: 1.6rem 1.6rem 1.3rem;
+  padding: var(--space-6) var(--space-6) var(--space-5);
   box-shadow:
     0 22px 60px color-mix(in srgb, var(--bg) 70%, transparent),
     0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
@@ -339,7 +339,7 @@ watch(trapOpen, async (open) => {
 }
 
 .first-run-eyebrow {
-  margin: 0 0 0.3rem;
+  margin: 0 0 var(--space-1);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -357,7 +357,7 @@ watch(trapOpen, async (open) => {
 }
 
 .first-run-title {
-  margin: 0 0 0.6rem;
+  margin: 0 0 var(--space-2);
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', sans-serif;
   font-size: var(--type-7xl);
   font-style: italic;
@@ -366,7 +366,7 @@ watch(trapOpen, async (open) => {
 }
 
 .first-run-desc {
-  margin: 0 0 1rem;
+  margin: 0 0 var(--space-4);
   font-size: var(--type-lg);
   color: var(--text-faint);
   line-height: 1.5;
@@ -380,7 +380,7 @@ watch(trapOpen, async (open) => {
 
 .first-run-label {
   display: block;
-  margin-bottom: 0.3rem;
+  margin-bottom: var(--space-1);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   font-weight: 700;
@@ -391,7 +391,7 @@ watch(trapOpen, async (open) => {
 
 .first-run-input {
   width: 100%;
-  padding: 0.55rem 0.7rem;
+  padding: var(--space-2) var(--space-3);
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -409,7 +409,7 @@ watch(trapOpen, async (open) => {
 
 .first-run-hint,
 .first-run-error {
-  margin: 0.4rem 0 0;
+  margin: var(--space-2) 0 0;
   font-family: var(--mono);
   font-size: var(--type-sm);
 }
@@ -422,7 +422,7 @@ watch(trapOpen, async (open) => {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
-  margin-top: 1.1rem;
+  margin-top: var(--space-4);
 }
 
 /* Step 2's back is on the left, skip on the right. */
@@ -439,7 +439,7 @@ watch(trapOpen, async (open) => {
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  padding: 0.5rem 0.95rem;
+  padding: var(--space-2) var(--space-4);
   border-radius: var(--radius);
   cursor: pointer;
   transition: background var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;

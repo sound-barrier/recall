@@ -222,7 +222,7 @@ function sourceLabel(source: string): string {
 </template>
 
 <style scoped>
-.dossier-head { display: flex; flex-direction: column; gap: 0.2rem; }
+.dossier-head { display: flex; flex-direction: column; gap: var(--space-1); }
 
 .dossier-title {
   font-family: var(--display);
@@ -244,11 +244,11 @@ function sourceLabel(source: string): string {
 
 .active-chips {
   list-style: none;
-  margin: 0.4rem 0 0;
+  margin: var(--space-2) 0 0;
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
 /* The chip row and its empty-state reserve share one min-height so the dossier
@@ -259,14 +259,14 @@ function sourceLabel(source: string): string {
 }
 
 .active-chips-reserve {
-  margin: 0.4rem 0 0;
+  margin: var(--space-2) 0 0;
 }
 
 .active-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.18rem 0.18rem 0.18rem 0.5rem;
+  gap: var(--space-1);
+  padding: var(--space-0-5) var(--space-0-5) var(--space-0-5) var(--space-2);
   background: var(--surface-2);
   border: 1px solid var(--accent-soft);
   border-radius: var(--radius);
@@ -295,7 +295,7 @@ function sourceLabel(source: string): string {
   background: transparent;
   border: 0;
   color: var(--text-faint);
-  padding: 0 0.3rem;
+  padding: 0 var(--space-1);
   font-size: var(--type-lg);
   cursor: pointer;
   line-height: 1;
@@ -311,7 +311,7 @@ function sourceLabel(source: string): string {
   appearance: none;
   background: transparent;
   border: 0;
-  padding: 0.18rem 0.55rem;
+  padding: var(--space-0-5) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.16em;

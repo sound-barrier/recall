@@ -54,7 +54,7 @@ const noDefeats = computed(() =>
 }
 
 .lq-unscored {
-  margin: 0.4rem 0 0;
+  margin: var(--space-2) 0 0;
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.08em;

@@ -190,7 +190,7 @@ const {
 /* ─── Hidden drawer (Archive) ──────────────────────────────── */
 
 .archive {
-  margin-top: 0.4rem;
+  margin-top: var(--space-2);
   border: 1px dashed color-mix(in srgb, var(--border) 80%, transparent);
   background:
     repeating-linear-gradient(
@@ -209,8 +209,8 @@ const {
   width: 100%;
   display: flex;
   align-items: baseline;
-  gap: 0.7rem;
-  padding: 0.6rem 0.85rem;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   appearance: none;
   background: transparent;
   border: 0;
@@ -249,7 +249,7 @@ const {
 
 .archive-panel {
   border-top: 1px dashed color-mix(in srgb, var(--border) 80%, transparent);
-  padding: 0.55rem 0.7rem 0.7rem;
+  padding: var(--space-2) var(--space-3) var(--space-3);
 }
 
 .archive-empty {
@@ -258,7 +258,7 @@ const {
   font-family: var(--mono);
   color: var(--text-dim);
   font-size: var(--type-sm);
-  padding: 0.7rem 0;
+  padding: var(--space-3) 0;
 }
 
 .archive-list {
@@ -282,8 +282,8 @@ const {
     auto;         /* actions */
 
   align-items: center;
-  gap: 0.55rem;
-  padding: 0.4rem 0.6rem;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2);
   border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
   border-radius: var(--radius);
   background: color-mix(in srgb, var(--surface-2) 70%, transparent);
@@ -306,14 +306,14 @@ const {
 .archive-row-when {
   display: flex;
   flex-direction: column;
-  gap: 0.05rem;
+  gap: var(--space-0-5);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   color: var(--text-dim);
 }
 .archive-row-date { color: var(--text); font-weight: 700; letter-spacing: 0.04em; }
 .archive-row-time { color: var(--text-faint); }
-.archive-row-map { display: flex; flex-direction: column; gap: 0.05rem; min-width: 0; }
+.archive-row-map { display: flex; flex-direction: column; gap: var(--space-0-5); min-width: 0; }
 
 .archive-row-map-name {
   font-family: var(--display);
@@ -337,8 +337,8 @@ const {
   color: var(--text-faint);
 }
 
-.archive-row-queue { margin-left: 0.4rem; }
-.archive-row-hero { display: flex; flex-direction: column; gap: 0.05rem; min-width: 0; }
+.archive-row-queue { margin-left: var(--space-2); }
+.archive-row-hero { display: flex; flex-direction: column; gap: var(--space-0-5); min-width: 0; }
 
 .archive-row-hero-name {
   font-family: var(--display);
@@ -363,7 +363,7 @@ const {
 .archive-row-stats {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.2rem;
+  gap: var(--space-1);
   font-family: var(--display);
   font-style: italic;
   font-weight: 700;
@@ -376,14 +376,14 @@ const {
 .archive-row-actions {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: var(--space-1);
   white-space: nowrap;
 }
 
 .archive-row-actions button {
   appearance: none;
   border-radius: var(--radius);
-  padding: 0.3rem 0.6rem;
+  padding: var(--space-1) var(--space-2);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.16em;
@@ -411,7 +411,7 @@ const {
   color: var(--loss);
   font-size: var(--type-xl);
   line-height: 1;
-  padding-right: 0.1rem;
+  padding-right: var(--space-0-5);
 }
 
 .archive-confirm {

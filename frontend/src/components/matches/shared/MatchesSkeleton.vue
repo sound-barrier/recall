@@ -40,14 +40,14 @@ withDefaults(defineProps<{
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: 1rem 0;
+  padding: var(--space-4) 0;
 }
 
 .lsk-head {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 0 0.25rem 0.5rem;
+  gap: var(--space-2);
+  padding: 0 var(--space-1) var(--space-2);
 }
 
 .lsk-eyebrow { width: 6rem; height: 0.65rem; }
@@ -59,7 +59,7 @@ withDefaults(defineProps<{
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 /* Match .leaf-row's 8-column grid so the layout never jumps when real
@@ -76,9 +76,9 @@ withDefaults(defineProps<{
     7rem
     minmax(0, 1fr)
     6rem;
-  gap: 0.85rem;
+  gap: var(--space-3);
   align-items: center;
-  padding: 0.55rem 0.85rem;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
   background: var(--surface);
   border-radius: var(--radius);

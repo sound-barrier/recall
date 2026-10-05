@@ -1,14 +1,14 @@
 /* A coach's note as the player reads it. Scoped sibling rather than an inline block:
-   `<style scoped src>` keeps the hash scoping and the chunk placement
+   `\3c style scoped src>` keeps the hash scoping and the chunk placement
    identical, and the SFC is left holding markup and logic. Same shape as
    coach-room.css and coach-cue-row.css. */
 
 .coach-note-block {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  margin-top: 0.6rem;
-  padding: 0.7rem 0.8rem 0.75rem;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  padding: var(--space-3) var(--space-3) var(--space-3);
 }
 
 .cnb-head {
@@ -16,7 +16,7 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .cnb-reviewed { cursor: default; }
@@ -47,8 +47,8 @@
 .cnb-moments {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  margin: 0.2rem 0 0;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
   padding: 0;
   list-style: none;
 }
@@ -56,12 +56,12 @@
 .cnb-moment {
   display: grid;
   grid-template-columns: 3.4rem 1fr;
-  gap: 0.5rem;
+  gap: var(--space-2);
   align-items: baseline;
 }
 
 .cnb-moment + .cnb-moment {
-  padding-top: 0.35rem;
+  padding-top: var(--space-1);
   border-top: 1px solid var(--hairline);
 }
 
@@ -80,15 +80,15 @@
 }
 
 .cnb-moment-tag {
-  margin-right: 0.35rem;
+  margin-right: var(--space-1);
   font-size: var(--type-4xs);
 }
 
 .cnb-replay {
   display: flex;
-  gap: 0.4rem;
+  gap: var(--space-2);
   align-items: center;
-  margin: 0.25rem 0 0;
+  margin: var(--space-1) 0 0;
 }
 
 .cnb-replay-code {
@@ -100,7 +100,7 @@
 .cnb-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
+  gap: var(--space-1);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -113,8 +113,8 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  padding-top: 0.4rem;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
   border-top: 1px solid var(--paper-rule);
 }
 
@@ -128,11 +128,11 @@
 .cnb-foot-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: var(--space-1);
 }
 
 .cnb-remove {
-  padding: 0.28rem 0.6rem;
+  padding: var(--space-1) var(--space-2);
   font-size: var(--type-2xs);
 }
 
