@@ -184,10 +184,15 @@ false` except `release-please.yml`'s `tag-and-dispatch`, which pushes a tag.
 - **One flat 7-day cooldown** (`cooldown: default-days: 7`) on every entry,
   patch and minor alike — the same week-long age gate as CLAUDE.md's. Cooldown
   applies to version updates only; security updates are not held.
-- **Entries**: `gomod` `/`, `npm` `/frontend`, `npm` `/tools` (its own
-  `tools-deps` groups), `github-actions` `/` (workflow pins, the auto-merged
-  `actions` group), and `github-actions` `/.github/actions/*` for the composite
-  actions. Every ecosystem sends majors in their own `*-major` group.
+- **Entries**: `gomod` `/`, `npm` `/frontend`, `npm` `/tools` and
+  `github-actions` `/` (workflow pins) all join the `weekly-deps`
+  multi-ecosystem group, so their minor/patch bumps arrive as ONE weekly PR;
+  `github-actions` `/.github/actions/*` (composite actions) stays separate.
+  Group-only keys (`open-pull-requests-limit`, `commit-message`, …) must sit on
+  the group — Dependabot rejects the config when a member entry sets one — and
+  a member entry's own `groups` is silently ignored, which is why majors are
+  excluded with a semver-major `ignore` rather than a `*-major` group. Majors
+  are bumped by hand; security updates are unaffected.
 - **Composite-action bumps are HAND-MERGED.** They change what builds a release
   (setup-mise wraps `jdx/mise-action`), so they arrive as `actions-composite*`
   PRs labeled `release-toolchain`; read the upstream diff and merge them
