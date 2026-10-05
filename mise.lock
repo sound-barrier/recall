@@ -73,9 +73,9 @@ backend = "go:github.com/rillig/gobco"
 specifiers = ["v1.3.4"]
 
 [[tools."go:github.com/wailsapp/wails/v3/cmd/wails3"]]
-version = "v3.0.0-beta.22"
+version = "3.0.0-beta.26"
 backend = "go:github.com/wailsapp/wails/v3/cmd/wails3"
-specifiers = ["v3.0.0-beta.22"]
+specifiers = ["v3.0.0-beta.26"]
 
 [[tools."go:github.com/zricethezav/gitleaks/v8"]]
 version = "8.30.1"
