@@ -15,16 +15,16 @@
 # Usage: bash scripts/install-mise.sh
 set -euo pipefail
 
-MISE_VERSION="2026.9.3"
+MISE_VERSION="2026.9.16"
 
 case "$(uname -s)-$(uname -m)" in
   Linux-x86_64)
     target="linux-x64"
-    sha256="981bd9179cc089114a87b491fce2c4007ab05b5445dee7ad08e87e5dffcc154d"
+    sha256="b6f8757201f6a2ee799f45f3f52ef7ca0b4071523637dc3b0b24264dd3333518"
     ;;
   Linux-aarch64 | Linux-arm64)
     target="linux-arm64"
-    sha256="d8fa3d3fa2a21979c54c548967325a9db72f2a157996e8c536f62947b25592b7"
+    sha256="acd7c94deb506567d1f8e2c65f4c154bc642e94497865c80bd370b2af6be7be2"
     ;;
   *)
     printf 'install-mise: no pinned mise %s build for %s-%s\n' \
