@@ -25,7 +25,7 @@
 # 2026.9.6 read only lockfile version 1, and a newer local mise writes version 2
 # for a NEW lockfile. Bump them together, and regenerate the lock with that
 # exact binary.
-min_version = "2026.9.3"
+min_version = "2026.9.16"
 
 [settings]
 # Read mise.lock on every install and keep it current when a pin changes.
