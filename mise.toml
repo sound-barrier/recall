@@ -131,7 +131,7 @@ zizmor = "1.30.1"
 # A lint-version change alters what the gate flags, so a golangci-lint bump
 # is its own change: pick the version, run the sweep, fix what it surfaces,
 # commit both together.
-"go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint" = "v2.13.2"
+"go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint" = "v2.14.0"
 "go:golang.org/x/tools/cmd/deadcode" = "v0.50.0"
 "go:golang.org/x/vuln/cmd/govulncheck" = "v1.8.0"
 # Condition (branch) coverage — an informational report, never a gate. Go's
