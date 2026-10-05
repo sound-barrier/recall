@@ -4,6 +4,7 @@
    global (tokens, themes, shared families). See frontend/CLAUDE.md "Styles". */
 @import url('./tokens.css');
 @import url('./themes.css');
+@import url('./layout.css');
 @import url('./chrome.css');
 @import url('./masthead.css');
 @import url('./buttons.css');

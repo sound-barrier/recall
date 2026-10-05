@@ -118,3 +118,4 @@ a folder silently regrows what it just shed.
 | 2026-09-28 | diagnostic-parse-failures | pkg/parser | 26 → 27 | `parse_history.go` — the career HISTORY list's probe; a new screenshot type, twin of `parse_allheroes.go`. |
 | 2026-09-28 | diagnostic-parse-failures | pkg/parser | 27 → 28 | `diagnose.go` — the probe ladder re-run with its intermediates kept, for the diagnostic bundle. |
 | 2026-09-29 | diagnostic-parse-failures | pkg/app | 52 → 53 | `parse_recognized.go` — one policy for recognized non-match screens; `parse.go` was already over 500 lines. |
+| 2026-10-05 | layout-primitives | frontend/src/styles | 21 → 22 | `layout.css` — `.stack`/`.cluster` layout primitives on the spacing scale, global because every feature folder uses them. |

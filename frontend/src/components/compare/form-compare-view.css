@@ -75,11 +75,6 @@
   outline-offset: -2px;
 }
 
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
 
 .form-field-label {
   font-family: var(--mono);

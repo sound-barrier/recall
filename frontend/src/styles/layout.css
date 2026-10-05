@@ -1,0 +1,30 @@
+/* Layout primitives — the two flex shapes the app spells most often,
+   named once. `.stack` is a column, `.cluster` a centered row; both take
+   their gap from the spacing scale, `--space-2` unless a gap modifier
+   sets `--gap` to another stop.
+
+   Only for layouts whose gap already sits ON the scale. An off-scale gap
+   (0.4rem, 0.55rem, …) is a tuned optical value — see the spacing note in
+   tokens.css — and stays in the component's scoped CSS, as does any
+   layout that needs baseline/flex-end alignment or a breakpoint variant.
+   Imported right after the tokens so every component rule still wins. */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap, var(--space-2));
+}
+
+.cluster {
+  display: flex;
+  align-items: center;
+  gap: var(--gap, var(--space-2));
+}
+
+.cluster-wrap {
+  flex-wrap: wrap;
+}
+
+.gap-1 {
+  --gap: var(--space-1);
+}

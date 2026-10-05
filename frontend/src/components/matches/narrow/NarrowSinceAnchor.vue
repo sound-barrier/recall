@@ -44,7 +44,7 @@ function onOpenAnchor() {
         {{ anchorRecord ? 'anchor set' : 'pick a match in the detail panel' }}
       </span>
     </div>
-    <div v-if="anchorRecord" class="np-since-anchor">
+    <div v-if="anchorRecord" class="np-since-anchor stack">
       <label class="np-toggle-label">
         <input
           type="checkbox"

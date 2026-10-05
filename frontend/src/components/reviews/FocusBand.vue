@@ -86,7 +86,7 @@ async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
 </script>
 
 <template>
-  <section class="paper focus-band" aria-labelledby="focus-band-head">
+  <section class="paper focus-band stack" aria-labelledby="focus-band-head">
     <h3 id="focus-band-head" ref="bandHead" class="focus-band-head paper-rule-hatch" tabindex="-1">
       What you're working on
     </h3>
@@ -173,11 +173,6 @@ async function move(e: FocusEntry, status: 'working' | 'done'): Promise<void> {
 </template>
 
 <style scoped>
-.focus-band {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
 
 /* The paper card's own head, not a one-off: same display face, same
    weight, same uppercase, so the band reads as another sheet on the

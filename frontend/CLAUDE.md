@@ -316,6 +316,14 @@ what keeps `check-css-theme-leak` green. Two traps already paid for: `--accent`
 is unreadable on paper (use `--paper-accent`), and `--text-mute` drops to 3.98:1
 on Day's darker surfaces — small content text takes `--text-dim`.
 
+**Layout primitives: `.stack` and `.cluster`** (`styles/layout.css`). A plain
+column or centered row whose gap sits ON the spacing scale takes the class
+(`class="x stack gap-1"`) instead of re-spelling `display:flex` in its scoped
+block; `--space-2` is the default gap, a `gap-N` modifier sets another stop.
+Off-scale gaps, baseline/flex-end alignment and breakpoint variants stay
+scoped. Not in the standalone recap/coach-sheet pages, which never load
+app.css.
+
 **Use the design tokens — stylelint enforces it.**
 `scale-unlimited/declaration-strict-value` fails the build on a literal for any
 `*-color`, `fill`, `stroke`, `font-size`, `border-radius`, or

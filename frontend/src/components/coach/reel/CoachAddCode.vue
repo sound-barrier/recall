@@ -44,7 +44,7 @@ function close(): void {
     >
       Add a replay code…
     </button>
-    <form v-else class="coach-add-code-form" @submit.prevent="submit">
+    <form v-else class="coach-add-code-form stack gap-1" @submit.prevent="submit">
       <label class="eyebrow" for="coach-add-code-input">Replay code</label>
       <input
         id="coach-add-code-input"
@@ -81,11 +81,6 @@ function close(): void {
   width: 100%;
 }
 
-.coach-add-code-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
 
 .coach-add-code-actions {
   display: flex;

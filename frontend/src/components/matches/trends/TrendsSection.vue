@@ -187,7 +187,7 @@ const showWindowSelector = computed(() => visibleIds.value.some((id) => WINDOWED
 
 <template>
   <section class="trends-section" aria-label="Trends">
-    <div class="trends-header">
+    <div class="trends-header cluster">
       <button
         class="trends-toggle"
         :aria-expanded="expanded"

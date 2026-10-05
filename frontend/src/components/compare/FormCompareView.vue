@@ -230,11 +230,11 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
       </div>
 
       <template v-if="pairBy === 'time'">
-        <label class="form-field">
+        <label class="form-field stack gap-1">
           <span class="form-field-label">This period from</span>
           <input v-model="bFrom" type="date" data-form-b-from class="form-date" @change="onManualEdit()">
         </label>
-        <label class="form-field">
+        <label class="form-field stack gap-1">
           <span class="form-field-label">to</span>
           <input
             v-model="bTo" type="date" data-form-b-to class="form-date"
@@ -247,11 +247,11 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
             <span aria-hidden="true">🔒</span> vs previous period · {{ windowLabel(aWindow) }}
           </span>
           <template v-else>
-            <label class="form-field">
+            <label class="form-field stack gap-1">
               <span class="form-field-label">Baseline from</span>
               <input v-model="aFrom" type="date" data-form-a-from class="form-date" @change="onManualEdit()">
             </label>
-            <label class="form-field">
+            <label class="form-field stack gap-1">
               <span class="form-field-label">to</span>
               <input
                 v-model="aTo" type="date" data-form-a-to class="form-date"
@@ -272,7 +272,7 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
       </template>
 
       <template v-else>
-        <label class="form-field">
+        <label class="form-field stack gap-1">
           <span class="form-field-label">Window size</span>
           <select v-model="nPick" data-form-n class="form-select" @change="onManualEdit()">
             <option v-for="n in N_OPTIONS" :key="n" :value="n">{{ n }} matches</option>
@@ -281,7 +281,7 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
       </template>
 
       <div class="form-conds">
-        <label class="form-field">
+        <label class="form-field stack gap-1">
           <span class="form-field-label">Baseline condition</span>
           <select v-model="condKindA" data-form-cond-a class="form-select">
             <option value="any">Any game</option>
@@ -295,14 +295,14 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
             <option value="hero">Hero…</option>
           </select>
         </label>
-        <label v-if="condKindA === 'member'" class="form-field">
+        <label v-if="condKindA === 'member'" class="form-field stack gap-1">
           <span class="form-field-label">Member</span>
           <select v-model="condMemberA" class="form-select" aria-label="Baseline duo member">
             <option value="">Pick a member</option>
             <option v-for="m in availableMembers" :key="m" :value="m">{{ m }}</option>
           </select>
         </label>
-        <label v-if="condKindA === 'hero'" class="form-field">
+        <label v-if="condKindA === 'hero'" class="form-field stack gap-1">
           <span class="form-field-label">Hero</span>
           <select v-model="condHeroA" class="form-select" aria-label="Baseline hero">
             <option value="">Pick a hero</option>
@@ -310,7 +310,7 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
           </select>
         </label>
 
-        <label class="form-field">
+        <label class="form-field stack gap-1">
           <span class="form-field-label">This period's condition</span>
           <select v-model="condKindB" data-form-cond-b class="form-select">
             <option value="any">Any game</option>
@@ -324,14 +324,14 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
             <option value="hero">Hero…</option>
           </select>
         </label>
-        <label v-if="condKindB === 'member'" class="form-field">
+        <label v-if="condKindB === 'member'" class="form-field stack gap-1">
           <span class="form-field-label">Member</span>
           <select v-model="condMemberB" class="form-select" aria-label="This period's duo member">
             <option value="">Pick a member</option>
             <option v-for="m in availableMembers" :key="m" :value="m">{{ m }}</option>
           </select>
         </label>
-        <label v-if="condKindB === 'hero'" class="form-field">
+        <label v-if="condKindB === 'hero'" class="form-field stack gap-1">
           <span class="form-field-label">Hero</span>
           <select v-model="condHeroB" class="form-select" aria-label="This period's hero">
             <option value="">Pick a hero</option>

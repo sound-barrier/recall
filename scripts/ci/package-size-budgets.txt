@@ -491,7 +491,10 @@ frontend/src/components/elo                   20
 # beside coach-sheet.css which does the same job for the page a coach hands
 # over. Both are inlined into a file that must render with the network off, so
 # neither can live in the app.css import index.
-frontend/src/styles                           21
+# 22: layout.css — the .stack/.cluster layout primitives every component can
+# reach for. Global by nature (a utility class used across feature folders),
+# so it cannot live in any one scoped block.
+frontend/src/styles                           22
 
 # frontend/src/components/settings — one component per Settings tab section,
 # plus the small widgets those sections share between them. Ratcheted down from
