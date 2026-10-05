@@ -384,7 +384,9 @@ data structures rather than observable, public behavior.
   block) lives in `frontend/CLAUDE.md` beside the `package.json` it governs.
   The one that spans both ecosystems stays here: **wails/v3 + the wails3 CLI +
   @wailsio/runtime move in lockstep**, because the CLI generates bindings the
-  Go module must understand — bump all three in one commit.
+  Go module must understand — bump all three in one commit. Dependabot ignores
+  the Go module and `@wailsio/runtime` for exactly this reason (it can only
+  ever move one of the three).
 
 - **Use `tmp/` under the repo root for ad-hoc scratch files — never `/tmp/...`
   or any path outside the repo root.** PR-body drafts, intermediate `jq` output,
