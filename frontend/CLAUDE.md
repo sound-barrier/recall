@@ -319,7 +319,9 @@ on Day's darker surfaces — small content text takes `--text-dim`.
 `*-color`, `fill`, `stroke`, `font-size`, `border-radius`, or
 `transition-duration`. The scales live in `styles/tokens.css` (per-theme values
 in `themes.css`): `--type-4xs … --type-7xl` (14 stops, 0.5–1.65rem), `--space-1
-… --space-7`, `--radius-hair/-/-md/-lg/-pill`, `--duration-instant … -hero`.
+… --space-7`, `--radius-hair/-/-md/-lg/-surface/-overlay/-pill` (pick a
+radius by role: controls take the small ones, cards/panels `-surface`, anything
+floating `-overlay`), `--duration-instant … -hero`.
 Anything derived from a token passes, so `color-mix(in srgb, var(--accent) 22%,
 transparent)` and `rgb(var(--shadow-rgb) / 55%)` are fine. Exempt by design:
 display type ≥1.8rem (per-surface editorial, not scale points), `em` units,
