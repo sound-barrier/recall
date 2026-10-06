@@ -414,8 +414,8 @@
   opacity: 0;
 }
 
-/* .link-btn (+ light theme), .big-switch.disabled,
-   .setting-meta.blocked, .block-mark moved to IngestView.vue */
+/* .link-btn (+ light theme) and .big-switch.disabled moved to their
+   components; .setting-meta and .block-mark live in settings.css. */
 
 .settings-heading.missing em {
   color: var(--loss);
@@ -470,7 +470,6 @@
 }
 [data-theme="day"] #panel-settings .link-btn { color: var(--accent-text); }
 [data-theme="day"] #panel-settings .link-btn:hover { text-decoration-color: var(--accent-text); }
-[data-theme="day"] #panel-settings .setting-row.danger-row { background: var(--loss-soft); }
 
 [data-theme="day"] #panel-settings .advanced-summary::after {
   background: var(--accent-text);

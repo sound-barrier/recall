@@ -190,6 +190,12 @@ async function copyPath(path: string, which: 'db' | 'settings') {
 </template>
 
 <style scoped>
+.btn-icon {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
 /* SettingsFolders-only styles. Multi-consumer Settings rules
    (.setting-help*, .probe-chip*, .probe-tried*) live in
    frontend/src/styles/app.css because Vue scoped styles don't

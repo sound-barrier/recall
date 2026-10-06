@@ -213,19 +213,6 @@ const probeDismissed = ref(false)
   color: var(--accent-text);
 }
 
-.empty-hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  margin-bottom: var(--space-2);
-}
-
-.btn-icon {
-  width: 14px;
-  height: 14px;
-  display: block;
-}
-
 /* ─── Dismissible probe-result chip ───────────────────────── */
 
 /* `.probe-chip*`, `.probe-tried*`, and `.setting-help*` rules
@@ -274,53 +261,6 @@ const probeDismissed = ref(false)
 
 /* `.engine-*`, `.warn-icon`, `.link-btn` styles moved to
    SettingsEngine.vue's \3c style scoped> block. */
-
-/* `.export-btn-group` styles moved to SettingsBackupRestore.vue.
-   `.setting-row.danger-row` + `.clear-confirm-group` stay here
-   because they're shared with the Advanced section's Clear DB
-   confirm flow. */
-
-/* Armed-import + armed-clear rows share the same destructive bar. */
-.setting-row.danger-row {
-  padding-left: calc(var(--space-6) - 3px);
-  background: var(--loss-soft);
-  border-left: 3px solid var(--loss-line);
-  border-radius: var(--radius);
-  transition: background var(--duration-med) ease, border-color var(--duration-med) ease;
-}
-
-/* Light-mode override for .setting-row.danger-row lives in app.css. */
-
-.clear-confirm-group {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-2);
-}
-
-/* Status meta strip shared between blocked + success states.
-   The block-mark glyph carries the semantic color so a color-
-   blind reader still gets the win/loss cue from the leading char. */
-.setting-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-  font-family: var(--mono);
-  font-size: var(--type-sm);
-  color: var(--text-faint);
-  letter-spacing: 0.04em;
-  font-feature-settings: "tnum";
-}
-
-.setting-meta.blocked { color: var(--loss); }
-.setting-meta.success { color: var(--win); }
-
-.block-mark {
-  margin-right: var(--space-0-5);
-  font-size: var(--type-lg);
-  filter: saturate(0.85);
-}
 
 /* `.advanced-*` + `.big-switch*` styles moved to
    SettingsAdvanced.vue's \3c style scoped> block. */
