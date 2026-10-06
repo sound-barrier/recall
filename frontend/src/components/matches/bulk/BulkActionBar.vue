@@ -195,23 +195,23 @@ function pickTag(v: string) {
         </button>
         <ul
           v-if="openMenu === 'play-mode'"
-          class="bab-menu"
+          class="menu-panel bab-menu"
           role="menu"
           aria-label="Set play mode for selected matches"
         >
           <li>
-            <button type="button" role="menuitem" class="bab-menu-item" data-bulk-set-play-mode="quickplay" @click="pickPlayMode('quickplay')">
+            <button type="button" role="menuitem" class="menu-item menu-caps" data-bulk-set-play-mode="quickplay" @click="pickPlayMode('quickplay')">
               Quickplay
             </button>
           </li>
           <li>
-            <button type="button" role="menuitem" class="bab-menu-item" data-bulk-set-play-mode="competitive" @click="pickPlayMode('competitive')">
+            <button type="button" role="menuitem" class="menu-item menu-caps" data-bulk-set-play-mode="competitive" @click="pickPlayMode('competitive')">
               Competitive
             </button>
           </li>
-          <li class="bab-menu-divider" role="separator" />
+          <li class="menu-sep" role="separator" />
           <li>
-            <button type="button" role="menuitem" class="bab-menu-item bab-menu-item-clear" data-bulk-set-play-mode="" @click="pickPlayMode('')">
+            <button type="button" role="menuitem" class="menu-item menu-caps bab-menu-item-clear" data-bulk-set-play-mode="" @click="pickPlayMode('')">
               Clear (Unknown mode)
             </button>
           </li>
@@ -236,23 +236,23 @@ function pickTag(v: string) {
         </button>
         <ul
           v-if="openMenu === 'queue'"
-          class="bab-menu"
+          class="menu-panel bab-menu"
           role="menu"
           aria-label="Set queue type for selected matches"
         >
           <li>
-            <button type="button" role="menuitem" class="bab-menu-item" data-bulk-set-queue="role" @click="pickQueue('role')">
+            <button type="button" role="menuitem" class="menu-item menu-caps" data-bulk-set-queue="role" @click="pickQueue('role')">
               Role Queue
             </button>
           </li>
           <li>
-            <button type="button" role="menuitem" class="bab-menu-item" data-bulk-set-queue="open" @click="pickQueue('open')">
+            <button type="button" role="menuitem" class="menu-item menu-caps" data-bulk-set-queue="open" @click="pickQueue('open')">
               Open Queue
             </button>
           </li>
-          <li class="bab-menu-divider" role="separator" />
+          <li class="menu-sep" role="separator" />
           <li>
-            <button type="button" role="menuitem" class="bab-menu-item bab-menu-item-clear" data-bulk-set-queue="" @click="pickQueue('')">
+            <button type="button" role="menuitem" class="menu-item menu-caps bab-menu-item-clear" data-bulk-set-queue="" @click="pickQueue('')">
               Clear (Unknown mode type)
             </button>
           </li>
@@ -278,7 +278,7 @@ function pickTag(v: string) {
         </button>
         <div
           v-if="openMenu === 'tag'"
-          class="bab-menu bab-menu-tag"
+          class="menu-panel bab-menu bab-menu-tag"
           role="menu"
           aria-label="Tag selected matches"
         >
@@ -498,50 +498,14 @@ function pickTag(v: string) {
   /* The bar floats at the viewport BOTTOM, so its menus drop UP — opening
      downward put every menu item below the fold, where it looked (and on
      some font metrics, was) unclickable. */
-  bottom: calc(100% + 4px);
+  bottom: calc(100% + var(--space-1));
   left: 0;
   z-index: 6;
   min-width: 12rem;
   list-style: none;
-  padding: var(--space-1);
   margin: 0;
-  background: var(--surface-3);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-overlay);
-  box-shadow: 0 8px 18px rgb(var(--shadow-rgb) / 30%);
-}
-
-.bab-menu-item {
-  appearance: none;
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: var(--space-2) var(--space-2);
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  font-weight: 700;
-  cursor: pointer;
-  border-radius: var(--radius);
-  transition: background var(--duration-fast), color var(--duration-fast);
-}
-
-.bab-menu-item:hover,
-.bab-menu-item:focus-visible {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent-text);
-  outline: none;
 }
 
 .bab-menu-item-clear { color: var(--text-dim); }
 
-.bab-menu-divider {
-  height: 1px;
-  margin: var(--space-1) 0;
-  background: var(--border);
-}
 </style>

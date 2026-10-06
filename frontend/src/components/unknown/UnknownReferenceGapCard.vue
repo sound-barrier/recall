@@ -54,7 +54,7 @@ const emit = defineEmits<{
         <button
           v-else
           type="button"
-          class="unknown-delete-btn"
+          class="btn-mono is-lg is-danger unknown-delete-btn"
           :aria-label="`Dismiss the warning for ${rec.match_key}`"
           :disabled="writesLocked"
           :title="lockReason || 'The match keeps its data; a future update can still fix it.'"

@@ -281,43 +281,16 @@
   border-top: 1px solid var(--border-soft);
 }
 
-.unknown-delete-btn {
-  appearance: none;
-  background: transparent;
-  border: 1px solid var(--loss-line);
-  color: var(--loss);
-  font-family: var(--mono);
-  font-weight: 700;
-  font-size: var(--type-xs);
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition:
-    background var(--duration-fast) ease,
-    color var(--duration-fast) ease,
-    border-color var(--duration-fast) ease;
-}
-
-.unknown-delete-btn:hover {
-  background: color-mix(in srgb, var(--loss) 10%, transparent);
-}
-
-.unknown-delete-btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--loss) 35%, transparent);
-}
-
 /* 3s countdown ring — wraps the button while armed and shrinks
    to nothing as the auto-disarm timer drains. Matches IGNORE_ARM_MS
    in the script block above. Pure CSS, no JS animation hooks; the
    browser's compositor handles the redraw. Reduced-motion swaps
    the animation for a static fill (the .armed background color
    already carries the "this click commits" signal). */
-.unknown-delete-btn.armed {
+.btn-mono.unknown-delete-btn.armed,
+.btn-mono.unknown-delete-btn.armed:hover:not(:disabled) {
   background: var(--loss);
-  color: var(--surface);
+  color: var(--primary-text-on-accent);
   border-color: var(--loss);
   position: relative;
   isolation: isolate;

@@ -237,6 +237,13 @@
      theme and are deliberately black. */
   --shadow-rgb: 0 0 0;
 
+  /* Elevation of anything that floats over the page and dismisses: menus,
+     context menus, dropdowns. Six of them each tuned their own shadow
+     (five distinct geometries). A popover is one elevation, so it has one
+     token. Composed from --shadow-rgb, which themes override on the same
+     root element, so Day still casts its warm gray. */
+  --shadow-popover: 0 12px 32px -8px rgb(var(--shadow-rgb) / 45%);
+
   /* Drives `color-scheme` on <html> (see style.css). A token rather
      than a per-theme rule on the root element: any bare
      `[data-theme=X] { … }` block that sets real properties is

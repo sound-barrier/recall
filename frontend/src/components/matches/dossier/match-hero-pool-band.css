@@ -15,34 +15,6 @@
   flex-wrap: wrap;
 }
 
-.hp-modes {
-  display: inline-flex;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.hp-mode-btn {
-  appearance: none;
-  border: 0;
-  background: var(--surface-2);
-  color: var(--text-dim);
-  font-family: var(--mono);
-  font-size: var(--type-xs);
-  letter-spacing: 0.03em;
-  padding: var(--space-1) var(--space-3);
-  cursor: pointer;
-}
-
-.hp-mode-btn + .hp-mode-btn { border-left: 1px solid var(--border); }
-
-.hp-mode-btn.picked {
-  background: color-mix(in srgb, var(--accent) 22%, var(--surface-2));
-  color: var(--text);
-}
-
-.hp-mode-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-
 .hp-showing {
   font-family: var(--mono);
   font-size: var(--type-2xs);

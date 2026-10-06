@@ -2,7 +2,7 @@
    Global (not scoped) because eight components share the look; every rule is
    nested under #panel-elo so it can't leak, and it reuses the same tokens +
    treatments as the Compare/Settings tabs (settings-intro header, the
-   compare-scope-btn segmented control, surface-2 cards, the form-verdict-card
+   shared .segmented control, surface-2 cards, the form-verdict-card
    "one loud element", the compare-section-head band label). See
    frontend/CLAUDE.md "Styles". */
 
@@ -34,46 +34,7 @@
 /* ─── Rank-track segmented control (mirrors .compare-mode / -scope-btn) ─── */
 
 #panel-elo .elo-tracks {
-  display: inline-flex;
   margin-top: var(--space-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-surface);
-  overflow: hidden;
-}
-
-#panel-elo .elo-track-btn {
-  appearance: none;
-  border: 0;
-  background: var(--surface-2);
-  color: var(--text-dim);
-  font-family: var(--mono);
-  font-size: var(--type-xs);
-  letter-spacing: 0.04em;
-  padding: var(--space-2) var(--space-3);
-  cursor: pointer;
-}
-
-#panel-elo .elo-track-btn + .elo-track-btn {
-  border-left: 1px solid var(--border);
-}
-
-#panel-elo .elo-track-btn:hover:not(:disabled) {
-  color: var(--text);
-}
-
-#panel-elo .elo-track-btn.picked {
-  background: color-mix(in srgb, var(--accent) 22%, var(--surface-2));
-  color: var(--text);
-}
-
-#panel-elo .elo-track-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
-#panel-elo .elo-track-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
 }
 
 #panel-elo .elo-track-n {
@@ -82,13 +43,11 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The picked track's own label steps up to --text, but this count is a
-   child with its own color, so it stayed --text-faint over the
-   accent-mixed background — 3.2:1 on Night. Inherit instead: the
-   selected control reads at full strength, and the de-emphasis that
-   --text-faint was providing is still carried by every UNpicked
-   sibling, which is where the contrast actually matters. */
-#panel-elo .elo-track-btn.picked .elo-track-n {
+/* The count is a child with its own color, so on the picked track it
+   would stay --text-faint over the accent fill, well under AA. Inherit
+   instead: the selected segment reads at full strength, and every
+   unpicked sibling still carries the de-emphasis. */
+#panel-elo .elo-track-btn[aria-pressed="true"] .elo-track-n {
   color: inherit;
 }
 

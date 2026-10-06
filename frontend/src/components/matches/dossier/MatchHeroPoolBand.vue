@@ -138,13 +138,12 @@ const configIsDefault = computed(
   <section class="hero-pool-band" aria-labelledby="hp-eyebrow">
     <header class="hp-head">
       <span id="hp-eyebrow" class="eyebrow accent hp-eyebrow">Hero Pool</span>
-      <div class="hp-modes" role="group" aria-label="Queue">
+      <div class="segmented" role="group" aria-label="Queue">
         <button
           v-for="m in MODES"
           :key="m.key"
           type="button"
-          class="hp-mode-btn"
-          :class="{ picked: viewMode === m.key }"
+          class="segmented-btn"
           :aria-pressed="viewMode === m.key ? 'true' : 'false'"
           :data-pool-mode="m.key"
           @click="selectMode(m.key)"

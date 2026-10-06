@@ -126,7 +126,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
       <span v-if="hasMenu()" class="pivot-chip-caret" aria-hidden="true">▾</span>
     </button>
 
-    <div v-if="menuOpen" ref="menuRef" class="pivot-chip-menu" role="menu">
+    <div v-if="menuOpen" ref="menuRef" class="menu-panel pivot-chip-menu" role="menu">
       <template v-if="filterOptions?.length">
         <div class="pivot-chip-menu-head">
           <span>{{ shownCount }} of {{ filterOptions.length }} shown</span>
@@ -146,20 +146,20 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
           type="button"
           role="menuitemcheckbox"
           :aria-checked="opt.checked"
-          class="pivot-chip-check"
+          class="menu-item pivot-chip-check"
           @click="emit('act', { type: 'toggleFilter', value: opt.value })"
         >
           <span class="pivot-chip-box" aria-hidden="true">{{ opt.checked ? '✓' : '' }}</span>
           <span class="pivot-chip-cklabel">{{ opt.value }}</span>
         </button>
-        <hr v-if="actions.length" class="pivot-chip-rule">
+        <hr v-if="actions.length" class="menu-sep">
       </template>
       <button
         v-for="(action, i) in actions"
         :key="i"
         type="button"
         role="menuitem"
-        class="pivot-chip-menuitem"
+        class="menu-item"
         @click="choose(action.payload)"
       >
         {{ action.label }}
@@ -246,16 +246,9 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
 .pivot-chip-menu {
   position: absolute;
   z-index: 30;
-  top: calc(100% + 0.2rem);
+  top: calc(100% + var(--space-1));
   left: 0;
   min-width: 9rem;
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-1);
-  background: var(--surface-3);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-overlay);
-  box-shadow: 0 8px 24px rgb(var(--shadow-rgb) / 35%);
 }
 
 .pivot-chip-menu-head {
@@ -288,53 +281,6 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
   background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
-.pivot-chip-menuitem {
-  text-align: left;
-  padding: var(--space-1) var(--space-2);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  color: var(--text);
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-}
-
-.pivot-chip-menuitem:hover,
-.pivot-chip-menuitem:focus-visible {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent-text);
-  outline: none;
-}
-
-/* :where() keeps specificity at 0 so the UA button reset doesn't beat the
-   shared menu styles (the promote-span-to-button gotcha). */
-:where(button.pivot-chip-check) {
-  appearance: none;
-  width: 100%;
-  text-align: left;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-md);
-}
-
-.pivot-chip-check {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-2);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  color: var(--text);
-  cursor: pointer;
-}
-
-.pivot-chip-check:hover,
-.pivot-chip-check:focus-visible {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  outline: none;
-}
-
 /* A real checkbox face: filled accent square + ✓ when included, an empty
    outlined box when excluded. The label strikes through + dims on exclude,
    so the state reads at a glance even across a long value list. */
@@ -360,12 +306,6 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
 .pivot-chip-check[aria-checked="false"] .pivot-chip-cklabel {
   color: var(--text-dim);
   text-decoration: line-through;
-}
-
-.pivot-chip-rule {
-  margin: var(--space-1) var(--space-1);
-  border: none;
-  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {

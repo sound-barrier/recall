@@ -180,21 +180,21 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
     <!-- Preset pairs — the daily drivers. -->
     <div class="form-presets" role="group" aria-label="Comparison presets">
       <button
-        type="button" class="form-preset" :class="{ active: activePreset === '7d' }"
+        type="button" class="form-preset"
         :aria-pressed="activePreset === '7d'" data-form-preset="7d"
         @click="applyTrailingPreset(7, '7d')"
       >
         Last 7d vs prior 7d
       </button>
       <button
-        type="button" class="form-preset" :class="{ active: activePreset === '30d' }"
+        type="button" class="form-preset"
         :aria-pressed="activePreset === '30d'" data-form-preset="30d"
         @click="applyTrailingPreset(30, '30d')"
       >
         Last 30d vs prior 30d
       </button>
       <button
-        type="button" class="form-preset" :class="{ active: activePreset === '20m' }"
+        type="button" class="form-preset"
         :aria-pressed="activePreset === '20m'" data-form-preset="20m"
         @click="applyMatchesPreset()"
       >
@@ -202,7 +202,7 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
       </button>
       <button
         v-if="samePoint"
-        type="button" class="form-preset" :class="{ active: activePreset === 'same-point' }"
+        type="button" class="form-preset"
         :aria-pressed="activePreset === 'same-point'" data-form-preset="same-point"
         @click="applySamePointPreset()"
       >
@@ -212,16 +212,16 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
 
     <!-- Pairing controls. -->
     <div class="form-controls">
-      <div class="form-pairby" role="group" aria-label="Pair windows by">
+      <div class="segmented" role="group" aria-label="Pair windows by">
         <button
-          type="button" class="form-pairby-btn" :class="{ active: pairBy === 'time' }"
+          type="button" class="segmented-btn"
           :aria-pressed="pairBy === 'time'" data-form-pairby="time"
           @click="setPairBy('time')"
         >
           By time
         </button>
         <button
-          type="button" class="form-pairby-btn" :class="{ active: pairBy === 'matches' }"
+          type="button" class="segmented-btn"
           :aria-pressed="pairBy === 'matches'" data-form-pairby="matches"
           @click="setPairBy('matches')"
         >

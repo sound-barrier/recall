@@ -109,9 +109,6 @@
 
 .btn.danger:active:not(:disabled) { transform: translateY(0); }
 
-/* .setting-row.danger-row, .clear-confirm-group, and the matching
-   light-theme override moved to IngestView.vue */
-
 [data-theme="day"] .btn.danger { color: var(--primary-text-on-danger); }
 [data-theme="day"] .btn.danger-outline { color: var(--loss); border-color: var(--loss-line); }
 
@@ -173,4 +170,164 @@
   color: var(--text-dim);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+/* ─── Mono buttons ───────────────────────────────────────────
+   The console-voice button: monospace, uppercase, tracked out. Used for
+   compact in-panel actions (confirm/cancel pairs, row actions, modal
+   footers), where a full .btn is too loud. Separate from .btn on purpose:
+   .btn's unmarked-variant fill rules would land on every one of these.
+   The bare class is the quiet secondary action; one modifier picks the
+   role, and .is-lg steps the padding up for modal footers. */
+.btn-mono {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: var(--type-2xs);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+.btn-mono:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.btn-mono:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn-mono:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-mono.is-lg {
+  padding: var(--space-2) var(--space-3);
+}
+
+.btn-mono.is-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--primary-text-on-accent);
+}
+
+.btn-mono.is-primary:hover:not(:disabled) {
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
+  color: var(--primary-text-on-accent);
+}
+
+.btn-mono.is-accent {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.btn-mono.is-accent:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.btn-mono.is-danger {
+  border-color: var(--loss-line);
+  color: var(--loss);
+}
+
+.btn-mono.is-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--loss) 12%, transparent);
+  border-color: var(--loss-line);
+  color: var(--loss);
+}
+
+.btn-mono.is-danger-fill {
+  background: var(--loss);
+  border-color: var(--loss);
+  color: var(--primary-text-on-accent);
+}
+
+.btn-mono.is-danger-fill:hover:not(:disabled) {
+  filter: brightness(1.06);
+  color: var(--primary-text-on-accent);
+}
+
+/* ─── Segmented control ──────────────────────────────────────
+   A row of mutually exclusive toggles in one bordered strip. Six views
+   built their own (hero pool, row density, table mode, season scope,
+   form pair-by, Elo track) with two different "selected" looks: a 22%
+   tint in four, a solid accent fill in two. The fill wins. A tint over
+   --surface-2 is a low-contrast state change, and the fill pairs with
+   --primary-text-on-accent, which clears AA on every theme. State comes
+   from aria-pressed, which every one of them already set, so the look
+   and the accessible state can't drift apart. Works on a <fieldset>
+   (the resets below) as well as a <div role="group">. */
+.segmented {
+  display: inline-flex;
+  align-items: stretch;
+
+  /* A definite width opts out of a flex-column parent's stretch, which
+     otherwise pulls the strip full-width with dead space at its end. */
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.segmented-btn {
+  appearance: none;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: 0;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: var(--type-xs);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color var(--duration-fast) ease, background var(--duration-fast) ease;
+}
+
+.segmented-btn + .segmented-btn {
+  border-left: 1px solid var(--border);
+}
+
+.segmented-btn:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.segmented-btn[aria-pressed="true"],
+.segmented-btn[aria-pressed="true"]:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--primary-text-on-accent);
+}
+
+.segmented-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.segmented-btn[aria-pressed="true"]:focus-visible {
+  outline-color: var(--primary-text-on-accent);
+}
+
+.segmented-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }

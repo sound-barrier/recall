@@ -134,11 +134,10 @@ const liveSummary = computed(() => {
       </p>
     </header>
 
-    <div class="compare-mode" role="group" aria-label="Comparison mode">
+    <div class="segmented compare-mode" role="group" aria-label="Comparison mode">
       <button
         type="button"
-        class="compare-scope-btn"
-        :class="{ active: mode === 'seasons' }"
+        class="segmented-btn"
         :aria-pressed="mode === 'seasons'"
         data-compare-mode="seasons"
         @click="mode = 'seasons'"
@@ -147,8 +146,7 @@ const liveSummary = computed(() => {
       </button>
       <button
         type="button"
-        class="compare-scope-btn"
-        :class="{ active: mode === 'form' }"
+        class="segmented-btn"
         :aria-pressed="mode === 'form'"
         data-compare-mode="form"
         @click="mode = 'form'"
@@ -217,11 +215,10 @@ const liveSummary = computed(() => {
             </button>
           </div>
 
-          <div class="compare-scope" role="group" aria-label="Comparison scope">
+          <div class="segmented" role="group" aria-label="Comparison scope">
             <button
               type="button"
-              class="compare-scope-btn"
-              :class="{ active: scope === 'full' }"
+              class="segmented-btn"
               :aria-pressed="scope === 'full'"
               data-compare-scope="full"
               @click="scope = 'full'"
@@ -230,8 +227,7 @@ const liveSummary = computed(() => {
             </button>
             <button
               type="button"
-              class="compare-scope-btn"
-              :class="{ active: scope === 'filtered' }"
+              class="segmented-btn"
               :aria-pressed="scope === 'filtered'"
               data-compare-scope="filtered"
               @click="scope = 'filtered'"
@@ -315,11 +311,7 @@ const liveSummary = computed(() => {
 }
 
 .compare-mode {
-  display: inline-flex;
   margin-top: var(--space-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
 }
 
 .compare-controls {
@@ -360,39 +352,6 @@ const liveSummary = computed(() => {
   font-family: var(--mono);
   font-size: var(--type-sm);
   color: var(--text-faint);
-}
-
-.compare-scope {
-  display: inline-flex;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.compare-scope-btn {
-  appearance: none;
-  border: 0;
-  background: var(--surface-2);
-  color: var(--text-dim);
-  font-family: var(--mono);
-  font-size: var(--type-xs);
-  letter-spacing: 0.04em;
-  padding: var(--space-2) var(--space-3);
-  cursor: pointer;
-}
-
-.compare-scope-btn + .compare-scope-btn {
-  border-left: 1px solid var(--border);
-}
-
-.compare-scope-btn.active {
-  background: color-mix(in srgb, var(--accent) 22%, var(--surface-2));
-  color: var(--text);
-}
-
-.compare-scope-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
 }
 
 .compare-scope-hint {

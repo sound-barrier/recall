@@ -494,7 +494,11 @@ frontend/src/components/elo                   20
 # 22: layout.css — the .stack/.cluster layout primitives every component can
 # reach for. Global by nature (a utility class used across feature folders),
 # so it cannot live in any one scoped block.
-frontend/src/styles                           22
+# 23: menu.css — the popover menu family (panel, item, rule). Six menus across
+# four feature folders each carried a private copy and had drifted to two
+# backgrounds, two borders and five shadows. Same move as toasts.css: a shared
+# surface that no single feature's scoped block can own.
+frontend/src/styles                           23
 
 # frontend/src/components/settings — one component per Settings tab section,
 # plus the small widgets those sections share between them. Ratcheted down from

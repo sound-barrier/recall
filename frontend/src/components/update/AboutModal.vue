@@ -178,7 +178,7 @@ function openReleasePage() {
 
               <button
                 type="button"
-                class="update-check-modal-btn update-check-modal-btn-ghost"
+                class="btn-mono is-lg"
                 data-update-check-open-release
                 :disabled="!info.url"
                 @click="openReleasePage"
@@ -235,7 +235,7 @@ function openReleasePage() {
                 <div v-if="canApply || applyState.kind === 'success'" class="update-check-modal-apply-row">
                   <button
                     type="button"
-                    class="update-check-modal-btn update-check-modal-btn-primary update-check-modal-btn-wide"
+                    class="btn-mono is-lg is-primary update-check-modal-btn-wide"
                     data-update-check-apply
                     :disabled="applyState.kind === 'applying' || (!canApply && applyState.kind !== 'success')"
                     @click="onApply"
@@ -282,7 +282,7 @@ function openReleasePage() {
           <div class="update-check-modal-actions update-check-modal-actions-footer">
             <button
               type="button"
-              class="update-check-modal-btn update-check-modal-btn-ghost"
+              class="btn-mono is-lg"
               data-update-check-close
               @click="$emit('close')"
             >

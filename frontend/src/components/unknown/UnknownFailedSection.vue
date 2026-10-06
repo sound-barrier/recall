@@ -149,7 +149,7 @@ const { writesLocked, lockReason } = useWriteGate()
           </button>
           <button
             type="button"
-            class="unknown-delete-btn"
+            class="btn-mono is-lg is-danger unknown-delete-btn"
             :class="{ armed: isDismissArmed(row.filename) }"
             :aria-label="isDismissArmed(row.filename)
               ? `Confirm dismissing ${row.filename}`
