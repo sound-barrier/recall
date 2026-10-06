@@ -338,11 +338,16 @@ check_tools_npm_pins() {
   fi
   [[ -f tools/package-lock.json ]] \
     || report tools/package-lock.json "" "tools/package-lock.json is missing; npm ci has nothing to install exactly"
+  # A nested override ({"js-yaml@3": {"argparse": "2.0.1"}}) scopes a pin
+  # to one parent; every leaf version in it is held to the same exact rule.
   while IFS=$'\t' read -r name spec; do
     [[ "${spec}" =~ ${EXACT_NPM_VERSION} ]] && continue
-    report tools/package.json "$(grep -nF "\"${name}\"" tools/package.json | head -1 | cut -d: -f1)" \
+    report tools/package.json "$(grep -nF "\"${name##* > }\"" tools/package.json | head -1 | cut -d: -f1)" \
       "${name} is \"${spec}\", a range; pin one exact version"
-  done < <(jq -r '[.dependencies, .devDependencies, .optionalDependencies, .peerDependencies, .overrides] | map(. // {} | to_entries[]) | .[] | "\(.key)\t\(.value)"' tools/package.json)
+  done < <(jq -r '
+    ([.dependencies, .devDependencies, .optionalDependencies, .peerDependencies] | map(. // {} | to_entries[]) | .[] | "\(.key)\t\(.value)"),
+    (.overrides // {} | paths(scalars) as $path | "\($path | join(" > "))\t\(getpath($path))")
+  ' tools/package.json)
   while IFS='=' read -r key want; do
     [[ "$(npmrc_setting "${key}")" == "${want}" ]] \
       || report tools/.npmrc "" "tools/.npmrc must set ${key}=${want}, and no later line may override it"
