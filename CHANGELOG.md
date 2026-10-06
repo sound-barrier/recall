@@ -1,5 +1,64 @@
 # Changelog
 
+## [0.33.6](https://github.com/sound-barrier/recall/compare/v0.33.5...v0.33.6) (2026-10-06)
+
+
+### Bug Fixes
+
+* **ci:** give Dependabot majors their own PR per ecosystem ([75452c2](https://github.com/sound-barrier/recall/commit/75452c27ee78111a2212521eed9b981404effacc))
+* **ci:** keep major bumps out of the weekly Dependabot PR ([e2c3bc4](https://github.com/sound-barrier/recall/commit/e2c3bc4ea2530492627f2dd3cae09ac353586dd1))
+* **ci:** set the PR limit on the Dependabot group, not its members ([2df01c3](https://github.com/sound-barrier/recall/commit/2df01c3900f3f2d22414c0230b31dc9656042f5f))
+* **deps:** bump source-map-js to 1.2.2 for CVE-2026-93749 ([a8cc047](https://github.com/sound-barrier/recall/commit/a8cc047b344948be0e61d0b896cc618dff07323c))
+* **frontend:** give layout primitives a --gap default ([ab169a2](https://github.com/sound-barrier/recall/commit/ab169a24abbe0f4237498f3d95cf36d11c7fcd99))
+* **frontend:** keep the Tesseract-missing pill legible ([4faa568](https://github.com/sound-barrier/recall/commit/4faa568ccd3988f3382905b8636b7bfc575428c9))
+* **frontend:** load the toast family in MatchUndoToast ([9342aea](https://github.com/sound-barrier/recall/commit/9342aead66d18edd014a8f8a3137e750b8b5b3f6))
+* **frontend:** style armed settings rows from a global sheet ([af14c61](https://github.com/sound-barrier/recall/commit/af14c618cab9e0d5938d4be865e407ee5edcce94))
+
+
+### Refactors
+
+* **frontend:** add stack/cluster layout primitives ([e9124d0](https://github.com/sound-barrier/recall/commit/e9124d0f40b9e48dc74318a365a4bac2ef939822))
+* **frontend:** move every mono button onto .btn-mono ([dd33a75](https://github.com/sound-barrier/recall/commit/dd33a75f5b0de6328a08738658f8c05a809e7087))
+* **frontend:** move pure flex rows onto layout primitives ([b8caef7](https://github.com/sound-barrier/recall/commit/b8caef785d733025620e7f612a3986d6d9d90106))
+* **frontend:** put every outer shadow on an elevation scale ([556b62c](https://github.com/sound-barrier/recall/commit/556b62c0bffc7eceb8029545ef3aa02b9fed7762))
+* **frontend:** rename spacing tokens to 4px multiples ([3816ea4](https://github.com/sound-barrier/recall/commit/3816ea420bd804d8f84d5db3205b6bb9a588263b))
+* **frontend:** share menu, mono-button and segmented styles ([b0e5572](https://github.com/sound-barrier/recall/commit/b0e5572a0d40296b57bc790a785a01852de5ad77))
+
+
+### Documentation
+
+* **frontend:** list the surface and overlay radius tokens ([2ac436e](https://github.com/sound-barrier/recall/commit/2ac436e93920ef122bbdfc2aab6bfa3f4ef3afc8))
+
+
+### Build & Packaging
+
+* **deps:** Bump jdx/mise-action ([5c16ec8](https://github.com/sound-barrier/recall/commit/5c16ec898879766a3d057ed9d038d7fa5265b820))
+* **deps:** bump modernc.org/sqlite to v1.60.0 ([dcc32e9](https://github.com/sound-barrier/recall/commit/dcc32e9c21ddb9c7d58687dd5fce09591df95fc7))
+* **deps:** move the wails trio to v3.0.0-beta.26 ([9f5aaca](https://github.com/sound-barrier/recall/commit/9f5aacae6df6060a3925327deca60af0ca10e84f))
+* **deps:** refresh frontend npm lock within existing ranges ([d0e53e8](https://github.com/sound-barrier/recall/commit/d0e53e8034a330ad607eaf046e785d5f43ecc08f))
+* **docker:** bump swagger-ui image and docker-in-docker feature ([4d7d287](https://github.com/sound-barrier/recall/commit/4d7d287e11cefc711edc5e451010e1a8b029af7a))
+* **frontend:** enforce spacing tokens in stylelint ([33aaf2e](https://github.com/sound-barrier/recall/commit/33aaf2e27fde95335ada1b7fb98d23d2645ecd78))
+* **frontend:** ratchet budgets after the button and shadow sweeps ([d6018a2](https://github.com/sound-barrier/recall/commit/d6018a281bb3dee657b5bf6626b8e63ccb973e9f))
+* **frontend:** ratchet duplication and bundle budgets ([b3144cc](https://github.com/sound-barrier/recall/commit/b3144cc30d17fb498e8e4c1b64c403503225afa4))
+* **frontend:** re-baseline jscpd after the spacing snap ([b76e752](https://github.com/sound-barrier/recall/commit/b76e7529ec4e8e8459cb1c16308a11796cd904ff))
+* **frontend:** re-baseline jscpd threshold for jscpd 5.3 ([a8ec472](https://github.com/sound-barrier/recall/commit/a8ec47241e887681e0ef71f3b8cc7d53e1dd0cd4))
+* **mise:** bump mise to 2026.9.16 ([93b9e1f](https://github.com/sound-barrier/recall/commit/93b9e1f21af79b9937cdd7b49d3fe717e68b7acd))
+* **tools:** bump golangci-lint to v2.14.0 ([153a158](https://github.com/sound-barrier/recall/commit/153a158558ae94f492f2229a77c6930833a43598))
+* **tools:** bump node, semgrep, schemathesis and jsonschema-rs ([4f37c66](https://github.com/sound-barrier/recall/commit/4f37c667e904cb3070a2d2906ec4c35bfca596be))
+
+
+### CI
+
+* **deps:** group routine Dependabot bumps into one weekly PR ([fbf5e11](https://github.com/sound-barrier/recall/commit/fbf5e11c91d90828542af606675def9442070d50))
+
+
+### Tests
+
+* **frontend:** assert the backup interval by its checked state ([27ad099](https://github.com/sound-barrier/recall/commit/27ad099c42d48440631b94aaf4e94917e424843d))
+* **frontend:** fold the armed-row spec into the re-parse spec ([1a5e170](https://github.com/sound-barrier/recall/commit/1a5e170bae6ebbbff68b0145b08670b7a50efcbb))
+* **frontend:** record the mono-button family in theme snapshots ([608d075](https://github.com/sound-barrier/recall/commit/608d07550d2fc988b5976c0bcffa34e16947bfda))
+* **frontend:** sync theme snapshots with CI's on-accent text ([76033c6](https://github.com/sound-barrier/recall/commit/76033c65b29c5a849fd82a466ff3aae7e2bff592))
+
 ## [0.33.5](https://github.com/sound-barrier/recall/compare/v0.33.4...v0.33.5) (2026-09-30)
 
 
