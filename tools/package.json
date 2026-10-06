@@ -10,6 +10,11 @@
     "markdownlint-cli2": "0.23.3"
   },
   "overrides": {
-    "smol-toml": "1.7.2"
+    "fast-uri": "3.1.8",
+    "js-yaml@3": {
+      "argparse": "2.0.1"
+    },
+    "katex": "0.18.9",
+    "smol-toml": "1.9.0"
   }
 }
