@@ -802,7 +802,7 @@ func TestGenerateMatchFixture_RankClimbsMainTrack(t *testing.T) {
 	// must NET real growth; the thin tank/support/open tracks wander with the
 	// gap-reversion model — they may drift a shade below their start on a
 	// given seed, but never collapse or run away. DPS stays busiest + highest.
-	fx := fixtures.GenerateMatchFixture(1300, 8, "")
+	fx := fixtures.GenerateMatchFixture(1300, 9, "")
 
 	start := map[string]float64{
 		"tank":    ladderScoreOf("silver", 1, 0),
@@ -938,7 +938,7 @@ func TestGenerateMatchFixture_TrackWinRatesStayHuman(t *testing.T) {
 	// by the hero-cost penalties throughout. No track reads like a smurf or
 	// a thrower. (The arc itself — slow growth, slumps, mean reversion — is
 	// pinned by the TestTourStory_* suite.)
-	fx := fixtures.GenerateMatchFixture(1300, 8, "")
+	fx := fixtures.GenerateMatchFixture(1300, 9, "")
 	byTrack := trackWL(fx)
 	for _, track := range []string{"tank", "dps", "support", "open"} {
 		c := byTrack[track]

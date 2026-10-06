@@ -85,7 +85,7 @@ func (a *App) SwitchProfile(name string) error {
 // the dedicated unknown/ambiguous fixtures in the base generation, not chaos.
 const (
 	TestProfileName = "test"
-	testProfileSeed = 8
+	testProfileSeed = 9
 	// testProfileMatches sizes the demo season to "about 10 hours of games a
 	// week": ~65-75% of self-reported play time is in-match at ~11 min/game →
 	// ~37 matches/week over the rolling 8-month window. The fixtures story
