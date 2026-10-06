@@ -194,7 +194,11 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # DOWN 817B (63470 -> 62653) because ~150 distinct values collapsed onto
 # 11 stops that compress well. Measured 84441B; 85200B once the
 # shared menu/button/segmented families landed in the eager sheet.
-: "${MAX_INITIAL_CSS_BYTES:=86000}"
+# 2026-10: 86000 -> 85000 -- ratchet. The remaining mono buttons moved
+# onto .btn-mono and outer shadows onto the elevation scale; each was a
+# scoped or global copy of what the shared sheet now says once. Measured
+# 83802B.
+: "${MAX_INITIAL_CSS_BYTES:=85000}"
 # The Matches "Trends" charts pull in ECharts (tree-shaken to line + bar
 # charts, grid/tooltip/legend/markline/data-zoom/brush components, canvas
 # renderer). It rides in its own lazily-loaded chunk (TrendChart-*.js),
@@ -460,7 +464,10 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # gzipped it went DOWN 817B). Collapsing six menus, six segmented controls
 # and the mono buttons into shared families then took 12.7KB back out.
 # Net measured 430940B; gzipped 63470 -> 61567B.
-: "${MAX_TOTAL_CSS_BYTES:=432000}"
+# 2026-10: 432000 -> 411000 -- ratchet. ~45 components stopped spelling
+# out the mono button (-1,140 lines of scoped CSS) and 41 shadows became
+# tokens. Measured 409225B; gzipped 59496B.
+: "${MAX_TOTAL_CSS_BYTES:=411000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never
