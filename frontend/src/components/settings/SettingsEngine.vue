@@ -189,9 +189,12 @@ const probeDismissed = ref(false)
   background: var(--win-soft);
 }
 
+/* No tint of its own: the row around it is already alert-tinted, and a
+   second --loss-soft layer pushed the loss-red label under AA on Day and
+   High contrast. The surface keeps the label legible; the border and the
+   pulsing dot carry the alarm. */
 .engine-status.fail {
   border-color: var(--loss-line);
-  background: var(--loss-soft);
 }
 
 .engine-dot {
