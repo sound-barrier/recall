@@ -291,7 +291,7 @@ Component-specific styles live in each leaf SFC's own `<style scoped>`
 block (Vue rewrites every selector with a `[data-v-<hash>]` attribute
 so the rule only matches that component's template).
 
-Cross-cutting styles live under `frontend/src/styles/`. `app.css` is a thin `@import` index over topical files (`tokens`, `themes`, `chrome`, `masthead`, `buttons`, `states`, `badges`, `nav`, `settings`, `system-alert`, `responsive`, `overrides`, `components`) — **the `@import` order IS the cascade order; keep it.** These hold custom properties, font-faces, theme overrides, the `.btn` / `.badge` / `.chev` / `.length` / `.clickable` families, shared empty-state selectors, `.section-*` / `.setting-*` / `.settings-*` (across Settings/Ingest/Unknown), `.slot-chip` / `.slot-dot` (UnknownMapsView), the `.source-*` family, etc. Add a global rule to the matching topical file; create a new one + `@import` it (in cascade position) for a genuinely new family.
+Cross-cutting styles live under `frontend/src/styles/`. `app.css` is a thin `@import` index over topical files (`tokens`, `themes`, `layout`, `chrome`, `masthead`, `buttons`, `menu`, `states`, `badges`, `nav`, `settings`, `system-alert`, `responsive`, `overrides`, `components`) — **the `@import` order IS the cascade order; keep it.** These hold custom properties, font-faces, theme overrides, the `.btn` / `.badge` / `.chev` / `.length` / `.clickable` families, shared empty-state selectors, `.section-*` / `.setting-*` / `.settings-*` (across Settings/Ingest/Unknown), `.slot-chip` / `.slot-dot` (UnknownMapsView), the `.source-*` family, etc. Add a global rule to the matching topical file; create a new one + `@import` it (in cascade position) for a genuinely new family.
 
 When migrating a rule to scoped, check all eight component templates first — if more than one references it, keep it in `app.css`. `@keyframes` in scoped blocks get their NAME hashed, so animations used by multiple components must live in `app.css` (`pulse-dot` is canonical — used by ParseProgressPanel + IngestView).
 
@@ -323,6 +323,29 @@ block; `--space-2` is the default gap, a `gap-N` modifier sets another stop.
 Baseline/flex-end alignment and breakpoint variants stay scoped, and a new
 `gap-N` modifier lands with its first caller. Not in the standalone recap/coach-sheet pages, which never load
 app.css.
+
+**Shared control families — reach for these before writing a scoped copy.**
+Each one replaced several per-view copies that had drifted apart:
+
+- **Popover menus** (`styles/menu.css`): `.menu-panel` + `.menu-item` (+ the
+  `.menu-caps` voice, `.is-danger`) + `.menu-sep`. A component keeps only
+  where its panel sits (position, offset, z-index, min-width). Elevation is
+  `--shadow-popover`.
+- **Mono buttons** (`buttons.css`): `.btn-mono`, the compact console-voice
+  action. The bare class is the quiet secondary; `.is-primary` /
+  `.is-accent` / `.is-danger` / `.is-danger-fill` pick the role, and
+  `.is-lg` sizes it for modal footers.
+- **Segmented control** (`buttons.css`): `.segmented` around `.segmented-btn`
+  children. The selected look keys off `aria-pressed="true"`, so never add a
+  parallel `:class="{ active }"` for it.
+
+**A rule in a parent's `<style scoped>` never reaches a child component's
+markup.** Only the child's root element gets the parent's scope hash. Settings
+shipped this bug: the armed-row, confirm-group and status-meta rules sat in
+`SettingsView` while the rows rendered inside the section components, so an
+armed destructive row looked idle on every theme but Day. A style two
+components share goes in a `styles/*.css` file, not in their common
+parent.
 
 **Use the design tokens — stylelint enforces it.**
 `scale-unlimited/declaration-strict-value` fails the build on a literal for any

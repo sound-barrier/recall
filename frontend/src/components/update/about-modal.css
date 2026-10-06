@@ -170,52 +170,8 @@
   margin-top: var(--space-3);
 }
 
-/* `:deep()` so the shared btn chrome also reaches the SelfUpdateCta child's
-   buttons — same specificity (0,2,0) as the plain scoped form. */
-:deep(.update-check-modal-btn) {
-  appearance: none;
-  font-family: var(--mono);
-  font-weight: 700;
-  font-size: var(--type-2xs);
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: background var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
-}
-
-:deep(.update-check-modal-btn:disabled) {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.update-check-modal-btn-ghost {
-  background: transparent;
-  border: 1px solid var(--border-strong);
-  color: var(--text);
-}
-
-.update-check-modal-btn-ghost:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent-text);
-}
-
-:deep(.update-check-modal-btn-primary) {
-  background: var(--accent);
-  border: 1px solid var(--accent);
-  color: var(--surface);
-}
-
-:deep(.update-check-modal-btn-primary:hover:not(:disabled)) {
-  background: color-mix(in srgb, var(--accent) 80%, var(--text));
-}
-
 .update-check-modal-btn-wide {
   width: 100%;
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--type-sm);
-  letter-spacing: 0.22em;
 }
 
 .update-check-modal-rule {

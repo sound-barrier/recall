@@ -140,14 +140,14 @@ const {
             <template v-if="archiveConfirmKey !== rec.match_key">
               <button
                 type="button"
-                class="archive-unhide"
+                class="btn-mono is-accent archive-unhide"
                 @click="emit('unhide-match', rec.match_key)"
               >
                 Unhide
               </button>
               <button
                 type="button"
-                class="archive-delete"
+                class="btn-mono is-danger"
                 @click="confirmHardDelete(rec.match_key)"
               >
                 Delete forever
@@ -157,14 +157,14 @@ const {
               <span class="archive-confirm-pre" aria-hidden="true">⚠</span>
               <button
                 type="button"
-                class="archive-confirm"
+                class="btn-mono is-danger-fill"
                 @click="emit('hard-delete-match', rec.match_key)"
               >
                 Confirm
               </button>
               <button
                 type="button"
-                class="archive-cancel"
+                class="btn-mono"
                 @click="cancelHardDelete"
               >
                 Cancel
@@ -380,33 +380,6 @@ const {
   white-space: nowrap;
 }
 
-.archive-row-actions button {
-  appearance: none;
-  border-radius: var(--radius);
-  padding: var(--space-1) var(--space-2);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  font-weight: 700;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.archive-unhide {
-  border: 1px solid var(--accent);
-  background: transparent;
-  color: var(--accent-text);
-}
-.archive-unhide:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
-
-.archive-delete {
-  border: 1px solid color-mix(in srgb, var(--loss) 70%, var(--border));
-  background: transparent;
-  color: var(--loss);
-}
-.archive-delete:hover { background: color-mix(in srgb, var(--loss) 12%, transparent); }
-
 .archive-confirm-pre {
   color: var(--loss);
   font-size: var(--type-xl);
@@ -414,17 +387,4 @@ const {
   padding-right: var(--space-0-5);
 }
 
-.archive-confirm {
-  border: 1px solid var(--loss);
-  background: var(--loss);
-  color: var(--primary-text-on-accent);
-}
-.archive-confirm:hover { filter: brightness(1.06); }
-
-.archive-cancel {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-dim);
-}
-.archive-cancel:hover { color: var(--text); border-color: var(--text); }
 </style>

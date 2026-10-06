@@ -144,13 +144,14 @@
         "uppercase"
       ],
       "color": [
+        "rgb(26, 10, 0)",
         "rgb(26, 26, 26)",
         "rgb(74, 74, 74)",
         "rgb(92, 90, 82)"
       ],
       "backgroundColor": [
-        "color(srgb 0.925333 0.835059 0.699294)",
         "rgb(232, 229, 221)",
+        "rgb(250, 156, 27)",
         "rgba(0, 0, 0, 0)"
       ],
       "borderRadius": [

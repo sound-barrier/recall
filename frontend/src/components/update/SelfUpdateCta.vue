@@ -2,8 +2,8 @@
 // In-app self-update CTA — progress bar / Install / Restart / error / refusal.
 // A private partial of AboutModal's "Recall app" section (parallel to
 // UpdateDiffManifest): the parent gates rendering on
-// `info.available && canSelfUpdate` and supplies the shared
-// `update-check-modal-btn*` chrome via `:deep()`. The self-update state machine
+// `info.available && canSelfUpdate`; its buttons are the global `.btn-mono`
+// family, so no chrome has to cross the scope boundary. The self-update state machine
 // lives in the app store — this component only renders the `SelfUpdateState`
 // bundle and re-emits install / restart.
 
@@ -71,7 +71,7 @@ const progressLabel = computed(() => {
 
   <div
     v-if="busy"
-    class="update-check-modal-selfupdate-progress"
+    class="stack gap-1 update-check-modal-selfupdate-progress"
     data-self-update-progress
     role="progressbar"
     :aria-valuenow="state.pct ?? undefined"
@@ -92,7 +92,7 @@ const progressLabel = computed(() => {
   <button
     v-else-if="state.phase === 'ready'"
     type="button"
-    class="update-check-modal-btn update-check-modal-btn-primary"
+    class="btn-mono is-lg is-primary"
     data-self-update-restart
     @click="emit('restart')"
   >
@@ -102,7 +102,7 @@ const progressLabel = computed(() => {
   <button
     v-else
     type="button"
-    class="update-check-modal-btn update-check-modal-btn-primary"
+    class="btn-mono is-lg is-primary"
     data-self-update-install
     @click="emit('install')"
   >
@@ -120,11 +120,6 @@ const progressLabel = computed(() => {
 </template>
 
 <style scoped>
-.update-check-modal-selfupdate-progress {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
 
 .update-check-modal-selfupdate-bar {
   display: block;

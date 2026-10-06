@@ -80,7 +80,7 @@ const {
 
 <template>
   <header class="leaves-head">
-    <div class="leaves-head-left">
+    <div class="stack gap-0-5 leaves-head-left">
       <span class="eyebrow accent leaves-eyebrow">Members</span>
       <h3 class="leaves-title">
         {{ matchCount }} matches in this set
@@ -106,13 +106,13 @@ const {
         <div
           v-if="addMenuOpen"
           ref="addMenuPanel"
-          class="add-match-menu"
+          class="menu-panel add-match-menu"
           role="menu"
           aria-label="Add a match"
         >
           <button
             type="button"
-            class="add-match-item"
+            class="menu-item"
             role="menuitem"
             data-add-match-full
             @click="runAddMenuItem(() => emit('add-match'))"
@@ -121,7 +121,7 @@ const {
           </button>
           <button
             type="button"
-            class="add-match-item"
+            class="menu-item"
             role="menuitem"
             data-add-match-leaver-exit
             title="Overwatch drops matches you leave early — record one with just the map and the result"
@@ -164,13 +164,12 @@ const {
         <span class="sort-group-label">{{ sortGroupLabel }}</span>
         <span class="sort-group-caret" aria-hidden="true">▾</span>
       </button>
-      <fieldset class="seg" aria-label="Row density">
-        <legend class="seg-legend">
+      <fieldset class="segmented" aria-label="Row density">
+        <legend class="sr-only">
           Density
         </legend>
         <button
-          class="seg-btn"
-          :class="{ picked: density === 'comfortable' }"
+          class="segmented-btn seg-btn"
           :aria-pressed="density === 'comfortable' ? 'true' : 'false'"
           :data-density-pick="density === 'comfortable' ? 'comfortable' : undefined"
           title="Roomy row spacing"
@@ -179,8 +178,7 @@ const {
           Cozy
         </button>
         <button
-          class="seg-btn"
-          :class="{ picked: density === 'compact' }"
+          class="segmented-btn seg-btn"
           :aria-pressed="density === 'compact' ? 'true' : 'false'"
           :data-density-pick="density === 'compact' ? 'compact' : undefined"
           title="Tighter row spacing — more rows per screen"
@@ -189,8 +187,7 @@ const {
           Compact
         </button>
         <button
-          class="seg-btn"
-          :class="{ picked: density === 'data' }"
+          class="segmented-btn seg-btn"
           :aria-pressed="density === 'data' ? 'true' : 'false'"
           :data-density-pick="density === 'data' ? 'data' : undefined"
           title="Table view — sortable columns, hairline rows"
@@ -199,13 +196,13 @@ const {
           Data
         </button>
       </fieldset>
-      <fieldset v-if="grouped && density !== 'data'" class="seg" aria-label="Fold all sections">
-        <legend class="seg-legend">
+      <fieldset v-if="grouped && density !== 'data'" class="segmented" aria-label="Fold all sections">
+        <legend class="sr-only">
           Sections
         </legend>
         <button
           type="button"
-          class="seg-btn"
+          class="segmented-btn seg-btn"
           data-expand-all
           title="Expand every group section"
           @click="emit('expand-all')"
@@ -214,7 +211,7 @@ const {
         </button>
         <button
           type="button"
-          class="seg-btn"
+          class="segmented-btn seg-btn"
           data-collapse-all
           title="Collapse every group section"
           @click="emit('collapse-all')"

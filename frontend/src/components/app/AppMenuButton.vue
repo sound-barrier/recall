@@ -36,24 +36,24 @@ const {
     <div
       v-if="open"
       ref="menuEl"
-      class="app-menu-dropdown"
+      class="menu-panel app-menu-dropdown"
       role="menu"
       aria-label="Application menu"
     >
-      <button type="button" class="app-menu-item" role="menuitem" data-app-menu-about @click="openAbout">
+      <button type="button" class="menu-item menu-caps app-menu-item" role="menuitem" data-app-menu-about @click="openAbout">
         About Recall
       </button>
-      <button type="button" class="app-menu-item" role="menuitem" data-app-menu-settings @click="openSettings">
+      <button type="button" class="menu-item menu-caps app-menu-item" role="menuitem" data-app-menu-settings @click="openSettings">
         Settings…
       </button>
-      <button type="button" class="app-menu-item" role="menuitem" data-app-menu-shortcuts @click="openShortcuts">
+      <button type="button" class="menu-item menu-caps app-menu-item" role="menuitem" data-app-menu-shortcuts @click="openShortcuts">
         Keyboard shortcuts
       </button>
-      <div class="app-menu-sep" aria-hidden="true" />
-      <button type="button" class="app-menu-item" role="menuitem" data-app-menu-docs @click="openDocs">
+      <div class="menu-sep" aria-hidden="true" />
+      <button type="button" class="menu-item menu-caps app-menu-item" role="menuitem" data-app-menu-docs @click="openDocs">
         Documentation <span class="app-menu-ext" aria-hidden="true">↗</span>
       </button>
-      <button type="button" class="app-menu-item" role="menuitem" data-app-menu-issues @click="openIssues">
+      <button type="button" class="menu-item menu-caps app-menu-item" role="menuitem" data-app-menu-issues @click="openIssues">
         Report an issue <span class="app-menu-ext" aria-hidden="true">↗</span>
       </button>
     </div>
@@ -97,46 +97,10 @@ const {
 
 .app-menu-dropdown {
   position: absolute;
-  top: calc(100% + 0.35rem);
+  top: calc(100% + var(--space-1));
   right: 0;
   z-index: 50;
   min-width: 13rem;
-  padding: var(--space-1);
-  border: 1px solid var(--accent);
-  background: var(--surface);
-  border-radius: var(--radius-overlay);
-  box-shadow:
-    0 6px 22px color-mix(in srgb, var(--bg) 55%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-0-5);
-}
-
-.app-menu-item {
-  appearance: none;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  width: 100%;
-  padding: var(--space-2) var(--space-2);
-  border: 0;
-  background: transparent;
-  border-radius: var(--radius);
-  cursor: pointer;
-  text-align: left;
-  font-family: var(--mono);
-  font-size: var(--type-xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text);
-  font-weight: 700;
-  line-height: 1.1;
-}
-
-.app-menu-item:hover {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  color: var(--accent-text);
 }
 
 .app-menu-ext {
@@ -148,9 +112,4 @@ const {
   color: var(--accent-text);
 }
 
-.app-menu-sep {
-  height: 1px;
-  background: color-mix(in srgb, var(--border) 70%, transparent);
-  margin: var(--space-1) 0;
-}
 </style>

@@ -269,7 +269,7 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
               <div v-if="rec.source_files?.length" class="unknown-delete-zone">
                 <button
                   type="button"
-                  class="unknown-delete-btn"
+                  class="btn-mono is-lg is-danger unknown-delete-btn"
                   :class="{ armed: isDismissArmed(rec.match_key) }"
                   :aria-label="ambiguousDismissLabel(rec)"
                   :data-ignore-btn="rec.match_key"

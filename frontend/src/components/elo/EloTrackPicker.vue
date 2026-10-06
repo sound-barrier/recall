@@ -8,13 +8,12 @@ const { track, tracks, setTrack } = useEloCalc()
 </script>
 
 <template>
-  <div class="elo-tracks" role="group" aria-label="Rank track">
+  <div class="segmented elo-tracks" role="group" aria-label="Rank track">
     <button
       v-for="t in tracks"
       :key="t.key"
       type="button"
-      class="elo-track-btn"
-      :class="{ picked: track === t.key }"
+      class="segmented-btn elo-track-btn"
       :aria-pressed="track === t.key ? 'true' : 'false'"
       :data-elo-track="t.key"
       :disabled="t.decisiveN === 0 && !t.hasRank"

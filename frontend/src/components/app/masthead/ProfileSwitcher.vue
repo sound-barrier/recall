@@ -30,7 +30,6 @@ const {
   confirmRename,
 } = useProfileSwitcher()
 
-
 </script>
 
 <template>
@@ -52,7 +51,7 @@ const {
     <div
       v-if="open"
       ref="dropdownEl"
-      class="profile-menu"
+      class="menu-panel profile-menu"
       role="menu"
     >
       <div
@@ -64,7 +63,7 @@ const {
         <template v-if="renameTarget !== p">
           <button
             type="button"
-            class="profile-item"
+            class="menu-item menu-caps profile-item"
             :class="{ active: p === active }"
             role="menuitem"
             :aria-current="p === active || undefined"
@@ -100,7 +99,7 @@ const {
             >
             <button
               type="submit"
-              class="profile-rename-confirm"
+              class="btn-mono is-primary"
               :disabled="busy || !renameValueValid || renameUnchanged"
               :title="renameUnchanged ? 'Type a new name first' : 'Save rename'"
             >
@@ -108,7 +107,7 @@ const {
             </button>
             <button
               type="button"
-              class="profile-rename-cancel"
+              class="btn-mono"
               :disabled="busy"
               @click="cancelRename"
             >
@@ -118,12 +117,12 @@ const {
         </template>
       </div>
 
-      <div class="profile-menu-sep" aria-hidden="true" />
+      <div class="menu-sep" aria-hidden="true" />
 
       <template v-if="!creating">
         <button
           type="button"
-          class="profile-item profile-new-trigger"
+          class="menu-item menu-caps profile-item profile-new-trigger"
           role="menuitem"
           :disabled="busy"
           @click="beginCreate"
@@ -149,14 +148,14 @@ const {
           >
           <button
             type="submit"
-            class="profile-new-confirm"
+            class="btn-mono is-primary profile-new-confirm"
             :disabled="!newNameValid || busy"
           >
             {{ busy ? '…' : 'Create' }}
           </button>
           <button
             type="button"
-            class="profile-new-cancel"
+            class="btn-mono"
             :disabled="busy"
             @click="cancelCreate"
           >
@@ -245,47 +244,15 @@ const {
 
 .profile-menu {
   position: absolute;
-  top: calc(100% + 0.35rem);
+  top: calc(100% + var(--space-1));
   right: 0;
   z-index: 50;
   min-width: 14rem;
-  padding: var(--space-1);
-  border: 1px solid var(--accent);
-  background: var(--surface);
-  border-radius: var(--radius-overlay);
-  box-shadow:
-    0 6px 22px color-mix(in srgb, var(--bg) 55%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-0-5);
 }
 
 .profile-item {
-  appearance: none;
   display: grid;
   grid-template-columns: 1.1rem 1fr;
-  gap: var(--space-2);
-  align-items: center;
-  width: 100%;
-  padding: var(--space-2) var(--space-2);
-  border: 0;
-  background: transparent;
-  border-radius: var(--radius);
-  cursor: pointer;
-  text-align: left;
-  font-family: var(--mono);
-  font-size: var(--type-xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text);
-  font-weight: 700;
-  line-height: 1.1;
-}
-
-.profile-item:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  color: var(--accent-text);
 }
 
 .profile-item.active {
@@ -310,12 +277,6 @@ const {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.profile-menu-sep {
-  height: 1px;
-  background: color-mix(in srgb, var(--border) 70%, transparent);
-  margin: var(--space-1) 0;
 }
 
 .profile-new-form {
@@ -345,42 +306,6 @@ const {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
-}
-
-.profile-new-confirm,
-.profile-new-cancel {
-  appearance: none;
-  border-radius: var(--radius);
-  padding: var(--space-1) var(--space-2);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  font-weight: 700;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.profile-new-confirm {
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--primary-text-on-accent);
-}
-
-.profile-new-confirm:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.profile-new-cancel {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-dim);
-}
-
-.profile-new-cancel:hover:not(:disabled) {
-  color: var(--text);
-  border-color: var(--text);
 }
 
 .profile-new-hint {
@@ -453,42 +378,6 @@ const {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
-}
-
-.profile-rename-confirm,
-.profile-rename-cancel {
-  appearance: none;
-  border-radius: var(--radius);
-  padding: var(--space-1) var(--space-2);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  font-weight: 700;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.profile-rename-confirm {
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--primary-text-on-accent);
-}
-
-.profile-rename-confirm:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.profile-rename-cancel {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-dim);
-}
-
-.profile-rename-cancel:hover:not(:disabled) {
-  color: var(--text);
-  border-color: var(--text);
 }
 
 .profile-error {

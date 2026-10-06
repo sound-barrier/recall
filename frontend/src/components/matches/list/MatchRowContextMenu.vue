@@ -226,7 +226,7 @@ function onHide() {
       <div
         v-if="position"
         ref="menuRef"
-        class="match-row-ctx"
+        class="menu-panel match-row-ctx"
         role="menu"
         data-row-ctx
         :style="menuStyle"
@@ -234,7 +234,7 @@ function onHide() {
         <button
           type="button"
           role="menuitem"
-          class="match-row-ctx-item"
+          class="menu-item match-row-ctx-item"
           data-row-ctx-open
           @click="onOpenDetail"
         >
@@ -244,7 +244,7 @@ function onHide() {
         <button
           type="button"
           role="menuitem"
-          class="match-row-ctx-item"
+          class="menu-item match-row-ctx-item"
           :class="{ 'is-anchor': isAnchor }"
           data-row-ctx-anchor
           @click="onToggleAnchor"
@@ -253,12 +253,12 @@ function onHide() {
           {{ isAnchor ? 'Clear since-anchor' : 'Filter from this match' }}
         </button>
 
-        <div class="match-row-ctx-sep" role="separator" aria-hidden="true" />
+        <div class="menu-sep" role="separator" aria-hidden="true" />
 
         <button
           type="button"
           role="menuitem"
-          class="match-row-ctx-item"
+          class="menu-item match-row-ctx-item"
           data-row-ctx-review
           :disabled="writesLocked"
           :title="reviewTitle"
@@ -270,7 +270,7 @@ function onHide() {
         <button
           type="button"
           role="menuitem"
-          class="match-row-ctx-item"
+          class="menu-item match-row-ctx-item"
           data-row-ctx-tag
           :disabled="writesLocked"
           :title="lockedTitle('Open the journal with the tag field focused')"
@@ -282,7 +282,7 @@ function onHide() {
         <button
           type="button"
           role="menuitem"
-          class="match-row-ctx-item"
+          class="menu-item match-row-ctx-item"
           data-row-ctx-edit-annotation
           :disabled="writesLocked"
           :title="lockedTitle('Open the journal with the note focused')"
@@ -292,13 +292,13 @@ function onHide() {
           Edit annotation
         </button>
 
-        <div class="match-row-ctx-sep" role="separator" aria-hidden="true" />
+        <div class="menu-sep" role="separator" aria-hidden="true" />
 
         <button
           v-if="replayCode"
           type="button"
           role="menuitem"
-          class="match-row-ctx-item"
+          class="menu-item match-row-ctx-item"
           data-row-ctx-copy-replay
           @click="onCopyReplay"
         >
@@ -308,7 +308,7 @@ function onHide() {
         <button
           type="button"
           role="menuitem"
-          class="match-row-ctx-item"
+          class="menu-item match-row-ctx-item"
           data-row-ctx-copy-link
           @click="onCopyLink"
         >
@@ -318,7 +318,7 @@ function onHide() {
         <button
           type="button"
           role="menuitem"
-          class="match-row-ctx-item"
+          class="menu-item match-row-ctx-item"
           data-row-ctx-send-coach
           :disabled="sessionActive"
           :title="sendTitle"
@@ -331,7 +331,7 @@ function onHide() {
           v-if="isWails"
           type="button"
           role="menuitem"
-          class="match-row-ctx-item"
+          class="menu-item match-row-ctx-item"
           data-row-ctx-open-folder
           @click="onOpenSourceFolder"
         >
@@ -339,12 +339,12 @@ function onHide() {
           Open source folder
         </button>
 
-        <div class="match-row-ctx-sep" role="separator" aria-hidden="true" />
+        <div class="menu-sep" role="separator" aria-hidden="true" />
 
         <button
           type="button"
           role="menuitem"
-          class="match-row-ctx-item is-danger"
+          class="menu-item match-row-ctx-item is-danger"
           data-row-ctx-hide
           :disabled="writesLocked"
           :title="lockedTitle('Move this match to the archive')"
@@ -363,67 +363,20 @@ function onHide() {
   position: fixed;
   z-index: 130;
   min-width: 200px;
-  padding: var(--space-1);
-  background: var(--surface);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-overlay);
-  box-shadow: 0 16px 32px -16px rgb(var(--shadow-rgb) / 50%);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-0-5);
   isolation: isolate;
 }
 
 .match-row-ctx-item {
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-2);
-  font-family: var(--mono);
   font-size: var(--type-sm);
-  letter-spacing: 0.08em;
-  font-weight: 600;
-  text-align: left;
-  color: var(--text);
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: background var(--duration-instant) ease, color var(--duration-instant) ease;
-}
-
-.match-row-ctx-item:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.match-row-ctx-item:hover,
-.match-row-ctx-item:focus-visible {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  color: var(--accent-text);
-  outline: none;
 }
 
 .match-row-ctx-item.is-anchor .match-row-ctx-glyph {
   color: var(--accent-text);
 }
 
-.match-row-ctx-item.is-danger:hover,
-.match-row-ctx-item.is-danger:focus-visible {
-  background: color-mix(in srgb, var(--loss) 14%, transparent);
-  color: var(--loss);
-}
-
 .match-row-ctx-item.is-danger:hover .match-row-ctx-glyph,
 .match-row-ctx-item.is-danger:focus-visible .match-row-ctx-glyph {
   color: var(--loss);
-}
-
-.match-row-ctx-sep {
-  height: 1px;
-  margin: var(--space-1) var(--space-2);
-  background: color-mix(in srgb, var(--border) 70%, transparent);
 }
 
 .match-row-ctx-glyph {

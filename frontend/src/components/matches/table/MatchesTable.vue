@@ -141,13 +141,12 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
 </script>
 
 <template>
-  <div class="leaves-table-wrap">
+  <div class="stack leaves-table-wrap">
     <div class="tablemode-bar">
-      <div class="seg" role="group" aria-label="Table view mode">
+      <div class="segmented" role="group" aria-label="Table view mode">
         <button
           type="button"
-          class="seg-btn"
-          :class="{ 'seg-btn-active': tableMode === 'flat' }"
+          class="segmented-btn seg-btn"
           :aria-pressed="tableMode === 'flat'"
           data-table-mode-pick="flat"
           @click="setTableMode('flat')"
@@ -156,8 +155,7 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
         </button>
         <button
           type="button"
-          class="seg-btn"
-          :class="{ 'seg-btn-active': tableMode === 'pivot' }"
+          class="segmented-btn seg-btn"
           :aria-pressed="tableMode === 'pivot'"
           data-table-mode-pick="pivot"
           @click="setTableMode('pivot')"
