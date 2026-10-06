@@ -31,7 +31,7 @@ const emit = defineEmits<{
       </span>
       <button
         type="button"
-        class="toast-dismiss tilt-nudge-dismiss"
+        class="btn-mono tilt-nudge-dismiss"
         @click="emit('dismiss')"
       >
         Got it

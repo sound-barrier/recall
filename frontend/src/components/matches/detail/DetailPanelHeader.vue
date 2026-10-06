@@ -178,7 +178,7 @@ const emit = defineEmits<{
     <span class="detail-session-clock">{{ clockNote }}</span>
     <button
       type="button"
-      class="detail-film-room"
+      class="btn-mono is-accent"
       data-open-film-room
       :disabled="!canHandOff"
       :title="canHandOff ? 'Write about this match on the desk in the film room' : NO_MATCH_REASON"
@@ -194,7 +194,7 @@ const emit = defineEmits<{
     <span class="detail-session-note">This match is in it — the note lives on the desk.</span>
     <button
       type="button"
-      class="detail-film-room"
+      class="btn-mono is-accent"
       data-open-film-room
       title="Put this match on the desk in the film room"
       @click="openInSittingRoom"
@@ -216,7 +216,7 @@ const emit = defineEmits<{
     <button
       v-if="record.source === 'ocr_edited'"
       type="button"
-      class="detail-reset-btn"
+      class="btn-mono is-sm is-accent detail-reset-btn"
       title="Discard every edit and restore the scanned (OCR) values"
       @click="emit('reset')"
     >
@@ -304,25 +304,6 @@ const emit = defineEmits<{
   color: var(--text-dim);
 }
 
-.detail-film-room {
-  appearance: none;
-  padding: var(--space-1) var(--space-2);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: var(--accent-text);
-  background: var(--surface);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius);
-  cursor: pointer;
-}
-
-.detail-film-room:hover {
-  background: var(--accent-soft);
-}
-
 .detail-close {
   font-weight: 700;
 }
@@ -368,31 +349,6 @@ const emit = defineEmits<{
 .detail-title-result.result-victory { color: var(--win); }
 .detail-title-result.result-defeat  { color: var(--loss); }
 .detail-title-result.result-draw    { color: var(--draw); }
-
-/* "Reset to OCR" — only shown on an edited match. */
-.detail-reset-btn {
-  appearance: none;
-  font-family: var(--mono);
-  font-size: var(--type-3xs);
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--accent-text);
-  background: transparent;
-  border: 1px solid var(--accent-soft);
-  border-radius: var(--radius);
-  padding: var(--space-0-5) var(--space-2);
-  cursor: pointer;
-}
-
-.detail-reset-btn:hover {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-}
-
-.detail-reset-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
 
 /* Provenance banner — full-width strip under the toolbar with a left accent rule
    so "Edited" / "User entered" read at a glance. Reset-to-OCR (edited only) is

@@ -135,7 +135,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
         <footer class="dossier-manage-foot">
           <button
             type="button"
-            class="dossier-manage-reset"
+            class="btn-mono is-lg dossier-manage-reset"
             data-reset-layout
             @click="onReset"
           >
@@ -247,31 +247,13 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
   margin-top: var(--space-0-5);
 }
 
-.dossier-manage-reset {
-  appearance: none;
-  width: 100%;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-dim);
-  font-family: var(--mono);
-  font-size: var(--type-xs);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  padding: var(--space-2) var(--space-2);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: color var(--duration-instant) ease, border-color var(--duration-instant) ease, background var(--duration-instant) ease;
-}
+.dossier-manage-reset { width: 100%; }
 
-.dossier-manage-reset:hover {
+/* Resetting the layout is destructive — warn on hover without a danger
+   frame at rest. */
+.dossier-manage-reset:hover:not(:disabled) {
   color: var(--loss);
   border-color: var(--loss-line);
-}
-
-.dossier-manage-reset:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
 .dossier-manage-fade-enter-active,

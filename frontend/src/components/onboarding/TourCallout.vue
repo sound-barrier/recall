@@ -142,7 +142,7 @@ const connector = computed(() => computeConnector(getTargetRect(), {
     <footer class="tour-callout-actions">
       <button
         type="button"
-        class="tour-callout-skip"
+        class="btn-mono is-sm is-text"
         @click="emit('skip')"
       >
         Skip tour
@@ -349,25 +349,6 @@ const connector = computed(() => computeConnector(getTargetRect(), {
 .tour-callout-actions-primary {
   display: inline-flex;
   gap: var(--space-2);
-}
-
-.tour-callout-skip {
-  background: transparent;
-  border: 0;
-  padding: var(--space-1) var(--space-0-5);
-  font-family: var(--mono);
-  font-size: var(--type-xs);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  cursor: pointer;
-}
-
-.tour-callout-skip:hover { color: var(--text-dim); }
-
-.tour-callout-skip:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
 }
 
 .tour-callout-next-arrow { margin-left: 0.35em; }

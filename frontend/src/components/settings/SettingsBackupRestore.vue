@@ -117,7 +117,7 @@ const INTERVALS = [
         <div class="setting-control">
           <div
             v-if="autoBackup"
-            class="auto-backup-grid"
+            class="segmented"
             role="radiogroup"
             aria-label="Automatic backup interval"
           >
@@ -125,10 +125,9 @@ const INTERVALS = [
               v-for="opt in INTERVALS"
               :key="opt.days"
               type="button"
-              class="auto-backup-cell"
+              class="segmented-btn"
               role="radio"
               :aria-checked="autoBackup.interval_days === opt.days"
-              :class="{ active: autoBackup.interval_days === opt.days }"
               :data-auto-backup-interval="opt.days"
               :title="opt.title"
               @click="settingsStore.setAutoBackupInterval(opt.days)"
@@ -223,59 +222,6 @@ const INTERVALS = [
 </template>
 
 <style scoped>
-/* Segmented interval picker — the SettingsCalendar week-start cell
-   language, sized for word labels instead of day letters. (That
-   grid's styles are scoped to its own SFC, hence the local copy.) */
-.auto-backup-grid {
-  display: inline-flex;
-  background: var(--surface-2);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius);
-  padding: var(--space-0-5);
-  transition: border-color var(--duration-fast) ease;
-}
-
-.auto-backup-grid:hover {
-  border-color: var(--border-strong);
-}
-
-.auto-backup-grid:focus-within {
-  border-color: var(--accent);
-}
-
-.auto-backup-cell {
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 34px;
-  padding: 0 var(--space-3);
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-hair);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  cursor: pointer;
-  transition: color var(--duration-fast) ease, background var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
-}
-
-.auto-backup-cell:hover {
-  color: var(--text);
-  background: color-mix(in srgb, var(--text) 3%, transparent);
-}
-
-.auto-backup-cell.active {
-  /* Full-contrast text: the OW orange on its soft fill sits at ~3.8:1,
-     under AA for this 10px-bold label — the ring + fill carry the
-     selected state, the text stays var(--text) (a11y.md contrast rule). */
-  color: var(--text);
-  background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px var(--accent);
-}
 
 .auto-backup-stale {
   display: inline-flex;

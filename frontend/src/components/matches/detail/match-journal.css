@@ -83,35 +83,6 @@
   gap: var(--space-2);
 }
 
-/* Apply previous / Confirm / Undo — head-strip-scale controls that read
-   as chrome, not content, matching the strip's mono uppercase voice. */
-.journal-apply-btn {
-  appearance: none;
-  font-family: var(--mono);
-  font-size: var(--type-3xs);
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  padding: var(--space-0-5) var(--space-2);
-  background: transparent;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  color: var(--text);
-  cursor: pointer;
-  transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
-}
-
-.journal-apply-btn:hover,
-.journal-apply-btn:focus-visible {
-  border-color: var(--accent);
-  color: var(--accent-text);
-}
-
-.journal-apply-btn.undo {
-  border-color: var(--border-soft);
-  color: var(--text-dim);
-}
-
 .journal-head-meta {
   display: inline-flex;
   align-items: center;

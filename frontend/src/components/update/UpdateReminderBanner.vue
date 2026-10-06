@@ -39,7 +39,7 @@ const { shouldShowBanner, daysSinceLastCheck, dismiss } = useUpdateReminder(upda
       </div>
       <button
         type="button"
-        class="update-reminder-banner-check"
+        class="btn-mono is-primary update-reminder-banner-check"
         data-update-reminder-check
         @click="openAbout"
       >
@@ -119,30 +119,7 @@ const { shouldShowBanner, daysSinceLastCheck, dismiss } = useUpdateReminder(upda
 }
 
 .update-reminder-banner-check {
-  appearance: none;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--surface);
-  font-family: var(--mono);
-  font-weight: 700;
-  font-size: var(--type-2xs);
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: background var(--duration-fast) ease, color var(--duration-fast) ease;
   flex: 0 0 auto;
-}
-
-.update-reminder-banner-check:hover {
-  background: color-mix(in srgb, var(--accent) 80%, var(--text));
-  color: var(--surface);
-}
-
-.update-reminder-banner-check:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .update-reminder-banner-dismiss {

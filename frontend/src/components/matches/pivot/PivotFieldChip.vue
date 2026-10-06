@@ -130,7 +130,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
       <template v-if="filterOptions?.length">
         <div class="pivot-chip-menu-head">
           <span>{{ shownCount }} of {{ filterOptions.length }} shown</span>
-          <button type="button" class="pivot-chip-reset" @click="emit('act', { type: 'filterReset' })">
+          <button type="button" class="btn-mono is-sm is-accent pivot-chip-reset" @click="emit('act', { type: 'filterReset' })">
             All
           </button>
         </div>
@@ -262,23 +262,6 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-faint);
-}
-
-.pivot-chip-reset {
-  font-family: var(--mono);
-  font-size: var(--type-4xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding: var(--space-0-5) var(--space-1);
-  color: var(--accent-text);
-  background: transparent;
-  border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--border));
-  border-radius: var(--radius);
-  cursor: pointer;
-}
-
-.pivot-chip-reset:hover {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 /* A real checkbox face: filled accent square + ✓ when included, an empty

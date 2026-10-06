@@ -1,11 +1,8 @@
 /* Shared chrome for the "Narrow this set" panel + its facet sub-components
    (NarrowPopover, NarrowChipFacet). Imported once by NarrowPopover; the
    np-section + np-chip families are narrow-panel-specific, so global scope is
-   safe and lets the facet children share them with no duplication.
-
-   NOTE: .np-btn deliberately STAYS scoped in NarrowPopover — the child
-   NarrowPresets renders a .np-btn it does not style itself, and a global .np-btn
-   would silently restyle it. Keep it scoped to preserve that. */
+   safe and lets the facet children share them with no duplication. Buttons
+   are the global .btn-mono family, so none are styled here. */
 
 .np-section-head {
   display: flex;
@@ -63,8 +60,8 @@
 
 /* ─── Narrow panel content — head / search / columns / refine / since-anchor
    / foot. Moved out of NarrowPopover's scoped block (all classes unique to
-   the panel, so global is safe). The .np-btn + .left-panel / .lp-* shell
-   stay scoped in NarrowPopover (.np-btn must not leak into NarrowPresets). */
+   the panel, so global is safe). The .left-panel / .lp-* shell stays
+   scoped in NarrowPopover. */
 .np-head {
   display: flex;
   align-items: baseline;
@@ -243,36 +240,6 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-}
-
-.np-since-anchor-open,
-.np-since-anchor-clear {
-  appearance: none;
-  background: transparent;
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
-  color: var(--text-dim);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: background var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
-}
-
-.np-since-anchor-open:hover,
-.np-since-anchor-clear:hover {
-  border-color: var(--accent);
-  color: var(--text);
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-}
-
-.np-since-anchor-open:focus-visible,
-.np-since-anchor-clear:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .np-foot {

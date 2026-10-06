@@ -119,7 +119,7 @@ function pickTag(v: string) {
       <button
         v-if="selectedCount < sortedCount"
         type="button"
-        class="bulk-select-all"
+        class="btn-mono is-accent bulk-select-all"
         @click="emit('selectAll')"
       >
         Select all ({{ sortedCount }})
@@ -129,7 +129,7 @@ function pickTag(v: string) {
            actions. The label says exactly what it will act on. -->
       <button
         type="button"
-        class="bulk-review"
+        class="btn-mono is-primary"
         data-testid="bulk-review-these"
         :disabled="writesLocked"
         :title="reviewTitle"
@@ -140,7 +140,7 @@ function pickTag(v: string) {
       </button>
       <button
         type="button"
-        class="bulk-hide"
+        class="btn-mono bulk-hide"
         :disabled="writesLocked"
         :title="lockedTitle('Move the selected matches to the archive')"
         @click="emit('hide')"
@@ -150,7 +150,7 @@ function pickTag(v: string) {
       </button>
       <button
         type="button"
-        class="bulk-export"
+        class="btn-mono"
         data-testid="bulk-send-to-coach"
         :disabled="sessionActive"
         :title="sendTitle"
@@ -161,7 +161,7 @@ function pickTag(v: string) {
       </button>
       <button
         type="button"
-        class="bulk-export"
+        class="btn-mono"
         data-testid="bulk-export-bundle"
         @click="emit('exportBundle')"
       >
@@ -170,7 +170,7 @@ function pickTag(v: string) {
       </button>
       <button
         type="button"
-        class="bulk-export"
+        class="btn-mono"
         data-testid="bulk-export-csv"
         @click="emit('exportCsv')"
       >
@@ -182,7 +182,7 @@ function pickTag(v: string) {
       <div class="bab-menu-wrap">
         <button
           type="button"
-          class="bulk-mode"
+          class="btn-mono bulk-mode"
           :class="{ open: openMenu === 'play-mode' }"
           :aria-expanded="openMenu === 'play-mode' ? 'true' : 'false'"
           aria-haspopup="menu"
@@ -223,7 +223,7 @@ function pickTag(v: string) {
       <div class="bab-menu-wrap">
         <button
           type="button"
-          class="bulk-mode"
+          class="btn-mono bulk-mode"
           :class="{ open: openMenu === 'queue' }"
           :aria-expanded="openMenu === 'queue' ? 'true' : 'false'"
           aria-haspopup="menu"
@@ -265,7 +265,7 @@ function pickTag(v: string) {
       <div class="bab-menu-wrap">
         <button
           type="button"
-          class="bulk-mode"
+          class="btn-mono bulk-mode"
           :class="{ open: openMenu === 'tag' }"
           :aria-expanded="openMenu === 'tag' ? 'true' : 'false'"
           aria-haspopup="menu"
@@ -300,14 +300,14 @@ function pickTag(v: string) {
       <button
         v-if="otherProfiles.length > 0"
         type="button"
-        class="bulk-move"
+        class="btn-mono bulk-move"
         :disabled="writesLocked"
         :title="lockedTitle('Move the selected matches to another profile')"
         @click="emit('moveBegin')"
       >
         Move to…
       </button>
-      <button type="button" class="bulk-cancel" @click="emit('clear')">
+      <button type="button" class="btn-mono bulk-cancel" @click="emit('clear')">
         Clear
       </button>
     </template>
@@ -317,12 +317,12 @@ function pickTag(v: string) {
         v-for="p in otherProfiles"
         :key="p"
         type="button"
-        class="bulk-move-target"
+        class="btn-mono is-accent bulk-move-target"
         @click="emit('moveCommit', p)"
       >
         {{ p }}
       </button>
-      <button type="button" class="bulk-cancel" @click="emit('moveCancel')">
+      <button type="button" class="btn-mono bulk-cancel" @click="emit('moveCancel')">
         Cancel
       </button>
     </template>
@@ -369,73 +369,7 @@ function pickTag(v: string) {
 
 .bab-spacer { flex: 1 1 auto; }
 
-.bulk-action-bar button {
-  appearance: none;
-  border-radius: var(--radius);
-  padding: var(--space-1) var(--space-3);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  font-weight: 700;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  line-height: 1;
-}
-
-.bulk-review {
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--primary-text-on-accent);
-}
-
-.bulk-review:hover { filter: brightness(1.08); }
-
-.bulk-hide {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text);
-}
-
-.bulk-hide:hover {
-  border-color: var(--accent);
-  color: var(--accent-text);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-}
-
-.bulk-select-all {
-  border: 1px solid var(--accent);
-  background: transparent;
-  color: var(--accent-text);
-}
-
-.bulk-select-all:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
-
-.bulk-move {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text);
-}
-
-.bulk-move:hover {
-  border-color: var(--accent);
-  color: var(--accent-text);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-}
-
-.bulk-move-target {
-  border: 1px solid var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent-text);
-  font-style: italic;
-}
-
-.bulk-move-target:hover {
-  background: var(--accent);
-  color: var(--primary-text-on-accent);
-}
+.bulk-move-target { font-style: italic; }
 
 .bab-prompt {
   font-family: var(--mono);
@@ -446,32 +380,7 @@ function pickTag(v: string) {
   font-weight: 700;
 }
 
-.bulk-cancel {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-dim);
-}
-
-.bulk-cancel:hover {
-  color: var(--text);
-  border-color: var(--text);
-}
-
 .bab-btn-glyph { font-size: var(--type-lg); }
-
-.bulk-mode {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text);
-}
-
-.bulk-mode:hover,
-.bulk-mode:focus-visible {
-  border-color: var(--accent);
-  color: var(--accent-text);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  outline: none;
-}
 
 .bulk-mode.open {
   border-color: var(--accent);

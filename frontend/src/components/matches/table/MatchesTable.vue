@@ -168,7 +168,7 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
       </span>
       <button
         type="button"
-        class="export-csv-btn"
+        class="btn-mono"
         data-testid="export-csv"
         @click="emit('export-csv')"
       >

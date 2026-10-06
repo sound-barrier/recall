@@ -392,11 +392,10 @@ defineExpose({ focus: focusField })
         <!-- role="group", not a tablist: the app has exactly one tablist and it
            belongs to the seven views. Every other two-state picker here is a
            pressed pair. -->
-        <div class="note-mode" role="group" aria-label="Note format">
+        <div class="segmented is-sm note-mode" role="group" aria-label="Note format">
           <button
             type="button"
-            class="note-mode-btn"
-            :class="{ 'note-mode-on': mode === 'rich' }"
+            class="segmented-btn"
             :aria-pressed="mode === 'rich'"
             data-note-mode-pick="rich"
             @click="mode = 'rich'"
@@ -405,8 +404,7 @@ defineExpose({ focus: focusField })
           </button>
           <button
             type="button"
-            class="note-mode-btn"
-            :class="{ 'note-mode-on': mode === 'raw' }"
+            class="segmented-btn"
             :aria-pressed="mode === 'raw'"
             data-note-mode-pick="raw"
             @click="mode = 'raw'"
@@ -490,7 +488,6 @@ defineExpose({ focus: focusField })
   margin: 0 0 var(--space-2);
 }
 
-
 .note-tool {
   min-width: 1.9rem;
   font-family: var(--mono);
@@ -531,37 +528,7 @@ defineExpose({ focus: focusField })
 }
 
 .note-mode {
-  display: flex;
   flex: 0 0 auto;
-}
-
-.note-mode-btn {
-  padding: var(--space-0-5) var(--space-2);
-  font-family: var(--mono);
-  font-size: var(--type-3xs);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  cursor: pointer;
-  background: transparent;
-  border: 1px solid var(--hairline);
-}
-
-.note-mode-btn + .note-mode-btn {
-  border-left: none;
-}
-
-.note-mode-btn:first-child {
-  border-radius: var(--radius) 0 0 var(--radius);
-}
-
-.note-mode-btn:last-child {
-  border-radius: 0 var(--radius) var(--radius) 0;
-}
-
-.note-mode-on {
-  color: var(--text);
-  background: var(--surface-3);
 }
 
 .note-raw {

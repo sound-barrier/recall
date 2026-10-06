@@ -32,29 +32,6 @@
   .cell-copy-hint { display: none; }
 }
 
-.export-csv-btn {
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: var(--space-1) var(--space-3);
-  color: var(--text);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: color var(--duration-instant) ease, border-color var(--duration-instant) ease;
-}
-
-.export-csv-btn:hover {
-  color: var(--accent-text);
-  border-color: var(--accent);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .export-csv-btn { transition: none; }
-}
-
 /* No text selection while drag-selecting a cell range. */
 .leaves-table-scroll.is-cell-dragging { user-select: none; }
 

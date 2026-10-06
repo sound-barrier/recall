@@ -42,7 +42,7 @@ function onSavePreset() {
         @keydown.enter.prevent="onSavePreset"
       >
       <button
-        class="np-btn ghost"
+        class="btn-mono"
         :disabled="!newPresetName.trim()"
         data-presets-save-btn
         @click="onSavePreset"

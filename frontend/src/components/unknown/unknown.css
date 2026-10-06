@@ -290,7 +290,7 @@
 .btn-mono.unknown-delete-btn.armed,
 .btn-mono.unknown-delete-btn.armed:hover:not(:disabled) {
   background: var(--loss);
-  color: var(--primary-text-on-accent);
+  color: var(--primary-text-on-danger);
   border-color: var(--loss);
   position: relative;
   isolation: isolate;

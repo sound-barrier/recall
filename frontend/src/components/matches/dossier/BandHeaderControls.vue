@@ -90,7 +90,7 @@ const emit = defineEmits<{
   <button
     v-if="reset"
     type="button"
-    class="bh-reset"
+    class="btn-mono is-accent bh-reset"
     v-bind="reset.attrs"
     :title="reset.title"
     @click="emit('reset')"
@@ -169,25 +169,7 @@ const emit = defineEmits<{
 }
 
 /* Reset — clears the band's filter without a scroll to the chips rail. */
-.bh-reset {
-  appearance: none;
-  margin-left: var(--space-2);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--accent-text);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-weight: 700;
-  padding: var(--space-1) var(--space-2);
-  cursor: pointer;
-  transition: background var(--duration-fast) ease, color var(--duration-fast) ease;
-}
-
-.bh-reset:hover { background: var(--accent); color: var(--primary-text-on-accent); }
-.bh-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.bh-reset { margin-left: var(--space-2); }
 
 /* Gear — opens the band's display-filter popover. An accent dot in the
    corner signals when a filter is active. */

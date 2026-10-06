@@ -459,10 +459,10 @@ onUnmounted(() => {
               {{ narrowedRecords.length }} {{ narrowedRecords.length === 1 ? 'match' : 'matches' }} in this view
             </span>
             <div class="np-foot-actions">
-              <button class="np-btn ghost" :disabled="!anyNarrow" @click="resetNarrow">
+              <button class="btn-mono np-btn" :disabled="!anyNarrow" @click="resetNarrow">
                 Reset
               </button>
-              <button class="np-btn primary" @click="isOpen = false">
+              <button class="btn-mono is-primary np-btn" @click="isOpen = false">
                 Done
               </button>
             </div>

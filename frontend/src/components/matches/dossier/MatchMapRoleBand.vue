@@ -464,7 +464,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
 
       <p v-else-if="filteredEmpty" class="mr-loading">
         No maps match your filters.
-        <button type="button" class="mr-clear" data-mr-clear @click="cfg.reset()">
+        <button type="button" class="btn-mono is-sm is-accent mr-clear" data-mr-clear @click="cfg.reset()">
           Clear filters
         </button>
       </p>
