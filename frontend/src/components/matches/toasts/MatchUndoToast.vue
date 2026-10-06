@@ -77,7 +77,7 @@ function onDismiss() {
         </span>
         <button
           type="button"
-          class="toast-action"
+          class="btn-mono is-primary"
           data-undo-toast-undo
           @click="onUndo"
         >

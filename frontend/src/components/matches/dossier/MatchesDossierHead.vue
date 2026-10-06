@@ -218,7 +218,7 @@ function toggleNarrow() {
       <div class="dossier-manage-anchor">
         <button
           type="button"
-          class="dossier-btn"
+          class="btn-mono is-lg dossier-btn"
           :class="{ 'is-open': showManageMenu }"
           data-dossier-add
           :aria-expanded="showManageMenu ? 'true' : 'false'"
@@ -235,7 +235,7 @@ function toggleNarrow() {
       <div v-if="props.narrowMode === 'popover'" class="narrow-anchor">
         <button
           ref="triggerRef"
-          class="dossier-btn primary"
+          class="btn-mono is-lg is-accent dossier-btn primary"
           :class="{ 'is-open': narrowOpen }"
           :aria-expanded="narrowOpen ? 'true' : 'false'"
           aria-haspopup="true"
@@ -261,7 +261,7 @@ function toggleNarrow() {
       <button
         v-if="hasDateRange"
         type="button"
-        class="dossier-btn"
+        class="btn-mono is-lg dossier-btn"
         data-reset-filter
         title="Clear the selected date range"
         @click="resetDateRange"
@@ -412,34 +412,11 @@ function toggleNarrow() {
   .dashboard-widget-move { transition: none; }
 }
 
-.dossier-btn {
-  appearance: none;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: var(--space-2) var(--space-4);
-  font-family: var(--mono);
-  font-size: var(--type-sm);
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.dossier-btn.primary {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  border-color: var(--accent);
-  color: var(--accent-text);
-}
-
-.dossier-btn.primary.is-open {
+.dossier-btn.primary.is-open,
+.dossier-btn.primary.is-open:hover {
   background: var(--accent);
-  color: var(--surface);
+  color: var(--primary-text-on-accent);
 }
-
-.dossier-btn:hover { border-color: var(--accent); color: var(--accent-text); }
-.dossier-btn.primary.is-open:hover { color: var(--surface); }
 
 .narrow-count { color: inherit; font-weight: 700; }
 

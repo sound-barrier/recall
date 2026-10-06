@@ -104,7 +104,7 @@ const popoverStyle = computed(() =>
           <span class="eyebrow accent mrc-eyebrow">Geography filters</span>
           <button
             type="button"
-            class="mrc-reset"
+            class="btn-mono mrc-reset"
             data-mr-reset
             :disabled="cfg.isDefault.value"
             @click="cfg.reset()"
@@ -219,23 +219,7 @@ const popoverStyle = computed(() =>
   justify-content: space-between;
 }
 
-.mrc-reset {
-  appearance: none;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-dim);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: color var(--duration-instant) ease, border-color var(--duration-instant) ease;
-}
 .mrc-reset:hover:not(:disabled) { color: var(--loss); border-color: var(--loss-line); }
-.mrc-reset:disabled { opacity: 0.4; cursor: default; }
-.mrc-reset:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 
 .mrc-label {
   display: inline-flex;

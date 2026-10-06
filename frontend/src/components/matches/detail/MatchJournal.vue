@@ -275,7 +275,7 @@ onMounted(() => {
         <template v-if="applyPending">
           <button
             type="button"
-            class="journal-apply-btn"
+            class="btn-mono is-sm"
             data-journal-apply-confirm
             :aria-label="`Confirm members and tags copied from ${applySource?.match_key ?? 'the previous match'}`"
             @click="confirmAppliedAnnotation"
@@ -284,7 +284,7 @@ onMounted(() => {
           </button>
           <button
             type="button"
-            class="journal-apply-btn undo"
+            class="btn-mono is-sm"
             data-journal-apply-undo
             aria-label="Undo the applied annotation"
             @click="undoAppliedAnnotation"
@@ -295,7 +295,7 @@ onMounted(() => {
         <button
           v-else-if="applySource"
           type="button"
-          class="journal-apply-btn"
+          class="btn-mono is-sm"
           data-journal-apply
           :disabled="writesLocked"
           :title="lockReason || undefined"
@@ -487,7 +487,7 @@ onMounted(() => {
             v-for="t in NAMED_TAGS"
             :key="t"
             type="button"
-            class="match-tag-toggle"
+            class="btn-mono is-sm match-tag-toggle"
             :class="{ active: hasTag(t) }"
             :data-tag="t"
             :data-tag-add="t"

@@ -73,7 +73,7 @@ defineEmits<{
       <span class="pp-stream-lost-text">Lost connection to the server. The parse may have finished.</span>
       <button
         type="button"
-        class="pp-stream-refresh"
+        class="btn-mono pp-stream-refresh"
         data-parse-refresh
         @click="$emit('refresh')"
       >
@@ -283,23 +283,18 @@ defineEmits<{
 
 .pp-stream-lost-text { font-weight: 500; }
 
+/* Inherits the lost-stream banner's loss color on purpose. */
 .pp-stream-refresh {
-  appearance: none;
-  border: 1px solid currentcolor;
-  border-radius: var(--radius);
-  background: transparent;
+  border-color: currentcolor;
   color: inherit;
-  padding: var(--space-1) var(--space-3);
-  font-family: var(--mono);
-  font-size: var(--type-xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  font-weight: 700;
-  cursor: pointer;
   flex-shrink: 0;
 }
 
-.pp-stream-refresh:hover { background: color-mix(in srgb, currentcolor 14%, transparent); }
+.pp-stream-refresh:hover:not(:disabled) {
+  border-color: currentcolor;
+  background: color-mix(in srgb, currentcolor 14%, transparent);
+  color: inherit;
+}
 
 .pp-current {
   display: flex;

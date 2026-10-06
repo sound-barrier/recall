@@ -22,23 +22,6 @@
   color: var(--text-faint);
 }
 
-.hp-reset {
-  appearance: none;
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--accent-text);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: var(--space-1) var(--space-2);
-  cursor: pointer;
-}
-
-.hp-reset:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
-.hp-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-
 .hp-gear {
   appearance: none;
   margin-left: auto;

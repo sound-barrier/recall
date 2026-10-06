@@ -18,7 +18,7 @@ function reload() {
       Check your connection — or the app may have updated underneath
       this session. Reloading fetches the current version.
     </p>
-    <button type="button" class="vle-reload" @click="reload">
+    <button type="button" class="btn-mono is-lg is-accent vle-reload" @click="reload">
       Reload Recall
     </button>
   </div>
@@ -56,29 +56,6 @@ function reload() {
 }
 
 .vle-reload {
-  appearance: none;
   margin-top: var(--space-1);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--accent-text);
-  font-family: var(--mono);
-  font-size: var(--type-xs);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-weight: 700;
-  padding: var(--space-2) var(--space-4);
-  cursor: pointer;
-  transition: background var(--duration-fast) ease, color var(--duration-fast) ease;
-}
-
-.vle-reload:hover {
-  background: var(--accent);
-  color: var(--primary-text-on-accent);
-}
-
-.vle-reload:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
 }
 </style>

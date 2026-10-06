@@ -210,7 +210,7 @@ function sourceLabel(source: string): string {
         </button>
       </li>
       <li class="active-chip clear">
-        <button class="chip-clear" @click="resetNarrow">
+        <button class="btn-mono is-sm is-text" @click="resetNarrow">
           Clear all
         </button>
       </li>
@@ -305,19 +305,4 @@ function sourceLabel(source: string): string {
   border: 1px dashed var(--text-faint);
   padding: 0;
 }
-
-.chip-clear {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  padding: var(--space-0-5) var(--space-2);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  cursor: pointer;
-  font-weight: 700;
-}
-.chip-clear:hover { color: var(--accent-text); }
 </style>

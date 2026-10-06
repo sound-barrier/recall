@@ -81,11 +81,11 @@ async function submit() {
             <template v-else>Still needed: {{ f.missingRequired.value.join(', ') }}</template>
           </span>
           <div class="mm-foot-actions">
-            <button class="mm-btn ghost" @click="emit('close')">
+            <button class="btn-mono is-lg" @click="emit('close')">
               Cancel
             </button>
             <button
-              class="mm-btn primary"
+              class="btn-mono is-lg is-primary"
               data-mm-submit
               :disabled="!f.canSubmit.value || submitting || writesLocked"
               :title="lockedTitle('Save this match')"
@@ -202,23 +202,4 @@ async function submit() {
 
 .mm-foot-actions { margin-left: auto; display: inline-flex; gap: var(--space-2); }
 
-.mm-btn {
-  appearance: none;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: var(--space-2) var(--space-4);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  font-weight: 700;
-  color: var(--text-dim);
-  cursor: pointer;
-}
-
-.mm-btn.ghost:hover { border-color: var(--accent); color: var(--accent-text); }
-.mm-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--primary-text-on-accent); }
-.mm-btn.primary:hover:not(:disabled) { background: var(--accent-bright); }
-.mm-btn.primary:disabled { opacity: 0.45; cursor: not-allowed; }
 </style>

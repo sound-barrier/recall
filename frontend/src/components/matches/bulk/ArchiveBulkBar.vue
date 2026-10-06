@@ -50,14 +50,14 @@ const {
       <button
         v-if="archiveSelectedKeys.size < hiddenRecords.length"
         type="button"
-        class="bulk-select-all"
+        class="btn-mono bulk-select-all"
         @click="selectAllArchive"
       >
         Select all ({{ hiddenRecords.length }})
       </button>
       <button
         type="button"
-        class="bulk-unhide"
+        class="btn-mono is-primary bulk-unhide"
         :disabled="writesLocked"
         :title="lockedTitle('Bring the selected matches back into the list')"
         @click="unhideSelectedArchive"
@@ -67,7 +67,7 @@ const {
       <button
         v-if="otherProfiles.length > 0"
         type="button"
-        class="bulk-move"
+        class="btn-mono bulk-move"
         :disabled="writesLocked"
         :title="lockedTitle('Move the selected matches to another profile')"
         @click="emit('begin-move')"
@@ -76,14 +76,14 @@ const {
       </button>
       <button
         type="button"
-        class="bulk-delete"
+        class="btn-mono is-danger bulk-delete"
         :disabled="writesLocked"
         :title="lockedTitle('Delete the selected matches for good')"
         @click="requestBulkHardDelete"
       >
         Delete forever
       </button>
-      <button type="button" class="bulk-cancel" @click="clearArchiveSelection">
+      <button type="button" class="btn-mono bulk-cancel" @click="clearArchiveSelection">
         Clear
       </button>
     </template>
@@ -93,12 +93,12 @@ const {
         v-for="p in otherProfiles"
         :key="p"
         type="button"
-        class="bulk-move-target"
+        class="btn-mono bulk-move-target"
         @click="emit('move-to-profile', p)"
       >
         {{ p }}
       </button>
-      <button type="button" class="bulk-cancel" @click="emit('cancel-move')">
+      <button type="button" class="btn-mono bulk-cancel" @click="emit('cancel-move')">
         Cancel
       </button>
     </template>
@@ -109,14 +109,14 @@ const {
       </span>
       <button
         type="button"
-        class="bulk-confirm"
+        class="btn-mono is-danger-fill bulk-confirm"
         :disabled="writesLocked"
         :title="lockedTitle('Delete the selected matches for good')"
         @click="commitBulkHardDelete"
       >
         Confirm
       </button>
-      <button type="button" class="bulk-cancel" @click="cancelBulkHardDelete">
+      <button type="button" class="btn-mono bulk-cancel" @click="cancelBulkHardDelete">
         Cancel
       </button>
     </template>
@@ -164,57 +164,4 @@ const {
   color: var(--text);
   font-weight: 700;
 }
-
-.archive-action-bar button {
-  appearance: none;
-  border-radius: var(--radius);
-  padding: var(--space-1) var(--space-3);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  font-weight: 700;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  line-height: 1;
-}
-
-.bulk-unhide {
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--primary-text-on-accent);
-}
-
-.bulk-unhide:hover { filter: brightness(1.08); }
-
-.bulk-delete {
-  border: 1px solid color-mix(in srgb, var(--loss) 70%, var(--border));
-  background: transparent;
-  color: var(--loss);
-}
-
-.bulk-delete:hover { background: color-mix(in srgb, var(--loss) 12%, transparent); }
-
-.bulk-confirm {
-  border: 1px solid var(--loss);
-  background: var(--loss);
-  color: var(--primary-text-on-accent);
-}
-
-.bulk-confirm:hover { filter: brightness(1.06); }
-
-.bulk-cancel {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-dim);
-}
-
-.bulk-cancel:hover {
-  color: var(--text);
-  border-color: var(--text);
-}
-
-.bab-btn-glyph { font-size: var(--type-lg); }
 </style>

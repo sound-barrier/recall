@@ -246,7 +246,7 @@ onBeforeUnmount(() => {
       <div class="sheet-fixed export-bundle-actions">
         <button
           type="button"
-          class="export-bundle-cancel"
+          class="btn-mono is-lg"
           :disabled="busy"
           @click="onCancel"
         >
@@ -254,7 +254,7 @@ onBeforeUnmount(() => {
         </button>
         <button
           type="submit"
-          class="export-bundle-save"
+          class="btn-mono is-lg is-primary"
           :disabled="!canSubmit"
           :title="submitBlockedReason"
           data-testid="export-submit"
@@ -395,41 +395,5 @@ onBeforeUnmount(() => {
   justify-content: flex-end;
   gap: var(--space-2);
   margin-top: var(--space-4);
-}
-
-.export-bundle-cancel,
-.export-bundle-save {
-  appearance: none;
-  font-family: var(--mono);
-  font-size: var(--type-sm);
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: background var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
-}
-
-.export-bundle-cancel {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-faint);
-}
-
-.export-bundle-cancel:hover:not(:disabled) {
-  color: var(--text);
-  border-color: var(--border-strong);
-}
-
-.export-bundle-save {
-  background: var(--accent);
-  border: 1px solid var(--accent);
-  color: var(--primary-text-on-accent);
-}
-
-.export-bundle-save:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 </style>

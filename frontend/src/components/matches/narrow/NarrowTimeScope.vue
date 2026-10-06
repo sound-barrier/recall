@@ -203,7 +203,7 @@ function clearDates() {
       </label>
       <button
         v-if="customFrom || customTo"
-        class="np-date-clear"
+        class="btn-mono"
         @click="clearDates"
       >
         Clear dates
@@ -359,19 +359,4 @@ function clearDates() {
   cursor: not-allowed;
 }
 
-.np-date-clear {
-  appearance: none;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: var(--space-1) var(--space-2);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  cursor: pointer;
-}
-
-.np-date-clear:hover { color: var(--accent-text); border-color: var(--accent); }
 </style>

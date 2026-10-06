@@ -174,18 +174,21 @@
 
 /* ─── Mono buttons ───────────────────────────────────────────
    The console-voice button: monospace, uppercase, tracked out. Used for
-   compact in-panel actions (confirm/cancel pairs, row actions, modal
-   footers), where a full .btn is too loud. Separate from .btn on purpose:
-   .btn's unmarked-variant fill rules would land on every one of these.
-   The bare class is the quiet secondary action; one modifier picks the
-   role, and .is-lg steps the padding up for modal footers. */
+   compact in-panel actions (confirm/cancel pairs, row actions, resets,
+   modal footers), where a full .btn is too loud. Separate from .btn on
+   purpose: .btn's unmarked-variant fill rules would land on every one.
+   ~50 components once spelled this out themselves, across seven letter-
+   spacings and five sizes; this family is the whole vocabulary.
+     size:  .is-sm (inline chip actions) · default · .is-lg (footers)
+     role:  bare = quiet secondary · .is-primary · .is-accent ·
+            .is-danger · .is-danger-fill · .is-text (no frame) */
 .btn-mono {
   appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-1);
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-1) var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: transparent;
@@ -196,6 +199,7 @@
   letter-spacing: 0.16em;
   text-transform: uppercase;
   line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
   transition: background var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
 }
@@ -215,8 +219,14 @@
   cursor: not-allowed;
 }
 
+.btn-mono.is-sm {
+  padding: var(--space-0-5) var(--space-2);
+  font-size: var(--type-3xs);
+}
+
 .btn-mono.is-lg {
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--type-xs);
 }
 
 .btn-mono.is-primary {
@@ -256,12 +266,22 @@
 .btn-mono.is-danger-fill {
   background: var(--loss);
   border-color: var(--loss);
-  color: var(--primary-text-on-accent);
+  color: var(--primary-text-on-danger);
 }
 
 .btn-mono.is-danger-fill:hover:not(:disabled) {
   filter: brightness(1.06);
-  color: var(--primary-text-on-accent);
+  color: var(--primary-text-on-danger);
+}
+
+.btn-mono.is-text {
+  border-color: transparent;
+  color: var(--text-faint);
+}
+
+.btn-mono.is-text:hover:not(:disabled) {
+  border-color: transparent;
+  color: var(--text);
 }
 
 /* ─── Segmented control ──────────────────────────────────────
@@ -271,8 +291,10 @@
    tint in four, a solid accent fill in two. The fill wins. A tint over
    --surface-2 is a low-contrast state change, and the fill pairs with
    --primary-text-on-accent, which clears AA on every theme. State comes
-   from aria-pressed, which every one of them already set, so the look
-   and the accessible state can't drift apart. Works on a <fieldset>
+   from ARIA (aria-pressed for toggle groups, aria-checked for a
+   role="radiogroup"), which every one of them already set, so the look
+   and the accessible state can't drift apart. .is-sm is the compact
+   size for toolbars. Works on a <fieldset>
    (the resets below) as well as a <div role="group">. */
 .segmented {
   display: inline-flex;
@@ -313,7 +335,9 @@
 }
 
 .segmented-btn[aria-pressed="true"],
-.segmented-btn[aria-pressed="true"]:hover:not(:disabled) {
+.segmented-btn[aria-checked="true"],
+.segmented-btn[aria-pressed="true"]:hover:not(:disabled),
+.segmented-btn[aria-checked="true"]:hover:not(:disabled) {
   background: var(--accent);
   color: var(--primary-text-on-accent);
 }
@@ -323,8 +347,14 @@
   outline-offset: -2px;
 }
 
-.segmented-btn[aria-pressed="true"]:focus-visible {
+.segmented-btn[aria-pressed="true"]:focus-visible,
+.segmented-btn[aria-checked="true"]:focus-visible {
   outline-color: var(--primary-text-on-accent);
+}
+
+.segmented.is-sm .segmented-btn {
+  padding: var(--space-0-5) var(--space-2);
+  font-size: var(--type-3xs);
 }
 
 .segmented-btn:disabled {

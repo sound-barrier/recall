@@ -359,38 +359,13 @@
 .match-tag-x:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent-soft); }
 
 .match-tag-toggle {
-  display: inline-flex;
-  align-items: center;
   gap: var(--space-2);
-  padding: var(--space-0-5) var(--space-2) var(--space-0-5) var(--space-2);
-  background: transparent;
-  border: 1px dashed var(--border);
-  border-radius: var(--radius);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.16em;
-  line-height: 1;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  cursor: pointer;
-  transition: color var(--duration-fast) ease, background var(--duration-fast) ease, border-color var(--duration-fast) ease;
-}
-
-.match-tag-toggle:hover {
-  color: var(--text);
-  border-color: var(--border-strong);
-}
-
-.match-tag-toggle:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--accent-soft);
+  border-style: dashed;
 }
 
 .match-tag-toggle.active {
   background: var(--surface-2);
   border-style: solid;
-  border-color: var(--border);
-  color: var(--text-dim);
 }
 .match-tag-toggle .match-tag-mark { opacity: 0.55; }
 .match-tag-toggle.active .match-tag-mark { opacity: 1; }

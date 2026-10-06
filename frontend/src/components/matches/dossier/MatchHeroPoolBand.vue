@@ -155,7 +155,7 @@ const configIsDefault = computed(
       <button
         v-else
         type="button"
-        class="hp-reset"
+        class="btn-mono is-accent"
         data-hero-pool-reset
         title="Clear the Hero Pool filter"
         @click="resetBand"

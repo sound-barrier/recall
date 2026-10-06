@@ -94,7 +94,7 @@ const headline = computed(() => {
         <button
           v-if="state.kind === 'set'"
           type="button"
-          class="toast-action"
+          class="btn-mono is-primary"
           data-anchor-toast-view
           @click="onView"
         >

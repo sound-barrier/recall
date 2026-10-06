@@ -147,7 +147,7 @@ const calloutStyle = computed(() => {
       <div v-if="actionLabel" class="ctx-actions">
         <button
           type="button"
-          class="ctx-action"
+          class="btn-mono is-lg is-primary ctx-action"
           @click="emit('action')"
         >
           {{ actionLabel }}
@@ -217,28 +217,6 @@ const calloutStyle = computed(() => {
   margin-top: var(--space-3);
   display: flex;
   justify-content: flex-end;
-}
-
-.ctx-action {
-  appearance: none;
-  background: var(--accent);
-  border: 1px solid var(--accent);
-  color: var(--primary-text-on-accent);
-  font-family: var(--mono);
-  font-size: var(--type-sm);
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: filter var(--duration-fast) ease;
-}
-
-.ctx-action:hover,
-.ctx-action:focus-visible {
-  filter: brightness(1.12);
-  outline: none;
 }
 
 /* Small arrow tip drawn as a CSS triangle pointing back at the

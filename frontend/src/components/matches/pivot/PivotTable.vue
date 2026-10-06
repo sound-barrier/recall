@@ -206,7 +206,7 @@ function onValueAct(index: number, payload: ChipActPayload) {
 
     <div class="pivot-toolbar">
       <span class="pivot-count">{{ result.recordCount }} {{ result.recordCount === 1 ? 'match' : 'matches' }}</span>
-      <button type="button" class="pivot-reset" @click="pivot.resetPivot()">
+      <button type="button" class="btn-mono" @click="pivot.resetPivot()">
         Reset pivot
       </button>
     </div>
@@ -261,24 +261,6 @@ function onValueAct(index: number, payload: ChipActPayload) {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-faint);
-}
-
-.pivot-reset {
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: var(--space-1) var(--space-2);
-  color: var(--text);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-}
-
-.pivot-reset:hover {
-  border-color: var(--accent);
-  color: var(--accent-text);
 }
 
 @media (width <= 52rem) {

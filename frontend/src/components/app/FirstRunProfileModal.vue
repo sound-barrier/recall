@@ -232,7 +232,7 @@ watch(trapOpen, async (open) => {
         <div class="first-run-actions">
           <button
             type="button"
-            class="first-run-keep"
+            class="btn-mono is-lg first-run-keep"
             :disabled="busy"
             data-step-keep
             @click="onKeepDefault"
@@ -241,7 +241,7 @@ watch(trapOpen, async (open) => {
           </button>
           <button
             type="submit"
-            class="first-run-save"
+            class="btn-mono is-lg is-primary first-run-save"
             :disabled="busy || !inputValid"
             data-step-save
           >
@@ -271,7 +271,7 @@ watch(trapOpen, async (open) => {
         <div class="first-run-actions">
           <button
             type="button"
-            class="first-run-keep"
+            class="btn-mono is-lg first-run-keep"
             :disabled="picking"
             data-step-back
             @click="onBackToName"
@@ -280,7 +280,7 @@ watch(trapOpen, async (open) => {
           </button>
           <button
             type="button"
-            class="first-run-skip"
+            class="btn-mono is-lg"
             :disabled="picking"
             data-step-skip
             @click="onSkipSource"
@@ -428,46 +428,5 @@ watch(trapOpen, async (open) => {
 /* Step 2's back is on the left, skip on the right. */
 .first-run-modal-box[data-step="source"] .first-run-actions {
   justify-content: space-between;
-}
-
-.first-run-keep,
-.first-run-save,
-.first-run-skip {
-  appearance: none;
-  font-family: var(--mono);
-  font-size: var(--type-sm);
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: background var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
-}
-
-.first-run-keep,
-.first-run-skip {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-faint);
-}
-
-.first-run-keep:hover:not(:disabled),
-.first-run-skip:hover:not(:disabled) {
-  color: var(--text);
-  border-color: var(--border-strong);
-}
-
-.first-run-save {
-  background: var(--accent);
-  border: 1px solid var(--accent);
-  color: var(--primary-text-on-accent);
-}
-
-.first-run-save:disabled,
-.first-run-keep:disabled,
-.first-run-skip:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 </style>

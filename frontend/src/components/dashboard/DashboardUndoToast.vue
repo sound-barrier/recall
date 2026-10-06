@@ -118,7 +118,7 @@ const progressPct = computed(() => Math.round((remainingMs.value / DURATION_MS) 
         </span>
         <button
           type="button"
-          class="toast-action"
+          class="btn-mono is-primary"
           data-undo-action
           @click="onUndo"
         >

@@ -201,7 +201,7 @@ const levelTitle = computed(() => {
       <nav v-if="depth > 0" class="hm-crumbs" aria-label="Drill path">
         <button
           type="button"
-          class="hm-back"
+          class="btn-mono is-accent"
           data-hero-mode-back
           @click="goBack"
         >
@@ -333,24 +333,6 @@ const levelTitle = computed(() => {
   gap: var(--space-2);
   flex-wrap: wrap;
 }
-
-.hm-back {
-  appearance: none;
-  border: 1px solid var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent-text);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  font-weight: 700;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: background var(--duration-fast) ease, color var(--duration-fast) ease;
-}
-.hm-back:hover { background: color-mix(in srgb, var(--accent-soft) 55%, var(--accent)); color: var(--text); }
-.hm-back:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .hm-crumb-list {
   display: inline-flex;

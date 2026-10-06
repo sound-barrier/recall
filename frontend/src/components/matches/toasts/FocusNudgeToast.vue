@@ -45,7 +45,7 @@ const emit = defineEmits<{
       </ol>
       <button
         type="button"
-        class="toast-dismiss focus-nudge-dismiss"
+        class="btn-mono focus-nudge-dismiss"
         @click="emit('dismiss')"
       >
         Got it

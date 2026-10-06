@@ -59,7 +59,7 @@ function onOpenAnchor() {
         <span class="np-since-anchor-actions">
           <button
             type="button"
-            class="np-since-anchor-open"
+            class="btn-mono"
             data-since-anchor-open
             title="Open the anchor's match in the detail panel."
             @click="onOpenAnchor"
@@ -68,7 +68,7 @@ function onOpenAnchor() {
           </button>
           <button
             type="button"
-            class="np-since-anchor-clear"
+            class="btn-mono"
             data-since-anchor-clear
             @click="emit('clear-anchor')"
           >

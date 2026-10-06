@@ -230,14 +230,14 @@ function onCancel() {
         </ul>
 
         <footer class="wcp-foot">
-          <button type="button" class="wcp-btn wcp-btn-ghost" data-testid="widget-config-reset" @click="onReset">
+          <button type="button" class="btn-mono" data-testid="widget-config-reset" @click="onReset">
             Reset
           </button>
           <span class="wcp-foot-spacer" />
-          <button type="button" class="wcp-btn wcp-btn-ghost" data-testid="widget-config-cancel" @click="onCancel">
+          <button type="button" class="btn-mono" data-testid="widget-config-cancel" @click="onCancel">
             Cancel
           </button>
-          <button type="button" class="wcp-btn wcp-btn-primary" data-testid="widget-config-save" @click="onSave">
+          <button type="button" class="btn-mono is-primary" data-testid="widget-config-save" @click="onSave">
             Save
           </button>
         </footer>
@@ -352,36 +352,4 @@ function onCancel() {
 }
 
 .wcp-foot-spacer { flex: 1 1 auto; }
-
-.wcp-btn {
-  appearance: none;
-  border-radius: var(--radius);
-  padding: var(--space-1) var(--space-3);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  font-weight: 700;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.wcp-btn-ghost {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-}
-
-.wcp-btn-ghost:hover {
-  color: var(--text);
-  border-color: var(--text);
-}
-
-.wcp-btn-primary {
-  background: var(--accent);
-  border: 1px solid var(--accent);
-  color: var(--primary-text-on-accent);
-}
-
-.wcp-btn-primary:hover { filter: brightness(1.08); }
 </style>

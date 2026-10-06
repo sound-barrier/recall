@@ -355,7 +355,7 @@ function onSend(): void {
       <div class="sheet-fixed send-to-coach-actions">
         <button
           type="button"
-          class="send-to-coach-cancel"
+          class="btn-mono is-lg"
           :disabled="shareBusy"
           @click="matches.closeShare()"
         >
@@ -363,7 +363,7 @@ function onSend(): void {
         </button>
         <button
           type="submit"
-          class="send-to-coach-send"
+          class="btn-mono is-lg is-primary send-to-coach-send"
           :disabled="!canSend"
           :aria-describedby="blockedReason ? 'send-to-coach-blocked' : undefined"
           data-testid="send-to-coach-submit"

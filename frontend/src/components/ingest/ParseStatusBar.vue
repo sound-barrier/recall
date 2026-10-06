@@ -191,7 +191,7 @@ function onJumpToIngest(e: MouseEvent) {
     <div v-if="inFlight" class="group group-abort">
       <button
         type="button"
-        class="abort-btn"
+        class="btn-mono is-danger abort-btn"
         data-no-jump
         data-testid="status-bar-cancel-btn"
         :disabled="cancelingParse"
@@ -395,47 +395,24 @@ function onJumpToIngest(e: MouseEvent) {
 }
 
 .abort-btn {
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
   gap: var(--space-2);
   height: 28px;
-  padding: 0 var(--space-3);
-  background: transparent;
-  border: 1px solid var(--loss);
-  border-radius: var(--radius-hair);
-  color: var(--loss);
-  font-family: var(--mono);
-  font-size: var(--type-xs);
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background-color var(--duration-fast) ease-out, color var(--duration-fast) ease-out, transform var(--duration-instant) ease-out;
-}
 
-.abort-btn:hover:not(:disabled) {
-  background: var(--loss-soft);
-  color: var(--loss);
+  /* The fixed height sets the tile's size inside the bar. */
+  padding-block: 0;
 }
 
 .abort-btn:active:not(:disabled) {
   transform: translateY(1px);
   background: var(--loss);
-  color: var(--primary-text-on-accent);
-}
-
-.abort-btn:focus-visible {
-  outline: 2px solid var(--loss);
-  outline-offset: 2px;
+  color: var(--primary-text-on-danger);
 }
 
 .abort-btn:disabled {
-  cursor: not-allowed;
-
-  /* Pulse the border while canceling so the user sees the
-     stop signal in flight without us needing a separate
-     spinner. */
+  /* The family dims disabled buttons; ABORTING stays legible and
+     pulses the border instead, so the user sees the stop signal in
+     flight without a separate spinner. */
+  opacity: 1;
   animation: abort-pulse 1.1s ease-in-out infinite;
 }
 

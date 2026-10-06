@@ -217,7 +217,7 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
 
   <p v-else class="leaves-empty">
     No matches in this set.
-    <button v-if="anyNarrow" class="leaves-empty-btn" @click="emit('reset-narrow')">
+    <button v-if="anyNarrow" class="btn-mono is-accent leaves-empty-btn" @click="emit('reset-narrow')">
       Clear narrowing
     </button>
     <MatchesEmptySuggestions
@@ -397,22 +397,6 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
   background: currentcolor;
   opacity: 0.5;
 }
-
-.leaves-empty-btn {
-  appearance: none;
-  background: transparent;
-  border: 1px solid var(--accent);
-  border-radius: var(--radius);
-  padding: var(--space-1) var(--space-3);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--accent-text);
-  cursor: pointer;
-  font-weight: 700;
-}
-.leaves-empty-btn:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 
 .sd-rollup {
   margin-left: var(--space-2);

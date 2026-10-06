@@ -101,7 +101,7 @@ async function confirmDelete(name: string) {
                 <button
                   v-if="confirmTarget !== p"
                   type="button"
-                  class="profile-mgmt-delete"
+                  class="btn-mono profile-mgmt-delete"
                   :disabled="busy || writesLocked"
                   :title="lockedTitle(`Permanently delete ${p}`)"
                   :aria-label="`Delete profile ${p}`"
@@ -112,7 +112,7 @@ async function confirmDelete(name: string) {
                 <template v-else>
                   <button
                     type="button"
-                    class="profile-mgmt-delete-confirm"
+                    class="btn-mono is-danger-fill profile-mgmt-delete-confirm"
                     :disabled="busy || writesLocked"
                     :title="lockedTitle(`Permanently delete ${p}`)"
                     @click="confirmDelete(p)"
@@ -121,7 +121,7 @@ async function confirmDelete(name: string) {
                   </button>
                   <button
                     type="button"
-                    class="profile-mgmt-delete-cancel"
+                    class="btn-mono profile-mgmt-delete-cancel"
                     :disabled="busy"
                     @click="cancelDelete"
                   >
@@ -200,42 +200,9 @@ async function confirmDelete(name: string) {
   border-radius: var(--radius);
 }
 
-.profile-mgmt-delete,
-.profile-mgmt-delete-confirm,
-.profile-mgmt-delete-cancel {
-  appearance: none;
-  font-family: var(--mono);
-  font-size: var(--type-sm);
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: background var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
-}
-
-.profile-mgmt-delete {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-faint);
-}
-
 .profile-mgmt-delete:hover:not(:disabled) {
   color: var(--loss);
   border-color: var(--loss);
-}
-
-.profile-mgmt-delete-confirm {
-  background: var(--loss);
-  border: 1px solid var(--loss);
-  color: var(--bg);
-}
-
-.profile-mgmt-delete-cancel {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text);
 }
 
 .profile-mgmt-error {

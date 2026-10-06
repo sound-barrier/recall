@@ -205,7 +205,7 @@ function onColumnChange(from: TableSortCol, e: Event) {
         <footer class="tsp-foot">
           <button
             type="button"
-            class="tsp-add"
+            class="btn-mono is-primary"
             data-add-level
             :disabled="!nextUnused"
             @click="onAddLevel"
@@ -214,7 +214,7 @@ function onColumnChange(from: TableSortCol, e: Event) {
           </button>
           <button
             type="button"
-            class="tsp-reset"
+            class="btn-mono"
             data-clear-sort
             @click="clearSort"
           >
@@ -381,50 +381,6 @@ function onColumnChange(from: TableSortCol, e: Event) {
   margin-top: var(--space-2);
   padding-top: var(--space-2);
   border-top: 1px solid var(--border);
-}
-
-.tsp-add,
-.tsp-reset {
-  appearance: none;
-  padding: var(--space-1) var(--space-2);
-  font-family: var(--mono);
-  font-size: var(--type-xs);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  cursor: pointer;
-  border-radius: var(--radius);
-}
-
-.tsp-add {
-  color: var(--primary-text-on-accent);
-  background: var(--accent);
-  border: 1px solid var(--accent);
-}
-
-.tsp-add:disabled {
-  cursor: default;
-  opacity: 0.45;
-}
-
-.tsp-reset {
-  color: var(--text-dim);
-  background: transparent;
-  border: 1px solid var(--border-strong);
-}
-
-.tsp-reset:hover,
-.tsp-reset:focus-visible,
-.tsp-add:not(:disabled):hover,
-.tsp-add:focus-visible {
-  outline: none;
-  filter: brightness(1.08);
-}
-
-.tsp-reset:hover,
-.tsp-reset:focus-visible {
-  color: var(--text);
-  border-color: var(--text-faint);
 }
 
 @media (prefers-reduced-motion: reduce) {
