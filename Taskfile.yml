@@ -261,6 +261,9 @@ tasks:
     # view, and they're now shared: popover menus (styles/menu.css, six
     # menus), the mono button (.btn-mono) and the segmented control
     # (.segmented, six controls). Measured 778 / 126270 = 0.616%.
+    # Then 0.62 → 0.59: every remaining hand-rolled mono button moved onto
+    # .btn-mono (~45 components), plus two more segmented controls.
+    # Measured 725 / 124527 = 0.582%.
     desc: Ratchet frontend copy-paste duplication (jscpd)
     cmds:
       - echo "[ recall ] Checking duplication (jscpd)…"

@@ -350,3 +350,5 @@ Measured 2117506B initial / total; cap set ~6.5KB above per the convention.
 | 2026-10-06 | spacing-grid | initial CSS | 82000 → 86000 | Spacing joins the token scale: ~1,900 padding/margin/gap literals became `var(--space-N)` references, plus the shared menu/button/segmented families moving into the eager sheet. Raw grows; gzipped CSS fell 63470 → 61567B. Measured 85200B. |
 | 2026-10-06 | spacing-grid | total CSS | 428000 → 432000 | Spacing snap +16.6KB raw, then −12.7KB from collapsing per-view menu, segmented-control and mono-button copies into shared families. Measured 430940B. |
 | 2026-10-06 | spacing-grid | initial JS | 366000 → 367000 | Shared-family class names on eager masthead/toolbar templates, +144B against a base with 4B of headroom. Measured 366140B. |
+| 2026-10-06 | mono-buttons-and-elevation | initial CSS | 86000 → 85000 | Ratchet: remaining mono buttons onto `.btn-mono`, outer shadows onto the elevation scale. Measured 83802B. |
+| 2026-10-06 | mono-buttons-and-elevation | total CSS | 432000 → 411000 | Ratchet: ~45 components stopped spelling out the mono button and 41 shadows became tokens. Measured 409225B (gzipped 59496B). |
