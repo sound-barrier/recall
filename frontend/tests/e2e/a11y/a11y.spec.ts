@@ -103,6 +103,25 @@ for (const theme of THEMES) {
     expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([])
   })
 
+  // Settings with the OCR engine MISSING. CI installs Tesseract, so the
+  // matrix above only ever audits the found state; the not-found pill sits
+  // inside a row that is itself alert-tinted, and the stacked tints put its
+  // loss-red label under AA on Day and High contrast while every CI run
+  // stayed green. Pinned by mock so it no longer depends on the runner.
+  test(`a11y: settings with Tesseract missing (${theme} theme) has no axe violations`, async ({ page }) => {
+    await page.route('**/api/v1/settings/tesseract', route => route.fulfill({
+      status: 200, contentType: 'application/json', body: JSON.stringify({
+        path: '/usr/bin/tesseract', found: false, version: '', supported: false,
+        error: 'not found', platform: 'linux',
+      }),
+    }))
+    await openView(page, 'tab-settings', theme)
+    await expect(page.getByText('Not Found', { exact: true })).toBeVisible()
+
+    const results = await runAx(page)
+    expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([])
+  })
+
   // The Unknown tab's bulk bar, which the matrix above never reaches either:
   // it is `v-if="selectedCount > 0"`, so a sweep that ticks nothing never
   // renders it, and its whole chrome — the count line, the armed destructive
