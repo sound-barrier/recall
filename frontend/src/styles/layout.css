@@ -3,11 +3,10 @@
    their gap from the spacing scale, `--space-2` unless a gap modifier
    sets `--gap` to another stop.
 
-   Only for layouts whose gap already sits ON the scale. An off-scale gap
-   (0.4rem, 0.55rem, …) is a tuned optical value — see the spacing note in
-   tokens.css — and stays in the component's scoped CSS, as does any
-   layout that needs baseline/flex-end alignment or a breakpoint variant.
-   Imported right after the tokens so every component rule still wins. */
+   A layout that needs baseline/flex-end alignment or a breakpoint variant
+   stays in the component's scoped CSS. A gap modifier is added when a
+   caller first needs that stop. Imported right after the tokens, so every
+   component rule still wins. */
 
 .stack {
   display: flex;

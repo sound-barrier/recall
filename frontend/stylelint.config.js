@@ -1,3 +1,70 @@
+const TOKEN_DERIVED = [
+  // 0 and 50% are shapes, not scale points: a 50% radius is "a
+  // circle", a 0 duration is "off".
+  '0', '0s', '0ms', '50%', '100%',
+  // Anything DERIVED from a token passes. The rule's real
+  // requirement is "this value traces back to the palette or a
+  // scale", and `color-mix(in srgb, var(--accent) 22%, …)`,
+  // `rgb(var(--shadow-rgb) / 55%)` and gradients over
+  // var(--surface-2) all satisfy it — the plugin just can't see
+  // inside a function on its own.
+  // Requires a var(--token) AND forbids any raw literal riding
+  // alongside it. The old spelling was a bare unanchored
+  // `/var\(--/`, which passed the WHOLE value the moment `var(--`
+  // appeared anywhere in it — so
+  // `linear-gradient(180deg, var(--brand-gray) 0%, #3a3a3a 100%)`
+  // was lint-clean, and that #3a3a3a stayed frozen while
+  // --brand-gray goes #fff under high contrast.
+  //
+  // The three negative lookaheads reject, in order: a hex literal;
+  // an rgb()/rgba() whose first argument is a NUMBER (so the
+  // token-derived `rgb(var(--shadow-rgb) / 55%)` still passes);
+  // and the same for hsl()/hsla().
+  // [\s\S] rather than `.` throughout: CSS values wrap across lines
+  // (a multi-stop repeating-linear-gradient is the common case) and
+  // JS's `.` does not match a newline, so a `.*` form silently
+  // rejected every token-derived multi-line value.
+  '/^(?=[\\s\\S]*var\\(--)(?![\\s\\S]*#[0-9a-fA-F]{3,8})(?![\\s\\S]*\\brgba?\\(\\s*[\\d.])(?![\\s\\S]*\\bhsla?\\(\\s*[\\d.])[\\s\\S]*$/',
+  // em is relative to the element's own font-size — a deliberate
+  // "slightly smaller than my parent" that no absolute token can
+  // express. The [^r] matters: a bare `/em$/` also matches `rem`,
+  // which silently exempts EVERY rem font-size and turns the whole
+  // font-size rule into a no-op.
+  '/[^r]em$/',
+  // The reduced-motion kill switch in themes.css.
+  '0.01ms',
+  // A tint of the element's OWN color. `currentcolor` is already
+  // an allowed keyword above, so a mix over it traces back to
+  // whichever token set `color` — the same test `/var\(--/`
+  // applies, one hop later. No token can express it: the whole
+  // point is that `.probe-chip-close:hover` tints itself with
+  // whatever the chip currently is. Anchored end to end so it
+  // admits ONLY the self-tint idiom — `color-mix(in srgb,
+  // currentcolor 12%, #ff0000)` still fails.
+  '/^color-mix\\(\\s*in srgb\\s*,\\s*currentcolor\\s+[\\d.]+%\\s*,\\s*transparent\\s*\\)$/',
+]
+
+// Type-only: the ladder stops at body sizes, and this regex would pass
+// `padding: 2rem` if spacing inherited it.
+const DISPLAY_TYPE = [
+  // Display-scale type (≥1.8rem) is off the ladder ON PURPOSE — a
+  // 2.55rem masthead wordmark and a 5rem empty-state glyph are
+  // per-surface editorial choices, and the tokens.css comment says
+  // so. Body type below that threshold is still enforced.
+  '/^([2-9]|1\\.[89])(\\.\\d+)?rem$/',
+]
+
+// Spacing values that are NOT absolute lengths and so have no place on
+// the scale: % and viewport units size against the container or the
+// window, and a 1px hairline offset lines content up with a border
+// rather than setting rhythm. (em is already in TOKEN_DERIVED.)
+const SPACING_PROPS = '/^(padding|margin)|^(row-|column-)?gap$/'
+
+const SPACING_RELATIVE = [
+  '/^-?1px$/',
+  '/^-?[\\d.]+(%|vh|vw|svh|dvh|vmin|vmax|ch)$/',
+]
+
 export default {
   extends: ['stylelint-config-standard'],
   plugins: ['stylelint-declaration-strict-value'],
@@ -35,12 +102,13 @@ export default {
     // from hand-picking hues per component. Nothing mechanical was
     // stopping that.
     //
-    // Scoped to color, type, radius and motion — the axes with a real
-    // scale behind them. Deliberately NOT padding/margin/gap: the
-    // spacing scale covers the common cases but plenty of values here
-    // are genuine optical adjustments (0.28rem, 0.45rem), and forcing
-    // those into the ladder would trade real layout quality for a
-    // lint-clean report.
+    // Scoped to color, type, radius, motion and spacing — the axes with a
+    // real scale behind them. Spacing was once left out as "optical
+    // adjustments", and ~1,500 padding/margin/gap values drifted between
+    // the stops (0.4rem, 0.55rem, 0.35rem…) — the same accumulation the
+    // other axes had before they were enforced. Spacing on one 4px grid is
+    // the established practice; a value that genuinely needs to sit off
+    // it is a new stop in tokens.css, not a literal here.
     // `animation` / `animation-duration` are deliberately absent: keyframe
     // timings here are per-effect (a 1.2s pulse dot, a 4.5s skeleton
     // shimmer, a 900ms toast), not points on a UI-motion scale, and
@@ -58,6 +126,7 @@ export default {
         'font-size',
         'border-radius',
         'transition-duration',
+        SPACING_PROPS,
       ],
       {
         // The plugin defaults BOTH `ignoreVariables` and `ignoreFunctions`
@@ -78,56 +147,14 @@ export default {
           'currentcolor', 'transparent', 'inherit', 'initial', 'unset',
           'none', 'auto', 'revert',
         ],
-        ignoreValues: [
-          // 0 and 50% are shapes, not scale points: a 50% radius is "a
-          // circle", a 0 duration is "off".
-          '0', '0s', '0ms', '50%', '100%',
-          // Anything DERIVED from a token passes. The rule's real
-          // requirement is "this value traces back to the palette or a
-          // scale", and `color-mix(in srgb, var(--accent) 22%, …)`,
-          // `rgb(var(--shadow-rgb) / 55%)` and gradients over
-          // var(--surface-2) all satisfy it — the plugin just can't see
-          // inside a function on its own.
-          // Requires a var(--token) AND forbids any raw literal riding
-          // alongside it. The old spelling was a bare unanchored
-          // `/var\(--/`, which passed the WHOLE value the moment `var(--`
-          // appeared anywhere in it — so
-          // `linear-gradient(180deg, var(--brand-gray) 0%, #3a3a3a 100%)`
-          // was lint-clean, and that #3a3a3a stayed frozen while
-          // --brand-gray goes #fff under high contrast.
-          //
-          // The three negative lookaheads reject, in order: a hex literal;
-          // an rgb()/rgba() whose first argument is a NUMBER (so the
-          // token-derived `rgb(var(--shadow-rgb) / 55%)` still passes);
-          // and the same for hsl()/hsla().
-          // [\s\S] rather than `.` throughout: CSS values wrap across lines
-          // (a multi-stop repeating-linear-gradient is the common case) and
-          // JS's `.` does not match a newline, so a `.*` form silently
-          // rejected every token-derived multi-line value.
-          '/^(?=[\\s\\S]*var\\(--)(?![\\s\\S]*#[0-9a-fA-F]{3,8})(?![\\s\\S]*\\brgba?\\(\\s*[\\d.])(?![\\s\\S]*\\bhsla?\\(\\s*[\\d.])[\\s\\S]*$/',
-          // Display-scale type (≥1.8rem) is off the ladder ON PURPOSE — a
-          // 2.55rem masthead wordmark and a 5rem empty-state glyph are
-          // per-surface editorial choices, and the tokens.css comment says
-          // so. Body type below that threshold is still enforced.
-          '/^([2-9]|1\\.[89])(\\.\\d+)?rem$/',
-          // em is relative to the element's own font-size — a deliberate
-          // "slightly smaller than my parent" that no absolute token can
-          // express. The [^r] matters: a bare `/em$/` also matches `rem`,
-          // which silently exempts EVERY rem font-size and turns the whole
-          // font-size rule into a no-op.
-          '/[^r]em$/',
-          // The reduced-motion kill switch in themes.css.
-          '0.01ms',
-          // A tint of the element's OWN color. `currentcolor` is already
-          // an allowed keyword above, so a mix over it traces back to
-          // whichever token set `color` — the same test `/var\(--/`
-          // applies, one hop later. No token can express it: the whole
-          // point is that `.probe-chip-close:hover` tints itself with
-          // whatever the chip currently is. Anchored end to end so it
-          // admits ONLY the self-tint idiom — `color-mix(in srgb,
-          // currentcolor 12%, #ff0000)` still fails.
-          '/^color-mix\\(\\s*in srgb\\s*,\\s*currentcolor\\s+[\\d.]+%\\s*,\\s*transparent\\s*\\)$/',
-        ],
+        // Keyed by the CONFIGURED property entry above (the plugin looks
+        // a declaration's entry up verbatim, falling back to ''), which is
+        // why spacing is one SPACING_PROPS pattern rather than five
+        // entries. Spacing gets its relative units; nothing else does.
+        ignoreValues: {
+          '': [...TOKEN_DERIVED, ...DISPLAY_TYPE],
+          [SPACING_PROPS]: [...TOKEN_DERIVED, ...SPACING_RELATIVE],
+        },
         disableFix: true,
         expandShorthand: true,
       },
