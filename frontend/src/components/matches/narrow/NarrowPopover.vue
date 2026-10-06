@@ -274,7 +274,7 @@ onUnmounted(() => {
                 @pick="pickGameMode"
               />
 
-              <!-- Hero — combobox (51 heroes, broad-match against heroes_played) -->
+              <!-- Hero — combobox (54 heroes, broad-match against heroes_played) -->
               <section class="stack gap-1 np-section">
                 <div class="np-section-head">
                   <span class="eyebrow np-section-eyebrow">Hero</span>

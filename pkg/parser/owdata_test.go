@@ -77,6 +77,38 @@ func TestRoster_DMonDoesNotShadowDVa(t *testing.T) {
 	}
 }
 
+// TestRoster_RecognizesNewHeroDoctrine guards the Season 5 support hero. The
+// spelling and role come from Blizzard's announcement, not from a parsed
+// scoreboard (see the Neon Junction test below for why that matters).
+func TestRoster_RecognizesNewHeroDoctrine(t *testing.T) {
+	if !parser.IsKnownHero("doctrine") {
+		t.Error(`IsKnownHero("doctrine") = false, want true`)
+	}
+	if got := parser.HeroRole("doctrine"); got != "support" {
+		t.Errorf(`HeroRole("doctrine") = %q, want "support"`, got)
+	}
+}
+
+// TestRoster_RecognizesNewMapGrimsvotn guards the Season 5 escort map. Its
+// display name carries a colon and two accents ("Watchpoint: Grímsvötn"),
+// which normalize() strips, so an OCR read without them must still resolve.
+// It shares the "watchpoint " prefix with Gibraltar, so the fuzzy matcher
+// must keep the two apart in both directions, the way D.Mon and D.Va are.
+func TestRoster_RecognizesNewMapGrimsvotn(t *testing.T) {
+	if !parser.IsKnownMap("watchpoint grimsvotn") {
+		t.Error(`IsKnownMap("watchpoint grimsvotn") = false, want true`)
+	}
+	if escort := parser.MapsByGameMode()["escort"]; !slices.Contains(escort, "Watchpoint: Grímsvötn") {
+		t.Errorf(`MapsByGameMode()["escort"] = %v, want it to contain "Watchpoint: Grímsvötn"`, escort)
+	}
+	if got := parser.SnapToKnownMap("WATCHPOINT GRIMSVOTN"); got != "watchpoint grimsvotn" {
+		t.Errorf(`SnapToKnownMap("WATCHPOINT GRIMSVOTN") = %q, want "watchpoint grimsvotn"`, got)
+	}
+	if got := parser.SnapToKnownMap("WATCHPOINT GIBRALTAR"); got != "watchpoint gibraltar" {
+		t.Errorf(`SnapToKnownMap("WATCHPOINT GIBRALTAR") = %q, want "watchpoint gibraltar"`, got)
+	}
+}
+
 // TestRoster_NeonJunctionCanonical guards the Neon Junction roster entry.
 // The map originally landed in maps.yaml as "Neon Function" — an OCR garble
 // (J→F) transcribed from the parser's own output, which then made every

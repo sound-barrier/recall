@@ -27,6 +27,11 @@ support:
   - Ana
   - Baptiste
   - Brigitte
+  # Season 5 (2026-10-06). Spelling and role transcribed from Blizzard's
+  # Season 5 announcement, NOT from parser output, and NOT yet checked against
+  # a real scoreboard, so the in-game rendering OCR will see is unconfirmed.
+  # First Doctrine match parsed is the check.
+  - Doctrine
   - Illari
   - "Jetpack Cat"
   - Juno
