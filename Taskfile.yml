@@ -253,6 +253,17 @@ tasks:
     # 174174: deleting non-duplicated code raises the percentage even when
     # nothing was copied. A ratchet on a ratio punishes cleanup; re-baseline
     # deliberately when the cause is one of those two, never to absorb a paste.
+    #
+    # 2026-10-06: 0.66 → 0.70. Duplicated lines 831 → 879 (0.653% → 0.691%),
+    # all of it CSS, and none of it pasted. Snapping spacing onto the 4px
+    # grid made five pairs of rule blocks byte-identical where an off-scale
+    # value had kept them apart: AppMenuButton/ProfileSwitcher (the popover
+    # and its item, two clones), ProfileSwitcher/MatchesArchiveDrawer (mono
+    # button), SeasonCompareView/elo.css (segmented button),
+    # form-compare-view/match-hero-pool-band (pill preset) and
+    # unknown/about-modal (mono action button). They were already one pattern
+    # each. Extracting them into shared primitives is the follow-up that lets
+    # this ratchet back down.
     desc: Ratchet frontend copy-paste duplication (jscpd)
     cmds:
       - echo "[ recall ] Checking duplication (jscpd)…"
