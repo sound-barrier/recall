@@ -2,7 +2,7 @@
 import TypeaheadDropdown from '@/components/shared/TypeaheadDropdown.vue'
 
 // Multi-select typeahead for the Matches narrow panel. Backs the
-// Map (31 options) and Hero (51 options) pickers — chip clouds at
+// Map (33 options) and Hero (54 options) pickers — chip clouds at
 // that density become a wall of buttons or scroll behind selected
 // chips.
 //

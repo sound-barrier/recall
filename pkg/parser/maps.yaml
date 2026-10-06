@@ -15,6 +15,11 @@ escort:
   - "Route 66"
   - "Shambali Monastery"
   - "Watchpoint Gibraltar"
+  # Season 5 (2026-10-06). Spelling, colon and accents transcribed from
+  # Blizzard's Season 5 announcement, NOT from parser output, and NOT yet
+  # checked against a real scoreboard. normalize() strips the colon and
+  # accents, so the OCR key is "watchpoint grimsvotn" either way.
+  - "Watchpoint: Grímsvötn"
 flashpoint:
   - Aatlis
   - "New Junk City"

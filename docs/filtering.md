@@ -143,7 +143,7 @@ so the phrases cover the calendar questions the chips cannot answer.
 
 ### Map + Game Mode, Hero + Role
 
-**Map** and **Hero** are typeahead comboboxes — 32 maps and 53
+**Map** and **Hero** are typeahead comboboxes — 33 maps and 54
 heroes are too many for a chip cloud. Click the input, type to
 narrow the list, click an option to pick or unpick. Selected
 items appear as removable pills above the input; `×` drops one.
