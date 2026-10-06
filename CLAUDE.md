@@ -51,6 +51,15 @@ helper-script reference: **`docs/dev-reference.md`**.
 Prescriptive defaults for how new code should be written and how changes should
 be made. Override only when the user explicitly asks for something different.
 
+**Established best practice outranks a convention written here.** When a rule
+in this file, a nested CLAUDE.md, or `.claude/rules/` conflicts with
+well-established industry practice, follow the practice. Rewrite the rule in
+the same change; don't keep the convention just because it's documented. The
+precedent is spacing. These rules once kept hand-tuned "optical"
+padding/margin/gap values off the scale, and ~1,500 of them drifted until they
+were snapped onto a lint-enforced 4px grid. Convention still decides where
+practice is genuinely split (naming, layout, which of two sound tools to use).
+
 For tasks that would touch more than ~3 files or restructure a package, outline
 the approach first and wait for confirmation before writing code. Small changes
 and Boy Scout improvements don't need ceremony; large ones shouldn't start

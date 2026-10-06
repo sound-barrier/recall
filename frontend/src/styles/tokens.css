@@ -284,11 +284,14 @@
        per-surface editorial choices, not points on a text scale.
        Three display stops are tuned to the OW Wordmark + Big Noodle
        pair and are deliberately NOT on the body ratio.
-     - Spacing scale: 4px → 48px in seven stops, roughly 1.5× per
-       step from --space-3 up. Adopted only where a value ALREADY
-       equals a stop exactly; off-scale values are optical
-       one-offs (0.28rem, 0.45rem) and keep their tuned value
-       rather than being rounded into a visible layout shift.
+     - Spacing scale: a 4px grid, 2px → 64px, each name the 4px
+       multiple (--space-2 = 8px, --space-12 = 48px) with a 2px
+       half-step for tight UI. Every padding, margin and gap uses it,
+       and stylelint enforces that. The old "keep the tuned optical
+       value" policy left ~1,500 values between the stops, and they
+       were all snapped onto the grid in one pass. If a layout really
+       needs a size the grid lacks, add a stop here. Don't use a
+       literal.
      - Radius: four stops covering every corner in the app.
      - Motion: four canonical durations + two easings. Most
        transitions should reach for --duration-med + --easing-out;

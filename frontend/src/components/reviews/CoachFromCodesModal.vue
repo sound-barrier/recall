@@ -214,7 +214,7 @@ useModalFocusTrap(open, {
 
   /* A padded hit area: removing a mistyped code is the exact correction
      this dialog exists for, and a bare glyph made it a precision click. */
-  padding: 0.25rem 0.45rem;
+  padding: var(--space-1) var(--space-2);
   margin: calc(-1 * var(--space-1)) calc(-1 * var(--space-1)) calc(-1 * var(--space-1)) calc(-1 * var(--space-0-5));
   background: none;
   color: inherit;

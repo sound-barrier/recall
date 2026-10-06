@@ -320,21 +320,23 @@ on Day's darker surfaces — small content text takes `--text-dim`.
 column or centered row whose gap sits ON the spacing scale takes the class
 (`class="x stack gap-1"`) instead of re-spelling `display:flex` in its scoped
 block; `--space-2` is the default gap, a `gap-N` modifier sets another stop.
-Off-scale gaps, baseline/flex-end alignment and breakpoint variants stay
-scoped. Not in the standalone recap/coach-sheet pages, which never load
+Baseline/flex-end alignment and breakpoint variants stay scoped, and a new
+`gap-N` modifier lands with its first caller. Not in the standalone recap/coach-sheet pages, which never load
 app.css.
 
 **Use the design tokens — stylelint enforces it.**
 `scale-unlimited/declaration-strict-value` fails the build on a literal for any
-`*-color`, `fill`, `stroke`, `font-size`, `border-radius`, or
-`transition-duration`. The scales live in `styles/tokens.css` (per-theme values
+`*-color`, `fill`, `stroke`, `font-size`, `border-radius`,
+`transition-duration`, or any `padding*`/`margin*`/`gap`. The scales live in `styles/tokens.css` (per-theme values
 in `themes.css`): `--type-4xs … --type-7xl` (14 stops, 0.5–1.65rem), `--space-0-5
-… --space-12` (named by 4px multiple: `-2` is 8px, `-12` is 48px), `--radius-hair/-/-md/-lg/-surface/-overlay/-pill` (pick a
+… --space-16` (a 4px grid named by multiple: `-2` is 8px, `-12` is 48px; write a
+negative as `calc(-1 * var(--space-N))`), `--radius-hair/-/-md/-lg/-surface/-overlay/-pill` (pick a
 radius by role: controls take the small ones, cards/panels `-surface`, anything
 floating `-overlay`), `--duration-instant … -hero`.
 Anything derived from a token passes, so `color-mix(in srgb, var(--accent) 22%,
 transparent)` and `rgb(var(--shadow-rgb) / 55%)` are fine. Exempt by design:
 display type ≥1.8rem (per-surface editorial, not scale points), `em` units,
+spacing in `%`/viewport/`ch` units or a `1px` hairline offset,
 `@keyframes`/`animation` timings, and the definition files themselves. A genuine
 one-off gets a `stylelint-disable-next-line … --` with the reason, not a config
 loosening.
