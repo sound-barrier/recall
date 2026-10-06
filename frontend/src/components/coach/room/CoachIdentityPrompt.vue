@@ -139,7 +139,7 @@ function confirm(): void {
       <label class="eyebrow ink identity-label" for="coach-identity-handle">
         {{ noun === 'team' ? 'Team name' : 'Player handle' }}
       </label>
-      <div class="identity-row">
+      <div class="cluster cluster-wrap identity-row">
         <input
           id="coach-identity-handle"
           ref="handleField"
@@ -213,13 +213,6 @@ function confirm(): void {
   flex-direction: column;
   gap: var(--space-1);
   margin-top: var(--space-1);
-}
-
-.identity-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
 }
 
 .identity-input {

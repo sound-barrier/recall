@@ -28,7 +28,7 @@ function onSavePreset() {
     <header class="np-presets-head">
       <span class="eyebrow np-presets-eyebrow">Saved sets</span>
     </header>
-    <div class="np-presets-save">
+    <div class="cluster np-presets-save">
       <input
         v-model="newPresetName"
         type="text"
@@ -85,12 +85,6 @@ function onSavePreset() {
   align-items: baseline;
   justify-content: space-between;
   margin-bottom: var(--space-2);
-}
-
-.np-presets-save {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
 }
 
 .np-presets-input {

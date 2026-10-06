@@ -72,7 +72,7 @@ const MARK_TITLE = {
       <p v-if="card.focusExcerpt" class="src-summary">
         {{ card.focusExcerpt }}
       </p>
-      <div v-if="armed" class="src-warn" role="alert">
+      <div v-if="armed" class="stack src-warn" role="alert">
         <p class="src-warn-line">
           Delete this review? Notes and moments go with it — the matches stay.
         </p>
@@ -167,12 +167,6 @@ const MARK_TITLE = {
   font-size: var(--type-lg);
   line-height: 1.45;
   color: var(--ink);
-}
-
-.src-warn {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
 }
 
 .src-warn-line {

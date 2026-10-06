@@ -331,7 +331,7 @@ provideRowContext({ onRowContext })
     role="tabpanel"
     aria-labelledby="tab-matches"
     tabindex="-1"
-    class="matches-set-workspace"
+    class="stack gap-3 matches-set-workspace"
     :class="{ 'matches-set-workspace-rail': narrowMode === 'rail' }"
   >
     <!-- Rail-mode filter panel — peer column on the left of the

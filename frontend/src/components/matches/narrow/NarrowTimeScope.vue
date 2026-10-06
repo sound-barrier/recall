@@ -121,7 +121,7 @@ function clearDates() {
 
 <template>
   <!-- Time scope — preset + custom dates side-by-side. -->
-  <section class="np-section">
+  <section class="stack gap-1 np-section">
     <div class="np-section-head">
       <span class="eyebrow np-section-eyebrow">Time scope</span>
       <span class="np-section-meta">

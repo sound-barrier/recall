@@ -16,7 +16,7 @@ withDefaults(defineProps<{
 </script>
 
 <template>
-  <div class="sheet-block">
+  <div class="stack gap-1 sheet-block">
     <span v-if="showTally" class="eyebrow ink">Focus so far</span>
     <ul v-if="showTally && focusTally.length" class="sheet-tally" aria-label="Focus tally">
       <li v-for="row in focusTally" :key="row.tag" class="tally-row">
@@ -34,11 +34,6 @@ withDefaults(defineProps<{
 </template>
 
 <style scoped>
-.sheet-block {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
 
 .sheet-tally {
   display: flex;

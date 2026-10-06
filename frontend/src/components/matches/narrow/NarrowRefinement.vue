@@ -12,12 +12,12 @@ const { minPlayMinutes, minPlayPercent, includeUnknown } = props.narrow
 
 <template>
   <!-- Min play threshold (both minutes + percent; OR semantics) + unknown toggle -->
-  <section class="np-section">
+  <section class="stack gap-1 np-section">
     <div class="np-section-head">
       <span class="eyebrow np-section-eyebrow">Refinement</span>
       <span class="np-section-meta">applies to picked heroes</span>
     </div>
-    <div class="np-refine-row">
+    <div class="stack np-refine-row">
       <p class="np-refine-hint">
         Picked hero must meet at least one threshold in a match's heroes-played row.
       </p>

@@ -13,7 +13,7 @@ const { exclusionHandling } = props.narrow
 
 <template>
   <!-- Excluded matches -->
-  <section class="np-section">
+  <section class="stack gap-1 np-section">
     <div class="np-section-head">
       <span class="eyebrow np-section-eyebrow">Excluded matches</span>
       <span class="np-section-meta">{{ exclusionHandling }}</span>

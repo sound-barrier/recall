@@ -113,7 +113,7 @@ const popoverStyle = computed(() =>
           </button>
         </header>
 
-        <section class="mrc-group" aria-label="Roles">
+        <section class="stack gap-1 mrc-group" aria-label="Roles">
           <span class="mrc-label">Roles</span>
           <div class="mrc-pills">
             <button
@@ -131,7 +131,7 @@ const popoverStyle = computed(() =>
           </div>
         </section>
 
-        <section class="mrc-group" aria-label="Map types">
+        <section class="stack gap-1 mrc-group" aria-label="Map types">
           <span class="mrc-label">Map types</span>
           <div class="mrc-pills">
             <button
@@ -149,7 +149,7 @@ const popoverStyle = computed(() =>
           </div>
         </section>
 
-        <section class="mrc-group" aria-label="Maps">
+        <section class="stack gap-1 mrc-group" aria-label="Maps">
           <span class="mrc-label">
             Maps
             <span v-if="mapSet.size" class="mrc-count">{{ mapSet.size }}</span>
@@ -236,12 +236,6 @@ const popoverStyle = computed(() =>
 .mrc-reset:hover:not(:disabled) { color: var(--loss); border-color: var(--loss-line); }
 .mrc-reset:disabled { opacity: 0.4; cursor: default; }
 .mrc-reset:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
-
-.mrc-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
 
 .mrc-label {
   display: inline-flex;

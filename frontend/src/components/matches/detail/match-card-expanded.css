@@ -191,11 +191,6 @@
    view. The wrapper adds the "Match Stats" eyebrow above the grid
    so the section reads as a labeled card, matching Heroes Played
    / Rank Update / etc. */
-.match-stats-block {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
 
 .match-stats-block .block-eyebrow {
   margin-bottom: 0;

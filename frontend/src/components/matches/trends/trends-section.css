@@ -4,7 +4,6 @@
   padding-top: var(--space-2);
 }
 
-
 .trends-toggle {
   display: flex;
   align-items: baseline;
@@ -145,12 +144,6 @@
   font-size: var(--type-xl);
   font-weight: 600;
   color: var(--text);
-}
-
-.trend-card-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
 }
 
 .trend-window-select {

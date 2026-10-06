@@ -130,7 +130,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     </p>
 
     <!-- Map (required) — the narrow panel's searchable, lowercase picker. -->
-    <section class="mm-section">
+    <section class="stack gap-1 mm-section">
       <span class="eyebrow mm-eyebrow-label">Map <span v-if="!quick" class="mm-req" aria-hidden="true">*</span></span>
       <FilterCombobox
         combo-id="mm-map"
@@ -147,7 +147,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     </section>
 
     <!-- Mode (required) -->
-    <section v-if="!quick" class="mm-section">
+    <section v-if="!quick" class="stack gap-1 mm-section">
       <span class="eyebrow mm-eyebrow-label">Mode <span class="mm-req" aria-hidden="true">*</span></span>
       <div class="mm-chips">
         <button class="mm-chip" :class="{ picked: f.playMode.value === 'competitive' }" :aria-pressed="f.playMode.value === 'competitive'" data-mode="competitive" @click="f.playMode.value = 'competitive'">
@@ -160,7 +160,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     </section>
 
     <!-- Queue (required) -->
-    <section v-if="!quick" class="mm-section">
+    <section v-if="!quick" class="stack gap-1 mm-section">
       <span class="eyebrow mm-eyebrow-label">Queue <span class="mm-req" aria-hidden="true">*</span></span>
       <div class="mm-chips">
         <button class="mm-chip" :class="{ picked: f.queueType.value === 'role' }" :aria-pressed="f.queueType.value === 'role'" data-queue="role" @click="f.queueType.value = 'role'">
@@ -174,7 +174,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 
     <!-- Role category (required on role queue — a single-role queue, so
          it constrains the hero list to that one role) -->
-    <section v-if="f.isRoleQueue.value" class="mm-section">
+    <section v-if="f.isRoleQueue.value" class="stack gap-1 mm-section">
       <span class="eyebrow mm-eyebrow-label">Role <span class="mm-req" aria-hidden="true">*</span></span>
       <div class="mm-chips">
         <button
@@ -192,7 +192,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     </section>
 
     <!-- Heroes (required) — same picker as Map; first selected is primary. -->
-    <section v-if="!quick" class="mm-section">
+    <section v-if="!quick" class="stack gap-1 mm-section">
       <span class="eyebrow mm-eyebrow-label">
         Heroes played <span class="mm-req" aria-hidden="true">*</span>
         <span class="mm-optional">first = primary</span>
@@ -213,7 +213,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     </section>
 
     <!-- Result (required) -->
-    <section class="mm-section">
+    <section class="stack gap-1 mm-section">
       <span class="eyebrow mm-eyebrow-label">Result <span v-if="!quick" class="mm-req" aria-hidden="true">*</span></span>
       <div class="mm-chips">
         <button
@@ -231,7 +231,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     </section>
 
     <!-- Leavers (optional, multi-select) -->
-    <section v-if="!quick" class="mm-section">
+    <section v-if="!quick" class="stack gap-1 mm-section">
       <span class="eyebrow mm-eyebrow-label">Leavers <span class="mm-optional">(optional)</span></span>
       <div class="mm-chips">
         <button
@@ -249,7 +249,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     </section>
 
     <!-- Throwers (optional, multi-select) -->
-    <section v-if="!quick" class="mm-section">
+    <section v-if="!quick" class="stack gap-1 mm-section">
       <span class="eyebrow mm-eyebrow-label">Throwers <span class="mm-optional">(optional)</span></span>
       <div class="mm-chips">
         <button
@@ -267,7 +267,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     </section>
 
     <!-- Replay code (optional) -->
-    <section v-if="!quick" class="mm-section">
+    <section v-if="!quick" class="stack gap-1 mm-section">
       <label class="eyebrow mm-eyebrow-label" for="mm-replay">Replay code <span class="mm-optional">(optional)</span></label>
       <input
         id="mm-replay"
@@ -284,7 +284,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     </section>
 
     <!-- Notes (optional) -->
-    <section v-if="!quick" class="mm-section">
+    <section v-if="!quick" class="stack gap-1 mm-section">
       <!-- Visual furniture, not a <label>: `for` cannot associate with a
            contenteditable, and the writer names its own field. -->
       <p class="eyebrow mm-eyebrow-label">
@@ -301,7 +301,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     </section>
 
     <!-- Tags (optional) — type + Enter to add a chip. -->
-    <section v-if="!quick" class="mm-section">
+    <section v-if="!quick" class="stack gap-1 mm-section">
       <span class="eyebrow mm-eyebrow-label">Tags <span class="mm-optional">(optional)</span></span>
       <div class="mm-tokens">
         <button
@@ -330,7 +330,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     </section>
 
     <!-- Group / teammates (optional) -->
-    <section v-if="!quick" class="mm-section">
+    <section v-if="!quick" class="stack gap-1 mm-section">
       <span class="eyebrow mm-eyebrow-label">Group <span class="mm-optional">(teammates you queued with)</span></span>
       <div class="mm-tokens">
         <button
@@ -359,13 +359,13 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     </section>
 
     <!-- When (optional) -->
-    <section v-if="!quick" class="mm-section">
+    <section v-if="!quick" class="stack gap-1 mm-section">
       <label class="eyebrow mm-eyebrow-label" for="mm-when">When <span class="mm-optional">(defaults to now)</span></label>
       <input id="mm-when" v-model="f.playedAt.value" class="mm-input mm-input-short" type="datetime-local">
     </section>
 
     <!-- Rank (competitive only, optional) -->
-    <section v-if="f.isCompetitive.value" class="mm-section">
+    <section v-if="f.isCompetitive.value" class="stack gap-1 mm-section">
       <span class="eyebrow mm-eyebrow-label">Rank <span class="mm-optional">(optional)</span></span>
       <div class="mm-rank-grid">
         <label class="mm-sublabel">Tier

@@ -58,7 +58,7 @@ const { writesLocked, lockedTitle, sessionActive } = useWriteGate()
 </script>
 
 <template>
-  <div class="candidate-picker">
+  <div class="stack candidate-picker">
     <div class="eyebrow block-eyebrow">
       Pick the match
     </div>
@@ -150,11 +150,6 @@ const { writesLocked, lockedTitle, sessionActive } = useWriteGate()
 </template>
 
 <style scoped>
-.candidate-picker {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
 
 /* 2-column layout: candidate list on the left, side-by-side preview pane on the
    right. Fixed-ish pane width so the list re-flows to fit; narrow viewports

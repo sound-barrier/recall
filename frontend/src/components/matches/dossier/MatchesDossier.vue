@@ -60,7 +60,7 @@ function sourceLabel(source: string): string {
 </script>
 
 <template>
-  <header class="dossier-head">
+  <header class="stack gap-1 dossier-head">
     <span class="eyebrow accent dossier-eyebrow">{{ anyNarrow ? 'Narrowed set' : 'Set' }}</span>
     <h2 class="dossier-title">
       {{ setHeadline }}
@@ -222,7 +222,6 @@ function sourceLabel(source: string): string {
 </template>
 
 <style scoped>
-.dossier-head { display: flex; flex-direction: column; gap: var(--space-1); }
 
 .dossier-title {
   font-family: var(--display);

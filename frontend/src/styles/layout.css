@@ -29,6 +29,14 @@
   flex-wrap: wrap;
 }
 
+.gap-0-5 {
+  --gap: var(--space-0-5);
+}
+
 .gap-1 {
   --gap: var(--space-1);
+}
+
+.gap-3 {
+  --gap: var(--space-3);
 }

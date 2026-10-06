@@ -31,12 +31,6 @@
   font-weight: 700;
 }
 
-.mm-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
 .mm-optional { color: var(--text-faint); font-weight: 400; letter-spacing: 0.04em; }
 
 .mm-input {

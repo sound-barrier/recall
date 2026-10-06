@@ -218,7 +218,7 @@ onUnmounted(() => {
           </header>
 
           <!-- Search row, full-width. -->
-          <section class="np-section np-search-section">
+          <section class="stack gap-1 np-section np-search-section">
             <label class="eyebrow np-section-eyebrow" for="np-search">Search</label>
             <div class="np-search-row">
               <span class="np-search-glyph" aria-hidden="true">⌕</span>
@@ -240,10 +240,10 @@ onUnmounted(() => {
           <NarrowTimeScope :narrow="narrow" />
 
           <!-- Two-column body — match context (left) + outcome / refinement (right). -->
-          <div class="np-cols">
-            <div class="np-col">
+          <div class="stack gap-3 np-cols">
+            <div class="stack np-col">
               <!-- Map — combobox (31 maps, too many for chip cloud) -->
-              <section class="np-section">
+              <section class="stack gap-1 np-section">
                 <div class="np-section-head">
                   <span class="eyebrow np-section-eyebrow">Map</span>
                   <span class="np-section-meta">
@@ -275,7 +275,7 @@ onUnmounted(() => {
               />
 
               <!-- Hero — combobox (51 heroes, broad-match against heroes_played) -->
-              <section class="np-section">
+              <section class="stack gap-1 np-section">
                 <div class="np-section-head">
                   <span class="eyebrow np-section-eyebrow">Hero</span>
                   <span class="np-section-meta">
@@ -307,7 +307,7 @@ onUnmounted(() => {
               />
             </div>
 
-            <div class="np-col">
+            <div class="stack np-col">
               <!-- Result -->
               <NarrowChipFacet
                 eyebrow="Result"
