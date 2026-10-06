@@ -18,7 +18,10 @@ import { join } from 'node:path'
 // because what is being asserted is a wiring fact, not a behavior.
 
 const SRC = join(import.meta.dirname, '..', '..')
-const FAMILY = /class="[^"]*\btoast(-undo|-notice|-name|-body|-glyph|-sub|-action|-close|-dismiss)?\b/
+const FAMILY = /class="[^"]*\btoast(-undo|-notice|-name|-body|-glyph|-sub|-close)?\b/
+// The import itself, not the filename: a comment that merely MENTIONS
+// toasts.css once let an unstyled toast pass this check.
+const IMPORT = /<style[^>]*\ssrc="@\/components\/shared\/toasts\.css"/
 
 function vueFilesUnder(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -32,7 +35,7 @@ describe('the toast family', () => {
   it('is imported by every component that wears it', () => {
     const offenders = vueFilesUnder(join(SRC, 'components')).filter((f) => {
       const body = readFileSync(f, 'utf8')
-      return FAMILY.test(body) && !body.includes('toasts.css')
+      return FAMILY.test(body) && !IMPORT.test(body)
     })
     expect(offenders.map((f) => f.replace(SRC, 'src'))).toEqual([])
   })

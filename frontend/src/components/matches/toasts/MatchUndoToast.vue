@@ -97,9 +97,11 @@ function onDismiss() {
   </Teleport>
 </template>
 
+<style src="@/components/shared/toasts.css"></style>
+
 <style scoped>
 /* Rung: the floor of the ladder. Everything else is the shared toast
-   family in styles/toasts.css. */
+   family in components/shared/toasts.css. */
 .match-undo-toast {
   bottom: 1.4rem;
 }
