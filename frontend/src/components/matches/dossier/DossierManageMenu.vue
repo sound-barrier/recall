@@ -100,7 +100,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
             v-for="cat in widgetCategories"
             v-show="cat.rows.length > 0"
             :key="cat.shape"
-            class="dossier-manage-group"
+            class="stack gap-0-5 dossier-manage-group"
           >
             <span class="dossier-manage-group-title">{{ cat.title }}</span>
             <button
@@ -116,7 +116,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
             </button>
           </section>
 
-          <section v-if="sections.addable.value.length > 0" class="dossier-manage-group">
+          <section v-if="sections.addable.value.length > 0" class="stack gap-0-5 dossier-manage-group">
             <span class="dossier-manage-group-title">Sections</span>
             <button
               v-for="sec in sections.addable.value"
@@ -187,12 +187,6 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
   font-size: var(--type-md);
   color: var(--text-faint);
   font-style: italic;
-}
-
-.dossier-manage-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-0-5);
 }
 
 .dossier-manage-group-title {

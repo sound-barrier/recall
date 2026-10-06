@@ -241,7 +241,7 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
       @set-disruption="(key, kind, sides) => emit('set-disruption', key, kind, sides)"
     />
 
-    <section class="match-stats-block" aria-labelledby="match-stats-eyebrow">
+    <section class="stack match-stats-block" aria-labelledby="match-stats-eyebrow">
       <div id="match-stats-eyebrow" class="eyebrow block-eyebrow">
         Match Stats
       </div>

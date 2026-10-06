@@ -93,7 +93,7 @@ function onTitleInput(e: Event): void {
       {{ blockedReason }}
     </p>
 
-    <div class="sheet-block">
+    <div class="stack gap-1 sheet-block">
       <label class="eyebrow ink" for="self-review-title">Title</label>
       <!-- spellcheck ON, unlike the profile and preset NAMES elsewhere: a
            title is a sentence about a session and people write them wrong,
@@ -186,12 +186,6 @@ function onTitleInput(e: Event): void {
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-4) var(--space-4);
-}
-
-.sheet-block {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
 }
 
 /* The one place the read-only lock speaks on this sheet. The loss color

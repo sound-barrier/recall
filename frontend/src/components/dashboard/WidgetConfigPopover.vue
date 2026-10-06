@@ -194,7 +194,7 @@ function onCancel() {
             <div
               v-else-if="field.kind === 'enum'"
               :id="`wcp-${def.id}-${field.key}`"
-              class="wcp-radios"
+              class="stack gap-1 wcp-radios"
               role="radiogroup"
               :aria-label="field.label"
             >
@@ -324,12 +324,6 @@ function onCancel() {
   background: var(--accent);
   color: var(--primary-text-on-accent);
   font-weight: 700;
-}
-
-.wcp-radios {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
 }
 
 .wcp-radio {

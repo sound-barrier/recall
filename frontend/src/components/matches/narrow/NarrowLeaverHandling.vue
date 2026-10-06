@@ -13,7 +13,7 @@ const { leaverHandling } = props.narrow
 
 <template>
   <!-- Leavers -->
-  <section class="np-section">
+  <section class="stack gap-1 np-section">
     <div class="np-section-head">
       <span class="eyebrow np-section-eyebrow">Leavers</span>
       <span class="np-section-meta">{{ leaverHandling }}</span>

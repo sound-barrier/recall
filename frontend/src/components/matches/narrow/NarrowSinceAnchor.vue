@@ -37,7 +37,7 @@ function onOpenAnchor() {
 <template>
   <!-- Since this match — anchor checkbox. The anchor itself is set/cleared from
        the match detail panel; this section is the on-off switch for the filter. -->
-  <section class="np-section">
+  <section class="stack gap-1 np-section">
     <div class="np-section-head">
       <span class="eyebrow np-section-eyebrow">Since this match</span>
       <span class="np-section-meta">

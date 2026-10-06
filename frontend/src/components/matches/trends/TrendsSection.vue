@@ -265,7 +265,7 @@ const showWindowSelector = computed(() => visibleIds.value.some((id) => WINDOWED
                   {{ card.title }}
                 </h4>
               </div>
-              <div class="trend-card-actions">
+              <div class="cluster trend-card-actions">
                 <button
                   type="button"
                   class="trend-card-close"

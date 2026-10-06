@@ -25,7 +25,7 @@ defineEmits<{
   <div v-if="parseBusy" class="parse-progress-panel" :class="{ 'pp-open': isOpen }">
     <!-- Summary row: always visible. Click to expand/collapse details. -->
     <div class="pp-summary" @click="$emit('toggle-open')">
-      <div class="pp-scan-label">
+      <div class="cluster pp-scan-label">
         <span class="pp-scan-dot" aria-hidden="true" />
         <span class="pp-scan-text">Parsing</span>
       </div>
@@ -200,12 +200,6 @@ defineEmits<{
 .pp-chev.open {
   transform: rotate(90deg);
   color: var(--accent-text);
-}
-
-.pp-scan-label {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
 }
 
 .pp-scan-dot {

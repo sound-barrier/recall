@@ -141,7 +141,7 @@ function onTagChange(tag: string) {
       @dragleave="dragOver = false"
       @drop.prevent="onDrop"
     >
-      <div class="cue-head">
+      <div class="cluster cue-head">
         <!--
           The clock is shown ONCE, by the field that holds it. There used to
           be a read-only copy immediately to its left, so a moment with a

@@ -137,11 +137,11 @@ useModalFocusTrap(open, {
       aria-modal="true"
       :aria-label="`Notes from ${coachName}`"
     >
-      <header class="return-head">
+      <header class="stack gap-1 return-head">
         <h2 class="return-title">
           Notes from {{ coachName }}
         </h2>
-        <section v-if="focusItems.length" class="return-focus" aria-labelledby="return-focus-head">
+        <section v-if="focusItems.length" class="stack gap-1 return-focus" aria-labelledby="return-focus-head">
           <p id="return-focus-head" class="eyebrow ink">
             What to work on
           </p>

@@ -243,7 +243,7 @@ function toggleReviewed(): void {
     />
 
     <div class="note-row">
-      <div v-if="filesUnderTags" class="note-clock-cell">
+      <div v-if="filesUnderTags" class="stack gap-1 note-clock-cell">
         <label class="eyebrow ink note-label" for="coach-note-clock">In-match clock</label>
         <input
           id="coach-note-clock"
@@ -352,18 +352,11 @@ function toggleReviewed(): void {
   font-size: var(--type-xs);
 }
 
-
 .note-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
-}
-
-.note-clock-cell {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
 }
 
 .note-clock {

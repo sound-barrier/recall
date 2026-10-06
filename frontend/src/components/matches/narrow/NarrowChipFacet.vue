@@ -26,7 +26,7 @@ const optLabel = (o: ChipOption): string => (typeof o === 'string' ? o : o.label
 </script>
 
 <template>
-  <section class="np-section">
+  <section class="stack gap-1 np-section">
     <div class="np-section-head">
       <span class="eyebrow np-section-eyebrow">{{ eyebrow }}</span>
       <span class="np-section-meta">{{ meta ?? (picked.size ? `${picked.size} picked` : 'any') }}</span>
