@@ -34,7 +34,7 @@
   text-transform: uppercase;
   text-decoration: none;
   border-radius: 0 0 var(--radius);
-  box-shadow: 0 4px 16px -4px rgb(var(--shadow-rgb) / 40%);
+  box-shadow: var(--shadow-raised);
   transform: translateY(-110%);
   transition: transform var(--duration-prompt) cubic-bezier(0.2, 0.7, 0.3, 1);
 }

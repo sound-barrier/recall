@@ -16,7 +16,7 @@
   width: min(540px, 100%);
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 24px 60px color-mix(in srgb, var(--bg) 50%, transparent);
+  box-shadow: var(--shadow-overlay);
 }
 
 .update-check-modal-head {

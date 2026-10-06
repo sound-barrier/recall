@@ -30,7 +30,7 @@
   border-radius: var(--radius);
   box-shadow:
     0 0 0 1px rgb(0 0 0 / 25%) inset,
-    0 14px 36px -14px rgb(var(--shadow-rgb) / 55%);
+    var(--shadow-raised);
   isolation: isolate;
 }
 
@@ -55,7 +55,7 @@
   transform: translateY(-1px);
   box-shadow:
     0 0 0 1px rgb(0 0 0 / 30%) inset,
-    0 18px 40px -14px rgb(var(--shadow-rgb) / 65%);
+    var(--shadow-floating);
   filter: brightness(1.06);
 }
 
@@ -69,7 +69,7 @@
   box-shadow:
     0 0 0 1px rgb(0 0 0 / 25%) inset,
     0 0 0 2px var(--accent-bright),
-    0 14px 36px -14px rgb(var(--shadow-rgb) / 55%);
+    var(--shadow-floating);
 }
 
 /* Hover the tile → the accent rail brightens; no chroma halo. */
@@ -194,7 +194,7 @@
   box-shadow:
     0 0 0 2px #fff inset,
     0 0 0 1px rgb(255 255 255 / 55%),
-    0 18px 40px -14px rgb(var(--shadow-rgb) / 65%);
+    var(--shadow-floating);
   filter: none;
 }
 
@@ -202,7 +202,7 @@
   box-shadow:
     0 0 0 2px #fff inset,
     0 0 0 3px var(--accent),
-    0 14px 36px -14px rgb(var(--shadow-rgb) / 55%);
+    var(--shadow-floating);
 }
 
 [data-theme="high-contrast"] .brand {

@@ -225,9 +225,9 @@
      overrides this to the OW brand gray, which composites warm and
      noticeably softer at the same alpha, so the geometry and opacity
      of every existing shadow carry over unchanged.
-     A triplet rather than finished shadow tokens because the alphas
-     in use span 12%–92% and are tuned per elevation; centralizing the
-     HUE is the part that was actually broken.
+     A triplet, so the elevation scale below can compose finished
+     shadows from it; components reach for the --shadow-* tokens, not
+     for this.
 
      Scope: OUTER shadows only — the ones cast onto the page. INSET
      edges sit on the element's own fill (a `.btn.primary` orange chip,
@@ -237,12 +237,27 @@
      theme and are deliberately black. */
   --shadow-rgb: 0 0 0;
 
-  /* Elevation of anything that floats over the page and dismisses: menus,
-     context menus, dropdowns. Six of them each tuned their own shadow
-     (five distinct geometries). A popover is one elevation, so it has one
-     token. Composed from --shadow-rgb, which themes override on the same
-     root element, so Day still casts its warm gray. */
+  /* Elevation scale. Every outer shadow is one of these, the way every
+     gap is a --space step. Forty hand-tuned shadows (36 distinct
+     geometries) had accumulated, and six of them were tinted from --bg,
+     which on Day is cream: a light "shadow" that cast no depth at all.
+     Composed from --shadow-rgb, which themes override on the same root
+     element, so Day still casts its warm gray.
+       raised   — a lifted card, a dragged chip, a hover lift
+       floating — sticky bars, callouts, the bulk bar, panels over content
+       popover  — menus, dropdowns, anything that dismisses on outside click
+       overlay  — modals, the lightbox, the command palette
+     The drawer and dock tokens are the same overlay depth cast sideways
+     or upward by a surface docked to an edge.
+     Rings, inset edges and glows are not elevation: they mark focus,
+     selection or a fill's own edge, and stay where they are. */
+  --shadow-raised: 0 4px 12px -4px rgb(var(--shadow-rgb) / 40%);
+  --shadow-floating: 0 10px 24px -10px rgb(var(--shadow-rgb) / 50%);
   --shadow-popover: 0 12px 32px -8px rgb(var(--shadow-rgb) / 45%);
+  --shadow-overlay: 0 24px 60px -16px rgb(var(--shadow-rgb) / 55%);
+  --shadow-drawer-left: 28px 0 60px -24px rgb(var(--shadow-rgb) / 65%);
+  --shadow-drawer-right: -28px 0 60px -24px rgb(var(--shadow-rgb) / 65%);
+  --shadow-dock-bottom: 0 -8px 24px -10px rgb(var(--shadow-rgb) / 50%);
 
   /* Drives `color-scheme` on <html> (see style.css). A token rather
      than a per-theme rule on the root element: any bare

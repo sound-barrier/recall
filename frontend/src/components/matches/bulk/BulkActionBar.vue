@@ -353,7 +353,7 @@ function pickTag(v: string) {
   /* Above the rows and the sticky day rules it floats over; below every
      modal surface (the detail panel, lightbox and friends live at 100+). */
   z-index: 40;
-  box-shadow: 0 8px 24px rgb(var(--shadow-rgb) / 35%);
+  box-shadow: var(--shadow-floating);
 }
 
 .bab-glyph { color: var(--accent-text); font-size: var(--type-xl); line-height: 1; }

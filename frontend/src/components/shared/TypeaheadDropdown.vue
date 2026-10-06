@@ -311,7 +311,7 @@ defineExpose({
   border-radius: var(--radius);
   max-height: 14rem;
   overflow-y: auto;
-  box-shadow: 0 12px 24px -16px rgb(var(--shadow-rgb) / 50%);
+  box-shadow: var(--shadow-popover);
 }
 
 .combo-list li {

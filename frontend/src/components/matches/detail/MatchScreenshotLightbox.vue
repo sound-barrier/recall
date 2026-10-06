@@ -316,7 +316,7 @@ function onNextClick() {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-  box-shadow: 0 8px 32px rgb(var(--shadow-rgb) / 50%);
+  box-shadow: var(--shadow-overlay);
   cursor: default;
 }
 

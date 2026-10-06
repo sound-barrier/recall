@@ -173,7 +173,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
   border-radius: var(--radius-overlay);
-  box-shadow: 0 22px 48px -20px rgb(var(--shadow-rgb) / 55%);
+  box-shadow: var(--shadow-popover);
   padding: var(--space-2) var(--space-2) var(--space-2);
   display: flex;
   flex-direction: column;

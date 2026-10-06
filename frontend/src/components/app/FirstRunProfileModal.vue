@@ -329,7 +329,7 @@ watch(trapOpen, async (open) => {
   border-radius: var(--radius-overlay);
   padding: var(--space-6) var(--space-6) var(--space-5);
   box-shadow:
-    0 22px 60px color-mix(in srgb, var(--bg) 70%, transparent),
+    var(--shadow-overlay),
     0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 

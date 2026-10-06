@@ -59,7 +59,7 @@
   font-size: var(--type-3xl);
   line-height: 1;
   cursor: pointer;
-  box-shadow: 0 6px 20px rgb(var(--shadow-rgb) / 35%);
+  box-shadow: var(--shadow-floating);
   transition: background var(--duration-fast) ease,
               border-color var(--duration-fast) ease,
               color var(--duration-fast) ease,

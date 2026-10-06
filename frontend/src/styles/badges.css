@@ -238,14 +238,14 @@
      is a photo viewport, and tinting it with a surface token would cast
      the screenshot's own colors. */
   background: #000;
-  box-shadow: 0 8px 30px -8px rgb(var(--shadow-rgb) / 50%);
+  box-shadow: var(--shadow-raised);
   cursor: zoom-in;
   transition: box-shadow var(--duration-prompt) ease, border-color var(--duration-prompt) ease;
 }
 
 .source-preview:hover {
   border-color: var(--accent-soft);
-  box-shadow: 0 8px 30px -6px rgb(var(--shadow-rgb) / 60%);
+  box-shadow: var(--shadow-floating);
 }
 
 .source-preview-error {

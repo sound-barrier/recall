@@ -332,12 +332,14 @@ Each one replaced several per-view copies that had drifted apart:
   where its panel sits (position, offset, z-index, min-width). Elevation is
   `--shadow-popover`.
 - **Mono buttons** (`buttons.css`): `.btn-mono`, the compact console-voice
-  action. The bare class is the quiet secondary; `.is-primary` /
-  `.is-accent` / `.is-danger` / `.is-danger-fill` pick the role, and
-  `.is-lg` sizes it for modal footers.
+  action, used by every such button in the app. The bare class is the quiet
+  secondary; `.is-primary` / `.is-accent` / `.is-danger` / `.is-danger-fill` /
+  `.is-text` pick the role, and `.is-sm` / `.is-lg` the size. A component
+  keeps only its own positioning or a genuinely unique state.
 - **Segmented control** (`buttons.css`): `.segmented` around `.segmented-btn`
-  children. The selected look keys off `aria-pressed="true"`, so never add a
-  parallel `:class="{ active }"` for it.
+  children (`.segmented.is-sm` for toolbars). The selected look keys off
+  `aria-pressed="true"` or, in a `role="radiogroup"`, `aria-checked="true"`,
+  so never add a parallel `:class="{ active }"` for it.
 
 **A rule in a parent's `<style scoped>` never reaches a child component's
 markup.** Only the child's root element gets the parent's scope hash. Settings
@@ -355,7 +357,13 @@ in `themes.css`): `--type-4xs … --type-7xl` (14 stops, 0.5–1.65rem), `--spac
 … --space-16` (a 4px grid named by multiple: `-2` is 8px, `-12` is 48px; write a
 negative as `calc(-1 * var(--space-N))`), `--radius-hair/-/-md/-lg/-surface/-overlay/-pill` (pick a
 radius by role: controls take the small ones, cards/panels `-surface`, anything
-floating `-overlay`), `--duration-instant … -hero`.
+floating `-overlay`), `--duration-instant … -hero`, and the elevation scale
+`--shadow-raised / -floating / -popover / -overlay` (+ `-drawer-left/-right`,
+`-dock-bottom` for edge-docked surfaces) — pick a shadow by what the surface IS,
+never by tuning geometry. Stylelint can't police shadows (any `var()` passes its
+token rule), so `scripts/ci/check-css-tokens.sh` does: px shadow geometry in the
+shadow tint outside `tokens.css` fails. Rings, insets and state glows are not
+elevation and stay literal.
 Anything derived from a token passes, so `color-mix(in srgb, var(--accent) 22%,
 transparent)` and `rgb(var(--shadow-rgb) / 55%)` are fine. Exempt by design:
 display type ≥1.8rem (per-surface editorial, not scale points), `em` units,

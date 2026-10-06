@@ -162,6 +162,30 @@ if [ -n "$literal_decls" ]; then
   done <<<"$literal_decls"
 fi
 
+# Outer shadows come from the elevation scale (--shadow-raised … -overlay,
+# plus the drawer/dock edges), the way gaps come from --space-*. Forty
+# hand-tuned shadows, 36 distinct geometries, had accumulated before the
+# scale existed, and stylelint cannot police it: its token rule passes any
+# value containing a var(), and `0 18px 38px -16px rgb(var(--shadow-rgb) /
+# 55%)` contains one. So the rule is stated here instead: shadow GEOMETRY
+# (a px offset/blur) painted in the shadow tint, or in the --bg mix that cast
+# a cream non-shadow on Day, belongs in tokens.css. Rings, insets and glows
+# use state colors and are untouched; a scrim's flat `background:
+# rgb(var(--shadow-rgb) / …)` has no geometry and passes.
+echo "==> checking outer shadows come from the elevation scale"
+raw_shadows=$(strip_comments \
+  | grep -E '[0-9]px[^;]*(rgb\(var\(--shadow-rgb\)|color-mix\(in srgb, var\(--bg\))' \
+  | grep -vE '/styles/(tokens|themes)\.css:' || true)
+
+if [ -n "$raw_shadows" ]; then
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    echo "  ✗ ${line}"
+    echo "      use a --shadow-* elevation token (styles/tokens.css)"
+    fail=1
+  done <<<"$raw_shadows"
+fi
+
 if [ "$fail" -ne 0 ]; then
   echo
   echo "CSS token check FAILED."
@@ -169,7 +193,8 @@ if [ "$fail" -ne 0 ]; then
   echo "  - A fallback on a defined token is dead code that invites drift."
   echo "  - A literal in a custom property is a palette value hiding outside"
   echo "    the palette, where no linter can see it."
+  echo "  - A hand-tuned shadow is an elevation step nobody chose."
   exit 1
 fi
 
-echo "CSS token check: every var() resolves, no dead fallbacks, no stray literals."
+echo "CSS token check: every var() resolves, no dead fallbacks, no stray literals, shadows on the scale."

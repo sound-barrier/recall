@@ -276,7 +276,7 @@ function onBackdropClick(e: MouseEvent) {
   border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  box-shadow: -28px 0 60px -24px rgb(var(--shadow-rgb) / 65%);
+  box-shadow: var(--shadow-drawer-right);
   overflow: hidden;
 
   /* Pin the panel to its own compositing layer. The slide-in animates

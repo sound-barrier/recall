@@ -207,7 +207,7 @@ const connector = computed(() => computeConnector(getTargetRect(), {
   border-left: 3px solid var(--accent);
   padding: var(--space-4) var(--space-5) var(--space-3);
   box-shadow:
-    0 26px 70px rgb(var(--shadow-rgb) / 60%),
+    var(--shadow-floating),
     0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
   display: flex;
   flex-direction: column;

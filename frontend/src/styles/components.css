@@ -127,7 +127,7 @@
   pointer-events: none;
   transition: opacity var(--duration-fast) ease, transform var(--duration-fast) ease;
   z-index: 5;
-  box-shadow: 0 8px 24px -8px rgb(var(--shadow-rgb) / 50%);
+  box-shadow: var(--shadow-popover);
 }
 
 .setting-help-pop::before {
@@ -429,7 +429,7 @@
   border-radius: var(--radius);
   max-height: 12rem;
   overflow-y: auto;
-  box-shadow: 0 10px 22px -14px rgb(var(--shadow-rgb) / 50%);
+  box-shadow: var(--shadow-popover);
 }
 
 .match-tag-suggestions li {

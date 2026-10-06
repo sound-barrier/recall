@@ -15,7 +15,7 @@
   background: linear-gradient(180deg, var(--brand-gray) 0%, var(--brand-gray-deep) 100%);
   border-radius: var(--radius);
   border: 1px solid var(--loss);
-  box-shadow: 0 14px 36px -14px rgb(var(--shadow-rgb) / 55%);
+  box-shadow: var(--shadow-floating);
   overflow: hidden;
   isolation: isolate;
 }
@@ -299,7 +299,7 @@
   padding: var(--space-8) var(--space-8) var(--space-6);
   max-width: 420px;
   width: calc(100% - 3rem);
-  box-shadow: 0 24px 60px rgb(var(--shadow-rgb) / 60%);
+  box-shadow: var(--shadow-overlay);
 }
 
 /* ── The capped SHEET: a pinned head, a scrolling middle, pinned actions ──
@@ -348,7 +348,7 @@
   border: 1px solid var(--accent);
   border-radius: var(--radius-overlay);
   box-shadow:
-    0 22px 60px color-mix(in srgb, var(--bg) 70%, transparent),
+    var(--shadow-overlay),
     0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
