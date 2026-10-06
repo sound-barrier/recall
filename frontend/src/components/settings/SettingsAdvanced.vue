@@ -20,8 +20,8 @@ import { useWriteGate } from '@/composables/shared/useWriteGate'
 // Extracted from SettingsView so the section-specific styles
 // (.advanced-*) live with the component that owns the markup. The
 // destructive-row styles (`.setting-row.danger-row` +
-// `.clear-confirm-group`) stay in SettingsView because they're
-// shared with the Backup/Restore section's Import-arm flow.
+// `.clear-confirm-group`) live in the global styles/settings.css
+// because the Backup/Restore section's Import-arm flow shares them.
 
 const uiStore = useUiStore()
 // Every row in here writes: re-parse rewrites records, Clear wipes them,

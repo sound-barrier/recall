@@ -197,7 +197,50 @@
   color: var(--accent-text);
 }
 
-/* .setting-meta and .meta-dot moved to IngestView.vue.
+/* Status meta strip under a setting or a Parse step: Ingest, Backup &
+   Restore and Advanced all print one. The block mark carries the semantic
+   color, so a colorblind reader still gets the cue from the leading glyph. */
+.setting-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-family: var(--mono);
+  font-size: var(--type-sm);
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+  font-feature-settings: "tnum";
+}
+
+.setting-meta.blocked { color: var(--loss); }
+.setting-meta.success { color: var(--win); }
+
+.block-mark {
+  margin-right: var(--space-0-5);
+  font-size: var(--type-lg);
+  filter: saturate(0.85);
+}
+
+/* An armed destructive row (re-parse all, clear database, restore). Global
+   because the rows render inside the section components: this sat in
+   SettingsView's scoped block, which cannot reach a child's markup, so on
+   every theme but Day an armed row looked exactly like an idle one. The
+   bar is an inset shadow, not a border, so arming recolors the row
+   without moving its content. */
+.setting-row.danger-row {
+  background: var(--loss-soft);
+  box-shadow: inset 3px 0 0 var(--loss-line);
+  border-radius: var(--radius);
+}
+
+.clear-confirm-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+/* .meta-dot lives in IngestView.vue.
    @keyframes pulse-dot stays here — referenced by
    ParseProgressPanel.vue (.pp-scan-dot, .pp-arrow) which lives in
    its own \3c style scoped> block. Animation-name references from a

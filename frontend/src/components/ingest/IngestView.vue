@@ -318,34 +318,12 @@ const runParseTitle = computed(() => {
 
 /* ─── Setting-meta + "blocked" variant ───────────────────── */
 
-.setting-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-  font-family: var(--mono);
-  font-size: var(--type-sm);
-  color: var(--text-faint);
-  letter-spacing: 0.04em;
-  font-feature-settings: "tnum";
-}
-
 .meta-dot {
   width: 6px; height: 6px;
   background: var(--win);
   border-radius: 50%;
   box-shadow: 0 0 8px var(--win-line);
   animation: pulse-dot 2.4s ease-in-out infinite;
-}
-
-.setting-meta.blocked {
-  color: var(--loss);
-}
-
-.block-mark {
-  margin-right: var(--space-0-5);
-  font-size: var(--type-lg);
-  filter: saturate(0.85);
 }
 
 /* ─── Readiness checklist (first-run prerequisites) ──────── */

@@ -15,7 +15,7 @@ import { formatIgnoredAt } from '@/match/match-time-helpers'
 //                     arm/confirm danger flow, since it wipes local data).
 //
 // `.setting-row.danger-row` + `.clear-confirm-group` are shared with the
-// SettingsAdvanced Clear-DB row, so those styles stay in the parent stylesheet.
+// SettingsAdvanced rows, so they live in the global styles/settings.css.
 
 // Reads and writes the stores directly — see SettingsAppearance.
 const databaseStore = useDatabaseStore()
