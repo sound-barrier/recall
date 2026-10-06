@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.33.7](https://github.com/sound-barrier/recall/compare/v0.33.6...v0.33.7) (2026-10-06)
+
+
+### Features
+
+* **parser:** add Season 5's Doctrine and Watchpoint: Grímsvötn ([f843679](https://github.com/sound-barrier/recall/commit/f843679caf6c2a0fbda7a08ef720f31d2c42ca84))
+
+
+### Bug Fixes
+
+* **ci:** check nested npm overrides leaf by leaf in check-tool-pins ([f221263](https://github.com/sound-barrier/recall/commit/f2212635d47c5e5b8d15a6f6fcbf29bf107c9dba))
+* **tools:** override the vulnerable npm CLI transitive deps ([cd0a4a0](https://github.com/sound-barrier/recall/commit/cd0a4a041a76d1893a6e4361c7d4ebb2e4b0cd9d))
+
+
+### Tests
+
+* **fixtures:** re-pick the sample profile seed for the new roster ([a2e1762](https://github.com/sound-barrier/recall/commit/a2e176251ffd0124650540a1e452b5cd7d6cba39))
+* **frontend:** count Season 5's roster in the Matches snapshots ([2787cad](https://github.com/sound-barrier/recall/commit/2787cad83b8d5557815fafa7d8b7e712aa69e247))
+
 ## [0.33.6](https://github.com/sound-barrier/recall/compare/v0.33.5...v0.33.6) (2026-10-06)
 
 
