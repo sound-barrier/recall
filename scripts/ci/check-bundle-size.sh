@@ -158,7 +158,12 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # so an endpoint family added there is eager by construction however lazily its
 # UI is reached. The roster's query, its Settings section and the journal's
 # completion are all in lazy chunks. Measured 364660B.
-: "${MAX_INITIAL_JS_BYTES:=366000}"
+# 2026-10: 366000 -> 367000 -- the shared UI families (menu panel, mono
+# button, segmented control, layout primitives) move styling from scoped
+# CSS into class names on templates, and the masthead/toolbar ones are
+# eager. +144B, against a base that measured 365996B: 4B of headroom.
+# Measured 366140B.
+: "${MAX_INITIAL_JS_BYTES:=367000}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
@@ -187,7 +192,8 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # padding/margin/gap literals became var(--space-N) references, the same
 # raw-bytes trade as the 2026-07 token adoption. GZIPPED, all CSS went
 # DOWN 817B (63470 -> 62653) because ~150 distinct values collapsed onto
-# 11 stops that compress well. Measured 84441B.
+# 11 stops that compress well. Measured 84441B; 85200B once the
+# shared menu/button/segmented families landed in the eager sheet.
 : "${MAX_INITIAL_CSS_BYTES:=86000}"
 # The Matches "Trends" charts pull in ECharts (tree-shaken to line + bar
 # charts, grid/tooltip/legend/markline/data-zoom/brush components, canvas
@@ -449,9 +455,12 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # (two rules, +315B). A clean build of the branch base measured 426897B,
 # so only 103B of the 2.4KB the note above implies was left. Measured
 # 427212B.
-# 2026-10: 428000 -> 446000 -- the spacing-token snap (see the initial
-# CSS row): raw +16.6KB, gzipped -817B. Measured 443641B.
-: "${MAX_TOTAL_CSS_BYTES:=446000}"
+# 2026-10: 428000 -> 432000 -- the spacing-token snap first raised raw
+# CSS +16.6KB (var() references outweigh the literals they replace;
+# gzipped it went DOWN 817B). Collapsing six menus, six segmented controls
+# and the mono buttons into shared families then took 12.7KB back out.
+# Net measured 430940B; gzipped 63470 -> 61567B.
+: "${MAX_TOTAL_CSS_BYTES:=432000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never
