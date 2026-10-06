@@ -12,7 +12,7 @@ import (
 // it tells — a slow, streaky, net-positive climb by a DPS main who bleeds
 // rank when swapping or playing off-pool — is asserted here, not hoped for.
 const (
-	tourSeed = int64(8)
+	tourSeed = int64(9)
 	tourN    = 1300
 )
 
