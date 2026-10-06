@@ -47,14 +47,14 @@ test.describe('automatic backup scheduler — Settings row', () => {
     await page.goto('/')
     await page.getByRole('tab', { name: 'Settings' }).click()
 
-    await expect(page.locator('[data-auto-backup-interval="7"]')).toHaveClass(/active/)
+    await expect(page.locator('[data-auto-backup-interval="7"]')).toBeChecked()
     await expect(page.locator('[data-auto-backup-last]')).toContainText(/last automatic backup/i)
     await expect(page.locator('.auto-backup-stale')).toHaveCount(0)
 
     await page.locator('[data-auto-backup-interval="1"]').click()
     await expect.poll(() => puts.length).toBe(1)
     expect(puts[0]).toBe(1)
-    await expect(page.locator('[data-auto-backup-interval="1"]')).toHaveClass(/active/)
+    await expect(page.locator('[data-auto-backup-interval="1"]')).toBeChecked()
   })
 
   test('stale snapshot shows the warning; none-yet copy when empty', async ({ page }) => {
@@ -73,7 +73,7 @@ test.describe('automatic backup scheduler — Settings row', () => {
     await page.goto('/')
     await page.getByRole('tab', { name: 'Settings' }).click()
 
-    await expect(page.locator('[data-auto-backup-interval="-1"]')).toHaveClass(/active/)
+    await expect(page.locator('[data-auto-backup-interval="-1"]')).toBeChecked()
     await expect(page.locator('.auto-backup-stale')).toHaveCount(0)
   })
 })
