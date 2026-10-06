@@ -68,7 +68,7 @@ const styleObj = computed(() => ({
   border: 1px solid var(--accent);
   border-radius: var(--radius);
   padding: var(--space-0-5);
-  box-shadow: 0 18px 36px -18px rgb(var(--shadow-rgb) / 55%);
+  box-shadow: var(--shadow-popover);
 
   /* Compose translate transform from inline style — keeps the GPU
      transform pipeline alive (cheap re-position on mousemove). */

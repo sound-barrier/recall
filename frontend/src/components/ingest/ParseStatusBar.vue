@@ -220,7 +220,7 @@ function onJumpToIngest(e: MouseEvent) {
   padding: 0 var(--space-4);
   background: var(--surface-3);
   border-top: 1px solid var(--accent);
-  box-shadow: 0 -8px 24px -10px rgb(var(--shadow-rgb) / 50%);
+  box-shadow: var(--shadow-dock-bottom);
   font-family: var(--mono);
   cursor: pointer;
   user-select: none;

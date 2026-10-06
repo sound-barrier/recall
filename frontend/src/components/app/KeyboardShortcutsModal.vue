@@ -245,7 +245,7 @@ const visibleGroups = computed(() =>
   border: 1px solid var(--surface-3);
   border-left: 3px solid var(--accent);
   padding: var(--space-6) var(--space-7) var(--space-5) var(--space-6);
-  box-shadow: 0 24px 64px rgb(var(--shadow-rgb) / 55%);
+  box-shadow: var(--shadow-overlay);
 }
 
 .kbd-modal-header {

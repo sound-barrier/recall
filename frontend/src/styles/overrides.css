@@ -55,7 +55,7 @@
 
 [data-theme="day"] .mf-panel {
   box-shadow:
-    0 24px 60px -18px rgb(var(--shadow-rgb) / 45%),
+    var(--shadow-overlay),
     0 0 0 1px var(--accent-soft);
 }
 [data-theme="day"] .mf-search { background: var(--surface-3); }

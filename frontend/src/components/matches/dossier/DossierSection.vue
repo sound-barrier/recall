@@ -123,7 +123,7 @@ function onGripKeydown(e: KeyboardEvent) {
   color: var(--text-faint);
   cursor: pointer;
   user-select: none;
-  box-shadow: 0 3px 8px -5px rgb(var(--shadow-rgb) / 45%);
+  box-shadow: var(--shadow-raised);
   transition: color var(--duration-fast) ease,
               border-color var(--duration-fast) ease,
               background var(--duration-fast) ease;

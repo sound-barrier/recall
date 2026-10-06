@@ -166,7 +166,7 @@ const calloutStyle = computed(() => {
   border-radius: var(--radius-overlay);
   padding: var(--space-3) var(--space-4) var(--space-4);
   box-shadow:
-    0 16px 36px color-mix(in srgb, var(--bg) 60%, transparent),
+    var(--shadow-floating),
     0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
   font-family: var(--body);
 }

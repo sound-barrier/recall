@@ -122,7 +122,7 @@ async function submit() {
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-overlay);
-  box-shadow: 0 18px 60px rgb(var(--shadow-rgb) / 45%);
+  box-shadow: var(--shadow-overlay);
   padding: var(--space-4) var(--space-4) 0;
   display: flex;
   flex-direction: column;

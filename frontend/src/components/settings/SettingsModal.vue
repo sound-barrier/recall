@@ -83,7 +83,7 @@ useModalFocusTrap(toRef(props, 'open'), {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 24px 60px color-mix(in srgb, var(--bg) 50%, transparent);
+  box-shadow: var(--shadow-overlay);
 }
 
 .settings-modal-head {
