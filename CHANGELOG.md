@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.33.7](https://github.com/sound-barrier/recall/compare/v0.33.6...v0.33.7) (2026-10-12)
+
+
+### Features
+
+* **parser:** add Season 5's Doctrine and Watchpoint: Grímsvötn ([f843679](https://github.com/sound-barrier/recall/commit/f843679caf6c2a0fbda7a08ef720f31d2c42ca84))
+
+
+### Bug Fixes
+
+* **ci:** check nested npm overrides leaf by leaf in check-tool-pins ([f221263](https://github.com/sound-barrier/recall/commit/f2212635d47c5e5b8d15a6f6fcbf29bf107c9dba))
+* **ci:** name upload-artifact's exact release in release.yml ([ba9c52c](https://github.com/sound-barrier/recall/commit/ba9c52cfa56c75841365b79936d0865a35d8cce8))
+* **deps:** build with Go 1.27.2 for ten stdlib CVEs ([cfef6d5](https://github.com/sound-barrier/recall/commit/cfef6d50902dd5f25e784bd921c118f11d9bff89))
+* **tools:** override the vulnerable npm CLI transitive deps ([cd0a4a0](https://github.com/sound-barrier/recall/commit/cd0a4a041a76d1893a6e4361c7d4ebb2e4b0cd9d))
+
+
+### Documentation
+
+* **ci:** describe mise-action v5.1.1 in setup-mise's comments ([372ee9b](https://github.com/sound-barrier/recall/commit/372ee9bfb0df7f8147ef33ad36c5a6a145e5d164))
+
+
+### Build & Packaging
+
+* **deps:** Bump jdx/mise-action ([71ec7ce](https://github.com/sound-barrier/recall/commit/71ec7cec7b8a829a03c53267eeaf761236f8f41a))
+* **deps:** Bump modernc.org/sqlite ([13d57aa](https://github.com/sound-barrier/recall/commit/13d57aa881f6246bede67ff2d24ff929659b5ade))
+* **deps:** move the tiptap menu overrides to 3.31.4 ([84b8ef0](https://github.com/sound-barrier/recall/commit/84b8ef0ee0bd17b1828dac23b4d56dc9f2bd10c7))
+* **tools:** move mise's typos pin to 1.50.3 with the CI action ([7fd7572](https://github.com/sound-barrier/recall/commit/7fd7572c9a6a3357d47e16dc1ba1639e31468fd9))
+* **tools:** point biome.jsonc's schema at 2.5.15 ([dd1c50c](https://github.com/sound-barrier/recall/commit/dd1c50c14049abdc65446f775ee3f0c59deff198))
+
+
+### Tests
+
+* **fixtures:** re-pick the sample profile seed for the new roster ([a2e1762](https://github.com/sound-barrier/recall/commit/a2e176251ffd0124650540a1e452b5cd7d6cba39))
+* **frontend:** count Season 5's roster in the Matches snapshots ([2787cad](https://github.com/sound-barrier/recall/commit/2787cad83b8d5557815fafa7d8b7e712aa69e247))
+
 ## [0.33.6](https://github.com/sound-barrier/recall/compare/v0.33.5...v0.33.6) (2026-10-06)
 
 
