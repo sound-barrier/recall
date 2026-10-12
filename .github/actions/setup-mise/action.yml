@@ -4,17 +4,17 @@ description: >
   toolchain, and load mise.toml [env] into $GITHUB_ENV. The only place the repo
   calls jdx/mise-action, so the mise version and its checksum live in one file.
 
-# Without `sha256`, mise-action checks a fresh download against the release's
-# minisign-signed SHASUMS256.txt but never re-checks a binary restored from its
-# cache. With `sha256` set, it skips minisign and hashes the installed binary on
-# every run, cache hit or not, so on a cache miss this hash is the trust root
-# for every tool mise installs afterwards.
+# Without `sha256`, mise-action checks the mise binary, freshly downloaded or
+# restored from its cache, against the release's minisign-signed
+# SHASUMS256.txt. With `sha256` set, it skips minisign and hashes the binary
+# instead, on every run, so this hash is the trust root for every tool mise
+# installs afterwards. A cached binary is hashed BEFORE it ever runs, and one
+# that fails the check is deleted and reinstalled.
 #
-# A cache hit is weaker. mise-action runs the restored binary (`mise version`,
-# and `mise self-update` on a version mismatch) BEFORE it compares the hash, and
-# never re-verifies the tool installs restored with it, which `mise install`
-# then skips as present. There the Actions cache is the trust root, so a job
-# holding a write or OIDC token should pass cache: 'false'.
+# A cache hit is still weaker for the tools. mise-action never re-verifies the
+# tool installs restored with the binary, and `mise install` then skips them as
+# present, so for those the Actions cache is the trust root. A job holding a
+# write or OIDC token should pass cache: 'false'.
 #
 # The hash is the RAW linux-x64 binary, which is what mise-action extracts on
 # an x64 ubuntu runner. It fails closed anywhere else (macOS, Windows, arm64,
@@ -41,10 +41,12 @@ inputs:
     default: 'true'
   github_token:
     description: >
-      Exported as MISE_GITHUB_TOKEN to every later step in the job. Pass '' when
-      the tools need no GitHub API and the job token is worth more than the
-      rate limit. mise-action then logs a "No MISE_GITHUB_TOKEN provided"
-      warning annotation on every run; that is expected, not a regression.
+      Used as MISE_GITHUB_TOKEN by this action's own mise calls only; later
+      steps in the job do not see it (mise-action's persist_github_token stays
+      at its default, false, and nothing here needs it). Pass '' when the tools
+      need no GitHub API and the job token is worth more than the rate limit.
+      mise-action then logs a "No MISE_GITHUB_TOKEN provided" warning
+      annotation on every run; that is expected, not a regression.
     required: false
     default: ${{ github.token }}
 
