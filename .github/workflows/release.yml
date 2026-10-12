@@ -127,7 +127,7 @@ jobs:
       - name: Upload unsigned exe for signing
         if: steps.signing.outputs.enabled == 'true'
         id: unsigned-exe
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: unsigned-exe
           path: bin/Recall.exe
@@ -135,7 +135,7 @@ jobs:
 
       - name: Sign the exe
         if: steps.signing.outputs.enabled == 'true'
-        uses: signpath/github-action-submit-signing-request@c92b958760219087e01f8d67a1669ed57afe2627  # v2
+        uses: signpath/github-action-submit-signing-request@c92b958760219087e01f8d67a1669ed57afe2627  # v2.3
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
@@ -157,7 +157,7 @@ jobs:
       - name: Upload unsigned installer for signing
         if: steps.signing.outputs.enabled == 'true'
         id: unsigned-installer
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: unsigned-installer
           path: bin/recall-amd64-installer.exe
@@ -165,7 +165,7 @@ jobs:
 
       - name: Sign the installer
         if: steps.signing.outputs.enabled == 'true'
-        uses: signpath/github-action-submit-signing-request@c92b958760219087e01f8d67a1669ed57afe2627  # v2
+        uses: signpath/github-action-submit-signing-request@c92b958760219087e01f8d67a1669ed57afe2627  # v2.3
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
