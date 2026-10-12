@@ -93,7 +93,7 @@ GOTOOLCHAIN = "local"
 # days old, the same cooldown the npm and Go dependencies keep.
 
 # Language runtimes (match go.mod / CI).
-go = "1.27.1"
+go = "1.27.2"
 # Keep in sync with the root .node-version (consumed by actions/setup-node
 # in CI); `task check-deps` asserts the two agree.
 node = "26.10.0"

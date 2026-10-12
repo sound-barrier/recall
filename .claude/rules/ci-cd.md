@@ -103,7 +103,7 @@ false` except `release-please.yml`'s `tag-and-dispatch`, which pushes a tag.
 
 ## Toolchain provisioning
 
-- **Version truth**: Go = `go.mod` (`go 1.27.1`); Node = root `.node-version`,
+- **Version truth**: Go = `go.mod` (`go 1.27.2`); Node = root `.node-version`,
   equal to `mise.toml [tools] node` (`scripts/ci/check-tool-pins.sh` asserts
   it).
 - **`.github/actions/setup-mise` is the only `jdx/mise-action` call.** It pins
