@@ -92,9 +92,8 @@ jobs:
         with:
           # Only Go — the watch needs no linters and no frontend toolchain.
           install_args: go
-          # Go needs no GitHub API, and the export would hand this job's token
-          # to every later step, including the scrape. The rate-limit warning
-          # mise-action logs without a token is expected.
+          # Go needs no GitHub API, so mise-action gets no token at all. The
+          # rate-limit warning it logs without one is expected.
           github_token: ''
 
       - name: Read the roster against the game
