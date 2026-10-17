@@ -120,3 +120,4 @@ a folder silently regrows what it just shed.
 | 2026-09-29 | diagnostic-parse-failures | pkg/app | 52 → 53 | `parse_recognized.go` — one policy for recognized non-match screens; `parse.go` was already over 500 lines. |
 | 2026-10-05 | layout-primitives | frontend/src/styles | 21 → 22 | `layout.css` — `.stack`/`.cluster` layout primitives on the spacing scale, global because every feature folder uses them. |
 | 2026-10-06 | shared-ui-families | frontend/src/styles | 22 → 23 | `menu.css` — the popover menu family six menus had each spelled out; collapsed into one panel/item/rule set. |
+| 2026-10-17 | profile-screenshot-claims | pkg/app | 53 → 54 | `screenshot_claims.go` — cross-profile screenshot ownership hooks, split out of `dedup.go`, which owns within-profile copies. |
