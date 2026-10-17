@@ -2082,6 +2082,17 @@ export type PerformanceStat = {
     avg_per_10min?: number;
 };
 
+export type ClaimTransfer = {
+    /**
+     * Screenshots now owned by the active profile.
+     */
+    screenshots: number;
+    /**
+     * Matches moved here from the profiles that owned them.
+     */
+    matches_moved: number;
+};
+
 export type ProfilesResponse = {
     /**
      * The currently-active profile name.
@@ -4130,6 +4141,39 @@ export type SwitchProfileResponses = {
 };
 
 export type SwitchProfileResponse = SwitchProfileResponses[keyof SwitchProfileResponses];
+
+export type ClaimFolderScreenshotsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/profiles/active/screenshot-claims';
+};
+
+export type ClaimFolderScreenshotsErrors = {
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type ClaimFolderScreenshotsError = ClaimFolderScreenshotsErrors[keyof ClaimFolderScreenshotsErrors];
+
+export type ClaimFolderScreenshotsResponses = {
+    /**
+     * Taken over; the body says how much.
+     */
+    200: ClaimTransfer;
+};
+
+export type ClaimFolderScreenshotsResponse = ClaimFolderScreenshotsResponses[keyof ClaimFolderScreenshotsResponses];
 
 export type DeleteProfileData = {
     body?: never;

@@ -3,6 +3,8 @@ package profiles
 import (
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 
 	"recall/pkg/bundle"
 	"recall/pkg/db"
@@ -585,4 +587,36 @@ func movePhase2DeleteSource(src db.Store, matchKeys []string, moved []db.SelfRev
 		return fmt.Errorf("move: collect unreferenced frames: %w", err)
 	}
 	return nil
+}
+
+// MatchKeysHolding returns the keys of every match in src that holds at least
+// one of filenames, sorted. It is how a screenshot takeover finds the owning
+// profile's matches to move.
+func MatchKeysHolding(src db.Store, filenames map[string]bool) ([]string, error) {
+	snap, err := src.LoadAll()
+	if err != nil {
+		return nil, fmt.Errorf("load matches: %w", err)
+	}
+	keys := map[string]bool{}
+	note := func(filename, key string) {
+		if filenames[filename] && key != "" {
+			keys[key] = true
+		}
+	}
+	for _, r := range snap.Summaries {
+		note(r.Filename, r.MatchKey)
+	}
+	for _, r := range snap.Teams {
+		note(r.Filename, r.MatchKey)
+	}
+	for _, r := range snap.Personals {
+		note(r.Filename, r.MatchKey)
+	}
+	for _, r := range snap.Ranks {
+		note(r.Filename, r.MatchKey)
+	}
+	for _, r := range snap.Unknowns {
+		note(r.Filename, r.MatchKey)
+	}
+	return slices.Sorted(maps.Keys(keys)), nil
 }

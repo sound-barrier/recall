@@ -1,11 +1,14 @@
 package app
 
 import (
+	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 
 	"recall/pkg/applog"
+	"recall/pkg/profiles"
 )
 
 // Cross-profile screenshot ownership. A screenshot belongs to the first
@@ -192,4 +195,135 @@ func (a *App) sightedHash(logger *slog.Logger, active, path string, seen map[str
 		logger.Error("record sighting failed", "file", filepath.Base(path), "err", err)
 	}
 	return hash
+}
+
+// ClaimTransfer reports what ClaimFolderScreenshots took over.
+type ClaimTransfer struct {
+	Screenshots  int `json:"screenshots"`
+	MatchesMoved int `json:"matches_moved"`
+}
+
+// ClaimFolderScreenshots is the explicit override of screenshot ownership:
+// it takes every screenshot in the active profile's folder that another
+// profile owns. Like a move, the owner's matches holding those screenshots
+// come across with their edits and leave the owner; a deleted owner's
+// screenshots just change hands. Screenshots with no match yet are left for
+// the next parse. Holds the parse slot, since it writes the active store.
+func (a *App) ClaimFolderScreenshots() (ClaimTransfer, error) {
+	if err := a.assertNoCoachSession(); err != nil {
+		return ClaimTransfer{}, err
+	}
+	if a.claims == nil || a.profiles == nil {
+		return ClaimTransfer{}, errors.New("profiles: not initialized")
+	}
+	dir, err := validateScreenshotsDir(a.settingsSnapshot().ScreenshotsDir)
+	if err != nil {
+		return ClaimTransfer{}, err
+	}
+	if _, ok := a.claimRunSlot("screenshot-takeover"); !ok {
+		return ClaimTransfer{}, ErrParseInFlight
+	}
+	defer a.endParse()
+
+	byOwner, err := a.foreignScreenshotsByOwner(dir)
+	if err != nil {
+		return ClaimTransfer{}, err
+	}
+	var out ClaimTransfer
+	for owner, files := range byOwner {
+		moved, err := a.takeScreenshotsFrom(owner, files)
+		if err != nil {
+			return out, err
+		}
+		out.MatchesMoved += moved
+		out.Screenshots += len(files)
+	}
+	return out, nil
+}
+
+// foreignScreenshotsByOwner groups the images in dir that another profile
+// owns by that owner: owner -> filename -> hash.
+func (a *App) foreignScreenshotsByOwner(dir string) (map[string]map[string]string, error) {
+	own, err := a.ownFilenamesIn(dir)
+	if err != nil {
+		return nil, err
+	}
+	logger := applog.Subsystem("claims")
+	active := a.profiles.Active()
+	foreign, seen := a.foreignClaims(logger, active)
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(foreign) == 0 {
+		return nil, err
+	}
+	byOwner := map[string]map[string]string{}
+	for _, e := range entries {
+		if !isImageEntry(e) || own[e.Name()] {
+			continue
+		}
+		hash := a.sightedHash(logger, active, filepath.Join(dir, e.Name()), seen)
+		if !foreign[hash] {
+			continue
+		}
+		owner, err := a.claims.OwnerOf(hash)
+		if err != nil {
+			return nil, err
+		}
+		if byOwner[owner] == nil {
+			byOwner[owner] = map[string]string{}
+		}
+		byOwner[owner][e.Name()] = hash
+	}
+	return byOwner, nil
+}
+
+// ownFilenamesIn returns the screenshots in dir the active profile holds rows for.
+func (a *App) ownFilenamesIn(dir string) (map[string]bool, error) {
+	dirID, err := a.store.EnsureScreenshotsDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	return a.store.LoadFilenamesForDir(dirID)
+}
+
+// takeScreenshotsFrom moves owner's matches holding files into the active
+// profile, then makes the active profile the owner of every file. Returns
+// how many matches moved; a deleted owner has none to give.
+func (a *App) takeScreenshotsFrom(owner string, files map[string]string) (int, error) {
+	moved := 0
+	if a.profiles.Contains(owner) {
+		n, err := a.moveMatchesHere(owner, files)
+		if err != nil {
+			return 0, err
+		}
+		moved = n
+	}
+	active := a.profiles.Active()
+	for f, hash := range files {
+		if err := a.claims.Transfer(hash, active, f); err != nil {
+			return moved, err
+		}
+	}
+	return moved, nil
+}
+
+// moveMatchesHere moves every match in owner's store that holds one of files
+// into the active store, through the same engine as MoveMatches.
+func (a *App) moveMatchesHere(owner string, files map[string]string) (int, error) {
+	src, err := a.openProfileStore(owner)
+	if err != nil {
+		return 0, fmt.Errorf("take screenshots from %s: %w", owner, err)
+	}
+	defer func() { _ = src.Close() }()
+	names := make(map[string]bool, len(files))
+	for f := range files {
+		names[f] = true
+	}
+	keys, err := profiles.MatchKeysHolding(src, names)
+	if err != nil || len(keys) == 0 {
+		return 0, err
+	}
+	if err := profiles.Move(src, a.store, keys); err != nil {
+		return 0, fmt.Errorf("take screenshots from %s: %w", owner, err)
+	}
+	return len(keys), nil
 }

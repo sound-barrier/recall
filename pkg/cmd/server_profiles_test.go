@@ -83,3 +83,42 @@ func seedTestProfile(t *testing.T, mux *http.ServeMux) seedResponse {
 	}
 	return got
 }
+
+// POST /profiles/active/screenshot-claims is the explicit ownership override.
+// The wire contract: a JSON summary of what was taken, and a 409 (not a 500)
+// when there is no screenshots folder to take from.
+func TestClaimFolderScreenshots_ReportsWhatWasTaken(t *testing.T) {
+	mux := newTestAppWithProfiles(t)
+	const route = "/api/v1/profiles/active/screenshot-claims"
+
+	rec := fire(t, mux, http.MethodPost, route, nil)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("no folder: status = %d, want 409; body=%q", rec.Code, rec.Body.String())
+	}
+
+	folder := t.TempDir()
+	put := fireBody(t, mux, http.MethodPut, "/api/v1/settings/screenshots-folder",
+		strings.NewReader(`{"path":`+strconvQuote(folder)+`}`))
+	if put.Code != http.StatusOK {
+		t.Fatalf("set folder: status = %d; body=%q", put.Code, put.Body.String())
+	}
+	rec = fire(t, mux, http.MethodPost, route, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%q", rec.Code, rec.Body.String())
+	}
+	var got struct {
+		Screenshots  *int `json:"screenshots"`
+		MatchesMoved *int `json:"matches_moved"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if got.Screenshots == nil || got.MatchesMoved == nil || *got.Screenshots != 0 || *got.MatchesMoved != 0 {
+		t.Errorf("body = %s, want {screenshots: 0, matches_moved: 0}", rec.Body.String())
+	}
+}
+
+func strconvQuote(s string) string {
+	b, _ := json.Marshal(s)
+	return string(b)
+}

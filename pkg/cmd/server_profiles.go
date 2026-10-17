@@ -20,6 +20,7 @@ func registerProfileRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("POST /api/v1/profiles", handleCreateProfile(a))
 	apiMux.HandleFunc("POST /api/v1/profiles/test/seed", handleSeedTestProfile(a))
 	apiMux.HandleFunc("PUT /api/v1/profiles/active", handleSwitchProfile(a))
+	apiMux.HandleFunc("POST /api/v1/profiles/active/screenshot-claims", handleClaimFolderScreenshots(a))
 
 	// 405 on every other method for `/profiles/active`, so a wrong verb
 	// can't route to `{name}` and operate on a profile literally named
@@ -94,6 +95,25 @@ func handleSwitchProfile(a *app.App) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, r, a.GetProfiles(), nil)
+	}
+}
+
+// handleClaimFolderScreenshots is the explicit override of screenshot
+// ownership: the active profile takes every screenshot in its folder that
+// another profile owns, moving that profile's matches across. 409 when there
+// is no usable folder, a parse holds the run slot, or the move would strand a
+// review.
+func handleClaimFolderScreenshots(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		res, err := a.ClaimFolderScreenshots()
+		if writeError(w, r, err,
+			errStatus{app.ErrInvalidScreenshotsDir, probConflict},
+			errStatus{app.ErrParseInFlight, probConflict},
+			errStatus{app.ErrMoveStrandsCandidate, probConflict},
+			errStatus{app.ErrMoveSplitsSelfReview, probConflict}) {
+			return
+		}
+		writeJSON(w, r, res, nil)
 	}
 }
 
