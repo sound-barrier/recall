@@ -4,6 +4,7 @@ import type {
   MatchRecord,
   FailedFile,
   IgnoredScreenshot,
+  GetPendingScreenshotCountResponse,
 } from '@/client/types.gen'
 
 // Re-exported wire types — consumers import these instead of reaching into
@@ -15,10 +16,11 @@ export function GetMatchResults(): Promise<MatchRecord[]> {
   return unwrap(sdk.getMatchResults())
 }
 
-export type PendingScreenshots = { count: number; parked: number }
+export type PendingScreenshots = GetPendingScreenshotCountResponse
 
 // Count of screenshots the next parse run will OCR, plus the on-disk
-// files parked after repeated failures (skipped by normal runs).
+// files parked after repeated failures (skipped by normal runs) and the
+// ones another profile owns.
 export function GetNewScreenshotCount(): Promise<PendingScreenshots> {
   return unwrap(sdk.getPendingScreenshotCount())
 }

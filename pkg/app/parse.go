@@ -104,10 +104,11 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	if err != nil {
 		return err
 	}
-	parsed, parked, err := a.parsedSkipSet(screenshotsDir, dirID, force)
+	skips, err := a.parsedSkipSet(screenshotsDir, dirID, force)
 	if err != nil {
 		return err
 	}
+	parsed, parked := skips.skip, skips.parked
 	// Byte-identical copies of already-ingested files skip OCR entirely
 	// (dedup.go) — they join the skip set before the loop starts.
 	a.dedupNewFiles(screenshotsDir, parsed)
@@ -201,13 +202,23 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 // surface that says "parked" (the skip here, the pending count's
 // breakdown, the wire flag on a failed row) answers with one semantic.
 // Empty on a force run, which re-attempts parked files.
-func (a *App) parsedSkipSet(dir string, dirID int64, force bool) (skip, parked map[string]bool, err error) {
+// skipSet is parsedSkipSet's answer: the whole set the run skips, plus the
+// two subsets the pending count reports on their own.
+type skipSet struct {
+	skip map[string]bool
+	// parked: cap-reached failures (see above).
+	parked map[string]bool
+	// elsewhere: screenshots another profile owns.
+	elsewhere map[string]bool
+}
+
+func (a *App) parsedSkipSet(dir string, dirID int64, force bool) (skipSet, error) {
 	own, err := a.store.LoadFilenamesForDir(dirID)
 	if err != nil {
-		return nil, nil, err
+		return skipSet{}, err
 	}
-	skip = map[string]bool{}
-	parked = map[string]bool{}
+	skip := map[string]bool{}
+	parked := map[string]bool{}
 	if !force {
 		maps.Copy(skip, own)
 		// All-Heroes and history screens carry no stored parent row, so
@@ -240,10 +251,11 @@ func (a *App) parsedSkipSet(dir string, dirID int64, force bool) (skip, parked m
 	}
 	// A screenshot another profile owns is never this profile's to parse,
 	// force or not: Re-parse All rebuilds this profile's own history.
-	for f := range a.claimedElsewhere(dir, own) {
+	elsewhere := a.claimedElsewhere(dir, own)
+	for f := range elsewhere {
 		skip[f] = true
 	}
-	return skip, parked, nil
+	return skipSet{skip: skip, parked: parked, elsewhere: elsewhere}, nil
 }
 
 // parseRunState accumulates per-file outcomes across one Parse batch so the

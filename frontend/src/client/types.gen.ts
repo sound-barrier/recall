@@ -3473,6 +3473,14 @@ export type GetPendingScreenshotCountResponses = {
          */
         count: number;
         /**
+         * Files in the folder another profile already parsed and
+         * owns — skipped, excluded from `count`. Only
+         * `POST /api/v1/profiles/active/screenshot-claims` takes
+         * them over.
+         *
+         */
+        claimed_elsewhere: number;
+        /**
          * On-disk files parked after repeated failures —
          * skipped by normal runs, excluded from `count`.
          *
