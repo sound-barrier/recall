@@ -8,17 +8,19 @@ import { flushPromises } from '@/test-utils'
 // the SFC so the live wrapper never fires. vi.mock factories are
 // hoisted; vi.hoisted lets the spies share scope with the factory
 // without hitting "cannot access before initialization."
-const { GetProfiles, SwitchProfile, CreateProfile, RenameProfile } = vi.hoisted(() => ({
+const { GetProfiles, SwitchProfile, CreateProfile, RenameProfile, GetNewScreenshotCount } = vi.hoisted(() => ({
   GetProfiles:   vi.fn(),
   SwitchProfile: vi.fn(),
   CreateProfile: vi.fn(),
   RenameProfile: vi.fn(),
+  GetNewScreenshotCount: vi.fn(),
 }))
 vi.mock('@/api', () => ({
   GetProfiles,
   SwitchProfile,
   CreateProfile,
   RenameProfile,
+  GetNewScreenshotCount,
   // The switcher is also the "whose data" control for a coaching session,
   // so its dropdown reaches the coach store — whose observers read these.
   ListCoachReturns: vi.fn(async () => []),
@@ -43,6 +45,8 @@ beforeEach(() => {
   SwitchProfile.mockReset()
   CreateProfile.mockReset()
   RenameProfile.mockReset()
+  GetNewScreenshotCount.mockReset()
+  GetNewScreenshotCount.mockResolvedValue({ count: 0, parked: 0, claimed_elsewhere: 0 })
   reloadSpy.mockReset()
 })
 
@@ -219,5 +223,76 @@ describe('ProfileSwitcher — rename', () => {
     const items = screen.getAllByRole('menuitem')
     expect(items.map((i) => within(i).queryByText(/alt|main/) !== null)).toEqual([true, true, false])
     expect(RenameProfile).not.toHaveBeenCalled()
+  })
+})
+
+// Unparsed screenshots belong to no profile until one parses them, so
+// switching away first says that whoever parses next takes them.
+describe('ProfileSwitcher — switching with unparsed screenshots', () => {
+  const notice = () => screen.queryByRole('status')
+
+  it('holds the switch behind a notice naming the count and the folder', async () => {
+    GetNewScreenshotCount.mockResolvedValue({ count: 3, parked: 0, claimed_elsewhere: 0 })
+    await renderChip(['alt', 'main'], 'main')
+    await openMenu()
+
+    await user().click(screen.getByRole('menuitem', { name: 'alt' }))
+    await flushPromises()
+
+    expect(notice()).toHaveTextContent(/3 screenshots in main's folder aren't parsed yet/)
+    expect(SwitchProfile).not.toHaveBeenCalled()
+    expect(screen.getByRole('menuitem', { name: 'Switch to alt' })).toHaveFocus()
+  })
+
+  it('uses the singular for one screenshot', async () => {
+    GetNewScreenshotCount.mockResolvedValue({ count: 1, parked: 0, claimed_elsewhere: 0 })
+    await renderChip(['alt', 'main'], 'main')
+    await openMenu()
+
+    await user().click(screen.getByRole('menuitem', { name: 'alt' }))
+    await flushPromises()
+
+    expect(notice()).toHaveTextContent(/1 screenshot in main's folder isn't parsed yet/)
+  })
+
+  it('switches once the notice is acknowledged', async () => {
+    GetNewScreenshotCount.mockResolvedValue({ count: 2, parked: 0, claimed_elsewhere: 0 })
+    SwitchProfile.mockResolvedValue({ active: 'alt', profiles: ['alt', 'main'] })
+    await renderChip(['alt', 'main'], 'main')
+    await openMenu()
+    await user().click(screen.getByRole('menuitem', { name: 'alt' }))
+    await flushPromises()
+
+    await user().click(screen.getByRole('menuitem', { name: 'Switch to alt' }))
+    await flushPromises()
+
+    expect(SwitchProfile).toHaveBeenCalledWith('alt')
+    expect(reloadSpy).toHaveBeenCalled()
+  })
+
+  it('closing the menu drops the held switch', async () => {
+    GetNewScreenshotCount.mockResolvedValue({ count: 2, parked: 0, claimed_elsewhere: 0 })
+    await renderChip(['alt', 'main'], 'main')
+    await openMenu()
+    await user().click(screen.getByRole('menuitem', { name: 'alt' }))
+    await flushPromises()
+
+    await user().keyboard('{Escape}')
+    await openMenu()
+
+    expect(notice()).not.toBeInTheDocument()
+    expect(SwitchProfile).not.toHaveBeenCalled()
+  })
+
+  it('a failed count read never blocks the switch', async () => {
+    GetNewScreenshotCount.mockRejectedValue(new Error('offline'))
+    SwitchProfile.mockResolvedValue({ active: 'alt', profiles: ['alt', 'main'] })
+    await renderChip(['alt', 'main'], 'main')
+    await openMenu()
+
+    await user().click(screen.getByRole('menuitem', { name: 'alt' }))
+    await flushPromises()
+
+    expect(SwitchProfile).toHaveBeenCalledWith('alt')
   })
 })

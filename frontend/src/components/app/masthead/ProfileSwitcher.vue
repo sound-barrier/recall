@@ -18,6 +18,8 @@ const {
   newNameValid,
   toggleOpen,
   pickProfile,
+  pendingSwitch,
+  confirmPendingSwitch,
   beginCreate,
   confirmCreate,
   cancelCreate,
@@ -115,6 +117,28 @@ const {
             </button>
           </form>
         </template>
+      </div>
+
+      <div v-if="pendingSwitch" class="profile-switch-notice">
+        <p class="profile-switch-notice-text" role="status">
+          <template v-if="pendingSwitch.unparsed === 1">
+            1 screenshot in {{ active }}'s folder isn't parsed yet. It doesn't belong to any
+            profile, so whichever profile parses it next takes it.
+          </template>
+          <template v-else>
+            {{ pendingSwitch.unparsed }} screenshots in {{ active }}'s folder aren't parsed yet.
+            They don't belong to any profile, so whichever profile parses them next takes them.
+          </template>
+        </p>
+        <button
+          type="button"
+          class="btn-mono is-primary profile-switch-confirm"
+          role="menuitem"
+          :disabled="busy"
+          @click="confirmPendingSwitch"
+        >
+          {{ busy ? '…' : `Switch to ${pendingSwitch.to}` }}
+        </button>
       </div>
 
       <div class="menu-sep" aria-hidden="true" />
@@ -378,6 +402,26 @@ const {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* The held-switch notice: a sentence, not a label, so body type rather
+   than the menu's mono caps, wrapped to a readable measure. */
+.profile-switch-notice {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 18rem;
+  padding: var(--space-2);
+}
+
+.profile-switch-notice-text {
+  margin: 0;
+  font-size: var(--type-sm);
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.profile-switch-confirm {
+  justify-self: start;
 }
 
 .profile-error {
