@@ -136,20 +136,46 @@ func (a *App) registeredHashes() map[string]string {
 	return hashes
 }
 
-// releaseForgotten frees the claims on every screenshot that was registered
-// in before but is no longer: a hard delete drops exactly the deleted match's
-// files from the registry, so the difference is what the match owned.
-func (a *App) releaseForgotten(before map[string]string) {
-	if a.claims == nil || a.profiles == nil || len(before) == 0 {
-		return
+// forgottenSince returns the screenshots registered in before that the
+// registry no longer holds, filename -> hash. A hard delete or a move's
+// source-side delete drops exactly the affected matches' files, so this is
+// what they owned.
+func (a *App) forgottenSince(before map[string]string) map[string]string {
+	if len(before) == 0 {
+		return nil
 	}
 	after := a.registeredHashes()
 	if after == nil {
-		return
+		return nil
 	}
+	gone := map[string]string{}
 	for f, hash := range before {
 		if _, kept := after[f]; !kept {
-			a.releaseClaim(hash, f)
+			gone[f] = hash
+		}
+	}
+	return gone
+}
+
+// releaseForgotten frees the claims on the screenshots a hard delete took.
+func (a *App) releaseForgotten(before map[string]string) {
+	if a.claims == nil || a.profiles == nil {
+		return
+	}
+	for f, hash := range a.forgottenSince(before) {
+		a.releaseClaim(hash, f)
+	}
+}
+
+// transferForgotten hands target the claims on the screenshots a move took
+// from this profile.
+func (a *App) transferForgotten(before map[string]string, target string) {
+	if a.claims == nil {
+		return
+	}
+	for f, hash := range a.forgottenSince(before) {
+		if err := a.claims.Transfer(hash, target, f); err != nil {
+			applog.Subsystem("claims").Error("transfer claim failed", "file", f, "target", target, "err", err)
 		}
 	}
 }

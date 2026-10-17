@@ -39,7 +39,14 @@ func (a *App) MoveMatches(matchKeys []string, targetProfile string) error {
 	}
 	defer func() { _ = targetStore.Close() }()
 
-	return profiles.Move(a.store, targetStore, matchKeys)
+	registered := a.registeredHashes()
+	if err := profiles.Move(a.store, targetStore, matchKeys); err != nil {
+		return err
+	}
+	// The moved screenshots are the target's now, so this profile, likely
+	// watching the same folder, never imports them back.
+	a.transferForgotten(registered, targetProfile)
+	return nil
 }
 
 // validateMoveRequest validates targetProfile and decides whether the
