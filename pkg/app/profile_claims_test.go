@@ -281,3 +281,25 @@ func TestClaims_RenamedProfileKeepsItsClaims(t *testing.T) {
 		t.Errorf("alt must still skip the renamed profile's a.png; skip=%v", skip)
 	}
 }
+
+// Moving a match hands its screenshots to the target for good: the source,
+// still pointed at the same folder, must not import them back.
+func TestClaims_MoveTransfersTheScreenshotsToTheTarget(t *testing.T) {
+	a, shared := newSharedFolderApp(t)
+	writeFile(t, shared, shotA, []byte("match-one"))
+	key := parseOneMatch(t, a, shotA)
+	mustNoErr(t, a.MoveMatches([]string{key}, "alt"))
+
+	if skip := parseCapturingSkip(t, a); !skip[shotA] {
+		t.Errorf("main must not re-import the screenshot it moved to alt; skip=%v", skip)
+	}
+	// Re-parse All re-reads a profile's own screenshots and skips only
+	// foreign ones, so it tells "alt owns it" apart from "already parsed".
+	switchTo(t, a, "alt")
+	var skip map[string]bool
+	stubParseCapturingSkip(t, &skip)
+	mustNoErr(t, a.ReParseAll())
+	if skip[shotA] {
+		t.Errorf("alt owns the moved screenshot and must re-parse it; skip=%v", skip)
+	}
+}
