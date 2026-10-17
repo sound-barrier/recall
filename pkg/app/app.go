@@ -36,6 +36,7 @@ import (
 	"recall/pkg/applog"
 	"recall/pkg/coach"
 	"recall/pkg/db"
+	"recall/pkg/profiles"
 	"recall/pkg/tesseract"
 )
 
@@ -52,6 +53,12 @@ type App struct {
 	// NewWithStore. When nil, dataDir() falls back to appBaseDir() so
 	// settings IO still resolves under the test's HOME isolation.
 	profiles *Profiles
+	// claims is the install-wide screenshot ownership ledger
+	// (pkg/profiles/claims.go), opened beside profiles.json in Startup. A
+	// screenshot belongs to the first profile that parses it; every other
+	// profile skips it. nil for tests wired via NewWithStore, which turns
+	// cross-profile ownership off just as a nil profiles turns profiles off.
+	claims *profiles.Claims
 	// profileOverride is set when the launch carries a --profile=<name>
 	// CLI flag; Startup uses it to activate the named profile (creating
 	// it if needed) without persisting "this is now the default" — the
@@ -296,12 +303,18 @@ func (a *App) Startup(ctx context.Context) {
 // the active profile's directory — and applies the CLI --profile override.
 // On failure it has already captured the fatal and returns false.
 func (a *App) initProfiles() bool {
-	profiles, err := LoadProfiles(appBaseDir())
+	mgr, err := LoadProfiles(appBaseDir())
 	if err != nil {
 		a.captureFatal("profile manager init", err)
 		return false
 	}
-	a.profiles = profiles
+	a.profiles = mgr
+	claims, err := profiles.OpenClaims(appBaseDir())
+	if err != nil {
+		a.captureFatal("screenshot claims ledger init", err)
+		return false
+	}
+	a.claims = claims
 
 	// CLI --profile=<name> override (set on the App before Startup by
 	// main.go / main_server.go). Auto-creates the named profile if it

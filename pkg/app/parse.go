@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 
@@ -103,7 +104,7 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	if err != nil {
 		return err
 	}
-	parsed, parked, err := a.parsedSkipSet(dirID, force)
+	parsed, parked, err := a.parsedSkipSet(screenshotsDir, dirID, force)
 	if err != nil {
 		return err
 	}
@@ -174,7 +175,8 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 // (files at parkedAttemptCap — retrying them every run is what kept the
 // pending count promising work that would fail again) — unioned with the
 // user-curated suppress-list (Dismiss in the Unknown tab) and the
-// registry's standing byte-identical duplicates. Errors loading the ignored /
+// registry's standing byte-identical duplicates, and every screenshot another
+// profile owns (claimedElsewhere). Errors loading the ignored /
 // recognized / parked / duplicate sets don't abort the parse — it's a UX
 // nicety, not a correctness invariant; an empty set just means nothing's
 // suppressed. The suppress list and the duplicate registry ARE honored even
@@ -199,14 +201,15 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 // surface that says "parked" (the skip here, the pending count's
 // breakdown, the wire flag on a failed row) answers with one semantic.
 // Empty on a force run, which re-attempts parked files.
-func (a *App) parsedSkipSet(dirID int64, force bool) (skip, parked map[string]bool, err error) {
+func (a *App) parsedSkipSet(dir string, dirID int64, force bool) (skip, parked map[string]bool, err error) {
+	own, err := a.store.LoadFilenamesForDir(dirID)
+	if err != nil {
+		return nil, nil, err
+	}
 	skip = map[string]bool{}
 	parked = map[string]bool{}
 	if !force {
-		skip, err = a.store.LoadFilenamesForDir(dirID)
-		if err != nil {
-			return nil, nil, err
-		}
+		maps.Copy(skip, own)
 		// All-Heroes and history screens carry no stored parent row, so
 		// LoadFilenamesForDir misses them; union their recognized-skip
 		// registries here so a normal re-parse doesn't re-OCR them. Skipped
@@ -233,6 +236,11 @@ func (a *App) parsedSkipSet(dirID int64, force bool) (skip, parked map[string]bo
 		skip[f] = true
 	}
 	for f := range a.standingDuplicates() {
+		skip[f] = true
+	}
+	// A screenshot another profile owns is never this profile's to parse,
+	// force or not: Re-parse All rebuilds this profile's own history.
+	for f := range a.claimedElsewhere(dir, own) {
 		skip[f] = true
 	}
 	return skip, parked, nil

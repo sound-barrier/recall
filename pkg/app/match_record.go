@@ -40,7 +40,7 @@ func (a *App) GetNewScreenshotCount() (PendingScreenshots, error) {
 	if err != nil {
 		return PendingScreenshots{}, err
 	}
-	skip, parked, err := a.parsedSkipSet(dirID, false)
+	skip, parked, err := a.parsedSkipSet(dir, dirID, false)
 	if err != nil {
 		return PendingScreenshots{}, err
 	}

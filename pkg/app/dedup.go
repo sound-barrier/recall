@@ -54,19 +54,21 @@ func (a *App) dedupNewFiles(dir string, parsed map[string]bool) {
 // outsideDedupScope reports whether a directory entry needs no dedup work:
 // not an image, already in the skip set, or already registered on a prior run.
 func outsideDedupScope(e os.DirEntry, parsed map[string]bool, ingested map[string]db.IngestedFile) bool {
-	if e.IsDir() {
-		return true
-	}
 	base := e.Name()
-	ext := strings.ToLower(filepath.Ext(base))
-	if ext != ".png" && ext != ".jpg" && ext != ".jpeg" {
-		return true
-	}
-	if parsed[base] {
+	if !isImageEntry(e) || parsed[base] {
 		return true
 	}
 	_, seen := ingested[base]
 	return seen // original already registered on a prior run
+}
+
+// isImageEntry reports whether a directory entry is a screenshot candidate.
+func isImageEntry(e os.DirEntry) bool {
+	if e.IsDir() {
+		return false
+	}
+	ext := strings.ToLower(filepath.Ext(e.Name()))
+	return ext == ".png" || ext == ".jpg" || ext == ".jpeg"
 }
 
 // registerIngestedImage hashes one new image and records it: a byte-identical
@@ -87,11 +89,105 @@ func (a *App) registerIngestedImage(logger *slog.Logger, dir, base string, parse
 		logger.Info("byte-identical copy skipped", "file", base, "duplicate_of", canonical)
 		return
 	}
+	if !a.claimScreenshot(hash, base) {
+		parsed[base] = true
+		logger.Info("screenshot owned by another profile skipped", "file", base)
+		return
+	}
 	if err := a.store.UpsertIngestedFile(base, hash, ""); err != nil {
 		logger.Error("record original failed", "file", base, "err", err)
 		return
 	}
 	byHash[hash] = base
+}
+
+// claimScreenshot records the active profile as the owner of a screenshot
+// it is about to parse, and reports whether the active profile owns it.
+// claimedElsewhere has already filtered out what other profiles own, so a
+// false here is the narrow case of a claim landing in between. Best-effort
+// like the rest of dedup: a ledger error lets the parse proceed.
+func (a *App) claimScreenshot(hash, base string) bool {
+	if a.claims == nil || a.profiles == nil {
+		return true
+	}
+	active := a.profiles.Active()
+	owner, err := a.claims.Claim(hash, active, base)
+	if err != nil {
+		applog.Subsystem("claims").Error("claim failed; parsing anyway", "file", base, "err", err)
+		return true
+	}
+	return owner == active
+}
+
+// claimedElsewhere returns the images in dir that another profile already
+// owns, matched by content hash so a renamed copy still counts. own is the
+// set of filenames this profile already holds rows for: those stay this
+// profile's even when another profile holds the same bytes (duplicates that
+// predate the ledger are left as they are). Each file is hashed once per
+// profile and cached as a sighting; with no foreign claims at all (a single
+// profile) nothing is hashed. Best-effort: a ledger or read error suppresses
+// nothing.
+func (a *App) claimedElsewhere(dir string, own map[string]bool) map[string]bool {
+	if a.claims == nil || a.profiles == nil {
+		return nil
+	}
+	logger := applog.Subsystem("claims")
+	active := a.profiles.Active()
+	foreign, seen := a.foreignClaims(logger, active)
+	if len(foreign) == 0 {
+		return nil
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	elsewhere := map[string]bool{}
+	for _, e := range entries {
+		if !isImageEntry(e) || own[e.Name()] {
+			continue
+		}
+		if hash := a.sightedHash(logger, active, filepath.Join(dir, e.Name()), seen); foreign[hash] {
+			elsewhere[e.Name()] = true
+		}
+	}
+	return elsewhere
+}
+
+// foreignClaims loads the hashes other profiles own and the active
+// profile's cached sightings. Both are nil on a ledger error, which
+// suppresses nothing.
+func (a *App) foreignClaims(logger *slog.Logger, active string) (foreign map[string]bool, seen map[string]string) {
+	foreign, err := a.claims.OwnedByOthers(active)
+	if err != nil {
+		logger.Error("load foreign claims failed; nothing suppressed", "err", err)
+		return nil, nil
+	}
+	if len(foreign) == 0 {
+		return nil, nil
+	}
+	seen, err = a.claims.Sightings(active)
+	if err != nil {
+		logger.Error("load sightings failed; nothing suppressed", "err", err)
+		return nil, nil
+	}
+	return foreign, seen
+}
+
+// sightedHash returns the cached hash of path for the active profile,
+// hashing and caching it on first sight. "" on a read failure.
+func (a *App) sightedHash(logger *slog.Logger, active, path string, seen map[string]string) string {
+	if hash, ok := seen[path]; ok {
+		return hash
+	}
+	hash, err := hashFile(path)
+	if err != nil {
+		logger.Error("hash failed", "file", filepath.Base(path), "err", err)
+		return ""
+	}
+	if err := a.claims.RecordSighting(active, path, hash); err != nil {
+		logger.Error("record sighting failed", "file", filepath.Base(path), "err", err)
+	}
+	return hash
 }
 
 // standingDuplicates returns the filenames the registry already knows are

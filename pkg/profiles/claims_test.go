@@ -107,6 +107,32 @@ func TestClaims_PersistAcrossReopen(t *testing.T) {
 	assertOwner(t, openClaims(t, base), "h1", "main")
 }
 
+// Sightings cache each profile's hash of a file path, so a profile hashes a
+// screenshot once rather than on every pending-count refresh.
+func TestClaims_SightingsArePerProfileAndFollowRenames(t *testing.T) {
+	c := openClaims(t, t.TempDir())
+	mustNoErr(t, c.RecordSighting("main", "/ow/a.png", "h1"))
+
+	main, err := c.Sightings("main")
+	mustNoErr(t, err)
+	if main["/ow/a.png"] != "h1" {
+		t.Fatalf("Sightings(main) = %v, want /ow/a.png -> h1", main)
+	}
+	alt, err := c.Sightings("alt")
+	mustNoErr(t, err)
+	if len(alt) != 0 {
+		t.Fatalf("Sightings(alt) = %v, want none", alt)
+	}
+
+	mustNoErr(t, c.RecordSighting("main", "/ow/a.png", "h2"))
+	mustNoErr(t, c.RenameProfile("main", "ranked"))
+	ranked, err := c.Sightings("ranked")
+	mustNoErr(t, err)
+	if ranked["/ow/a.png"] != "h2" {
+		t.Fatalf("Sightings(ranked) = %v, want the re-recorded hash under the new name", ranked)
+	}
+}
+
 // Seeding runs once: the first call imports every profile's existing
 // screenshots (earliest ingest wins a hash two profiles share), and a second
 // call is a no-op even if the inputs changed.
