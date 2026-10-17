@@ -327,6 +327,7 @@ data surface (dossier, heatmap, Archive) to that profile's history.
 ```text
 <base>/
 ├── profiles.json        ← which profile is active + the list
+├── claims.db            ← which profile each screenshot belongs to
 ├── window.json          ← the app window's size and position
 └── profiles/
     ├── main/            ← the default profile (created on first launch)
@@ -344,6 +345,17 @@ window where it is. Delete it, or use **Settings → 07 / Window →
 Reset**, and the window goes back to a comfortable share of whichever
 display it opens on.
 
+`claims.db` is how profiles share a screenshots folder without sharing
+matches. A screenshot belongs to the first profile that parses it,
+recognized by its contents, so a renamed or copied file is still the
+same screenshot. Every other profile skips it, even on **Re-parse all**.
+Moving a match to another profile hands its screenshots over with it.
+Deleting the match, or dismissing a screenshot, frees them for the next
+profile that parses. Deleting a profile does not: its screenshots stay
+with it. The Parse tab shows how many screenshots in the folder belong
+to other profiles and offers **Take them**, which moves them, and the
+matches built from them, into the active profile.
+
 Inside each profile directory:
 
 - `settings.json` — the screenshots folder, Tesseract path, theme,
@@ -357,7 +369,8 @@ Wiping a profile's `db/recall.db` (or using **Settings → Advanced
 → Clear Parse Database** while that profile is active) deletes
 match history for that profile but leaves screenshots and
 settings alone. Re-running Parse against the same screenshot
-folder rebuilds it from scratch.
+folder rebuilds it from scratch, from every screenshot that profile
+owns plus any nobody owns yet.
 
 You can scope a single launch to a specific profile via
 `--profile=<name>` on the binary — useful for opening an alt

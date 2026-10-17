@@ -122,6 +122,27 @@ it:
 
 The same two steps delete any profile you no longer want.
 
+## Why does my second profile skip screenshots that are in its folder?
+
+Each screenshot belongs to the first profile that parses it. When two profiles
+point at the same Overwatch screenshots folder, the second one skips everything
+the first already parsed, so one account's games never show up in the other's
+history. Recall recognizes a screenshot by its contents, so renaming or copying
+the file doesn't change who owns it.
+
+A few things change ownership:
+
+- **Move to…** in the Matches view hands the moved matches' screenshots to the
+  profile they moved to.
+- Deleting a match, or dismissing a screenshot, frees it for the next profile
+  that parses. Deleting a whole profile does not.
+- The Parse tab's **Take them** pulls the folder's other-profile screenshots,
+  and the matches built from them, into the profile you're in.
+
+Screenshots nobody has parsed yet belong to no one. If you switch profiles
+while some are waiting, Recall asks first: whichever profile parses them next
+keeps them.
+
 ## A new hero or map shows as "Unknown" — do I need to reinstall?
 
 No. Recall ships its hero/map roster separately from the app, so a new season's

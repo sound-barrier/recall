@@ -22,6 +22,15 @@ paths:
   `pkg/app/profile_move.go` — two-phase (write target, delete source) so a
   mid-transfer crash leaves the canonical copy on the target. **No migration**
   from any prior single-profile layout — fresh installs only.
+- Cross-profile screenshot ownership (`claims`, `pkg/profiles/claims.go`,
+  `<base>/claims.db`): a content hash belongs to the first profile that
+  registers it (`Claim` in dedup). `parsedSkipSet` skips foreign-owned files
+  even on Re-parse All, never the profile's own. Released on hard delete and on
+  dismiss (`pkg/app/screenshot_claims.go`); transferred by `MoveMatches`; kept
+  on profile delete; renamed with the profile. `ClaimFolderScreenshots` is the
+  explicit takeover (moves the owner's matches, then transfers). Seeded once
+  from every profile's `ingested_files`, earliest ingest wins. A nil ledger
+  (`NewWithStore` tests) turns the feature off.
 - File watcher (`watcher`, `watchedDir`, `watchTimer`, `watchMu`) with
   `watchDebounce = 60*time.Second`: any new `.png`/`.jpg` resets a timer; expiry
   runs `ParseScreenshots` (which now emits `parse-complete` itself).

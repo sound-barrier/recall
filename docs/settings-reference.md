@@ -215,6 +215,11 @@ fix that stopped Miyazaki from being silently attributed to Mei —
 to retroactively correct older records. Two-step confirm (button
 flips to **Confirm re-parse** for 6 seconds; Cancel backs out).
 
+Screenshots another profile parsed first stay skipped: re-parse
+reads only what belongs to this profile, plus anything nobody has
+parsed yet. To bring another profile's screenshots over, use
+**Take them** on the Parse tab.
+
 Annotations, queue and play-mode overrides, hidden flags, and
 reviews all key on `match_key` (which is timestamp-derived and
 stable) so they survive the re-parse — only the parsed hero / map /
@@ -293,6 +298,15 @@ The button shows the count of new screenshots in the folder
 parse. Re-running it against the same screenshots is idempotent —
 Recall stores which files it's already seen, so duplicates don't
 create duplicate matches.
+
+Screenshots another profile already parsed don't count: each
+screenshot belongs to the first profile that parses it, and every
+other profile skips it. When the folder holds some, an **Other
+profiles' screenshots** row says how many and offers **Take them**.
+Confirming (**Move them here**) moves those screenshots and every
+match built from them into this profile, out of the one that had
+them. If their matches were already gone, the row asks you to run
+Parse to read them.
 
 The status line below shows either:
 
