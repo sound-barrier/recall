@@ -101,7 +101,13 @@
 # correlation, no typed-row eviction, the Unknown row retired. parse.go was
 # already past 500 lines, so the policy gets its own file rather than growing
 # it further.
-pkg/app                                       53
+# 54: screenshot_claims.go — the shell's hooks into the cross-profile
+# screenshot ownership ledger (claim on parse, skip what another profile owns,
+# release on delete/dismiss, hand over on a move). It grew inside dedup.go
+# first, because that file owns the hashing it builds on, but it is a separate
+# reason to change: dedup is about copies within one profile, claims about
+# ownership across profiles.
+pkg/app                                       54
 
 # pkg/db — the SQLite store: schema + additive-column registry, the migration
 # engine, per-screenshot-type CRUD, the Store interface and its *SQLStore
