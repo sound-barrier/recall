@@ -1,6 +1,7 @@
 package profiles_test
 
 import (
+	"errors"
 	"testing"
 
 	"recall/pkg/profiles"
@@ -134,8 +135,8 @@ func TestClaims_SightingsArePerProfileAndFollowRenames(t *testing.T) {
 }
 
 // Seeding runs once: the first call imports every profile's existing
-// screenshots (earliest ingest wins a hash two profiles share), and a second
-// call is a no-op even if the inputs changed.
+// screenshots (earliest ingest wins a hash two profiles share), and a later
+// call neither seeds again nor even asks for the inputs.
 func TestClaims_SeedOnceEarliestWins(t *testing.T) {
 	c := openClaims(t, t.TempDir())
 	seed := []profiles.SeedClaim{
@@ -143,7 +144,7 @@ func TestClaims_SeedOnceEarliestWins(t *testing.T) {
 		{Hash: "h1", Profile: "main", Filename: "a.png", IngestedAt: "2026-05-01T00:00:00Z"},
 		{Hash: "h2", Profile: "alt", Filename: "b.png", IngestedAt: "2026-05-03T00:00:00Z"},
 	}
-	seeded, err := c.SeedOnce(seed)
+	seeded, err := c.SeedOnce(func() ([]profiles.SeedClaim, error) { return seed, nil })
 	mustNoErr(t, err)
 	if !seeded {
 		t.Fatal("first SeedOnce reported no seeding")
@@ -151,10 +152,45 @@ func TestClaims_SeedOnceEarliestWins(t *testing.T) {
 	assertOwner(t, c, "h1", "main")
 	assertOwner(t, c, "h2", "alt")
 
-	seeded, err = c.SeedOnce([]profiles.SeedClaim{{Hash: "h3", Profile: "main", Filename: "c.png"}})
+	asked := false
+	seeded, err = c.SeedOnce(func() ([]profiles.SeedClaim, error) {
+		asked = true
+		return []profiles.SeedClaim{{Hash: "h3", Profile: "main", Filename: "c.png"}}, nil
+	})
 	mustNoErr(t, err)
-	if seeded {
-		t.Fatal("second SeedOnce seeded again")
+	if seeded || asked {
+		t.Fatalf("second SeedOnce: seeded=%v asked=%v, want neither", seeded, asked)
 	}
 	assertOwner(t, c, "h3", "")
+}
+
+// A failed load leaves the ledger unseeded, so the next start tries again.
+func TestClaims_SeedOnceRetriesAfterALoadFailure(t *testing.T) {
+	c := openClaims(t, t.TempDir())
+	_, err := c.SeedOnce(func() ([]profiles.SeedClaim, error) { return nil, errors.New("disk on fire") })
+	if err == nil {
+		t.Fatal("SeedOnce swallowed the load error")
+	}
+	seeded, err := c.SeedOnce(func() ([]profiles.SeedClaim, error) {
+		return []profiles.SeedClaim{{Hash: "h1", Profile: "main", Filename: "a.png"}}, nil
+	})
+	mustNoErr(t, err)
+	if !seeded {
+		t.Fatal("SeedOnce did not retry after a failed load")
+	}
+	assertOwner(t, c, "h1", "main")
+}
+
+// A screenshot that predates the registry has no ingest time; a profile with
+// a dated ingest of the same bytes is the better evidence and wins.
+func TestClaims_SeedOnceDatedIngestBeatsUndated(t *testing.T) {
+	c := openClaims(t, t.TempDir())
+	_, err := c.SeedOnce(func() ([]profiles.SeedClaim, error) {
+		return []profiles.SeedClaim{
+			{Hash: "h1", Profile: "legacy", Filename: "a.png"},
+			{Hash: "h1", Profile: "main", Filename: "a.png", IngestedAt: "2026-05-01T00:00:00Z"},
+		}, nil
+	})
+	mustNoErr(t, err)
+	assertOwner(t, c, "h1", "main")
 }

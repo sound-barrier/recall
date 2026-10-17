@@ -21,7 +21,7 @@ func (s *SQLStore) UpsertIngestedFile(filename, contentHash, duplicateOf string)
 
 // LoadIngestedFiles returns the whole registry keyed by filename.
 func (s *SQLStore) LoadIngestedFiles() (map[string]IngestedFile, error) {
-	rows, err := s.db.Query(`SELECT filename, content_hash, COALESCE(duplicate_of, '') FROM ingested_files`)
+	rows, err := s.db.Query(`SELECT filename, content_hash, COALESCE(duplicate_of, ''), first_seen_at FROM ingested_files`)
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +30,7 @@ func (s *SQLStore) LoadIngestedFiles() (map[string]IngestedFile, error) {
 	for rows.Next() {
 		var f string
 		var r IngestedFile
-		if err := rows.Scan(&f, &r.ContentHash, &r.DuplicateOf); err != nil {
+		if err := rows.Scan(&f, &r.ContentHash, &r.DuplicateOf, &r.FirstSeenAt); err != nil {
 			return nil, err
 		}
 		out[f] = r
