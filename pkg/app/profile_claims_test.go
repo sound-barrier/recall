@@ -191,3 +191,93 @@ func TestClaims_SeedingClaimsParsedScreenshotsMissingFromTheRegistry(t *testing.
 		t.Errorf("alt must skip main's pre-registry screenshot; skip=%v", skip)
 	}
 }
+
+// parseOneMatch makes the active profile parse filename into a stored match
+// and returns that match's key.
+func parseOneMatch(t *testing.T, a *app.App, filename string) string {
+	t.Helper()
+	stubParse(t, func(progress parser.ProgressFunc) error {
+		progress(1, 1, filename, &parser.MatchResult{Result: "victory", Map: "rialto", Hero: "lucio"}, nil)
+		return nil
+	})
+	app.TessStatus(a).Found = true
+	mustNoErr(t, a.ParseScreenshots())
+	records, err := a.GetMatchResults()
+	mustNoErr(t, err)
+	if len(records) != 1 {
+		t.Fatalf("want one stored match, got %d", len(records))
+	}
+	return records[0].MatchKey
+}
+
+const shotA = "Overwatch Screenshot 2026.01.05 - 21.30.00.00.png"
+
+// Deleting the match in the profile that owns its screenshots frees them.
+func TestClaims_HardDeleteReleasesTheMatchsScreenshots(t *testing.T) {
+	a, shared := newSharedFolderApp(t)
+	writeFile(t, shared, shotA, []byte("match-one"))
+	key := parseOneMatch(t, a, shotA)
+	mustNoErr(t, a.HardDeleteMatch(key))
+
+	switchTo(t, a, "alt")
+	if skip := parseCapturingSkip(t, a); skip[shotA] {
+		t.Errorf("a deleted match's screenshot must be free for alt; skip=%v", skip)
+	}
+}
+
+// Hiding is a soft delete: the rows stay, so the claim stays.
+func TestClaims_HideKeepsTheClaim(t *testing.T) {
+	a, shared := newSharedFolderApp(t)
+	writeFile(t, shared, shotA, []byte("match-one"))
+	key := parseOneMatch(t, a, shotA)
+	mustNoErr(t, a.HideMatch(key))
+
+	switchTo(t, a, "alt")
+	if skip := parseCapturingSkip(t, a); !skip[shotA] {
+		t.Errorf("a hidden match still owns its screenshot; skip=%v", skip)
+	}
+}
+
+// Dismissing a screenshot in the owning profile frees it for the others.
+func TestClaims_IgnoreReleasesTheScreenshot(t *testing.T) {
+	a, shared := newSharedFolderApp(t)
+	writeFile(t, shared, "a.png", []byte("match-one"))
+	parseCapturingSkip(t, a)
+	mustNoErr(t, a.IgnoreScreenshot("a.png"))
+
+	switchTo(t, a, "alt")
+	if skip := parseCapturingSkip(t, a); skip["a.png"] {
+		t.Errorf("a dismissed screenshot must be free for alt; skip=%v", skip)
+	}
+}
+
+// Deleting a profile keeps its claims: its screenshots stay off limits.
+func TestClaims_DeletedProfileKeepsItsClaims(t *testing.T) {
+	a, shared := newSharedFolderApp(t)
+	mustNoErr(t, a.CreateProfile("temp"))
+	mustNoErr(t, a.SetScreenshotsDir(shared))
+	writeFile(t, shared, "a.png", []byte("match-one"))
+	parseCapturingSkip(t, a)
+	switchTo(t, a, "main")
+	mustNoErr(t, a.DeleteProfile("temp"))
+
+	if skip := parseCapturingSkip(t, a); !skip["a.png"] {
+		t.Errorf("a deleted profile's screenshot must stay claimed; skip=%v", skip)
+	}
+}
+
+// Renaming a profile carries its claims and its own screenshots stay its own.
+func TestClaims_RenamedProfileKeepsItsClaims(t *testing.T) {
+	a, shared := newSharedFolderApp(t)
+	writeFile(t, shared, "a.png", []byte("match-one"))
+	parseCapturingSkip(t, a)
+	mustNoErr(t, a.RenameProfile("main", "ranked"))
+
+	if skip := parseCapturingSkip(t, a); skip["a.png"] {
+		t.Errorf("the renamed profile must still own a.png; skip=%v", skip)
+	}
+	switchTo(t, a, "alt")
+	if skip := parseCapturingSkip(t, a); !skip["a.png"] {
+		t.Errorf("alt must still skip the renamed profile's a.png; skip=%v", skip)
+	}
+}

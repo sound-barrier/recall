@@ -159,23 +159,27 @@ func (a *App) UnpinMatch(matchKey string) error {
 	return matchedit.Unpin(a.store, matchKey)
 }
 
-// HardDeleteMatch wipes every row keyed on matchKey from the database.
-// Surfaced by the Hidden drawer's Delete affordance — the user has
+// HardDeleteMatch wipes every row keyed on matchKey from the database and
+// releases this profile's claims on its screenshots. Surfaced by the Hidden drawer's Delete affordance — the user has
 // already archived the match and explicitly confirmed. Idempotent.
 func (a *App) HardDeleteMatch(matchKey string) error {
 	if err := a.assertNoCoachSession(); err != nil {
 		return err
 	}
+	registered := a.registeredHashes()
 	if err := matchedit.HardDelete(a.store, matchKey); err != nil {
 		return err
 	}
+	// Its screenshots are no longer this profile's: another may parse them.
+	a.releaseForgotten(registered)
 	// The match took its moments with it; their frames are now unreferenced.
 	a.collectOrphanFrames()
 	return nil
 }
 
 // IgnoreScreenshot adds filename to the suppress-list backing the
-// Unknown tab's Dismiss affordance, and removes the file's own rows —
+// Unknown tab's Dismiss affordance, releases this profile's claim on it so
+// another profile may parse it, and removes the file's own rows —
 // a match this was the last screenshot of disappears now (sidecars
 // wiped), while one with sibling screenshots survives minus this file.
 // Idempotent.
@@ -183,9 +187,12 @@ func (a *App) IgnoreScreenshot(filename string) error {
 	if err := a.assertNoCoachSession(); err != nil {
 		return err
 	}
+	registered := a.registeredHashes()
 	if err := matchedit.IgnoreScreenshot(a.store, filename); err != nil {
 		return err
 	}
+	// Dismissed here means free for another profile to parse.
+	a.releaseScreenshot(filename, registered)
 	// A match this was the last screenshot of is gone now, sidecars and all —
 	// including moments whose frames nothing points at any more.
 	a.collectOrphanFrames()

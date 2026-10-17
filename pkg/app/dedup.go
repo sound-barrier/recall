@@ -119,6 +119,69 @@ func (a *App) claimScreenshot(hash, base string) bool {
 	return owner == active
 }
 
+// registeredHashes snapshots the content-hash registry's originals,
+// filename -> hash. nil on a read failure.
+func (a *App) registeredHashes() map[string]string {
+	ingested, err := a.store.LoadIngestedFiles()
+	if err != nil {
+		applog.Subsystem("claims").Error("load registry failed", "err", err)
+		return nil
+	}
+	hashes := make(map[string]string, len(ingested))
+	for f, rec := range ingested {
+		if rec.DuplicateOf == "" {
+			hashes[f] = rec.ContentHash
+		}
+	}
+	return hashes
+}
+
+// releaseForgotten frees the claims on every screenshot that was registered
+// in before but is no longer: a hard delete drops exactly the deleted match's
+// files from the registry, so the difference is what the match owned.
+func (a *App) releaseForgotten(before map[string]string) {
+	if a.claims == nil || a.profiles == nil || len(before) == 0 {
+		return
+	}
+	after := a.registeredHashes()
+	if after == nil {
+		return
+	}
+	for f, hash := range before {
+		if _, kept := after[f]; !kept {
+			a.releaseClaim(hash, f)
+		}
+	}
+}
+
+// releaseScreenshot frees the active profile's claim on one screenshot,
+// found by its registered hash or, for a file the registry never saw, by
+// hashing it in the screenshots folder.
+func (a *App) releaseScreenshot(filename string, registered map[string]string) {
+	if a.claims == nil || a.profiles == nil {
+		return
+	}
+	hash, ok := registered[filename]
+	if !ok {
+		dir := a.settingsSnapshot().ScreenshotsDir
+		if dir == "" {
+			return
+		}
+		h, err := hashFile(filepath.Join(dir, filepath.Base(filename)))
+		if err != nil {
+			return
+		}
+		hash = h
+	}
+	a.releaseClaim(hash, filename)
+}
+
+func (a *App) releaseClaim(hash, filename string) {
+	if err := a.claims.Release(hash, a.profiles.Active()); err != nil {
+		applog.Subsystem("claims").Error("release claim failed", "file", filename, "err", err)
+	}
+}
+
 // claimedElsewhere returns the images in dir that another profile already
 // owns, matched by content hash so a renamed copy still counts. own is the
 // set of filenames this profile already holds rows for: those stay this
