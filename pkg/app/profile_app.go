@@ -180,11 +180,25 @@ func (a *App) RenameProfile(old, newName string) error {
 		}
 		return err
 	}
+	a.renameClaims(old, newName)
 
 	if wasActive {
 		return a.reopenActiveStore()
 	}
 	return nil
+}
+
+// renameClaims carries a renamed profile's screenshot claims to its new
+// name. Logged, not returned: the profile rename has already happened, and a
+// stale claim name costs only cross-profile skipping, never this profile's
+// own history.
+func (a *App) renameClaims(old, newName string) {
+	if a.claims == nil {
+		return
+	}
+	if err := a.claims.RenameProfile(old, newName); err != nil {
+		applog.Subsystem("profiles").Error("rename screenshot claims", "err", err)
+	}
 }
 
 // reopenActiveStore is shared between RenameProfile's active branch
