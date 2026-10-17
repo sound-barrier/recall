@@ -35,6 +35,12 @@ CREATE TABLE IF NOT EXISTS claims (
   claimed_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
 ) STRICT;
 CREATE INDEX IF NOT EXISTS claims_profile ON claims (profile);
+CREATE TABLE IF NOT EXISTS sightings (
+  profile TEXT NOT NULL,
+  path TEXT NOT NULL,
+  content_hash TEXT NOT NULL,
+  PRIMARY KEY (profile, path)
+) STRICT;
 CREATE TABLE IF NOT EXISTS claims_meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -125,12 +131,45 @@ func (c *Claims) OwnedByOthers(profile string) (map[string]bool, error) {
 	return owned, rows.Err()
 }
 
-// RenameProfile moves every claim held by old to newName.
+// RenameProfile moves every claim and sighting held by old to newName.
 func (c *Claims) RenameProfile(old, newName string) error {
-	if _, err := c.db.Exec(`UPDATE claims SET profile = ? WHERE profile = ?`, newName, old); err != nil {
-		return fmt.Errorf("rename claims %s -> %s: %w", old, newName, err)
+	for _, table := range []string{"claims", "sightings"} {
+		// #nosec G202 -- table is one of the two literals above.
+		if _, err := c.db.Exec(`UPDATE `+table+` SET profile = ? WHERE profile = ?`, newName, old); err != nil {
+			return fmt.Errorf("rename %s %s -> %s: %w", table, old, newName, err)
+		}
 	}
 	return nil
+}
+
+// RecordSighting caches the hash profile computed for the file at path, so
+// the next pending count or parse need not read the file again.
+func (c *Claims) RecordSighting(profile, path, hash string) error {
+	if _, err := c.db.Exec(
+		`INSERT INTO sightings (profile, path, content_hash) VALUES (?, ?, ?)
+		 ON CONFLICT (profile, path) DO UPDATE SET content_hash = excluded.content_hash`,
+		profile, path, hash); err != nil {
+		return fmt.Errorf("record sighting of %s: %w", path, err)
+	}
+	return nil
+}
+
+// Sightings returns every path profile has hashed, mapped to its hash.
+func (c *Claims) Sightings(profile string) (map[string]string, error) {
+	rows, err := c.db.Query(`SELECT path, content_hash FROM sightings WHERE profile = ?`, profile)
+	if err != nil {
+		return nil, fmt.Errorf("list sightings: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	seen := make(map[string]string)
+	for rows.Next() {
+		var path, hash string
+		if err := rows.Scan(&path, &hash); err != nil {
+			return nil, fmt.Errorf("scan sighting: %w", err)
+		}
+		seen[path] = hash
+	}
+	return seen, rows.Err()
 }
 
 // SeedOnce imports the screenshots profiles already hold, the first time the
