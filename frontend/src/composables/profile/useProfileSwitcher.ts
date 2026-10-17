@@ -1,5 +1,5 @@
 import { ref, computed, watchEffect, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { SwitchProfile, CreateProfile, RenameProfile } from '@/api-client'
+import { SwitchProfile, CreateProfile, RenameProfile, GetNewScreenshotCount } from '@/api-client'
 import { cacheActiveProfile } from '@/composables/profile/profileStorage'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { useProfilesData } from '@/queries/profiles'
@@ -46,11 +46,18 @@ export function useProfileSwitcher() {
   function toggleOpen() {
     open.value = !open.value
     if (!open.value) {
+      pendingSwitch.value = null
       creating.value = false
       newName.value = ''
       error.value = null
     }
   }
+
+  // A switch held back because the active profile's folder has screenshots
+  // nobody has parsed yet. They belong to no profile until one parses them,
+  // so leaving now hands them to whichever profile parses next — the notice
+  // says so before the switch goes through. Null = nothing held.
+  const pendingSwitch = ref<{ to: string; unparsed: number } | null>(null)
 
   async function pickProfile(name: string) {
     if (busy.value) return
@@ -58,6 +65,33 @@ export function useProfileSwitcher() {
       open.value = false
       return
     }
+    const unparsed = await unparsedCount()
+    if (unparsed > 0) {
+      pendingSwitch.value = { to: name, unparsed }
+      void nextTick(() => dropdownEl.value?.querySelector<HTMLButtonElement>('.profile-switch-confirm')?.focus())
+      return
+    }
+    await switchTo(name)
+  }
+
+  // The notice's one action: go ahead with the held switch.
+  async function confirmPendingSwitch() {
+    const held = pendingSwitch.value
+    if (held) await switchTo(held.to)
+  }
+
+  // Unparsed screenshots in the active profile's folder. A failed read
+  // answers 0: switching is navigation, and a count we could not get must
+  // never stand between the user and their other profile.
+  async function unparsedCount(): Promise<number> {
+    try {
+      return (await GetNewScreenshotCount()).count
+    } catch {
+      return 0
+    }
+  }
+
+  async function switchTo(name: string) {
     busy.value = true
     try {
       await SwitchProfile(name)
@@ -160,6 +194,7 @@ export function useProfileSwitcher() {
     open.value = false
     creating.value = false
     renameTarget.value = null
+    pendingSwitch.value = null
   }
 
   function onKeydown(e: KeyboardEvent) {
@@ -170,6 +205,7 @@ export function useProfileSwitcher() {
       }
       open.value = false
       creating.value = false
+      pendingSwitch.value = null
     }
   }
 
@@ -196,6 +232,8 @@ export function useProfileSwitcher() {
     newNameValid,
     toggleOpen,
     pickProfile,
+    pendingSwitch,
+    confirmPendingSwitch,
     beginCreate,
     confirmCreate,
     cancelCreate,

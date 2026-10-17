@@ -45,7 +45,7 @@ test.describe('profile switch with unparsed screenshots', () => {
     await expect(notice).toContainText(/whichever profile parses them next takes them/)
     expect(put.seen()).toBe(false)
 
-    await page.getByRole('button', { name: 'Switch to alt' }).click()
+    await page.getByRole('menuitem', { name: 'Switch to alt' }).click()
     await expect.poll(() => put.seen()).toBe(true)
     expect(put.get()).toEqual({ name: 'alt' })
   })

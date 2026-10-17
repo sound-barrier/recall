@@ -370,7 +370,9 @@ frontend/tests/e2e/narrow                     13
 # import and the bundle merge-import round-trip, and the profile family
 # (lifecycle, switcher, immutable sample, delete). Profiles live here whole
 # rather than split by which chrome each spec happens to click.
-frontend/tests/e2e/settings                   19
+# 20: profile-switch-pending — the switcher's held-switch notice, one more
+# profile spec, kept with its family per the rule above.
+frontend/tests/e2e/settings                   20
 
 
 # frontend/src/composables/matches/list — the match list's stateful logic: the

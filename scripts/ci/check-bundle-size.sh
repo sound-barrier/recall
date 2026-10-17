@@ -163,7 +163,13 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # CSS into class names on templates, and the masthead/toolbar ones are
 # eager. +144B, against a base that measured 365996B: 4B of headroom.
 # Measured 366140B.
-: "${MAX_INITIAL_JS_BYTES:=367000}"
+# 2026-10: 367000 -> 368000 -- cross-profile screenshot ownership. The
+# masthead's profile switcher now holds a switch behind a notice when the
+# active folder has unparsed screenshots (+1209B in the entry chunk), plus the
+# takeover endpoint's facade function and query keys. Lazy-loading the notice
+# was tried: it saved 425B but still tripped, and made the switch flow async.
+# Measured 367823B.
+: "${MAX_INITIAL_JS_BYTES:=368000}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
@@ -412,7 +418,11 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # and the next honest change would have tripped a gate nobody had touched.
 # Re-baselined against a clean build of main rather than the stale note.
 # Measured 2235392B.
-: "${MAX_TOTAL_JS_BYTES:=2242000}"
+# 2026-10: 2242000 -> 2245000 -- cross-profile screenshot ownership: the Parse
+# tab's row for screenshots other profiles own (+2226B in the lazy Ingest
+# chunk), the profile-switch notice, the takeover SDK entry. +3678B over main.
+# Measured 2243744B.
+: "${MAX_TOTAL_JS_BYTES:=2245000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
