@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/vue-query'
 
 import {
-  CreateManualMatch, GetFailedFiles, GetMatchResults, GetNewScreenshotCount,
+  ClaimFolderScreenshots, CreateManualMatch, GetFailedFiles, GetMatchResults, GetNewScreenshotCount,
 } from '@/api-client'
+import type { ClaimTransfer } from '@/api-client'
 import { getQueryClient } from '@/queries/client'
 import { matchesCluster, qk } from '@/queries/keys'
 
@@ -49,6 +50,17 @@ export async function refetchMatchesCluster(): Promise<void> {
   await Promise.all(
     matchesCluster.map(key => getQueryClient().refetchQueries({ queryKey: key })),
   )
+}
+
+/**
+ * Take every screenshot in this profile's folder that another profile owns.
+ * Their matches move here, so the whole matches cluster (records, the pending
+ * count, failed files) is stale afterwards and refetches before this resolves.
+ */
+export async function takeFolderScreenshots(): Promise<ClaimTransfer> {
+  const taken = await ClaimFolderScreenshots()
+  await refetchMatchesCluster()
+  return taken
 }
 
 /**

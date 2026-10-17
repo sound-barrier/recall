@@ -76,6 +76,9 @@ export const useParseStore = defineStore('parse', () => {
   const pendingCountQuery = usePendingCountQuery()
   const newScreenshotCount = computed(() => pendingCountQuery.data.value?.count ?? null)
   const parkedCount = computed(() => pendingCountQuery.data.value?.parked ?? 0)
+  // claimedElsewhere: screenshots in the folder another profile parsed first
+  // and owns, so this profile skips them unless the user takes them over.
+  const claimedElsewhere = computed(() => pendingCountQuery.data.value?.claimed_elsewhere ?? 0)
   const failedFilesQuery = useFailedFilesQuery()
   const failedFiles = computed(() => failedFilesQuery.data.value ?? [])
 
@@ -121,6 +124,7 @@ export const useParseStore = defineStore('parse', () => {
     onRunParseFromIgnored,
     newScreenshotCount,
     parkedCount,
+    claimedElsewhere,
     refreshNewCount,
     failedFiles,
     staleMatches,

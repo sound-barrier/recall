@@ -7,6 +7,7 @@ import { useMatchesStore } from '@/stores/matches'
 import { useParseStore } from '@/stores/parse'
 import { useSettingsStore } from '@/stores/settings'
 import ParseProgressPanel from '@/components/ingest/ParseProgressPanel.vue'
+import ClaimedElsewhereRow from '@/components/ingest/ClaimedElsewhereRow.vue'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // IngestView (presented to users as the "Parse" tab) — the
@@ -15,9 +16,11 @@ import { useWriteGate } from '@/composables/shared/useWriteGate'
 // this view is reserved for the recurring task a returning user
 // actually wants to do.
 //
-// Two rows:
+// Rows:
 //   01 Watch Folder — armed-on toggle for hands-free auto-parse
 //   02 Manual Parse — one-click "do it now" button + progress panel
+//   then, only when the folder holds any, the screenshots another
+//   profile owns, with the takeover (ClaimedElsewhereRow)
 //
 // Reads its state from the stores: Tesseract preflight + watch toggle from
 // settings, the parse stream from parse, the record counts from matches, tab
@@ -34,6 +37,7 @@ const {
   cancelingParse,
   newScreenshotCount,
   parkedCount,
+  claimedElsewhere,
   lastParsedAt,
   parseProgress,
   parseLog,
@@ -222,6 +226,8 @@ const runParseTitle = computed(() => {
             </button>
           </div>
         </div>
+
+        <ClaimedElsewhereRow :count="claimedElsewhere" />
 
         <!-- Parse progress panel — visible while parseBusy. -->
         <ParseProgressPanel
