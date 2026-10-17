@@ -117,16 +117,17 @@ linters:
       - linters:
           - gosec
         path: _test\.go
-      # noctx flags database/sql calls that have a *Context variant. pkg/db is
-      # the synchronous, local-only SQLite store (modernc.org/sqlite, no network,
-      # sub-millisecond queries) with no request-cancellation story — threading
-      # context.Background() through every Query/Exec/Begin would be pure
-      # ceremony that cancels nothing. noctx stays enforced everywhere it's real:
-      # the GitHub update HTTP client and the Tesseract subprocess (both
-      # genuinely cancellable) and all tests.
+      # noctx flags database/sql calls that have a *Context variant. pkg/db (the
+      # per-profile store) and pkg/profiles/claims.go (the install-wide
+      # screenshot-claims ledger) are synchronous, local-only SQLite
+      # (modernc.org/sqlite, no network, sub-millisecond queries) with no
+      # request-cancellation story — threading context.Background() through
+      # every Query/Exec/Begin would be pure ceremony that cancels nothing. noctx
+      # stays enforced everywhere it's real: the GitHub update HTTP client and
+      # the Tesseract subprocess (both genuinely cancellable) and all tests.
       - linters:
           - noctx
-        path: pkg/db/
+        path: (pkg/db/|pkg/profiles/claims\.go)
 
 formatters:
   # gofumpt is intentionally dropped: it re-groups imports and can't be told to
