@@ -17,6 +17,9 @@ import (
 type PendingScreenshots struct {
 	Count  int `json:"count"`
 	Parked int `json:"parked"`
+	// ClaimedElsewhere counts the folder's screenshots another profile
+	// owns: skipped, and only the explicit override takes them.
+	ClaimedElsewhere int `json:"claimed_elsewhere"`
 }
 
 // GetNewScreenshotCount returns the number of image files in the configured
@@ -40,18 +43,22 @@ func (a *App) GetNewScreenshotCount() (PendingScreenshots, error) {
 	if err != nil {
 		return PendingScreenshots{}, err
 	}
-	skip, parked, err := a.parsedSkipSet(dir, dirID, false)
+	skips, err := a.parsedSkipSet(dir, dirID, false)
 	if err != nil {
 		return PendingScreenshots{}, err
 	}
-	pending, err := parser.PendingFiles(dir, skip)
+	pending, err := parser.PendingFiles(dir, skips.skip)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return PendingScreenshots{}, nil
 		}
 		return PendingScreenshots{}, err
 	}
-	return PendingScreenshots{Count: len(pending), Parked: parkedOnDisk(dir, parked)}, nil
+	return PendingScreenshots{
+		Count:            len(pending),
+		Parked:           parkedOnDisk(dir, skips.parked),
+		ClaimedElsewhere: len(skips.elsewhere),
+	}, nil
 }
 
 // parkedOnDisk counts the parked filenames still present in dir. Parked

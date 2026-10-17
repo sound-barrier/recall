@@ -72,8 +72,10 @@ func TestClaims_ProfileSkipsScreenshotsAnotherProfileParsed(t *testing.T) {
 	}
 
 	switchTo(t, a, "alt")
-	if got := pendingCount(t, a); got != 0 {
-		t.Errorf("alt pending = %d, want 0: main already owns every file", got)
+	pending, err := a.GetNewScreenshotCount()
+	mustNoErr(t, err)
+	if pending.Count != 0 || pending.ClaimedElsewhere != 2 {
+		t.Errorf("alt pending = %+v, want count 0 and 2 claimed elsewhere: main owns both", pending)
 	}
 	if skip := parseCapturingSkip(t, a); !skip["a.png"] || !skip["b.png"] {
 		t.Errorf("alt must skip main's screenshots; skip=%v", skip)

@@ -588,7 +588,8 @@ export const getActiveParse = <ThrowOnError extends boolean = false>(options?: O
  * recognized All-Heroes screens, dismissed files, registered
  * byte-identical duplicates, and PARKED failures — files whose OCR
  * has failed enough times in a row that normal runs stop retrying
- * them. Parked files still on disk are reported separately in
+ * them, and screenshots another profile owns (reported in
+ * `claimed_elsewhere`). Parked files still on disk are reported separately in
  * `parked`; Re-parse All re-attempts them, and deleting a file's
  * failure row (Retry) returns it to `count`.
  *

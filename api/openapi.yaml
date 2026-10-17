@@ -1086,7 +1086,8 @@ paths:
         recognized All-Heroes screens, dismissed files, registered
         byte-identical duplicates, and PARKED failures — files whose OCR
         has failed enough times in a row that normal runs stop retrying
-        them. Parked files still on disk are reported separately in
+        them, and screenshots another profile owns (reported in
+        `claimed_elsewhere`). Parked files still on disk are reported separately in
         `parked`; Re-parse All re-attempts them, and deleting a file's
         failure row (Retry) returns it to `count`.
       responses:
@@ -1096,13 +1097,22 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [count, parked]
+                required: [count, parked, claimed_elsewhere]
                 properties:
                   count:
                     type: integer
                     minimum: 0
                     example: 3
                     description: Files the next parse run will OCR.
+                  claimed_elsewhere:
+                    type: integer
+                    minimum: 0
+                    example: 0
+                    description: |
+                      Files in the folder another profile already parsed and
+                      owns — skipped, excluded from `count`. Only
+                      `POST /api/v1/profiles/active/screenshot-claims` takes
+                      them over.
                   parked:
                     type: integer
                     minimum: 0
