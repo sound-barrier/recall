@@ -1114,6 +1114,15 @@ func TestSQLStore_IngestedFiles_UpsertThenLoadRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadIngestedFiles: %v", err)
 	}
+	// first_seen_at is stamped on first insert; the claims ledger seeds
+	// earliest-ingest-wins from it, so it must be present.
+	for f, rec := range got {
+		if rec.FirstSeenAt == "" {
+			t.Errorf("%s: FirstSeenAt empty", f)
+		}
+		rec.FirstSeenAt = ""
+		got[f] = rec
+	}
 	want := map[string]db.IngestedFile{
 		"a.png": {ContentHash: "hash-1"},
 		"b.png": {ContentHash: "hash-2"},

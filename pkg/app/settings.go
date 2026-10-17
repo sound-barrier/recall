@@ -94,6 +94,16 @@ func (a *App) settingsPath() string {
 	return filepath.Join(a.dataDir(), "settings.json")
 }
 
+// profileScreenshotsDir reads the screenshots folder from any profile's
+// settings.json, active or not. "" when the profile has none configured.
+func (a *App) profileScreenshotsDir(profile string) string {
+	raw, err := os.ReadFile(filepath.Join(a.profiles.ProfileDir(profile), "settings.json"))
+	if err != nil {
+		return ""
+	}
+	return loadSettingsFrom(bytes.NewReader(raw)).ScreenshotsDir
+}
+
 func (a *App) loadSettings() Settings {
 	raw, err := os.ReadFile(a.settingsPath())
 	if err != nil {

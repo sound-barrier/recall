@@ -30,6 +30,9 @@ type QueueState struct {
 type IngestedFile struct {
 	ContentHash string
 	DuplicateOf string
+	// FirstSeenAt is the UTC RFC 3339 stamp of the file's first
+	// registration; a re-parse keeps it.
+	FirstSeenAt string
 }
 
 type IgnoredRow struct {

@@ -173,9 +173,28 @@ func (c *Claims) Sightings(profile string) (map[string]string, error) {
 }
 
 // SeedOnce imports the screenshots profiles already hold, the first time the
-// ledger is used. A hash several profiles hold goes to the earliest ingest;
-// the duplicates themselves stay where they are. It reports whether it seeded.
-func (c *Claims) SeedOnce(existing []SeedClaim) (bool, error) {
+// ledger is used. load runs only when seeding is still due, so a normal start
+// opens no other profile's database. A hash several profiles hold goes to the
+// earliest ingest; the duplicate rows themselves stay where they are. A load
+// or write failure leaves the ledger unseeded, so the next start retries. It
+// reports whether it seeded.
+func (c *Claims) SeedOnce(load func() ([]SeedClaim, error)) (bool, error) {
+	var marker string
+	err := c.db.QueryRow(`SELECT value FROM claims_meta WHERE key = ?`, seededKey).Scan(&marker)
+	if err == nil {
+		return false, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return false, fmt.Errorf("read claims seed marker: %w", err)
+	}
+	existing, err := load()
+	if err != nil {
+		return false, fmt.Errorf("load existing screenshots: %w", err)
+	}
+	return c.seed(existing)
+}
+
+func (c *Claims) seed(existing []SeedClaim) (bool, error) {
 	tx, err := c.db.Begin()
 	if err != nil {
 		return false, fmt.Errorf("begin claims seed: %w", err)
@@ -192,7 +211,16 @@ func (c *Claims) SeedOnce(existing []SeedClaim) (bool, error) {
 	}
 
 	ordered := append([]SeedClaim(nil), existing...)
-	sort.SliceStable(ordered, func(i, j int) bool { return ordered[i].IngestedAt < ordered[j].IngestedAt })
+	// An unknown ingest time (a screenshot that predates the registry) sorts
+	// after every known one: a dated ingest is the better evidence of who
+	// parsed it first.
+	sort.SliceStable(ordered, func(i, j int) bool {
+		a, b := ordered[i].IngestedAt, ordered[j].IngestedAt
+		if a == "" || b == "" {
+			return b == "" && a != ""
+		}
+		return a < b
+	})
 	for _, s := range ordered {
 		if _, err := tx.Exec(`INSERT INTO claims (content_hash, profile, filename) VALUES (?, ?, ?)
 			ON CONFLICT (content_hash) DO NOTHING`, s.Hash, s.Profile, s.Filename); err != nil {

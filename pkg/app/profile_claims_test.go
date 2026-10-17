@@ -2,11 +2,13 @@ package app_test
 
 import (
 	"context"
+	"database/sql"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"recall/pkg/app"
+	"recall/pkg/parser"
 	"recall/pkg/snapshot"
 )
 
@@ -129,5 +131,63 @@ func TestClaims_ReparseAllStillSkipsOtherProfilesScreenshots(t *testing.T) {
 	mustNoErr(t, a.ReParseAll())
 	if !skip["a.png"] {
 		t.Errorf("Re-parse All in alt must still skip main's screenshot; skip=%v", skip)
+	}
+}
+
+// An install that parsed screenshots before the claims ledger existed must
+// not let a second profile re-import them: the first start with the ledger
+// seeds it from every profile's existing screenshots.
+func TestClaims_FirstStartSeedsFromExistingProfiles(t *testing.T) {
+	a, shared := newSharedFolderApp(t)
+	writeFile(t, shared, "a.png", []byte("match-one"))
+	parseCapturingSkip(t, a)
+
+	// Back to the pre-ledger world, then a fresh launch.
+	base := os.Getenv("RECALL_DATA_DIR")
+	for _, f := range []string{"claims.db", "claims.db-wal", "claims.db-shm"} {
+		_ = os.Remove(filepath.Join(base, f))
+	}
+	b := app.New()
+	b.Startup(context.Background())
+	mustNoErr(t, b.StartupError())
+
+	switchTo(t, b, "alt")
+	if skip := parseCapturingSkip(t, b); !skip["a.png"] {
+		t.Errorf("alt must skip main's pre-ledger screenshot after seeding; skip=%v", skip)
+	}
+}
+
+// Screenshots parsed before the content-hash registry existed have a stored
+// row but no registry entry. Seeding must still claim them, hashing them from
+// the profile's folder.
+func TestClaims_SeedingClaimsParsedScreenshotsMissingFromTheRegistry(t *testing.T) {
+	a, shared := newSharedFolderApp(t)
+	const legacy = "Overwatch Screenshot 2026.01.05 - 21.30.00.00.png"
+	writeFile(t, shared, legacy, []byte("legacy-match"))
+	stubParse(t, func(progress parser.ProgressFunc) error {
+		progress(1, 1, legacy, &parser.MatchResult{Result: "victory", Map: "rialto", Hero: "lucio"}, nil)
+		return nil
+	})
+	app.TessStatus(a).Found = true
+	mustNoErr(t, a.ParseScreenshots())
+
+	// Recreate the legacy install: the row stays, the registry entry and the
+	// ledger go.
+	base := os.Getenv("RECALL_DATA_DIR")
+	mainDB, err := sql.Open("sqlite", filepath.Join(base, "profiles", "main", "db", "recall.db"))
+	mustNoErr(t, err)
+	_, err = mainDB.ExecContext(context.Background(), `DELETE FROM ingested_files`)
+	mustNoErr(t, err)
+	mustNoErr(t, mainDB.Close())
+	for _, f := range []string{"claims.db", "claims.db-wal", "claims.db-shm"} {
+		_ = os.Remove(filepath.Join(base, f))
+	}
+
+	b := app.New()
+	b.Startup(context.Background())
+	mustNoErr(t, b.StartupError())
+	switchTo(t, b, "alt")
+	if skip := parseCapturingSkip(t, b); !skip[legacy] {
+		t.Errorf("alt must skip main's pre-registry screenshot; skip=%v", skip)
 	}
 }

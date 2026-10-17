@@ -315,6 +315,12 @@ func (a *App) initProfiles() bool {
 		return false
 	}
 	a.claims = claims
+	// First start with the ledger: claim what every profile already holds.
+	// Not fatal: an unseeded ledger only means a second profile may re-import
+	// older screenshots, and the next start retries.
+	if err := profiles.SeedClaims(mgr, claims, a.profileScreenshotsDir); err != nil {
+		applog.Subsystem("claims").Error("seed claims ledger failed; retrying next start", "err", err)
+	}
 
 	// CLI --profile=<name> override (set on the App before Startup by
 	// main.go / main_server.go). Auto-creates the named profile if it
