@@ -27,15 +27,9 @@ func (a *App) MoveMatches(matchKeys []string, targetProfile string) error {
 		return err
 	}
 
-	// Open the target profile's store at <profileDir>/db/recall.db,
-	// creating the db dir if it doesn't exist yet.
-	dbDir := filepath.Join(a.profiles.ProfileDir(targetProfile), "db")
-	if err := os.MkdirAll(dbDir, 0o700); err != nil {
-		return fmt.Errorf("move: ensure target db dir: %w", err)
-	}
-	targetStore, err := db.NewSQLStore(filepath.Join(dbDir, "recall.db"))
+	targetStore, err := a.openProfileStore(targetProfile)
 	if err != nil {
-		return fmt.Errorf("move: open target db: %w", err)
+		return fmt.Errorf("move: %w", err)
 	}
 	defer func() { _ = targetStore.Close() }()
 
@@ -86,4 +80,19 @@ func (a *App) validateMoveRequest(matchKeys []string, targetProfile string) (pro
 	// so an empty body with a bad target_profile still reports
 	// the bad target instead of being swallowed.
 	return len(matchKeys) > 0, nil
+}
+
+// openProfileStore opens an inactive profile's store at
+// <profileDir>/db/recall.db, creating the db dir if it doesn't exist yet.
+// The caller closes it.
+func (a *App) openProfileStore(name string) (*db.SQLStore, error) {
+	dbDir := filepath.Join(a.profiles.ProfileDir(name), "db")
+	if err := os.MkdirAll(dbDir, 0o700); err != nil {
+		return nil, fmt.Errorf("ensure %s's db dir: %w", name, err)
+	}
+	store, err := db.NewSQLStore(filepath.Join(dbDir, "recall.db"))
+	if err != nil {
+		return nil, fmt.Errorf("open %s's db: %w", name, err)
+	}
+	return store, nil
 }

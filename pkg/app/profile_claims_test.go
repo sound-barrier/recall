@@ -192,12 +192,12 @@ func TestClaims_SeedingClaimsParsedScreenshotsMissingFromTheRegistry(t *testing.
 	}
 }
 
-// parseOneMatch makes the active profile parse filename into a stored match
-// and returns that match's key.
-func parseOneMatch(t *testing.T, a *app.App, filename string) string {
+// parseOneMatch makes the active profile parse shotA into a stored match and
+// returns that match's key.
+func parseOneMatch(t *testing.T, a *app.App) string {
 	t.Helper()
 	stubParse(t, func(progress parser.ProgressFunc) error {
-		progress(1, 1, filename, &parser.MatchResult{Result: "victory", Map: "rialto", Hero: "lucio"}, nil)
+		progress(1, 1, shotA, &parser.MatchResult{Result: "victory", Map: "rialto", Hero: "lucio"}, nil)
 		return nil
 	})
 	app.TessStatus(a).Found = true
@@ -216,7 +216,7 @@ const shotA = "Overwatch Screenshot 2026.01.05 - 21.30.00.00.png"
 func TestClaims_HardDeleteReleasesTheMatchsScreenshots(t *testing.T) {
 	a, shared := newSharedFolderApp(t)
 	writeFile(t, shared, shotA, []byte("match-one"))
-	key := parseOneMatch(t, a, shotA)
+	key := parseOneMatch(t, a)
 	mustNoErr(t, a.HardDeleteMatch(key))
 
 	switchTo(t, a, "alt")
@@ -229,7 +229,7 @@ func TestClaims_HardDeleteReleasesTheMatchsScreenshots(t *testing.T) {
 func TestClaims_HideKeepsTheClaim(t *testing.T) {
 	a, shared := newSharedFolderApp(t)
 	writeFile(t, shared, shotA, []byte("match-one"))
-	key := parseOneMatch(t, a, shotA)
+	key := parseOneMatch(t, a)
 	mustNoErr(t, a.HideMatch(key))
 
 	switchTo(t, a, "alt")
@@ -287,7 +287,7 @@ func TestClaims_RenamedProfileKeepsItsClaims(t *testing.T) {
 func TestClaims_MoveTransfersTheScreenshotsToTheTarget(t *testing.T) {
 	a, shared := newSharedFolderApp(t)
 	writeFile(t, shared, shotA, []byte("match-one"))
-	key := parseOneMatch(t, a, shotA)
+	key := parseOneMatch(t, a)
 	mustNoErr(t, a.MoveMatches([]string{key}, "alt"))
 
 	if skip := parseCapturingSkip(t, a); !skip[shotA] {
@@ -301,5 +301,68 @@ func TestClaims_MoveTransfersTheScreenshotsToTheTarget(t *testing.T) {
 	mustNoErr(t, a.ReParseAll())
 	if skip[shotA] {
 		t.Errorf("alt owns the moved screenshot and must re-parse it; skip=%v", skip)
+	}
+}
+
+// The explicit override takes the folder's screenshots from whichever profile
+// owns them. Like a move, the owner's matches come across with their edits
+// and the owner loses them.
+func TestClaims_OverrideMovesTheOwnersMatchesHere(t *testing.T) {
+	a, shared := newSharedFolderApp(t)
+	writeFile(t, shared, shotA, []byte("match-one"))
+	parseOneMatch(t, a)
+
+	switchTo(t, a, "alt")
+	got, err := a.ClaimFolderScreenshots()
+	mustNoErr(t, err)
+	if got.Screenshots != 1 || got.MatchesMoved != 1 {
+		t.Fatalf("override = %+v, want 1 screenshot and 1 match taken", got)
+	}
+	records, err := a.GetMatchResults()
+	mustNoErr(t, err)
+	if len(records) != 1 {
+		t.Errorf("alt has %d matches after the override, want 1", len(records))
+	}
+
+	switchTo(t, a, "main")
+	records, err = a.GetMatchResults()
+	mustNoErr(t, err)
+	if len(records) != 0 {
+		t.Errorf("main kept %d matches after the override, want 0", len(records))
+	}
+	if skip := parseCapturingSkip(t, a); !skip[shotA] {
+		t.Errorf("main must now skip the screenshot alt took; skip=%v", skip)
+	}
+}
+
+// A deleted profile's screenshots stay claimed; the override is the way to
+// bring them into a live profile.
+func TestClaims_OverrideTakesADeletedProfilesScreenshots(t *testing.T) {
+	a, shared := newSharedFolderApp(t)
+	mustNoErr(t, a.CreateProfile("temp"))
+	mustNoErr(t, a.SetScreenshotsDir(shared))
+	writeFile(t, shared, "a.png", []byte("match-one"))
+	parseCapturingSkip(t, a)
+	switchTo(t, a, "main")
+	mustNoErr(t, a.DeleteProfile("temp"))
+
+	got, err := a.ClaimFolderScreenshots()
+	mustNoErr(t, err)
+	if got.Screenshots != 1 || got.MatchesMoved != 0 {
+		t.Fatalf("override = %+v, want 1 screenshot, no matches (temp is gone)", got)
+	}
+	if skip := parseCapturingSkip(t, a); skip["a.png"] {
+		t.Errorf("main must parse the screenshot it took over; skip=%v", skip)
+	}
+}
+
+// With nothing owned elsewhere the override is a no-op.
+func TestClaims_OverrideWithNothingToTakeIsANoOp(t *testing.T) {
+	a, shared := newSharedFolderApp(t)
+	writeFile(t, shared, "a.png", []byte("match-one"))
+	got, err := a.ClaimFolderScreenshots()
+	mustNoErr(t, err)
+	if got.Screenshots != 0 || got.MatchesMoved != 0 {
+		t.Errorf("override = %+v, want nothing taken", got)
 	}
 }

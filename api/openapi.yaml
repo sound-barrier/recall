@@ -1754,6 +1754,36 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/profiles/active/screenshot-claims:
+    post:
+      operationId: ClaimFolderScreenshots
+      tags: [Profiles]
+      summary: Take the folder's screenshots from other profiles
+      description: |
+        A screenshot belongs to the first profile that parses it, and
+        every other profile skips it, even on a shared folder. This is
+        the explicit override: the active profile takes every screenshot
+        in its folder that another profile owns. As with a match move,
+        the owning profile's matches holding those screenshots come
+        across with their edits and leave the owner; a deleted profile's
+        screenshots simply change hands. Screenshots with no match yet
+        are picked up by the next parse.
+
+        `409 Conflict` when the screenshots folder is unset or
+        unreadable, a parse is in flight, or the move would leave a
+        review card or self-review split across profiles.
+      responses:
+        "200":
+          description: Taken over; the body says how much.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClaimTransfer"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/profiles/{name}:
     parameters:
       - name: name
@@ -6690,6 +6720,18 @@ components:
           type: number
           format: double
 
+    ClaimTransfer:
+      type: object
+      required: [screenshots, matches_moved]
+      properties:
+        screenshots:
+          type: integer
+          minimum: 0
+          description: Screenshots now owned by the active profile.
+        matches_moved:
+          type: integer
+          minimum: 0
+          description: Matches moved here from the profiles that owned them.
     ProfilesResponse:
       type: object
       required: [active, profiles]
