@@ -16,6 +16,7 @@
 export type {
   ActiveParse,
   AutoBackupStatus,
+  ClaimTransfer,
   CoachDecisionEnum,
   CoachingSettings,
   CoachSession,

@@ -1,6 +1,7 @@
 import { unwrap, unwrapVoid } from '@/api-unwrap'
 import * as sdk from '@/client/sdk.gen'
 import type {
+  ClaimTransfer,
   ProfilesResponse,
   SeedTestProfileResponse,
 } from '@/client/types.gen'
@@ -51,4 +52,11 @@ export function RenameProfile(oldName: string, newName: string): Promise<Profile
 // that succeeded.
 export function DeleteProfile(name: string): Promise<void> {
   return unwrapVoid(sdk.deleteProfile({ path: { name } }))
+}
+
+// Take every screenshot in the active profile's folder that another profile
+// owns: their matches move here and leave that profile. Reports how many
+// screenshots and matches came across.
+export function ClaimFolderScreenshots(): Promise<ClaimTransfer> {
+  return unwrap(sdk.claimFolderScreenshots())
 }
