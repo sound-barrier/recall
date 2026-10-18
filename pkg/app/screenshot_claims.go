@@ -31,7 +31,7 @@ func (a *App) claimScreenshot(hash, base string) bool {
 	active := a.profiles.Active()
 	owner, err := a.claims.Claim(hash, active, base)
 	if err != nil {
-		applog.Subsystem("claims").Error("claim failed; parsing anyway", "file", base, "err", err)
+		applog.Subsystem("claims").Error("claim failed; parsing anyway", "file", applog.Scrub(base), "err", err)
 		return true
 	}
 	return owner == active
@@ -93,7 +93,7 @@ func (a *App) transferForgotten(before map[string]string, target string) {
 	}
 	for f, hash := range a.forgottenSince(before) {
 		if err := a.claims.Transfer(hash, target, f); err != nil {
-			applog.Subsystem("claims").Error("transfer claim failed", "file", f, "target", target, "err", err)
+			applog.Subsystem("claims").Error("transfer claim failed", "file", applog.Scrub(f), "target", applog.Scrub(target), "err", applog.Scrub(err.Error()))
 		}
 	}
 }
@@ -122,7 +122,7 @@ func (a *App) releaseScreenshot(filename string, registered map[string]string) {
 
 func (a *App) releaseClaim(hash, filename string) {
 	if err := a.claims.Release(hash, a.profiles.Active()); err != nil {
-		applog.Subsystem("claims").Error("release claim failed", "file", filename, "err", err)
+		applog.Subsystem("claims").Error("release claim failed", "file", applog.Scrub(filename), "err", err)
 	}
 }
 
@@ -188,11 +188,11 @@ func (a *App) sightedHash(logger *slog.Logger, active, path string, seen map[str
 	}
 	hash, err := hashFile(path)
 	if err != nil {
-		logger.Error("hash failed", "file", filepath.Base(path), "err", err)
+		logger.Error("hash failed", "file", applog.Scrub(filepath.Base(path)), "err", err)
 		return ""
 	}
 	if err := a.claims.RecordSighting(active, path, hash); err != nil {
-		logger.Error("record sighting failed", "file", filepath.Base(path), "err", err)
+		logger.Error("record sighting failed", "file", applog.Scrub(filepath.Base(path)), "err", err)
 	}
 	return hash
 }
