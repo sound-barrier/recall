@@ -67,6 +67,7 @@
   --win-soft: rgb(12 107 50 / 14%);
   --win-line: rgb(12 107 50 / 60%);
   --loss: #a82a3d;
+  --primary-text-on-danger: #fff;
   --loss-soft: rgb(168 42 61 / 12%);
   --loss-line: rgb(168 42 61 / 55%);
   --draw: #7a5010;
@@ -242,6 +243,9 @@
      clear at AA. Lighter pink + lower tint keeps the loss read
      semantically while every text-on-tinted-bg pair clears AA. */
   --loss: #f9a;
+
+  /* Dark ink on the light-pink fill: white sat at 2.02:1. */
+  --primary-text-on-danger: #1a0a00;
   --loss-soft: rgb(255 102 128 / 8%);
   --loss-line: rgb(255 102 128 / 60%);
   --draw: #ffd34d;

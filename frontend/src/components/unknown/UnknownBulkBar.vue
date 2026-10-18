@@ -157,9 +157,9 @@ const target = computed(() => (props.rowNoun === 'screenshot'
 /* Armed is the moment of consequence, so it gains weight — but by tint and a
    solid edge, NOT by filling with --loss and writing on top of it. Under the
    dark themes --loss is a light pink (#f9a) tuned to be read as TEXT on a
-   surface; --primary-text-on-danger is #fff everywhere except high-contrast,
-   so white-on-fill lands at 2.02:1 there. The tinted pairing is the one
-   themes.css states it tuned to clear AA on double-layered composites. */
+   surface, so a fill there needs the dark --primary-text-on-danger ink to
+   read at all. The tinted pairing is the one themes.css states it tuned to
+   clear AA on double-layered composites. */
 .ubb-dismiss.armed {
   /* A clean base, not a tint. --loss-soft over the bar's own --surface-3
      composites to #d6c3bc under Day, where --loss lands at 4.04:1 — the

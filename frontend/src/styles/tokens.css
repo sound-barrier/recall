@@ -145,8 +145,11 @@
   --grid-line:    rgb(255 255 255 / 1.8%);
   --primary-text-on-accent: #1a0a00;
 
-  /* Text on a --loss fill (destructive buttons, alert CTAs). */
-  --primary-text-on-danger: #fff;
+  /* Text on a --loss fill (destructive buttons, alert CTAs). Dark ink, not
+     white: this palette's --loss is the light #ff5a73, where white sits at
+     3.01:1 and this ink clears 6.4:1. Day overrides it back to white on its
+     deep #a82a3d. */
+  --primary-text-on-danger: #1a0a00;
 
   /* Text on a plate that stays DARK under every theme — the brand-gray
      brandmark tile, the system-alert hazard strip. It can't read a
