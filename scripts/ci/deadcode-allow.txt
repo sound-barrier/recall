@@ -145,3 +145,10 @@ SaveManifest
 # graph — deleting it would let the two implementations drift on the one
 # question the contract suite exists to hold them to.
 ServableImageType
+
+# profiles.Claims.Close: the install-wide claims ledger is opened once in
+# initProfiles and held for the process's life, like the active store, which
+# is likewise only closed on a profile swap, never at exit. Its callers are
+# the tests that open throwaway ledgers, and test code isn't in deadcode's
+# call graph.
+Claims\.Close

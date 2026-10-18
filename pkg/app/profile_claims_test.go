@@ -215,7 +215,7 @@ func parseOneMatch(t *testing.T, a *app.App) string {
 const shotA = "Overwatch Screenshot 2026.01.05 - 21.30.00.00.png"
 
 // Deleting the match in the profile that owns its screenshots frees them.
-func TestClaims_HardDeleteReleasesTheMatchsScreenshots(t *testing.T) {
+func TestClaims_HardDeleteReleasesItsScreenshots(t *testing.T) {
 	a, shared := newSharedFolderApp(t)
 	writeFile(t, shared, shotA, []byte("match-one"))
 	key := parseOneMatch(t, a)
