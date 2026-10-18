@@ -1,5 +1,43 @@
 # Changelog
 
+## [0.33.8](https://github.com/sound-barrier/recall/compare/v0.33.7...v0.33.8) (2026-10-18)
+
+
+### Features
+
+* **api:** add an explicit override that takes screenshots over ([d42aefd](https://github.com/sound-barrier/recall/commit/d42aefddb4e49b32f5b2d5ba69dd1f02479f8c48))
+* **app:** release screenshot claims on delete and dismiss ([7ba2875](https://github.com/sound-barrier/recall/commit/7ba2875b2fa6294dd02e9d3321817f2a4ca12fba))
+* **app:** report screenshots other profiles own in the pending count ([aa764f5](https://github.com/sound-barrier/recall/commit/aa764f50bdfa1beff800d1919fab26e489c0ae34))
+* **frontend:** offer to take screenshots other profiles own ([7fb775e](https://github.com/sound-barrier/recall/commit/7fb775e07588550bb3cbbb17fd72861c1eb7d9dc))
+* **frontend:** say who gets unparsed screenshots before a switch ([182baa2](https://github.com/sound-barrier/recall/commit/182baa2163d9f6a0be06051aa01d204749d7d8a4))
+* **profiles:** add an install-wide screenshot claims ledger ([2cfa6d9](https://github.com/sound-barrier/recall/commit/2cfa6d9ee92ffe6018c74837609d9f3fd7814e80))
+* **profiles:** seed the claims ledger from existing profiles ([6dc2858](https://github.com/sound-barrier/recall/commit/6dc2858bdbb0150f576749b72f803831efb68da7))
+
+
+### Bug Fixes
+
+* **api:** answer a duplicate focus item_id with 409, not 400 ([dec4be5](https://github.com/sound-barrier/recall/commit/dec4be5cc6c3d616723f4ef2ea23ca5e9adf1bdf))
+* **app:** hand moved screenshots to the move's target ([48ca843](https://github.com/sound-barrier/recall/commit/48ca84399cb5ff494f603ecc5b93aee9f96b9e20))
+* **app:** scrub profile and file names in screenshot-claim logs ([01b5e0b](https://github.com/sound-barrier/recall/commit/01b5e0bc1c26ca0a43d04c976c610e72dfeceb3c))
+* **app:** skip screenshots another profile already parsed ([e1b769b](https://github.com/sound-barrier/recall/commit/e1b769b85a2e965518f20a0001beee301ec4c402))
+* **frontend:** keep one verb and the focus through the move row ([98a4d71](https://github.com/sound-barrier/recall/commit/98a4d7184380f364b7446d6ff7afcb3ccd922e94))
+* **frontend:** put dark ink on danger fills under Dark and Night ([3957e5b](https://github.com/sound-barrier/recall/commit/3957e5b4dd5701e44ac881e2eb2d96057ccd7c45))
+
+
+### Refactors
+
+* **app:** move cross-profile claim hooks out of dedup.go ([8b03e4e](https://github.com/sound-barrier/recall/commit/8b03e4e63836c976dcd4daefe7093fb0fe2f5eea))
+
+
+### Documentation
+
+* explain which profile a shared screenshot belongs to ([2ac575a](https://github.com/sound-barrier/recall/commit/2ac575acb224874b104b8d75f94f195f5503e3e5))
+
+
+### Tests
+
+* **frontend:** pin the claimed-elsewhere and switch-notice UI ([90a0b76](https://github.com/sound-barrier/recall/commit/90a0b764dac7c10a8a5cfd5518e428f91f6c9117))
+
 ## [0.33.7](https://github.com/sound-barrier/recall/compare/v0.33.6...v0.33.7) (2026-10-12)
 
 
