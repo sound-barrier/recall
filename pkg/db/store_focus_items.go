@@ -16,6 +16,11 @@ var (
 	// ErrFocusItemInvalid reports a list that breaks its own rules — a
 	// non-UUID or repeated item_id, blank or over-long text, too many rows.
 	ErrFocusItemInvalid = errors.New("invalid focus item")
+	// ErrFocusItemDuplicate rides alongside ErrFocusItemInvalid when two items
+	// share an item_id. It is the one rule here the API schema cannot state
+	// (JSON Schema has no "unique by field"), so the HTTP layer answers it 409
+	// rather than the 400 a spec-valid body must never get.
+	ErrFocusItemDuplicate = errors.New("duplicate item_id")
 )
 
 // The focus list — "what to work on", as rows rather than one free-text
@@ -401,7 +406,7 @@ func ValidateFocusItems(items []FocusItem) error {
 			return fmt.Errorf("%w: item_id %q is not a UUID", ErrFocusItemInvalid, it.ItemID)
 		}
 		if seen[it.ItemID] {
-			return fmt.Errorf("%w: duplicate item_id %q", ErrFocusItemInvalid, it.ItemID)
+			return fmt.Errorf("%w: %w %q", ErrFocusItemInvalid, ErrFocusItemDuplicate, it.ItemID)
 		}
 		seen[it.ItemID] = true
 		if strings.TrimSpace(it.Text) == "" {
