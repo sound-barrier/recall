@@ -160,6 +160,10 @@ var defaultProblems = []errStatus{
 	//     that sentinel carries below.
 	{coach.ErrNotesMalformed, probInvalidBody},
 	{coach.ErrNoteShape, probConflict},
+	// A focus list repeating an item_id also wraps ErrFocusItemInvalid (400
+	// below); it is spec-valid, since the schema cannot say "unique by
+	// item_id", so the contradiction answers 409.
+	{db.ErrFocusItemDuplicate, probConflict},
 
 	// 400 — the request body doesn't hold up.
 	// An empty match key is malformed input, not a server fault. The

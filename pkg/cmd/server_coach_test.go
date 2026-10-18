@@ -338,6 +338,23 @@ func TestCoachSessionFocusItems_PutPersistsIntoTheView(t *testing.T) {
 	}
 }
 
+// Two items sharing an item_id is a list that contradicts itself, not a
+// malformed body: JSON Schema cannot say "unique by one field", so the spec
+// admits it and the server must not answer a spec-valid request with 400.
+func TestCoachSessionFocusItems_DuplicateIDIsAConflict(t *testing.T) {
+	_, mux := newCoachMux(t)
+	openSession(t, mux)
+
+	const id = "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
+	body := map[string]any{"items": []map[string]string{
+		{"item_id": id, "text": "Ult economy first."},
+		{"item_id": id, "text": "Track the enemy Ana's sleep."},
+	}}
+	if rec := put(t, mux, sessionPath+"/focus-items", body); rec.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409; body=%q", rec.Code, rec.Body.String())
+	}
+}
+
 // Export refuses rather than shipping something unattributable: no coach
 // name is a 409, and nothing written yet is a 409 too.
 func TestCoachSessionExport_RefusesWithoutANameOrWork(t *testing.T) {
