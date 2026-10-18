@@ -197,7 +197,7 @@ func (a *App) renameClaims(old, newName string) {
 		return
 	}
 	if err := a.claims.RenameProfile(old, newName); err != nil {
-		applog.Subsystem("profiles").Error("rename screenshot claims", "err", err)
+		applog.Subsystem("profiles").Error("rename screenshot claims", "err", applog.Scrub(err.Error()))
 	}
 }
 
