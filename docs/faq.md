@@ -136,7 +136,7 @@ A few things change ownership:
   profile they moved to.
 - Deleting a match, or dismissing a screenshot, frees it for the next profile
   that parses. Deleting a whole profile does not.
-- The Parse tab's **Take them** pulls the folder's other-profile screenshots,
+- The Parse tab's **Move them here…** pulls the folder's other-profile screenshots,
   and the matches built from them, into the profile you're in.
 
 Screenshots nobody has parsed yet belong to no one. If you switch profiles

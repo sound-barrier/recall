@@ -353,7 +353,7 @@ Moving a match to another profile hands its screenshots over with it.
 Deleting the match, or dismissing a screenshot, frees them for the next
 profile that parses. Deleting a profile does not: its screenshots stay
 with it. The Parse tab shows how many screenshots in the folder belong
-to other profiles and offers **Take them**, which moves them, and the
+to other profiles and offers **Move them here…**, which moves them, and the
 matches built from them, into the active profile.
 
 Inside each profile directory:
