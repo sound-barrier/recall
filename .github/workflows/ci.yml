@@ -201,7 +201,7 @@ jobs:
       # typos binary so the runner doesn't need a separate install
       # step; config lives in _typos.toml at the repo root.
       - name: Spell-check (typos)
-        uses: crate-ci/typos@00f422f3b19c57bc6338715ebfe3316d38768461  # v1.50.3
+        uses: crate-ci/typos@7f9d0819ca1c008ade73f4b41fa9d258d48f605b  # v1.51.1
 
       # Markdown lint. Config in .markdownlint-cli2.yaml at the repo root.
       - name: Lint Markdown (markdownlint-cli2)
@@ -261,7 +261,7 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version-file: .node-version
           cache: npm
@@ -342,7 +342,7 @@ jobs:
       # but EnricoMi below is what flips the workflow to red).
       - name: Upload unit-test JUnit XML
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: unit-test-results
           path: |
@@ -359,7 +359,7 @@ jobs:
       # coverage-comment job renders one combined sticky comment.
       - name: Publish unit-test results check
         if: always()
-        uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3  # v2.24.0
+        uses: EnricoMi/publish-unit-test-result-action@7622c5bf3d112a72ab4fa3951c2aa5723d8ab92d  # v2.25.0
         with:
           check_name: Unit test results
           comment_mode: off
@@ -461,7 +461,7 @@ jobs:
 
       - name: Upload Trivy results to GitHub Security tab
         if: always()
-        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2  # v4.38.2
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d  # v4.38.3
         with:
           sarif_file: trivy.sarif
 
@@ -539,7 +539,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         with:
           go-version-file: go.mod
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version-file: .node-version
           cache: npm
@@ -574,7 +574,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version-file: .node-version
           cache: npm
@@ -603,7 +603,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: frontend-coverage
           path: frontend/coverage/
@@ -675,7 +675,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: go-coverage
           path: coverage/go/
@@ -816,7 +816,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload condition coverage data
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: go-branch-coverage
           path: coverage/go/branch/
