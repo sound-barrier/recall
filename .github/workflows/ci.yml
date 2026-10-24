@@ -21,7 +21,7 @@ jobs:
   # Pure linters + the bundle budget. Unit tests live in the test-unit job
   # so a red here always means style/static analysis, never a failing test.
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -243,7 +243,7 @@ jobs:
   # setup-node (go.mod + .node-version are the version truth here);
   # mise stays local-dev + the poly-tool lint job.
   test-unit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # EnricoMi/publish-unit-test-result-action needs only checks: write here:
     # its README (at the pinned SHA) drops pull-requests: write under
     # `comment_mode: off`, and issues: read applies to private repos only.
@@ -410,7 +410,7 @@ jobs:
   build-windows:
     # Native cross-compile (no Docker) — v3's Windows WebView2 loader is pure Go,
     # so this needs wails3 + node + makensis, not buildx.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -431,7 +431,7 @@ jobs:
   # Mirrors `task trivy` but runs in CI and uploads results to the GitHub
   # Security tab (Alerts → Code scanning) as well as failing the build.
   trivy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       security-events: write
@@ -470,7 +470,7 @@ jobs:
   # actually invokes. Complements Trivy (which scans all module versions
   # regardless of reachability) and typically produces fewer false positives.
   govulncheck:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -510,7 +510,7 @@ jobs:
   # keys. Same command as `task secrets`; the lefthook pre-commit hook scans the
   # staged diff before it is committed.
   secrets:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -530,7 +530,7 @@ jobs:
   # would report false positives; golangci-lint `unused` covers that variant).
   # knip scans the frontend for unused TypeScript exports and stale deps.
   dead-code:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -568,7 +568,7 @@ jobs:
   # file are uploaded as a workflow artifact so they can be downloaded from
   # the Actions run page for any push or PR.
   coverage-frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -614,7 +614,7 @@ jobs:
   # summary are uploaded as a workflow artifact so they can be downloaded
   # from the Actions run page for any push or PR.
   coverage-go:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -688,7 +688,7 @@ jobs:
   # the declared schema. Catches the "I added a route but forgot to update
   # api/openapi.yaml" class of bug that Spectral can't see.
   schemathesis:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -744,7 +744,7 @@ jobs:
   # history into the check. Pull requests only: push runs report skipped.
   commit-lint:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
@@ -775,7 +775,7 @@ jobs:
   # deps the coverage-go job does. It does NOT need frontend/dist: gobco never
   # builds the root package.
   branch-coverage:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     continue-on-error: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -853,7 +853,7 @@ jobs:
       - coverage-go
       - schemathesis
       - commit-lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
     steps:

@@ -14,7 +14,7 @@ runs:
       # v3's default Linux webview links GTK4 + webkitgtk-6.0 (not the v2-era
       # GTK3 + webkit2gtk-4.1). libgtk-4-dev + libwebkitgtk-6.0-dev transitively
       # pull glib-2.0, gio-unix-2.0 and libsoup-3.0 — the full pkg-config set the
-      # webview cgo needs. Available on ubuntu-24.04 (the current ubuntu-latest).
+      # webview cgo needs. Available on ubuntu-24.04, which every Linux job pins.
       run: |
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends \
