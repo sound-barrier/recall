@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.33.9](https://github.com/sound-barrier/recall/compare/v0.33.8...v0.33.9) (2026-10-24)
+
+
+### Bug Fixes
+
+* **deps:** build with Go 1.27.3 for GO-2026-6809 ([704806d](https://github.com/sound-barrier/recall/commit/704806d3f0b7a4d5c153e83418ac6b65931aa976))
+* **deps:** move happy-dom to 21.0.4 for GHSA-834v-8h66-3h79 ([c04a485](https://github.com/sound-barrier/recall/commit/c04a485ee5a67e82aba315f35ec7f514e1fb65d3))
+
+
+### Build & Packaging
+
+* **deps-dev:** Bump vite from 8.3.2 to 8.3.4 in /frontend ([3f47ac5](https://github.com/sound-barrier/recall/commit/3f47ac5cb552d4d765214473e8235eee8aaf38d7))
+* **deps:** Bump markdown-it and markdownlint-cli2 in /tools ([ac98e97](https://github.com/sound-barrier/recall/commit/ac98e97f18a923cbb647b6399d22f8adf8fec491))
+* **deps:** Bump the actions-composite group across 2 directories with 2 updates ([dcc424f](https://github.com/sound-barrier/recall/commit/dcc424f997fbcea5e88f9c035b7922feef2fbab7))
+* **deps:** bump the weekly-deps group (Go, actions, frontend) ([1f64162](https://github.com/sound-barrier/recall/commit/1f64162db1f984ceb57fe19c324474e370325348))
+* **tools:** move mise's typos pin to 1.51.1 with the CI action ([2236335](https://github.com/sound-barrier/recall/commit/22363356fdb0414e5df6eacb15a4d9976895f20a))
+
+
+### CI
+
+* pin every Linux job to ubuntu-24.04 ([ba6774d](https://github.com/sound-barrier/recall/commit/ba6774deda86489624deb3f97c80d92efdc324dc))
+
 ## [0.33.8](https://github.com/sound-barrier/recall/compare/v0.33.7...v0.33.8) (2026-10-18)
 
 
