@@ -56,7 +56,7 @@ RECALL_DATA_DIR = "{{config_root}}/data"
 # pipx invocations outside mise and the `task check-deps` upstream comparison.
 # The npm CLIs listed in tools/package.json are pinned in
 # tools/package-lock.json instead.
-TYPOS_VERSION = "v1.50.3"
+TYPOS_VERSION = "v1.51.1"
 SEMGREP_VERSION = "1.178.0"
 # gobco (condition/branch coverage) is a MEASUREMENT tool: the version changes
 # the number it reports, so a bump is a re-baseline decision. CI's
@@ -108,7 +108,7 @@ shellcheck = "0.11.0"
 shfmt = "3.14.1"
 actionlint = "1.7.12"
 yamllint = "1.38.0"
-typos = "1.50.3"
+typos = "1.51.1"
 ruff = "0.16.7"
 # taplo publishes no checksums, so `mise lock` records only its URLs. Its
 # SHA-256 lines in mise.lock were hashed from the release assets by hand; `mise
