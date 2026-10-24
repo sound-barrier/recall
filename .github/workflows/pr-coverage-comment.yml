@@ -33,7 +33,7 @@ jobs:
     # head-branch fallback below would resolve a fork branch that shares a
     # maintainer branch's name to the maintainer's PR.
     if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       actions: read         # dawidd6 reads artifacts from the triggering runs

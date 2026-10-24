@@ -48,7 +48,7 @@ jobs:
   # valid .sig and a Recall that checks signatures refuses the update. The
   # checks, and why each exists, are in scripts/release/verify-release-ref.sh.
   verify-ref:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -73,7 +73,7 @@ jobs:
   # no OIDC token: it can neither publish nor attest what it built.
   build-windows:
     needs: [verify-ref]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       # SignPath's connector downloads the uploaded artifact back out of this
@@ -229,7 +229,7 @@ jobs:
   # resulting SBOM is the union of both passes.
   sbom:
     needs: [build-windows]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     outputs:
@@ -292,7 +292,7 @@ jobs:
   # source with no cache and no module download.
   sign-attest:
     needs: [build-windows, sbom]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: release
     permissions:
       contents: read
@@ -512,7 +512,7 @@ jobs:
   # alone.
   release:
     needs: [sign-attest]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write  # create the release and upload its assets
     steps:

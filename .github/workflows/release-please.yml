@@ -75,7 +75,7 @@ permissions: {}
 
 jobs:
   release-please:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write  # commits the version bump + CHANGELOG to its PR branch
       pull-requests: write  # opens and updates the release PR
@@ -98,7 +98,7 @@ jobs:
   tag-and-dispatch:
     needs: release-please
     if: "startsWith(github.event.head_commit.message, 'chore(main): release ')"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write  # git push of the release tag
       actions: write  # gh workflow run release.yml

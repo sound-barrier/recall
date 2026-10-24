@@ -19,7 +19,7 @@ permissions: {}  # deny all by default; each job declares only what it needs
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read  # check out code
       actions: read  # required for private repos (no-op on public, kept for portability)

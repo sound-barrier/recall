@@ -31,7 +31,7 @@ permissions: {}  # deny all by default; each job declares only what it needs
 jobs:
   analysis:
     name: Scorecard analysis
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read  # check out the repository
       id-token: write  # sign the published result behind the badge

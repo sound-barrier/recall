@@ -168,6 +168,13 @@ false` except `release-please.yml`'s `tag-and-dispatch`, which pushes a tag.
   inherit, so a docker action with bundled Go older than `go.mod` fails.
   Install the tool with `go install ...@vX.Y.Z` under setup-go instead; don't
   switch to `GOTOOLCHAIN: auto` or skip setup-go.
+- **Every Linux job runs on `ubuntu-24.04`, never `ubuntu-latest`.**
+  `ubuntu-latest` moved to Ubuntu 26.04 in October 2026 and broke two jobs
+  at once: the alex-p Tesseract PPA (`scripts/ci/install-tesseract.sh`) has
+  no 26.04 release, and wails v3 beta.26's cgo code does not compile against
+  26.04's GTK headers. Moving to 26.04 is a deliberate change of its own,
+  needing a Tesseract 5.5 source for it and a wails trio bump, and it moves
+  every `runs-on:` in one commit.
 - **Quote every hex color in `.github/labels.yml`.** YAML 1.1 parses unquoted
   `5319e7` as scientific notation and `008672` as octal — both fail
   label-sync's `color should be a string`. Always `color: "008672"`.
