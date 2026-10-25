@@ -169,7 +169,12 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # takeover endpoint's facade function and query keys. Lazy-loading the notice
 # was tried: it saved 425B but still tripped, and made the switch flow async.
 # Measured 367823B.
-: "${MAX_INITIAL_JS_BYTES:=368000}"
+# 2026-10: 368000 -> 369000 -- parse-problem reports. The entry chunk gains
+# the report facade (the preflight SDK entry, the export's request body) and
+# the lazy dialog's import map in the overlay cluster: +1006B over a main
+# that measured 367720B. The dialog, its store and the button are lazy.
+# Measured 368726B.
+: "${MAX_INITIAL_JS_BYTES:=369000}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
@@ -422,7 +427,11 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # tab's row for screenshots other profiles own (+2226B in the lazy Ingest
 # chunk), the profile-switch notice, the takeover SDK entry. +3678B over main.
 # Measured 2243744B.
-: "${MAX_TOTAL_JS_BYTES:=2245000}"
+# 2026-10: 2245000 -> 2252000 -- parse-problem reports: the report dialog,
+# its composable and store, the issue-link builder and the button on three
+# surfaces, all lazy. +8260B over a main that measured 2243159B.
+# Measured 2251419B.
+: "${MAX_TOTAL_JS_BYTES:=2252000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
@@ -477,7 +486,9 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # 2026-10: 432000 -> 411000 -- ratchet. ~45 components stopped spelling
 # out the mono button (-1,140 lines of scoped CSS) and 41 shadows became
 # tokens. Measured 409225B; gzipped 59496B.
-: "${MAX_TOTAL_CSS_BYTES:=411000}"
+# 2026-10: 411000 -> 412000 -- the parse-report dialog's scoped styles, its
+# own lazy chunk: +1929B over a main that measured 409628B. Measured 411557B.
+: "${MAX_TOTAL_CSS_BYTES:=412000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never
