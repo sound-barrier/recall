@@ -182,6 +182,9 @@ var defaultProblems = []errStatus{
 	// plausibly reviews. 400 rather than 409 because the refusal is about
 	// the SIZE of what was asked for, not about the state it was asked in.
 	{coachreturn.ErrTooManyCreated, probInvalidBody},
+	// A parse report naming an unsafe filename, too many files, or a note
+	// past the cap.
+	{app.ErrInvalidReport, probInvalidBody},
 
 	// 409 — the body parses, the state or its semantics refuse the action.
 	{coach.ErrSessionActive, probConflict},

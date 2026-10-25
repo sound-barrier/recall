@@ -308,14 +308,15 @@ func (a *App) exportBundleFor(opts ExportBundleOptions, player *SharePlayer) ([]
 
 // SaveDiagnosticBundleToFile pops a native save dialog defaulting to
 // `recall-diagnostic-<ts>.zip`, then writes the ExportDiagnosticBundle
-// payload to the chosen path. Dialog first, build second — a cancel
-// costs nothing. Returns the path on success, "" + nil on user cancel.
-func (a *App) SaveDiagnosticBundleToFile() (string, error) {
+// payload for the picked files to the chosen path. Dialog first, build
+// second — a cancel costs nothing. Returns the path on success, "" + nil on
+// user cancel.
+func (a *App) SaveDiagnosticBundleToFile(files []ReportFile) (string, error) {
 	defaultName := "recall-diagnostic-" + time.Now().UTC().Format("20060102-150405") + ".zip"
 	path, err := application.Get().Dialog.SaveFile().
-		SetMessage("Save diagnostic bundle").
+		SetMessage("Save parse problem report").
 		SetFilename(defaultName).
-		AddFilter("Diagnostic bundle (ZIP)", "*.zip").
+		AddFilter("Parse problem report (ZIP)", "*.zip").
 		AddFilter("All files", "*").
 		PromptForSingleSelection()
 	if err != nil {
@@ -324,7 +325,7 @@ func (a *App) SaveDiagnosticBundleToFile() (string, error) {
 	if path == "" {
 		return "", nil
 	}
-	data, err := a.ExportDiagnosticBundle()
+	data, err := a.ExportDiagnosticBundle(files)
 	if err != nil {
 		return "", err
 	}

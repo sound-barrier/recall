@@ -34,16 +34,24 @@ type exportedTraceManifest struct {
 	Parser struct {
 		Generation int `json:"generation"`
 	} `json:"parser"`
-	Failures []struct {
-		Filename  string          `json:"filename"`
-		Parked    bool            `json:"parked"`
+	Files []struct {
+		Filename string `json:"filename"`
+		Note     string `json:"note"`
+		Failure  *struct {
+			Error  string `json:"error"`
+			Parked bool   `json:"parked"`
+		} `json:"failure"`
 		Diagnosis json.RawMessage `json:"diagnosis"`
-	} `json:"failures"`
+	} `json:"files"`
+	LikelyCauses []struct {
+		Code     string `json:"code"`
+		Filename string `json:"filename"`
+	} `json:"likely_causes"`
 }
 
-func exportManifest(t *testing.T, a *app.App) exportedTraceManifest {
+func exportManifest(t *testing.T, a *app.App, picked ...app.ReportFile) exportedTraceManifest {
 	t.Helper()
-	data, err := a.ExportDiagnosticBundle()
+	data, err := a.ExportDiagnosticBundle(picked)
 	mustNoErr(t, err)
 	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	mustNoErr(t, err)
@@ -86,7 +94,7 @@ func TestApp_ExportDiagnosticBundle_DiagnosesTheMostRecentFailures(t *testing.T)
 	if len(*calls) != app.DiagnosedFailureCap {
 		t.Fatalf("diagnosed %d files, want the cap %d", len(*calls), app.DiagnosedFailureCap)
 	}
-	for _, f := range m.Failures {
+	for _, f := range m.Files {
 		oldest := f.Filename == "shot-00.png" || f.Filename == "shot-01.png"
 		diagnosed := string(f.Diagnosis) != "null" && len(f.Diagnosis) > 0
 		if oldest == diagnosed {
@@ -111,9 +119,9 @@ func TestApp_ExportDiagnosticBundle_MarksParkedFailures(t *testing.T) {
 	mustNoErr(t, fake.RecordFailedFile("fresh.png", 0, "boom"))
 	stubDiagnose(t)
 
-	for _, f := range exportManifest(t, a).Failures {
-		if want := f.Filename == "parked.png"; f.Parked != want {
-			t.Errorf("%s parked = %v, want %v", f.Filename, f.Parked, want)
+	for _, f := range exportManifest(t, a).Files {
+		if want := f.Filename == "parked.png"; f.Failure == nil || f.Failure.Parked != want {
+			t.Errorf("%s failure = %+v, want parked %v", f.Filename, f.Failure, want)
 		}
 	}
 }

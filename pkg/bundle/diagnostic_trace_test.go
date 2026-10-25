@@ -9,7 +9,7 @@ import (
 	"recall/pkg/parser"
 )
 
-// v2 fields: what the 2026-09-25 bundle could not answer without a local
+// Fields added in v2: what the 2026-09-25 bundle could not answer without a local
 // repro — was each file parked, what did each probe read, what does THIS
 // build make of the file now, and which roster data did the parser run with.
 type traceManifest struct {
@@ -21,11 +21,13 @@ type traceManifest struct {
 		DataFiles  []parser.DataFile `json:"data_files"`
 		LoadError  string            `json:"load_error"`
 	} `json:"parser"`
-	Failures []struct {
-		Filename  string          `json:"filename"`
-		Parked    bool            `json:"parked"`
+	Files []struct {
+		Filename string `json:"filename"`
+		Failure  *struct {
+			Parked bool `json:"parked"`
+		} `json:"failure"`
 		Diagnosis *traceDiagnosis `json:"diagnosis"`
-	} `json:"failures"`
+	} `json:"files"`
 }
 
 type traceDiagnosis struct {
@@ -39,7 +41,7 @@ type traceDiagnosis struct {
 func tracedInputs(t *testing.T) bundle.DiagnosticInputs {
 	t.Helper()
 	in, _ := diagnosticInputs(t)
-	in.Parked = map[string]bool{"good.png": true}
+	in.Files[0].Failure.Parked = true // good.png
 	in.Diagnoses = map[string]parser.Diagnosis{
 		"good.png": {
 			Type:  parser.TypeUnknown,
@@ -69,13 +71,14 @@ func TestExportDiagnostic_CarriesEachFailuresDiagnosis(t *testing.T) {
 	if err := json.Unmarshal(entries["manifest.json"], &m); err != nil {
 		t.Fatalf("manifest decode: %v", err)
 	}
-	for _, f := range m.Failures {
+	for _, f := range m.Files {
+		parked := f.Failure != nil && f.Failure.Parked
 		if f.Filename == "good.png" {
-			assertGoodDiagnosis(t, f.Parked, f.Diagnosis, entries)
+			assertGoodDiagnosis(t, parked, f.Diagnosis, entries)
 			continue
 		}
-		if f.Parked || f.Diagnosis != nil {
-			t.Errorf("%s: parked=%v diagnosis=%v, want neither", f.Filename, f.Parked, f.Diagnosis)
+		if parked || f.Diagnosis != nil {
+			t.Errorf("%s: parked=%v diagnosis=%v, want neither", f.Filename, parked, f.Diagnosis)
 		}
 	}
 }
@@ -128,7 +131,7 @@ func TestExportDiagnostic_NamesNoDebugDirWithoutFiles(t *testing.T) {
 	if err := json.Unmarshal(readZip(t, data)["manifest.json"], &m); err != nil {
 		t.Fatalf("manifest decode: %v", err)
 	}
-	for _, f := range m.Failures {
+	for _, f := range m.Files {
 		if f.Filename != "corrupt.png" {
 			continue
 		}
