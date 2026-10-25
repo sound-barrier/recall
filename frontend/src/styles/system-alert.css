@@ -366,6 +366,18 @@
   flex: 0 0 auto;
 }
 
+/* The sheet's display headline, shared by every .sheet-box dialog. */
+.sheet-title {
+  margin: var(--space-1) 0 0;
+  font-family: var(--display);
+  font-size: var(--type-7xl);
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text);
+  text-transform: uppercase;
+}
+
 .modal-icon {
   color: var(--accent-text);
   margin-bottom: var(--space-4);

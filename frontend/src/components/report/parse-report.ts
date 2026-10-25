@@ -8,7 +8,7 @@ export interface ReportCandidate {
 }
 
 /** The issue form the prefilled link opens — `.github/ISSUE_TEMPLATE/<this>`. */
-export const PARSE_PROBLEM_TEMPLATE = 'parse_problem.yml'
+const PARSE_PROBLEM_TEMPLATE = 'parse_problem.yml'
 
 /**
  * Past this many screenshots a report usually outgrows GitHub's 25 MB

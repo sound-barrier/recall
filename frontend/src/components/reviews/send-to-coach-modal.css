@@ -52,17 +52,6 @@
   text-align: right;
 }
 
-.send-to-coach-title {
-  margin: var(--space-1) 0 0;
-  font-family: var(--display);
-  font-size: var(--type-7xl);
-  font-style: italic;
-  font-weight: 800;
-  line-height: 1;
-  color: var(--text);
-  text-transform: uppercase;
-}
-
 .send-to-coach-subject {
   margin: var(--space-1) 0 var(--space-4);
   font-size: var(--type-lg);

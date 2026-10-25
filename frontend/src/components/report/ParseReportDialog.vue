@@ -56,7 +56,7 @@ function noteId(index: number): string {
       <p class="eyebrow accent sheet-fixed">
         Help fix the parser
       </p>
-      <h2 id="parse-report-title" class="sheet-fixed parse-report-title">
+      <h2 id="parse-report-title" class="sheet-fixed sheet-title">
         Report a parse problem
       </h2>
       <p id="parse-report-desc" class="sheet-fixed parse-report-desc">
