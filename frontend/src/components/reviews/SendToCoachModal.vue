@@ -187,7 +187,7 @@ function onSend(): void {
       <p class="eyebrow accent sheet-fixed send-to-coach-eyebrow">
         Coaching
       </p>
-      <h2 id="send-to-coach-title" class="sheet-fixed send-to-coach-title">
+      <h2 id="send-to-coach-title" class="sheet-fixed sheet-title">
         Send to a coach
       </h2>
       <p class="sheet-fixed send-to-coach-subject">

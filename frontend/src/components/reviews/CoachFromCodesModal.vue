@@ -89,7 +89,7 @@ useModalFocusTrap(open, {
       <p class="eyebrow accent sheet-fixed">
         Coaching
       </p>
-      <h2 id="coach-codes-title" class="sheet-fixed coach-codes-title">
+      <h2 id="coach-codes-title" class="sheet-fixed sheet-title">
         Use a replay code
       </h2>
       <p v-if="preset" class="eyebrow sheet-fixed coach-codes-for">
@@ -160,17 +160,6 @@ useModalFocusTrap(open, {
    tab's two sibling dialogs read as one product. */
 .coach-codes-box {
   width: min(32rem, 100%);
-}
-
-.coach-codes-title {
-  margin: var(--space-1) 0 0;
-  font-family: var(--display);
-  font-size: var(--type-7xl);
-  font-style: italic;
-  font-weight: 800;
-  line-height: 1;
-  color: var(--text);
-  text-transform: uppercase;
 }
 
 .coach-codes-for {
