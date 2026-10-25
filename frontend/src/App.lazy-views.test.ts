@@ -58,6 +58,8 @@ describe('App.vue lazy-loaded components', () => {
     // Send to a coach — the outbound leg of the review cycle. Lazy for the
     // same reason: nobody who never sends a bundle should carry its bytes.
     { name: 'SendToCoachModal',      path: '@/components/reviews/SendToCoachModal.vue' },
+    // Report a parse problem — reached only when something parsed wrong.
+    { name: 'ParseReportDialog',      path: '@/components/report/ParseReportDialog.vue' },
     // Anchor confirmation toast — small, but lazy so the bytes only
     // hit users who actually stamp an anchor.
     { name: 'MatchAnchorToast',       path: '@/components/matches/toasts/MatchAnchorToast.vue' },

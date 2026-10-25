@@ -7,7 +7,8 @@ import { formatParsedAt } from '@/match/match-time-helpers'
 import { useArmedAction } from '@/composables/unknown/useArmedAction'
 import { useUnknownSelection } from '@/composables/unknown/useUnknownSelection'
 import UnknownBulkBar from '@/components/unknown/UnknownBulkBar.vue'
-import { useDiagnosticBundle } from '@/composables/ingest/useDiagnosticBundle'
+import { candidatesFromFailed } from '@/components/report/parse-report'
+import { useParseReportStore } from '@/stores/parseReport'
 import { useHoverThumbnail } from '@/composables/shared/media/useHoverThumbnail'
 import { useParseStore } from '@/stores/parse'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
@@ -26,15 +27,12 @@ const { onDismissFiles, onRetryFailedFile } = useMatchActions()
 
 const failedFiles = computed(() => parseStore.failedFiles)
 
-// "Save diagnostic bundle" — one click, one zip (failed screenshots +
-// logs + environment manifest) for bug reports. Wails saves via the
-// native dialog; server mode blob-downloads. An empty saved-name means
-// the user canceled the dialog — stay silent.
-const {
-  savedAs: bundleSavedAs,
-  busy: bundleBusy,
-  exportBundle: onSaveDiagnosticBundle,
-} = useDiagnosticBundle()
+// "Report parse problem…" opens the report dialog on every failed file;
+// the user unticks the ones the report is not about.
+const parseReport = useParseReportStore()
+function onReportParseProblem() {
+  parseReport.openReport(candidatesFromFailed(failedFiles.value))
+}
 
 // Dismiss arm/disarm — keyed by filename (failed rows have no match_key).
 const { trigger: triggerDismiss, isArmed: isDismissArmed } = useArmedAction()
@@ -74,22 +72,17 @@ const { writesLocked, lockReason } = useWriteGate()
         <button
           type="button"
           class="btn failed-bundle-btn"
-          data-diagnostic-bundle
-          :disabled="bundleBusy"
-          @click="onSaveDiagnosticBundle"
+          @click="onReportParseProblem"
         >
-          {{ bundleBusy ? 'Building…' : 'Save diagnostic bundle' }}
+          Report parse problem…
         </button>
       </div>
       <p class="failed-blurb">
         Recall could not read these screenshots. Each is retried on the
         next few parse runs, then parked so your Run Parse count stays
-        honest. Retry a parked file, dismiss one to stop trying, or save
-        a diagnostic bundle (these images + logs + version info) to
-        attach to a bug report.
-      </p>
-      <p v-if="bundleSavedAs" class="failed-bundle-saved" role="status">
-        ✓ Saved {{ bundleSavedAs }}
+        honest. Retry a parked file, dismiss one to stop trying, or
+        report the problem (these images + logs + version info, folder
+        paths removed) so the parser can learn to read them.
       </p>
     </div>
 
@@ -208,12 +201,6 @@ const { writesLocked, lockReason } = useWriteGate()
 
 .failed-bundle-btn {
   flex-shrink: 0;
-}
-
-.failed-bundle-saved {
-  margin: 0;
-  font-size: var(--type-sm);
-  color: var(--win);
 }
 
 .failed-blurb {

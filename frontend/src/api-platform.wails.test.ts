@@ -63,11 +63,13 @@ describe('native dialog dispatch (Wails mode)', () => {
   // The third element is what the call carries. Most of these are pure
   // dialogs with nothing to hand over; the two coaching exports send the
   // review page, which is rendered in the frontend where the app's real
-  // stylesheets are, so the ARGUMENTS are part of the contract too.
+  // stylesheets are, and the parse report sends the picked files with their
+  // notes, so the ARGUMENTS are part of the contract too.
   const SHEET = '<!doctype html><html></html>'
+  const REPORT = [{ filename: 'a.png', screenshots_dir_id: 0, note: '' }]
   it.each([
     ['BackupDatabase', 'SaveBackupToFile', []],
-    ['ExportDiagnosticBundle', 'SaveDiagnosticBundleToFile', []],
+    ['ExportDiagnosticBundle', 'SaveDiagnosticBundleToFile', [REPORT]],
     ['RestoreDatabase', 'LoadRestoreFromFile', []],
     ['ImportMatches', 'LoadMatchImportFromFile', []],
     ['OpenCoachBundle', 'LoadCoachBundleFromFile', []],

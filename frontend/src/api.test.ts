@@ -515,12 +515,15 @@ describe('binary downloads (browser mode)', () => {
     expect(JSON.parse(await req.text())).toEqual({ sheet_html: '<!doctype html><html></html>' })
   })
 
-  it('ExportDiagnosticBundle POSTs and saves the returned zip', async () => {
+  it('ExportDiagnosticBundle POSTs the picked files and saves the returned zip', async () => {
     const spy = stubFetch(blobReply('attachment; filename="recall-diagnostic-x.zip"'))
     stubDownloadDom()
 
-    const name = await ExportDiagnosticBundle()
-    expect(new URL(lastRequest(spy).url).pathname).toBe('/api/v1/exports/diagnostic')
+    const files = [{ filename: 'a.png', screenshots_dir_id: 2, note: 'hero should be Kiriko' }]
+    const name = await ExportDiagnosticBundle(files)
+    const req = lastRequest(spy)
+    expect(new URL(req.url).pathname).toBe('/api/v1/exports/diagnostic')
+    expect(JSON.parse(await req.text())).toEqual({ files })
     expect(name).toBe('recall-diagnostic-x.zip')
   })
 })
