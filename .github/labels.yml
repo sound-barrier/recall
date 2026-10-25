@@ -128,3 +128,23 @@
 - name: documentation
   description: Improvements or additions to documentation (sibling of `docs` for issue-side use)
   color: "0075ca"
+
+# ── Parse-problem triage ────────────────────────────────────────
+# Applied by .github/workflows/parse-report-triage.yml to issues filed
+# through the parse_problem.yml form.
+
+- name: parse-problem
+  description: A screenshot Recall read wrong (filed through the Parse problem form)
+  color: "d93f0b"
+
+- name: report-missing
+  description: Parse problem filed without a readable diagnostic report attached
+  color: "fbca04"
+
+- name: setup-issue
+  description: The attached report points at the reporter's setup (Tesseract, capture size), not the parser
+  color: "0e8a16"
+
+- name: known-screenshot
+  description: Every screenshot in the report is already in the test corpus
+  color: "cfd3d7"

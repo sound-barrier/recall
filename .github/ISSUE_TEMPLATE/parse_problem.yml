@@ -1,0 +1,81 @@
+name: Parse problem
+description: Recall read a screenshot wrong, put it in Unknown, or failed to read it.
+title: "[parse]: "
+labels: ["parse-problem"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The fastest way to file this is from inside Recall: click
+        **Report parse problem…** on the failed list, an Unknown card, or
+        a match's **Source Screenshots**. Recall fills in the fields below
+        and saves a `recall-diagnostic-….zip` for the **Report** box.
+
+        The report holds the screenshots you ticked, your notes, Recall's
+        logs and a version snapshot, with your folder paths removed. It
+        has no settings and no database. Screenshots do show BattleTags
+        on the scoreboard: crop them out first if you'd rather not share
+        them.
+
+  - type: input
+    id: version
+    attributes:
+      label: Recall version
+      description: Shown in the top-right corner of the app, or in About Recall.
+      placeholder: v0.30.0
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system and Tesseract version. Recall fills this in.
+      placeholder: windows · Tesseract 5.5.0
+    validations:
+      required: false
+
+  - type: textarea
+    id: files
+    attributes:
+      label: What Recall read wrong
+      description: |
+        One line per screenshot: its filename and what it should have
+        read. "Hero should be Kiriko" or "this is a SUMMARY tab" is
+        exactly what the fix needs.
+      placeholder: |
+        - Overwatch 2 Screenshot 2026.10.09 - 18.27.28.33.png: hero should be Kiriko
+    validations:
+      required: true
+
+  - type: textarea
+    id: report
+    attributes:
+      label: Report
+      description: |
+        Drag the `recall-diagnostic-….zip` Recall saved into this box.
+        GitHub takes attachments up to 25 MB, about eight screenshots;
+        split a bigger report across issues.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: Test corpus
+      description: |
+        Fixed screenshots usually join Recall's public test corpus,
+        [recall-testdata](https://github.com/sound-barrier/recall-testdata),
+        so the same misread can't come back. Leave this unticked and the
+        maintainer only uses them to find the fix.
+      options:
+        - label: OK to add these screenshots to the public test corpus.
+          required: false
+
+  - type: checkboxes
+    id: code-of-conduct
+    attributes:
+      label: Code of Conduct
+      options:
+        - label: I have read and agree to follow the [Code of Conduct](https://github.com/sound-barrier/recall/blob/main/CODE_OF_CONDUCT.md).
+          required: true

@@ -189,14 +189,19 @@ A parked row offers two ways out:
   (the file itself stays on disk; restore it anytime under
   Settings → Advanced → Manage ignored files).
 
-**Save diagnostic bundle** (in the section header) builds a single
-`.zip` to attach to a bug report: the failing screenshots, each
-failure's error message, Recall's log files, and a small version +
-environment snapshot (OS, Tesseract path and version, image
-resolutions). It deliberately contains **no settings file and no
-database** — nothing about your match history beyond the failing
-images themselves. Note the screenshots and logs are included
-verbatim, so glance over them before sharing publicly.
+**Report parse problem…** (in the section header) opens the report
+dialog on every failed file. The same button sits on each Unknown card
+and under a match's Source Screenshots, so a screenshot that parsed
+into the wrong hero is reportable too. Tick the files, say what each
+should have read, and **Save report…** builds a single `.zip`: the
+ticked screenshots with your notes, each failure's error message,
+Recall's log files, a re-parse trace of each file, and a small version
+and environment snapshot (OS, Tesseract path, version and languages,
+image resolutions). Folder paths are replaced with `[screenshots]`,
+`[recall-data]` and `[home]`. It deliberately contains **no settings
+file and no database**. **Open a GitHub issue** then opens the
+[parse-problem form](feedback.md#recall-read-a-screenshot-wrong)
+prefilled from your notes; drag the `.zip` into it.
 
 ### When a record is just noise
 
