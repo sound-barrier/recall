@@ -7,7 +7,8 @@ import UnknownFailedSection from '@/components/unknown/UnknownFailedSection.vue'
 import { useMatchesStore } from '@/stores/matches'
 import { qk } from '@/queries/keys'
 import { seedQuery } from '@/test-utils/queryTestUtils'
-import { ExportDiagnosticBundle, IgnoreScreenshot, RetryFailedFile } from '@/api'
+import { IgnoreScreenshot, RetryFailedFile } from '@/api'
+import { useParseReportStore } from '@/stores/parseReport'
 import type { FailedFile } from '@/api'
 
 // The section reads matchesStore.failedFiles directly and suppresses via
@@ -21,7 +22,6 @@ vi.mock('@/api', async (importOriginal) => ({
   GetIgnoredScreenshots:  vi.fn(async () => []),
   IgnoreScreenshot:       vi.fn(async () => undefined),
   RetryFailedFile:        vi.fn(async () => undefined),
-  ExportDiagnosticBundle: vi.fn(async () => 'recall-diagnostic-x.zip'),
 }))
 
 afterEach(() => {
@@ -65,20 +65,15 @@ describe('UnknownFailedSection', () => {
     expect(screen.getByText(/retried on\s+the next few parse runs/i)).toBeInTheDocument()
   })
 
-  it('the bundle button calls the export and reports the saved name', async () => {
-    renderWith([row()])
-    await user().click(screen.getByRole('button', { name: 'Save diagnostic bundle' }))
-    await new Promise((r) => setTimeout(r))
-    expect(ExportDiagnosticBundle).toHaveBeenCalledTimes(1)
-    expect(screen.getByText(/Saved recall-diagnostic-x\.zip/)).toBeInTheDocument()
-  })
-
-  it('a Wails dialog cancel (empty name) stays silent', async () => {
-    vi.mocked(ExportDiagnosticBundle).mockResolvedValueOnce('')
-    renderWith([row()])
-    await user().click(screen.getByRole('button', { name: 'Save diagnostic bundle' }))
-    await new Promise((r) => setTimeout(r))
-    expect(screen.queryByText(/Saved/)).not.toBeInTheDocument()
+  it('the report button opens the report on every failed file', async () => {
+    renderWith([row(), row({ filename: 'other.png' })])
+    await user().click(screen.getByRole('button', { name: 'Report parse problem…' }))
+    const report = useParseReportStore()
+    expect(report.open).toBe(true)
+    expect(report.candidates).toEqual([
+      { filename: 'corrupt.png', dirId: 0 },
+      { filename: 'other.png', dirId: 0 },
+    ])
   })
 
   it('a parked row carries the badge and Retry; a live row carries neither', async () => {

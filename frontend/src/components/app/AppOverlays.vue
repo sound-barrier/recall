@@ -39,6 +39,7 @@ const SettingsModal = lazyOverlay(() => import('@/components/settings/SettingsMo
 const FirstRunProfileModal = lazyOverlay(() => import('@/components/app/FirstRunProfileModal.vue'))
 const ExportBundleModal = lazyOverlay(() => import('@/components/matches/export/ExportBundleModal.vue'))
 const SendToCoachModal = lazyOverlay(() => import('@/components/reviews/SendToCoachModal.vue'))
+const ParseReportDialog = lazyOverlay(() => import('@/components/report/ParseReportDialog.vue'))
 const IgnoredFilesPanel = lazyOverlay(() => import('@/components/ingest/ignored/IgnoredFilesPanel.vue'))
 const MatchDetailPanel = lazyOverlay(() => import('@/components/matches/detail/MatchDetailPanel.vue'))
 const MatchAnchorToast = lazyOverlay(() => import('@/components/matches/toasts/MatchAnchorToast.vue'))
@@ -285,6 +286,10 @@ const lightboxSrc = computed(() => {
        cluster's rule) — and taking no props is what moved the replay-code
        math out of this file, where it never belonged. -->
   <SendToCoachModal />
+
+  <!-- Report a parse problem — opened from the failed list, Unknown cards
+       and a match's sources. Reads its store directly. -->
+  <ParseReportDialog />
 
   <IgnoredFilesPanel
     :is-open="ignoredPanelOpen"

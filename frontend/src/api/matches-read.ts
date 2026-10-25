@@ -5,6 +5,8 @@ import type {
   FailedFile,
   IgnoredScreenshot,
   GetPendingScreenshotCountResponse,
+  LikelyCause,
+  ReportFile,
 } from '@/client/types.gen'
 
 // Re-exported wire types — consumers import these instead of reaching into
@@ -35,4 +37,11 @@ export function GetIgnoredScreenshots(): Promise<IgnoredScreenshot[]> {
 // tab's "Failed to read" triage section.
 export function GetFailedFiles(): Promise<FailedFile[]> {
   return unwrap(sdk.getFailedFiles())
+}
+
+// What is likely wrong with the picked files or the Tesseract install — the
+// fixes the parse-problem report dialog offers before the user saves.
+export async function PreflightDiagnosticBundle(files: ReportFile[]): Promise<LikelyCause[]> {
+  const reply = await unwrap(sdk.preflightDiagnosticBundle({ body: { files } }))
+  return reply.likely_causes
 }

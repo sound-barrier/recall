@@ -21,7 +21,7 @@ import { Browser, Call, Events } from '@wailsio/runtime'
 import { unwrap, unwrapWithResponse } from '@/api-unwrap'
 import { IS_WAILS } from '@/platform'
 import * as sdk from '@/client/sdk.gen'
-import type { BundleShare, CoachReturnSheet, CoachSessionView } from '@/client/types.gen'
+import type { BundleShare, CoachReturnSheet, CoachSessionView, ReportFile } from '@/client/types.gen'
 
 // Fully-qualified prefix for the bound App service — the v3 runtime resolves a
 // Call.ByName against `packagePath.typeName.method` (see pkg/app's App service,
@@ -253,15 +253,15 @@ function saveBundleNatively(opts: {
   return wailsCall<string>('SaveBundleToFile', ...selection, name)
 }
 
-// ExportDiagnosticBundle builds the parser-triage zip (failed screenshots +
-// logs + environment manifest). Wails routes through the native save dialog
-// (SaveDiagnosticBundleToFile); server mode POSTs and streams the ZIP into a
-// browser download. Resolves with the saved filename ("" on user cancel in
-// Wails mode).
-export function ExportDiagnosticBundle(): Promise<string> {
-  if (IS_WAILS) return wailsCall<string>('SaveDiagnosticBundleToFile')
+// ExportDiagnosticBundle builds the parse-problem report zip for the picked
+// files (their screenshots + notes, logs, environment manifest). Wails routes
+// through the native save dialog (SaveDiagnosticBundleToFile); server mode
+// POSTs and streams the ZIP into a browser download. Resolves with the saved
+// filename ("" on user cancel in Wails mode).
+export function ExportDiagnosticBundle(files: ReportFile[]): Promise<string> {
+  if (IS_WAILS) return wailsCall<string>('SaveDiagnosticBundleToFile', files)
   return saveBlobResponse(
-    sdk.exportDiagnosticBundle(),
+    sdk.exportDiagnosticBundle({ body: { files } }),
     `recall-diagnostic-${tsFilenameStamp()}.zip`,
   )
 }

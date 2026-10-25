@@ -10,6 +10,7 @@ import {
 } from '@/match/match-helpers'
 import { formatParsedAt } from '@/match/match-time-helpers'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
+import ReportParseProblemButton from '@/components/report/ReportParseProblemButton.vue'
 
 // The expanded card's Sources block — the collapsible per-match screenshot
 // list (coverage chips on the toggle row, inline previews, lightbox launch)
@@ -133,6 +134,7 @@ const emit = defineEmits<{
           Could not load image — check screenshots folder in Settings.
         </div>
       </div>
+      <ReportParseProblemButton :record="record" />
     </div>
 
     <div v-if="isSourcesOpen && (missingRequiredSlots(record).length || missingOptionalSlots(record).length)" class="sources-explain">

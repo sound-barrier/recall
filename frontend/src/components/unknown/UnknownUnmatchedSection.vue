@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
+import ReportParseProblemButton from '@/components/report/ReportParseProblemButton.vue'
 import type { MatchRecord } from '@/api-client'
 import { detectScreenshotSlots, screenshotURL } from '@/match/match-helpers'
 import { formatParsedAt } from '@/match/match-time-helpers'
@@ -303,6 +304,7 @@ function onCardHeadClick(rec: MatchRecord) {
                 Could not load image — check screenshots folder in Settings.
               </div>
             </div>
+            <ReportParseProblemButton :record="rec" />
           </div>
 
           <div v-if="rec.data?.eliminations != null || rec.data?.damage != null" class="unknown-stats">

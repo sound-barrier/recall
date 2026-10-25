@@ -16,6 +16,7 @@ import { useMatchesStore } from '@/stores/matches'
 import { useUiStore } from '@/stores/ui'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
+import ReportParseProblemButton from '@/components/report/ReportParseProblemButton.vue'
 // Global (unscoped) styles for the Unknown view + its section sub-components —
 // the card chrome is shared across them, so it lives in one place.
 import './unknown.css'
@@ -263,6 +264,7 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
                     Could not load image — check screenshots folder in Settings.
                   </div>
                 </div>
+                <ReportParseProblemButton :record="rec" />
               </div>
               <UnknownCandidatePicker :rec="rec" @pick="onPickCandidate(rec, $event)" />
 
