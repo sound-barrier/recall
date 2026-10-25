@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"recall/pkg/parser"
+	"recall/pkg/screenshot"
 )
 
 // Diagnostic bundle — the ZIP a user attaches to a parse-problem report (or
@@ -220,9 +221,8 @@ type fileFacts struct {
 // file errors.
 func readDiagnosticFile(in DiagnosticInputs, f DiagnosticFile) (fileFacts, error) {
 	ff := fileFacts{filename: f.Filename}
-	// The names come from the parser loop or the user's pick of a record's
-	// source files; a separator here means something upstream went badly
-	// wrong — never let it shape a zip entry or a filesystem path.
+	// The names come from the ledger or the user's pick over HTTP; a
+	// separator or ".." must never shape a zip entry or a filesystem path.
 	if !safeEntryName(f.Filename) {
 		return ff, nil
 	}
@@ -230,10 +230,13 @@ func readDiagnosticFile(in DiagnosticInputs, f DiagnosticFile) (fileFacts, error
 	if ff.dir == "" {
 		return ff, nil
 	}
+	path := filepath.Join(ff.dir, f.Filename)
+	if !screenshot.WithinDir(ff.dir, path) {
+		return ff, nil
+	}
 	// #nosec G304 -- dir comes from the validated screenshots-folder
-	// settings / screenshots_dirs rows; the basename is separator-guarded
-	// above.
-	body, err := os.ReadFile(filepath.Join(ff.dir, f.Filename))
+	// settings / screenshots_dirs rows, and path is contained in it above.
+	body, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return ff, nil
