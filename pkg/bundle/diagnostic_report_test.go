@@ -35,6 +35,19 @@ func TestExportDiagnostic_CarriesAParsedFileWithItsNote(t *testing.T) {
 	}
 }
 
+// A pick names a file, never a folder: ".." must not reach the parent of the
+// screenshots folder, and the report still builds with the entry left out.
+func TestExportDiagnostic_IgnoresAPickThatLeavesTheFolder(t *testing.T) {
+	in, _ := diagnosticInputs(t)
+	in.Files = []bundle.DiagnosticFile{{Filename: "..", ScreenshotsDirID: 1}}
+
+	m, _ := exportManifest(t, in)
+
+	if got := fileNamed(t, m, ".."); got.Included {
+		t.Errorf(".. = %+v, want it left out", got)
+	}
+}
+
 func TestExportDiagnostic_RedactsPathsInManifestAndLogs(t *testing.T) {
 	in, shots := diagnosticInputs(t)
 	home := filepath.Dir(shots)
