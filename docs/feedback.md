@@ -1,8 +1,34 @@
 # Bug reports & feature requests
 
 Recall is maintained in spare time and given away free. Every report
-helps prioritize what gets fixed next. There are three channels,
+helps prioritize what gets fixed next. There are four channels,
 depending on what you want to file.
+
+## Recall read a screenshot wrong
+
+A wrong hero, map or stat, a match stuck in the Unknown tab, or a
+screenshot in the **Failed to read** list: that's a parse problem, and
+it has its own form, because the fix starts from the screenshot itself.
+
+1. In Recall, click **Report parse problem…**. It's on the failed
+   list, on every Unknown card, and under a match's **Source
+   Screenshots**.
+2. Tick the screenshots that read wrong and write what each should
+   have said, like "hero should be Kiriko". Recall shows what it can
+   already tell is wrong first (an old Tesseract, an ultrawide
+   capture), since those you can fix yourself in a minute.
+3. Click **Save report…**, then **Open a GitHub issue**. The issue
+   opens with your notes, version and environment filled in. Drag the
+   saved `.zip` into its **Report** box.
+
+The report holds the ticked screenshots, your notes, Recall's logs and
+a version snapshot, with your folder paths replaced by placeholders
+like `[screenshots]`. It has no settings and no database. Screenshots
+do show BattleTags on the scoreboard, so crop them out first if you'd
+rather not share them. A checkbox on the form says whether the
+screenshots may join the public test corpus once the fix lands.
+
+[**→ File a parse problem**](https://github.com/sound-barrier/recall/issues/new?template=parse_problem.yml)
 
 ## Found a bug
 
@@ -21,12 +47,9 @@ reproduce the problem:
 - **Expected vs actual** — what you thought would happen, what
   actually happened.
 - **Steps to reproduce** — a short numbered list.
-- **Screenshots** — drag images directly into the form. Two fields:
-  - **The Overwatch screenshot that mis-parsed** (if the bug is "Recall
-    read the wrong stat from this match"). Every parser bug is many
-    times easier to fix when the source PNG is attached.
-  - **The Recall app or website screenshot** showing what looked wrong
-    (UI glitch, missing data, weird filter behavior, etc.).
+- **Screenshot** — drag a screenshot of the Recall app or website
+  showing what looked wrong (UI glitch, missing data, weird filter
+  behavior, etc.) directly into the form.
 - **Logs** — terminal output for the server, or the **Parse** tab's
   progress panel for the desktop app.
 

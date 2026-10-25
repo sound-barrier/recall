@@ -10,6 +10,12 @@ body:
         of the fields below you can fill in, the faster the bug can be
         triaged. Skip a field with "n/a" if it genuinely doesn't apply.
 
+        **Recall read a screenshot wrong** (wrong hero, map or stat, a
+        match stuck in Unknown, a file that failed to read)? Use
+        [**Parse problem**](https://github.com/sound-barrier/recall/issues/new?template=parse_problem.yml)
+        instead, or **Report parse problem…** inside the app, which
+        builds the attachment for you.
+
   - type: input
     id: version
     attributes:
@@ -74,24 +80,6 @@ body:
       required: true
 
   - type: textarea
-    id: overwatch-screenshot
-    attributes:
-      label: Overwatch screenshot (if a parser bug)
-      description: |
-        If Recall mis-read a specific match (wrong map, wrong hero,
-        wrong stat number, missing match entirely), attach the
-        Overwatch post-match screenshot itself. Drag the PNG / JPG
-        directly into this box.
-
-        This is the single most useful piece of data for parser
-        bugs — without it, the maintainer can only guess at which
-        OCR step went sideways. Recall doesn't read BattleTags, so
-        scoreboard tags don't affect repro; crop / blur them
-        before uploading if you'd like.
-    validations:
-      required: false
-
-  - type: textarea
     id: app-screenshot
     attributes:
       label: Recall app / website screenshot
@@ -111,8 +99,8 @@ body:
     attributes:
       label: Export bundle (highly encouraged)
       description: |
-        For anything more involved than a one-screenshot parser
-        bug, attaching a Recall **export bundle** lets the
+        For a bug in how Recall shows or merges matches, attaching a
+        Recall **export bundle** lets the
         maintainer load the exact matches you're reporting on into
         their own copy of the app and reproduce what you're seeing.
         Optional, but it usually turns a "hard to repro" bug into a
