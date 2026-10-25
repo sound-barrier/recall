@@ -1,0 +1,22 @@
+{
+  "screenshot_type": "personal",
+  "result": {
+    "role": "support",
+    "hero": "doctrine",
+    "heroes_played": [
+      {
+        "hero": "doctrine",
+        "percent_played": 100,
+        "play_time": "07:46",
+        "stats": {
+          "deliverance_health_capped": 661,
+          "deliverance_overhealth_granted": 330,
+          "infused_scepter_damage": 83,
+          "infused_scepter_healing": 306,
+          "players_saved": 7,
+          "weapon_accuracy": 53
+        }
+      }
+    ]
+  }
+}
