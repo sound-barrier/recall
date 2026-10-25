@@ -1,0 +1,94 @@
+# Summarize the report attached to a parse-problem issue, so the maintainer
+# sees what it holds without downloading it: schema, version, environment,
+# the likely causes Recall found, each screenshot's note, and whether the
+# corpus already has it. Labels the issue report-missing / setup-issue /
+# known-screenshot to match, and keeps ONE comment up to date as the
+# reporter edits the issue.
+#
+# Two jobs, so the token that can write to issues never meets the zip:
+# `summarize` (contents: read) downloads and reads the untrusted attachment
+# through scripts/ci/triage-parse-report.sh; `post` (issues: write) only
+# relays the text that job produced. The issue body reaches the script as an
+# env var, never interpolated into a shell line.
+#
+# `labeled` covers the maintainer moving a bug report over by hand. Labels
+# this workflow adds are added with GITHUB_TOKEN and so trigger nothing.
+
+name: Parse report triage
+
+on:
+  issues:
+    types: [opened, edited, labeled]
+
+permissions: {}  # deny all by default; each job declares only what it needs
+
+concurrency:
+  group: parse-report-triage-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  summarize:
+    if: >-
+      contains(github.event.issue.labels.*.name, 'parse-problem')
+      && (github.event.action != 'labeled' || github.event.label.name == 'parse-problem')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read  # check out the script and the committed fixture images
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/ci
+            testdata
+      - name: Check out the fixture corpus
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          repository: sound-barrier/recall-testdata
+          path: corpus
+          persist-credentials: false
+      - name: Summarize the attached report
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          CORPUS_DIRS: corpus:testdata
+        run: scripts/ci/triage-parse-report.sh triage
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: parse-report-triage
+          path: triage/
+          retention-days: 1
+
+  post:
+    needs: summarize
+    runs-on: ubuntu-24.04
+    permissions:
+      issues: write  # one triage comment + labels
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: parse-report-triage
+          path: triage
+      - name: Post the triage comment and labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          marker='<!-- parse-report-triage -->'
+          existing="$(gh api --paginate "repos/${GH_REPO}/issues/${ISSUE}/comments" \
+            --jq "map(select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"${marker}\")))) | .[0].id // empty")"
+          body="$(jq -Rs '{body: .}' triage/comment.md)"
+          if [[ -n "${existing}" ]]; then
+            gh api -X PATCH "repos/${GH_REPO}/issues/comments/${existing}" --input - <<<"${body}" >/dev/null
+          else
+            gh api -X POST "repos/${GH_REPO}/issues/${ISSUE}/comments" --input - <<<"${body}" >/dev/null
+          fi
+          while IFS= read -r label; do
+            if [[ -n "${label}" ]]; then
+              gh issue edit "${ISSUE}" --add-label "${label}"
+            fi
+          done <triage/labels.txt
+          if [[ -f triage/has-report ]]; then
+            gh issue edit "${ISSUE}" --remove-label report-missing 2>/dev/null || true
+          fi
