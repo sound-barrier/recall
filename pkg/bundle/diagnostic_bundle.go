@@ -223,7 +223,9 @@ func readDiagnosticFile(in DiagnosticInputs, f DiagnosticFile) (fileFacts, error
 	ff := fileFacts{filename: f.Filename}
 	// The names come from the ledger or the user's pick over HTTP; a
 	// separator or ".." must never shape a zip entry or a filesystem path.
-	if !safeEntryName(f.Filename) {
+	// ValidBasename's ".." check is the guard CodeQL's path-injection
+	// query recognizes, the same pair of gates the screenshot handler uses.
+	if !safeEntryName(f.Filename) || !screenshot.ValidBasename(f.Filename) {
 		return ff, nil
 	}
 	ff.dir = resolveDiagnosticDir(in, f.ScreenshotsDirID)
