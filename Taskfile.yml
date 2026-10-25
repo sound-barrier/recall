@@ -710,6 +710,12 @@ tasks:
     desc: 'Generate goldens for any screenshot file/dir to find parser bugs (usage: task goldens SRC=screenshots/foo)'
     cmds: ['bash scripts/gen-goldens.sh "{{.SRC}}"']
 
+  import-report:
+    desc: 'Stage a parse-problem report for fixtures (usage: task import-report BUNDLE=report.zip [CONSENTED=1])'
+    requires:
+      vars: [BUNDLE]
+    cmds: ['bash scripts/import-report.sh {{if eq .CONSENTED "1"}}--consented {{end}}"{{.BUNDLE}}"']
+
   test-e2e:
     desc: E2E browser tests via Playwright (boots server in $E2E_HOME on :7099)
     cmds:
