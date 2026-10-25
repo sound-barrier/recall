@@ -100,6 +100,25 @@ func TestApp_ExportDiagnosticBundle_RedactsTheScreenshotsFolder(t *testing.T) {
 	}
 }
 
+// A pick from a match's Source Screenshots names its folder: the report reads
+// the file from there and redacts that folder too, not just the configured one.
+func TestApp_ExportDiagnosticBundle_ReadsAndRedactsAPickedFolder(t *testing.T) {
+	a, fake, _ := reportApp(t)
+	other := t.TempDir()
+	mustNoErr(t, os.WriteFile(filepath.Join(other, reportShot), []byte("x"), 0o600))
+	dirID, err := fake.EnsureScreenshotsDir(other)
+	mustNoErr(t, err)
+	stubDiagnose(t)
+
+	data, err := a.ExportDiagnosticBundle([]app.ReportFile{{Filename: reportShot, ScreenshotsDirID: dirID}})
+	mustNoErr(t, err)
+
+	zipEntry(t, data, "screenshots/"+reportShot)
+	if manifest := zipEntry(t, data, "manifest.json"); strings.Contains(manifest, other) {
+		t.Errorf("manifest kept the picked folder path:\n%s", manifest)
+	}
+}
+
 func TestApp_PreflightDiagnosticBundle_FlagsAMissingFile(t *testing.T) {
 	a, _, _ := reportApp(t)
 
