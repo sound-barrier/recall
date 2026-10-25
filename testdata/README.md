@@ -216,6 +216,12 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
       screenshotting from the match-history browser lands captures in the
       Ambiguous queue by design — resolve via the picker, don't "fix" it),
       a three-hero card with the requeue banner, and Esperança (diacritic).
+- [x] PERSONAL — **Doctrine**, Season 5 (×2, 2026-10-09 diagnostic bundle,
+      Shambali Monastery + New Queen Street). Recall 0.33.5 predated the
+      roster entry, so the hero card resolved to no hero, its six stat cards
+      had nowhere to land, and both captures fell to the Unknown tab. They pin
+      the stylized `DOCTRINE` card name and the Infused Scepter / Deliverance
+      ability labels, including a `NEW CAREER BEST!` badge on the first.
 - [x] PERSONAL — 2026-07 UI (×3): Mizuki ability-stat labels (HEALING KASA /
       REMEDY AURA / BINDING CHAIN), NEW CAREER BEST badges, and a
       percent-only stat-card set (Lúcio).
