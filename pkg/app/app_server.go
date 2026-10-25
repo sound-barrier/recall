@@ -85,7 +85,7 @@ func (a *App) SaveShareBundleToFile(_ []string, _, _ bool, _ SharePlayer) (strin
 // SaveDiagnosticBundleToFile is not available in server mode (no native
 // dialogs). The HTTP API exposes POST /api/v1/exports/diagnostic for
 // the same payload.
-func (a *App) SaveDiagnosticBundleToFile() (string, error) {
+func (a *App) SaveDiagnosticBundleToFile(_ []ReportFile) (string, error) {
 	return "", errors.New("native dialogs unavailable in server mode; use POST /api/v1/exports/diagnostic")
 }
 

@@ -20,7 +20,8 @@ import (
 //   - GET  /api/v1/database/health      — integrity check + size/freelist stats
 //   - POST /api/v1/database/maintenance — run optimize / vacuum, return fresh health
 //   - POST /api/v1/exports/bundle       — selection-aware .zip (manifest+data+shots)
-//   - POST /api/v1/exports/diagnostic   — parser-triage .zip (failed shots+logs+env)
+//   - POST /api/v1/exports/diagnostic   — parse-problem report .zip (picked shots+notes+logs+env)
+//   - POST /api/v1/exports/diagnostic/preflight — likely causes for a report, before it is built
 //   - POST /api/v1/imports              — MERGE a bundle's matches (additive)
 func registerBackupRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/database", handleBackupDatabase(a))
@@ -30,6 +31,7 @@ func registerBackupRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("POST /api/v1/exports/bundle", handleExportBundle(a))
 	apiMux.HandleFunc("GET /api/v1/shares", handleListShareExports(a))
 	apiMux.HandleFunc("POST /api/v1/exports/diagnostic", handleExportDiagnostic(a))
+	apiMux.HandleFunc("POST /api/v1/exports/diagnostic/preflight", handlePreflightDiagnostic(a))
 	apiMux.HandleFunc("POST /api/v1/imports", handleImportMatches(a))
 }
 
@@ -238,14 +240,20 @@ func exportBundlePayload(a *app.App, req exportBundleRequest) ([]byte, error) {
 	return a.ExportShareBundle(req.opts, *req.share)
 }
 
-// handleExportDiagnostic assembles the parser-triage zip (failed
-// screenshots + logs + environment manifest). No request body; an empty
-// failure ledger is a 409 — there's nothing to diagnose, and an empty
-// zip would read as a broken export. See pkg/app/diagnostic.go.
+// handleExportDiagnostic assembles the parse-problem report zip (picked
+// screenshots + notes + logs + environment manifest). The body is optional:
+// absent or `{}` reports every ledgered failure, and nothing to report is a
+// 409 — an empty zip would read as a broken export. See
+// pkg/app/diagnostic.go.
 func handleExportDiagnostic(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		data, err := a.ExportDiagnosticBundle()
-		if writeError(w, r, err, errStatus{app.ErrNoFailedFiles, probConflict}) {
+		files, err := decodeReportFiles(r)
+		if err != nil {
+			writeProblem(w, r, probInvalidBody, err.Error())
+			return
+		}
+		data, err := a.ExportDiagnosticBundle(files)
+		if writeError(w, r, err, errStatus{app.ErrNothingToReport, probConflict}) {
 			return
 		}
 		fname := "recall-diagnostic-" + time.Now().UTC().Format("20060102-150405") + ".zip"
@@ -253,6 +261,58 @@ func handleExportDiagnostic(a *app.App) http.HandlerFunc {
 		w.Header().Set("Content-Disposition", `attachment; filename="`+fname+`"`)
 		_, _ = w.Write(data)
 	}
+}
+
+// handlePreflightDiagnostic answers what is likely wrong with the picked
+// files or the Tesseract install, before the user builds a report.
+func handlePreflightDiagnostic(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		files, err := decodeReportFiles(r)
+		if err != nil {
+			writeProblem(w, r, probInvalidBody, err.Error())
+			return
+		}
+		causes, err := a.PreflightDiagnosticBundle(files)
+		if writeError(w, r, err, errStatus{app.ErrNothingToReport, probConflict}) {
+			return
+		}
+		writeJSON(w, r, preflightWire{LikelyCauses: causes}, nil)
+	}
+}
+
+type preflightWire struct {
+	LikelyCauses []bundle.LikelyCause `json:"likely_causes"`
+}
+
+// decodeReportFiles reads the optional `{"files": [...]}` body. An empty
+// body and an absent `files` both mean "every ledgered failure"; a literal
+// null is the schema violation it is everywhere else.
+func decodeReportFiles(r *http.Request) ([]app.ReportFile, error) {
+	raw, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, errors.New("invalid JSON body")
+	}
+	if len(bytes.TrimSpace(raw)) == 0 {
+		return nil, nil
+	}
+	var body struct {
+		Files json.RawMessage `json:"files"`
+	}
+	if err := decodeJSONBytes(raw, &body); err != nil {
+		return nil, errors.New("invalid JSON body")
+	}
+	files := bytes.TrimSpace(body.Files)
+	if len(files) == 0 {
+		return nil, nil
+	}
+	if bytes.Equal(files, []byte("null")) {
+		return nil, errors.New("files must be an array, not null")
+	}
+	var out []app.ReportFile
+	if err := decodeJSONBytes(files, &out); err != nil {
+		return nil, errors.New("files must be an array of {filename, screenshots_dir_id, note}")
+	}
+	return out, nil
 }
 
 // shareExportWire is db.ShareExport on the wire — snake_case, keys in

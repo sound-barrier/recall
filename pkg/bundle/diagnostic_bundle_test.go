@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"recall/pkg/bundle"
-	"recall/pkg/db"
 )
 
 func writePNG(t *testing.T, path string, w, h int) {
@@ -38,13 +37,19 @@ func diagnosticInputs(t *testing.T) (bundle.DiagnosticInputs, string) {
 		t.Fatalf("write log: %v", err)
 	}
 	return bundle.DiagnosticInputs{
-		FailedFiles: []db.FailedFileRow{
-			{Filename: "good.png", ScreenshotsDirID: 1, Error: "boom", Attempts: 2,
-				FirstFailedAt: "2026-07-01T20:00:00Z", LastFailedAt: "2026-07-06T21:30:00Z"},
-			{Filename: "corrupt.png", ScreenshotsDirID: 1, Error: "decode", Attempts: 1,
-				FirstFailedAt: "2026-07-02T20:00:00Z", LastFailedAt: "2026-07-06T21:31:00Z"},
-			{Filename: "vanished.png", ScreenshotsDirID: 1, Error: "gone", Attempts: 4,
-				FirstFailedAt: "2026-07-03T20:00:00Z", LastFailedAt: "2026-07-06T21:32:00Z"},
+		Files: []bundle.DiagnosticFile{
+			{Filename: "good.png", ScreenshotsDirID: 1, Failure: &bundle.DiagnosticFailure{
+				Error: "boom", Attempts: 2,
+				FirstFailedAt: "2026-07-01T20:00:00Z", LastFailedAt: "2026-07-06T21:30:00Z",
+			}},
+			{Filename: "corrupt.png", ScreenshotsDirID: 1, Failure: &bundle.DiagnosticFailure{
+				Error: "decode", Attempts: 1,
+				FirstFailedAt: "2026-07-02T20:00:00Z", LastFailedAt: "2026-07-06T21:31:00Z",
+			}},
+			{Filename: "vanished.png", ScreenshotsDirID: 1, Failure: &bundle.DiagnosticFailure{
+				Error: "gone", Attempts: 4,
+				FirstFailedAt: "2026-07-03T20:00:00Z", LastFailedAt: "2026-07-06T21:32:00Z",
+			}},
 		},
 		FallbackDir: shots,
 		LogPaths: []string{
@@ -94,18 +99,10 @@ type diagManifest struct {
 		TesseractVersion string `json:"tesseract_version"`
 		TesseractFound   bool   `json:"tesseract_found"`
 	} `json:"environment"`
-	FailedCount int `json:"failed_count"`
-	Failures    []struct {
-		Filename      string `json:"filename"`
-		Error         string `json:"error"`
-		Attempts      int    `json:"attempts"`
-		FirstFailedAt string `json:"first_failed_at"`
-		LastFailedAt  string `json:"last_failed_at"`
-		SourceDir     string `json:"source_dir"`
-		Resolution    string `json:"resolution"`
-		Included      bool   `json:"included"`
-	} `json:"failures"`
-	Logs []string `json:"logs"`
+	FileCount    int                  `json:"file_count"`
+	Files        []diagFile           `json:"files"`
+	LikelyCauses []bundle.LikelyCause `json:"likely_causes"`
+	Logs         []string             `json:"logs"`
 }
 
 func TestExportDiagnostic_ZipInventoryAndManifest(t *testing.T) {
@@ -122,7 +119,7 @@ func TestExportDiagnostic_ZipInventoryAndManifest(t *testing.T) {
 		t.Fatalf("manifest decode: %v", err)
 	}
 	assertDiagnosticManifestEnvelope(t, m)
-	assertDiagnosticFailures(t, m, shots)
+	assertDiagnosticFiles(t, m, shots)
 }
 
 func assertDiagnosticInventory(t *testing.T, entries map[string][]byte) {
@@ -142,11 +139,11 @@ func assertDiagnosticInventory(t *testing.T, entries map[string][]byte) {
 
 func assertDiagnosticManifestEnvelope(t *testing.T, m diagManifest) {
 	t.Helper()
-	if m.Schema != "recall-diagnostic/v2" {
+	if m.Schema != "recall-diagnostic/v3" {
 		t.Errorf("schema = %q", m.Schema)
 	}
-	if m.RecallVersion != "0.26.0-test" || m.FailedCount != 3 {
-		t.Errorf("version/count = %q/%d", m.RecallVersion, m.FailedCount)
+	if m.RecallVersion != "0.26.0-test" || m.FileCount != 3 {
+		t.Errorf("version/count = %q/%d", m.RecallVersion, m.FileCount)
 	}
 	if m.Environment.OS != "windows" || !m.Environment.TesseractFound || m.Environment.TesseractVersion != "5.3.4" {
 		t.Errorf("environment = %+v", m.Environment)
@@ -156,33 +153,36 @@ func assertDiagnosticManifestEnvelope(t *testing.T, m diagManifest) {
 	}
 }
 
-func assertDiagnosticFailures(t *testing.T, m diagManifest, shots string) {
+func assertDiagnosticFiles(t *testing.T, m diagManifest, shots string) {
 	t.Helper()
-	if len(m.Failures) != 3 {
-		t.Fatalf("failures = %d, want 3", len(m.Failures))
+	if len(m.Files) != 3 {
+		t.Fatalf("files = %d, want 3", len(m.Files))
 	}
 	// Deterministic: sorted by filename.
-	if m.Failures[0].Filename != "corrupt.png" || m.Failures[1].Filename != "good.png" || m.Failures[2].Filename != "vanished.png" {
-		t.Errorf("failure order = %v", []string{m.Failures[0].Filename, m.Failures[1].Filename, m.Failures[2].Filename})
+	if m.Files[0].Filename != "corrupt.png" || m.Files[1].Filename != "good.png" || m.Files[2].Filename != "vanished.png" {
+		t.Errorf("file order = %v", []string{m.Files[0].Filename, m.Files[1].Filename, m.Files[2].Filename})
 	}
 	byName := map[string]int{}
-	for i, f := range m.Failures {
+	for i, f := range m.Files {
 		byName[f.Filename] = i
 	}
-	assertDiagnosticFailureDetails(t, m, byName, shots)
+	assertDiagnosticFileDetails(t, m, byName, shots)
 }
 
-func assertDiagnosticFailureDetails(t *testing.T, m diagManifest, byName map[string]int, shots string) {
+func assertDiagnosticFileDetails(t *testing.T, m diagManifest, byName map[string]int, shots string) {
 	t.Helper()
-	good := m.Failures[byName["good.png"]]
-	if good.Resolution != "32x18" || !good.Included || good.SourceDir != shots || good.Error != "boom" || good.Attempts != 2 {
-		t.Errorf("good.png failure = %+v", good)
+	good := m.Files[byName["good.png"]]
+	if good.Resolution != "32x18" || !good.Included || good.SourceDir != shots {
+		t.Errorf("good.png = %+v", good)
 	}
-	corrupt := m.Failures[byName["corrupt.png"]]
+	if good.Failure == nil || good.Failure.Error != "boom" || good.Failure.Attempts != 2 {
+		t.Errorf("good.png failure = %+v", good.Failure)
+	}
+	corrupt := m.Files[byName["corrupt.png"]]
 	if corrupt.Resolution != "unknown" || !corrupt.Included {
 		t.Errorf("corrupt.png must be included with resolution unknown: %+v", corrupt)
 	}
-	vanished := m.Failures[byName["vanished.png"]]
+	vanished := m.Files[byName["vanished.png"]]
 	if vanished.Included {
 		t.Errorf("vanished.png must be marked included:false: %+v", vanished)
 	}
@@ -190,9 +190,7 @@ func assertDiagnosticFailureDetails(t *testing.T, m diagManifest, byName map[str
 
 func TestExportDiagnostic_GuardsEntryNames(t *testing.T) {
 	in, _ := diagnosticInputs(t)
-	in.FailedFiles = append(in.FailedFiles, db.FailedFileRow{
-		Filename: "../escape.png", ScreenshotsDirID: 1, Error: "x", Attempts: 1,
-	})
+	in.Files = append(in.Files, bundle.DiagnosticFile{Filename: "../escape.png", ScreenshotsDirID: 1})
 	data, err := bundle.ExportDiagnostic(in)
 	if err != nil {
 		t.Fatalf("ExportDiagnostic: %v", err)

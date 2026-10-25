@@ -77,6 +77,7 @@ var sentinels = []sentinel{
 	{"ErrInvalidQueueType", app.ErrInvalidQueueType, "invalid queue_type: must be 'role' or 'open'"},
 	{"ErrInvalidRank", app.ErrInvalidRank, "invalid rank: division, progress, or change_percent out of range"},
 	{"ErrInvalidResolution", app.ErrInvalidResolution, "resolved_to is not a valid candidate"},
+	{"ErrInvalidReport", app.ErrInvalidReport, "invalid parse report"},
 	{"ErrInvalidResult", app.ErrInvalidResult, "invalid result: must be 'victory', 'defeat', or 'draw'"},
 	{"ErrInvalidReviewedBy", app.ErrInvalidReviewedBy, "invalid reviewed_by: must be 'self' or 'coach'"},
 	{"ErrInvalidScreenshotsDir", app.ErrInvalidScreenshotsDir, "screenshots directory is not configured or unreadable"},
@@ -89,8 +90,8 @@ var sentinels = []sentinel{
 	{"ErrMoveStrandsCandidate", app.ErrMoveStrandsCandidate, ""}, // re-export of a leaf sentinel; message owned there
 	{"ErrMoveSplitsSelfReview", app.ErrMoveSplitsSelfReview, ""}, // re-export of a leaf sentinel; message owned there
 	{"ErrMoveTargetIsActive", app.ErrMoveTargetIsActive, ""},     // re-export of a leaf sentinel; message owned there
-	{"ErrNoFailedFiles", app.ErrNoFailedFiles, "no failed files to bundle"},
 	{"ErrNoParseInFlight", app.ErrNoParseInFlight, "no parse in flight"},
+	{"ErrNothingToReport", app.ErrNothingToReport, "no screenshots to report"},
 	{"ErrParseInFlight", app.ErrParseInFlight, "a parse is already in flight"},
 	{"ErrProfileActive", app.ErrProfileActive, ""},     // re-export of a leaf sentinel; message owned there
 	{"ErrProfileExists", app.ErrProfileExists, ""},     // re-export of a leaf sentinel; message owned there

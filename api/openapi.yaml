@@ -2720,27 +2720,40 @@ paths:
     post:
       operationId: ExportDiagnosticBundle
       tags: [Backup]
-      summary: Build a parser-triage diagnostic bundle (ZIP)
+      summary: Build a parse-problem report (ZIP)
       description: |
-        Builds a `.zip` for bug reports when screenshots won't parse:
-        every ledgered failed screenshot still on disk under
-        `screenshots/<filename>`, the app logs (`logs/recall.log` plus
-        the rotated `.1` when present), and a root `manifest.json`
-        (`recall-diagnostic/v2`) carrying the app version, an
-        environment snapshot (OS/arch, Tesseract path + version +
-        installed languages), a parser fingerprint (output generation
-        and each roster YAML's source + SHA-256), and each failure's
-        error, attempt count, parked flag, and decoded image
-        resolution. The most recently failed files still on disk (up
-        to ten) are also re-parsed by the exporting build: the
-        manifest records that diagnosis (probe ladder, outcome, what
-        each OCR region read) and `debug/<filename>/` holds its crops
-        and readings.
+        Builds the `.zip` a user attaches to a parse-problem issue: each
+        picked screenshot still on disk under `screenshots/<filename>`,
+        the app logs (`logs/recall.log` plus the rotated `.1` when
+        present), and a root `manifest.json` (`recall-diagnostic/v3`)
+        carrying the app version, an environment snapshot (OS/arch,
+        Tesseract path + version + installed languages), a parser
+        fingerprint (output generation and each roster YAML's source +
+        SHA-256), and per file: the reporter's note, the decoded image
+        resolution, and — when the file is in the failure ledger — its
+        error, attempt count and parked flag. The first files still on
+        disk (up to ten) are also re-parsed by the exporting build: the
+        manifest records that diagnosis (probe ladder, outcome, what each
+        OCR region read) and `debug/<filename>/` holds its crops and
+        readings. The manifest's `likely_causes` lists the same findings
+        `POST /api/v1/exports/diagnostic/preflight` returns.
 
-        Deliberately excludes `settings.json` and the database — the
-        bundle is for parser triage and stays safe to share. No request
-        body. An empty failure ledger is a 409: there is nothing to
-        diagnose.
+        A picked file need not have failed: a screenshot that parsed into
+        the wrong hero is reported the same way. With no body, or no
+        `files`, the report covers every ledgered failure; nothing to
+        report is a 409.
+
+        Deliberately excludes `settings.json` and the database, and
+        replaces the screenshots folders, Recall's data folder and the
+        home folder with `[screenshots]`, `[recall-data]` and `[home]`
+        throughout the manifest and logs — the report is for parser
+        triage and stays safe to share.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportFilesInput"
       responses:
         "200":
           description: |
@@ -2751,6 +2764,49 @@ paths:
               schema:
                 type: string
                 format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/exports/diagnostic/preflight:
+    post:
+      operationId: PreflightDiagnosticBundle
+      tags: [Backup]
+      x-internal: true
+      summary: Likely causes for a parse-problem report, before it is built
+      description: |
+        Checks the picked screenshots and the Tesseract install for the
+        problems that look like a parser bug but are not one — Tesseract
+        missing, not 5.x, or without English data; a file gone from disk,
+        not a readable image, not 16:9, or named in no known capture
+        tool's format — so the report dialog can offer the fix first.
+        Reads only each image's header; nothing is re-parsed and nothing
+        is written. Same body and the same nothing-to-report 409 as
+        `POST /api/v1/exports/diagnostic`.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportFilesInput"
+      responses:
+        "200":
+          description: The findings; an empty list when nothing looks wrong.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [likely_causes]
+                properties:
+                  likely_causes:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/LikelyCause"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "409":
           $ref: "#/components/responses/Conflict"
         "500":
@@ -6826,6 +6882,71 @@ components:
           description: |
             true → closing the window quits Recall; false → hide to the tray
             (folder watcher keeps running). macOS ignores this.
+
+    ReportFilesInput:
+      type: object
+      description: |
+        The screenshots a parse-problem report covers. Absent `files`
+        means every ledgered failure.
+      properties:
+        files:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/ReportFile"
+
+    ReportFile:
+      type: object
+      required: [filename]
+      properties:
+        filename:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: '^(?!.*\.\.)[^/\\\x00]+$'
+          example: "Overwatch 2 Screenshot 2026.10.09 - 18.27.28.33.png"
+          description: A screenshot's basename, as a record's `source_files` lists it.
+        screenshots_dir_id:
+          type: integer
+          format: int64
+          minimum: 0
+          description: |
+            The record's `source_dir_ids` entry for the file. 0 (or
+            absent) means the configured screenshots folder — and for a
+            file in the failure ledger, the folder it failed in.
+        note:
+          type: string
+          maxLength: 2000
+          example: "Hero should be Kiriko, not Ana"
+          description: The reporter's own words on what is wrong with this file.
+
+    LikelyCause:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          $ref: "#/components/schemas/LikelyCauseCodeEnum"
+        filename:
+          type: string
+          description: The file the finding is about; absent for a Tesseract finding.
+        message:
+          type: string
+          description: A sentence the user can act on.
+
+    LikelyCauseCodeEnum:
+      type: string
+      description: |
+        A problem that produces the same symptom as a parser bug.
+        `tesseract_*` findings are about the install and carry no
+        filename; the rest name one file.
+      enum:
+        - tesseract_missing
+        - tesseract_unsupported
+        - tesseract_no_english
+        - file_missing
+        - image_unreadable
+        - unusual_aspect_ratio
+        - unrecognized_filename
 
   responses:
     BadRequest:

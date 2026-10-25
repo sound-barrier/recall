@@ -2173,6 +2173,53 @@ export type CloseBehaviorFlag = {
 };
 
 /**
+ * The screenshots a parse-problem report covers. Absent `files`
+ * means every ledgered failure.
+ *
+ */
+export type ReportFilesInput = {
+    files?: Array<ReportFile>;
+};
+
+export type ReportFile = {
+    /**
+     * A screenshot's basename, as a record's `source_files` lists it.
+     */
+    filename: string;
+    /**
+     * The record's `source_dir_ids` entry for the file. 0 (or
+     * absent) means the configured screenshots folder — and for a
+     * file in the failure ledger, the folder it failed in.
+     *
+     */
+    screenshots_dir_id?: number;
+    /**
+     * The reporter's own words on what is wrong with this file.
+     */
+    note?: string;
+};
+
+export type LikelyCause = {
+    code: LikelyCauseCodeEnum;
+    /**
+     * The file the finding is about; absent for a Tesseract finding.
+     */
+    filename?: string;
+    /**
+     * A sentence the user can act on.
+     */
+    message: string;
+};
+
+/**
+ * A problem that produces the same symptom as a parser bug.
+ * `tesseract_*` findings are about the install and carry no
+ * filename; the rest name one file.
+ *
+ */
+export type LikelyCauseCodeEnum = 'tesseract_missing' | 'tesseract_unsupported' | 'tesseract_no_english' | 'file_missing' | 'image_unreadable' | 'unusual_aspect_ratio' | 'unrecognized_filename';
+
+/**
  * Match identity — same `match_key` value exposed in
  * `MatchRecord`. URL-safe: the canonical form replaces every
  * legacy colon separator with a dash, so no percent-encoding
@@ -5035,13 +5082,17 @@ export type ExportBundleResponses = {
 export type ExportBundleResponse = ExportBundleResponses[keyof ExportBundleResponses];
 
 export type ExportDiagnosticBundleData = {
-    body?: never;
+    body?: ReportFilesInput;
     path?: never;
     query?: never;
     url: '/api/v1/exports/diagnostic';
 };
 
 export type ExportDiagnosticBundleErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
     /**
      * The request was syntactically valid, but the resource state or
      * a payload value prevents the action (e.g. duplicate profile
@@ -5068,6 +5119,45 @@ export type ExportDiagnosticBundleResponses = {
 };
 
 export type ExportDiagnosticBundleResponse = ExportDiagnosticBundleResponses[keyof ExportDiagnosticBundleResponses];
+
+export type PreflightDiagnosticBundleData = {
+    body?: ReportFilesInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/exports/diagnostic/preflight';
+};
+
+export type PreflightDiagnosticBundleErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type PreflightDiagnosticBundleError = PreflightDiagnosticBundleErrors[keyof PreflightDiagnosticBundleErrors];
+
+export type PreflightDiagnosticBundleResponses = {
+    /**
+     * The findings; an empty list when nothing looks wrong.
+     */
+    200: {
+        likely_causes: Array<LikelyCause>;
+    };
+};
+
+export type PreflightDiagnosticBundleResponse = PreflightDiagnosticBundleResponses[keyof PreflightDiagnosticBundleResponses];
 
 export type PutMomentImageData = {
     body: Blob | File;

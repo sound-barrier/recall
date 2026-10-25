@@ -13,10 +13,10 @@ import (
 	"recall/pkg/db/dbtest"
 )
 
-func TestApp_ExportDiagnosticBundle_EmptyLedgerIsSentinel(t *testing.T) {
+func TestApp_ExportDiagnosticBundle_NothingPickedAndEmptyLedgerIsSentinel(t *testing.T) {
 	a := app.NewWithStore(dbtest.New())
-	if _, err := a.ExportDiagnosticBundle(); !errors.Is(err, app.ErrNoFailedFiles) {
-		t.Fatalf("err = %v, want ErrNoFailedFiles", err)
+	if _, err := a.ExportDiagnosticBundle(nil); !errors.Is(err, app.ErrNothingToReport) {
+		t.Fatalf("err = %v, want ErrNothingToReport", err)
 	}
 }
 
@@ -33,7 +33,7 @@ func TestApp_ExportDiagnosticBundle_AssemblesLedgerLogsAndEnv(t *testing.T) {
 	mustNoErr(t, os.WriteFile(filepath.Join(shots, "bad.png"), []byte("not a png"), 0o600))
 	mustNoErr(t, fake.RecordFailedFile("bad.png", 0, "decoding image: png: invalid format"))
 
-	data, err := a.ExportDiagnosticBundle()
+	data, err := a.ExportDiagnosticBundle(nil)
 	mustNoErr(t, err)
 	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	mustNoErr(t, err)
@@ -59,16 +59,16 @@ func TestApp_ExportDiagnosticBundle_AssemblesLedgerLogsAndEnv(t *testing.T) {
 		Environment struct {
 			OS string `json:"os"`
 		} `json:"environment"`
-		Failures []struct {
+		Files []struct {
 			Filename string `json:"filename"`
 			Included bool   `json:"included"`
-		} `json:"failures"`
+		} `json:"files"`
 	}
 	mustNoErr(t, json.Unmarshal(manifestRaw, &m))
-	if m.Schema != "recall-diagnostic/v2" || m.Environment.OS == "" {
+	if m.Schema != "recall-diagnostic/v3" || m.Environment.OS == "" {
 		t.Errorf("manifest = schema %q os %q", m.Schema, m.Environment.OS)
 	}
-	if len(m.Failures) != 1 || m.Failures[0].Filename != "bad.png" || !m.Failures[0].Included {
-		t.Errorf("failures = %+v", m.Failures)
+	if len(m.Files) != 1 || m.Files[0].Filename != "bad.png" || !m.Files[0].Included {
+		t.Errorf("files = %+v", m.Files)
 	}
 }

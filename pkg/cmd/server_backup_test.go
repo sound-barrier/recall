@@ -177,3 +177,64 @@ func TestExportDiagnostic_StreamsZipWithDisposition(t *testing.T) {
 		t.Errorf("body is not a zip: %v", err)
 	}
 }
+
+// A picked file need not be in the failure ledger: the body names it, and
+// the report carries it even with nothing ledgered.
+func TestExportDiagnostic_PickedFilesNeedNoLedger(t *testing.T) {
+	_, mux := newTestApp(t, dbtest.New())
+	body := map[string]any{"files": []map[string]any{{"filename": "misread.png", "screenshots_dir_id": 0, "note": "wrong hero"}}}
+	rec := fire(t, mux, http.MethodPost, "/api/v1/exports/diagnostic", body)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body %s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestExportDiagnostic_BadBodiesAre400(t *testing.T) {
+	_, mux := newTestApp(t, dbtest.New())
+	for name, body := range map[string]string{
+		"not json":        `{`,
+		"null files":      `{"files": null}`,
+		"files an object": `{"files": {}}`,
+		"traversal":       `{"files": [{"filename": "../etc/passwd"}]}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			rec := fireBody(t, mux, http.MethodPost, "/api/v1/exports/diagnostic", strings.NewReader(body))
+			if rec.Code != http.StatusBadRequest {
+				t.Errorf("status = %d, want 400 (body %s)", rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestPreflightDiagnostic_ListsLikelyCauses(t *testing.T) {
+	_, mux := newTestApp(t, dbtest.New())
+	body := map[string]any{"files": []map[string]any{{"filename": "gone.png"}}}
+	rec := fire(t, mux, http.MethodPost, "/api/v1/exports/diagnostic/preflight", body)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body %s)", rec.Code, rec.Body.String())
+	}
+	var got struct {
+		LikelyCauses []struct {
+			Code     string `json:"code"`
+			Filename string `json:"filename"`
+		} `json:"likely_causes"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	found := false
+	for _, c := range got.LikelyCauses {
+		found = found || (c.Code == "file_missing" && c.Filename == "gone.png")
+	}
+	if !found {
+		t.Errorf("likely_causes = %+v, want file_missing for gone.png", got.LikelyCauses)
+	}
+}
+
+func TestPreflightDiagnostic_NothingToReportIs409(t *testing.T) {
+	_, mux := newTestApp(t, dbtest.New())
+	rec := fire(t, mux, http.MethodPost, "/api/v1/exports/diagnostic/preflight", nil)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409", rec.Code)
+	}
+}
