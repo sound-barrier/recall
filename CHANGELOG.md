@@ -1,5 +1,56 @@
 # Changelog
 
+## [0.34.0](https://github.com/sound-barrier/recall/compare/v0.33.8...v0.34.0) (2026-10-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* **diagnostic:** the diagnostic manifest is recall-diagnostic/v3. `failures`/`failed_count` become `files`/`file_count`, and each file's ledger fields move under an optional `failure` object.
+* **parser:** marks the Season 5 roster (Doctrine) as a minor release line; captures parsed before 0.33.7 need a re-parse to leave the Unknown tab.
+
+### Features
+
+* **diagnostic:** report any picked screenshot with notes ([217d5af](https://github.com/sound-barrier/recall/commit/217d5afc86bc3bb692c2d4497658fe10aadc7cd8))
+* **github:** add a parse-problem issue form ([16619ca](https://github.com/sound-barrier/recall/commit/16619ca77215a5a4a4965613bf9d03dde76d3f70))
+* **report:** add a report-parse-problem dialog on every screenshot ([3bfb8d5](https://github.com/sound-barrier/recall/commit/3bfb8d552094be520a730c03e4b5824b48b5723f))
+* **scripts:** add task import-report for parse reports ([ab71063](https://github.com/sound-barrier/recall/commit/ab71063837266ae68f01bf843a5751d4c61b056a))
+
+
+### Bug Fixes
+
+* **deps:** build with Go 1.27.3 for GO-2026-6809 ([704806d](https://github.com/sound-barrier/recall/commit/704806d3f0b7a4d5c153e83418ac6b65931aa976))
+* **deps:** move happy-dom to 21.0.4 for GHSA-834v-8h66-3h79 ([c04a485](https://github.com/sound-barrier/recall/commit/c04a485ee5a67e82aba315f35ec7f514e1fb65d3))
+* **diagnostic:** gate a report filename with ValidBasename ([d22eed4](https://github.com/sound-barrier/recall/commit/d22eed4c52134fca609ef75c0602df4e08f8f114))
+* **diagnostic:** keep a picked report file inside its folder ([f33be19](https://github.com/sound-barrier/recall/commit/f33be1927b107a6b35a022aae470f2fcc45af25d))
+
+
+### Refactors
+
+* **frontend:** share one title rule across sheet dialogs ([9024f98](https://github.com/sound-barrier/recall/commit/9024f98165cbc3401f54ca3b20059c90639c0bb5))
+
+
+### Build & Packaging
+
+* **deps-dev:** bump undici from 7.29.1 to 7.30.1 in /tools ([7d64f89](https://github.com/sound-barrier/recall/commit/7d64f89cb50f999be4d0adbf693c1bc94f249517))
+* **deps-dev:** Bump vite from 8.3.2 to 8.3.4 in /frontend ([3f47ac5](https://github.com/sound-barrier/recall/commit/3f47ac5cb552d4d765214473e8235eee8aaf38d7))
+* **deps:** Bump markdown-it and markdownlint-cli2 in /tools ([ac98e97](https://github.com/sound-barrier/recall/commit/ac98e97f18a923cbb647b6399d22f8adf8fec491))
+* **deps:** Bump the actions-composite group across 2 directories with 2 updates ([dcc424f](https://github.com/sound-barrier/recall/commit/dcc424f997fbcea5e88f9c035b7922feef2fbab7))
+* **deps:** bump the weekly-deps group (Go, actions, frontend) ([1f64162](https://github.com/sound-barrier/recall/commit/1f64162db1f984ceb57fe19c324474e370325348))
+* raise bundle budgets for parse-problem reports ([c92a247](https://github.com/sound-barrier/recall/commit/c92a247b2131d93832658725d7d0ee9f031b4b8a))
+* **tools:** move mise's typos pin to 1.51.1 with the CI action ([2236335](https://github.com/sound-barrier/recall/commit/22363356fdb0414e5df6eacb15a4d9976895f20a))
+
+
+### CI
+
+* pin every Linux job to ubuntu-24.04 ([ba6774d](https://github.com/sound-barrier/recall/commit/ba6774deda86489624deb3f97c80d92efdc324dc))
+* summarize the report attached to parse-problem issues ([493047d](https://github.com/sound-barrier/recall/commit/493047dd8c30f355a5120821ec718d3017c7df90))
+
+
+### Tests
+
+* **app:** cover a report read from a picked screenshots folder ([20d0a2e](https://github.com/sound-barrier/recall/commit/20d0a2e929402b99de52af262346315b9f9358eb))
+* **parser:** pin Doctrine PERSONAL captures as golden fixtures ([88da69c](https://github.com/sound-barrier/recall/commit/88da69c88dbbf76d88630276bae5fb67e75146e6))
+
 ## [0.33.8](https://github.com/sound-barrier/recall/compare/v0.33.7...v0.33.8) (2026-10-18)
 
 
