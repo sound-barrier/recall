@@ -45,6 +45,9 @@ ordering). What follows is what Recall enforces on top, or has gotten wrong.
   <6.1.0`; revisit when `npm view typescript-eslint peerDependencies` admits
   ≥6.1); **@playwright/test** exact pin (never a silent range resolve — 1.61's
   Linux WebKit crashed two e2e specs on CI; verify both WebKit specs per bump);
+  **@axe-core/playwright** exact pin (a minor release adds WCAG rules — 4.14's
+  `label-content-name-mismatch` failed 45 a11y specs — so bump it deliberately
+  and fix the new rule's findings in the same PR; Dependabot ignores it);
   **@hey-api/openapi-ts** exact pin (ships hundreds of 0.x versions — pick one
   deliberately, ≥7 days old, regenerate + diff `src/client`); the **13
   `@tiptap/*` packages** are exact-pinned and move in lockstep — `@tiptap/pm` is
@@ -58,10 +61,10 @@ ordering). What follows is what Recall enforces on top, or has gotten wrong.
   so a bump that skips them nests a stale copy under `@tiptap/vue-3` with
   unmet core/pm peers (`npm ls @tiptap/core` must exit 0). Every other
   **`overrides` entry** pins a transitive-CVE fix (drop it once the direct
-  dep ships a fixed tree). `.github/dependabot.yml` ignores typescript `>=6.1`
-  and `@wailsio/runtime` so a hold never blocks the combined weekly PR — lift a
-  hold by deleting its ignore in the same change. The wails trio spans both ecosystems and stays in the
-  root file.
+  dep ships a fixed tree). `.github/dependabot.yml` ignores typescript `>=6.1`,
+  `@wailsio/runtime` and `@axe-core/playwright` so a hold never blocks the
+  combined weekly PR — lift a hold by deleting its ignore in the same change.
+  The wails trio spans both ecosystems and stays in the root file.
 
 ## Architecture
 

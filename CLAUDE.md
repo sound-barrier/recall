@@ -389,8 +389,9 @@ data structures rather than observable, public behavior.
 - **Deliberate version holds — behind latest for a reason, not neglect.** Some
   pins are load-bearing and must not be bumped without clearing a stated
   blocker. The npm inventory (typescript's ceiling, @playwright/test,
-  @hey-api/openapi-ts, the 13 lockstep `@tiptap/*` packages, the `overrides`
-  block) lives in `frontend/CLAUDE.md` beside the `package.json` it governs.
+  @axe-core/playwright, @hey-api/openapi-ts, the 13 lockstep `@tiptap/*`
+  packages, the `overrides` block) lives in `frontend/CLAUDE.md` beside the
+  `package.json` it governs.
   The one that spans both ecosystems stays here: **wails/v3 + the wails3 CLI +
   @wailsio/runtime move in lockstep**, because the CLI generates bindings the
   Go module must understand — bump all three in one commit. Dependabot ignores
