@@ -357,3 +357,7 @@ Measured 2117506B initial / total; cap set ~6.5KB above per the convention.
 | 2026-10-25 | parse-problem-reports | initial JS | 368000 → 369000 | The report facade (preflight SDK entry, the export's request body) and the lazy dialog's import map in the overlay cluster: +1006B over a clean main build of 367720B. The dialog, store and button are lazy. Measured 368726B. |
 | 2026-10-25 | parse-problem-reports | total JS | 2245000 → 2252000 | The report dialog, its composable and store, the issue-link builder and the button on three surfaces, all lazy: +8260B over main (2243159B). Measured 2251419B. |
 | 2026-10-25 | parse-problem-reports | total CSS | 411000 → 412000 | The dialog's scoped styles in their own lazy chunk: +1929B over main (409628B). Measured 411557B. |
+| 2026-10-28 | security-and-weekly-deps | initial JS | 369000 → 379000 | Headroom policy: every budget now sits ~2% over measured instead of ~1KB, so an unattended dependency PR absorbs routine drift (#802 tripped on +1.7KB of vue/pinia/tiptap patches). Features that spend the margin restore it to ~2% when they bump. Measured 370764B. |
+| 2026-10-28 | security-and-weekly-deps | initial CSS | 85000 → 87000 | Headroom policy (see initial JS row). Measured 84336B. |
+| 2026-10-28 | security-and-weekly-deps | total JS | 2252000 → 2304000 | Headroom policy (see initial JS row); #802 tripped on +5.7KB. Measured 2257895B. |
+| 2026-10-28 | security-and-weekly-deps | total CSS | 412000 → 420000 | Headroom policy (see initial JS row). Measured 411119B. |
