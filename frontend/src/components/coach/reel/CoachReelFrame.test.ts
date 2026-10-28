@@ -79,6 +79,16 @@ describe('CoachReelFrame', () => {
     expect(screen.getByText(/Peeled too late on point B/)).toBeInTheDocument()
   })
 
+  // WCAG 2.5.3: a voice user names a control by what they can read on it, so
+  // the frame's name holds its visible text, the player's quote included.
+  it('carries everything the frame shows in its name', () => {
+    const draft = { ...emptyDraft(), text: 'Hold high ground.' }
+    render(CoachReelFrame, { props: { record: NOTED, draft } })
+    expect(screen.getByRole('button', {
+      name: "King's Row · 21:14 · Ana · Victory “Peeled too late on point B.” — note written",
+    })).toBeInTheDocument()
+  })
+
   it('falls back to the unknown-map label and the capture clock', () => {
     const unknown: MatchRecord = {
       match_key: 'match-2026-08-08T19-02-11',

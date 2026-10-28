@@ -129,7 +129,6 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
           type="button"
           class="sd-toggle"
           :aria-expanded="!isCollapsed(section.key)"
-          :aria-label="`${isCollapsed(section.key) ? 'Expand' : 'Collapse'} ${section.header} group`"
           :data-section-toggle="section.key"
           @click="toggleSection(section.key)"
         >

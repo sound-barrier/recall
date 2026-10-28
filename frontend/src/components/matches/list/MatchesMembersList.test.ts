@@ -158,13 +158,12 @@ describe('MatchesMembersList', () => {
 
     it('collapses a group to its divider and restores it on a second click', async () => {
       renderList({ records: MIXED, groupBy: 'provenance' })
-      const toggle = screen.getByRole('button', { name: 'Collapse Edited group' })
-      expect(toggle).toHaveAttribute('aria-expanded', 'true')
+      // Named by what it shows (WCAG 2.5.3); aria-expanded carries the state.
+      const toggle = screen.getByRole('button', { name: 'Edited 1', expanded: true })
       expect(screen.getByRole('checkbox', { name: 'Select match m-edit' })).toBeInTheDocument()
 
       await fireEvent.click(toggle)
-      const collapsed = screen.getByRole('button', { name: 'Expand Edited group' })
-      expect(collapsed).toHaveAttribute('aria-expanded', 'false')
+      const collapsed = screen.getByRole('button', { name: 'Edited 1', expanded: false })
       expect(screen.queryByRole('checkbox', { name: 'Select match m-edit' })).not.toBeInTheDocument()
       // The divider keeps reporting the group's real size while collapsed.
       expect(collapsed).toHaveTextContent('1')
@@ -177,8 +176,8 @@ describe('MatchesMembersList', () => {
 
     it('drops empty provenance buckets rather than showing an empty divider', () => {
       renderList({ records: [rec('m-ocr')], groupBy: 'provenance' })
-      expect(screen.getByRole('button', { name: 'Collapse OCR generated group' })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Collapse Edited group' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /^OCR generated/, expanded: true })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /^Edited/ })).not.toBeInTheDocument()
     })
 
     it('stamps a session divider with its W/L, span and average stat line', () => {
