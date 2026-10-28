@@ -43,11 +43,9 @@ describe('CoachReel', () => {
     renderReel()
     const frames = screen.getAllByRole('button')
     expect(frames).toHaveLength(3)
-    expect(frames.map((f) => f.getAttribute('aria-label'))).toEqual([
-      'Numbani · 22:30 · Kiriko · Defeat',
-      "King's Row · 21:14 · Ana · Victory",
-      'Busan · 20:05 · Juno · Victory',
-    ])
+    expect(frames[0]).toHaveAccessibleName('Numbani · 22:30 · Kiriko · Defeat')
+    expect(frames[1]).toHaveAccessibleName("King's Row · 21:14 · Ana · Victory")
+    expect(frames[2]).toHaveAccessibleName('Busan · 20:05 · Juno · Victory')
   })
 
   it('relays the frame the coach picked', async () => {

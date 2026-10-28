@@ -12,7 +12,9 @@ import { notePlainText } from '@/match/markdown/note-blocks'
 // with the coach's mark on the sprocket rail beside it. The mark is
 // decoration — the state it carries is spoken by the accessible name's
 // suffix ("— note written" / "— reviewed"), so a screen reader hears it
-// without the rail.
+// without the rail. The name comes from the frame's own content, never an
+// aria-label: it must hold everything the frame shows (WCAG 2.5.3), so the
+// separators and the suffix are screen-reader-only text between the parts.
 //
 // Times are the PLAYER's naive clock (coach-time.ts), never the
 // canonical instant rendered in the coach's zone.
@@ -48,9 +50,7 @@ const mark = computed(() => noteMark(props.draft))
 // them.
 const playerNote = computed(() => notePlainText(props.record.annotation?.note ?? ''))
 
-const accessibleName = computed(
-  () => [mapName.value, clock.value, heroName.value, resultWord.value].filter(Boolean).join(' · ') + frameNameSuffix(props.draft),
-)
+const nameSuffix = computed(() => frameNameSuffix(props.draft))
 </script>
 
 <template>
@@ -64,20 +64,23 @@ const accessibleName = computed(
       :data-match-key="record.match_key"
       :tabindex="selected ? 0 : -1"
       :aria-current="selected ? 'true' : undefined"
-      :aria-label="accessibleName"
       @click="emit('select', record.match_key)"
     >
       <span class="frame-stripe" :class="resultTint" aria-hidden="true" />
       <span class="frame-body">
         <span class="frame-line">
           <span class="frame-map">{{ mapName }}</span>
+          <span v-if="clock" class="sr-only">{{ ' · ' }}</span>
           <span class="frame-time">{{ clock }}</span>
         </span>
         <span class="frame-line">
+          <span v-if="heroName" class="sr-only">{{ ' · ' }}</span>
           <span class="frame-hero">{{ heroName }}</span>
+          <span v-if="resultWord" class="sr-only">{{ ' · ' }}</span>
           <span class="frame-result" :class="resultTint">{{ resultWord }}</span>
         </span>
         <span v-if="playerNote" class="frame-quote">“{{ playerNote }}”</span>
+        <span v-if="nameSuffix" class="sr-only">{{ nameSuffix }}</span>
       </span>
     </button>
   </li>

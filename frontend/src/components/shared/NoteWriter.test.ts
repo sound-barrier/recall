@@ -118,7 +118,7 @@ describe('NoteWriter — the toolbar in markdown mode', () => {
   it('prefixes the line for a title, and a second press takes it off', async () => {
     const { view, box } = await seeded('ult economy')
     box.setSelectionRange(0, 0)
-    await fireEvent.click(tool('Title'))
+    await fireEvent.click(tool('H1 Title'))
     expect(lastText(view)).toBe('# ult economy')
   })
 
@@ -159,14 +159,24 @@ describe('NoteWriter — the toolbar in formatted mode', () => {
   // textarea could never say which one you are in; the editor can.
   it('says which block you are in, which a textarea never could', async () => {
     await writer({ text: '# Ult economy' })
-    expect(tool('Title')).toHaveAttribute('aria-pressed', 'true')
-    expect(tool('Subheading')).toHaveAttribute('aria-pressed', 'false')
+    expect(tool('H1 Title')).toHaveAttribute('aria-pressed', 'true')
+    expect(tool('H2 Subheading')).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  // WCAG 2.5.3: a voice user says what they see ("click H1"), so a tool whose
+  // face is more than one character carries that face in its name.
+  it('names a multi-character tool by the glyph it shows, then its purpose', async () => {
+    await writer({ text: 'x' })
+    expect(tool('H1 Title')).toHaveTextContent('H1')
+    expect(tool('H2 Subheading')).toHaveTextContent('H2')
+    expect(tool('1. Numbered list')).toHaveTextContent('1.')
+    expect(tool('Bulleted list')).toHaveTextContent('•')
   })
 
   it('reports no pressed state at all in markdown mode', async () => {
     await writer({ text: '# Ult economy' })
     await toRaw()
-    expect(tool('Title')).toHaveAttribute('aria-pressed', 'false')
+    expect(tool('H1 Title')).toHaveAttribute('aria-pressed', 'false')
   })
 })
 

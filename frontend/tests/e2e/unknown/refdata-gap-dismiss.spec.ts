@@ -72,7 +72,7 @@ test.describe('Unknown tab — reference-gap acknowledge', () => {
     // Opening the disclosure reveals the card with a restore affordance.
     await disclosure.click()
     await expect(section.locator(`[data-reference-gap-key="${KEY}"]`)).toHaveCount(1)
-    await section.getByRole('button', { name: `Show the warning for ${KEY} again` }).click()
+    await section.getByRole('button', { name: `Show again: the warning for ${KEY}` }).click()
     await expect.poll(() => delHits).toBe(1)
     await expect(section).toContainText(/Reference data gaps — 1/)
   })

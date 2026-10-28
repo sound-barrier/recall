@@ -210,11 +210,14 @@ const TOOLBAR_INLINE: readonly { mark: InlineMark; label: string; glyph: string 
   { mark: 'strike', label: 'Strikethrough', glyph: 'S' },
 ]
 
-const TOOLBAR_LINE: readonly { mark: LineMark; label: string; glyph: string }[] = [
-  { mark: 'title', label: 'Title', glyph: 'H1' },
-  { mark: 'subtitle', label: 'Subheading', glyph: 'H2' },
-  { mark: 'bullet', label: 'Bulleted list', glyph: '•' },
-  { mark: 'number', label: 'Numbered list', glyph: '1.' },
+// `name` leads with any multi-character glyph so the accessible name holds the
+// visible text (WCAG 2.5.3) — a voice user says "click H1". One-character
+// glyphs are exempt, and `label` stays the plain tooltip.
+const TOOLBAR_LINE: readonly { mark: LineMark; label: string; name: string; glyph: string }[] = [
+  { mark: 'title', label: 'Title', name: 'H1 Title', glyph: 'H1' },
+  { mark: 'subtitle', label: 'Subheading', name: 'H2 Subheading', glyph: 'H2' },
+  { mark: 'bullet', label: 'Bulleted list', name: 'Bulleted list', glyph: '•' },
+  { mark: 'number', label: 'Numbered list', name: '1. Numbered list', glyph: '1.' },
 ]
 
 // Pushed up by the editor on create, selection and change. A plain
@@ -379,7 +382,7 @@ defineExpose({ focus: focusField })
             type="button"
             class="note-tool"
             :class="chipClass"
-            :aria-label="b.label"
+            :aria-label="b.name"
             :aria-pressed="isActive(b.mark)"
             :disabled="toolsDisabled"
             :title="disabledReason ?? b.label"

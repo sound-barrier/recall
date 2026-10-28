@@ -47,7 +47,7 @@ describe('UnknownReferenceGapSection — acknowledge-only dismiss', () => {
     expect(screen.getByRole('heading', { name: 'Reference data gaps — 1' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '1 acknowledged — show' })).toBeInTheDocument()
     // The acked card stays out of the DOM until the disclosure opens.
-    expect(screen.queryByRole('button', { name: /Show the warning for match-b/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Show again: the warning for match-b/ })).not.toBeInTheDocument()
   })
 
   it('Dismiss fires the acknowledge on one click — the action is reversible, no armed confirm', async () => {
@@ -61,7 +61,7 @@ describe('UnknownReferenceGapSection — acknowledge-only dismiss', () => {
     renderWith([gapRecord('match-b', true)])
 
     await fireEvent.click(screen.getByRole('button', { name: '1 acknowledged — show' }))
-    await fireEvent.click(screen.getByRole('button', { name: 'Show the warning for match-b again' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Show again: the warning for match-b' }))
     expect(UnacknowledgeReferenceGap).toHaveBeenCalledWith('match-b')
   })
 })
