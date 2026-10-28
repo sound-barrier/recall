@@ -58,6 +58,13 @@ version: 2
 #   - github.com/wailsapp/wails/v3 + @wailsio/runtime — move in lockstep with
 #     the wails3 CLI, all three in one commit (CLAUDE.md, "Deliberate
 #     version holds"); Dependabot can only ever bump one of the three.
+#   - @axe-core/playwright — exact-pinned and bumped by hand. Its minor
+#     releases add WCAG rules (4.14 added label-content-name-mismatch and
+#     failed 45 a11y specs), and a new rule is new findings to fix, not
+#     drift. A separate Dependabot entry would need a third npm /frontend
+#     entry, which only an undocumented directory-string trick allows, and
+#     a rejected config stops every update (frontend/CLAUDE.md, "Deliberate
+#     npm version holds").
 
 multi-ecosystem-groups:
   weekly-deps:
@@ -95,6 +102,8 @@ updates:
         versions: [">=6.1"]
       # Wails lockstep hold — see the header.
       - dependency-name: "@wailsio/runtime"
+      # axe hold — see the header.
+      - dependency-name: "@axe-core/playwright"
     cooldown:
       default-days: 7
 
@@ -174,6 +183,8 @@ updates:
         versions: [">=6.1"]
       # Wails lockstep hold — see the header.
       - dependency-name: "@wailsio/runtime"
+      # axe hold — see the header.
+      - dependency-name: "@axe-core/playwright"
     cooldown:
       default-days: 7
 
