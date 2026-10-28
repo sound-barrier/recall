@@ -168,7 +168,10 @@ the bindings the module must understand.
 - **Bundle-size budget lives in `scripts/ci/check-bundle-size.sh`** — the single
   source of truth for the initial/total JS+CSS KB thresholds, run by the `ci.yml`
   "Enforce bundle-size budget" step. Edit thresholds here, not in any CLAUDE.md or
-  rule (those only point at it).
+  rule (those only point at it). Budgets keep **~2% headroom** over measured, not
+  ~1KB, so an unattended Dependabot PR absorbs routine dependency drift; a feature
+  that spends the margin bumps back to measured + ~2% (the policy block in the
+  script says why).
 - **`set -euo pipefail` is the house header** (37 of the 42 executable
   scripts under `scripts/`; the eight sourced libraries, `scripts/lib/_db.sh`
   and `scripts/release/smoke/{lib,cases}/`, are not counted). Drop `-e` only

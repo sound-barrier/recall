@@ -32,6 +32,17 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # scripts/ci/bundle-size-budget-history.md — append a row there when
 # you change a number here. Bump deliberately; don't lift caps to
 # silence noise.
+#
+# HEADROOM POLICY (2026-10): each budget sits ~2% above its measured size,
+# not ~1KB. Dependency PRs merge on green CI with nobody at the keyboard,
+# and with ~1KB of headroom a routine patch bump tripped the gate (weekly
+# deps, #802: vue/pinia/tiptap patches +1.7KB initial, +5.7KB total) and
+# the PR sat red until someone bumped a number by hand. Two percent
+# absorbs several weeks of that drift. A FEATURE that eats into the margin
+# still bumps deliberately, as before — and when it does, it sets the
+# budget back to measured + ~2%, so the margin it found is there for the
+# next dependency PR. The older rows below quote ~1KB margins; that was
+# the convention when they were written.
 # 2026-08: 190500 → 319000 — METRIC CHANGE, not a regression. "Initial JS"
 # now measures the whole entry graph (index.html's entry script + every
 # chunk it modulepreloads) instead of index-*.js alone; the old number was
@@ -174,7 +185,9 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # the lazy dialog's import map in the overlay cluster: +1006B over a main
 # that measured 367720B. The dialog, its store and the button are lazy.
 # Measured 368726B.
-: "${MAX_INITIAL_JS_BYTES:=369000}"
+# 2026-10: 369000 -> 379000 -- HEADROOM POLICY (see above): measured + ~2%.
+# Measured 370764B with the weekly-deps bumps and the WCAG 2.5.3 name fixes.
+: "${MAX_INITIAL_JS_BYTES:=379000}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
@@ -209,7 +222,9 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # onto .btn-mono and outer shadows onto the elevation scale; each was a
 # scoped or global copy of what the shared sheet now says once. Measured
 # 83802B.
-: "${MAX_INITIAL_CSS_BYTES:=85000}"
+# 2026-10: 85000 -> 87000 -- HEADROOM POLICY (see above): measured + ~2%.
+# Measured 84336B.
+: "${MAX_INITIAL_CSS_BYTES:=87000}"
 # The Matches "Trends" charts pull in ECharts (tree-shaken to line + bar
 # charts, grid/tooltip/legend/markline/data-zoom/brush components, canvas
 # renderer). It rides in its own lazily-loaded chunk (TrendChart-*.js),
@@ -431,7 +446,9 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # its composable and store, the issue-link builder and the button on three
 # surfaces, all lazy. +8260B over a main that measured 2243159B.
 # Measured 2251419B.
-: "${MAX_TOTAL_JS_BYTES:=2252000}"
+# 2026-10: 2252000 -> 2304000 -- HEADROOM POLICY (see above): measured +
+# ~2%. Measured 2257895B with the weekly-deps bumps.
+: "${MAX_TOTAL_JS_BYTES:=2304000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
@@ -488,7 +505,9 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # tokens. Measured 409225B; gzipped 59496B.
 # 2026-10: 411000 -> 412000 -- the parse-report dialog's scoped styles, its
 # own lazy chunk: +1929B over a main that measured 409628B. Measured 411557B.
-: "${MAX_TOTAL_CSS_BYTES:=412000}"
+# 2026-10: 412000 -> 420000 -- HEADROOM POLICY (see above): measured + ~2%.
+# Measured 411119B.
+: "${MAX_TOTAL_CSS_BYTES:=420000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never
