@@ -46,5 +46,27 @@ export default defineConfig({
     // script's text. Production builds keep this off — inline maps would bloat
     // the shipped bundle and leak source.
     sourcemap: process.env.E2E_COVERAGE ? 'inline' : false,
+    rolldownOptions: {
+      output: {
+        // Third-party code gets its own `vendor-*` chunks so the bundle gate
+        // (scripts/ci/check-bundle-size.sh) can budget it apart from ours: a
+        // library patch release should not fail a gate whose job is to catch
+        // OUR regressions. One group per library family, never one catch-all
+        // vendor chunk, because a catch-all would drag the lazy editor and
+        // chart libraries into the first-paint graph alongside Vue. A package
+        // no group names stays in the app chunks and counts as app code.
+        codeSplitting: {
+          groups: [
+            {name: 'vendor-vue', test: /[\\/]node_modules[\\/](@vue|vue|pinia|@tanstack)[\\/]/},
+            {name: 'vendor-wails', test: /[\\/]node_modules[\\/]@wailsio[\\/]/},
+            {
+              name: 'vendor-editor',
+              test: /[\\/]node_modules[\\/](@tiptap|prosemirror-[^\\/]+|orderedmap|rope-sequence|w3c-keyname|linkifyjs)[\\/]/,
+            },
+            {name: 'vendor-charts', test: /[\\/]node_modules[\\/](echarts|zrender|vue-echarts|tslib)[\\/]/},
+          ],
+        },
+      },
+    },
   },
 })

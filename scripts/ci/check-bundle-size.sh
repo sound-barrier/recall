@@ -21,7 +21,7 @@
 #   bash scripts/ci/check-bundle-size.sh --build   # run `npm run build` first
 #
 # Override a budget:
-#   MAX_TOTAL_JS_BYTES=300000 bash scripts/ci/check-bundle-size.sh
+#   MAX_TOTAL_APP_JS_BYTES=300000 bash scripts/ci/check-bundle-size.sh
 
 set -euo pipefail
 
@@ -33,16 +33,20 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # you change a number here. Bump deliberately; don't lift caps to
 # silence noise.
 #
-# HEADROOM POLICY (2026-10): each budget sits ~2% above its measured size,
-# not ~1KB. Dependency PRs merge on green CI with nobody at the keyboard,
-# and with ~1KB of headroom a routine patch bump tripped the gate (weekly
-# deps, #802: vue/pinia/tiptap patches +1.7KB initial, +5.7KB total) and
-# the PR sat red until someone bumped a number by hand. Two percent
-# absorbs several weeks of that drift. A FEATURE that eats into the margin
-# still bumps deliberately, as before — and when it does, it sets the
-# budget back to measured + ~2%, so the margin it found is there for the
-# next dependency PR. The older rows below quote ~1KB margins; that was
-# the convention when they were written.
+# HEADROOM POLICY (2026-10). Dependency PRs merge on green CI with nobody
+# at the keyboard, and with ~1KB of headroom on every budget a routine
+# patch bump tripped the gate (weekly deps, #802: vue/pinia/tiptap patches
+# +1.7KB initial, +5.7KB total) and the PR sat red until someone bumped a
+# number by hand. Headroom is now set by who can move the number:
+#   - APP JS (our code): ~1KB, the tight ratchet. Its job is to catch OUR
+#     regressions, and third-party code no longer counts against it.
+#   - VENDOR JS (the `vendor-*` chunks vite.config.ts emits): ~5% over
+#     measured, so a library patch passes and a large jump still trips.
+#   - CSS: ~2% over measured. CSS has no vendor split, and dependency
+#     bumps have moved it too.
+# A FEATURE that eats into a margin bumps deliberately, as before, and sets
+# the budget back to its policy margin. Older rows below quote ~1KB margins
+# on combined app+vendor JS; that was the convention when they were written.
 # 2026-08: 190500 → 319000 — METRIC CHANGE, not a regression. "Initial JS"
 # now measures the whole entry graph (index.html's entry script + every
 # chunk it modulepreloads) instead of index-*.js alone; the old number was
@@ -185,9 +189,19 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # the lazy dialog's import map in the overlay cluster: +1006B over a main
 # that measured 367720B. The dialog, its store and the button are lazy.
 # Measured 368726B.
-# 2026-10: 369000 -> 379000 -- HEADROOM POLICY (see above): measured + ~2%.
-# Measured 370764B with the weekly-deps bumps and the WCAG 2.5.3 name fixes.
-: "${MAX_INITIAL_JS_BYTES:=379000}"
+# 2026-10: METRIC CHANGE -- JS is now two budgets, app and vendor. Every
+# number above measured our code and third-party code together, so a Vue or
+# Pinia patch release tripped the same tight cap our own regressions do,
+# and every weekly Dependabot group that grew a library failed CI (#802).
+# vite.config.ts now emits third-party code as `vendor-*` chunks; the app
+# budget below keeps the tight ratchet, and the vendor budget sits ~5% over
+# measured (HEADROOM POLICY above). The rows above are app+vendor and NOT
+# comparable to either number. A brief 2026-10 combined cap of 379000
+# (measured + ~2%, #805) is superseded by this split.
+# 2026-10: app measured 218070B -> 219000; vendor measured 151472B with
+# #802's library bumps -> 160000.
+: "${MAX_INITIAL_APP_JS_BYTES:=219000}"
+: "${MAX_INITIAL_VENDOR_JS_BYTES:=160000}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
@@ -446,9 +460,12 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # its composable and store, the issue-link builder and the button on three
 # surfaces, all lazy. +8260B over a main that measured 2243159B.
 # Measured 2251419B.
-# 2026-10: 2252000 -> 2304000 -- HEADROOM POLICY (see above): measured +
-# ~2%. Measured 2257895B with the weekly-deps bumps.
-: "${MAX_TOTAL_JS_BYTES:=2304000}"
+# 2026-10: METRIC CHANGE -- split into app and vendor, same reason as the
+# initial-JS note above; supersedes #805's brief combined cap of 2304000.
+# App measured 1092629B; vendor measured 1164869B with #802's library
+# bumps (+5% for library releases).
+: "${MAX_TOTAL_APP_JS_BYTES:=1094000}"
+: "${MAX_TOTAL_VENDOR_JS_BYTES:=1224000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
@@ -529,6 +546,26 @@ if [[ ! -d "${DIST_DIR}" ]]; then
   exit 1
 fi
 
+# Vendor chunks are the `vendor-*` files vite.config.ts names; everything
+# else is ours.
+is_vendor() { [[ "$(basename "$1")" == vendor-* ]]; }
+
+# Sums the byte sizes of the given files (one path per line on stdin) into
+# two totals, printed as "<app> <vendor>".
+sum_app_vendor() {
+  local app=0 vendor=0 size path
+  while read -r path; do
+    [[ -n "${path}" ]] || continue
+    size=$(wc -c <"${path}")
+    if is_vendor "${path}"; then
+      vendor=$((vendor + size))
+    else
+      app=$((app + size))
+    fi
+  done
+  echo "${app} ${vendor}"
+}
+
 # Initial JS = the ENTRY GRAPH the browser downloads before first paint:
 # the entry script plus every chunk index.html modulepreloads (Vite emits
 # one link per statically-imported chunk). Measuring index-*.js alone
@@ -537,65 +574,59 @@ fi
 # and which silently made this gate report a 112KB "improvement" that no
 # user ever saw.
 INDEX_HTML="$(dirname "${DIST_DIR}")/index.html"
-if [[ -f "${INDEX_HTML}" ]]; then
-  # Collect first, sum second. Under `set -euo pipefail` a grep that matches
-  # nothing (exit 1) or a missing chunk in the loop would otherwise kill the
-  # script with a bare "exit 1" and no clue why — and an EMPTY index.html is a
-  # real artifact here: prepare-frontend-dist's stub path touches one for jobs
-  # that only need the //go:embed to resolve.
-  entry_files=$(grep -oE '(src|href)="[^"]*/assets/[^"]+\.js"' "${INDEX_HTML}" \
-    | sed -E 's/.*\/assets\/([^"]+)"/\1/' | sort -u || true)
-  if [[ -z "${entry_files}" ]]; then
-    echo "::error::${INDEX_HTML} references no /assets/*.js — stub or failed build?" >&2
+if [[ ! -f "${INDEX_HTML}" ]]; then
+  echo "::error::${INDEX_HTML} not found — the initial-JS split needs it" >&2
+  exit 1
+fi
+# Collect first, sum second. Under `set -euo pipefail` a grep that matches
+# nothing (exit 1) or a missing chunk in the loop would otherwise kill the
+# script with a bare "exit 1" and no clue why — and an EMPTY index.html is a
+# real artifact here: prepare-frontend-dist's stub path touches one for jobs
+# that only need the //go:embed to resolve.
+entry_files=$(grep -oE '(src|href)="[^"]*/assets/[^"]+\.js"' "${INDEX_HTML}" \
+  | sed -E 's/.*\/assets\/([^"]+)"/\1/' | sort -u || true)
+if [[ -z "${entry_files}" ]]; then
+  echo "::error::${INDEX_HTML} references no /assets/*.js — stub or failed build?" >&2
+  exit 1
+fi
+entry_paths=""
+while read -r f; do
+  if [[ ! -f "${DIST_DIR}/${f}" ]]; then
+    echo "::error::${INDEX_HTML} references ${f}, absent from ${DIST_DIR} — stale dist?" >&2
     exit 1
   fi
-  init_js=0
-  # Here-string, not a pipe: a `while read` in a pipeline runs in a subshell
-  # and the accumulator would not survive it.
-  while read -r f; do
-    [[ -n "${f}" ]] || continue
-    if [[ ! -f "${DIST_DIR}/${f}" ]]; then
-      echo "::error::${INDEX_HTML} references ${f}, absent from ${DIST_DIR} — stale dist?" >&2
-      exit 1
-    fi
-    init_js=$((init_js + $(wc -c <"${DIST_DIR}/${f}")))
-  done <<<"${entry_files}"
-else
-  echo "::warning::${INDEX_HTML} not found — falling back to index-*.js only" >&2
-  init_js=$(find "${DIST_DIR}" -name 'index-*.js' -exec wc -c {} + | awk 'END{print $1}')
-fi
+  entry_paths+="${DIST_DIR}/${f}"$'\n'
+done <<<"${entry_files}"
+
+read -r init_app_js init_vendor_js <<<"$(sum_app_vendor <<<"${entry_paths}")"
+read -r total_app_js total_vendor_js <<<"$(find "${DIST_DIR}" -name '*.js' | sum_app_vendor)"
 init_css=$(find "${DIST_DIR}" -name 'index-*.css' -exec wc -c {} + | awk 'END{print $1}')
-total_js=$(find "${DIST_DIR}" -name '*.js' -exec wc -c {} + | awk 'END{print $1}')
 total_css=$(find "${DIST_DIR}" -name '*.css' -exec wc -c {} + | awk 'END{print $1}')
 # Default to 0 when a glob matches nothing so the integer comparisons
 # below don't choke on an empty string ("[[ '' -gt N ]]" is a fatal
 # bash error). DIST_DIR is always populated post-build in CI; this is a
 # guard against the empty edge, not a silent pass.
-: "${init_js:=0}"
 : "${init_css:=0}"
-: "${total_js:=0}"
 : "${total_css:=0}"
 
-printf 'Bundle sizes: initial JS=%sB CSS=%sB  total JS=%sB CSS=%sB\n' \
-  "${init_js}" "${init_css}" "${total_js}" "${total_css}"
-printf 'Budgets:      initial JS=%sB CSS=%sB  total JS=%sB CSS=%sB\n' \
-  "${MAX_INITIAL_JS_BYTES}" "${MAX_INITIAL_CSS_BYTES}" "${MAX_TOTAL_JS_BYTES}" "${MAX_TOTAL_CSS_BYTES}"
+printf 'Bundle sizes: initial JS app=%sB vendor=%sB CSS=%sB  total JS app=%sB vendor=%sB CSS=%sB\n' \
+  "${init_app_js}" "${init_vendor_js}" "${init_css}" "${total_app_js}" "${total_vendor_js}" "${total_css}"
+printf 'Budgets:      initial JS app=%sB vendor=%sB CSS=%sB  total JS app=%sB vendor=%sB CSS=%sB\n' \
+  "${MAX_INITIAL_APP_JS_BYTES}" "${MAX_INITIAL_VENDOR_JS_BYTES}" "${MAX_INITIAL_CSS_BYTES}" \
+  "${MAX_TOTAL_APP_JS_BYTES}" "${MAX_TOTAL_VENDOR_JS_BYTES}" "${MAX_TOTAL_CSS_BYTES}"
 
 fail=0
-if [[ "${init_js}" -gt "${MAX_INITIAL_JS_BYTES}" ]]; then
-  echo "::error::Initial JS chunk ${init_js}B exceeds budget ${MAX_INITIAL_JS_BYTES}B" >&2
-  fail=1
-fi
-if [[ "${init_css}" -gt "${MAX_INITIAL_CSS_BYTES}" ]]; then
-  echo "::error::Initial CSS chunk ${init_css}B exceeds budget ${MAX_INITIAL_CSS_BYTES}B" >&2
-  fail=1
-fi
-if [[ "${total_js}" -gt "${MAX_TOTAL_JS_BYTES}" ]]; then
-  echo "::error::Total JS ${total_js}B exceeds budget ${MAX_TOTAL_JS_BYTES}B" >&2
-  fail=1
-fi
-if [[ "${total_css}" -gt "${MAX_TOTAL_CSS_BYTES}" ]]; then
-  echo "::error::Total CSS ${total_css}B exceeds budget ${MAX_TOTAL_CSS_BYTES}B" >&2
-  fail=1
-fi
+# check_budget <label> <measured> <budget>
+check_budget() {
+  if [[ "$2" -gt "$3" ]]; then
+    echo "::error::$1 $2B exceeds budget $3B" >&2
+    fail=1
+  fi
+}
+check_budget "Initial app JS" "${init_app_js}" "${MAX_INITIAL_APP_JS_BYTES}"
+check_budget "Initial vendor JS" "${init_vendor_js}" "${MAX_INITIAL_VENDOR_JS_BYTES}"
+check_budget "Initial CSS" "${init_css}" "${MAX_INITIAL_CSS_BYTES}"
+check_budget "Total app JS" "${total_app_js}" "${MAX_TOTAL_APP_JS_BYTES}"
+check_budget "Total vendor JS" "${total_vendor_js}" "${MAX_TOTAL_VENDOR_JS_BYTES}"
+check_budget "Total CSS" "${total_css}" "${MAX_TOTAL_CSS_BYTES}"
 exit "${fail}"
