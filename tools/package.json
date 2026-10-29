@@ -3,7 +3,7 @@
   "private": true,
   "description": "Pinned npm CLIs for Taskfile, lefthook and CI; never shipped",
   "devDependencies": {
-    "@biomejs/biome": "2.5.15",
+    "@biomejs/biome": "2.6.2",
     "@stoplight/spectral-cli": "6.17.0",
     "cloc": "2.11.0",
     "honkit": "6.2.2",
