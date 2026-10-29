@@ -166,12 +166,13 @@ the bindings the module must understand.
   NESTED `CLAUDE.md` (say `pkg/db/CLAUDE.md`) has to be added to that script's
   `DOC_FILES` loop by hand.
 - **Bundle-size budget lives in `scripts/ci/check-bundle-size.sh`** — the single
-  source of truth for the initial/total JS+CSS KB thresholds, run by the `ci.yml`
-  "Enforce bundle-size budget" step. Edit thresholds here, not in any CLAUDE.md or
-  rule (those only point at it). Budgets keep **~2% headroom** over measured, not
-  ~1KB, so an unattended Dependabot PR absorbs routine dependency drift; a feature
-  that spends the margin bumps back to measured + ~2% (the policy block in the
-  script says why).
+  source of truth for the initial/total JS+CSS KB thresholds (JS split into
+  app and `vendor-*` budgets), run by the `ci.yml` "Enforce bundle-size budget"
+  step. Edit thresholds here, not in any CLAUDE.md or rule (those only point at
+  it). Headroom follows who moves the number: **app JS ~1KB** (the tight
+  ratchet on our own code), **vendor JS ~5%** and **CSS ~2%**, so an unattended
+  Dependabot PR absorbs routine library drift; a feature that spends a margin
+  bumps back to its policy margin (the policy block in the script says why).
 - **`set -euo pipefail` is the house header** (37 of the 42 executable
   scripts under `scripts/`; the eight sourced libraries, `scripts/lib/_db.sh`
   and `scripts/release/smoke/{lib,cases}/`, are not counted). Drop `-e` only

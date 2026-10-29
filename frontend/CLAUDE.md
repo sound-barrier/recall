@@ -707,6 +707,10 @@ this half of the codebase. A parenthetical marks which linter catches it
   `scripts/ci/check-bundle-size.sh` (run by the `ci.yml` "Enforce bundle-size
   budget" step) — that script is the single source of truth; read the numbers
   there, don't restate them here (they've already drifted between docs once).
+  JS is budgeted twice: our code, and third-party code, which `vite.config.ts`
+  emits as `vendor-*` chunks by library family so a dependency bump can't trip
+  the tight app budget. A new runtime dependency lands in the app chunks (and
+  the app budget) until a `codeSplitting` group names it.
   Lazy-load via `defineAsyncComponent(() => import(...))` in App.vue so only the
   router-shell counts toward initial budget — applies to the four view components
   (Matches, Ingest, Settings, Unknown) AND to any substantial modal surface

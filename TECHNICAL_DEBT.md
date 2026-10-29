@@ -304,12 +304,13 @@ changed bullets carry an inline re-evaluation note:
   work added public-surface tests of `RecoverPanic` / `AttachFile` / `Init`,
   taking it to ~85%.)
 - **Bundle headroom stays thin, and the caps live in the gate, not here.**
-  The budgets are `MAX_INITIAL_JS_BYTES` / `MAX_TOTAL_JS_BYTES` (and the two
-  CSS twins) in `scripts/ci/check-bundle-size.sh` — **read them there.** This
-  bullet used to quote `313442/319000` and `1592448/1593000`; both were two
+  The budgets are `MAX_INITIAL_APP_JS_BYTES` / `MAX_TOTAL_APP_JS_BYTES`, their
+  `VENDOR` twins (third-party `vendor-*` chunks, ~5% slack so library bumps
+  pass) and the two CSS budgets in `scripts/ci/check-bundle-size.sh` — **read
+  them there.** This bullet used to quote `313442/319000` and `1592448/1593000`; both were two
   budget generations stale by 2026-08-22, which is the drift §18 is about, in
   the one bullet that had a gate to defer to. The standing rule is what
-  survives re-reading: headroom is routinely under 1KB, so the next
+  survives re-reading: app headroom is routinely under 1KB, so the next
   non-trivial JS addition trips the gate — bump the budget deliberately with a
   history row rather than shaving a feature to dodge a number. **The gate is
   not in `task lint`**, so it can only fail in CI; build before you assume.
