@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.34.1](https://github.com/sound-barrier/recall/compare/v0.34.0...v0.34.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* **a11y:** name controls by their visible text ([e2599c7](https://github.com/sound-barrier/recall/commit/e2599c77b528229aefff73f4de394128709089de))
+* **deps:** move fast-uri to 3.1.9 and refresh zod, qs ([a8e12b7](https://github.com/sound-barrier/recall/commit/a8e12b739b1f6f8926bf62edb216f59ddbc1a87f))
+
+
+### Build & Packaging
+
+* budget vendor JS apart from app code in the bundle gate ([c7be084](https://github.com/sound-barrier/recall/commit/c7be084a8e4db6a253ea2a9325fb6ebb29b798ec))
+* **ci:** keep ~2% bundle headroom for dependency drift ([02790c9](https://github.com/sound-barrier/recall/commit/02790c92c449295df625c6df350fbe30001992bd))
+* **deps:** bump jdx/mise-action ([dd1b259](https://github.com/sound-barrier/recall/commit/dd1b25988dd6c69df44d4bc65413c3bcfb3375cc))
+* **deps:** bump jdx/mise-action from 5.2.1 to 5.2.2 ([782cbe3](https://github.com/sound-barrier/recall/commit/782cbe3b056976e06ebbb2e7a68b05f4d85c1cff))
+* **deps:** bump modernc.org/sqlite ([dc1b6c0](https://github.com/sound-barrier/recall/commit/dc1b6c096d8933ff688646397bc0d18f644bad80))
+* **deps:** bump the weekly-deps group (frontend, tools, actions) ([c732622](https://github.com/sound-barrier/recall/commit/c7326221e68abd1f6f19b402a90ad9ea71c4fe05))
+
+
+### CI
+
+* **deps:** exact-pin @axe-core/playwright and bump it by hand ([ea2fc9a](https://github.com/sound-barrier/recall/commit/ea2fc9a2c2955dd5be1f5ea3a87ad1858de81f4a))
+
 ## [0.34.0](https://github.com/sound-barrier/recall/compare/v0.33.8...v0.34.0) (2026-10-26)
 
 
