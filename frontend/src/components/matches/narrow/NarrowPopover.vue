@@ -82,12 +82,11 @@ const {
   pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickMember, pickReviewedBy, pickQueue, pickPlayMode, pickSource,
   pickLeaver, pickThrower, pickModifier, pickRank,
   resetNarrow,
-  activeClauseCount, anyNarrow,
+  anyNarrow,
   availableMaps, availableGameModes, availableHeroes, availableRoles, availableResults, availableTags, availableMembers,
   availableLeaverSides, availableThrowerSides, availableModifiers, availableRanks,
   narrowedRecords,
 } = props.narrow
-void activeClauseCount; void anyNarrow
 
 const popoverRef     = ref<HTMLElement | null>(null)
 const searchInputRef = ref<HTMLInputElement | null>(null)
