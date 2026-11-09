@@ -148,6 +148,14 @@ jobs:
       - name: Lint module graph (dependency-cruiser)
         run: cd frontend && npm run lint:arch
 
+      # npm ci installs whatever the lockfile says, including a tree whose
+      # peers do not match: the tiptap set must move as one version, and a
+      # Dependabot bump that moved 13 packages but not the 2 menu extensions
+      # left a split set behind that every other check passed. npm ls fails
+      # on any invalid or missing dependency.
+      - name: Check the frontend dependency tree (npm ls)
+        run: cd frontend && npm ls
+
       - name: Check duplication ratchet (jscpd)
         run: cd frontend && npm run lint:dupes
 

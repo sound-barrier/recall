@@ -54,14 +54,15 @@ ordering). What follows is what Recall enforces on top, or has gotten wrong.
   a single ProseMirror bundle every extension resolves its `prosemirror-*` peers
   through, so a split set loads two copies of `prosemirror-model` and every
   `instanceof Node` check quietly starts answering false (bump all 13 in one
-  commit, then run the 34-case fixture suites in `note-tiptap.test.ts`). Two
-  more tiptap pins sit in `overrides`, `@tiptap/extension-bubble-menu` and
-  `@tiptap/extension-floating-menu`, and they move with the 13 by hand:
-  `@tiptap/vue-3` pins them exactly, and Dependabot never edits `overrides`,
-  so a bump that skips them nests a stale copy under `@tiptap/vue-3` with
-  unmet core/pm peers (`npm ls @tiptap/core` must exit 0). Every other
-  **`overrides` entry** pins a transitive-CVE fix (drop it once the direct
-  dep ships a fixed tree). `.github/dependabot.yml` ignores typescript `>=6.1`,
+  commit, then run the 34-case fixture suites in `note-tiptap.test.ts`). The
+  two menu extensions, `@tiptap/extension-bubble-menu` and
+  `@tiptap/extension-floating-menu`, are NOT pinned here: `@tiptap/vue-3`
+  declares them as exact optional dependencies, so they follow it. They used
+  to carry `overrides` entries, and since Dependabot never edits `overrides`,
+  every tiptap bump left them a version behind, nested under `@tiptap/vue-3`
+  with unmet core/pm peers. Don't add them back. CI's lint job runs `npm ls`,
+  which fails on any split set. Every **`overrides` entry** pins a
+  transitive-CVE fix (drop it once the direct dep ships a fixed tree). `.github/dependabot.yml` ignores typescript `>=6.1`,
   `@wailsio/runtime` and `@axe-core/playwright` so a hold never blocks the
   combined weekly PR — lift a hold by deleting its ignore in the same change.
   The wails trio spans both ecosystems and stays in the root file.
