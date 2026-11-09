@@ -1,0 +1,43 @@
+name: Dependabot retry
+
+# Re-runs the failed jobs of a Dependabot PR's CI or E2E run, once.
+#
+# Dependabot PRs merge on green CI with nobody watching them, so a failure
+# that is not the PR's sits red until someone notices. Most of those are
+# GitHub itself: on 2026-11-09 both open Dependabot PRs failed because
+# github.com answered 504 while CI downloaded Node, mise and typos, and a
+# re-run was all either needed. A genuine failure fails the second attempt
+# too and stays red, so this hides nothing; it only spares a human the
+# click. One retry, never more: `run_attempt == 1` keeps the re-run from
+# re-triggering itself.
+#
+# NOTE: `workflow_run` workflows execute the definition from the DEFAULT
+# branch, so this only takes effect once it is on main.
+
+on:
+  workflow_run:  # zizmor: ignore[dangerous-triggers] default-branch definition only; no checkout; acts only on Dependabot's same-repo PR runs; reads nothing from the run but its id
+    workflows: [CI, E2E]
+    types: [completed]
+
+permissions: {}  # deny all by default; the job declares only what it needs
+
+jobs:
+  retry:
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'failure'
+      && github.event.workflow_run.run_attempt == 1
+      && github.event.workflow_run.event == 'pull_request'
+      && github.event.workflow_run.actor.login == 'dependabot[bot]'
+      && github.event.workflow_run.head_repository.full_name == github.repository }}
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write  # re-run the failed jobs of the triggering run
+    steps:
+      - name: Re-run failed jobs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          WORKFLOW: ${{ github.event.workflow_run.name }}
+        run: |
+          echo "Re-running the failed jobs of ${WORKFLOW} run ${RUN_ID} (attempt 1)."
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/rerun-failed-jobs"
