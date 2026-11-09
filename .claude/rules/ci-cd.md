@@ -5,7 +5,7 @@ paths:
 
 # CI/CD (`.github/workflows/`)
 
-Thirteen workflows. Every one starts from `permissions: {}` or `contents: read`
+Fourteen workflows. Every one starts from `permissions: {}` or `contents: read`
 and grants write scopes per job; every checkout sets `persist-credentials:
 false` except `release-please.yml`'s `tag-and-dispatch`, which pushes a tag.
 
@@ -15,6 +15,7 @@ false` except `release-please.yml`'s `tag-and-dispatch`, which pushes a tag.
 | `e2e.yml` | Push to `main` + every PR (no `paths:` filter) | One job, **`playwright`**, required on its own (not under `ci-gate`, so it keeps its own runs and badge). A detect step pipes `git diff --no-renames --name-only` into `scripts/ci/e2e-relevant-changes.sh`, which **fails closed**: the suite is skipped (and the job posts success) only when EVERY changed path is on its safe list (docs, `.claude/`, top-level markdown, GitHub metadata, the release-please manifest); any other path, an empty list or a failed diff runs it. Builds the frontend (`E2E_COVERAGE=1` → inline source maps) + a coverage-instrumented serveronly binary (`go build -cover -coverpkg=./...`), `npx playwright install --with-deps chromium webkit`. `webServer` boots `/tmp/recall-e2e/recall-server` on `127.0.0.1:7099` with `HOME=/tmp/recall-e2e` (hermetic), stopped via `gracefulShutdown` SIGTERM so Go coverage counters flush. **Integration coverage** (Go `GOCOVERDIR` + monocart V8, Chromium only) is informational and can't red a test: `go-e2e-coverage` + `frontend-e2e-coverage` artifacts and a `$GITHUB_STEP_SUMMARY` table (`scripts/ci/e2e-coverage-summary.py`). Uploads `playwright-report/` on failure. Local: `task test-e2e`, `task cover-e2e`. |
 | `codeql.yml` | Push/PR to `main` + weekly cron | CodeQL, matrix `go` (manual build), `javascript-typescript`, `actions` → the required **`Analyze (<language>)`** checks. Runs the **`security-and-quality`** suite — higher false-positive rate than default; triage every Security-tab alert. Languages without a security-and-quality pack (currently `actions`) silently fall back. Provides JS/TS SAST, so Semgrep runs only locally (`task lint-semgrep`). |
 | `dependency-review.yml` | PR to `main` | Required **`dependency-review`**. `fail-on-severity: high` with `fail-on-scopes: runtime, development, unknown`: dev deps are not test-only here (Vite and its plugins build the bundle embedded in the exe). Judges only the dependencies a PR adds. No license policy. |
+| `dependabot-retry.yml` | `workflow_run` after CI or E2E completes | Re-runs a Dependabot PR's failed jobs once (`POST …/runs/{id}/rerun-failed-jobs`), so a GitHub outage during a tool download does not leave an unattended bump red. Fires only on the first attempt of a same-repo `pull_request` run Dependabot started; a genuine failure fails the retry too and stays red. `actions: write` only, no checkout. Like every `workflow_run` workflow it runs the default-branch definition, so a PR cannot test a change to it. |
 | `pr-coverage-comment.yml` | `workflow_run` after CI + E2E complete | One sticky PR comment (unit-test results + a Unit/Integration coverage table) via `scripts/ci/render-pr-report.py`, artifacts pulled cross-workflow by commit. Skips fork runs (it holds `pull-requests: write`). `workflow_run` always runs the DEFAULT-branch definition, so an edit here takes effect once merged, for every run that completes afterwards — a PR cannot test its own change to this file. |
 | `golden-corpus.yml` | Daily 09:17 UTC + dispatch + push/PR touching `pkg/parser/**`, `testdata/**` or the workflow | OCRs the full golden screenshot corpus (submodule `testdata/images`) against the pinned Tesseract (`scripts/ci/install-tesseract.sh`) and diffs against the baselined goldens. No `-race`. |
 | `labels.yml` | Push to `main` (`.github/labels.yml`) + dispatch | Syncs repo labels via `EndBug/label-sync`. `delete-other-labels: false` by default; the dispatch input flips it. |
@@ -207,6 +208,9 @@ false` except `release-please.yml`'s `tag-and-dispatch`, which pushes a tag.
   (setup-mise wraps `jdx/mise-action`), so they arrive as `actions-composite*`
   PRs labeled `release-toolchain`; read the upstream diff and merge them
   yourself, never through auto-merge.
+- **A failed Dependabot run is retried once, automatically**
+  (`dependabot-retry.yml`). So a red Dependabot PR has failed twice: treat it
+  as a real failure, never as a flake to re-run again.
 
 ## Build provenance & signing (`release.yml`)
 
