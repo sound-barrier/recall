@@ -1,6 +1,8 @@
 package release_test
 
 import (
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -279,10 +281,10 @@ func isEmptyGameData(gd gamedata.Status) bool {
 // and restores it after — same shape as the parser tests' runTesseractFunc
 // swapping.
 //
-// It also wires the main-channel URLs and the release-list walk-back at
-// pre-closed httptest servers so the parallel fetches in Check stay
-// hermetic: every one fails fast and collapses to the documented
-// "channel unavailable" branch.
+// It also wires the main-channel URLs, the release-list walk-back and the
+// release assets that walk downloads at pre-closed httptest servers, so
+// the parallel fetches in Check stay hermetic: every one fails fast and
+// collapses to the documented "channel unavailable" branch.
 func withReleasesURL(t *testing.T, url string) {
 	t.Helper()
 	prev := release.ReleasesURL
@@ -290,15 +292,47 @@ func withReleasesURL(t *testing.T, url string) {
 	t.Cleanup(func() { release.ReleasesURL = prev })
 
 	dead := closedServerURL(t)
-	prevAsset, prevVersion, prevList := gamedata.MainAssetURL, gamedata.MainVersionURL, gamedata.ReleaseListURL
+	prevAsset, prevVersion := gamedata.MainAssetURL, gamedata.MainVersionURL
+	prevList, prevReleaseAsset := gamedata.ReleaseListURL, gamedata.ReleaseAssetURL
 	gamedata.MainAssetURL = func(name string) string { return dead + "/" + name }
 	gamedata.MainVersionURL = dead + "/version.json"
 	gamedata.ReleaseListURL = dead
+	gamedata.ReleaseAssetURL = func(version, name string) string { return dead + "/v" + version + "/" + name }
 	t.Cleanup(func() {
 		gamedata.MainAssetURL = prevAsset
 		gamedata.MainVersionURL = prevVersion
 		gamedata.ReleaseListURL = prevList
+		gamedata.ReleaseAssetURL = prevReleaseAsset
 	})
+	forbidNetwork(t)
+}
+
+// forbidNetwork fails the test on any request Check sends past loopback.
+// A URL these helpers forget to redirect does not fail on its own: the
+// request reaches the real host and succeeds or times out, so the test
+// passes while it depends on GitHub, and fails only when GitHub is slow.
+// One test did exactly that, reaching github.com three times per run.
+func forbidNetwork(t *testing.T) {
+	t.Helper()
+	prev := http.DefaultTransport
+	http.DefaultTransport = loopbackOnly{t: t, next: prev}
+	t.Cleanup(func() { http.DefaultTransport = prev })
+}
+
+// loopbackOnly passes requests to loopback hosts through and refuses the
+// rest, failing the test that sent them.
+type loopbackOnly struct {
+	t    *testing.T
+	next http.RoundTripper
+}
+
+func (l loopbackOnly) RoundTrip(r *http.Request) (*http.Response, error) {
+	host := r.URL.Hostname()
+	if ip := net.ParseIP(host); host == "localhost" || (ip != nil && ip.IsLoopback()) {
+		return l.next.RoundTrip(r)
+	}
+	l.t.Errorf("test reached the network: %s %s", r.Method, r.URL)
+	return nil, fmt.Errorf("network access is off in tests: %s", r.URL)
 }
 
 // closedServerURL stands up an httptest server and closes it

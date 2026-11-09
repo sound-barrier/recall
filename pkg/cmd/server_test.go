@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -15,6 +17,8 @@ import (
 	"recall/pkg/cmd"
 	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
+	"recall/pkg/gamedata"
+	"recall/pkg/release"
 )
 
 // newTestApp wires *App against a dbtest.Fake + empty SPA. Skips
@@ -563,6 +567,8 @@ func TestServerMux_PendingScreenshotCount(t *testing.T) {
 }
 
 func TestServerMux_CheckUpdate(t *testing.T) {
+	updateHostsUnreachable(t)
+	forbidNetwork(t)
 	_, mux := newTestApp(t, nil)
 	rec := get(t, mux, "/api/v1/system/update")
 	if rec.Code != 200 {
@@ -1212,4 +1218,54 @@ func postRaw(t *testing.T, mux *http.ServeMux, path, body string) *httptest.Resp
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	return rec
+}
+
+// updateHostsUnreachable points every URL the release check reads at a
+// closed local server, so the route answers from its "check failed" path
+// without leaving the machine.
+func updateHostsUnreachable(t *testing.T) {
+	t.Helper()
+	srv := httptest.NewServer(http.NotFoundHandler())
+	srv.Close()
+	dead := srv.URL
+	prevReleases := release.ReleasesURL
+	prevMainAsset, prevMainVersion := gamedata.MainAssetURL, gamedata.MainVersionURL
+	prevList, prevAsset := gamedata.ReleaseListURL, gamedata.ReleaseAssetURL
+	release.ReleasesURL = dead
+	gamedata.MainAssetURL = func(name string) string { return dead + "/" + name }
+	gamedata.MainVersionURL = dead + "/version.json"
+	gamedata.ReleaseListURL = dead
+	gamedata.ReleaseAssetURL = func(version, name string) string { return dead + "/v" + version + "/" + name }
+	t.Cleanup(func() {
+		release.ReleasesURL = prevReleases
+		gamedata.MainAssetURL, gamedata.MainVersionURL = prevMainAsset, prevMainVersion
+		gamedata.ReleaseListURL, gamedata.ReleaseAssetURL = prevList, prevAsset
+	})
+}
+
+// forbidNetwork fails the test on any request that leaves loopback. The
+// update route runs the real release check, so a test that does not
+// redirect its URLs reaches GitHub, and its run time and outcome depend
+// on whether GitHub is up.
+func forbidNetwork(t *testing.T) {
+	t.Helper()
+	prev := http.DefaultTransport
+	http.DefaultTransport = loopbackOnly{t: t, next: prev}
+	t.Cleanup(func() { http.DefaultTransport = prev })
+}
+
+// loopbackOnly passes requests to loopback hosts through and refuses the
+// rest, failing the test that sent them.
+type loopbackOnly struct {
+	t    *testing.T
+	next http.RoundTripper
+}
+
+func (l loopbackOnly) RoundTrip(r *http.Request) (*http.Response, error) {
+	host := r.URL.Hostname()
+	if ip := net.ParseIP(host); host == "localhost" || (ip != nil && ip.IsLoopback()) {
+		return l.next.RoundTrip(r)
+	}
+	l.t.Errorf("test reached the network: %s %s", r.Method, r.URL)
+	return nil, fmt.Errorf("network access is off in tests: %s", r.URL)
 }

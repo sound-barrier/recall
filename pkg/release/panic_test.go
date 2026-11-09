@@ -22,10 +22,11 @@ import (
 // The guard has to be a timeout, because the failure mode IS "never returns".
 func TestCheck_PanicInGameDataProbeDoesNotHangTheCaller(t *testing.T) {
 	// withReleasesURL, not a hand-rolled ReleasesURL swap: it ALSO points
-	// gamedata's three main-channel URLs at a closed server. Setting only
-	// ReleasesURL leaves those at their production hosts, and Check then makes
-	// a real network request — which cost ~2s here and turned this into a test
-	// that passed alone and failed inside the full suite.
+	// every gamedata URL Check can reach at a closed server, and fails the
+	// test on any request that leaves loopback. Setting only ReleasesURL
+	// leaves the rest at their production hosts, and Check then makes real
+	// network requests: the release-asset walk alone reached github.com three
+	// times here, and the test failed whenever GitHub was slow to answer.
 	srv := fakeReleasesServer(t, http.StatusOK,
 		`{"tag_name":"v9.9.9","html_url":"https://example/v9.9.9"}`)
 	withReleasesURL(t, srv.URL)
