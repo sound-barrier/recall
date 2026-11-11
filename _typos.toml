@@ -44,6 +44,9 @@ unparseable = "unparseable"
 # in-toto's attestation bundle extension, `.intoto.jsonl`: the name
 # Scorecard's Signed-Releases check looks for on a release asset.
 intoto = "intoto"
+# GnuPG's --with-colons record type for a key fingerprint.
+# install-tesseract.sh matches it literally to check the PPA key.
+fpr = "fpr"
 
 [files]
 extend-exclude = [
