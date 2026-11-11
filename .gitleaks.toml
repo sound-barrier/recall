@@ -11,3 +11,15 @@ useDefault = true
 description = "Recall match keys in test fixtures"
 targetRules = ["generic-api-key"]
 regexes = ['''^(?:match|unmatched|ambiguous)-[A-Za-z0-9_.-]+$''']
+
+# The Tesseract PPA's OpenPGP key fingerprint, pinned in install-tesseract.sh
+# so apt trusts the committed keyring only while it is still that key. A key
+# fingerprint is public; generic-api-key reads `..._FINGERPRINT="<hex>"` as a
+# credential. Scoped to that one file AND the exact shape, so a real token
+# elsewhere, or a different shape in that file, still fails.
+[[allowlists]]
+description = "Pinned OpenPGP fingerprint for the Tesseract PPA"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^scripts/ci/install-tesseract\.sh$''']
+regexes = ['''^[0-9A-F]{40}$''']
