@@ -294,6 +294,14 @@ func (a *App) Startup(ctx context.Context) {
 	}
 }
 
+// ServiceShutdown is the quit path, for the Wails service lifecycle and the
+// server's signal handler alike: a coaching session still open is recorded
+// as interrupted rather than left to read as abandoned.
+func (a *App) ServiceShutdown() error {
+	a.interruptCoachSession()
+	return nil
+}
+
 // initProfiles loads (or initializes) the profile manager — every
 // subsequent path (settings.json, db/recall.db, export base dir) hangs off
 // the active profile's directory — and applies the CLI --profile override.

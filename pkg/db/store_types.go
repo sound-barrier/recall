@@ -493,6 +493,12 @@ type MatchCoachNote struct {
 	// into Text — the player reads them as a list down the match.
 	Moments    []MatchCoachNoteMoment
 	AcceptedAt string
+	// ReturnID is the staged return whose accept wrote this block, or 0 when
+	// that return was discarded or the block arrived by bundle or move. A
+	// skip removes only a block its own return wrote. Never serialized: the
+	// id names a row in THIS database, and a bundle or a move would point it
+	// at an unrelated return.
+	ReturnID int64 `json:"-"`
 }
 
 // MatchCoachNoteMoment is one timestamped observation on an accepted note.

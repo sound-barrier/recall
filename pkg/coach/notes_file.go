@@ -234,6 +234,10 @@ func IsReviewableMatchKey(key string) bool {
 type FocusItem struct {
 	ItemID string `json:"item_id"`
 	Text   string `json:"text"`
+	// Status is where the coach has the item. The coach's view round-trips
+	// it; an archive omits it, because a player's progress is their own and
+	// every received item lands as new.
+	Status db.FocusStatus `json:"status,omitempty"`
 }
 
 // ValidateFocusItems holds a focus list to its rules. Delegates to the
@@ -242,7 +246,7 @@ type FocusItem struct {
 func ValidateFocusItems(items []FocusItem) error {
 	rows := make([]db.FocusItem, 0, len(items))
 	for _, it := range items {
-		rows = append(rows, db.FocusItem{ItemID: it.ItemID, Text: it.Text})
+		rows = append(rows, db.FocusItem{ItemID: it.ItemID, Text: it.Text, Status: it.Status})
 	}
 	return db.ValidateFocusItems(rows)
 }

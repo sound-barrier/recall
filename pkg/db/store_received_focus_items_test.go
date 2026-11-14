@@ -92,3 +92,55 @@ func landItem(t *testing.T, s db.Store, returnID int64, itemID, text string) {
 		ReturnID: returnID,
 	}))
 }
+
+// An item belongs to the return that FIRST carried it. A later file that
+// repeats it must not adopt it, or discarding that later file cascades away
+// an item the player has been working on since the first one.
+func TestStoreContract_ReLandingAnItemKeepsItsFirstReturn(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			first := insertReturn(t, s, "hash-first", "coach-kim", "2026-08-19")
+			later := insertReturn(t, s, "hash-later", "coach-kim", "2026-08-20")
+			landItem(t, s, first, "item-1", "hold high ground longer")
+			landItem(t, s, later, "item-1", "hold high ground longer")
+
+			mustNoErr(t, s.DeleteCoachReturn(later))
+
+			items, err := s.LoadReceivedFocusItems()
+			mustNoErr(t, err)
+			if len(items) != 1 || items[0].ReturnID != first {
+				t.Errorf("received items = %+v, want item-1 still on return %d", items, first)
+			}
+		})
+	}
+}
+
+// A block remembers the return whose accept wrote it, and outlives that
+// return being discarded with no return to answer to.
+func TestStoreContract_ABlockOutlivesTheReturnThatWroteIt(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			id := insertReturn(t, s, "hash-1", "coach-kim", "2026-08-19")
+			_, err := s.UpsertMatchCoachNote(db.MatchCoachNote{
+				NoteID: "note-1", MatchKey: coachKey, CoachName: "coach-kim",
+				SessionDate: "2026-08-19", Text: "hold", ReturnID: id,
+			})
+			mustNoErr(t, err)
+			blocks, err := s.LoadMatchCoachNotes()
+			mustNoErr(t, err)
+			if len(blocks[coachKey]) != 1 || blocks[coachKey][0].ReturnID != id {
+				t.Fatalf("blocks = %+v, want one written by return %d", blocks[coachKey], id)
+			}
+
+			mustNoErr(t, s.DeleteCoachReturn(id))
+
+			blocks, err = s.LoadMatchCoachNotes()
+			mustNoErr(t, err)
+			if len(blocks[coachKey]) != 1 || blocks[coachKey][0].ReturnID != 0 {
+				t.Errorf("blocks after the discard = %+v, want the block kept with no return", blocks[coachKey])
+			}
+		})
+	}
+}

@@ -45,12 +45,12 @@ const SABLE_NOTES = [
 // dossier that dropped it would misreport how often the two of them meet.
 const SABLE_SESSIONS = [
   {
-    session_id: 's-2', handle: 'Sable', kind: 'player', source: 'bundle',
+    session_id: 's-2', handle: 'Sable', kind: 'player', source: 'bundle', status: 'abandoned',
     opened_at: '2026-08-14T19:00:00Z', match_keys: ['match-2026-08-13T22-30-00'],
     focus_items: [],
   },
   {
-    session_id: 's-1', handle: 'Sable', kind: 'player', source: 'bundle',
+    session_id: 's-1', handle: 'Sable', kind: 'player', source: 'bundle', status: 'ended',
     opened_at: '2026-08-10T18:00:00Z', ended_at: '2026-08-10T19:20:00Z',
     match_keys: ['replay-A1B2C3', 'match-2026-08-09T20-00-00'],
     // Deliberately NOT the standing list above: a frozen snapshot is what

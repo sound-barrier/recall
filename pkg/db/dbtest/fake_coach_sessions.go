@@ -1,6 +1,7 @@
 package dbtest
 
 import (
+	"fmt"
 	"sort"
 
 	"recall/pkg/db"
@@ -25,6 +26,7 @@ func (f *Fake) StartCoachSession(row db.CoachSessionRow) error {
 	if row.Kind == "" {
 		row.Kind = db.CoachKindPlayer
 	}
+	row.Status = db.SittingOpen
 	f.CoachSessions[row.SessionID] = row
 	return nil
 }
@@ -45,13 +47,17 @@ func (f *Fake) PointCoachSessionAt(sessionID string, playerRef int64, handle, ki
 	return nil
 }
 
-func (f *Fake) EndCoachSession(sessionID string, focus []db.CoachSessionFocusRow) error {
+func (f *Fake) EndCoachSession(sessionID string, outcome db.SittingStatus, focus []db.CoachSessionFocusRow) error {
+	if !db.IsSittingEnd(outcome) {
+		return fmt.Errorf("%w: %q", db.ErrSittingOutcomeInvalid, outcome)
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	row, ok := f.CoachSessions[sessionID]
 	if !ok {
 		return nil
 	}
+	row.Status = outcome
 	row.EndedAt = nowRFC3339()
 	row.FocusItems = append([]db.CoachSessionFocusRow(nil), focus...)
 	f.CoachSessions[sessionID] = row

@@ -1103,7 +1103,7 @@ func TestStoreContract_CoachSessionEndFreezesTheFocusList(t *testing.T) {
 				Kind: db.CoachKindPlayer, Source: "bundle",
 			}))
 
-			mustNoErr(t, s.EndCoachSession("sess-1", []db.CoachSessionFocusRow{
+			mustNoErr(t, s.EndCoachSession("sess-1", db.SittingEnded, []db.CoachSessionFocusRow{
 				{Text: "Hold high ground longer", Status: "working"},
 				{Text: "Ult economy on defense", Status: "new"},
 			}))
@@ -1138,7 +1138,7 @@ func TestStoreContract_CoachSessionKeepsAnAbandonedSitting(t *testing.T) {
 					Kind: db.CoachKindPlayer, Source: "bundle",
 				}))
 			}
-			mustNoErr(t, s.EndCoachSession("sess-2", nil))
+			mustNoErr(t, s.EndCoachSession("sess-2", db.SittingEnded, nil))
 
 			got, err := s.ListCoachSessions(p.ID)
 			mustNoErr(t, err)

@@ -116,7 +116,7 @@ type Store interface {
 	// sitting and is kept on purpose.
 	StartCoachSession(row CoachSessionRow) error
 	PointCoachSessionAt(sessionID string, playerRef int64, handle, kind string) error
-	EndCoachSession(sessionID string, focus []CoachSessionFocusRow) error
+	EndCoachSession(sessionID string, outcome SittingStatus, focus []CoachSessionFocusRow) error
 	ListCoachSessions(playerRef int64) ([]CoachSessionRow, error)
 
 	LinkDuplicateMatches(matchKey, duplicateOf string) error
@@ -470,6 +470,10 @@ func NewSQLStore(path string) (*SQLStore, error) {
 	if _, err := store.PruneScreenshotsDirs(); err != nil {
 		_ = d.Close()
 		return nil, fmt.Errorf("prune screenshots_dirs: %w", err)
+	}
+	if err := store.abandonOpenCoachSessions(); err != nil {
+		_ = d.Close()
+		return nil, err
 	}
 	return store, nil
 }

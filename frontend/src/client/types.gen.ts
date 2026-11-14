@@ -1415,12 +1415,21 @@ export type CoachSession = {
      */
     source: 'bundle' | 'replay';
     /**
+     * How the sitting stands. `open` — in progress. `ended` — the coach
+     * closed it (or a restore or profile switch did). `interrupted` —
+     * the app quit with it open. `abandoned` — the app stopped without
+     * quitting (a crash, a killed process) and the next start found it
+     * still open.
+     *
+     */
+    status: 'open' | 'ended' | 'interrupted' | 'abandoned';
+    /**
      * RFC3339. When the coach claimed the corpus.
      */
     opened_at: string;
     /**
-     * RFC3339. Absent on an ABANDONED sitting — the coach opened the
-     * corpus and never handed it back.
+     * RFC3339. Present on an `ended` or `interrupted` sitting; absent
+     * while it is `open` and on an `abandoned` one.
      *
      */
     ended_at?: string;

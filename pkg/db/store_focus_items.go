@@ -117,12 +117,11 @@ func (s *SQLStore) SetCoachFocusItems(playerRef int64, items []FocusItem) error 
 	return s.replaceFocusItems(focusReplace{
 		deleteSQL: `DELETE FROM coach_focus_items WHERE player_ref = ?`,
 		bornSQL:   `SELECT item_id, created_at FROM coach_focus_items WHERE player_ref = ?`,
-		insertSQL: `INSERT INTO coach_focus_items (item_id, player_ref, text, sort_order, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ` + suppliedInstantOrNow + `, ` + suppliedInstantOrNow + `)`,
-		// The coach's authored list carries no status: it is what they are
-		// telling the player, not the player's progress on it.
-		withStatus: false,
-		owner:      playerRef,
+		insertSQL: `INSERT INTO coach_focus_items (item_id, player_ref, text, status, sort_order, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ` + suppliedInstantOrNow + `, ` + suppliedInstantOrNow + `)`,
+		// A coach's item starts where the player's copy of it will: new.
+		defaultStatus: FocusNew,
+		owner:         playerRef,
 	}, items)
 }
 
@@ -143,8 +142,8 @@ func (s *SQLStore) SetSelfReviewFocusItems(reviewID string, items []FocusItem) e
 		bornSQL:   `SELECT item_id, created_at FROM self_review_focus_items WHERE review_id = ?`,
 		insertSQL: `INSERT INTO self_review_focus_items (item_id, review_id, text, status, sort_order, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ` + suppliedInstantOrNow + `, ` + suppliedInstantOrNow + `)`,
-		withStatus: true,
-		owner:      reviewID,
+		defaultStatus: FocusWorking,
+		owner:         reviewID,
 	}, items)
 }
 
@@ -154,9 +153,11 @@ type focusReplace struct {
 	insertSQL string
 	// bornSQL reads (item_id, created_at) for the owner, so a wholesale
 	// replacement can carry each surviving item's birthday across.
-	bornSQL    string
-	withStatus bool
-	owner      any
+	bornSQL string
+	// defaultStatus is what an item with no (or an unknown) status is
+	// written as.
+	defaultStatus FocusStatus
+	owner         any
 }
 
 // replaceFocusItems is the shared delete-then-insert both authored families
@@ -182,10 +183,7 @@ func (s *SQLStore) replaceFocusItems(fam focusReplace, items []FocusItem) error 
 		return fmt.Errorf("clear focus items: %w", err)
 	}
 	for i, item := range items {
-		args := []any{item.ItemID, fam.owner, item.Text}
-		if fam.withStatus {
-			args = append(args, statusOrDefault(item.Status, FocusWorking))
-		}
+		args := []any{item.ItemID, fam.owner, item.Text, statusOrDefault(item.Status, fam.defaultStatus)}
 		createdAt := item.CreatedAt
 		if was, ok := born[item.ItemID]; ok && createdAt == "" {
 			createdAt = was
@@ -232,7 +230,7 @@ func commitFocus(tx *sql.Tx, what string) error {
 
 func (s *SQLStore) LoadCoachFocusItems(playerRef int64) ([]FocusItem, error) {
 	rows, err := s.db.Query(
-		`SELECT item_id, text, '', sort_order, created_at, updated_at
+		`SELECT item_id, text, status, sort_order, created_at, updated_at
 		   FROM coach_focus_items WHERE player_ref = ? ORDER BY sort_order, id`, playerRef)
 	if err != nil {
 		return nil, fmt.Errorf("load coach focus items: %w", err)
@@ -286,14 +284,15 @@ func scanFocusItems(rows *sql.Rows) ([]FocusItem, error) {
 
 // UpsertReceivedFocusItem lands one coach item. The status is written only
 // on FIRST landing: a re-import of the same notes file must not reset an
-// item the player has already acknowledged or retired.
+// item the player has already acknowledged or retired. Nor is the return:
+// the item belongs to the file that first carried it, so discarding a later
+// file that happened to repeat it cannot cascade it away.
 func (s *SQLStore) UpsertReceivedFocusItem(item ReceivedFocusItem) error {
 	_, err := s.db.Exec(
 		`INSERT INTO received_focus_items
 		   (item_id, return_id, text, status, sort_order, received_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, `+suppliedInstantOrNow+`, `+suppliedInstantOrNow+`)
 		 ON CONFLICT(item_id) DO UPDATE SET
-		   return_id  = excluded.return_id,
 		   text       = excluded.text,
 		   sort_order = excluded.sort_order,
 		   updated_at = STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')`,
@@ -414,6 +413,9 @@ func ValidateFocusItems(items []FocusItem) error {
 		}
 		if utf8.RuneCountInString(it.Text) > MaxFocusItemRunes {
 			return fmt.Errorf("%w: an item exceeds %d characters", ErrFocusItemInvalid, MaxFocusItemRunes)
+		}
+		if it.Status != "" && !isFocusStatus(it.Status) {
+			return fmt.Errorf("%w: status %q", ErrFocusItemStatusInvalid, it.Status)
 		}
 	}
 	return nil

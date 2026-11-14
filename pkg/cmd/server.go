@@ -90,8 +90,10 @@ func RunServer(a *app.App, assets embed.FS) {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	logger := applog.Subsystem("server")
+	drained := make(chan struct{})
 	go func() {
 		defer applog.RecoverPanic("server")
+		defer close(drained)
 		<-quit
 		logger.Info("shutting down")
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -106,6 +108,12 @@ func RunServer(a *app.App, assets embed.FS) {
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		logger.Error("listen failed", "err", err)
 		os.Exit(1)
+	}
+	// ListenAndServe returns the moment Shutdown starts; the App's own
+	// shutdown waits until the in-flight requests have drained.
+	<-drained
+	if err := a.ServiceShutdown(); err != nil {
+		logger.Error("app shutdown", "err", err)
 	}
 }
 
