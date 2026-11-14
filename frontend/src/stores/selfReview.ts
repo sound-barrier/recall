@@ -84,7 +84,7 @@ export const useSelfReviewStore = defineStore('selfReview', () => {
     return keys.flatMap((k) => { const rec = byKey.get(k); return rec ? [rec] : [] })
   })
 
-  const { saveStateFor, hasFailedSaves, queueSave, cancelSave, flushSaves, discardSaves } = useCoachAutosave()
+  const { saveStateFor, hasFailedSaves, hasStarted, queueSave, cancelSave, flushSaves, discardSaves } = useCoachAutosave()
 
   /** Why a sitting write was refused or lost, as the banner says it. */
   const UNSAVED_CLOSE_REASON = 'A note in this review could not be saved — it was not kept.'
@@ -102,13 +102,20 @@ export const useSelfReviewStore = defineStore('selfReview', () => {
   }
 
   const drafts = useReviewDrafts({
-    writes: {
-      putNote:      (matchKey, body) => PutSelfReviewNote(openId.value, matchKey, body),
-      deleteNote:   (matchKey) => DeleteSelfReviewNote(openId.value, matchKey),
-      putMoment:    (matchKey, momentId, body) => PutSelfReviewMoment(openId.value, matchKey, momentId, body),
-      deleteMoment: (matchKey, momentId) => DeleteSelfReviewMoment(openId.value, matchKey, momentId),
+    // Bound to the sitting open when the edit is QUEUED: the write runs a
+    // debounce later, by which time another sitting may be open.
+    writes: () => {
+      const id = openId.value
+      return {
+        putNote:      (matchKey, body) => PutSelfReviewNote(id, matchKey, body),
+        deleteNote:   (matchKey) => DeleteSelfReviewNote(id, matchKey),
+        putMoment:    (matchKey, momentId, body) => PutSelfReviewMoment(id, matchKey, momentId, body),
+        deleteMoment: (matchKey, momentId) => DeleteSelfReviewMoment(id, matchKey, momentId),
+      }
     },
     queueSave,
+    cancelSave,
+    hasStarted,
   })
   const { notes, moments, updateNote, updateMoment, removeMoment } = drafts
 
@@ -184,7 +191,7 @@ export const useSelfReviewStore = defineStore('selfReview', () => {
     title.value = text
     const id = openId.value
     queueSave(HEADER_SAVE_KEY, async () => {
-      upsertSelfReview(await UpdateSelfReview(id, title.value))
+      upsertSelfReview(await UpdateSelfReview(id, text))
     })
   }
 
@@ -258,8 +265,13 @@ export const useSelfReviewStore = defineStore('selfReview', () => {
   // note straight back.
   async function removeNoteFromSitting(reviewID: string, matchKey: string): Promise<void> {
     await reporting(async () => {
+      // Drafts first, and whatever is already on the wire allowed to land:
+      // a PUT for this note answering AFTER the delete would write it back.
+      if (reviewID === openId.value) {
+        dropDraft(matchKey)
+        await flushSaves()
+      }
       await DeleteSelfReviewNote(reviewID, matchKey)
-      if (reviewID === openId.value) dropDraft(matchKey)
       await invalidateSelfReviews()
       await getQueryClient().refetchQueries({ queryKey: qk.matches })
     })

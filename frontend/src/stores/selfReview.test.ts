@@ -202,6 +202,56 @@ describe('selfReview store — a sitting from the bulk bar', () => {
     expect(store.notes[KEY_A]).toBeUndefined()
   })
 
+  // A PUT already on the wire answering AFTER the delete would write the
+  // note straight back, so the delete waits for it.
+  it('removing a note whose save is on the wire deletes it after the save lands', async () => {
+    const order: string[] = []
+    let landPut: () => void = () => {}
+    api.PutSelfReviewNote = vi.fn(() => new Promise<void>((resolve) => { landPut = () => { order.push('put'); resolve() } }))
+    api.DeleteSelfReviewNote = vi.fn(async () => { order.push('delete') })
+    setApiBacking(api)
+    const store = useSelfReviewStore()
+    await store.createFromKeys([KEY_A])
+    await settle()
+    store.updateNote(KEY_A, { kind: 'note', text: 'on the wire', focusTags: [], extraTags: [], matchClock: '' })
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(api.PutSelfReviewNote).toHaveBeenCalled()
+
+    const removing = store.removeNoteFromSitting('r-1', KEY_A)
+    await settle()
+    landPut()
+    await removing
+
+    expect(order).toEqual(['put', 'delete'])
+  })
+
+  // A write is about the sitting it was typed in. Writes read the open
+  // sitting when they RAN, so a note typed while another sitting was opening
+  // landed on the new one — and the title carried the new one's text.
+  it('a note and a title typed before a switch land on the sitting they were typed in', async () => {
+    api.ListSelfReviews = vi.fn(async () => [sitting(), sitting({ review_id: 'r-2' })])
+    let releaseSecond: () => void = () => {}
+    api.GetSelfReview = vi.fn(async (id: string) => {
+      if (id === 'r-2') await new Promise<void>((resolve) => { releaseSecond = resolve })
+      return sitting({ review_id: id, title: id === 'r-2' ? 'Second' : 'First' })
+    })
+    setApiBacking(api)
+    const store = useSelfReviewStore()
+    await store.openSitting('r-1')
+    await settle()
+
+    const switching = store.openSitting('r-2')
+    await settle()
+    store.updateNote(KEY_A, { kind: 'note', text: 'about the first', focusTags: [], extraTags: [], matchClock: '' })
+    store.updateTitle('First, renamed')
+    releaseSecond()
+    await switching
+    await vi.advanceTimersByTimeAsync(1000)
+
+    expect(api.PutSelfReviewNote).toHaveBeenCalledWith('r-1', KEY_A, expect.objectContaining({ text: 'about the first' }))
+    expect(api.UpdateSelfReview).toHaveBeenCalledWith('r-1', 'First, renamed')
+  })
+
   // Lifecycle calls are fired from templates; a refusal reaches the banner,
   // not the console.
   it('reports a refused create through the app banner', async () => {

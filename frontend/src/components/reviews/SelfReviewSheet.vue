@@ -52,7 +52,7 @@ const titleField = useTemplateRef<HTMLInputElement>('titleField')
 
 // Worst-first: an error the user must see outranks a save in flight, which
 // outranks a save that landed.
-const SAVE_RANK: CoachSaveState[] = ['error', 'saving', 'saved', 'idle']
+const SAVE_RANK: CoachSaveState[] = ['error', 'saving', 'queued', 'saved', 'idle']
 const sheetSaveState = computed<CoachSaveState>(() =>
   SAVE_RANK.find((s) => s === props.headerSaveState || s === props.focusSaveState) ?? 'idle')
 

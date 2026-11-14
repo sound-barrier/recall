@@ -51,9 +51,18 @@ export interface WireNoteLike {
 }
 
 export interface ReviewDraftsOptions {
-  writes: DraftWrites
+  /**
+   * The writes, bound to their target NOW. Called when an edit is queued, not
+   * when its write runs: a sitting switched inside the debounce used to
+   * receive the previous sitting's note.
+   */
+  writes: () => DraftWrites
   /** The owner's per-key autosave queue. */
   queueSave: (key: string, run: () => Promise<void>) => void
+  /** Drop a key's waiting write. */
+  cancelSave: (key: string) => void
+  /** Whether a write for the key has already gone out (see useCoachAutosave). */
+  hasStarted: (key: string) => boolean
   /** Called on every edit — the owner marks its own "unsaved work" state. */
   onDirty?: () => void
 }
@@ -112,13 +121,14 @@ export function useReviewDrafts(opts: ReviewDraftsOptions) {
   function updateNote(matchKey: string, next: CoachNoteDraft): void {
     notes.value = { ...notes.value, [matchKey]: next }
     dirty()
+    const writes = opts.writes()
     opts.queueSave(matchKey, async () => {
       if (!isEmptyDraft(next)) {
-        await opts.writes.putNote(matchKey, toNoteInput(next))
+        await writes.putNote(matchKey, toNoteInput(next))
       } else if ((moments.value[matchKey] ?? []).some(isSavable)) {
-        await opts.writes.putNote(matchKey, toNoteInput(reviewedOnlyDraft()))
+        await writes.putNote(matchKey, toNoteInput(reviewedOnlyDraft()))
       } else {
-        await opts.writes.deleteNote(matchKey)
+        await writes.deleteNote(matchKey)
       }
     })
   }
@@ -130,8 +140,9 @@ export function useReviewDrafts(opts: ReviewDraftsOptions) {
     moments.value = { ...moments.value, [matchKey]: merged }
     dirty()
     if (!isSavable(next)) return
+    const writes = opts.writes()
     opts.queueSave(momentSaveKey(next.momentId), async () => {
-      await opts.writes.putMoment(matchKey, next.momentId, toMomentInput(next))
+      await writes.putMoment(matchKey, next.momentId, toMomentInput(next))
       savedMomentIds.add(next.momentId)
       notes.value[matchKey] ??= reviewedOnlyDraft()
     })
@@ -141,10 +152,18 @@ export function useReviewDrafts(opts: ReviewDraftsOptions) {
     const bucket = moments.value[matchKey] ?? []
     moments.value = { ...moments.value, [matchKey]: bucket.filter((m) => m.momentId !== momentId) }
     dirty()
-    if (!savedMomentIds.has(momentId)) return
+    const key = momentSaveKey(momentId)
+    // On the server, or about to be (its PUT is on the wire): queue the
+    // delete behind it. Otherwise only a waiting write exists — drop it, or
+    // it would write the moment straight back.
+    if (!savedMomentIds.has(momentId) && !opts.hasStarted(key)) {
+      opts.cancelSave(key)
+      return
+    }
     savedMomentIds.delete(momentId)
-    opts.queueSave(momentSaveKey(momentId), async () => {
-      await opts.writes.deleteMoment(matchKey, momentId)
+    const writes = opts.writes()
+    opts.queueSave(key, async () => {
+      await writes.deleteMoment(matchKey, momentId)
     })
   }
 
