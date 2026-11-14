@@ -19,6 +19,12 @@ import (
 // are not wrapped and map to the default 409.
 var ErrImportMalformed = errors.New("import: malformed payload")
 
+// ErrImportReplayCodeTaken marks an import naming a replay code the database
+// already holds for another match, or holding one code twice. A code names
+// one match, and the database enforces it. Found before anything is
+// written, so a refused import leaves nothing behind.
+var ErrImportReplayCodeTaken = errors.New("import: replay code already belongs to another match")
+
 // ErrCoachBundle reports a bundle a player shared for coaching (its manifest
 // names the player) handed to the merge import. A coach who mis-clicks
 // Import… must not end up with the player's matches in their own history;
@@ -70,18 +76,11 @@ func Import(store db.Store, payload []byte) (ImportSummary, error) {
 		ranks:     data.Ranks,
 		unknowns:  data.Unknowns,
 	}
-	if err := validateParentFilenames(incoming); err != nil {
-		return ImportSummary{}, err
-	}
-	if err := requireCoachNoteIDs(data.CoachNotes); err != nil {
-		return ImportSummary{}, err
-	}
-	if err := requireSelfReviewIDs(data.SelfReviews); err != nil {
-		return ImportSummary{}, err
-	}
-
 	existing, err := existingMatchKeys(store)
 	if err != nil {
+		return ImportSummary{}, err
+	}
+	if err := validateBeforeWrite(store, data, incoming, existing); err != nil {
 		return ImportSummary{}, err
 	}
 	fresh := partitionByMatchKey(incoming, existing)
@@ -359,6 +358,70 @@ func importUserMatchData(store db.Store, rows []db.UserMatchData, existing map[s
 	return nil
 }
 
+// validateBeforeWrite runs every check that can refuse the import, so a
+// refusal leaves the database exactly as it was: the writes that follow
+// commit one by one, and a failure half-way through would strand the half
+// that landed.
+func validateBeforeWrite(store db.Store, data DataV2, incoming parentTables, existing map[string]bool) error {
+	if err := validateParentFilenames(incoming); err != nil {
+		return err
+	}
+	if err := requireCoachNoteIDs(data.CoachNotes); err != nil {
+		return err
+	}
+	if err := requireSelfReviewIDs(data.SelfReviews); err != nil {
+		return err
+	}
+	return checkReplayCodes(store, data.Annotations, existing)
+}
+
+// checkReplayCodes finds, before anything is written, every replay code the
+// import would store that the database already holds for another match or
+// that the bundle repeats. The unique index would otherwise refuse the code
+// half-way through the import, after the screenshots had been written, and
+// a retry would skip those matches as already present and never bring
+// their notes.
+func checkReplayCodes(store db.Store, annotations []db.Annotation, existing map[string]bool) error {
+	owner, err := heldReplayCodes(store)
+	if err != nil {
+		return err
+	}
+	for _, ann := range annotations {
+		code := canonicalReplayCode(ann.ReplayCode)
+		if existing[ann.MatchKey] || code == "" {
+			continue
+		}
+		if other, taken := owner[code]; taken && other != ann.MatchKey {
+			return fmt.Errorf("%w: %s on %q is already on %q", ErrImportReplayCodeTaken, code, ann.MatchKey, other)
+		}
+		owner[code] = ann.MatchKey
+	}
+	return nil
+}
+
+// heldReplayCodes maps each replay code the database holds to its match.
+func heldReplayCodes(store db.Store) (map[string]string, error) {
+	held, err := store.LoadAnnotations()
+	if err != nil {
+		return nil, err
+	}
+	owner := map[string]string{}
+	for key, ann := range held {
+		if code := canonicalReplayCode(ann.ReplayCode); code != "" {
+			owner[code] = key
+		}
+	}
+	return owner, nil
+}
+
+// canonicalReplayCode is the form importAnnotations stores a code in.
+func canonicalReplayCode(code string) string {
+	if canon, ok := match.NormalizeReplayCode(code); ok {
+		return canon
+	}
+	return code
+}
+
 // importAnnotations writes the incoming annotations whose keys are new,
 // keeping the annotated_at each carries — a restore replays when the note was
 // written, it does not re-date every note to the import.
@@ -372,9 +435,7 @@ func importAnnotations(store db.Store, annotations []db.Annotation, existing map
 		// stale six characters would cost the user their history to enforce a
 		// format. An unrepairable code rides through unchanged, exactly as
 		// the store's own startup pass leaves it.
-		if code, ok := match.NormalizeReplayCode(ann.ReplayCode); ok {
-			ann.ReplayCode = code
-		}
+		ann.ReplayCode = canonicalReplayCode(ann.ReplayCode)
 		if err := store.SetAnnotationAt(ann); err != nil {
 			return fmt.Errorf("import: annotation for %q: %w", ann.MatchKey, err)
 		}
