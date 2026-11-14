@@ -37,7 +37,7 @@ func IgnoreScreenshot(s db.Store, filename string) error {
 	}
 	// An ignored file is skipped on every future run, so a standing
 	// OCR-failure row would sit in the triage list forever — clear it.
-	if err := s.RemoveFailedFile(filename); err != nil {
+	if err := s.RemoveFailedFilesNamed(filename); err != nil {
 		return fmt.Errorf("clear failed-file row for %s: %w", filename, err)
 	}
 	orphans, err := s.DeleteScreenshotRows(filename)

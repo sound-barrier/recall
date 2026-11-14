@@ -31,11 +31,12 @@ func (f *Fake) DeleteScreenshotSiblings(dirID int64, filename string, keepType p
 	if keepType != "unknown" {
 		f.Unknowns = deleteInFolder(f.Unknowns, dirID, filename, collect)
 	}
+	here := fileRef(db.FileRef{DirID: dirID, Filename: filename})
 	if keepType != "all_heroes" {
-		delete(f.AllHeroes, filename)
+		delete(f.AllHeroes, here)
 	}
 	if keepType != "history" {
-		delete(f.History, filename)
+		delete(f.History, here)
 	}
 	f.scrubDeadKeyCandidatesLocked(oldKeys)
 	return nil
@@ -56,8 +57,8 @@ func (f *Fake) DeleteScreenshotRows(filename string) ([]string, error) {
 	f.Personals = deleteByFilename(f.Personals, filename, collect)
 	f.Ranks = deleteByFilename(f.Ranks, filename, collect)
 	f.Unknowns = deleteByFilename(f.Unknowns, filename, collect)
-	delete(f.AllHeroes, filename)
-	delete(f.History, filename)
+	forgetNamed(f.AllHeroes, filename)
+	forgetNamed(f.History, filename)
 	delete(f.Ambiguous, filename)
 	f.scrubDeadKeyCandidatesLocked(touched)
 	orphans := []string{}

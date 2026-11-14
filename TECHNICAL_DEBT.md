@@ -398,15 +398,11 @@ yet fixed. They are ordered by likelihood × blast radius.
   the parent rows and the user layer can still strand the parents, and a
   retry then skips them as existing. Fix: a `Store` method that runs the
   whole import in one transaction (the `dbtest.Fake` mirror included).
-- **Per-file ledger keyed by basename (L).** `failed_files`, `ingested_files`
-  and the two recognized-skip registries use the filename alone as key.
-  Parking and unparking therefore reach across screenshots folders.
-  Separately, a Tesseract outage counts an attempt against every file it
-  touches, so it can park the whole backlog. Fix: key every per-file table
-  by `(screenshots_dir_id, filename)`. Add a failure kind
-  (`ocr_unavailable | parse_failed`), and count an attempt only for
-  `parse_failed`. A single `screenshot_files` status table with a `CHECK`
-  is the end state.
+- **Per-file ledgers are four tables (S).** `failed_files`, `ingested_files`
+  and the two recognized-skip registries are now keyed by
+  `(screenshots_dir_id, filename)`, and a failure carries its kind. They are
+  still four tables saying four things about one file; a single
+  `screenshot_files` status table with a `CHECK` is the end state.
 - **Frontend autosave and editors (M).**
   - The annotation `watch` overwrites a note being typed after a tag
     commit refetches.

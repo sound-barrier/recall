@@ -44,7 +44,7 @@ func TestStaleParseCount_ExcludesEveryRecognizedRegistry(t *testing.T) {
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
 			mustNoErr(t, s.UpsertTeams(db.TeamsRow{Filename: "h.png", MatchKey: "k-h", Eliminations: 3}))
-			mustNoErr(t, s.UpsertHistoryScreenshot("h.png"))
+			mustNoErr(t, s.UpsertHistoryScreenshot(db.FileRef{Filename: "h.png"}))
 
 			n, err := s.StaleParseCount(99)
 			mustNoErr(t, err)

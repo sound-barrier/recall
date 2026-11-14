@@ -10,11 +10,11 @@ import (
 func TestSQLStore_RecordFailedFile_UpsertIncrementsAttempts(t *testing.T) {
 	s := openMemory(t)
 
-	mustNoErr(t, s.RecordFailedFile("bad.png", 1, "decoding image: png: invalid format"))
+	mustNoErr(t, s.RecordFailedFile(db.FileRef{DirID: 1, Filename: "bad.png"}, db.FailureParseFailed, "decoding image: png: invalid format"))
 	first := onlyFailedFile(t, s)
 	assertInitialFailedRecord(t, first)
 
-	mustNoErr(t, s.RecordFailedFile("bad.png", 1, "tesseract failed: exit status 1"))
+	mustNoErr(t, s.RecordFailedFile(db.FileRef{DirID: 1, Filename: "bad.png"}, db.FailureParseFailed, "tesseract failed: exit status 1"))
 	second := onlyFailedFile(t, s) // upsert must not add a row
 	if second.Attempts != 2 {
 		t.Errorf("attempts = %d, want 2", second.Attempts)
@@ -56,13 +56,13 @@ func assertInitialFailedRecord(t *testing.T, first db.FailedFileRow) {
 
 func TestSQLStore_RemoveFailedFile_Idempotent(t *testing.T) {
 	s := openMemory(t)
-	if err := s.RecordFailedFile("gone.png", 1, "boom"); err != nil {
+	if err := s.RecordFailedFile(db.FileRef{DirID: 1, Filename: "gone.png"}, db.FailureParseFailed, "boom"); err != nil {
 		t.Fatalf("record: %v", err)
 	}
-	if err := s.RemoveFailedFile("gone.png"); err != nil {
+	if err := s.RemoveFailedFile(db.FileRef{Filename: "gone.png"}); err != nil {
 		t.Fatalf("remove: %v", err)
 	}
-	if err := s.RemoveFailedFile("gone.png"); err != nil {
+	if err := s.RemoveFailedFile(db.FileRef{Filename: "gone.png"}); err != nil {
 		t.Fatalf("second remove must be a no-op: %v", err)
 	}
 	rows, err := s.ListFailedFiles()
@@ -87,7 +87,7 @@ func TestSQLStore_ListFailedFiles_EmptyIsNonNil(t *testing.T) {
 
 func TestSQLStore_Clear_WipesFailedFiles(t *testing.T) {
 	s := openMemory(t)
-	if err := s.RecordFailedFile("bad.png", 1, "boom"); err != nil {
+	if err := s.RecordFailedFile(db.FileRef{DirID: 1, Filename: "bad.png"}, db.FailureParseFailed, "boom"); err != nil {
 		t.Fatalf("record: %v", err)
 	}
 	if err := s.Clear(); err != nil {
@@ -111,7 +111,7 @@ func TestSQLStore_PruneScreenshotsDirs_KeepsFailedOnlyDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ensure dir: %v", err)
 	}
-	if err := s.RecordFailedFile("bad.png", dirID, "boom"); err != nil {
+	if err := s.RecordFailedFile(db.FileRef{DirID: dirID, Filename: "bad.png"}, db.FailureParseFailed, "boom"); err != nil {
 		t.Fatalf("record: %v", err)
 	}
 	if _, err := s.PruneScreenshotsDirs(); err != nil {
@@ -134,7 +134,7 @@ func TestSQLStore_PruneScreenshotsDirs_KeepsFailedOnlyDir(t *testing.T) {
 func seedFailures(t *testing.T, s db.Store, filename string, dirID int64, n int) {
 	t.Helper()
 	for range n {
-		if err := s.RecordFailedFile(filename, dirID, "boom"); err != nil {
+		if err := s.RecordFailedFile(db.FileRef{DirID: dirID, Filename: filename}, db.FailureParseFailed, "boom"); err != nil {
 			t.Fatalf("record %s: %v", filename, err)
 		}
 	}

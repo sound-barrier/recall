@@ -39,7 +39,7 @@ func seedTwoDirs(t *testing.T, s *db.SQLStore) (shots, failures int64) {
 		Filename: "a.png", MatchKey: "match-2026-01-01T12-00-00",
 		ScreenshotsDirID: shots, Map: "rialto",
 	}))
-	mustNoErr(t, s.RecordFailedFile("broken.png", failures, "tesseract exited 1"))
+	mustNoErr(t, s.RecordFailedFile(db.FileRef{DirID: failures, Filename: "broken.png"}, db.FailureParseFailed, "tesseract exited 1"))
 	return shots, failures
 }
 

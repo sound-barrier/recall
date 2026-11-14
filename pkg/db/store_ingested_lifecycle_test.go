@@ -17,8 +17,8 @@ func TestStoreContract_ClearEmptiesTheDedupRegistry(t *testing.T) {
 	for _, impl := range storeImpls {
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
-			mustNoErr(t, s.UpsertIngestedFile("a.png", "hash-1", ""))
-			mustNoErr(t, s.UpsertIngestedFile("b.png", "hash-1", "a.png"))
+			mustNoErr(t, s.UpsertIngestedFile(db.FileRef{Filename: "a.png"}, "hash-1", db.FileRef{}))
+			mustNoErr(t, s.UpsertIngestedFile(db.FileRef{Filename: "b.png"}, "hash-1", db.FileRef{Filename: "a.png"}))
 
 			mustNoErr(t, s.Clear())
 
@@ -47,21 +47,21 @@ func TestStoreContract_DeletingAMatchForgetsItsFilesAndTheirCopies(t *testing.T)
 			mustNoErr(t, s.UpsertSummary(db.SummaryRow{
 				Filename: "a.png", MatchKey: "m1", Map: "ilios",
 			}))
-			mustNoErr(t, s.UpsertIngestedFile("a.png", "hash-1", ""))
-			mustNoErr(t, s.UpsertIngestedFile("b.png", "hash-1", "a.png"))
-			mustNoErr(t, s.UpsertIngestedFile("z.png", "hash-9", ""))
+			mustNoErr(t, s.UpsertIngestedFile(db.FileRef{Filename: "a.png"}, "hash-1", db.FileRef{}))
+			mustNoErr(t, s.UpsertIngestedFile(db.FileRef{Filename: "b.png"}, "hash-1", db.FileRef{Filename: "a.png"}))
+			mustNoErr(t, s.UpsertIngestedFile(db.FileRef{Filename: "z.png"}, "hash-9", db.FileRef{}))
 
 			mustNoErr(t, s.HardDeleteMatch("m1"))
 
 			reg, err := s.LoadIngestedFiles()
 			mustNoErr(t, err)
-			if _, ok := reg["a.png"]; ok {
+			if _, ok := reg[db.FileRef{DirID: db.SentinelScreenshotsDirID, Filename: "a.png"}]; ok {
 				t.Error("a.png kept its registry row after its match was deleted")
 			}
-			if _, ok := reg["b.png"]; ok {
+			if _, ok := reg[db.FileRef{DirID: db.SentinelScreenshotsDirID, Filename: "b.png"}]; ok {
 				t.Error("b.png stayed a standing duplicate of a file that no longer exists")
 			}
-			if _, ok := reg["z.png"]; !ok {
+			if _, ok := reg[db.FileRef{DirID: db.SentinelScreenshotsDirID, Filename: "z.png"}]; !ok {
 				t.Error("z.png lost its registry row; only the deleted match's files should go")
 			}
 		})

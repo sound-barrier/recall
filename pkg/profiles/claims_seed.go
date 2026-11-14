@@ -54,10 +54,10 @@ func heldScreenshots(dbPath, profile, folder string) ([]SeedClaim, error) {
 		return nil, fmt.Errorf("read %s's screenshots: %w", profile, err)
 	}
 	held := make([]SeedClaim, 0, len(ingested))
-	for filename, rec := range ingested {
-		if rec.DuplicateOf == "" {
+	for file, rec := range ingested {
+		if !rec.IsDuplicate() {
 			held = append(held, SeedClaim{
-				Hash: rec.ContentHash, Profile: profile, Filename: filename, IngestedAt: rec.FirstSeenAt,
+				Hash: rec.ContentHash, Profile: profile, Filename: file.Filename, IngestedAt: rec.FirstSeenAt,
 			})
 		}
 	}
@@ -71,7 +71,7 @@ func heldScreenshots(dbPath, profile, folder string) ([]SeedClaim, error) {
 // unregisteredScreenshots hashes the parsed screenshots in folder that the
 // content-hash registry has never seen. A file no longer on disk is skipped:
 // with no bytes there is nothing another profile could re-import.
-func unregisteredScreenshots(store db.Store, ingested map[string]db.IngestedFile, profile, folder string) ([]SeedClaim, error) {
+func unregisteredScreenshots(store db.Store, ingested map[db.FileRef]db.IngestedFile, profile, folder string) ([]SeedClaim, error) {
 	if folder == "" {
 		return nil, nil
 	}
@@ -85,7 +85,7 @@ func unregisteredScreenshots(store db.Store, ingested map[string]db.IngestedFile
 	}
 	var claims []SeedClaim
 	for filename := range parsed {
-		if _, registered := ingested[filename]; registered {
+		if _, registered := ingested[db.FileRef{DirID: dirID, Filename: filename}]; registered {
 			continue
 		}
 		hash, err := hashScreenshot(filepath.Join(folder, filename))

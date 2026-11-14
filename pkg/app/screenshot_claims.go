@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"recall/pkg/applog"
+	"recall/pkg/db"
 	"recall/pkg/profiles"
 )
 
@@ -38,8 +39,8 @@ func (a *App) claimScreenshot(hash, base string) bool {
 }
 
 // registeredHashes snapshots the content-hash registry's originals,
-// filename -> hash. nil on a read failure.
-func (a *App) registeredHashes() map[string]string {
+// file -> hash. nil on a read failure.
+func (a *App) registeredHashes() map[db.FileRef]string {
 	store, release, leaseErr := a.useStore()
 	if leaseErr != nil {
 		return nil
@@ -50,9 +51,9 @@ func (a *App) registeredHashes() map[string]string {
 		applog.Subsystem("claims").Error("load registry failed", "err", err)
 		return nil
 	}
-	hashes := make(map[string]string, len(ingested))
+	hashes := make(map[db.FileRef]string, len(ingested))
 	for f, rec := range ingested {
-		if rec.DuplicateOf == "" {
+		if !rec.IsDuplicate() {
 			hashes[f] = rec.ContentHash
 		}
 	}
@@ -60,10 +61,10 @@ func (a *App) registeredHashes() map[string]string {
 }
 
 // forgottenSince returns the screenshots registered in before that the
-// registry no longer holds, filename -> hash. A hard delete or a move's
+// registry no longer holds, file -> hash. A hard delete or a move's
 // source-side delete drops exactly the affected matches' files, so this is
 // what they owned.
-func (a *App) forgottenSince(before map[string]string) map[string]string {
+func (a *App) forgottenSince(before map[db.FileRef]string) map[db.FileRef]string {
 	if len(before) == 0 {
 		return nil
 	}
@@ -71,7 +72,7 @@ func (a *App) forgottenSince(before map[string]string) map[string]string {
 	if after == nil {
 		return nil
 	}
-	gone := map[string]string{}
+	gone := map[db.FileRef]string{}
 	for f, hash := range before {
 		if _, kept := after[f]; !kept {
 			gone[f] = hash
@@ -81,46 +82,53 @@ func (a *App) forgottenSince(before map[string]string) map[string]string {
 }
 
 // releaseForgotten frees the claims on the screenshots a hard delete took.
-func (a *App) releaseForgotten(before map[string]string) {
+func (a *App) releaseForgotten(before map[db.FileRef]string) {
 	if a.claims == nil || a.profiles == nil {
 		return
 	}
 	for f, hash := range a.forgottenSince(before) {
-		a.releaseClaim(hash, f)
+		a.releaseClaim(hash, f.Filename)
 	}
 }
 
 // transferForgotten hands target the claims on the screenshots a move took
 // from this profile.
-func (a *App) transferForgotten(before map[string]string, target string) {
+func (a *App) transferForgotten(before map[db.FileRef]string, target string) {
 	if a.claims == nil {
 		return
 	}
 	for f, hash := range a.forgottenSince(before) {
-		if err := a.claims.Transfer(hash, target, f); err != nil {
-			applog.Subsystem("claims").Error("transfer claim failed", "file", applog.Scrub(f), "target", applog.Scrub(target), "err", applog.Scrub(err.Error()))
+		if err := a.claims.Transfer(hash, target, f.Filename); err != nil {
+			applog.Subsystem("claims").Error("transfer claim failed", "file", applog.Scrub(f.Filename), "target", applog.Scrub(target), "err", applog.Scrub(err.Error()))
 		}
 	}
 }
 
-// releaseScreenshot frees the active profile's claim on one screenshot,
-// found by its registered hash or, for a file the registry never saw, by
-// hashing it in the screenshots folder.
-func (a *App) releaseScreenshot(filename string, registered map[string]string) {
+// releaseScreenshot frees the active profile's claim on a dismissed
+// screenshot — every registered file by that name, since the ignore list is
+// by name — or, for a file the registry never saw, hashes it in the
+// screenshots folder.
+func (a *App) releaseScreenshot(filename string, registered map[db.FileRef]string) {
 	if a.claims == nil || a.profiles == nil {
 		return
 	}
-	hash, ok := registered[filename]
-	if !ok {
-		dir := a.settingsSnapshot().ScreenshotsDir
-		if dir == "" {
-			return
+	released := false
+	for f, hash := range registered {
+		if f.Filename == filename {
+			a.releaseClaim(hash, filename)
+			released = true
 		}
-		h, err := hashFile(filepath.Join(dir, filepath.Base(filename)))
-		if err != nil {
-			return
-		}
-		hash = h
+	}
+	if released {
+		return
+	}
+	dir := a.settingsSnapshot().ScreenshotsDir
+	if dir == "" {
+		return
+	}
+	hash, err := hashFile(filepath.Join(dir, filepath.Base(filename)))
+	if err != nil {
+		return
 	}
 	a.releaseClaim(hash, filename)
 }

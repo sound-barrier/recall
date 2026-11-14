@@ -17,6 +17,7 @@ package parser
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"image"
 	_ "image/jpeg" // image.Decode JPEG support
@@ -30,10 +31,15 @@ import (
 	"recall/pkg/tesseract"
 )
 
+// ErrOCRUnavailable marks a parse that never reached the screenshot because
+// the OCR engine is not there. It is an outage, not a verdict on the file, and
+// the failure ledger counts no attempt for it.
+var ErrOCRUnavailable = errors.New("tesseract not available")
+
 func ParseScreenshot(imagePath string) (*MatchResult, error) {
 	tp := tesseract.Path()
 	if _, err := exec.LookPath(tp); err != nil {
-		return nil, fmt.Errorf("tesseract not available at %q — configure the binary in Settings → Engine (%w)", tp, err)
+		return nil, fmt.Errorf("%w at %q — configure the binary in Settings → Engine (%w)", ErrOCRUnavailable, tp, err)
 	}
 	img, err := decodeImage(imagePath)
 	if err != nil {

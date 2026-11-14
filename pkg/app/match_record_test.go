@@ -98,11 +98,11 @@ func TestApp_GetNewScreenshotCount_SeparatesParkedFiles(t *testing.T) {
 	writeFile(t, dir, "otherdir.png", []byte("otherdir"))
 	for range 3 {
 		for _, f := range []string{"stuck.png", "gone.png", "degraded.png"} {
-			if err := fake.RecordFailedFile(f, dirID, "boom"); err != nil {
+			if err := fake.RecordFailedFile(db.FileRef{DirID: dirID, Filename: f}, db.FailureParseFailed, "boom"); err != nil {
 				t.Fatal(err)
 			}
 		}
-		if err := fake.RecordFailedFile("otherdir.png", dirID+5, "boom"); err != nil {
+		if err := fake.RecordFailedFile(db.FileRef{DirID: dirID + 5, Filename: "otherdir.png"}, db.FailureParseFailed, "boom"); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -143,10 +143,10 @@ func TestApp_GetNewScreenshotCount_AgreesWithParseSkipSet(t *testing.T) {
 		t.Fatal(err)
 	}
 	fake.Summaries = []db.SummaryRow{{Filename: "a.png", MatchKey: "k", ScreenshotsDirID: dirID}}
-	fake.AllHeroes = map[string]bool{"b.png": true}
+	fake.AllHeroes = map[db.FileRef]bool{{DirID: dirID, Filename: "b.png"}: true}
 	fake.Ignored = map[string]bool{"c.png": true}
-	fake.IngestedFiles = map[string]db.IngestedFile{
-		"d.png": {ContentHash: "h", DuplicateOf: "a.png"},
+	fake.IngestedFiles = map[db.FileRef]db.IngestedFile{
+		{DirID: dirID, Filename: "d.png"}: {ContentHash: "h", DuplicateOf: db.FileRef{DirID: dirID, Filename: "a.png"}},
 	}
 
 	p, err := a.GetNewScreenshotCount()

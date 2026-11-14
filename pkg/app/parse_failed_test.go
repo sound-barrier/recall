@@ -3,6 +3,7 @@ package app_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -29,7 +30,7 @@ func TestApp_ParseScreenshots_RecordsFailedFile(t *testing.T) {
 	if err := a.ParseScreenshots(); err != nil {
 		t.Fatalf("ParseScreenshots: %v", err)
 	}
-	row, ok := fake.FailedFiles["corrupt.png"]
+	row, ok := fake.FailedFileNamed("corrupt.png")
 	if !ok {
 		t.Fatalf("expected a failed_files row for corrupt.png, got %v", fake.FailedFiles)
 	}
@@ -51,7 +52,7 @@ func TestApp_ParseScreenshots_NilResultWithoutErrorRecordsFallback(t *testing.T)
 	if err := a.ParseScreenshots(); err != nil {
 		t.Fatalf("ParseScreenshots: %v", err)
 	}
-	row, ok := fake.FailedFiles["empty.png"]
+	row, ok := fake.FailedFileNamed("empty.png")
 	if !ok {
 		t.Fatalf("expected a failed_files row for empty.png, got %v", fake.FailedFiles)
 	}
@@ -62,7 +63,7 @@ func TestApp_ParseScreenshots_NilResultWithoutErrorRecordsFallback(t *testing.T)
 
 func TestApp_ParseScreenshots_SuccessClearsFailedFile(t *testing.T) {
 	a, fake := newParseReadyApp(t)
-	if err := fake.RecordFailedFile("flaky.png", 1, "tesseract failed: exit status 1"); err != nil {
+	if err := fake.RecordFailedFile(db.FileRef{DirID: parseDirID(t, a, fake), Filename: "flaky.png"}, db.FailureParseFailed, "tesseract failed: exit status 1"); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 	stubParse(t, func(progress parser.ProgressFunc) error {
@@ -74,7 +75,7 @@ func TestApp_ParseScreenshots_SuccessClearsFailedFile(t *testing.T) {
 	if err := a.ParseScreenshots(); err != nil {
 		t.Fatalf("ParseScreenshots: %v", err)
 	}
-	if _, still := fake.FailedFiles["flaky.png"]; still {
+	if _, still := fake.FailedFileNamed("flaky.png"); still {
 		t.Error("a successful parse must remove the file's failure row")
 	}
 }
@@ -102,7 +103,7 @@ func TestApp_ParseScreenshots_DegradedParseIsLedgeredAndStillStored(t *testing.T
 	if err := a.ParseScreenshots(); err != nil {
 		t.Fatalf("ParseScreenshots: %v", err)
 	}
-	row, ok := fake.FailedFiles["degraded.png"]
+	row, ok := fake.FailedFileNamed("degraded.png")
 	if !ok {
 		t.Fatalf("a degraded parse must stay in the triage ledger, got %v", fake.FailedFiles)
 	}
@@ -118,7 +119,7 @@ func TestApp_ParseScreenshots_DegradedParseIsLedgeredAndStillStored(t *testing.T
 // the standing row from an earlier degraded run is cleared.
 func TestApp_ParseScreenshots_CleanReparseClearsADegradedLedgerRow(t *testing.T) {
 	a, fake := newParseReadyApp(t)
-	if err := fake.RecordFailedFile("degraded.png", 1, "personal_r0c2 OCR failed"); err != nil {
+	if err := fake.RecordFailedFile(db.FileRef{DirID: parseDirID(t, a, fake), Filename: "degraded.png"}, db.FailureParseFailed, "personal_r0c2 OCR failed"); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 	stubParse(t, func(progress parser.ProgressFunc) error {
@@ -133,21 +134,21 @@ func TestApp_ParseScreenshots_CleanReparseClearsADegradedLedgerRow(t *testing.T)
 	if err := a.ParseScreenshots(); err != nil {
 		t.Fatalf("ParseScreenshots: %v", err)
 	}
-	if _, still := fake.FailedFiles["degraded.png"]; still {
+	if _, still := fake.FailedFileNamed("degraded.png"); still {
 		t.Error("a warning-free re-parse must clear the standing ledger row")
 	}
 }
 
 func TestApp_IgnoreScreenshot_ClearsFailedFile(t *testing.T) {
 	a, fake := newParseReadyApp(t)
-	if err := fake.RecordFailedFile("junk.png", 1, "could not locate the highlighted row"); err != nil {
+	if err := fake.RecordFailedFile(db.FileRef{DirID: parseDirID(t, a, fake), Filename: "junk.png"}, db.FailureParseFailed, "could not locate the highlighted row"); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 
 	if err := a.IgnoreScreenshot("junk.png"); err != nil {
 		t.Fatalf("IgnoreScreenshot: %v", err)
 	}
-	if _, still := fake.FailedFiles["junk.png"]; still {
+	if _, still := fake.FailedFileNamed("junk.png"); still {
 		t.Error("Delete forever must remove the file's failure row")
 	}
 	if !fake.Ignored["junk.png"] {
@@ -158,7 +159,7 @@ func TestApp_IgnoreScreenshot_ClearsFailedFile(t *testing.T) {
 func TestApp_ParseScreenshots_FailedFileRetriedBelowCap(t *testing.T) {
 	a, fake := newParseReadyApp(t)
 	for range 2 {
-		if err := fake.RecordFailedFile("corrupt.png", 1, "boom"); err != nil {
+		if err := fake.RecordFailedFile(db.FileRef{DirID: parseDirID(t, a, fake), Filename: "corrupt.png"}, db.FailureParseFailed, "boom"); err != nil {
 			t.Fatalf("seed: %v", err)
 		}
 	}
@@ -196,7 +197,7 @@ func TestApp_ParseScreenshots_FileParksAtAttemptCap(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 3 {
-		if err := fake.RecordFailedFile("corrupt.png", dirID, "boom"); err != nil {
+		if err := fake.RecordFailedFile(db.FileRef{DirID: dirID, Filename: "corrupt.png"}, db.FailureParseFailed, "boom"); err != nil {
 			t.Fatalf("seed: %v", err)
 		}
 	}
@@ -235,7 +236,7 @@ func TestApp_ParseScreenshots_InsertErrorRecordsFailedFile(t *testing.T) {
 	if err := a.ParseScreenshots(); err != nil {
 		t.Fatalf("ParseScreenshots: %v", err)
 	}
-	row, ok := fake.FailedFiles["victim.png"]
+	row, ok := fake.FailedFileNamed("victim.png")
 	if !ok {
 		t.Fatalf("an insert failure must land in the ledger, got %v", fake.FailedFiles)
 	}
@@ -256,7 +257,7 @@ func TestApp_ParseScreenshots_AmbiguityErrorRecordsFailedFile(t *testing.T) {
 	if err := a.ParseScreenshots(); err != nil {
 		t.Fatalf("ParseScreenshots: %v", err)
 	}
-	row, ok := fake.FailedFiles["victim.png"]
+	row, ok := fake.FailedFileNamed("victim.png")
 	if !ok {
 		t.Fatalf("an ambiguity-write failure must land in the ledger, got %v", fake.FailedFiles)
 	}
@@ -306,7 +307,7 @@ func TestApp_RetryFailedFile_RestoresTheFileToPending(t *testing.T) {
 	}
 	writeFile(t, dir, "stuck.png", []byte("stuck"))
 	for range 3 {
-		if err := fake.RecordFailedFile("stuck.png", dirID, "boom"); err != nil {
+		if err := fake.RecordFailedFile(db.FileRef{DirID: dirID, Filename: "stuck.png"}, db.FailureParseFailed, "boom"); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -315,7 +316,7 @@ func TestApp_RetryFailedFile_RestoresTheFileToPending(t *testing.T) {
 		t.Fatalf("RetryFailedFile: %v", err)
 	}
 
-	if _, still := fake.FailedFiles["stuck.png"]; still {
+	if _, still := fake.FailedFileNamed("stuck.png"); still {
 		t.Error("retry must delete the failure row")
 	}
 	p, err := a.GetNewScreenshotCount()
@@ -372,7 +373,7 @@ func seedAppFailures(t *testing.T, fake *dbtest.Fake, dirID int64, attempts map[
 	t.Helper()
 	for f, n := range attempts {
 		for range n {
-			if err := fake.RecordFailedFile(f, dirID, "boom"); err != nil {
+			if err := fake.RecordFailedFile(db.FileRef{DirID: dirID, Filename: f}, db.FailureParseFailed, "boom"); err != nil {
 				t.Fatalf("seed %s: %v", f, err)
 			}
 		}
@@ -400,7 +401,7 @@ func TestApp_ParseScreenshots_OneRunMovesAttemptsByOne(t *testing.T) {
 	if err := a.ParseScreenshots(); err != nil {
 		t.Fatalf("ParseScreenshots: %v", err)
 	}
-	if got := fake.FailedFiles["victim.png"].Attempts; got != 1 {
+	if got := failedRow(t, fake, "victim.png").Attempts; got != 1 {
 		t.Errorf("attempts = %d, want 1 — a degraded parse plus an insert failure is one run", got)
 	}
 }
@@ -408,7 +409,7 @@ func TestApp_ParseScreenshots_OneRunMovesAttemptsByOne(t *testing.T) {
 func TestApp_ParseScreenshots_InsertFailureDoesNotResetAttempts(t *testing.T) {
 	a, fake := newParseReadyApp(t)
 	for range 2 {
-		if err := fake.RecordFailedFile("victim.png", 1, "boom"); err != nil {
+		if err := fake.RecordFailedFile(db.FileRef{DirID: parseDirID(t, a, fake), Filename: "victim.png"}, db.FailureParseFailed, "boom"); err != nil {
 			t.Fatalf("seed: %v", err)
 		}
 	}
@@ -421,7 +422,43 @@ func TestApp_ParseScreenshots_InsertFailureDoesNotResetAttempts(t *testing.T) {
 	if err := a.ParseScreenshots(); err != nil {
 		t.Fatalf("ParseScreenshots: %v", err)
 	}
-	if got := fake.FailedFiles["victim.png"].Attempts; got != 3 {
+	if got := failedRow(t, fake, "victim.png").Attempts; got != 3 {
 		t.Errorf("attempts = %d, want 3 — a clean parse that failed to store must not reset the count", got)
 	}
+}
+
+// A Tesseract outage fails every file it touches, and none of them is at
+// fault. The ledger records the outage (the Failed section still says why)
+// but counts no attempt, so a backlog that met a missing binary is not parked
+// behind it.
+func TestApp_ParseScreenshots_AnOCROutageParksNothing(t *testing.T) {
+	a, fake := newParseReadyApp(t)
+	stubParse(t, func(progress parser.ProgressFunc) error {
+		progress(1, 1, "x.png", nil, fmt.Errorf("%w at %q", parser.ErrOCRUnavailable, "/nowhere"))
+		return nil
+	})
+	for range 4 {
+		if err := a.ParseScreenshots(); err != nil {
+			t.Fatalf("ParseScreenshots: %v", err)
+		}
+	}
+	row, ok := fake.FailedFileNamed("x.png")
+	if !ok || row.Kind != db.FailureOCRUnavailable || row.Attempts != 0 {
+		t.Errorf("ledger row = %+v (present %v), want ocr_unavailable with no attempts", row, ok)
+	}
+	var skip map[string]bool
+	stubParseCapturingSkip(t, &skip)
+	if err := a.ParseScreenshots(); err != nil {
+		t.Fatalf("ParseScreenshots: %v", err)
+	}
+	if skip["x.png"] {
+		t.Error("an outage parked the file")
+	}
+}
+
+// failedRow is the ledger row for filename, wherever its folder.
+func failedRow(t *testing.T, fake *dbtest.Fake, filename string) db.FailedFileRow {
+	t.Helper()
+	row, _ := fake.FailedFileNamed(filename)
+	return row
 }

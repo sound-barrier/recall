@@ -558,14 +558,23 @@ CREATE TABLE IF NOT EXISTS match_play_mode (
 -- row, no failed_files entry, nothing on the Unknown tab. CASCADE means the
 -- copy cannot outlive what it is a copy of.
 --
--- NULL rather than '' for originals because SQLite exempts a NULL child key
--- from the FK check; '' would demand a parent row named ''. The Go surface
--- keeps "" and the store maps the two at the boundary.
+-- Keyed by (folder, filename): a filename is a basename, and two folders
+-- hold same-named captures. A copy may live in another folder than its
+-- canonical, so duplicate_of carries the canonical's folder too.
+--
+-- NULL rather than '' for originals because SQLite exempts a child key with
+-- a NULL column from the FK check; '' would demand a parent row named ''. The
+-- Go surface keeps a zero FileRef and the store maps the two at the boundary.
 CREATE TABLE IF NOT EXISTS ingested_files (
-  filename TEXT PRIMARY KEY,
+  screenshots_dir_id INTEGER NOT NULL REFERENCES screenshots_dirs (id) ON DELETE RESTRICT,
+  filename TEXT NOT NULL,
   content_hash TEXT NOT NULL,
-  duplicate_of TEXT REFERENCES ingested_files (filename) ON DELETE CASCADE,
-  first_seen_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+  duplicate_of_dir_id INTEGER,
+  duplicate_of TEXT,
+  first_seen_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  PRIMARY KEY (screenshots_dir_id, filename),
+  FOREIGN KEY (duplicate_of_dir_id, duplicate_of)
+    REFERENCES ingested_files (screenshots_dir_id, filename) ON DELETE CASCADE
 ) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_ingested_files_hash ON ingested_files (content_hash);
@@ -587,35 +596,48 @@ CREATE TABLE IF NOT EXISTS ignored_screenshots (
 -- it. screenshots_dir_id lets the diagnostic bundle resolve the on-disk
 -- path later (PruneScreenshotsDirs unions this table so a dir referenced
 -- only here survives the startup GC).
+--
+-- Keyed by (folder, filename) so parking and unparking stay in the folder
+-- they happened in. kind says whether the parse ran and failed
+-- ('parse_failed', which counts an attempt) or never reached the file
+-- because the OCR engine was not there ('ocr_unavailable', which counts
+-- none — an outage is not a verdict on the file, and must not park the
+-- whole backlog it touched).
 CREATE TABLE IF NOT EXISTS failed_files (
-  filename TEXT PRIMARY KEY,
   screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs (id) ON DELETE RESTRICT,
+  filename TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'parse_failed' CHECK (kind IN ('ocr_unavailable', 'parse_failed')),
   error TEXT NOT NULL DEFAULT '',
   attempts INTEGER NOT NULL DEFAULT 1,
   first_failed_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   last_failed_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
-  parser_generation INTEGER
+  parser_generation INTEGER,
+  PRIMARY KEY (screenshots_dir_id, filename)
 ) STRICT;
 -- statement-end
 
 -- Recognized-but-unstored skip list for the PERSONAL "All Heroes" aggregate
 -- view. The parser classifies it ("all_heroes") but extracts nothing — its
 -- combat totals duplicate the TEAMS screen and its card icons defeat the OCR.
--- Recording only the filename keeps the screen out of the next OCR run (like
+-- Recording only the file (folder + name) keeps the screen out of the next OCR run (like
 -- ignored_screenshots) without a garbage match row or an Unknown-tab entry.
 CREATE TABLE IF NOT EXISTS all_heroes_screenshots (
-  filename TEXT PRIMARY KEY,
-  recognized_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+  screenshots_dir_id INTEGER NOT NULL REFERENCES screenshots_dirs (id) ON DELETE RESTRICT,
+  filename TEXT NOT NULL,
+  recognized_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  PRIMARY KEY (screenshots_dir_id, filename)
 ) STRICT;
 -- statement-end
 
 -- Recognized-but-unstored skip list for the career profile's HISTORY -> GAME
 -- REPORTS list. It is not a match screen, so the parser classifies it
--- ("history") and extracts nothing; recording the filename keeps it out of the
+-- ("history") and extracts nothing; recording the file (folder + name) keeps it out of the
 -- next OCR run, the failed-files ledger, and the Unknown tab.
 CREATE TABLE IF NOT EXISTS history_screenshots (
-  filename TEXT PRIMARY KEY,
-  recognized_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+  screenshots_dir_id INTEGER NOT NULL REFERENCES screenshots_dirs (id) ON DELETE RESTRICT,
+  filename TEXT NOT NULL,
+  recognized_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  PRIMARY KEY (screenshots_dir_id, filename)
 ) STRICT;
 -- statement-end
 

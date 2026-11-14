@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"recall/pkg/app"
+	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
 )
 
@@ -31,7 +32,7 @@ func TestApp_ExportDiagnosticBundle_AssemblesLedgerLogsAndEnv(t *testing.T) {
 	shots := t.TempDir()
 	app.SettingsOf(a).ScreenshotsDir = shots
 	mustNoErr(t, os.WriteFile(filepath.Join(shots, "bad.png"), []byte("not a png"), 0o600))
-	mustNoErr(t, fake.RecordFailedFile("bad.png", 0, "decoding image: png: invalid format"))
+	mustNoErr(t, fake.RecordFailedFile(db.FileRef{DirID: 0, Filename: "bad.png"}, db.FailureParseFailed, "decoding image: png: invalid format"))
 
 	data, err := a.ExportDiagnosticBundle(nil)
 	mustNoErr(t, err)
