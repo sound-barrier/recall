@@ -37,15 +37,20 @@ import (
 // a failed load mutes annotations/flags on the result, never the
 // operation itself (matching the per-file loads it replaced).
 func (a *App) loadSidecars() aggregate.Sidecars {
-	annos, _ := a.store.LoadAnnotations()
-	hidden, _ := a.store.LoadHiddenKeys()
-	ackedGaps, _ := a.store.LoadAcknowledgedReferenceGaps()
-	reviews, _ := a.store.LoadReviews()
-	pinned, _ := a.store.LoadPinnedKeys()
-	coachNotes, _ := a.store.LoadMatchCoachNotes()
-	moments, _ := a.store.LoadMatchMoments()
-	selfReviews, _ := a.store.LoadSelfReviewNotes()
-	dupLinks, _ := a.store.LoadAllDuplicateLinks()
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return aggregate.Sidecars{}
+	}
+	defer release()
+	annos, _ := store.LoadAnnotations()
+	hidden, _ := store.LoadHiddenKeys()
+	ackedGaps, _ := store.LoadAcknowledgedReferenceGaps()
+	reviews, _ := store.LoadReviews()
+	pinned, _ := store.LoadPinnedKeys()
+	coachNotes, _ := store.LoadMatchCoachNotes()
+	moments, _ := store.LoadMatchMoments()
+	selfReviews, _ := store.LoadSelfReviewNotes()
+	dupLinks, _ := store.LoadAllDuplicateLinks()
 	return aggregate.Sidecars{
 		Annotations: annos, Hidden: hidden, AckedRefGaps: ackedGaps, Reviews: reviews,
 		Pinned: pinned, CoachNotes: coachNotes, Moments: moments, SelfReviews: selfReviews,
@@ -54,7 +59,12 @@ func (a *App) loadSidecars() aggregate.Sidecars {
 }
 
 func (a *App) reAggregateUnknowns() (int, error) {
-	return a.store.ReAggregateUnknowns(parser.FirstKnownHeroIn, parser.FirstKnownMapIn)
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return 0, leaseErr
+	}
+	defer release()
+	return store.ReAggregateUnknowns(parser.FirstKnownHeroIn, parser.FirstKnownMapIn)
 }
 
 // aggregateInputs is everything the aggregator grafts onto the screenshot
@@ -79,22 +89,27 @@ type aggregateInputs struct {
 }
 
 func (a *App) loadAggregateInputs() (aggregateInputs, error) {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return aggregateInputs{}, leaseErr
+	}
+	defer release()
 	var s aggregateInputs
 	var err error
 	for _, load := range []func() error{
-		func() (err error) { s.snap, err = a.store.LoadAll(); return },
-		func() (err error) { s.annos, err = a.store.LoadAnnotations(); return },
-		func() (err error) { s.hidden, err = a.store.LoadHiddenKeys(); return },
-		func() (err error) { s.ackedGaps, err = a.store.LoadAcknowledgedReferenceGaps(); return },
-		func() (err error) { s.reviews, err = a.store.LoadReviews(); return },
-		func() (err error) { s.pinned, err = a.store.LoadPinnedKeys(); return },
-		func() (err error) { s.queues, err = a.store.LoadMatchQueues(); return },
-		func() (err error) { s.playModes, err = a.store.LoadMatchPlayModes(); return },
-		func() (err error) { s.userData, err = a.store.LoadAllUserMatchData(); return },
-		func() (err error) { s.coachNotes, err = a.store.LoadMatchCoachNotes(); return },
-		func() (err error) { s.moments, err = a.store.LoadMatchMoments(); return },
-		func() (err error) { s.selfReviews, err = a.store.LoadSelfReviewNotes(); return },
-		func() (err error) { s.dupLinks, err = a.store.LoadAllDuplicateLinks(); return },
+		func() (err error) { s.snap, err = store.LoadAll(); return },
+		func() (err error) { s.annos, err = store.LoadAnnotations(); return },
+		func() (err error) { s.hidden, err = store.LoadHiddenKeys(); return },
+		func() (err error) { s.ackedGaps, err = store.LoadAcknowledgedReferenceGaps(); return },
+		func() (err error) { s.reviews, err = store.LoadReviews(); return },
+		func() (err error) { s.pinned, err = store.LoadPinnedKeys(); return },
+		func() (err error) { s.queues, err = store.LoadMatchQueues(); return },
+		func() (err error) { s.playModes, err = store.LoadMatchPlayModes(); return },
+		func() (err error) { s.userData, err = store.LoadAllUserMatchData(); return },
+		func() (err error) { s.coachNotes, err = store.LoadMatchCoachNotes(); return },
+		func() (err error) { s.moments, err = store.LoadMatchMoments(); return },
+		func() (err error) { s.selfReviews, err = store.LoadSelfReviewNotes(); return },
+		func() (err error) { s.dupLinks, err = store.LoadAllDuplicateLinks(); return },
 	} {
 		if err = load(); err != nil {
 			return aggregateInputs{}, err

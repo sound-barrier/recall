@@ -23,8 +23,13 @@ import (
 // logged and the parse proceeds; the worst case is an un-deduped OCR
 // pass, which is exactly the pre-feature behavior.
 func (a *App) dedupNewFiles(dir string, parsed map[string]bool) {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return
+	}
+	defer release()
 	logger := applog.Subsystem("dedup")
-	ingested, err := a.store.LoadIngestedFiles()
+	ingested, err := store.LoadIngestedFiles()
 	if err != nil {
 		logger.Error("load registry failed; skipping dedup", "err", err)
 		return
@@ -75,13 +80,18 @@ func isImageEntry(e os.DirEntry) bool {
 // copy of a registered original joins the skip set as a duplicate; anything
 // else registers as a fresh original future copies can match.
 func (a *App) registerIngestedImage(logger *slog.Logger, dir, base string, parsed map[string]bool, byHash map[string]string) {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return
+	}
+	defer release()
 	hash, err := hashFile(filepath.Join(dir, base))
 	if err != nil {
 		logger.Error("hash failed", "file", base, "err", err)
 		return
 	}
 	if canonical, dup := byHash[hash]; dup && canonical != base {
-		if err := a.store.UpsertIngestedFile(base, hash, canonical); err != nil {
+		if err := store.UpsertIngestedFile(base, hash, canonical); err != nil {
 			logger.Error("record duplicate failed", "file", base, "err", err)
 			return
 		}
@@ -94,7 +104,7 @@ func (a *App) registerIngestedImage(logger *slog.Logger, dir, base string, parse
 		logger.Info("screenshot owned by another profile skipped", "file", base)
 		return
 	}
-	if err := a.store.UpsertIngestedFile(base, hash, ""); err != nil {
+	if err := store.UpsertIngestedFile(base, hash, ""); err != nil {
 		logger.Error("record original failed", "file", base, "err", err)
 		return
 	}
@@ -108,7 +118,12 @@ func (a *App) registerIngestedImage(logger *slog.Logger, dir, base string, parse
 // Best-effort like the rest of the skip set: a registry read failure just
 // means nothing is suppressed and the copies get re-OCR'd.
 func (a *App) standingDuplicates() map[string]bool {
-	ingested, err := a.store.LoadIngestedFiles()
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return nil
+	}
+	defer release()
+	ingested, err := store.LoadIngestedFiles()
 	if err != nil {
 		applog.Subsystem("dedup").Error("load registry failed; standing duplicates not skipped", "err", err)
 		return nil

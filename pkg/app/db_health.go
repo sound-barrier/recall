@@ -16,7 +16,12 @@ var ErrInvalidMaintenanceOp = errors.New("unknown maintenance operation")
 // + size/freelist stats). Safe concurrently with a parse — WAL
 // readers don't block the writer.
 func (a *App) GetDatabaseHealth() (db.Health, error) {
-	return a.store.Health()
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return db.Health{}, leaseErr
+	}
+	defer release()
+	return store.Health()
 }
 
 // RunDatabaseMaintenance executes one maintenance operation and
@@ -25,12 +30,17 @@ func (a *App) GetDatabaseHealth() (db.Health, error) {
 // RestoreDatabase: VACUUM takes an exclusive lock for its duration,
 // and running it mid-parse would stall both.
 func (a *App) RunDatabaseMaintenance(operation string) (db.Health, error) {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return db.Health{}, leaseErr
+	}
+	defer release()
 	var run func() error
 	switch operation {
 	case "optimize":
-		run = func() error { return a.store.Optimize() }
+		run = func() error { return store.Optimize() }
 	case "vacuum":
-		run = func() error { return a.store.Vacuum() }
+		run = func() error { return store.Vacuum() }
 	default:
 		return db.Health{}, fmt.Errorf("%w: %q", ErrInvalidMaintenanceOp, operation)
 	}
@@ -39,7 +49,7 @@ func (a *App) RunDatabaseMaintenance(operation string) (db.Health, error) {
 		if err := run(); err != nil {
 			return err
 		}
-		h, err := a.store.Health()
+		h, err := store.Health()
 		health = h
 		return err
 	})
@@ -57,10 +67,15 @@ func (a *App) RunDatabaseMaintenance(operation string) (db.Health, error) {
 // Failures are logged, never surfaced — maintenance must not fail a
 // successful parse.
 func (a *App) optimizeAfterParse(matchesChanged int) {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return
+	}
+	defer release()
 	if matchesChanged == 0 {
 		return
 	}
-	if err := a.store.Optimize(); err != nil {
+	if err := store.Optimize(); err != nil {
 		applog.Subsystem("parse").Error("post-parse optimize failed", "err", err)
 		return
 	}

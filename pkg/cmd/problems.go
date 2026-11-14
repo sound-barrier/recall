@@ -56,6 +56,14 @@ var (
 	// the sender can act on without guessing.
 	probPayloadTooLarge = problemType{"payload-too-large", "Payload Too Large", http.StatusRequestEntityTooLarge}
 	probInternal        = problemType{"internal", "Internal Server Error", http.StatusInternalServerError}
+	// The store is mid-swap (a restore, a profile switch or rename): every
+	// store-backed request is briefly unservable, whatever it asks for — 503
+	// rather than 409, since nothing about the request or the resource it
+	// names is in conflict. A swap takes about a second.
+	probStoreSwapping = problemType{"store-swapping", "Service Unavailable", http.StatusServiceUnavailable}
+	// No store is open at all — Startup or a swap could open none. No
+	// Retry-After: waiting does not fix it.
+	probStoreUnavailable = problemType{"store-unavailable", "Service Unavailable", http.StatusServiceUnavailable}
 )
 
 // fieldError is one entry in the `errors` extension member — a single offending
@@ -102,16 +110,20 @@ func writeProblem(w http.ResponseWriter, r *http.Request, pt problemType, detail
 		o(&p)
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
+	if pt == probStoreSwapping {
+		// Seconds: a swap is over in about one.
+		w.Header().Set("Retry-After", "1")
+	}
 	w.WriteHeader(pt.status)
 	if encErr := json.NewEncoder(w).Encode(p); encErr != nil {
 		applog.Subsystem("server").Error("problem encode", "err", encErr)
 	}
 }
 
-// writeJSON encodes v as JSON. If err is non-nil it writes a 500 problem instead.
+// writeJSON encodes v as JSON. A non-nil err is answered the way writeError
+// answers it: a known sentinel's problem, else a 500.
 func writeJSON(w http.ResponseWriter, r *http.Request, v any, err error) {
-	if err != nil {
-		writeProblem(w, r, probInternal, err.Error())
+	if writeError(w, r, err) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -175,8 +187,9 @@ var defaultProblems = []errStatus{
 	// below); it is spec-valid, since the schema cannot say "unique by
 	// item_id", so the contradiction answers 409.
 	{db.ErrFocusItemDuplicate, probConflict},
-	// A restore or profile switch has the store closed; retry shortly.
-	{app.ErrStoreSwapInProgress, probConflict},
+	// 503 — the store is mid-swap, or there is none.
+	{app.ErrStoreSwapInProgress, probStoreSwapping},
+	{app.ErrStoreUnavailable, probStoreUnavailable},
 
 	// 400 — the request body doesn't hold up.
 	// An empty match key is malformed input, not a server fault. The

@@ -367,10 +367,11 @@ var ErrParseInFlight = errors.New("a parse is already in flight")
 // Synchronous (blocks until the run finishes) — the Wails IPC path +
 // Go tests rely on that. Server mode uses StartParse instead.
 func (a *App) ReParseAll() error {
-	if err := a.assertNoCoachSession(); err != nil {
+	ctx, id, dir, err := a.claimParseGated(true)
+	if err != nil {
 		return err
 	}
-	return a.parseSync(true)
+	return a.runParseSync(ctx, id, true, dir)
 }
 
 // ParseScreenshots OCRs every image in screenshots/ and writes each
@@ -384,10 +385,11 @@ func (a *App) ReParseAll() error {
 // ingesting the coach's own screenshots into the coach's own store while a
 // session is open (design rule 1).
 func (a *App) ParseScreenshots() error {
-	if err := a.assertNoCoachSession(); err != nil {
+	ctx, id, dir, err := a.claimParseGated(false)
+	if err != nil {
 		return err
 	}
-	return a.parseSync(false)
+	return a.runParseSync(ctx, id, false, dir)
 }
 
 // StartParse kicks off a parse in a BACKGROUND goroutine and returns the
@@ -398,14 +400,7 @@ func (a *App) ParseScreenshots() error {
 // already holding the slot returns ErrParseInFlight. This is what makes the
 // run survive a client network drop — there's no held-open request to lose.
 func (a *App) StartParse(force bool) (RunID, error) {
-	if err := a.assertNoCoachSession(); err != nil {
-		return 0, err
-	}
-	dir, err := a.validateParsePreconditions()
-	if err != nil {
-		return 0, err
-	}
-	ctx, id, err := a.claimRun(parseKind(force))
+	ctx, id, dir, err := a.claimParseGated(force)
 	if err != nil {
 		return 0, err
 	}
@@ -424,14 +419,46 @@ func (a *App) StartParse(force bool) (RunID, error) {
 // (ErrParseInFlight) instead of queuing. A canceled run is not an error
 // to the caller: the user asked for it, and run-finished says so.
 func (a *App) parseSync(force bool) error {
-	dir, err := a.validateParsePreconditions()
+	ctx, id, dir, err := a.claimParse(force)
 	if err != nil {
 		return err
+	}
+	return a.runParseSync(ctx, id, force, dir)
+}
+
+// The user-initiated entry points (ReParseAll, ParseScreenshots,
+// StartParse) hold the coaching write gate only while the run claims its
+// slot. Not for the whole run — once claimed, a parse only ingests the
+// coach's own screenshots into the coach's own store, which is exactly what
+// the watcher's parse does while a session is open (design rule 1), so a
+// session may open beside it.
+
+// claimParseGated claims the run slot for a parse inside the write gate.
+func (a *App) claimParseGated(force bool) (context.Context, RunID, string, error) {
+	leave, err := a.enterWriteGate()
+	if err != nil {
+		return nil, 0, "", err
+	}
+	defer leave()
+	return a.claimParse(force)
+}
+
+// claimParse checks a parse can run and claims the run slot for it.
+func (a *App) claimParse(force bool) (context.Context, RunID, string, error) {
+	dir, err := a.validateParsePreconditions()
+	if err != nil {
+		return nil, 0, "", err
 	}
 	ctx, id, err := a.claimRun(parseKind(force))
 	if err != nil {
-		return err
+		return nil, 0, "", err
 	}
+	return ctx, id, dir, nil
+}
+
+// runParseSync drives a claimed parse on the caller's goroutine. A canceled
+// run is not an error to the caller: the user asked for it.
+func (a *App) runParseSync(ctx context.Context, id RunID, force bool, dir string) error {
 	if runErr := a.runParse(ctx, id, force, dir); runErr != nil && !errors.Is(runErr, context.Canceled) {
 		return runErr
 	}

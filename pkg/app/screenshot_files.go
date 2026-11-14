@@ -38,10 +38,22 @@ func (a *App) attachThumbnails(recs []match.Record) {
 // the handler falls through to the configured dir — a stale FK from a
 // deleted screenshots_dirs row doesn't hard-fail the preview.
 func (a *App) resolveScreenshotDir(dirID int64) string {
-	if dirID > 0 && a.store != nil {
-		if resolved, _ := a.store.LookupScreenshotsDir(dirID); resolved != "" {
+	if dirID > 0 {
+		if resolved := a.lookupScreenshotsDir(dirID); resolved != "" {
 			return resolved
 		}
 	}
 	return a.settingsSnapshot().ScreenshotsDir
+}
+
+// lookupScreenshotsDir is the recorded folder for dirID, or "" when there is
+// none — or no store to ask.
+func (a *App) lookupScreenshotsDir(dirID int64) string {
+	store, release, err := a.useStore()
+	if err != nil {
+		return ""
+	}
+	defer release()
+	resolved, _ := store.LookupScreenshotsDir(dirID)
+	return resolved
 }

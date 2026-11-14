@@ -143,6 +143,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: ClearMatches
       tags: [Matches]
@@ -184,6 +186,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     post:
       operationId: CreateManualMatch
       tags: [Matches]
@@ -215,6 +219,8 @@ paths:
           description: A match already exists at that time; pick a different minute.
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/matches/{match_key}:
     parameters:
@@ -246,6 +252,8 @@ paths:
           description: Match not found.
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: HardDeleteMatch
       tags: [Matches]
@@ -268,6 +276,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/matches/{match_key}/visibility:
     parameters:
@@ -308,6 +318,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/matches/{match_key}/reference-gap-acknowledgement:
     parameters:
@@ -346,6 +358,8 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: UnacknowledgeReferenceGap
       tags: [Matches]
@@ -369,6 +383,8 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/matches/{match_key}/pin:
     parameters:
@@ -404,6 +420,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/matches/{match_key}/resolution:
     parameters:
@@ -459,6 +477,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/matches/{match_key}/moments/{moment_id}:
     parameters:
@@ -508,6 +528,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: DeleteMatchMoment
       tags: [Matches]
@@ -522,6 +544,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/matches/{match_key}/annotation:
     parameters:
@@ -639,6 +663,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: DeleteMatchAnnotation
       tags: [Matches]
@@ -653,6 +679,8 @@ paths:
           description: Annotation cleared (or already absent).
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/matches/{match_key}/data:
     parameters:
@@ -691,6 +719,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: ResetMatchData
       tags: [Matches]
@@ -705,6 +735,8 @@ paths:
           description: Overrides cleared.
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/matches/{match_key}/review:
     parameters:
@@ -749,6 +781,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: ClearMatchReview
       tags: [Matches]
@@ -764,6 +798,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/matches/{match_key}/queue:
     parameters:
@@ -808,6 +844,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: ClearMatchQueue
       tags: [Matches]
@@ -823,6 +861,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/matches/{match_key}/play-mode:
     parameters:
@@ -867,6 +907,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: ClearMatchPlayMode
       tags: [Matches]
@@ -882,6 +924,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/matches/queue:
     put:
@@ -930,6 +974,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/matches/play-mode:
     put:
@@ -976,6 +1022,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/parses:
     post:
@@ -1031,6 +1079,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/parses/active:
     get:
@@ -1053,6 +1103,8 @@ paths:
                 $ref: "#/components/schemas/ActiveRun"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: CancelParse
       tags: [Pipeline]
@@ -1080,6 +1132,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/screenshots/pending-count:
     get:
@@ -1131,6 +1185,8 @@ paths:
                       skipped by normal runs, excluded from `count`.
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/screenshots/{filename}/ignore:
     parameters:
@@ -1186,6 +1242,8 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: UnignoreScreenshot
       tags: [Pipeline]
@@ -1212,6 +1270,8 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/screenshots/{filename}/failure:
     parameters:
@@ -1263,6 +1323,8 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/screenshots/ignored:
     get:
@@ -1285,6 +1347,8 @@ paths:
                   $ref: "#/components/schemas/IgnoredScreenshot"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: ClearIgnoredScreenshots
       tags: [Pipeline]
@@ -1300,6 +1364,8 @@ paths:
           description: Suppress list cleared.
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/screenshots/failed:
     get:
@@ -1333,6 +1399,8 @@ paths:
                   $ref: "#/components/schemas/FailedFile"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/settings/screenshots-folder:
     get:
@@ -1393,6 +1461,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: ResetScreenshotsFolder
       tags: [Settings]
@@ -1411,6 +1481,8 @@ paths:
           description: Cleared.
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/settings/tesseract:
     get:
@@ -1482,6 +1554,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: ResetTesseractPath
       tags: [Settings]
@@ -1501,6 +1575,8 @@ paths:
                 $ref: "#/components/schemas/TesseractStatus"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/settings/watcher:
     get:
@@ -1538,6 +1614,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/settings/close-behavior:
     get:
@@ -1577,6 +1655,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/settings/window-geometry:
     delete:
@@ -1602,6 +1682,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/settings/auto-backup:
     get:
@@ -1657,6 +1739,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/profiles:
     get:
@@ -1676,6 +1760,8 @@ paths:
                 $ref: "#/components/schemas/ProfilesResponse"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     post:
       operationId: CreateProfile
       tags: [Profiles]
@@ -1713,6 +1799,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/profiles/test/seed:
     post:
@@ -1736,6 +1824,8 @@ paths:
                 $ref: "#/components/schemas/SeedTestProfileResponse"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/profiles/active:
     put:
@@ -1772,6 +1862,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/profiles/active/screenshot-claims:
     post:
@@ -1802,6 +1894,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/profiles/{name}:
     parameters:
@@ -1855,6 +1949,8 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: DeleteProfile
       tags: [Profiles]
@@ -1879,6 +1975,8 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/matches/transfers:
     post:
@@ -1930,6 +2028,8 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/system/parse-staleness:
     get:
@@ -1973,6 +2073,8 @@ paths:
                       The build's parser.Generation — the vintage the count is
                       measured against.
                     example: 1
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/system/startup-error:
     get:
@@ -2076,6 +2178,8 @@ paths:
           $ref: "#/components/responses/SHAVerificationFailed"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
         "502":
           $ref: "#/components/responses/BadGateway"
 
@@ -2388,6 +2492,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/database:
     get:
@@ -2416,6 +2522,8 @@ paths:
                 description: A SQLite database file.
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     put:
       operationId: RestoreDatabase
       tags: [Backup]
@@ -2454,6 +2562,8 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/database/health:
     get:
@@ -2476,6 +2586,8 @@ paths:
                 $ref: "#/components/schemas/DBHealth"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/database/maintenance:
     post:
@@ -2518,6 +2630,8 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/coach/players/{id}/sessions:
     get:
@@ -2554,6 +2668,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/coach/players/{id}/notes:
     get:
@@ -2588,6 +2704,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/coach/players:
     get:
@@ -2611,6 +2729,8 @@ paths:
                   $ref: "#/components/schemas/CoachPlayerSummary"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/shares:
     get:
@@ -2634,6 +2754,8 @@ paths:
                   $ref: "#/components/schemas/ShareExport"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/exports/bundle:
     post:
@@ -2724,6 +2846,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/exports/diagnostic:
     post:
@@ -2779,6 +2903,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/exports/diagnostic/preflight:
     post:
@@ -2820,6 +2946,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/moment-images:
     post:
@@ -2878,6 +3006,8 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/imports:
     post:
@@ -2956,6 +3086,8 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/coach/session:
     post:
@@ -3013,6 +3145,8 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     get:
       operationId: GetCoachSession
       tags: [Coaching]
@@ -3032,6 +3166,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: CloseCoachSession
       tags: [Coaching]
@@ -3045,6 +3181,8 @@ paths:
           description: Session closed (or none was open).
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/coach/session/player:
     put:
@@ -3103,6 +3241,8 @@ paths:
             its player.
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/coach/session/replay:
     post:
@@ -3162,6 +3302,8 @@ paths:
           description: A session is already open.
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/coach/session/replay/codes:
     post:
@@ -3207,6 +3349,8 @@ paths:
           description: This session's matches came from a bundle.
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/coach/session/matches/{match_key}/context:
     parameters:
@@ -3252,6 +3396,8 @@ paths:
           description: A supplied field is not in the Overwatch vocabulary.
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/coach/session/matches:
     get:
@@ -3279,6 +3425,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/coach/session/notes/{match_key}:
     parameters:
@@ -3320,6 +3468,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: DeleteCoachNote
       tags: [Coaching]
@@ -3336,6 +3486,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/coach/session/notes/{match_key}/moments/{moment_id}:
     parameters:
@@ -3389,6 +3541,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: DeleteCoachMoment
       tags: [Coaching]
@@ -3405,6 +3559,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/coach/session/focus-items:
     put:
@@ -3436,6 +3592,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/coach/session/export:
     post:
@@ -3490,6 +3648,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/coach/returns:
     get:
@@ -3512,6 +3672,8 @@ paths:
                   $ref: "#/components/schemas/CoachReturnSheet"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/coach/returns/{id}:
     parameters:
@@ -3537,6 +3699,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: DeleteCoachReturn
       tags: [Coaching]
@@ -3556,6 +3720,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/coach/returns/{id}/decisions:
     parameters:
@@ -3602,6 +3768,8 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/matches/{match_key}/coach-notes/{id}:
     parameters:
@@ -3626,6 +3794,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/settings/coaching:
     get:
@@ -3645,6 +3815,8 @@ paths:
                 $ref: "#/components/schemas/CoachingSettings"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     put:
       operationId: SetCoachingSettings
       tags: [Coaching]
@@ -3669,6 +3841,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/self-reviews:
     get:
@@ -3690,6 +3864,8 @@ paths:
                   $ref: "#/components/schemas/SelfReview"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     post:
       operationId: CreateSelfReview
       tags: [Self review]
@@ -3726,6 +3902,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/self-reviews/{review_id}:
     parameters:
@@ -3751,6 +3929,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     put:
       operationId: UpdateSelfReview
       tags: [Self review]
@@ -3780,6 +3960,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: DeleteSelfReview
       tags: [Self review]
@@ -3797,6 +3979,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/self-reviews/{review_id}/matches:
     parameters:
@@ -3830,6 +4014,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/focus:
     get:
@@ -3853,6 +4039,8 @@ paths:
                   $ref: "#/components/schemas/FocusEntry"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/focus/{item_id}/status:
     parameters:
@@ -3895,6 +4083,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/roster:
     get:
@@ -3921,6 +4111,8 @@ paths:
                   $ref: "#/components/schemas/RosterMember"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/roster/{tag}:
     parameters:
@@ -3964,6 +4156,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: DeleteRosterMember
       tags: [Matches]
@@ -3978,6 +4172,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/self-reviews/{review_id}/focus-items:
     parameters:
@@ -4012,6 +4208,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/self-reviews/{review_id}/completion:
     parameters:
@@ -4042,6 +4240,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/self-reviews/{review_id}/notes/{match_key}:
     parameters:
@@ -4079,6 +4279,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: DeleteSelfReviewNote
       tags: [Self review]
@@ -4093,6 +4295,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/self-reviews/{review_id}/notes/{match_key}/moments/{moment_id}:
     parameters:
@@ -4142,6 +4346,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
     delete:
       operationId: DeleteSelfReviewMoment
       tags: [Self review]
@@ -4156,6 +4362,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
 
   /api/v1/events:
     get:
@@ -7069,6 +7277,23 @@ components:
             $ref: "#/components/schemas/ProblemDetails"
     InternalError:
       description: Unhandled server-side error.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+    StoreUnavailable:
+      description: |
+        The database is not available to serve the request. Type
+        `store-swapping`: a restore, profile switch or profile rename is
+        replacing it — the response carries `Retry-After` (seconds) and a
+        retry succeeds once the swap ends, about a second later. Type
+        `store-unavailable`: no database is open at all (it could not be
+        opened at startup or after a swap) — retrying does not help.
+      headers:
+        Retry-After:
+          description: Seconds until a retry is expected to succeed (`store-swapping` only).
+          schema:
+            type: integer
       content:
         application/problem+json:
           schema:

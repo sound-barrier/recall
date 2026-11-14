@@ -45,13 +45,15 @@ type ImportOutcome struct {
 // accepts one — which is why notes are allowed on the read-only sample
 // profile and a bundle still is not.
 func (a *App) ImportMatches(payload []byte) (ImportOutcome, error) {
-	if err := a.assertNoCoachSession(); err != nil {
-		return ImportOutcome{}, err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return ImportOutcome{}, leaseErr
 	}
+	defer release()
 	if coach.SniffArchive(payload) == coach.ArchiveCoachNotes {
 		return a.stageCoachNotes(payload)
 	}
-	summary, err := bundle.Import(a.store, payload)
+	summary, err := bundle.Import(store, payload)
 	if err != nil {
 		return ImportOutcome{}, err
 	}
@@ -62,7 +64,12 @@ func (a *App) ImportMatches(payload []byte) (ImportOutcome, error) {
 // same file imported twice stages once — the second import re-opens the
 // sheet it already has, decisions intact.
 func (a *App) stageCoachNotes(payload []byte) (ImportOutcome, error) {
-	sheet, _, err := coachreturn.Stage(a.store, payload, a.settingsSnapshot().PlayerHandle, a.makeReplayMatch)
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return ImportOutcome{}, leaseErr
+	}
+	defer release()
+	sheet, _, err := coachreturn.Stage(store, payload, a.settingsSnapshot().PlayerHandle, a.makeReplayMatch)
 	if err != nil {
 		return ImportOutcome{}, err
 	}
@@ -72,13 +79,23 @@ func (a *App) stageCoachNotes(payload []byte) (ImportOutcome, error) {
 // ListCoachReturns renders every staged return, newest first — the
 // player's inbox. Undecided notes are what the Matches banner counts.
 func (a *App) ListCoachReturns() ([]coachreturn.Sheet, error) {
-	return coachreturn.Sheets(a.store, a.settingsSnapshot().PlayerHandle)
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return nil, leaseErr
+	}
+	defer release()
+	return coachreturn.Sheets(store, a.settingsSnapshot().PlayerHandle)
 }
 
 // GetCoachReturn renders one staged return. db.ErrCoachReturnUnknown when
 // id names none.
 func (a *App) GetCoachReturn(id int64) (coachreturn.Sheet, error) {
-	return coachreturn.Get(a.store, id, a.settingsSnapshot().PlayerHandle)
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return coachreturn.Sheet{}, leaseErr
+	}
+	defer release()
+	return coachreturn.Get(store, id, a.settingsSnapshot().PlayerHandle)
 }
 
 // DecideCoachReturn applies the player's verdicts and returns the
@@ -86,22 +103,29 @@ func (a *App) GetCoachReturn(id int64) (coachreturn.Sheet, error) {
 // marks it reviewed by coach; a skip removes a block an earlier accept
 // wrote. The batch is validated whole before anything is written.
 func (a *App) DecideCoachReturn(id int64, decisions []coachreturn.Verdict) (coachreturn.Sheet, error) {
-	if err := a.assertNoCoachSession(); err != nil {
-		return coachreturn.Sheet{}, err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return coachreturn.Sheet{}, leaseErr
 	}
-	return coachreturn.Decide(a.store, id, decisions, a.settingsSnapshot().PlayerHandle, a.makeReplayMatch)
+	defer release()
+	return coachreturn.Decide(store, id, decisions, a.settingsSnapshot().PlayerHandle, a.makeReplayMatch)
 }
 
 // makeReplayMatch is the seam coachreturn calls when an accepted note is
 // about a replay this history does not have. It lives here rather than in
 // that package because "an import may create matches" is a decision about
-// WRITES, and writes are the shell's business — assertNoCoachSession has
-// already run by the time anything reaches it.
+// WRITES, and writes are the shell's business — the write gate has
+// already admitted the import by the time anything reaches it.
 //
 // The match is built from the context the coach recorded while watching,
 // which is the only description of it that exists on this machine.
 func (a *App) makeReplayMatch(n coach.Note) (string, error) {
-	return matchedit.CreateFromReplay(a.store, replayInputFromNote(n))
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return "", leaseErr
+	}
+	defer release()
+	return matchedit.CreateFromReplay(store, replayInputFromNote(n))
 }
 
 // replayInputFromNote projects a note's observed context onto the create.
@@ -129,10 +153,12 @@ func replayInputFromNote(n coach.Note) match.ReplayMatchInput {
 // archive's items — a coach who sends two files in a day used to lose both
 // sets to either discard.
 func (a *App) DeleteCoachReturn(id int64) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	return a.store.DeleteCoachReturn(id)
+	defer release()
+	return store.DeleteCoachReturn(id)
 }
 
 // DeleteMatchCoachNote removes one accepted coach block from one of the
@@ -140,17 +166,19 @@ func (a *App) DeleteCoachReturn(id int64) error {
 // note must be ON that match: a mismatched pair is
 // db.ErrMatchCoachNoteUnknown rather than a delete of somebody else's row.
 func (a *App) DeleteMatchCoachNote(matchKey string, id int64) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	blocks, err := a.store.LoadMatchCoachNotes()
+	defer release()
+	blocks, err := store.LoadMatchCoachNotes()
 	if err != nil {
 		return fmt.Errorf("coach: load accepted notes: %w", err)
 	}
 	if !hasCoachBlock(blocks[matchKey], id) {
 		return fmt.Errorf("%w: note %d is not on %s", db.ErrMatchCoachNoteUnknown, id, matchKey)
 	}
-	return a.store.DeleteMatchCoachNote(id)
+	return store.DeleteMatchCoachNote(id)
 }
 
 func hasCoachBlock(blocks []db.MatchCoachNote, id int64) bool {

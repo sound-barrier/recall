@@ -40,7 +40,12 @@ func (a *App) claimScreenshot(hash, base string) bool {
 // registeredHashes snapshots the content-hash registry's originals,
 // filename -> hash. nil on a read failure.
 func (a *App) registeredHashes() map[string]string {
-	ingested, err := a.store.LoadIngestedFiles()
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return nil
+	}
+	defer release()
+	ingested, err := store.LoadIngestedFiles()
 	if err != nil {
 		applog.Subsystem("claims").Error("load registry failed", "err", err)
 		return nil
@@ -210,9 +215,11 @@ type ClaimTransfer struct {
 // screenshots just change hands. Screenshots with no match yet are left for
 // the next parse. Holds the parse slot, since it writes the active store.
 func (a *App) ClaimFolderScreenshots() (ClaimTransfer, error) {
-	if err := a.assertNoCoachSession(); err != nil {
-		return ClaimTransfer{}, err
+	leave, gateErr := a.enterWriteGate()
+	if gateErr != nil {
+		return ClaimTransfer{}, gateErr
 	}
+	defer leave()
 	if a.claims == nil || a.profiles == nil {
 		return ClaimTransfer{}, errors.New("profiles: not initialized")
 	}
@@ -276,11 +283,16 @@ func (a *App) foreignScreenshotsByOwner(dir string) (map[string]map[string]strin
 
 // ownFilenamesIn returns the screenshots in dir the active profile holds rows for.
 func (a *App) ownFilenamesIn(dir string) (map[string]bool, error) {
-	dirID, err := a.store.EnsureScreenshotsDir(dir)
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return nil, leaseErr
+	}
+	defer release()
+	dirID, err := store.EnsureScreenshotsDir(dir)
 	if err != nil {
 		return nil, err
 	}
-	return a.store.LoadFilenamesForDir(dirID)
+	return store.LoadFilenamesForDir(dirID)
 }
 
 // takeScreenshotsFrom moves owner's matches holding files into the active
@@ -307,6 +319,11 @@ func (a *App) takeScreenshotsFrom(owner string, files map[string]string) (int, e
 // moveMatchesHere moves every match in owner's store that holds one of files
 // into the active store, through the same engine as MoveMatches.
 func (a *App) moveMatchesHere(owner string, files map[string]string) (int, error) {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return 0, leaseErr
+	}
+	defer release()
 	src, err := a.openProfileStore(owner)
 	if err != nil {
 		return 0, fmt.Errorf("take screenshots from %s: %w", owner, err)
@@ -320,7 +337,7 @@ func (a *App) moveMatchesHere(owner string, files map[string]string) (int, error
 	if err != nil || len(keys) == 0 {
 		return 0, err
 	}
-	if err := profiles.Move(src, a.store, keys); err != nil {
+	if err := profiles.Move(src, store, keys); err != nil {
 		return 0, fmt.Errorf("take screenshots from %s: %w", owner, err)
 	}
 	return len(keys), nil

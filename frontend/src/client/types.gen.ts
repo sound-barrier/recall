@@ -2340,6 +2340,16 @@ export type ClearMatchesErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ClearMatchesError = ClearMatchesErrors[keyof ClearMatchesErrors];
@@ -2385,6 +2395,16 @@ export type GetMatchResultsErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type GetMatchResultsError = GetMatchResultsErrors[keyof GetMatchResultsErrors];
@@ -2418,6 +2438,16 @@ export type CreateManualMatchErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type CreateManualMatchError = CreateManualMatchErrors[keyof CreateManualMatchErrors];
@@ -2459,6 +2489,16 @@ export type HardDeleteMatchErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type HardDeleteMatchError = HardDeleteMatchErrors[keyof HardDeleteMatchErrors];
@@ -2504,6 +2544,16 @@ export type GetMatchByKeyErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type GetMatchByKeyError = GetMatchByKeyErrors[keyof GetMatchByKeyErrors];
@@ -2554,6 +2604,16 @@ export type SetMatchVisibilityErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SetMatchVisibilityError = SetMatchVisibilityErrors[keyof SetMatchVisibilityErrors];
@@ -2599,6 +2659,16 @@ export type UnacknowledgeReferenceGapErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type UnacknowledgeReferenceGapError = UnacknowledgeReferenceGapErrors[keyof UnacknowledgeReferenceGapErrors];
@@ -2648,6 +2718,16 @@ export type AcknowledgeReferenceGapErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type AcknowledgeReferenceGapError = AcknowledgeReferenceGapErrors[keyof AcknowledgeReferenceGapErrors];
@@ -2698,6 +2778,16 @@ export type SetMatchPinErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SetMatchPinError = SetMatchPinErrors[keyof SetMatchPinErrors];
@@ -2754,6 +2844,16 @@ export type ResolveAmbiguousMatchErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ResolveAmbiguousMatchError = ResolveAmbiguousMatchErrors[keyof ResolveAmbiguousMatchErrors];
@@ -2809,6 +2909,16 @@ export type DeleteMatchMomentErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type DeleteMatchMomentError = DeleteMatchMomentErrors[keyof DeleteMatchMomentErrors];
@@ -2868,6 +2978,16 @@ export type SetMatchMomentErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SetMatchMomentError = SetMatchMomentErrors[keyof SetMatchMomentErrors];
@@ -2905,6 +3025,16 @@ export type DeleteMatchAnnotationErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type DeleteMatchAnnotationError = DeleteMatchAnnotationErrors[keyof DeleteMatchAnnotationErrors];
@@ -3004,6 +3134,16 @@ export type SetMatchAnnotationErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SetMatchAnnotationError = SetMatchAnnotationErrors[keyof SetMatchAnnotationErrors];
@@ -3041,6 +3181,16 @@ export type ResetMatchDataErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ResetMatchDataError = ResetMatchDataErrors[keyof ResetMatchDataErrors];
@@ -3090,6 +3240,16 @@ export type UpdateMatchDataErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type UpdateMatchDataError = UpdateMatchDataErrors[keyof UpdateMatchDataErrors];
@@ -3131,6 +3291,16 @@ export type ClearMatchReviewErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ClearMatchReviewError = ClearMatchReviewErrors[keyof ClearMatchReviewErrors];
@@ -3184,6 +3354,16 @@ export type SetMatchReviewErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SetMatchReviewError = SetMatchReviewErrors[keyof SetMatchReviewErrors];
@@ -3225,6 +3405,16 @@ export type ClearMatchQueueErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ClearMatchQueueError = ClearMatchQueueErrors[keyof ClearMatchQueueErrors];
@@ -3272,6 +3462,16 @@ export type SetMatchQueueErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SetMatchQueueError = SetMatchQueueErrors[keyof SetMatchQueueErrors];
@@ -3313,6 +3513,16 @@ export type ClearMatchPlayModeErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ClearMatchPlayModeError = ClearMatchPlayModeErrors[keyof ClearMatchPlayModeErrors];
@@ -3360,6 +3570,16 @@ export type SetMatchPlayModeErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SetMatchPlayModeError = SetMatchPlayModeErrors[keyof SetMatchPlayModeErrors];
@@ -3402,6 +3622,16 @@ export type BulkSetMatchQueueErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type BulkSetMatchQueueError = BulkSetMatchQueueErrors[keyof BulkSetMatchQueueErrors];
@@ -3444,6 +3674,16 @@ export type BulkSetMatchPlayModeErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type BulkSetMatchPlayModeError = BulkSetMatchPlayModeErrors[keyof BulkSetMatchPlayModeErrors];
@@ -3488,6 +3728,16 @@ export type ParseScreenshotsErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ParseScreenshotsError = ParseScreenshotsErrors[keyof ParseScreenshotsErrors];
@@ -3521,6 +3771,16 @@ export type CancelParseErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type CancelParseError = CancelParseErrors[keyof CancelParseErrors];
@@ -3544,6 +3804,16 @@ export type GetActiveParseErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type GetActiveParseError = GetActiveParseErrors[keyof GetActiveParseErrors];
@@ -3569,6 +3839,16 @@ export type GetPendingScreenshotCountErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type GetPendingScreenshotCountError = GetPendingScreenshotCountErrors[keyof GetPendingScreenshotCountErrors];
@@ -3629,6 +3909,16 @@ export type UnignoreScreenshotErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type UnignoreScreenshotError = UnignoreScreenshotErrors[keyof UnignoreScreenshotErrors];
@@ -3670,6 +3960,16 @@ export type IgnoreScreenshotErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type IgnoreScreenshotError = IgnoreScreenshotErrors[keyof IgnoreScreenshotErrors];
@@ -3711,6 +4011,16 @@ export type RetryFailedFileErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type RetryFailedFileError = RetryFailedFileErrors[keyof RetryFailedFileErrors];
@@ -3736,6 +4046,16 @@ export type ClearIgnoredScreenshotsErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ClearIgnoredScreenshotsError = ClearIgnoredScreenshotsErrors[keyof ClearIgnoredScreenshotsErrors];
@@ -3761,6 +4081,16 @@ export type GetIgnoredScreenshotsErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type GetIgnoredScreenshotsError = GetIgnoredScreenshotsErrors[keyof GetIgnoredScreenshotsErrors];
@@ -3786,6 +4116,16 @@ export type GetFailedFilesErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type GetFailedFilesError = GetFailedFilesErrors[keyof GetFailedFilesErrors];
@@ -3811,6 +4151,16 @@ export type ResetScreenshotsFolderErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ResetScreenshotsFolderError = ResetScreenshotsFolderErrors[keyof ResetScreenshotsFolderErrors];
@@ -3866,6 +4216,16 @@ export type SetScreenshotsFolderErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SetScreenshotsFolderError = SetScreenshotsFolderErrors[keyof SetScreenshotsFolderErrors];
@@ -3891,6 +4251,16 @@ export type ResetTesseractPathErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ResetTesseractPathError = ResetTesseractPathErrors[keyof ResetTesseractPathErrors];
@@ -3946,6 +4316,16 @@ export type SetTesseractPathErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SetTesseractPathError = SetTesseractPathErrors[keyof SetTesseractPathErrors];
@@ -3991,6 +4371,16 @@ export type SetWatchEnabledErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SetWatchEnabledError = SetWatchEnabledErrors[keyof SetWatchEnabledErrors];
@@ -4036,6 +4426,16 @@ export type SetExitOnCloseErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SetExitOnCloseError = SetExitOnCloseErrors[keyof SetExitOnCloseErrors];
@@ -4069,6 +4469,16 @@ export type ResetWindowSizeErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ResetWindowSizeError = ResetWindowSizeErrors[keyof ResetWindowSizeErrors];
@@ -4119,6 +4529,16 @@ export type SetAutoBackupIntervalErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SetAutoBackupIntervalError = SetAutoBackupIntervalErrors[keyof SetAutoBackupIntervalErrors];
@@ -4144,6 +4564,16 @@ export type GetProfilesErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type GetProfilesError = GetProfilesErrors[keyof GetProfilesErrors];
@@ -4187,6 +4617,16 @@ export type CreateProfileErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type CreateProfileError = CreateProfileErrors[keyof CreateProfileErrors];
@@ -4212,6 +4652,16 @@ export type SeedTestProfileErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SeedTestProfileError = SeedTestProfileErrors[keyof SeedTestProfileErrors];
@@ -4247,6 +4697,16 @@ export type SwitchProfileErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SwitchProfileError = SwitchProfileErrors[keyof SwitchProfileErrors];
@@ -4280,6 +4740,16 @@ export type ClaimFolderScreenshotsErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ClaimFolderScreenshotsError = ClaimFolderScreenshotsErrors[keyof ClaimFolderScreenshotsErrors];
@@ -4319,6 +4789,16 @@ export type DeleteProfileErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type DeleteProfileError = DeleteProfileErrors[keyof DeleteProfileErrors];
@@ -4365,6 +4845,16 @@ export type RenameProfileErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type RenameProfileError = RenameProfileErrors[keyof RenameProfileErrors];
@@ -4405,6 +4895,16 @@ export type MoveMatchesErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type MoveMatchesError = MoveMatchesErrors[keyof MoveMatchesErrors];
@@ -4424,6 +4924,21 @@ export type GetParseStalenessData = {
     query?: never;
     url: '/api/v1/system/parse-staleness';
 };
+
+export type GetParseStalenessErrors = {
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
+};
+
+export type GetParseStalenessError = GetParseStalenessErrors[keyof GetParseStalenessErrors];
 
 export type GetParseStalenessResponses = {
     /**
@@ -4535,6 +5050,16 @@ export type ApplyGameDataUpdateErrors = {
      *
      */
     502: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ApplyGameDataUpdateError = ApplyGameDataUpdateErrors[keyof ApplyGameDataUpdateErrors];
@@ -4828,6 +5353,16 @@ export type RevealScreenshotsFolderErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type RevealScreenshotsFolderError = RevealScreenshotsFolderErrors[keyof RevealScreenshotsFolderErrors];
@@ -4851,6 +5386,16 @@ export type BackupDatabaseErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type BackupDatabaseError = BackupDatabaseErrors[keyof BackupDatabaseErrors];
@@ -4887,6 +5432,16 @@ export type RestoreDatabaseErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type RestoreDatabaseError = RestoreDatabaseErrors[keyof RestoreDatabaseErrors];
@@ -4912,6 +5467,16 @@ export type GetDatabaseHealthErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type GetDatabaseHealthError = GetDatabaseHealthErrors[keyof GetDatabaseHealthErrors];
@@ -4947,6 +5512,16 @@ export type RunDatabaseMaintenanceErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type RunDatabaseMaintenanceError = RunDatabaseMaintenanceErrors[keyof RunDatabaseMaintenanceErrors];
@@ -4981,6 +5556,16 @@ export type ListCoachPlayerSessionsErrors = {
      * The requested resource was not found.
      */
     404: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ListCoachPlayerSessionsError = ListCoachPlayerSessionsErrors[keyof ListCoachPlayerSessionsErrors];
@@ -5019,6 +5604,16 @@ export type ListCoachPlayerNotesErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ListCoachPlayerNotesError = ListCoachPlayerNotesErrors[keyof ListCoachPlayerNotesErrors];
@@ -5044,6 +5639,16 @@ export type ListCoachPlayersErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ListCoachPlayersError = ListCoachPlayersErrors[keyof ListCoachPlayersErrors];
@@ -5069,6 +5674,16 @@ export type ListShareExportsErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ListShareExportsError = ListShareExportsErrors[keyof ListShareExportsErrors];
@@ -5128,6 +5743,16 @@ export type ExportBundleErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ExportBundleError = ExportBundleErrors[keyof ExportBundleErrors];
@@ -5168,6 +5793,16 @@ export type ExportDiagnosticBundleErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ExportDiagnosticBundleError = ExportDiagnosticBundleErrors[keyof ExportDiagnosticBundleErrors];
@@ -5207,6 +5842,16 @@ export type PreflightDiagnosticBundleErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type PreflightDiagnosticBundleError = PreflightDiagnosticBundleErrors[keyof PreflightDiagnosticBundleErrors];
@@ -5242,6 +5887,16 @@ export type PutMomentImageErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type PutMomentImageError = PutMomentImageErrors[keyof PutMomentImageErrors];
@@ -5291,6 +5946,16 @@ export type ImportMatchesErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ImportMatchesError = ImportMatchesErrors[keyof ImportMatchesErrors];
@@ -5318,6 +5983,16 @@ export type CloseCoachSessionErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type CloseCoachSessionError = CloseCoachSessionErrors[keyof CloseCoachSessionErrors];
@@ -5347,6 +6022,16 @@ export type GetCoachSessionErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type GetCoachSessionError = GetCoachSessionErrors[keyof GetCoachSessionErrors];
@@ -5386,6 +6071,16 @@ export type OpenCoachSessionErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type OpenCoachSessionError = OpenCoachSessionErrors[keyof OpenCoachSessionErrors];
@@ -5439,6 +6134,16 @@ export type SetCoachSessionPlayerErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SetCoachSessionPlayerError = SetCoachSessionPlayerErrors[keyof SetCoachSessionPlayerErrors];
@@ -5480,6 +6185,16 @@ export type OpenCoachReplaySessionErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type OpenCoachReplaySessionError = OpenCoachReplaySessionErrors[keyof OpenCoachReplaySessionErrors];
@@ -5522,6 +6237,16 @@ export type AddCoachSessionReplayCodeErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type AddCoachSessionReplayCodeError = AddCoachSessionReplayCodeErrors[keyof AddCoachSessionReplayCodeErrors];
@@ -5571,6 +6296,16 @@ export type SetCoachSessionMatchContextErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SetCoachSessionMatchContextError = SetCoachSessionMatchContextErrors[keyof SetCoachSessionMatchContextErrors];
@@ -5600,6 +6335,16 @@ export type GetCoachSessionMatchesErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type GetCoachSessionMatchesError = GetCoachSessionMatchesErrors[keyof GetCoachSessionMatchesErrors];
@@ -5649,6 +6394,16 @@ export type DeleteCoachNoteErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type DeleteCoachNoteError = DeleteCoachNoteErrors[keyof DeleteCoachNoteErrors];
@@ -5702,6 +6457,16 @@ export type PutCoachNoteErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type PutCoachNoteError = PutCoachNoteErrors[keyof PutCoachNoteErrors];
@@ -5758,6 +6523,16 @@ export type DeleteCoachMomentErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type DeleteCoachMomentError = DeleteCoachMomentErrors[keyof DeleteCoachMomentErrors];
@@ -5818,6 +6593,16 @@ export type PutCoachMomentErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type PutCoachMomentError = PutCoachMomentErrors[keyof PutCoachMomentErrors];
@@ -5859,6 +6644,16 @@ export type PutCoachFocusItemsErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type PutCoachFocusItemsError = PutCoachFocusItemsErrors[keyof PutCoachFocusItemsErrors];
@@ -5907,6 +6702,16 @@ export type ExportCoachNotesErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ExportCoachNotesError = ExportCoachNotesErrors[keyof ExportCoachNotesErrors];
@@ -5934,6 +6739,16 @@ export type ListCoachReturnsErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ListCoachReturnsError = ListCoachReturnsErrors[keyof ListCoachReturnsErrors];
@@ -5974,6 +6789,16 @@ export type DeleteCoachReturnErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type DeleteCoachReturnError = DeleteCoachReturnErrors[keyof DeleteCoachReturnErrors];
@@ -6014,6 +6839,16 @@ export type GetCoachReturnErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type GetCoachReturnError = GetCoachReturnErrors[keyof GetCoachReturnErrors];
@@ -6060,6 +6895,16 @@ export type DecideCoachReturnErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type DecideCoachReturnError = DecideCoachReturnErrors[keyof DecideCoachReturnErrors];
@@ -6120,6 +6965,16 @@ export type DeleteMatchCoachNoteErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type DeleteMatchCoachNoteError = DeleteMatchCoachNoteErrors[keyof DeleteMatchCoachNoteErrors];
@@ -6145,6 +7000,16 @@ export type GetCoachingSettingsErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type GetCoachingSettingsError = GetCoachingSettingsErrors[keyof GetCoachingSettingsErrors];
@@ -6174,6 +7039,16 @@ export type SetCoachingSettingsErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SetCoachingSettingsError = SetCoachingSettingsErrors[keyof SetCoachingSettingsErrors];
@@ -6199,6 +7074,16 @@ export type ListSelfReviewsErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ListSelfReviewsError = ListSelfReviewsErrors[keyof ListSelfReviewsErrors];
@@ -6240,6 +7125,16 @@ export type CreateSelfReviewErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type CreateSelfReviewError = CreateSelfReviewErrors[keyof CreateSelfReviewErrors];
@@ -6285,6 +7180,16 @@ export type DeleteSelfReviewErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type DeleteSelfReviewError = DeleteSelfReviewErrors[keyof DeleteSelfReviewErrors];
@@ -6326,6 +7231,16 @@ export type GetSelfReviewErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type GetSelfReviewError = GetSelfReviewErrors[keyof GetSelfReviewErrors];
@@ -6375,6 +7290,16 @@ export type UpdateSelfReviewErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type UpdateSelfReviewError = UpdateSelfReviewErrors[keyof UpdateSelfReviewErrors];
@@ -6424,6 +7349,16 @@ export type SetSelfReviewMatchesErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SetSelfReviewMatchesError = SetSelfReviewMatchesErrors[keyof SetSelfReviewMatchesErrors];
@@ -6449,6 +7384,16 @@ export type ListFocusErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ListFocusError = ListFocusErrors[keyof ListFocusErrors];
@@ -6497,6 +7442,16 @@ export type SetFocusItemStatusErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SetFocusItemStatusError = SetFocusItemStatusErrors[keyof SetFocusItemStatusErrors];
@@ -6522,6 +7477,16 @@ export type ListRosterErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type ListRosterError = ListRosterErrors[keyof ListRosterErrors];
@@ -6564,6 +7529,16 @@ export type DeleteRosterMemberErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type DeleteRosterMemberError = DeleteRosterMemberErrors[keyof DeleteRosterMemberErrors];
@@ -6619,6 +7594,16 @@ export type SaveRosterMemberErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SaveRosterMemberError = SaveRosterMemberErrors[keyof SaveRosterMemberErrors];
@@ -6668,6 +7653,16 @@ export type SetSelfReviewFocusItemsErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type SetSelfReviewFocusItemsError = SetSelfReviewFocusItemsErrors[keyof SetSelfReviewFocusItemsErrors];
@@ -6717,6 +7712,16 @@ export type FinishSelfReviewErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type FinishSelfReviewError = FinishSelfReviewErrors[keyof FinishSelfReviewErrors];
@@ -6773,6 +7778,16 @@ export type DeleteSelfReviewNoteErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type DeleteSelfReviewNoteError = DeleteSelfReviewNoteErrors[keyof DeleteSelfReviewNoteErrors];
@@ -6833,6 +7848,16 @@ export type PutSelfReviewNoteErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type PutSelfReviewNoteError = PutSelfReviewNoteErrors[keyof PutSelfReviewNoteErrors];
@@ -6896,6 +7921,16 @@ export type DeleteSelfReviewMomentErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type DeleteSelfReviewMomentError = DeleteSelfReviewMomentErrors[keyof DeleteSelfReviewMomentErrors];
@@ -6963,6 +7998,16 @@ export type PutSelfReviewMomentErrors = {
      * Unhandled server-side error.
      */
     500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
 };
 
 export type PutSelfReviewMomentError = PutSelfReviewMomentErrors[keyof PutSelfReviewMomentErrors];

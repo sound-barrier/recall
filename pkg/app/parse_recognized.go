@@ -38,11 +38,16 @@ func (st *parseRunState) handleRecognized(filename string, result *parser.MatchR
 
 // recordRecognized retires the file's Unknown state and registers it.
 func (a *App) recordRecognized(filename string, t parser.ScreenshotType) error {
-	if err := a.store.DeleteUnknownScreenshot(filename); err != nil {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return leaseErr
+	}
+	defer release()
+	if err := store.DeleteUnknownScreenshot(filename); err != nil {
 		return err
 	}
 	if t == parser.TypeHistory {
-		return a.store.UpsertHistoryScreenshot(filename)
+		return store.UpsertHistoryScreenshot(filename)
 	}
-	return a.store.UpsertAllHeroesScreenshot(filename)
+	return store.UpsertAllHeroesScreenshot(filename)
 }

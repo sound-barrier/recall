@@ -16,9 +16,11 @@ import (
 // contract); this shell method owns the request validation and the
 // target store's lifecycle.
 func (a *App) MoveMatches(matchKeys []string, targetProfile string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
+	defer release()
 	if a.profiles == nil {
 		return errors.New("profiles: not initialized")
 	}
@@ -34,7 +36,7 @@ func (a *App) MoveMatches(matchKeys []string, targetProfile string) error {
 	defer func() { _ = targetStore.Close() }()
 
 	registered := a.registeredHashes()
-	if err := profiles.Move(a.store, targetStore, matchKeys); err != nil {
+	if err := profiles.Move(store, targetStore, matchKeys); err != nil {
 		return err
 	}
 	// The moved screenshots are the target's now, so this profile, likely

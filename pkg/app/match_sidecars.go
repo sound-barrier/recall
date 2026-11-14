@@ -11,163 +11,197 @@ import (
 // writes obey — input validation, the unknown-key guard, the store call —
 // lives in pkg/matchedit. What stays here is the orchestration the leaf
 // cannot see: design rule 1's coaching-session write gate, which every
-// mutating method states as its own first line so coach_gate_test.go's
-// reflection net can find it.
+// mutating method enters through useStoreForWrite and holds until the
+// write is done (coach_gate_test.go enumerates them).
 
 // SetMatchAnnotation upserts a per-match annotation. Upsert-only: an
 // all-empty input is rejected with ErrEmptyAnnotation rather than
 // silently deleting, so the API verb states intent (clearing is
 // DeleteMatchAnnotation).
 func (a *App) SetMatchAnnotation(in AnnotationInput) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	return matchedit.SetAnnotation(a.store, in)
+	defer release()
+	return matchedit.SetAnnotation(store, in)
 }
 
 // DeleteMatchAnnotation removes a match's annotation row entirely
 // (members and tags cascade away with it). Idempotent.
 func (a *App) DeleteMatchAnnotation(matchKey string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	return matchedit.DeleteAnnotation(a.store, matchKey)
+	defer release()
+	return matchedit.DeleteAnnotation(store, matchKey)
 }
 
 // SetMatchReview tags a match as reviewed by the user themselves
 // ('self') or by a coach ('coach'). Idempotent; a different reviewer
 // overwrites. Use ClearMatchReview to revert to "not reviewed".
 func (a *App) SetMatchReview(matchKey, reviewedBy string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	return matchedit.SetReview(a.store, matchKey, reviewedBy)
+	defer release()
+	return matchedit.SetReview(store, matchKey, reviewedBy)
 }
 
 // ClearMatchReview removes the review-status tag. Idempotent.
 func (a *App) ClearMatchReview(matchKey string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	return matchedit.ClearReview(a.store, matchKey)
+	defer release()
+	return matchedit.ClearReview(store, matchKey)
 }
 
 // SetMatchQueue tags a match as having been played in role queue (5v5)
 // or open queue (6v6). Idempotent; a different value overwrites. Use
 // ClearMatchQueue to revert to "queue not set".
 func (a *App) SetMatchQueue(matchKey, queueType string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	return matchedit.SetQueue(a.store, matchKey, queueType)
+	defer release()
+	return matchedit.SetQueue(store, matchKey, queueType)
 }
 
 // ClearMatchQueue removes the queue-type tag. Idempotent.
 func (a *App) ClearMatchQueue(matchKey string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	return matchedit.ClearQueue(a.store, matchKey)
+	defer release()
+	return matchedit.ClearQueue(store, matchKey)
 }
 
 // BulkSetMatchQueue applies the same queue_type to every key in the
 // slice in one transaction. queueType="" clears the rows.
 func (a *App) BulkSetMatchQueue(matchKeys []string, queueType string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	return matchedit.BulkSetQueue(a.store, matchKeys, queueType)
+	defer release()
+	return matchedit.BulkSetQueue(store, matchKeys, queueType)
 }
 
 // SetMatchPlayMode overrides the parser's play-mode read for a specific
 // match. Idempotent; a different value overwrites. Use
 // ClearMatchPlayMode to revert to "follow the parser".
 func (a *App) SetMatchPlayMode(matchKey, playMode string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	return matchedit.SetPlayMode(a.store, matchKey, playMode)
+	defer release()
+	return matchedit.SetPlayMode(store, matchKey, playMode)
 }
 
 // ClearMatchPlayMode removes the override row. Idempotent.
 func (a *App) ClearMatchPlayMode(matchKey string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	return matchedit.ClearPlayMode(a.store, matchKey)
+	defer release()
+	return matchedit.ClearPlayMode(store, matchKey)
 }
 
 // BulkSetMatchPlayMode applies the same play_mode to every key in the
 // slice in one transaction. playMode="" clears the rows.
 func (a *App) BulkSetMatchPlayMode(matchKeys []string, playMode string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	return matchedit.BulkSetPlayMode(a.store, matchKeys, playMode)
+	defer release()
+	return matchedit.BulkSetPlayMode(store, matchKeys, playMode)
 }
 
 // HideMatch soft-deletes a match. The screenshot rows are untouched, so
 // a re-parse still skips them; the aggregator sets Record.Hidden on the
 // next read and the default filter drops the row. Idempotent.
 func (a *App) HideMatch(matchKey string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	return matchedit.Hide(a.store, matchKey)
+	defer release()
+	return matchedit.Hide(store, matchKey)
 }
 
 // UnhideMatch removes the soft-delete flag. Idempotent.
 func (a *App) UnhideMatch(matchKey string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	return matchedit.Unhide(a.store, matchKey)
+	defer release()
+	return matchedit.Unhide(store, matchKey)
 }
 
 // AcknowledgeReferenceGap dismisses a match's reference-data-gap
 // warning on the Unknown tab — the match stays; only the warning hides,
 // restorably. Idempotent.
 func (a *App) AcknowledgeReferenceGap(matchKey string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	return matchedit.AcknowledgeReferenceGap(a.store, matchKey)
+	defer release()
+	return matchedit.AcknowledgeReferenceGap(store, matchKey)
 }
 
 // UnacknowledgeReferenceGap restores the warning. Idempotent.
 func (a *App) UnacknowledgeReferenceGap(matchKey string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	return matchedit.UnacknowledgeReferenceGap(a.store, matchKey)
+	defer release()
+	return matchedit.UnacknowledgeReferenceGap(store, matchKey)
 }
 
 // PinMatch stars a match — the list renders pinned matches in a leading
 // section above the date groups. Idempotent.
 func (a *App) PinMatch(matchKey string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	return matchedit.Pin(a.store, matchKey)
+	defer release()
+	return matchedit.Pin(store, matchKey)
 }
 
 // UnpinMatch removes the star. Idempotent.
 func (a *App) UnpinMatch(matchKey string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	return matchedit.Unpin(a.store, matchKey)
+	defer release()
+	return matchedit.Unpin(store, matchKey)
 }
 
 // HardDeleteMatch wipes every row keyed on matchKey from the database and
 // releases this profile's claims on its screenshots. Surfaced by the Hidden drawer's Delete affordance — the user has
 // already archived the match and explicitly confirmed. Idempotent.
 func (a *App) HardDeleteMatch(matchKey string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
+	defer release()
 	registered := a.registeredHashes()
-	if err := matchedit.HardDelete(a.store, matchKey); err != nil {
+	if err := matchedit.HardDelete(store, matchKey); err != nil {
 		return err
 	}
 	// Its screenshots are no longer this profile's: another may parse them.
@@ -184,11 +218,13 @@ func (a *App) HardDeleteMatch(matchKey string) error {
 // wiped), while one with sibling screenshots survives minus this file.
 // Idempotent.
 func (a *App) IgnoreScreenshot(filename string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
+	defer release()
 	registered := a.registeredHashes()
-	if err := matchedit.IgnoreScreenshot(a.store, filename); err != nil {
+	if err := matchedit.IgnoreScreenshot(store, filename); err != nil {
 		return err
 	}
 	// Dismissed here means free for another profile to parse.
@@ -202,36 +238,47 @@ func (a *App) IgnoreScreenshot(filename string) error {
 // UnignoreScreenshot removes filename from the suppress-list so the next
 // parse re-ingests it. Idempotent on absent filenames.
 func (a *App) UnignoreScreenshot(filename string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	return matchedit.UnignoreScreenshot(a.store, filename)
+	defer release()
+	return matchedit.UnignoreScreenshot(store, filename)
 }
 
 // GetIgnoredScreenshots returns the suppress-list with timestamps,
 // most-recently-ignored first. A read, so no session gate: a coach
 // reviewing a loaned corpus can still see what it suppresses.
 func (a *App) GetIgnoredScreenshots() ([]IgnoredScreenshot, error) {
-	return matchedit.ListIgnoredScreenshots(a.store)
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return nil, leaseErr
+	}
+	defer release()
+	return matchedit.ListIgnoredScreenshots(store)
 }
 
 // ClearIgnoredScreenshots truncates the suppress-list — the bulk
 // "Re-enable all" action on the Settings panel. Idempotent.
 func (a *App) ClearIgnoredScreenshots() error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	return matchedit.ClearIgnoredScreenshots(a.store)
+	defer release()
+	return matchedit.ClearIgnoredScreenshots(store)
 }
 
 // SetMatchMoment saves one of the player's own timestamped moments —
 // a self-review that can point at seconds the way a coach's review can.
 // An empty momentID mints a new one.
 func (a *App) SetMatchMoment(matchKey, momentID string, in matchedit.MomentInput) (db.MatchMoment, error) {
-	if err := a.assertNoCoachSession(); err != nil {
-		return db.MatchMoment{}, err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return db.MatchMoment{}, leaseErr
 	}
-	saved, err := matchedit.SetMoment(a.store, matchKey, momentID, in)
+	defer release()
+	saved, err := matchedit.SetMoment(store, matchKey, momentID, in)
 	if err != nil {
 		return db.MatchMoment{}, err
 	}
@@ -243,10 +290,12 @@ func (a *App) SetMatchMoment(matchKey, momentID string, in matchedit.MomentInput
 
 // DeleteMatchMoment removes one of the player's moments. Idempotent.
 func (a *App) DeleteMatchMoment(matchKey, momentID string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	if err := a.store.DeleteMatchMoment(matchKey, momentID); err != nil {
+	defer release()
+	if err := store.DeleteMatchMoment(matchKey, momentID); err != nil {
 		return err
 	}
 	// The picture it pointed at may now be unreferenced. Collected here rather

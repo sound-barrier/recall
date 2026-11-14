@@ -108,12 +108,14 @@ type SeedTestProfileResponse struct {
 // AlreadySeeded is true. Seeds a transient store at the test profile's db
 // path, never the active store.
 func (a *App) SeedTestProfile() (SeedTestProfileResponse, error) {
+	leave, gateErr := a.enterWriteGate()
+	if gateErr != nil {
+		return SeedTestProfileResponse{}, gateErr
+	}
+	defer leave()
 	// The tour and a coaching session are mutually exclusive (design rule
 	// 4) — seeding is where a replay would start, so it is refused here
 	// rather than half-built and then abandoned.
-	if err := a.assertNoCoachSession(); err != nil {
-		return SeedTestProfileResponse{}, err
-	}
 	if a.profiles == nil {
 		return SeedTestProfileResponse{}, errors.New("profiles: not initialized")
 	}
@@ -159,7 +161,7 @@ func (a *App) RenameProfile(old, newName string) error {
 		// Same guard as activateAndReload: the branch below closes the
 		// live store, and an in-flight parse would write through it
 		// mid-rename. The slot is held for the whole rename + reopen.
-		err := a.withRunSlot(RunKindProfileRename, func() error {
+		err := a.withStoreSwap(RunKindProfileRename, func() error {
 			// Tear down everything that holds the active profile dir open
 			// — the directory rename can't proceed while SQLite has the
 			// .db file mapped.
@@ -220,7 +222,10 @@ func (a *App) reopenActiveStore() error {
 	if err != nil {
 		return fmt.Errorf("profiles: open db: %w", err)
 	}
-	a.store = s
+	if err := a.stores.endSwap(s); err != nil {
+		_ = s.Close()
+		return err
+	}
 	if a.settingsSnapshot().WatchEnabled {
 		a.startWatching()
 	}
@@ -250,7 +255,7 @@ func (a *App) activateAndReload(name string) error {
 	// Hold the run slot for the whole swap: a watcher- or user-triggered
 	// parse mid-switch would write through the store this function is
 	// about to close. Busy → the caller retries after the parse (409).
-	err := a.withRunSlot(RunKindProfileSwitch, func() error { return a.swapToProfile(name) })
+	err := a.withStoreSwap(RunKindProfileSwitch, func() error { return a.swapToProfile(name) })
 	if errors.Is(err, ErrParseInFlight) {
 		return ErrProfileSwitchDuringParse
 	}
@@ -299,7 +304,10 @@ func (a *App) openProfile(name string) error {
 	if err != nil {
 		return fmt.Errorf("profiles: open db for %q: %w", name, err)
 	}
-	a.store = s
+	if err := a.stores.endSwap(s); err != nil {
+		_ = s.Close()
+		return err
+	}
 	if resolved.WatchEnabled {
 		a.startWatching()
 	}
@@ -319,12 +327,7 @@ func (a *App) closeActiveStore() {
 	a.endCoachSession()
 	a.saveSettingsBestEffort()
 	a.stopWatching()
-	if a.store != nil {
-		if closer, ok := a.store.(interface{ Close() error }); ok {
-			_ = closer.Close()
-		}
-		a.store = nil
-	}
+	a.closeStoreForSwapOnly()
 }
 
 // reloadProfileSettings re-reads settings at the newly active profile's dir —

@@ -43,21 +43,23 @@ var ErrAmbiguousNotFound = errors.New("ambiguous screenshot not found")
 // On success, the in-memory aggregate cache (delivered via SSE) is
 // refreshed by re-emitting a match-updated event for resolvedTo.
 func (a *App) ResolveAmbiguousMatch(ambiguousMatchKey, resolvedTo string) error {
-	if serr := a.assertNoCoachSession(); serr != nil {
-		return serr
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
+	defer release()
 	mk, err := match.ParseKey(ambiguousMatchKey)
 	if err != nil || !mk.IsAmbiguous() {
 		return fmt.Errorf("%w: %q", ErrInvalidAmbiguousKey, ambiguousMatchKey)
 	}
-	cands, err := a.store.LoadAmbiguousCandidatesFor(mk.Filename())
+	cands, err := store.LoadAmbiguousCandidatesFor(mk.Filename())
 	if err != nil {
 		return err
 	}
 	if !validResolution(resolvedTo, cands) {
 		return fmt.Errorf("%w: %q", ErrInvalidResolution, resolvedTo)
 	}
-	ok, err := a.store.ResolveAmbiguous(mk.Filename(), ambiguousMatchKey, resolvedTo)
+	ok, err := store.ResolveAmbiguous(mk.Filename(), ambiguousMatchKey, resolvedTo)
 	if err != nil {
 		return err
 	}
@@ -85,6 +87,11 @@ func (a *App) ResolveAmbiguousMatch(ambiguousMatchKey, resolvedTo string) error 
 // Best-effort — the resolution already committed, and losing a chip is not
 // worth failing the write the user actually asked for.
 func (a *App) rememberKeepSeparate(resolvedTo string, cands []db.AmbiguousCandidate) {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return
+	}
+	defer release()
 	if slices.ContainsFunc(cands, func(c db.AmbiguousCandidate) bool { return c.MatchKey == resolvedTo }) {
 		return // a merge: the two are one match now, nothing left to point at
 	}
@@ -92,7 +99,7 @@ func (a *App) rememberKeepSeparate(resolvedTo string, cands []db.AmbiguousCandid
 		if c.Reason == "" {
 			continue
 		}
-		if err := a.store.LinkDuplicateMatches(resolvedTo, c.MatchKey); err != nil {
+		if err := store.LinkDuplicateMatches(resolvedTo, c.MatchKey); err != nil {
 			// Scrubbed: resolvedTo arrives in the PUT body and the candidate
 			// key is minted from a filename on disk, so both are strings a
 			// user chose. CR/LF in either would forge a second log entry
@@ -109,7 +116,12 @@ func (a *App) rememberKeepSeparate(resolvedTo string, cands []db.AmbiguousCandid
 // it so subscribers see the new state without re-fetching the full list.
 // Best-effort: a read failure costs a refresh, not the resolution.
 func (a *App) emitResolvedMatch(matchKey string) {
-	snap, err := a.store.LoadAll()
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return
+	}
+	defer release()
+	snap, err := store.LoadAll()
 	if err != nil {
 		return
 	}

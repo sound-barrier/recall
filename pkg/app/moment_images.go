@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"recall/pkg/db"
 )
 
 // The images a moment points at: stored by the app, served back by it.
@@ -39,10 +41,15 @@ func ValidMomentImageDigest(sha string) bool { return hexDigest.MatchString(sha)
 
 // PutMomentImage stores an attachment and returns its content address.
 func (a *App) PutMomentImage(raw []byte, mime string) (string, error) {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return "", leaseErr
+	}
+	defer release()
 	if len(raw) > maxMomentImageBytes {
 		return "", fmt.Errorf("%w: %d bytes", ErrImageTooLarge, len(raw))
 	}
-	sha, err := a.store.PutMomentImage(raw, mime)
+	sha, err := store.PutMomentImage(raw, mime)
 	if err != nil {
 		return "", err
 	}
@@ -56,7 +63,12 @@ func (a *App) PutMomentImage(raw []byte, mime string) (string, error) {
 // children of a note: the rows stop pointing without anyone telling this
 // table, which is exactly the trade that keeps deleting a note one step.
 func (a *App) PruneMomentImages() (int, error) {
-	return a.store.PruneOrphanMomentImages(momentImageGrace)
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return 0, leaseErr
+	}
+	defer release()
+	return store.PruneOrphanMomentImages(momentImageGrace)
 }
 
 // momentImageGrace is how long a freshly stored frame is safe from the sweep.
@@ -86,7 +98,12 @@ func (a *App) MomentImageHandler() http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
-		img, ok, err := a.store.LoadMomentImage(sha)
+		img, ok, err := a.loadMomentImage(sha)
+		if errors.Is(err, ErrStoreSwapInProgress) {
+			w.Header().Set("Retry-After", "1")
+			http.Error(w, err.Error(), http.StatusServiceUnavailable)
+			return
+		}
 		if err != nil {
 			http.Error(w, "read image", http.StatusInternalServerError)
 			return
@@ -110,6 +127,16 @@ func (a *App) MomentImageHandler() http.HandlerFunc {
 			return
 		}
 	}
+}
+
+// loadMomentImage reads one stored frame under a store lease.
+func (a *App) loadMomentImage(sha string) (db.MomentImage, bool, error) {
+	store, release, err := a.useStore()
+	if err != nil {
+		return db.MomentImage{}, false, err
+	}
+	defer release()
+	return store.LoadMomentImage(sha)
 }
 
 // momentImagePrefix is the mount path, shared by the server mux and the Wails
