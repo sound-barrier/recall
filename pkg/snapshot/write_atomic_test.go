@@ -65,27 +65,24 @@ func TestWrite_ASecondWriteInTheSameSecondHoldsTheNewerState(t *testing.T) {
 	snapshot.BackupToFunc = func(_, dest string) error { return os.WriteFile(dest, []byte(content), 0o600) }
 	t.Cleanup(func() { snapshot.BackupToFunc = prev })
 
-	// Retry until both writes land in one second; a second boundary between
-	// them would test nothing.
-	for range 5 {
-		start := time.Now().Truncate(time.Second)
-		content = "first"
-		first, err := snapshot.Write("/db/recall.db", backups, snapshot.AutoPrefix, 3)
-		mustNoErr(t, err)
-		content = "second"
-		second, err := snapshot.Write("/db/recall.db", backups, snapshot.AutoPrefix, 3)
-		mustNoErr(t, err)
-		if !time.Now().Truncate(time.Second).Equal(start) || first != second {
-			continue
-		}
-		got, err := os.ReadFile(second) // #nosec G304 -- a test temp dir
-		mustNoErr(t, err)
-		if string(got) != "second" {
-			t.Errorf("the same-second snapshot holds %q, want the newer state", got)
-		}
-		return
+	at := time.Date(2026, 11, 14, 12, 0, 0, 0, time.UTC)
+	prevNow := *snapshot.Now
+	*snapshot.Now = func() time.Time { return at }
+	t.Cleanup(func() { *snapshot.Now = prevNow })
+
+	first, err := snapshot.Write("/db/recall.db", backups, snapshot.AutoPrefix, 3)
+	mustNoErr(t, err)
+	content = "second"
+	second, err := snapshot.Write("/db/recall.db", backups, snapshot.AutoPrefix, 3)
+	mustNoErr(t, err)
+	if first != second {
+		t.Fatalf("two writes in one second named %q and %q, want one file", first, second)
 	}
-	t.Skip("could not land two writes in one second")
+	got, err := os.ReadFile(second) // #nosec G304 -- a test temp dir
+	mustNoErr(t, err)
+	if string(got) != "second" {
+		t.Errorf("the same-second snapshot holds %q, want the newer state", got)
+	}
 }
 
 func mustNoErr(t *testing.T, err error) {
