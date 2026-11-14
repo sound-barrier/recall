@@ -119,3 +119,10 @@ func LoadCheckState() (CheckState, error) { return release.LoadCheckState(appBas
 func SaveCheckState(s CheckState) error { return release.SaveCheckState(appBaseDir(), s) }
 
 func TouchLastChecked(now time.Time) error { return release.TouchLastChecked(appBaseDir(), now) }
+
+// HoldCoachLock takes the coaching-session lock and returns its release, so a
+// test can park an opener on it and decide what happens before it gets in.
+func HoldCoachLock(a *App) (release func()) {
+	a.coachMu.Lock()
+	return a.coachMu.Unlock
+}

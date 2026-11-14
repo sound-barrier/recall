@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"recall/pkg/app"
 	"recall/pkg/db/dbtest"
@@ -88,5 +89,29 @@ func TestCoachSession_RefusedWhileAStoreSwapHoldsTheSlot(t *testing.T) {
 
 	if _, err := a.OpenCoachReplaySession([]string{"ABC123"}); !errors.Is(err, app.ErrStoreSwapInProgress) {
 		t.Errorf("OpenCoachReplaySession mid-swap = %v, want ErrStoreSwapInProgress", err)
+	}
+}
+
+// The check that refuses an open mid-swap must sit under the session lock.
+// Checked before it, a swap claimed between the check and the lock let the
+// open through, and the session then wrote to a store the swap had closed.
+func TestCoachSession_ASwapClaimedWhileTheOpenerWaitsIsStillRefused(t *testing.T) {
+	a := app.NewWithStore(dbtest.New())
+	release := app.HoldCoachLock(a)
+
+	opened := make(chan error, 1)
+	go func() {
+		_, err := a.OpenCoachReplaySession([]string{"ABC123"})
+		opened <- err
+	}()
+	// Let the opener get past anything it checks before the lock.
+	time.Sleep(50 * time.Millisecond)
+	_, id, err := app.ClaimRun(a, app.RunKindProfileSwitch)
+	mustNoErr(t, err)
+	defer app.FinishRun(a, id, nil, nil)
+	release()
+
+	if err := <-opened; !errors.Is(err, app.ErrStoreSwapInProgress) {
+		t.Errorf("open that waited out a swap's claim = %v, want ErrStoreSwapInProgress", err)
 	}
 }
