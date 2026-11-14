@@ -20,10 +20,12 @@ export interface FeatureToggleApi {
   // message string to block, or null/undefined to allow.
   canEnable?: () => string | null | undefined
   onError?: (message: string) => void
+  /** Where the flag lives — the settings store hands in its query-cache entry. */
+  state?: Ref<boolean>
 }
 
 export function useFeatureToggle(api: FeatureToggleApi) {
-  const enabled = ref(false)
+  const enabled = api.state ?? ref(false)
 
   function setEnabled(next: boolean) {
     enabled.value = next

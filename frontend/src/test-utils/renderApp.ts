@@ -1,7 +1,7 @@
 import { vi } from 'vitest'
 import { createPinia } from 'pinia'
 import { render, type RenderResult } from '@testing-library/vue'
-import type { MatchRecord, TesseractStatus, UpdateInfo } from '@/api'
+import type { MatchRecord, TesseractStatus, UpdateInfo, WatcherStatus } from '@/api'
 import { flushPromises } from '@/test-utils/flush'
 import { installMemoryLocalStorage } from '@/test-utils/localStorage'
 
@@ -75,6 +75,11 @@ function defaultTesseract(overrides: Partial<TesseractStatus> = {}): TesseractSt
   }
 }
 
+// The watcher entry for a Watch setting: on means a watcher running.
+function watcherStatus(enabled: boolean): WatcherStatus {
+  return { enabled, watch_state: enabled ? 'watching' : 'off' }
+}
+
 function defaultUpdate(overrides: Partial<UpdateInfo> = {}): UpdateInfo {
   return {
     checked:        false,
@@ -122,7 +127,7 @@ function buildMock(overrides: MountOverrides = {}) {
     BulkSetMatchQueue:     vi.fn(async () => undefined),
     ResolveAmbiguousMatch: vi.fn(async () => undefined),
     IgnoreScreenshot:      vi.fn(async () => undefined),
-    GetWatchEnabled:     vi.fn(async () => overrides.watchEnabled ?? false),
+    GetWatcherStatus:    vi.fn(async () => watcherStatus(overrides.watchEnabled ?? false)),
     SetWatchEnabled:     vi.fn(async () => undefined),
     GetExitOnClose:      vi.fn(async () => overrides.exitOnClose ?? false),
     SetExitOnClose:      vi.fn(async () => undefined),

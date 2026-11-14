@@ -67,6 +67,7 @@ export type {
   UpdateInfo,
   UserMatchDataInput,
   WatchStateEnum,
+  WatcherStatus,
 } from '@/client/types.gen'
 
 

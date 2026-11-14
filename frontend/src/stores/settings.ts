@@ -1,4 +1,4 @@
-import { computed, nextTick, watchEffect, type Ref } from 'vue'
+import { computed, nextTick } from 'vue'
 import { defineStore } from 'pinia'
 
 import {
@@ -15,15 +15,16 @@ import {
   RevealScreenshotsDir,
   ResetScreenshotsDir,
   ResetWindowSize,
+  type WatcherStatus,
 } from '@/api-client'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 import { refetchPendingCount } from '@/queries/matches'
 import {
-  useAutoBackupQuery, useCandidatesQuery, useExitOnCloseQuery,
-  useScreenshotsDirQuery, useTesseractQuery, useWatchEnabledQuery,
+  settingRef, useAutoBackupQuery, useCandidatesQuery, useExitOnCloseQuery,
+  useScreenshotsDirQuery, useTesseractQuery, useWatcherQuery, writeSetting,
 } from '@/queries/settings'
-import { useTesseractStatus } from '@/composables/settings/useTesseractStatus'
+import { EMPTY_TESSERACT_STATUS, useTesseractStatus } from '@/composables/settings/useTesseractStatus'
 import { useFeatureToggle } from '@/composables/shared/useFeatureToggle'
 import { useScreenshotsDir } from '@/composables/settings/useScreenshotsDir'
 import { useTheme } from '@/composables/settings/useTheme'
@@ -39,6 +40,34 @@ import { useAppStore } from '@/stores/app'
 // consumers read the individual names, not the bundle.
 export const useSettingsStore = defineStore('settings', () => {
   const appStore = useAppStore()
+
+  // ── Server state ──────────────────────────────────────────────────
+  // The settings reads live in the query cache (one query per endpoint —
+  // per-subsystem isolation falls out of that: one failed call never blocks
+  // the others), and the cache IS the state below: the composables read and
+  // write these refs, which read the query and write through writeSetting.
+  // The store used to copy each read into a ref of its own, so a write only
+  // ever reached the copy — and a read answering late overwrote it.
+  const watcherQuery = useWatcherQuery()
+  const exitOnCloseQuery = useExitOnCloseQuery()
+  const screenshotsDirQuery = useScreenshotsDirQuery()
+  const tesseractQuery = useTesseractQuery()
+  // The toggle's view of the watcher entry: its `enabled`. Turning Watch off
+  // also says the watcher is off; turning it on leaves the state to the
+  // `watch-state` event that follows, since only the server knows whether
+  // the folder is there to watch.
+  const watchEnabledState = computed<boolean>({
+    get: () => watcherQuery.data.value?.enabled ?? false,
+    set: (enabled) => {
+      const state = watcherQuery.data.value?.watch_state ?? 'off'
+      writeSetting<WatcherStatus>(qk.settings.watch, { enabled, watch_state: enabled ? state : 'off' })
+    },
+  })
+  /** What the watcher is doing — the masthead dot reads it. */
+  const watchState = computed(() => watcherQuery.data.value?.watch_state)
+  const exitOnCloseState = settingRef(qk.settings.exitOnClose, () => exitOnCloseQuery.data.value, false)
+  const screenshotsDirState = settingRef(qk.settings.screenshotsDir, () => screenshotsDirQuery.data.value || undefined, '')
+  const tesseractState = settingRef(qk.settings.tesseract, () => tesseractQuery.data.value, EMPTY_TESSERACT_STATUS)
 
   // "Browse for binary…" + "Reset to default" pickers + the System Alert
   // CTA that deep-links into Settings → Engine.
@@ -63,6 +92,7 @@ export const useSettingsStore = defineStore('settings', () => {
     probeTesseractBinary: ProbeTesseractBinary,
     setTesseractPath: SetTesseractPath,
     onError: (m) => { appStore.setErrorFromRaw(m) },
+    state: tesseractState,
     navigateToEngine: async () => {
       // Set the tab directly (not goToView, which would also move focus into
       // the panel) then scroll the Engine section into view — matches the
@@ -84,6 +114,7 @@ export const useSettingsStore = defineStore('settings', () => {
     toggle: toggleWatch,
   } = useFeatureToggle({
     set: SetWatchEnabled,
+    state: watchEnabledState,
     canEnable: () => tesseractReady.value
       ? null
       : 'Configure Tesseract in Settings → Engine before enabling Watch.',
@@ -116,6 +147,7 @@ export const useSettingsStore = defineStore('settings', () => {
     toggle: toggleExitOnClose,
   } = useFeatureToggle({
     set: SetExitOnClose,
+    state: exitOnCloseState,
     onError: (m) => { appStore.setErrorFromRaw(m) },
   })
 
@@ -133,7 +165,7 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   // ── Screenshots directory ─────────────────────────────────────────
-  // Persisted Go-side, mirrored here for rendering; also owns the
+  // Persisted Go-side and read from its cache entry; also owns the
   // platform-probe state for SettingsView's "Detect Overwatch Folder".
   const {
     screenshotsDir,
@@ -164,6 +196,7 @@ export const useSettingsStore = defineStore('settings', () => {
     refreshNewCount: refetchPendingCount,
     shouldConfirmPickWhile: () => watchEnabled.value,
     onError: (m) => { appStore.setErrorFromRaw(m) },
+    state: screenshotsDirState,
   })
 
   // ── Screenshots source picker (Windows auto-detect) ───────────────
@@ -197,25 +230,6 @@ export const useSettingsStore = defineStore('settings', () => {
   // the matches-store dossier all read ONE instance.
   const { weekStart, setWeekStart } = useWeekStart()
 
-  // ── Server-state hydration ────────────────────────────────────────
-  // The settings reads live in the query cache (one query per endpoint —
-  // per-subsystem isolation falls out of that: one failed call never
-  // blocks the others). hydrate() pushes arrivals into the composable
-  // state machines above, which keep their commit/rollback semantics for
-  // writes. Replaces the old load() Promise.allSettled fan-out. The
-  // tesseract queryFn never throws — a failed probe arrives as a real
-  // found:false status (with the error string the Engine section renders).
-  function hydrate<T>(data: Ref<T | undefined>, apply: (value: T) => void) {
-    watchEffect(() => {
-      const value = data.value
-      if (value !== undefined) apply(value)
-    })
-  }
-  hydrate(useScreenshotsDirQuery().data, dir => setScreenshotsDir(dir || ''))
-  hydrate(useWatchEnabledQuery().data, on => setWatchEnabled(!!on))
-  hydrate(useExitOnCloseQuery().data, exit => setExitOnClose(!!exit))
-  hydrate(useTesseractQuery().data, setTesseractStatus)
-
   return {
     themeMode,
     setTheme,
@@ -238,6 +252,7 @@ export const useSettingsStore = defineStore('settings', () => {
     detectTesseractBinary,
     gotoEngineSettings,
     watchEnabled,
+    watchState,
     setWatchEnabled,
     autoBackup,
     setAutoBackupInterval,

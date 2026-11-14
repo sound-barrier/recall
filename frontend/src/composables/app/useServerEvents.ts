@@ -6,7 +6,7 @@ import { useEventStream } from '@/composables/shared/useEventStream'
 import { useParseRecovery } from '@/composables/ingest/useParseRecovery'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
-import { recheckTesseractWhileProbing } from '@/queries/settings'
+import { applyWatchState, recheckTesseractWhileProbing } from '@/queries/settings'
 import { useCoachStore } from '@/stores/coach'
 import { useMatchesStore } from '@/stores/matches'
 import { useParseStore } from '@/stores/parse'
@@ -53,7 +53,7 @@ export function useServerEvents() {
     onCoachSessionChanged: (active) => { void useCoachStore().onSessionChangedElsewhere(active) },
     // The watcher's own state, straight into the cache entry the masthead
     // dot reads.
-    onWatchState: (state) => { getQueryClient().setQueryData(qk.settings.watchState, state) },
+    onWatchState: (state) => { applyWatchState(state) },
   })
 
   // The boot probe's one tesseract-status event may have gone out before

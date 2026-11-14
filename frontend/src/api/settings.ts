@@ -7,7 +7,7 @@ import type {
   AutoBackupStatus,
   NamedCandidate,
   ProbeResult,
-  WatchStateEnum,
+  WatcherStatus,
 } from '@/client/types.gen'
 
 // Re-exported wire types — consumers import these instead of reaching into
@@ -63,15 +63,11 @@ export function RevealScreenshotsDir(): Promise<void> {
   return unwrapVoid(sdk.revealScreenshotsFolder())
 }
 
-export function GetWatchEnabled(): Promise<boolean> {
-  return unwrap(sdk.getWatchEnabled()).then(d => d.enabled)
-}
-
-// GetWatchState reads what the watcher is DOING, which the setting alone
-// cannot say: Watch on over a deleted folder is `unavailable`. The
-// `watch-state` event pushes every change after this first read.
-export function GetWatchState(): Promise<WatchStateEnum> {
-  return unwrap(sdk.getWatchEnabled()).then(d => d.watch_state)
+// The Watch setting AND what the watcher is doing about it, in one read:
+// Watch on over a deleted folder is `unavailable`. The `watch-state` event
+// pushes every change of the second after this first read.
+export function GetWatcherStatus(): Promise<WatcherStatus> {
+  return unwrap(sdk.getWatchEnabled())
 }
 
 export function SetWatchEnabled(enabled: boolean): Promise<void> {

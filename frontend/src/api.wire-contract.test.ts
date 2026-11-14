@@ -130,7 +130,7 @@ const SETTINGS: WireCase[] = [
   { name: 'RevealScreenshotsDir',              call: () => api.RevealScreenshotsDir(),              method: 'POST', path: '/api/v1/system/screenshots-folder-reveal' },
   { name: 'GetScreenshotsFolderCandidates',    call: () => api.GetScreenshotsFolderCandidates(),    method: 'GET',  path: '/api/v1/system/screenshots-folder-candidates' },
   { name: 'GetScreenshotsFolderCandidateStats', call: () => api.GetScreenshotsFolderCandidateStats(), method: 'GET', path: '/api/v1/system/screenshots-folder-candidates/stats' },
-  { name: 'GetWatchEnabled',  call: () => api.GetWatchEnabled(),  method: 'GET', path: '/api/v1/settings/watcher' },
+  { name: 'GetWatcherStatus', call: () => api.GetWatcherStatus(), method: 'GET', path: '/api/v1/settings/watcher' },
   { name: 'GetExitOnClose',   call: () => api.GetExitOnClose(),   method: 'GET', path: '/api/v1/settings/close-behavior' },
   {
     name: 'SetExitOnClose', method: 'PUT', path: '/api/v1/settings/close-behavior',

@@ -7,6 +7,8 @@ import { nextTick } from 'vue'
 import { render, screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
+import { qk } from '@/queries/keys'
+import { seedQuery } from '@/test-utils/queryTestUtils'
 import { createPinia, setActivePinia } from 'pinia'
 
 // Mock ../api so the useOWData session-singleton fetch (added when
@@ -66,9 +68,9 @@ function renderAdvanced(overrides: Partial<{
 
   if (overrides.clearConfirm) database.armClear()
   matches.records = seedRecords(overrides.matchedCount ?? 5, overrides.unknownCount ?? 0)
-  parse.ignoredScreenshots = Array.from({ length: overrides.ignoredCount ?? 0 }, (_, i) => ({
+  seedQuery(qk.ignored, Array.from({ length: overrides.ignoredCount ?? 0 }, (_, i) => ({
     filename: `ig-${i}.png`, ignored_at: '2026-05-10T00:00:00Z',
-  }))
+  })))
   const spies = {
     openIgnoredPanel: vi.spyOn(parse, 'openIgnoredPanel'),
     onClearDatabase:  vi.spyOn(database, 'onClearDatabase').mockResolvedValue(undefined),
