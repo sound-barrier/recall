@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
+import { ApiError } from '@/api-error'
 import { useAppStore } from '@/stores/app'
 import { useParseStore } from '@/stores/parse'
-import { SelfUpdateEvents } from '@/self-update-events'
+import { SELF_UPDATE_NOT_READY_PROBLEM, SELF_UPDATE_STAGED_PROBLEM, SelfUpdateEvents } from '@/self-update-events'
 
 // checkForUpdates' busy-gate state machine + goToView's Parse-tab side effect
 // + the self-update event bridge. The Wails event-stream + the dossier's
@@ -99,6 +100,11 @@ describe('app store — About + checkForUpdates', () => {
 const REFUSED_RELEASE = {
   stage: 'check',
   message: 'updater: all providers failed: github: update refused: release 0.34.0 is not covered by its SHA256SUMS',
+}
+
+// A 409 as the API answers it: an ApiError carrying its problem type.
+function conflict(type: string, detail: string): ApiError {
+  return new ApiError(409, detail, { type, title: 'Conflict', status: 409, detail })
 }
 
 async function reachReady(app: ReturnType<typeof useAppStore>): Promise<void> {
@@ -262,6 +268,53 @@ describe('app store — self-update', () => {
     expect(app.selfUpdate.phase).toBe('downloading')
   })
 
+  // The server keeps a staged binary and refuses a start over it (409). A
+  // window that lost track (a reload) learns it is staged from that refusal,
+  // and is offered Restart — not a failure, and not another Install.
+  it('a start refused because an update is already staged lands on ready', async () => {
+    api.StartSelfUpdate.mockRejectedValue(conflict(SELF_UPDATE_STAGED_PROBLEM, 'an update is already staged — restart to apply it'))
+    const app = useAppStore()
+
+    await app.startSelfUpdate()
+
+    expect(app.selfUpdate).toEqual({ phase: 'ready', pct: 100, error: '' })
+  })
+
+  // A failed restart leaves the staged update where it was, so the dialog
+  // keeps offering Restart and says what went wrong.
+  // Matched on the problem type, so the text of another 409 cannot pass for one.
+  it('a 409 of another type stays a failure, even when its text mentions staging', async () => {
+    api.StartSelfUpdate.mockRejectedValue(conflict('https://github.com/sound-barrier/recall/problems/self-update-unavailable', 'already staged elsewhere'))
+    const app = useAppStore()
+
+    await app.startSelfUpdate()
+
+    expect(app.selfUpdate.phase).toBe('error')
+  })
+
+  it('a failed restart with the update still staged keeps offering Restart', async () => {
+    api.StartSelfUpdate.mockResolvedValue(undefined)
+    api.RestartToApply.mockRejectedValue(new Error('swap failed: file in use'))
+    const app = useAppStore()
+    await reachReady(app)
+
+    await app.restartToApply()
+
+    expect(app.selfUpdate.phase).toBe('ready')
+    expect(app.selfUpdate.error).toContain('swap failed')
+  })
+
+  it('a restart refused because nothing is staged lands on error, where Install is offered', async () => {
+    api.StartSelfUpdate.mockResolvedValue(undefined)
+    api.RestartToApply.mockRejectedValue(conflict(SELF_UPDATE_NOT_READY_PROBLEM, 'no update is staged to apply'))
+    const app = useAppStore()
+    await reachReady(app)
+
+    await app.restartToApply()
+
+    expect(app.selfUpdate.phase).toBe('error')
+  })
+
   it('restartToApply enters restarting and delegates to RestartToApply', async () => {
     api.RestartToApply.mockResolvedValue(undefined)
     api.StartSelfUpdate.mockResolvedValue(undefined)
@@ -274,8 +327,8 @@ describe('app store — self-update', () => {
     expect(app.selfUpdate.phase).toBe('restarting')
   })
 
-  it('surfaces a restart failure as the error phase', async () => {
-    api.RestartToApply.mockRejectedValue(new Error('swap failed'))
+  it('surfaces a restart failure as the error phase when nothing is staged', async () => {
+    api.RestartToApply.mockRejectedValue(conflict(SELF_UPDATE_NOT_READY_PROBLEM, 'no update is staged to apply'))
     api.StartSelfUpdate.mockResolvedValue(undefined)
     const app = useAppStore()
     await reachReady(app)

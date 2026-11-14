@@ -8,7 +8,7 @@ import {
   runUpdateCheck, useDataLocationQuery, useUpdateCheckQuery, useVersionQuery,
 } from '@/queries/system'
 import {
-  SelfUpdateEvents, stepSelfUpdate, updaterErrorPhase,
+  SELF_UPDATE_NOT_READY_PROBLEM, SELF_UPDATE_STAGED_PROBLEM, SelfUpdateEvents, isProblem, stepSelfUpdate, updaterErrorPhase,
   type SelfUpdateProgress, type SelfUpdateError, type SelfUpdateEvent, type SelfUpdateState,
 } from '@/self-update-events'
 import type { ViewId } from '@/composables/shared/keyboard/useTabKeyboardNav'
@@ -194,7 +194,10 @@ export const useAppStore = defineStore('app', () => {
     try {
       await StartSelfUpdate()
     } catch (e) {
-      stepUpdater({ type: 'start-rejected', error: plainLanguageError(String(e)) })
+      // A start refused over a staged update is not a failure: the server
+      // kept the binary, and Restart is what applies it.
+      if (isProblem(e, SELF_UPDATE_STAGED_PROBLEM)) stepUpdater({ type: 'found-staged' })
+      else stepUpdater({ type: 'start-rejected', error: plainLanguageError(String(e)) })
     }
   }
 
@@ -205,7 +208,10 @@ export const useAppStore = defineStore('app', () => {
     try {
       await RestartToApply()
     } catch (e) {
-      stepUpdater({ type: 'restart-failed', error: plainLanguageError(String(e)) })
+      // The staged update survives a failed swap, so Restart stays on offer —
+      // unless the server says nothing is staged, where Install is the way on.
+      const staged = !isProblem(e, SELF_UPDATE_NOT_READY_PROBLEM)
+      stepUpdater({ type: 'restart-failed', error: plainLanguageError(String(e)), staged })
     }
   }
 
