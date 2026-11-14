@@ -1,8 +1,6 @@
 package app
 
 import (
-	"context"
-	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -51,8 +49,8 @@ var (
 
 // ── Unexported *App methods (method expressions) ──────────────────────────
 var (
-	ClaimParse          = (*App).claimParse
-	EndParse            = (*App).endParse
+	ClaimRun            = (*App).claimRun
+	FinishRun           = (*App).finishRun
 	NoteProgress        = (*App).noteProgress
 	CaptureFatal        = (*App).captureFatal
 	StartWatching       = (*App).startWatching
@@ -95,10 +93,7 @@ func WatchActivity(a *App) (int, string) {
 	ev := a.watchActivityLocked()
 	return ev.Pending, ev.LastSeenAt
 }
-func WatchedDir(a *App) string               { return a.watchedDir }
-func ParseCancel(a *App) *context.CancelFunc { return &a.parseCancel }
-func ParseRunning(a *App) *bool              { return &a.parseRunning }
-func ParseCancelMu(a *App) *sync.Mutex       { return &a.parseCancelMu }
+func WatchedDir(a *App) string { return a.watchedDir }
 
 // Manifest IO at the historical zero-config signatures — production
 // reaches the manifest through pkg/gamedata directly; only tests

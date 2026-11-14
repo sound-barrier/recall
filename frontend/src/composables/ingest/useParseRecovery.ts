@@ -1,6 +1,6 @@
 import { onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 
-import { setEventStreamStatusHandler, type ActiveParse } from '@/api-client'
+import { setEventStreamStatusHandler, type ActiveRun } from '@/api-client'
 import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
 
 // Parse-stream recovery for server mode. The parse runs server-side as a
@@ -8,9 +8,11 @@ import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
 // completion arrive over SSE, which does NOT replay on reconnect. This
 // composable bridges the two failure modes a network blip introduces:
 //
-//   1. SSE drop mid-parse — the connection-status handler flips to
-//      'reconnecting'; on re-open we resync against GET /parses/active
-//      so a missed parse-complete (or progress) can't strand the panel.
+//   1. SSE drop — the connection-status handler flips to 'reconnecting';
+//      on re-open we resync against GET /parses/active so a missed
+//      run-finished (or progress) can't strand the panel, and reload the
+//      matches so any match-updated lost in the gap is reconciled — idle
+//      or not, since the folder watcher runs while nobody is looking.
 //   2. Page reload mid-parse — onMounted resync restores the panel from
 //      the same status endpoint.
 //
@@ -21,15 +23,20 @@ import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
 export type ParseConnectionState = 'connected' | 'reconnecting' | 'lost'
 
 export interface ParseRecoveryApi {
-  // parse-busy + the live progress event — App.vue owns both; we set
-  // them when resyncing against the server's run-state.
+  // Whether a run holds the slot — the 'lost' escalation only matters then.
   parseBusy: Ref<boolean>
+  // The live progress tick; a fresh one proves the stream is delivering.
   parseProgress: Ref<ParseProgressEvent | null>
-  // Re-fetch the matches list (App.vue's load()).
+  // Re-fetch the matches list (the matches store's load()).
   reload: () => Promise<void> | void
-  // GET /parses/active — the authoritative run-state snapshot.
-  getActiveParse: () => Promise<ActiveParse>
-  // How long a 'reconnecting' state may persist (while a parse is busy)
+  // GET /parses/active — the authoritative run-slot snapshot.
+  getActiveParse: () => Promise<ActiveRun>
+  // The run machine's generation now, and the door a snapshot read at a
+  // generation goes back through — the machine drops it if the run moved
+  // while the read was in flight.
+  runGeneration: () => number
+  applySnapshot: (active: ActiveRun, generation: number) => void
+  // How long a 'reconnecting' state may persist (while a run is busy)
   // before escalating to 'lost' + the manual Refresh. Overridable for
   // tests; defaults to 8s.
   staleMs?: number
@@ -55,46 +62,34 @@ export function useParseRecovery(api: ParseRecoveryApi) {
   }
 
   // Heal the UI from the authoritative run-state. Used on mount
-  // (reload-mid-parse), on reconnect, and on manual refresh.
-  async function resync() {
-    let active: ActiveParse
+  // (reload-mid-parse), on reconnect, and on manual refresh. Returns
+  // whether the snapshot was read.
+  async function resync(): Promise<boolean> {
+    const generation = api.runGeneration()
+    let active: ActiveRun
     try {
       active = await api.getActiveParse()
     } catch {
-      return
+      return false
     }
-    if (active.running) {
-      api.parseBusy.value = true
-      // Synthetic resync event — the snapshot has no per-file detail, so
-      // filename/type are empty (the wire always carries both fields).
-      api.parseProgress.value = {
-        done: active.done,
-        total: active.total,
-        filename: '',
-        screenshot_type: '',
-      }
-    } else if (api.parseBusy.value) {
-      // We thought a parse was running but the server says it finished —
-      // a parse-complete missed during the drop. Reload + clear.
-      api.parseBusy.value = false
-      api.parseProgress.value = null
-      await api.reload()
-    }
+    api.applySnapshot(active, generation)
+    return true
   }
 
   function onStatus(status: 'connected' | 'reconnecting') {
     if (status === 'reconnecting') {
-      if (api.parseBusy.value) {
-        if (connectionState.value === 'connected') connectionState.value = 'reconnecting'
-        armStale()
-      }
+      if (connectionState.value === 'connected') connectionState.value = 'reconnecting'
+      if (api.parseBusy.value) armStale()
       return
     }
     // (re)connected
     const wasDisrupted = connectionState.value !== 'connected'
     connectionState.value = 'connected'
     clearStale()
-    if (wasDisrupted) void resync()
+    if (wasDisrupted) {
+      void resync()
+      void api.reload()
+    }
   }
 
   // A fresh parse-progress tick proves the stream is delivering again —
@@ -106,11 +101,11 @@ export function useParseRecovery(api: ParseRecoveryApi) {
     }
   })
 
-  // Manual fallback (the Refresh button): re-pull the run-state + reset.
-  function refresh() {
-    connectionState.value = 'connected'
+  // Manual fallback (the Refresh button): re-pull the run-state. The
+  // state reads 'connected' only once the server has answered.
+  async function refresh() {
     clearStale()
-    void resync()
+    if (await resync()) connectionState.value = 'connected'
   }
 
   onMounted(() => {

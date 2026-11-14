@@ -74,7 +74,7 @@ describe('server-mode event bridge — delivery', () => {
   it('opens ONE shared stream for every subscribed event name', async () => {
     const { EventsOn } = await loadPlatform()
     EventsOn('parse-progress', vi.fn())
-    EventsOn('parse-complete', vi.fn())
+    EventsOn('run-finished', vi.fn())
     expect(FakeEventSource.instances).toHaveLength(1)
     expect(onlySource().url).toBe('/api/v1/events')
   })
@@ -84,7 +84,7 @@ describe('server-mode event bridge — delivery', () => {
     const onProgress = vi.fn()
     const onComplete = vi.fn()
     EventsOn('parse-progress', onProgress)
-    EventsOn('parse-complete', onComplete)
+    EventsOn('run-finished', onComplete)
 
     onlySource().emit('parse-progress', JSON.stringify({ done: 2, total: 5 }))
 
@@ -108,9 +108,9 @@ describe('server-mode event bridge — delivery', () => {
   it('delivers null for a bodiless frame', async () => {
     const { EventsOn } = await loadPlatform()
     const onPing = vi.fn()
-    EventsOn('parse-canceled', onPing)
+    EventsOn('run-finished', onPing)
 
-    onlySource().emit('parse-canceled', '')
+    onlySource().emit('run-finished', '')
 
     expect(onPing).toHaveBeenCalledWith(null)
   })
@@ -119,10 +119,10 @@ describe('server-mode event bridge — delivery', () => {
     const { EventsOn } = await loadPlatform()
     const stale = vi.fn()
     const fresh = vi.fn()
-    EventsOn('parse-complete', stale)
-    EventsOn('parse-complete', fresh)
+    EventsOn('run-finished', stale)
+    EventsOn('run-finished', fresh)
 
-    onlySource().emit('parse-complete', JSON.stringify({ count: 1 }))
+    onlySource().emit('run-finished', JSON.stringify({ count: 1 }))
 
     expect(stale).not.toHaveBeenCalled()
     expect(fresh).toHaveBeenCalledOnce()
@@ -135,7 +135,7 @@ describe('server-mode event bridge — teardown', () => {
     const onProgress = vi.fn()
     const onComplete = vi.fn()
     EventsOn('parse-progress', onProgress)
-    EventsOn('parse-complete', onComplete)
+    EventsOn('run-finished', onComplete)
     const source = onlySource()
 
     // Unsubscribing a name nobody registered (a double unmount) must be
@@ -149,7 +149,7 @@ describe('server-mode event bridge — teardown', () => {
     // One name still listening — the shared stream must stay open.
     expect(source.readyState).not.toBe(FakeEventSource.CLOSED)
 
-    EventsOff('parse-complete')
+    EventsOff('run-finished')
     expect(source.readyState).toBe(FakeEventSource.CLOSED)
 
     // A later subscription can't reuse the closed source.

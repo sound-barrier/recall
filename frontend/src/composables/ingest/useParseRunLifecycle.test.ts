@@ -2,13 +2,14 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { ref } from 'vue'
 
-import type { MatchRecord, TesseractStatus } from '@/api'
+import type { MatchRecord, RunFinishedEvent, TesseractStatus } from '@/api'
 import { setApiBacking } from '@/api-client'
 import { useParseRunLifecycle } from '@/composables/ingest/useParseRunLifecycle'
 import { profileScopedKey } from '@/composables/profile/profileStorage'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 import { seedQuery } from '@/test-utils/queryTestUtils'
+import { flushPromises, runTick, seedParseRun, SEEDED_RUN_ID } from '@/test-utils'
 import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -25,13 +26,14 @@ vi.stubGlobal('localStorage', {
   get length() { return memStore.size },
 })
 
-// The parse run is a small state machine driven from two directions: the
-// user (Parse / Stop / Re-parse all) and the server event stream
-// (parse-complete / parse-canceled). Its invariants are the ones that
-// strand the UI when they break — a run that never releases parseBusy
+// The parse run is a small state machine (parseRunMachine.ts) driven from
+// two directions: the user (Parse / Stop / Re-parse all) and the server
+// event stream (parse-progress / run-finished). Its invariants are the ones
+// that strand the UI when they break — a run that never releases parseBusy
 // leaves the Parse button dead until reload, and a Stop that never clears
 // cancelingParse leaves the status bar stuck on "canceling". These tests
-// drive the transitions in the order the app hits them.
+// drive the transitions in the order the app hits them; the machine's own
+// transition table is pinned in parseRunMachine.test.ts.
 
 const LAST_PARSED_KEY = profileScopedKey('lastParsedAt')
 const LEGACY_LAST_PARSED_KEY = 'recall.lastParsedAt'
@@ -61,8 +63,8 @@ function rec(key: string, minutesAgo: number, result: 'victory' | 'defeat'): Mat
 }
 
 const api = {
-  ParseScreenshots: vi.fn(async () => undefined),
-  ReParseAll:       vi.fn(async () => undefined),
+  ParseScreenshots: vi.fn(async () => ({ run_id: 2 })),
+  ReParseAll:       vi.fn(async () => ({ run_id: 2 })),
   CancelParse:      vi.fn(async () => undefined),
   GetTesseractStatus: vi.fn(async () => tess()),
   GetScreenshotsDir:  vi.fn(async () => '/srv/recall'),
@@ -82,6 +84,17 @@ function bootSettings(status: TesseractStatus) {
 
 function newRun(load: () => Promise<void> = vi.fn(async () => {})) {
   return useParseRunLifecycle({ load })
+}
+
+// The run ends the way the server says so: its run-finished event. The end
+// reloads and reports asynchronously, so settle before asserting.
+async function finish(
+  run: ReturnType<typeof newRun>,
+  outcome: RunFinishedEvent['outcome'],
+  over: Partial<RunFinishedEvent> = {},
+) {
+  run.onRunFinished({ run_id: SEEDED_RUN_ID, kind: 'parse', outcome, ...over })
+  await flushPromises()
 }
 
 beforeEach(() => {
@@ -124,7 +137,7 @@ describe('starting a run', () => {
   it('clears the previous run’s progress + log and stays busy after the POST resolves', async () => {
     bootSettings(tess())
     const run = newRun()
-    run.parseLog.value = [{ done: 1, total: 1, filename: 'old.png', screenshot_type: 'summary' }]
+    run.parseLog.value = [runTick({ done: 1, total: 1, filename: 'old.png', screenshot_type: 'summary' })]
     run.parseProgressOpen.value = true
     useAppStore().setError('a stale banner')
 
@@ -135,7 +148,7 @@ describe('starting a run', () => {
     expect(run.parseProgress.value).toBeNull()
     expect(run.parseProgressOpen.value).toBe(false)
     expect(useAppStore().error).toBe('')
-    // Completion rides the parse-complete event, NOT the POST resolving —
+    // Completion rides the run-finished event, NOT the POST resolving —
     // otherwise a mid-parse stream drop would flip the panel to "done"
     // while OCR is still running.
     expect(run.parseBusy.value).toBe(true)
@@ -193,6 +206,7 @@ describe('stopping a run', () => {
   it('flips to canceling on the first Stop and ignores repeat clicks', async () => {
     bootSettings(tess())
     const run = newRun()
+    seedParseRun(run, { state: 'running' })
 
     await run.onCancelParse()
     await run.onCancelParse()
@@ -205,15 +219,75 @@ describe('stopping a run', () => {
     bootSettings(tess())
     api.CancelParse.mockRejectedValueOnce(new Error('HTTP 409: no parse running'))
     const run = newRun()
+    seedParseRun(run, { state: 'running' })
 
     await run.onCancelParse()
 
     expect(run.cancelingParse.value).toBe(false)
+    expect(run.canStop.value).toBe(true)
+  })
+
+  // A restore or a profile switch holds the same slot, and the server
+  // refuses to stop one — asking would leave "Canceling…" up forever.
+  it('cannot stop a store swap', async () => {
+    bootSettings(tess())
+    const run = newRun()
+    seedParseRun(run, { state: 'running', kind: 'restore' })
+
+    expect(run.canStop.value).toBe(false)
+    await run.onCancelParse()
+
+    expect(api.CancelParse).not.toHaveBeenCalled()
+    expect(run.cancelingParse.value).toBe(false)
+  })
+
+  // Stop takes Run's place, so the second click of a double-click on Run
+  // would cancel the run it just started.
+  it('holds Stop for a beat after this client starts a run', async () => {
+    vi.useFakeTimers()
+    bootSettings(tess())
+    const run = newRun()
+
+    await run.parse()
+    expect(run.parseRun.value).toMatchObject({ status: 'running', runId: 2 })
+    expect(run.canStop.value).toBe(false)
+    await run.onCancelParse()
+    expect(api.CancelParse).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(600)
+    expect(run.canStop.value).toBe(true)
+  })
+})
+
+describe('runs this client did not start', () => {
+  // The folder watcher and other tabs start runs too; their progress is
+  // the first this client hears of them.
+  it('a progress tick from an unseen run makes the client busy', () => {
+    bootSettings(tess())
+    const run = newRun()
+
+    run.onParseProgress(runTick({ run_id: 9, done: 1, total: 4 }))
+
+    expect(run.parseBusy.value).toBe(true)
+    expect(run.parseProgress.value).toMatchObject({ done: 1, total: 4 })
+    expect(run.canStop.value).toBe(true)
+  })
+
+  it('a late tick from a run already over changes nothing', async () => {
+    bootSettings(tess())
+    const run = newRun()
+    run.onParseProgress(runTick({ run_id: 9, done: 1, total: 4 }))
+    await finish(run, 'completed', { run_id: 9 })
+
+    run.onParseProgress(runTick({ run_id: 9, done: 4, total: 4 }))
+
+    expect(run.parseBusy.value).toBe(false)
+    expect(run.parseLog.value).toHaveLength(1)
   })
 })
 
 describe('terminal transitions', () => {
-  // finishParseRun reads the refetched batch straight from the cache, so
+  // A completed run reads the refetched batch straight from the cache, so
   // the fake load() is what a real refetch would have landed there.
   function loadWith(records: MatchRecord[]) {
     return vi.fn(async () => { getQueryClient().setQueryData(qk.matches, records) })
@@ -223,9 +297,9 @@ describe('terminal transitions', () => {
     bootSettings(tess())
     const load = loadWith([rec('m-1', 5, 'victory'), rec('m-2', 3, 'defeat')])
     const run = newRun(load)
-    run.parseBusy.value = true
+    seedParseRun(run, { state: 'running' })
 
-    await run.finishParseRun('complete')
+    await finish(run, 'completed')
 
     expect(load).toHaveBeenCalledOnce()
     expect(run.parseBusy.value).toBe(false)
@@ -239,7 +313,7 @@ describe('terminal transitions', () => {
     bootSettings(tess())
     const run = newRun(loadWith([rec('m-1', 5, 'victory')]))
 
-    await run.finishParseRun('complete')
+    await finish(run, 'completed')
 
     expect(run.parseAnnouncement.value).toBe('Parse complete. 1 match loaded.')
   })
@@ -250,7 +324,7 @@ describe('terminal transitions', () => {
     bootSettings(tess())
     const run = newRun(loadWith([rec('m-1', 5, 'victory')]))
 
-    await run.finishParseRun('complete', { files_parsed: 4, files_failed: 2, matches_updated: 3 })
+    await finish(run, 'completed', { summary: { files_parsed: 4, files_failed: 2, matches_updated: 3 } })
 
     expect(run.parseOutcome.value).toMatchObject({ files_parsed: 4, files_failed: 2 })
     expect(run.parseAnnouncement.value).toBe('Parse complete. 1 match loaded. 2 files failed to read.')
@@ -260,7 +334,7 @@ describe('terminal transitions', () => {
     bootSettings(tess())
     const run = newRun(loadWith([]))
 
-    await run.finishParseRun('complete', { files_parsed: 1, files_failed: 1, matches_updated: 1 })
+    await finish(run, 'completed', { summary: { files_parsed: 1, files_failed: 1, matches_updated: 1 } })
 
     expect(run.parseAnnouncement.value).toBe('Parse complete. 0 matches loaded. 1 file failed to read.')
   })
@@ -269,7 +343,7 @@ describe('terminal transitions', () => {
     bootSettings(tess())
     const run = newRun(loadWith([rec('m-1', 5, 'victory')]))
 
-    await run.finishParseRun('complete')
+    await finish(run, 'completed')
 
     expect(run.parseOutcome.value).toBeNull()
   })
@@ -277,7 +351,7 @@ describe('terminal transitions', () => {
   it('dismissParseOutcome honors only the live token', async () => {
     bootSettings(tess())
     const run = newRun(loadWith([]))
-    await run.finishParseRun('complete', { files_parsed: 1, files_failed: 0, matches_updated: 0 })
+    await finish(run, 'completed', { summary: { files_parsed: 1, files_failed: 0, matches_updated: 0 } })
     const token = run.parseOutcome.value?.token
     if (token === undefined) throw new Error('outcome not raised')
 
@@ -294,7 +368,7 @@ describe('terminal transitions', () => {
     // readable screenshots. The announcement still has to be spoken.
     const run = newRun(vi.fn(async () => {}))
 
-    await run.finishParseRun('complete')
+    await finish(run, 'completed')
 
     expect(run.parseAnnouncement.value).toBe('Parse complete. 0 matches loaded.')
     expect(run.sessionToast.value).toBeNull()
@@ -303,9 +377,9 @@ describe('terminal transitions', () => {
   it('cancels: announces the abort and leaves the last-run stamp untouched', async () => {
     bootSettings(tess())
     const run = newRun(loadWith([rec('m-1', 5, 'victory')]))
-    run.parseBusy.value = true
+    seedParseRun(run, { state: 'running' })
 
-    await run.finishParseRun('canceled')
+    await finish(run, 'canceled')
 
     expect(run.parseAnnouncement.value).toBe('Parse canceled.')
     expect(run.parseBusy.value).toBe(false)
@@ -318,31 +392,73 @@ describe('terminal transitions', () => {
     bootSettings(tess())
     const run = newRun(loadWith([rec('m-1', 5, 'victory')]))
     // User hit Stop; the OCR loop had already reached the last file, so
-    // parse-complete arrives instead of parse-canceled.
+    // the run ends completed instead of canceled.
+    seedParseRun(run, { state: 'running' })
     await run.onCancelParse()
     expect(run.cancelingParse.value).toBe(true)
 
-    await run.finishParseRun('complete')
+    await finish(run, 'completed')
 
     expect(run.cancelingParse.value).toBe(false)
+  })
+
+  // The traced bug: a run that failed after its 202 used to say nothing,
+  // leaving Stop up, folder controls locked and the error unseen.
+  it('fails: returns to idle and shows the run\'s error', async () => {
+    bootSettings(tess())
+    const run = newRun(loadWith([]))
+    seedParseRun(run, { state: 'running' })
+
+    await finish(run, 'failed', { error: 'open /shots: no such file or directory' })
+
+    expect(run.parseBusy.value).toBe(false)
+    expect(run.parseAnnouncement.value).toBe('Parse failed.')
+    expect(useAppStore().error).not.toBe('')
+    expect(run.lastParsedAt.value).toBeNull()
+  })
+
+  it('a store swap ending reloads but reports nothing', async () => {
+    bootSettings(tess())
+    const load = loadWith([rec('m-1', 5, 'victory')])
+    const run = newRun(load)
+    seedParseRun(run, { state: 'running', kind: 'restore' })
+
+    await finish(run, 'completed', { kind: 'restore' })
+
+    expect(run.parseBusy.value).toBe(false)
+    expect(load).toHaveBeenCalledOnce()
+    expect(run.parseAnnouncement.value).toBe('')
+    expect(run.lastParsedAt.value).toBeNull()
+  })
+
+  it('an end replayed for a run already over changes nothing', async () => {
+    bootSettings(tess())
+    const load = loadWith([])
+    const run = newRun(load)
+    seedParseRun(run, { state: 'running' })
+    await finish(run, 'completed')
+
+    await finish(run, 'completed')
+
+    expect(load).toHaveBeenCalledOnce()
   })
 
   it('raises the session toast only when the fresh batch is still an ACTIVE session', async () => {
     bootSettings(tess())
     const active = newRun(loadWith([rec('m-1', 40, 'victory'), rec('m-2', 10, 'defeat')]))
-    await active.finishParseRun('complete')
+    await finish(active, 'completed')
     expect(active.sessionToast.value).toMatchObject({ matches: 2, w: 1, l: 1, d: 0 })
 
     // A batch whose newest match is a day old is history, not "tonight".
     const stale = newRun(loadWith([rec('m-9', 60 * 26, 'victory')]))
-    await stale.finishParseRun('complete')
+    await finish(stale, 'completed')
     expect(stale.sessionToast.value).toBeNull()
   })
 
   it('dismisses the session toast only for the run that raised it', async () => {
     bootSettings(tess())
     const run = newRun(loadWith([rec('m-1', 10, 'victory')]))
-    await run.finishParseRun('complete')
+    await finish(run, 'completed')
     const token = run.sessionToast.value?.token ?? 0
 
     // A stale timer from an earlier run must not kill this toast.
@@ -351,6 +467,35 @@ describe('terminal transitions', () => {
 
     run.dismissSessionToast(token)
     expect(run.sessionToast.value).toBeNull()
+  })
+})
+
+describe('resync snapshots', () => {
+  // A snapshot read before the run ended must not bring it back: the GET
+  // can resolve after run-finished, and nothing would ever clear it again.
+  it('drops a snapshot read before the run moved', async () => {
+    bootSettings(tess())
+    const run = newRun()
+    seedParseRun(run, { state: 'running' })
+    const readAt = run.runGeneration()
+    await finish(run, 'completed')
+
+    run.applySnapshot({ state: 'running', run_id: SEEDED_RUN_ID, kind: 'parse', done: 1, total: 4 }, readAt)
+
+    expect(run.parseBusy.value).toBe(false)
+  })
+
+  it('an idle snapshot ends a run whose end event was lost, and reloads', async () => {
+    bootSettings(tess())
+    const load = vi.fn(async () => {})
+    const run = newRun(load)
+    seedParseRun(run, { state: 'running' })
+
+    run.applySnapshot({ state: 'idle' }, run.runGeneration())
+    await flushPromises()
+
+    expect(run.parseBusy.value).toBe(false)
+    expect(load).toHaveBeenCalledOnce()
   })
 })
 

@@ -43,24 +43,21 @@ func (a *App) RestoreDatabase(payload []byte) error {
 
 	// Serialize against the OCR write path: refuse if a parse is mid-flight
 	// and block a new one from starting during the swap.
-	if _, claimed := a.claimParse(false); !claimed {
-		return ErrParseInFlight
-	}
-	defer a.endParse()
+	return a.withRunSlot(RunKindRestore, func() error {
+		a.closeStoreForSwap()
 
-	a.closeStoreForSwap()
+		// #nosec G703 -- staged is os.CreateTemp's own name (see the deferred
+		// cleanup above) and dst is the active profile's database path.
+		if err := os.Rename(staged, dst); err != nil {
+			_ = a.reopenActiveStore() // don't strand the app with a nil store
+			return fmt.Errorf("restore: swap: %w", err)
+		}
+		keepStaged = true // the staged file IS the live DB now
+		_ = os.Remove(dst + "-wal")
+		_ = os.Remove(dst + "-shm")
 
-	// #nosec G703 -- staged is os.CreateTemp's own name (see the deferred
-	// cleanup above) and dst is the active profile's database path.
-	if err := os.Rename(staged, dst); err != nil {
-		_ = a.reopenActiveStore() // don't strand the app with a nil store
-		return fmt.Errorf("restore: swap: %w", err)
-	}
-	keepStaged = true // the staged file IS the live DB now
-	_ = os.Remove(dst + "-wal")
-	_ = os.Remove(dst + "-shm")
-
-	return a.reopenActiveStore()
+		return a.reopenActiveStore()
+	})
 }
 
 // closeStoreForSwap tears down everything holding the live DB file open so it

@@ -1,10 +1,19 @@
 import { computed, markRaw, ref, shallowRef, type Ref } from 'vue'
 
-import type { MatchRecord } from '@/api-client'
+import type { ActiveRun, MatchRecord, RunFinishedEvent, RunKind } from '@/api-client'
 import { ParseScreenshots, ReParseAll, CancelParse } from '@/api-client'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 import type { ParseProgressEvent, ParseRunSummary, WatchActivityEvent } from '@/components/ingest/parse-progress'
+import {
+  initialParseRunState,
+  isCancelableKind,
+  stepParseRun,
+  type ParseRunEffect,
+  type ParseRunEvent,
+  type ParseRunState,
+  type ParseRunStep,
+} from '@/composables/ingest/parseRunMachine'
 import { currentSessionSummary, type SessionSummary } from '@/match/dossier/match-momentum-helpers'
 import { profileScopedKey } from '@/composables/profile/profileStorage'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
@@ -32,13 +41,24 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
   // a session is TALK: the toast, the tally and the polite announcement
   // all belong to a corpus the user isn't looking at.
   const { guardWrite, sessionActive } = useWriteGate()
-  // parseBusy gates the manual Parse button + peers; cancelingParse spans
-  // the Stop click → SSE parse-canceled confirmation.
-  const parseBusy = ref(false)
-  const cancelingParse = ref(false)
-  // parseProgress: most-recent completed file during an active parse (null
-  // when idle). parseLog: rolling completed-file log.
-  const parseProgress = ref<ParseProgressEvent | null>(null)
+  // The run, as one closed set of states (parseRunMachine.ts). Only
+  // dispatch() assigns it; everything below that the UI reads about the
+  // run is derived from it.
+  const machine = shallowRef<ParseRunState>(initialParseRunState)
+  const parseRun = computed(() => machine.value.run)
+  // parseBusy gates the manual Parse button + peers: something holds the
+  // run slot, or our own start is in flight.
+  const parseBusy = computed(() => parseRun.value.status !== 'idle')
+  const cancelingParse = computed(() => parseRun.value.status === 'canceling')
+  // parseProgress: the run's most recent tick (null when idle, and for a
+  // store swap, which has no files to count).
+  const parseProgress = computed<ParseProgressEvent | null>(() => {
+    const run = parseRun.value
+    return run.status === 'running' || run.status === 'canceling' ? run.progress : null
+  })
+  // parseLog: rolling completed-file log of the run being watched.
+  const parseLog = ref<ParseProgressEvent[]>([])
+  const logCap = 50
   // Watcher pending-file tally (masthead dot). Event-fed, session-scoped.
   const watchActivity = ref<WatchActivityEvent | null>(null)
   // Post-parse session tally toast: set when a parse completes while
@@ -62,9 +82,8 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
     dismissedSessionStart.value = sessionToast.value.startedAt
     sessionToast.value = null
   }
-  const parseLog = ref<ParseProgressEvent[]>([])
   // End-of-run outcome toast: the run's own tally off the
-  // parse-complete payload ("4 read · 2 failed to read"), shown from
+  // completed run's run-finished payload ("4 read · 2 failed to read"), shown from
   // any tab because the watcher can finish a run anywhere. Muted in a
   // coach session like every other run-side voice; absent when the
   // event carried no summary (legacy shape / missed event). The token
@@ -91,41 +110,69 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
   }
 
   // ── Parse run controls ────────────────────────────────────────────
-  // Completion (load() + parseBusy=false) arrives via the parse-complete
-  // event handler, NOT the POST resolving, so a mid-parse network drop can't
-  // strand the panel. parseProgressOpen is IngestView's drawer; the
+  // The run's end (load() + back to idle) arrives as its run-finished
+  // event, NOT the POST resolving, so a mid-parse network drop can't strand
+  // the panel. parseProgressOpen is IngestView's drawer; the
   // unsupported-Tesseract confirm modal gates a run on an untested engine.
   const parseProgressOpen = ref(false)
   const showUnsupportedModal = ref(false)
 
-  async function runParse() {
-    if (!guardWrite()) return
+  // Stop takes Run's place on the same spot, so the second click of a
+  // double-click on Run would land on Stop and cancel the run it just
+  // started. Stop stays held for a beat after a start this client asked for.
+  const STOP_HOLD_MS = 600
+  const stopHeld = ref(false)
+  let stopHoldTimer: ReturnType<typeof setTimeout> | null = null
+  function holdStop() {
+    if (stopHoldTimer) clearTimeout(stopHoldTimer)
+    stopHeld.value = true
+    stopHoldTimer = setTimeout(() => { stopHeld.value = false; stopHoldTimer = null }, STOP_HOLD_MS)
+  }
+  const canStop = computed(() => {
+    const run = parseRun.value
+    return run.status === 'running' && isCancelableKind(run.kind) && !stopHeld.value
+  })
+
+  function dispatch(event: ParseRunEvent): ParseRunStep {
+    const step = stepParseRun(machine.value, event)
+    if (!step.ok) return step
+    machine.value = step.state
+    if (step.effect) void onRunEffect(step.effect)
+    return step
+  }
+
+  async function startRun(start: () => Promise<{ run_id: number }>, kind: RunKind) {
     const appStore = useAppStore()
     appStore.clearError()
-    parseBusy.value = true
-    parseProgress.value = null
+    if (!dispatch({ type: 'start-requested' }).ok) return
+    holdStop()
     parseLog.value = []
     parseProgressOpen.value = false
     try {
-      await ParseScreenshots()
+      const { run_id: runId } = await start()
+      dispatch({ type: 'start-accepted', runId, kind })
     } catch (e) {
       appStore.setErrorFromRaw(String(e))
-      parseBusy.value = false
-      parseProgress.value = null
-      cancelingParse.value = false
+      dispatch({ type: 'start-rejected' })
     }
   }
 
-  // Stop from IngestView's button OR the status-bar ABORT tile. Flips the
-  // canceling flag immediately; the clear happens on parse-canceled.
-  // Swallows 409 (parse finished before the Stop landed).
+  async function runParse() {
+    if (!guardWrite()) return
+    await startRun(ParseScreenshots, 'parse')
+  }
+
+  // Stop from IngestView's button OR the status-bar ABORT tile. The run
+  // reads canceling at once; its run-finished returns it to idle. A refused
+  // cancel (the run ended first) puts it back to running until that event.
   async function onCancelParse() {
-    if (cancelingParse.value) return
-    cancelingParse.value = true
+    const run = parseRun.value
+    if (!canStop.value || run.status !== 'running') return
+    if (!dispatch({ type: 'cancel-requested' }).ok) return
     try {
       await CancelParse()
     } catch (_) {
-      cancelingParse.value = false
+      dispatch({ type: 'cancel-rejected', runId: run.runId })
     }
   }
 
@@ -133,23 +180,11 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
   // unsupported-version modal (the user committed to a multi-minute run).
   async function onReParseAll() {
     if (!guardWrite()) return
-    const appStore = useAppStore()
     if (!useSettingsStore().tesseractReady) {
-      appStore.setError("Tesseract isn't set up yet. Open Settings → Engine to configure it.")
+      useAppStore().setError("Tesseract isn't set up yet. Open Settings → Engine to configure it.")
       return
     }
-    appStore.clearError()
-    parseBusy.value = true
-    parseProgress.value = null
-    parseLog.value = []
-    try {
-      await ReParseAll()
-    } catch (e) {
-      appStore.setErrorFromRaw(String(e))
-      parseBusy.value = false
-      parseProgress.value = null
-      cancelingParse.value = false
-    }
+    await startRun(ReParseAll, 'reparse')
   }
 
   async function parse() {
@@ -181,9 +216,7 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
     setTimeout(() => { if (parseAnnouncement.value === msg) parseAnnouncement.value = '' }, 2000)
   }
 
-  // ── Parse-run terminal transitions ────────────────────────────────
-  // The store owns the state, so it owns the transitions; useServerEvents
-  // merely wires the parse-complete / parse-canceled events to these.
+  // ── Run-end reporting ─────────────────────────────────────────────
   // The two run-side toasts a completed run raises: the session tally
   // (when the fresh batch forms an active session that wasn't
   // dismissed) and the outcome report (when the event carried one).
@@ -203,23 +236,59 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
     announceParse(`Parse complete. ${matchCount} match${matchCount === 1 ? '' : 'es'} loaded.${failedClause}`)
   }
 
-  async function finishParseRun(outcome: 'complete' | 'canceled', summary?: ParseRunSummary) {
+  // ── Server events → the machine ───────────────────────────────────
+  function onParseProgress(event: ParseProgressEvent) {
+    if (!dispatch({ type: 'progress', event }).ok) return
+    parseLog.value = [...parseLog.value, event].slice(-logCap)
+  }
+
+  function onRunFinished(event: RunFinishedEvent) {
+    dispatch({ type: 'finished', event })
+  }
+
+  // The resync path: a snapshot read at `generation` applies only if the
+  // run has not changed since the read began.
+  function applySnapshot(active: ActiveRun, generation: number) {
+    dispatch({ type: 'snapshot', active, generation })
+  }
+  function runGeneration(): number {
+    return machine.value.generation
+  }
+
+  async function onRunEffect(effect: ParseRunEffect) {
+    switch (effect.type) {
+      case 'ended':
+        await finishRun(effect.finished)
+    }
+  }
+
+  // A run ended: reload what it wrote, then say how it went. A run whose
+  // end event was lost (found idle on resync) has no outcome to report.
+  async function finishRun(finished: RunFinishedEvent | null) {
     await deps.load()
+    if (!finished || !isCancelableKind(finished.kind)) return
+    switch (finished.outcome) {
+      case 'completed':
+        reportCompletedParse(finished.summary)
+        return
+      case 'canceled':
+        announceParse('Parse canceled.')
+        return
+      case 'failed':
+        useAppStore().setErrorFromRaw(finished.error ?? 'The parse stopped unexpectedly.')
+        announceParse('Parse failed.')
+    }
+  }
+
+  function reportCompletedParse(summary?: ParseRunSummary) {
     // Read the fresh records straight from the cache — the observer's
     // reactive ref updates a notification tick later than the refetch
     // resolves, and the session summary must see the new batch.
     const fresh = getQueryClient().getQueryData<MatchRecord[]>(qk.matches) ?? []
-    if (outcome === 'complete') {
-      raiseRunToasts(fresh, summary)
-      lastParsedAt.value = Date.now()
-      try { localStorage.setItem(profileScopedKey('lastParsedAt'), String(lastParsedAt.value)) } catch (_) { /* non-fatal */ }
-      announceCompletion(fresh.length, summary?.files_failed ?? 0)
-    } else {
-      announceParse('Parse canceled.')
-    }
-    parseBusy.value = false
-    parseProgress.value = null
-    cancelingParse.value = false
+    raiseRunToasts(fresh, summary)
+    lastParsedAt.value = Date.now()
+    try { localStorage.setItem(profileScopedKey('lastParsedAt'), String(lastParsedAt.value)) } catch (_) { /* non-fatal */ }
+    announceCompletion(fresh.length, summary?.files_failed ?? 0)
   }
 
   // ── Parse-stream recovery surface ─────────────────────────────────
@@ -244,8 +313,10 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
   function refreshParse() { parseRecoveryBridge.value?.refresh() }
 
   return {
+    parseRun,
     parseBusy,
     cancelingParse,
+    canStop,
     parseProgress,
     watchActivity,
     sessionToast,
@@ -264,7 +335,10 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
     confirmUnsupportedParse,
     parseAnnouncement,
     announceParse,
-    finishParseRun,
+    onParseProgress,
+    onRunFinished,
+    applySnapshot,
+    runGeneration,
     parseConnectionState,
     refreshParse,
     wireParseRecovery,

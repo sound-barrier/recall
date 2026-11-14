@@ -110,7 +110,7 @@ test.describe('masthead watch dot', () => {
     await expect(page.locator('.masthead-watch-dot')).toBeVisible()
 
     await emitSSE(page, 'parse-progress', {
-      done: 3, total: 12, filename: 'ow-3.png', screenshot_type: 'summary',
+      run_id: 1, done: 3, total: 12, filename: 'ow-3.png', screenshot_type: 'summary',
     })
     await expect(page.locator('.masthead-parse-chip')).toBeVisible()
     await expect(page.locator('.masthead-watch-dot')).toHaveCount(0)

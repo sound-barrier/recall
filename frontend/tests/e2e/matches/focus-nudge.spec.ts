@@ -6,7 +6,7 @@
  * player is at the keyboard between games. So the top three of their focus
  * list — a coach's items first — get said once, and once only.
  *
- * Driven over the same SSE mock the session tally uses: parse-complete →
+ * Driven over the same SSE mock the session tally uses: run-finished →
  * refetch → the session is live → GET /focus → the toast.
  */
 import AxeBuilder from '@axe-core/playwright'

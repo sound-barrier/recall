@@ -2,7 +2,6 @@ package app_test
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -266,14 +265,14 @@ func TestApp_ParseScreenshots_AmbiguityErrorRecordsFailedFile(t *testing.T) {
 	}
 }
 
-// The end-of-run report: parse-complete carries the run's own tally, so
-// the UI can say "2 read · 1 failed to read" without inferring it from a
-// refetched ledger that can't tell this run's failures from standing
-// degraded rows. Degraded counts as parsed — it stored what it read.
+// The end-of-run report: a completed run's run-finished carries the run's
+// own tally, so the UI can say "2 read · 1 failed to read" without
+// inferring it from a refetched ledger that can't tell this run's failures
+// from standing degraded rows. Degraded counts as parsed — it stored what it
+// read.
 func TestApp_ParseScreenshots_EmitsARunSummary(t *testing.T) {
 	a, _ := newParseReadyApp(t)
-	a.SSEHub = app.NewSSEHub()
-	events := a.SSEHub.Subscribe()
+	next := subscribeRunFinished(t, a)
 	stubParse(t, func(progress parser.ProgressFunc) error {
 		progress(1, 3, "clean.png", &parser.MatchResult{Result: "victory", Map: "rialto", Hero: "lucio"}, nil)
 		progress(2, 3, "degraded.png", &parser.MatchResult{
@@ -287,28 +286,12 @@ func TestApp_ParseScreenshots_EmitsARunSummary(t *testing.T) {
 	if err := a.ParseScreenshots(); err != nil {
 		t.Fatalf("ParseScreenshots: %v", err)
 	}
-
-	for {
-		select {
-		case msg := <-events:
-			if msg.Event != "parse-complete" {
-				continue
-			}
-			var s struct {
-				FilesParsed    int `json:"files_parsed"`
-				FilesFailed    int `json:"files_failed"`
-				MatchesUpdated int `json:"matches_updated"`
-			}
-			if err := json.Unmarshal([]byte(msg.Data), &s); err != nil {
-				t.Fatalf("parse-complete carried no JSON summary: %q (%v)", msg.Data, err)
-			}
-			if s.FilesParsed != 2 || s.FilesFailed != 1 {
-				t.Errorf("summary = %+v, want files_parsed 2 (degraded counts) · files_failed 1", s)
-			}
-			return
-		default:
-			t.Fatal("no parse-complete event observed")
-		}
+	ev, ok := next()
+	if !ok || ev.Summary == nil {
+		t.Fatalf("run-finished = %+v (%v), want one carrying a summary", ev, ok)
+	}
+	if ev.Summary.FilesParsed != 2 || ev.Summary.FilesFailed != 1 {
+		t.Errorf("summary = %+v, want files_parsed 2 (degraded counts) · files_failed 1", *ev.Summary)
 	}
 }
 

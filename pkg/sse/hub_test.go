@@ -26,14 +26,14 @@ func TestHub_Broadcast_DeliversToAllSubscribers(t *testing.T) {
 	a := h.Subscribe()
 	b := h.Subscribe()
 
-	h.Broadcast("parse-complete")
+	h.BroadcastTerminal("run-finished", "{}")
 
 	mustReceive := func(name string, ch chan sse.Msg) {
 		t.Helper()
 		select {
 		case m := <-ch:
-			if m.Event != "parse-complete" {
-				t.Errorf("%s: got event %q, want %q", name, m.Event, "parse-complete")
+			if m.Event != "run-finished" {
+				t.Errorf("%s: got event %q, want %q", name, m.Event, "run-finished")
 			}
 			if m.Data != "{}" {
 				t.Errorf("%s: got data %q, want %q", name, m.Data, "{}")
@@ -73,7 +73,7 @@ func TestHub_BroadcastData_CarriesJSONPayload(t *testing.T) {
 func TestHub_Broadcast_NilReceiver_IsNoOp(t *testing.T) {
 	var h *sse.Hub
 	// Must not panic. No assertion on side effects — there are none.
-	h.Broadcast("parse-complete")
+	h.BroadcastTerminal("run-finished", "{}")
 }
 
 func TestHub_BroadcastData_NilReceiver_IsNoOp(t *testing.T) {
@@ -93,7 +93,7 @@ func TestHub_Unsubscribe_RemovesAndClosesChannel(t *testing.T) {
 	}
 
 	// Subsequent broadcast must NOT panic on a missing client.
-	h.Broadcast("post-unsubscribe")
+	h.BroadcastTerminal("post-unsubscribe", "{}")
 }
 
 func TestHub_SlowConsumer_DropsRatherThanBlocking(t *testing.T) {
@@ -111,7 +111,7 @@ func TestHub_SlowConsumer_DropsRatherThanBlocking(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		for range N {
-			h.Broadcast("tick")
+			h.BroadcastTerminal("tick", "{}")
 		}
 		close(done)
 	}()
@@ -138,8 +138,8 @@ func TestHub_SlowConsumer_DropsRatherThanBlocking(t *testing.T) {
 	}
 }
 
-// Terminal lifecycle events (parse-complete / parse-canceled — the
-// no-payload Broadcast surface) must reach a connected client even when
+// Terminal lifecycle events (run-finished — the
+// guaranteed BroadcastTerminal surface) must reach a connected client even when
 // a progress burst has filled its buffer, or the parse spinner strands
 // until a manual reload (TECHNICAL_DEBT.md section 9). The hub may drop
 // stream events (BroadcastData) for a slow consumer, but never a
@@ -153,18 +153,18 @@ func TestHub_Broadcast_TerminalEventSurvivesFullBuffer(t *testing.T) {
 		h.BroadcastData("parse-progress", `{"done":`+strconv.Itoa(i%10)+`}`)
 	}
 
-	h.Broadcast("parse-complete")
+	h.BroadcastTerminal("run-finished", "{}")
 
 	gotTerminal := false
 	for {
 		select {
 		case m := <-ch:
-			if m.Event == "parse-complete" {
+			if m.Event == "run-finished" {
 				gotTerminal = true
 			}
 		case <-time.After(100 * time.Millisecond):
 			if !gotTerminal {
-				t.Fatal("parse-complete was dropped on a full buffer — the spinner would strand")
+				t.Fatal("run-finished was dropped on a full buffer — the spinner would strand")
 			}
 			return
 		}
@@ -184,7 +184,7 @@ func TestHub_Broadcast_StalledConsumerKeepsTheNewestWindow(t *testing.T) {
 
 	const overflow = 4
 	for i := range cap(ch) + overflow {
-		h.Broadcast("terminal-" + strconv.Itoa(i))
+		h.BroadcastTerminal("terminal-"+strconv.Itoa(i), "{}")
 	}
 
 	if got := len(ch); got != cap(ch) {
@@ -229,7 +229,7 @@ func TestHub_BroadcastData_StillDropsOnFullBuffer(t *testing.T) {
 }
 
 func TestHub_Subscribe_IsConcurrencySafe(t *testing.T) {
-	// Subscribe + Broadcast hammered from goroutines must not race.
+	// Subscribe + BroadcastTerminal hammered from goroutines must not race.
 	// `go test -race` catches missing locks here.
 	h := sse.NewHub()
 	done := make(chan struct{})
@@ -238,7 +238,7 @@ func TestHub_Subscribe_IsConcurrencySafe(t *testing.T) {
 			ch := h.Subscribe()
 			defer h.Unsubscribe(ch)
 			for range 50 {
-				h.Broadcast("concurrent-event")
+				h.BroadcastTerminal("concurrent-event", "{}")
 				// Drain to keep the slow-consumer branch quiet.
 				select {
 				case <-ch:
@@ -258,7 +258,7 @@ func TestHub_Subscribe_IsConcurrencySafe(t *testing.T) {
 }
 
 // BroadcastTerminal is Broadcast's with-payload sibling: the run summary
-// riding parse-complete must survive a full buffer exactly like the
+// riding run-finished must survive a full buffer exactly like the
 // bare terminal event, payload intact.
 func TestHub_BroadcastTerminal_PayloadSurvivesFullBuffer(t *testing.T) {
 	h := sse.NewHub()
@@ -268,12 +268,12 @@ func TestHub_BroadcastTerminal_PayloadSurvivesFullBuffer(t *testing.T) {
 		h.BroadcastData("parse-progress", `{"done":`+strconv.Itoa(i%10)+`}`)
 	}
 
-	h.BroadcastTerminal("parse-complete", `{"files_parsed":9,"files_failed":1}`)
+	h.BroadcastTerminal("run-finished", `{"files_parsed":9,"files_failed":1}`)
 
 	for {
 		select {
 		case m := <-ch:
-			if m.Event != "parse-complete" {
+			if m.Event != "run-finished" {
 				continue
 			}
 			if m.Data != `{"files_parsed":9,"files_failed":1}` {
@@ -281,7 +281,7 @@ func TestHub_BroadcastTerminal_PayloadSurvivesFullBuffer(t *testing.T) {
 			}
 			return
 		case <-time.After(100 * time.Millisecond):
-			t.Fatal("parse-complete was dropped on a full buffer — the spinner would strand")
+			t.Fatal("run-finished was dropped on a full buffer — the spinner would strand")
 		}
 	}
 }

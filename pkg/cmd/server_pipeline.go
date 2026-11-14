@@ -18,7 +18,7 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 	// Kicks off a parse run in a BACKGROUND goroutine and returns 202
 	// Accepted immediately — the request is NOT held open for the
 	// multi-minute OCR loop. Progress + completion reach the client over
-	// /api/v1/events (parse-progress / parse-complete); GET
+	// /api/v1/events (parse-progress / run-finished); GET
 	// /api/v1/parses/active is the resync anchor for a reconnecting or
 	// reloading client. This is what makes a run survive a client
 	// network drop: there's no long-lived request to lose.
@@ -51,12 +51,13 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 		// 409: the request was well-formed but the server's runtime state
 		// conflicts — no/unreadable screenshots dir, or a parse is already
 		// in flight. Not 400 (the bytes parsed fine).
-		if writeError(w, r, a.StartParse(force),
+		id, err := a.StartParse(force)
+		if writeError(w, r, err,
 			errStatus{app.ErrInvalidScreenshotsDir, probConflict},
 			errStatus{app.ErrParseInFlight, probConflict}) {
 			return
 		}
-		w.WriteHeader(http.StatusAccepted)
+		writeJSONStatus(w, r, http.StatusAccepted, parseAccepted{RunID: id})
 	})
 
 	// Status snapshot for the active parse — the resync anchor. SSE
@@ -75,7 +76,8 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 	// isn't".
 	apiMux.HandleFunc("DELETE /api/v1/parses/active", func(w http.ResponseWriter, r *http.Request) {
 		if writeError(w, r, a.CancelParse(),
-			errStatus{app.ErrNoParseInFlight, probConflict}) {
+			errStatus{app.ErrNoParseInFlight, probConflict},
+			errStatus{app.ErrRunNotCancelable, probConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusAccepted)
@@ -85,4 +87,10 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 		pending, err := a.GetNewScreenshotCount()
 		writeJSON(w, r, pending, err)
 	})
+}
+
+// parseAccepted is the 202 body of POST /api/v1/parses: the id the run's
+// parse-progress and run-finished events will carry.
+type parseAccepted struct {
+	RunID app.RunID `json:"run_id"`
 }

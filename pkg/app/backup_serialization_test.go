@@ -18,10 +18,11 @@ func TestApp_RestoreDatabase_RefusesMidParseWithoutTearingDownTheStore(t *testin
 	snapshot, err := a.BackupDatabase()
 	mustNoErr(t, err)
 
-	if _, claimed := app.ClaimParse(a, false); !claimed {
-		t.Fatal("could not claim the parse slot to simulate a run in flight")
+	_, id, err := app.ClaimRun(a, app.RunKindParse)
+	if err != nil {
+		t.Fatalf("could not claim the run slot to simulate a parse in flight: %v", err)
 	}
-	t.Cleanup(func() { app.EndParse(a) })
+	t.Cleanup(func() { app.FinishRun(a, id, nil, nil) })
 
 	if err := a.RestoreDatabase(snapshot); !errors.Is(err, app.ErrParseInFlight) {
 		t.Fatalf("RestoreDatabase = %v, want ErrParseInFlight", err)

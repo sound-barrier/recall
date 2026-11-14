@@ -7,7 +7,7 @@
  * It persists while the session is live rather than auto-dismissing, a
  * dismissal sticks to the session it dismissed, and stale history (re-parses
  * of old backlogs) never toasts at all. Driven over the SSE mock:
- * parse-complete → refetch → toast.
+ * run-finished → refetch → toast.
  */
 import type { Route } from '@playwright/test'
 
@@ -29,7 +29,7 @@ function rec(minutesAgo: number, result: string, change?: number) {
 }
 
 test.describe('session summary toast', () => {
-  test('parse-complete over an active session tallies it', async ({ page }) => {
+  test('a finished run over an active session tallies it', async ({ page }) => {
     await installSSEMock(page)
     let batch: unknown[] = []
     await page.route('**/api/v1/matches', async (route: Route) => {

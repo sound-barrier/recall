@@ -158,18 +158,25 @@ func (a *App) RenameProfile(old, newName string) error {
 	if wasActive {
 		// Same guard as activateAndReload: the branch below closes the
 		// live store, and an in-flight parse would write through it
-		// mid-rename. (defer runs at function end — the slot is held
-		// for the whole rename + reopen.)
-		if _, ok := a.claimRunSlot("profile-rename"); !ok {
+		// mid-rename. The slot is held for the whole rename + reopen.
+		err := a.withRunSlot(RunKindProfileRename, func() error {
+			// Tear down everything that holds the active profile dir open
+			// — the directory rename can't proceed while SQLite has the
+			// .db file mapped.
+			a.closeActiveStore()
+			return a.renameProfileDir(old, newName, true)
+		})
+		if errors.Is(err, ErrParseInFlight) {
 			return ErrProfileSwitchDuringParse
 		}
-		defer a.endParse()
-		// Tear down everything that holds the active profile dir open
-		// — the directory rename can't proceed while SQLite has the
-		// .db file mapped.
-		a.closeActiveStore()
+		return err
 	}
+	return a.renameProfileDir(old, newName, false)
+}
 
+// renameProfileDir renames the profile on disk and, for the active profile,
+// reopens its store at the new path.
+func (a *App) renameProfileDir(old, newName string, wasActive bool) error {
 	if err := a.profiles.Rename(old, newName); err != nil {
 		// Re-open on the original profile so the App doesn't get
 		// stranded with a nil store on a failed active rename.
@@ -250,11 +257,16 @@ func (a *App) activateAndReload(name string) error {
 	// Hold the run slot for the whole swap: a watcher- or user-triggered
 	// parse mid-switch would write through the store this function is
 	// about to close. Busy → the caller retries after the parse (409).
-	if _, ok := a.claimRunSlot("profile-switch"); !ok {
+	err := a.withRunSlot(RunKindProfileSwitch, func() error { return a.swapToProfile(name) })
+	if errors.Is(err, ErrParseInFlight) {
 		return ErrProfileSwitchDuringParse
 	}
-	defer a.endParse()
+	return err
+}
 
+// swapToProfile closes the active store and opens name's, holding the run
+// slot activateAndReload claimed.
+func (a *App) swapToProfile(name string) error {
 	// Remembered BEFORE the swap so a failure can put the app back where it
 	// was. Opening the target can fail for reasons the caller cannot fix by
 	// retrying — a database whose column shape this build refuses, most of all

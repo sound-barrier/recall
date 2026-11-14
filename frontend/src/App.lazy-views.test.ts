@@ -63,7 +63,7 @@ describe('App.vue lazy-loaded components', () => {
     // Anchor confirmation toast — small, but lazy so the bytes only
     // hit users who actually stamp an anchor.
     { name: 'MatchAnchorToast',       path: '@/components/matches/toasts/MatchAnchorToast.vue' },
-    // End-of-run outcome toast — only raised by a parse-complete that
+    // End-of-run outcome toast — only raised by a completed run that
     // carries a summary, so its bytes ride with the other overlay chunks.
     { name: 'ParseOutcomeToast',      path: '@/components/ingest/ParseOutcomeToast.vue' },
     // About dialog — identity + update hub, only mounted when the user opens it.

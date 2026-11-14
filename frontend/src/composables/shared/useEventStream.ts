@@ -1,36 +1,22 @@
 import { onBeforeUnmount, onMounted, type Ref } from 'vue'
-import { EventsOn, EventsOff, type MatchRecord, type TesseractStatus } from '@/api-client'
-import type { ParseProgressEvent, ParseRunSummary, WatchActivityEvent } from '@/components/ingest/parse-progress'
+import { EventsOn, EventsOff, type MatchRecord, type RunFinishedEvent, type TesseractStatus } from '@/api-client'
+import type { ParseProgressEvent, WatchActivityEvent } from '@/components/ingest/parse-progress'
 
-// Live-stream subscriptions for the three SSE events emitted during
-// ingest: parse-progress (per-file ticks), parse-complete (batch
-// done), and match-updated (per-record live-stream).
-//
-// Extracted from App.vue because the three subscriptions, the
-// rolling 50-entry log buffer, the parse-complete-driven reload,
-// and the match-updated upsert-by-key all live in one place; the
-// inline implementation was the largest non-handler block in the
-// onMounted body.
+// Live-stream subscriptions for the events the backend emits: the run's
+// progress ticks and its end, the per-record match-updated upserts, and the
+// smaller state pushes (Tesseract probe, coach session, watcher tally).
+// Payloads are handed on as they arrive; the parse store's run machine
+// decides what a progress tick or a run's end means.
 
 export interface EventStreamApi {
   // Returns the current records list. Required for the upsert path.
   records: Ref<MatchRecord[]>
-  parseProgress: Ref<ParseProgressEvent | null>
-  parseLog: Ref<ParseProgressEvent[]>
+  onParseProgress: (event: ParseProgressEvent) => void
+  // Called exactly once per run, however it ended.
+  onRunFinished: (event: RunFinishedEvent) => void
   // Watcher pending-file tally for the masthead dot. Optional - absent
   // consumers simply never see watch-activity payloads.
   watchActivity?: Ref<WatchActivityEvent | null>
-  // Called when a parse batch finishes, with the run's own tally when
-  // the event carried one (a payload-less legacy event passes
-  // undefined). Should reload records and refresh whatever the caller
-  // wants invalidated.
-  onParseComplete: (summary?: ParseRunSummary) => Promise<void> | void
-  // Called when a parse run was aborted via CancelParse. Distinct
-  // hook so the consumer can flip a "canceling…" state back to
-  // idle, render different toast copy, etc. Optional — if absent,
-  // parse-canceled is treated the same as parse-complete (still
-  // safe; the records ref reflects the partial state).
-  onParseCanceled?: () => Promise<void> | void
   // Called when the backend's background Tesseract probe publishes a fresh
   // status (a cold-boot Defender scan finally let the binary run). Lets the
   // engine banner self-heal without an app restart.
@@ -39,25 +25,9 @@ export interface EventStreamApi {
   // this install. Both windows share one backend, so the one that did not
   // open the session still has to lock its writes.
   onCoachSessionChanged?: (active: boolean) => void
-  // Maximum entries in the rolling log (default 50).
-  logCap?: number
-}
-
-const DEFAULT_LOG_CAP = 50
-
-// Narrow an event payload to a run summary without trusting the wire:
-// both transports can deliver null / "{}" from older emit shapes.
-function isRunSummary(data: unknown): data is ParseRunSummary {
-  return (
-    typeof data === 'object' && data !== null
-    && typeof (data as ParseRunSummary).files_parsed === 'number'
-    && typeof (data as ParseRunSummary).files_failed === 'number'
-  )
 }
 
 export function useEventStream(api: EventStreamApi) {
-  const cap = api.logCap ?? DEFAULT_LOG_CAP
-
   function onMatchUpdated(rec: MatchRecord | null) {
     if (!rec || !rec.match_key) return
     const i = api.records.value.findIndex(r => r.match_key === rec.match_key)
@@ -73,36 +43,17 @@ export function useEventStream(api: EventStreamApi) {
   }
 
   function subscribe() {
-    // The payload is best-effort: a run summary when present, undefined
-    // for the legacy "{}"/empty shapes — isRunSummary guards, because
-    // JSON.parse('{}') is truthy but carries no tally.
-    EventsOn('parse-complete', (data: unknown) => {
-      void api.onParseComplete(isRunSummary(data) ? data : undefined)
+    EventsOn<ParseProgressEvent>('parse-progress', (data) => {
+      if (data) api.onParseProgress(data)
     })
-    EventsOn('parse-progress', (data: ParseProgressEvent | null) => {
-      if (!data) return
-      api.parseProgress.value = data
-      api.parseLog.value = [...api.parseLog.value, data].slice(-cap)
-    })
-    // parse-canceled is the third terminal lifecycle event (the
-    // other two are parse-complete and the implicit
-    // "no-more-progress-ticks"). The records ref already reflects
-    // any partial state because the per-file inserts ran inside the
-    // OCR callback; the consumer just needs to know to flip the
-    // Stop button + "canceling…" indicator back to idle.
-    EventsOn('parse-canceled', () => {
-      if (api.onParseCanceled) {
-        void api.onParseCanceled()
-      } else {
-        void api.onParseComplete()
-      }
+    EventsOn<RunFinishedEvent>('run-finished', (data) => {
+      if (data) api.onRunFinished(data)
     })
     // Live-stream MatchRecords. Upsert by match_key into the same
     // records ref the static loader populates — every downstream
-    // filter/group/render computed recomputes for free. The
-    // parse-complete handler still calls onParseComplete() as the
-    // authoritative reconciliation in case any of these events were
-    // dropped on a slow SSE connection.
+    // filter/group/render computed recomputes for free. A run's end
+    // reloads the list as the authoritative reconciliation in case any of
+    // these events were dropped on a slow SSE connection.
     EventsOn<MatchRecord>('match-updated', onMatchUpdated)
     // Background Tesseract probe result — refresh the engine status so the
     // System Alert clears itself once a cold-boot scan releases the binary.
@@ -120,9 +71,8 @@ export function useEventStream(api: EventStreamApi) {
   }
 
   function unsubscribe() {
-    EventsOff('parse-complete')
     EventsOff('parse-progress')
-    EventsOff('parse-canceled')
+    EventsOff('run-finished')
     EventsOff('match-updated')
     EventsOff('tesseract-status')
     EventsOff('coach-session-changed')

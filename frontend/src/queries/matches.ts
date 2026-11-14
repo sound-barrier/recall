@@ -42,7 +42,7 @@ export function useFailedFilesQuery() {
 }
 
 // Refetch the whole cluster — the replacement for the old load(): awaited
-// by mutation handlers and the parse-complete path so "reload then
+// by mutation handlers and the run-finished path so "reload then
 // continue" ordering is preserved. refetchQueries settles rather than
 // throwing; per-query failures surface through each query's own state
 // (the banner meta for matches, keep-last for the rest).

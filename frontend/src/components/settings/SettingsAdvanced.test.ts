@@ -31,7 +31,9 @@ import { useUiStore } from '@/stores/ui'
 import { useDatabaseStore } from '@/stores/database'
 import { useMatchesStore } from '@/stores/matches'
 import { useParseStore } from '@/stores/parse'
-import type { MatchRecord } from '@/api-client'
+import type { MatchRecord, RunKind } from '@/api-client'
+import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
+import { seedParseRun } from '@/test-utils'
 
 // Every render needs an active Pinia: the section reads the stores it
 // renders rather than taking a bundle of props from a parent shim
@@ -158,10 +160,9 @@ describe('SettingsAdvanced — Clear Database opt-out checkbox', () => {
 
 // The progress line reads the parse store now, so these seed it rather than
 // handing the component a prop bundle.
-function renderWithProgress(parseProgress: unknown, reparsing = false) {
+function renderWithProgress(progress: Omit<ParseProgressEvent, 'run_id'>, kind: RunKind = 'reparse') {
   const parse = useParseStore()
-  parse.parseProgress = parseProgress as never
-  parse.parseBusy = reparsing
+  seedParseRun(parse, { state: 'running', kind, progress })
   return render(SettingsAdvanced)
 }
 
@@ -172,13 +173,20 @@ describe('SettingsAdvanced — re-parse progress line (item 12)', () => {
   })
 
   it('renders the cumulative counters when the SSE event carries them', () => {
-    renderWithProgress({   done: 47,   total: 47,   filename: 'x.png',   screenshot_type: 'teams',   matches_updated: 12,   hero_corrections: 3,   map_corrections: 1, }, true)
+    renderWithProgress({   done: 47,   total: 47,   filename: 'x.png',   screenshot_type: 'teams',   matches_updated: 12,   hero_corrections: 3,   map_corrections: 1, })
     const line = screen.getByText(/12 of 47 matches updated/)
     expect(line).toHaveTextContent('3 hero / 1 map corrected')
   })
 
+  // A normal parse counts the matches it touched too; that tally is not a
+  // re-parse result and must not read as "Re-parsing" in Settings.
+  it('stays silent during a normal parse, whatever its counters say', () => {
+    renderWithProgress({ done: 4, total: 4, filename: 'x.png', screenshot_type: 'teams', matches_updated: 2 }, 'parse')
+    expect(screen.queryByText(/matches updated/)).not.toBeInTheDocument()
+  })
+
   it('omits the corrections suffix when neither hero nor map fields changed', () => {
-    renderWithProgress({   done: 47,   total: 47,   filename: 'x.png',   screenshot_type: 'teams',   matches_updated: 12,   hero_corrections: 0,   map_corrections: 0, }, true)
+    renderWithProgress({   done: 47,   total: 47,   filename: 'x.png',   screenshot_type: 'teams',   matches_updated: 12,   hero_corrections: 0,   map_corrections: 0, })
     const line = screen.getByText(/12 of 47 matches updated/)
     expect(line).not.toHaveTextContent('corrected')
   })

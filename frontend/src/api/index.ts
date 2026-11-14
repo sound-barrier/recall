@@ -14,7 +14,10 @@
 // Re-exported wire types — consumers import these instead of reaching into
 // the generated module directly.
 export type {
-  ActiveParse,
+  ActiveRun,
+  RunFinishedEvent,
+  RunId,
+  RunKind,
   AutoBackupStatus,
   ClaimTransfer,
   CoachDecisionEnum,

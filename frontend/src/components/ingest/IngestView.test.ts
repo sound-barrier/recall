@@ -9,7 +9,8 @@ import { useParseStore } from '@/stores/parse'
 import { qk } from '@/queries/keys'
 import { seedQuery } from '@/test-utils/queryTestUtils'
 import { useSettingsStore } from '@/stores/settings'
-import type { MatchRecord, TesseractStatus } from '@/api'
+import type { MatchRecord, RunKind, TesseractStatus } from '@/api'
+import { seedParseRun } from '@/test-utils'
 
 // IngestView reads its state from the stores now (settings: Tesseract + watch;
 // matches: the parse stream + counts; app: tab nav). These tests seed the
@@ -41,6 +42,7 @@ interface IngestOver {
   watchEnabled?:       boolean
   parseBusy?:          boolean
   cancelingParse?:    boolean
+  runKind?:            RunKind
   newScreenshotCount?: number | null
   parkedCount?:        number
   lastParsedAt?:       number | null
@@ -64,8 +66,9 @@ function renderIngest(over: IngestOver = {}) {
   settings.setScreenshotsDir(over.screenshotsDir ?? '/srv/recall')
   settings.setWatchEnabled(over.watchEnabled ?? false)
 
-  parse.parseBusy = over.parseBusy ?? false
-  parse.cancelingParse = over.cancelingParse ?? false
+  if (over.parseBusy) {
+    seedParseRun(parse, { state: over.cancelingParse ? 'canceling' : 'running', kind: over.runKind })
+  }
   seedPending(over)
   parse.lastParsedAt = over.lastParsedAt ?? null
   matches.records = Array.from({ length: over.matchedCount ?? 0 }, (_, i) => rec(i))
@@ -93,7 +96,7 @@ const checklistHeading = () => screen.queryByRole('heading', { name: 'Two things
 // one replaces it with the located/It's-set copy.
 const tesseractFix = () => screen.queryByRole('button', { name: /Settings → Engine/ })
 const folderFix    = () => screen.queryByRole('button', { name: /Settings → Folders/ })
-const stopBtn      = () => screen.queryByRole('button', { name: /Stop Parse|Canceling…/ })
+const stopBtn      = () => screen.queryByRole('button', { name: /Stop Parse|Canceling…|Busy…|Starting…/ })
 
 describe('IngestView (Parse tab)', () => {
   it('shows the readiness checklist with Tesseract outstanding when not ready', () => {
@@ -207,6 +210,15 @@ describe('IngestView — Stop Parse button', () => {
     renderIngest({ parseBusy: true, cancelingParse: true })
     const stop = stopBtn()
     expect(stop).toHaveTextContent('Canceling…')
+    expect(stop).toBeDisabled()
+  })
+
+  // The slot can be held by a restore or a profile switch, which the server
+  // refuses to stop: the button says the app is busy and cannot be pressed.
+  it('renders a disabled Busy… while a store swap holds the run slot', () => {
+    renderIngest({ parseBusy: true, runKind: 'restore' })
+    const stop = stopBtn()
+    expect(stop).toHaveTextContent('Busy…')
     expect(stop).toBeDisabled()
   })
 

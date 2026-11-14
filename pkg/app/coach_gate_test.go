@@ -76,7 +76,10 @@ func gatedCorpusWrites(a *app.App) map[string]func() error {
 // the player-side accept path that writes the received coach layer.
 func gatedIngestWrites(a *app.App) map[string]func() error {
 	return map[string]func() error{
-		"StartParse":       func() error { return a.StartParse(false) },
+		"StartParse": func() error {
+			_, err := a.StartParse(false)
+			return err
+		},
 		"ParseScreenshots": a.ParseScreenshots,
 		"ReParseAll":       a.ReParseAll,
 		"ImportMatches": func() error {

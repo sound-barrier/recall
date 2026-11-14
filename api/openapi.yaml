@@ -998,15 +998,16 @@ paths:
         on match_key and survive the re-parse. ~1 s per screenshot.
 
         Runs the parse in a BACKGROUND goroutine and returns
-        `202 Accepted` **immediately** — the request is not held open
-        for the OCR loop. Subscribe to `GET /api/v1/events` for progress
-        + completion (`parse-progress` / `parse-complete`), and poll
-        `GET /api/v1/parses/active` to resync after a reconnect or page
-        reload (SSE is not replayed). Re-fetch `GET /api/v1/matches` on
-        completion.
+        `202 Accepted` **immediately** with the run's id — the request is
+        not held open for the OCR loop. Subscribe to `GET /api/v1/events`
+        for progress and the run's end (`parse-progress` / `run-finished`,
+        both carrying that id), and read `GET /api/v1/parses/active` to
+        resync after a reconnect or page reload (SSE is not replayed).
+        Re-fetch `GET /api/v1/matches` once the run has finished.
 
-        `409 Conflict` when a parse is already in flight (single-flight,
-        fail-fast) or the screenshots folder is unset/unreadable.
+        `409 Conflict` when the run slot is already held (single-flight,
+        fail-fast — by a parse or by a store swap such as a restore) or
+        the screenshots folder is unset/unreadable.
       parameters:
         - name: scope
           in: query
@@ -1019,7 +1020,11 @@ paths:
             `all` re-OCRs every file. Other values return 400.
       responses:
         "202":
-          description: Parse accepted and started; subscribe to events for progress + completion.
+          description: Parse accepted and started; its events carry the returned run id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParseAccepted"
         "400":
           $ref: "#/components/responses/BadRequest"
         "409":
@@ -1031,19 +1036,21 @@ paths:
     get:
       operationId: GetActiveParse
       tags: [Pipeline]
-      summary: Active-parse status snapshot
+      summary: Run-slot status snapshot
       description: |
         The resync anchor for the async parse pipeline. SSE messages are
         not replayed on connect, so a client that reconnects or reloads
-        mid-parse reads this to restore "is a parse running, and how far
-        along." `running=false` when idle.
+        mid-run reads this to restore "is something running, what, and how
+        far along." The slot is held by a parse or by a store swap (restore,
+        maintenance, profile switch or rename, screenshot takeover); `kind`
+        says which. An idle slot carries nothing but `state`.
       responses:
         "200":
           description: Current parse run-state.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ActiveParse"
+                $ref: "#/components/schemas/ActiveRun"
         "500":
           $ref: "#/components/responses/InternalError"
     delete:
@@ -1059,14 +1066,16 @@ paths:
 
         Any per-screenshot rows already committed to SQLite stay put;
         a follow-up `GET /api/v1/matches` reflects the partial state.
-        The frontend learns about completion via the SSE
-        `parse-canceled` event so it can flip the Stop button back
+        The frontend learns the run has stopped from its `run-finished`
+        event (`outcome: canceled`), so it can flip the Stop button back
         to Run without polling.
 
-        `202` on success, `409` when no parse is in flight.
+        `202` on success. `409` when nothing is running, or when the slot
+        is held by a run that cannot be stopped (a store swap — stopping
+        one halfway would strand the app between two databases).
       responses:
         "202":
-          description: Cancellation signaled; SSE `parse-canceled` follows once the loop unwinds.
+          description: Cancellation signaled; `run-finished` follows once the loop unwinds.
         "409":
           $ref: "#/components/responses/Conflict"
         "500":
@@ -4165,10 +4174,10 @@ paths:
             element of `GET /api/v1/matches`. May fire multiple
             times for the same match within a single parse batch as
             additional screenshots refine its fields.
-          * `parse-complete` — fired after a parse run finishes; no
-            payload.
-          * `parse-canceled` — fired when an in-flight run is aborted
-            via `DELETE /api/v1/parses/active`; no payload.
+          * `run-finished` — fired exactly once for every run that held
+            the run slot, however it ended (`completed`, `canceled` or
+            `failed`); payload is `RunFinishedEvent`. A guaranteed
+            delivery: a slow consumer is never dropped from it.
           * `tesseract-status` — fired when the background engine probe
             resolves; payload is `TesseractStatus`.
           * `watch-activity` — fired when the folder watcher sees a new
@@ -4203,8 +4212,8 @@ paths:
                   event: match-updated
                   data: {"match_key":"match-2026-05-10T21-29-28","source_files":["...png"],"data":{...}}
 
-                  event: parse-complete
-                  data: {"files_parsed":4,"files_failed":1,"matches_updated":3}
+                  event: run-finished
+                  data: {"run_id":1731550000000001,"kind":"parse","outcome":"completed","summary":{"files_parsed":4,"files_failed":1,"matches_updated":3}}
           # The per-event payload contracts. Not expressible as response
           # content (SSE is one text stream), so they hang off a vendor
           # extension — which also marks the schemas as referenced for
@@ -4212,8 +4221,8 @@ paths:
           x-event-payloads:
             parse-progress:
               $ref: "#/components/schemas/ParseProgressEvent"
-            parse-complete:
-              $ref: "#/components/schemas/ParseRunSummary"
+            run-finished:
+              $ref: "#/components/schemas/RunFinishedEvent"
             match-updated:
               $ref: "#/components/schemas/MatchRecord"
             tesseract-status:
@@ -4363,17 +4372,17 @@ components:
     ParseRunSummary:
       type: object
       description: |
-        Payload of the `parse-complete` event (SSE in server mode, the
-        desktop event bus in Wails mode) — the finished run's own tally,
+        The `summary` of a completed parse's `run-finished` event — the
+        finished run's own tally,
         so the end-of-run report can say "X read · Y failed to read"
         without inferring it from a refetched ledger. `files_parsed`
         counts files whose writes all landed (degraded parses included);
         `files_failed` counts files whose run failed somewhere — OCR or
         insert failure (nothing stored), or an ambiguity-write failure
-        (rows stored, candidate record lost). A canceled run emits
-        `parse-canceled` instead and carries no summary; a client that
-        reconnects after missing the event gets no replay — treat the
-        summary as a toast, not durable state.
+        (rows stored, candidate record lost). A canceled or failed run
+        carries no summary; a client that reconnects after missing the
+        event gets no replay — treat the summary as a toast, not durable
+        state.
       required: [files_parsed, files_failed, matches_updated]
       properties:
         files_parsed:
@@ -4399,8 +4408,10 @@ components:
         `hero_corrections` / `map_corrections` are cumulative re-parse
         counters since the run began; absent (zero) on a regular parse
         run, so consumers that ignore them are unaffected.
-      required: [done, total, filename, screenshot_type]
+      required: [run_id, done, total, filename, screenshot_type]
       properties:
+        run_id:
+          $ref: "#/components/schemas/RunId"
         done:
           type: integer
         total:
@@ -4492,28 +4503,96 @@ components:
         detail:
           type: string
           description: Why the field was rejected.
-    ActiveParse:
-      type: object
-      required: [running, done, total, scope]
+    RunId:
+      type: integer
+      format: int64
+      minimum: 1
       description: |
-        Snapshot of the in-flight parse run. The resync anchor for the
-        async parse pipeline — read after an SSE reconnect or a page
-        reload to restore the parse panel without replaying events.
+        Identifies one claim of the run slot. Ids grow for the life of the
+        server process and start from its boot clock, so an id is never
+        reused — a client that saw run N finish can drop any later event or
+        snapshot naming N.
+    RunKind:
+      type: string
+      enum: [parse, reparse, restore, maintenance, profile_switch, profile_rename, screenshot_takeover]
+      description: |
+        What holds the run slot. Only `parse` and `reparse` can be canceled
+        or report progress; the rest are store swaps that need the database
+        to themselves.
+    RunOutcome:
+      type: string
+      enum: [completed, canceled, failed]
+      description: How a run ended.
+    ParseAccepted:
+      type: object
+      required: [run_id]
+      description: The `202` body of `POST /api/v1/parses`.
       properties:
-        running:
-          type: boolean
-          description: Whether a parse is currently in flight.
+        run_id:
+          $ref: "#/components/schemas/RunId"
+    ActiveRunIdle:
+      type: object
+      required: [state]
+      additionalProperties: false
+      properties:
+        state:
+          type: string
+          enum: [idle]
+    ActiveRunBusy:
+      type: object
+      required: [state, run_id, kind, done, total]
+      additionalProperties: false
+      properties:
+        state:
+          type: string
+          enum: [running, canceling]
+          description: '`canceling` once a cancel was accepted and the loop has yet to unwind.'
+        run_id:
+          $ref: "#/components/schemas/RunId"
+        kind:
+          $ref: "#/components/schemas/RunKind"
         done:
           type: integer
           minimum: 0
-          description: Screenshot files OCR'd so far this run.
+          description: Screenshot files OCR'd so far this run (0 for a store swap).
         total:
           type: integer
           minimum: 0
-          description: Total files to process this run (0 when idle).
-        scope:
+          description: Total files this run will process (0 until known, and for a store swap).
+    ActiveRun:
+      description: |
+        Snapshot of the run slot, discriminated on `state`. The resync
+        anchor for the async parse pipeline — read after an SSE reconnect
+        or a page reload to restore the parse panel without replaying
+        events.
+      oneOf:
+        - $ref: "#/components/schemas/ActiveRunIdle"
+        - $ref: "#/components/schemas/ActiveRunBusy"
+      discriminator:
+        propertyName: state
+        mapping:
+          idle: "#/components/schemas/ActiveRunIdle"
+          running: "#/components/schemas/ActiveRunBusy"
+          canceling: "#/components/schemas/ActiveRunBusy"
+    RunFinishedEvent:
+      type: object
+      required: [run_id, kind, outcome]
+      description: |
+        Payload of the `run-finished` event (SSE in server mode, the
+        desktop event bus in Wails mode) — emitted exactly once for every
+        run that held the slot. `summary` rides a completed parse; `error`
+        a failed run.
+      properties:
+        run_id:
+          $ref: "#/components/schemas/RunId"
+        kind:
+          $ref: "#/components/schemas/RunKind"
+        outcome:
+          $ref: "#/components/schemas/RunOutcome"
+        summary:
+          $ref: "#/components/schemas/ParseRunSummary"
+        error:
           type: string
-          description: '"new" (default parse) or "all" (re-parse); empty when idle.'
     DisruptionSides:
       type: array
       uniqueItems: true

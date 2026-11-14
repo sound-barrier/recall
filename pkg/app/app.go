@@ -88,29 +88,13 @@ type App struct {
 	watchPending  int
 	watchLastSeen time.Time
 	watchMu       sync.Mutex
-	// parseCancelMu guards the whole parse run-state below: the
-	// single-flight flag, the progress snapshot, and the cancel func.
-	// One small lock so CancelParse, the GET /parses/active status
-	// read, and the claim/end bracketing never wait on the OCR loop
-	// (which holds NO lock for its multi-second run — parseRunning is
-	// the single-flight gate instead).
-	parseCancelMu sync.Mutex
-	// parseRunning is true between claimParse and endParse — the
-	// single-flight gate. A second parse (user click, watcher debounce,
-	// or a concurrent POST) fails fast with ErrParseInFlight rather
-	// than queuing.
-	parseRunning bool
-	// parseDone / parseTotal / parseScope are the per-file progress
-	// snapshot surfaced by GET /api/v1/parses/active so a reconnecting
-	// or reloading client can resync without replaying the SSE backlog.
-	parseDone  int
-	parseTotal int
-	parseScope string
-	// parseCancel is non-nil while a parse is in flight; calling it
-	// flips ctx.Done() so the parser library short-circuits at the
-	// next between-files boundary. See StartParse + CancelParse.
-	parseCancel context.CancelFunc
-	// SSEHub is non-nil in --server mode. When set, parse-complete events
+	// run is the single-flight run slot (run_slot.go) — held by a parse or
+	// by a store swap. runMu is a small lock of its own so CancelParse, the
+	// GET /parses/active snapshot and the claim/end transitions never wait
+	// on the OCR loop, which holds no lock for its multi-second run.
+	runMu sync.Mutex
+	run   runSlot
+	// SSEHub is non-nil in --server mode. When set, run events
 	// are broadcast over SSE instead of (or in addition to) the Wails
 	// runtime event bus.
 	SSEHub *SSEHub
@@ -152,7 +136,7 @@ type App struct {
 }
 
 func New() *App {
-	return &App{}
+	return &App{run: newRunSlot(time.Now())}
 }
 
 // pathIsMissingOrNotADir reports whether `path` is in a state that
@@ -190,7 +174,7 @@ func pathIsMissingOrNotADir(path string) bool {
 // tests that pass an in-memory fake (or a *db.SQLStore opened at ":memory:").
 // Production code paths use New() + Startup() which constructs the SQLStore.
 func NewWithStore(s db.Store) *App {
-	return &App{store: s}
+	return &App{store: s, run: newRunSlot(time.Now())}
 }
 
 // StartupError returns any non-recoverable failure captured during

@@ -16,22 +16,21 @@ import { useSettingsStore } from '@/stores/settings'
 // onBeforeUnmount), so they belong HERE — called from App.vue next to
 // useAppBoot() — not inside a store, where they only worked by binding to
 // App's lifecycle by accident (the smell frontend/CLAUDE.md documents).
-// This file only WIRES: the parse-lifecycle transitions are store actions
-// (finishParseRun), and event payloads land in the query cache or the
-// parse store's client refs.
+// This file only WIRES: run events go to the parse store's run machine,
+// match payloads land in the query cache.
 export function useServerEvents() {
   const matchesStore = useMatchesStore()
   const parseStore = useParseStore()
   const settingsStore = useSettingsStore()
-  const { parseProgress, parseLog, watchActivity, parseBusy } = storeToRefs(parseStore)
+  const { parseProgress, watchActivity, parseBusy } = storeToRefs(parseStore)
 
   // The match-updated upsert target reads/writes the qk.matches CACHE
   // directly — never the store's tour-aware `records` computed, whose
   // getter would hand the upsert the demo overlay (or a not-yet-loaded
   // empty list) to write back as real data, and whose setter cancels
   // in-flight fetches (right for test seeding, wrong here: a mid-boot
-  // upsert must not kill the authoritative GET). parse-complete's refetch
-  // remains the reconciliation for any racing writes.
+  // upsert must not kill the authoritative GET). The refetch at a run's
+  // end remains the reconciliation for any racing writes.
   const upsertTarget = computed<MatchRecord[]>({
     get: () => getQueryClient().getQueryData<MatchRecord[]>(qk.matches) ?? [],
     set: (next) => { getQueryClient().setQueryData(qk.matches, next) },
@@ -39,11 +38,9 @@ export function useServerEvents() {
 
   useEventStream({
     records: upsertTarget,
-    parseProgress,
-    parseLog,
     watchActivity,
-    onParseComplete: (summary) => parseStore.finishParseRun('complete', summary),
-    onParseCanceled: () => parseStore.finishParseRun('canceled'),
+    onParseProgress: (event) => { parseStore.onParseProgress(event) },
+    onRunFinished: (event) => { parseStore.onRunFinished(event) },
     // The backend probes Tesseract in the background after boot (so a
     // cold-boot Defender scan can't stall startup); push each result into
     // the settings store so the System Alert banner self-heals without an
@@ -64,6 +61,8 @@ export function useServerEvents() {
     parseBusy,
     parseProgress,
     reload: matchesStore.load,
+    runGeneration: () => parseStore.runGeneration(),
+    applySnapshot: (active, generation) => { parseStore.applySnapshot(active, generation) },
     getActiveParse: () => getQueryClient().fetchQuery({
       queryKey: qk.activeParse,
       queryFn: GetActiveParse,

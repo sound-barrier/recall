@@ -1,12 +1,12 @@
 /**
  * The end-of-run outcome toast.
  *
- * parse-complete carries the run's own tally now
+ * A completed run's run-finished carries its own tally
  * ({files_parsed, files_failed, matches_updated}); the toast reports it
  * from ANY tab (the watcher can finish a run while the user is
  * elsewhere), with a "View failed" affordance landing on the Unknown
- * tab when anything failed. A payload-less legacy event must neither
- * toast nor crash.
+ * tab when anything failed. A failed run raises no toast: it shows its
+ * error and hands the Run button back.
  */
 import type { Route } from '@playwright/test'
 
@@ -77,7 +77,7 @@ test.describe('parse outcome toast', () => {
     // The Matches tab is the landing view — the toast must reach the
     // user wherever the watcher-finished run finds them.
     await page.evaluate(() => {
-      window.__recallSSE.emit('parse-complete', { files_parsed: 4, files_failed: 2, matches_updated: 3 })
+      window.__recallSSE.emit('run-finished', { run_id: 1, kind: 'parse', outcome: 'completed', summary: { files_parsed: 4, files_failed: 2, matches_updated: 3 } })
     })
 
     const toast = page.getByRole('status').filter({ hasText: /4 read/ })
@@ -89,7 +89,7 @@ test.describe('parse outcome toast', () => {
   test('a clean run drops the failure clause', async ({ page }) => {
     await boot(page)
     await page.evaluate(() => {
-      window.__recallSSE.emit('parse-complete', { files_parsed: 5, files_failed: 0, matches_updated: 5 })
+      window.__recallSSE.emit('run-finished', { run_id: 1, kind: 'parse', outcome: 'completed', summary: { files_parsed: 5, files_failed: 0, matches_updated: 5 } })
     })
 
     const toast = page.getByRole('status').filter({ hasText: /5 read/ })
@@ -98,15 +98,23 @@ test.describe('parse outcome toast', () => {
     await expect(toast.getByRole('button', { name: /View failed/ })).toHaveCount(0)
   })
 
-  test('a payload-less legacy event neither toasts nor crashes', async ({ page }) => {
+  // The traced bug: a run that failed after POST /parses had answered 202
+  // said nothing, so the Parse tab stayed on Stop with the error unseen.
+  test('a failed run shows its error and hands Run back', async ({ page }) => {
     await boot(page)
+    await page.getByRole('tab', { name: 'Parse' }).click()
     await page.evaluate(() => {
-      window.__recallSSE.emit('parse-complete')
+      window.__recallSSE.emit('parse-progress', { run_id: 1, done: 1, total: 4, filename: 'a.png', screenshot_type: 'teams' })
+    })
+    await expect(page.getByTestId('cancel-parse-btn')).toBeVisible()
+
+    await page.evaluate(() => {
+      window.__recallSSE.emit('run-finished', { run_id: 1, kind: 'parse', outcome: 'failed', error: 'open /shots: permission denied' })
     })
 
-    await expect(page.getByRole('status').filter({ hasText: /read/ })).toHaveCount(0)
-    // The app is still alive and interactive.
-    await page.getByRole('tab', { name: 'Parse' }).click()
     await expect(page.getByTestId('run-parse-btn')).toBeVisible()
+    await expect(page.getByTestId('cancel-parse-btn')).toHaveCount(0)
+    await expect(page.getByRole('alert').filter({ hasText: /location|permission/i })).toBeVisible()
+    await expect(page.getByRole('status').filter({ hasText: /read ·/ })).toHaveCount(0)
   })
 })

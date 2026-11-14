@@ -215,11 +215,11 @@ describe('EventsOn (Wails mode)', () => {
   it('unwraps the v3 WailsEvent envelope and replaces prior listeners', async () => {
     const { EventsOn } = await import('@/api')
     const cb = vi.fn()
-    EventsOn('parse-complete', cb)
+    EventsOn('run-finished', cb)
 
     // Off-then-On gives replace semantics (HMR double-mount guard).
-    expect(eventsOff).toHaveBeenCalledWith('parse-complete')
-    expect(eventsOn).toHaveBeenCalledWith('parse-complete', expect.any(Function))
+    expect(eventsOff).toHaveBeenCalledWith('run-finished')
+    expect(eventsOn).toHaveBeenCalledWith('run-finished', expect.any(Function))
 
     const handler = eventsOn.mock.lastCall?.[1] as (ev: { data: unknown }) => void
     handler({ data: { count: 3 } })
@@ -228,7 +228,7 @@ describe('EventsOn (Wails mode)', () => {
 
   it('EventsOff forwards to the Wails bus', async () => {
     const { EventsOff } = await import('@/api')
-    EventsOff('parse-complete')
-    expect(eventsOff).toHaveBeenCalledWith('parse-complete')
+    EventsOff('run-finished')
+    expect(eventsOff).toHaveBeenCalledWith('run-finished')
   })
 })

@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"recall/pkg/app"
-	"recall/pkg/applog"
 )
 
 // registerProfileRoutes attaches every /api/v1/profiles/... handler
@@ -52,18 +50,7 @@ func handleCreateProfile(a *app.App) http.HandlerFunc {
 			errStatus{app.ErrProfileSwitchDuringParse, probConflict}) {
 			return
 		}
-		// Content-Type MUST be set before WriteHeader — once the
-		// status line is on the wire, header mutations are no-ops
-		// and the body would be served as text/plain (the default
-		// inferred from the response bytes). writeJSON sets the
-		// header on its own but only works when the status is the
-		// implicit 200; for 201 / 202 / etc. we have to thread it
-		// here manually.
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		if encErr := json.NewEncoder(w).Encode(a.GetProfiles()); encErr != nil {
-			applog.Subsystem("server").Error("json encode", "err", encErr)
-		}
+		writeJSONStatus(w, r, http.StatusCreated, a.GetProfiles())
 	}
 }
 

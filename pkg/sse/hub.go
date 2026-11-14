@@ -70,30 +70,15 @@ func (h *Hub) Unsubscribe(ch chan Msg) {
 	close(ch)
 }
 
-// Broadcast sends a no-payload event to all subscribers with
-// guaranteed delivery: these are the terminal lifecycle events
-// (parse-complete / parse-canceled) the client's spinner hangs on,
-// so a full buffer evicts its oldest message rather than dropping
-// the terminal one. Nil-safe: calling on a nil receiver is a no-op,
-// so the parse loop can fire without a TOCTOU check between
-// `if a.SSEHub != nil` and the actual call. The single `*Hub`
-// field read at the call site is pointer-atomic on every supported
-// architecture; a nil-safe method makes the racy "is it still
-// non-nil after the check?" window disappear entirely. Same shape
-// as `http.Handler.ServeHTTP` on a nil mux — Go convention is fine
-// with this when the zero-value semantic is "do nothing."
-func (h *Hub) Broadcast(event string) {
-	if h == nil {
-		return
-	}
-	h.send(Msg{event, "{}"}, true)
-}
-
 // BroadcastData sends an event with a JSON data payload, best-effort:
 // stream events (parse-progress, match-updated, tesseract-status) are
 // superseded by the next one or a reload, so a slow consumer's full
-// buffer drops them rather than blocking the producer. Nil-safe; see
-// `Broadcast` for the rationale.
+// buffer drops them rather than blocking the producer. Nil-safe:
+// calling on a nil receiver is a no-op, so the parse loop can fire
+// without a TOCTOU check between `if a.SSEHub != nil` and the call — the
+// single `*Hub` field read at the call site is pointer-atomic, and a
+// nil-safe method makes the "is it still non-nil?" window disappear. Same
+// shape as `http.Handler.ServeHTTP` on a nil mux.
 func (h *Hub) BroadcastData(event, data string) {
 	if h == nil {
 		return
@@ -101,11 +86,11 @@ func (h *Hub) BroadcastData(event, data string) {
 	h.send(Msg{event, data}, false)
 }
 
-// BroadcastTerminal sends an event with a JSON data payload and the
-// evict-and-deliver guarantee of Broadcast — for terminal events whose
-// payload matters (parse-complete carrying its run summary): nothing
-// supersedes a terminal event, so dropping it on a slow consumer would
-// strand that client's UI mid-run. Nil-safe; see `Broadcast`.
+// BroadcastTerminal sends an event with a JSON data payload and
+// guaranteed delivery — for terminal events (run-finished): nothing
+// supersedes one, so a full buffer evicts its oldest message rather than
+// dropping it, which would strand that client's UI mid-run. Nil-safe; see
+// `BroadcastData`.
 func (h *Hub) BroadcastTerminal(event, data string) {
 	if h == nil {
 		return
