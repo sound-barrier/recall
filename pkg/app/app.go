@@ -91,7 +91,7 @@ type App struct {
 	watchPending  int
 	watchLastSeen time.Time
 	watchMu       sync.Mutex
-	// run is the single-flight run slot (run_slot.go) — held by a parse or
+	// run is the single-flight run slot (parse_run.go) — held by a parse or
 	// by a store swap. runMu is a small lock of its own so CancelParse, the
 	// GET /parses/active snapshot and the claim/end transitions never wait
 	// on the OCR loop, which holds no lock for its multi-second run.

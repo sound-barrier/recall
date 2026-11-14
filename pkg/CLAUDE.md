@@ -72,7 +72,7 @@ Known departures worth naming up front:
 When behavior depends on which of several modes a thing is in, and the modes
 have rules about which may follow which, declare the machine. Don't infer
 the mode from bools, a nil field, a status string or a running timer.
-Exemplar: the run slot, `pkg/app/run_slot.go`.
+Exemplar: the run slot, `pkg/app/parse_run.go`.
 
 - **One closed set of states, one owner.** A typed enum (`int` with
   `String()`, or a string type when the value crosses the API or the
