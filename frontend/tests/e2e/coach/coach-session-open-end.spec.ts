@@ -36,6 +36,7 @@ import {
   pinSessionResume,
   seedCoachOwnMatches,
 } from '../_coach'
+import { emitSSEEvent, installSSEMock } from '../_session-sse'
 import { seedProfiles, silenceParseEvents } from '../_theme-matrix'
 
 test.describe('coaching session — open and end', () => {
@@ -130,6 +131,26 @@ test.describe('coaching session — open and end', () => {
     await expect(page.locator('.profile-chip')).toBeVisible()
     await page.waitForTimeout(300)
     expect(closes).toBe(1)
+  })
+
+  // The boot-time "resume lands on Reviews" watch fired on the FIRST session
+  // this window ever saw — so a session opened in another window yanked this
+  // one off whatever tab it was on.
+  test('a session opened in another window leaves this window where it is', async ({ page }) => {
+    await installSSEMock(page)
+    const session = await mockCoachSession(page)
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Matches/ }).click()
+    await expect(page.locator('.leaf-row')).toHaveCount(COACH_OWN_MATCHES.length)
+
+    // The other window opens a session on the shared backend.
+    await page.evaluate(() => fetch('/api/v1/coach/session', { method: 'POST', body: 'zip' }))
+    expect(session.isActive()).toBe(true)
+    await emitSSEEvent(page, 'coach-session-changed', { active: true })
+
+    await expect(loanSlip(page)).toBeVisible()
+    await page.waitForTimeout(300)
+    await expect(page.getByRole('tab', { name: /^Matches/ })).toHaveAttribute('aria-selected', 'true')
   })
 
   test('a mid-session reload resumes the session and the room shows the marks', async ({ page }) => {

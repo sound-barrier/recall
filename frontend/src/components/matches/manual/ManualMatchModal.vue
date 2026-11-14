@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, provide, ref, toRef } from 'vue'
+import { computed, provide, ref, toRef, watch } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { serverErrorText } from '@/error-helpers'
 import { createManualMatch } from '@/queries/matches'
@@ -20,6 +20,10 @@ const emit = defineEmits<{ close: []; created: [record: MatchRecord] }>()
 const quick = computed(() => props.mode === 'leaver-exit')
 const f = useManualMatchForm(props.mode ?? 'full')
 provide(manualMatchFormKey, f)
+// The component outlives a cancel (an accidental Esc keeps what was typed),
+// so a reopen only moves the auto-filled time; a create remounts it whole
+// (AppOverlays keys it on the store's form generation).
+watch(() => props.open, (isOpen) => { if (isOpen) f.refreshPlayedAt() })
 
 useModalFocusTrap(toRef(props, 'open'), {
   containerSelector: '.mm-modal',

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 
 import { useGameDataUpdate } from '@/composables/update/useGameDataUpdate'
 import type { UpdateInfo } from '@/api-client'
@@ -40,5 +40,33 @@ describe('useGameDataUpdate — season diffs', () => {
     expect(ow.removedCount.value).toBe(0)
     expect(ow.changeCount.value).toBe(1)
     expect(ow.changeSummary.value).toBe('1 season updated available')
+  })
+})
+
+// Reopening the dialog re-armed Apply even while an apply was still running:
+// Apply came back enabled mid-apply and a second press sent a second apply.
+describe('useGameDataUpdate — one apply at a time', () => {
+  it('a reopen mid-apply keeps the apply running, and a second press sends nothing', async () => {
+    const { ApplyGameDataUpdate } = await import('@/api-client')
+    let finish: () => void = () => {}
+    vi.mocked(ApplyGameDataUpdate).mockReset()
+    vi.mocked(ApplyGameDataUpdate).mockImplementation(() => new Promise((resolve) => {
+      finish = () => { resolve({ commit_sha: 'abc' } as never) }
+    }))
+    const open = ref(true)
+    const gd = useGameDataUpdate(ref(infoWith({})), open, () => {})
+
+    void gd.onApply()
+    open.value = false
+    await nextTick()
+    open.value = true
+    await nextTick()
+
+    expect(gd.applyState.value.kind).toBe('applying')
+    void gd.onApply()
+    expect(ApplyGameDataUpdate).toHaveBeenCalledTimes(1)
+    finish()
+    await new Promise((r) => setTimeout(r))
+    expect(gd.applyState.value.kind).toBe('success')
   })
 })

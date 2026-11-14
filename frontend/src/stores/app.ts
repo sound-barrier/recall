@@ -8,8 +8,8 @@ import {
   runUpdateCheck, useDataLocationQuery, useUpdateCheckQuery, useVersionQuery,
 } from '@/queries/system'
 import {
-  SelfUpdateEvents, updaterErrorPhase,
-  type SelfUpdateProgress, type SelfUpdateError, type SelfUpdateState,
+  SelfUpdateEvents, stepSelfUpdate, updaterErrorPhase,
+  type SelfUpdateProgress, type SelfUpdateError, type SelfUpdateEvent, type SelfUpdateState,
 } from '@/self-update-events'
 import type { ViewId } from '@/composables/shared/keyboard/useTabKeyboardNav'
 
@@ -153,52 +153,59 @@ export const useAppStore = defineStore('app', () => {
   // semantics per name, so a repeat call is harmless; wiring lazily on
   // first user action keeps the no-network-on-mount contract (no
   // EventSource opens until the user clicks Install).
+  function stepUpdater(event: SelfUpdateEvent): boolean {
+    const next = stepSelfUpdate(updaterState.value, event)
+    if (next) updaterState.value = next
+    return next !== null
+  }
+
   let selfUpdateWired = false
   function wireSelfUpdateEvents() {
     if (selfUpdateWired) return
     selfUpdateWired = true
-    EventsOn(SelfUpdateEvents.CheckStarted, () => { updaterState.value = { phase: 'starting', pct: null, error: '' } })
-    EventsOn(SelfUpdateEvents.DownloadStarted, () => { updaterState.value = { phase: 'downloading', pct: null, error: '' } })
+    EventsOn(SelfUpdateEvents.CheckStarted, () => { stepUpdater({ type: 'check-started' }) })
+    EventsOn(SelfUpdateEvents.DownloadStarted, () => { stepUpdater({ type: 'download-started' }) })
     EventsOn<SelfUpdateProgress>(SelfUpdateEvents.DownloadProgress, (p) => {
       const pct = p && p.total > 0 ? Math.round((p.written / p.total) * 100) : null
-      updaterState.value = { phase: 'downloading', pct, error: '' }
+      stepUpdater({ type: 'download-progress', pct })
     })
-    EventsOn(SelfUpdateEvents.DownloadComplete, () => { updaterState.value = { phase: 'verifying', pct: 100, error: '' } })
-    EventsOn(SelfUpdateEvents.Verifying, () => { updaterState.value = { phase: 'verifying', pct: 100, error: '' } })
-    EventsOn(SelfUpdateEvents.Installing, () => { updaterState.value = { phase: 'installing', pct: 100, error: '' } })
-    EventsOn(SelfUpdateEvents.UpdateReady, () => { updaterState.value = { phase: 'ready', pct: 100, error: '' } })
-    EventsOn(SelfUpdateEvents.NoUpdate, () => { updaterState.value = { phase: 'idle', pct: null, error: '' } })
+    EventsOn(SelfUpdateEvents.DownloadComplete, () => { stepUpdater({ type: 'verifying' }) })
+    EventsOn(SelfUpdateEvents.Verifying, () => { stepUpdater({ type: 'verifying' }) })
+    EventsOn(SelfUpdateEvents.Installing, () => { stepUpdater({ type: 'installing' }) })
+    EventsOn(SelfUpdateEvents.UpdateReady, () => { stepUpdater({ type: 'ready' }) })
+    EventsOn(SelfUpdateEvents.NoUpdate, () => { stepUpdater({ type: 'no-update' }) })
     EventsOn<SelfUpdateError>(SelfUpdateEvents.Error, (e) => {
-      if (updaterErrorPhase(e?.message) === 'refused') {
+      const phase = updaterErrorPhase(e?.message)
+      const error = phase === 'refused' ? '' : (e?.message || 'Update failed. Please try again.')
+      if (stepUpdater({ type: 'failed', phase, error }) && phase === 'refused') {
         refusedRelease.value = updateInfo.value?.latest
-        updaterState.value = { phase: 'refused', pct: null, error: '' }
-        return
       }
-      updaterState.value = { phase: 'error', pct: null, error: e?.message || 'Update failed. Please try again.' }
     })
   }
 
   // Kick off a check+download+install. Enters 'starting' immediately;
   // the wails:updater:* events carry it the rest of the way. A rejected
-  // POST (409 self-update-unavailable) lands in the error phase.
+  // POST (409 self-update-unavailable) lands in the error phase. Refused —
+  // nothing sent — while a pass is running or an update is staged: another
+  // pass would throw the staged binary away.
   async function startSelfUpdate() {
     wireSelfUpdateEvents()
-    updaterState.value = { phase: 'starting', pct: null, error: '' }
+    if (!stepUpdater({ type: 'start-requested' })) return
     try {
       await StartSelfUpdate()
     } catch (e) {
-      updaterState.value = { phase: 'error', pct: null, error: plainLanguageError(String(e)) }
+      stepUpdater({ type: 'start-rejected', error: plainLanguageError(String(e)) })
     }
   }
 
   // Apply a staged update: swap the binary and relaunch. On success the
   // process exits, so this only returns on failure.
   async function restartToApply() {
-    updaterState.value = { ...updaterState.value, phase: 'restarting' }
+    if (!stepUpdater({ type: 'restart-requested' })) return
     try {
       await RestartToApply()
     } catch (e) {
-      updaterState.value = { phase: 'error', pct: null, error: plainLanguageError(String(e)) }
+      stepUpdater({ type: 'restart-failed', error: plainLanguageError(String(e)) })
     }
   }
 

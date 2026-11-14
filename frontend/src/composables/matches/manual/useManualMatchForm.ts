@@ -53,6 +53,14 @@ export function useManualMatchForm(mode: ManualMatchMode = 'full') {
   const toggleLeaver = (side: DisruptionSide) => toggleSide(leavers, side)
   const toggleThrower = (side: DisruptionSide) => toggleSide(throwers, side)
   const playedAt = ref(localNowValue())
+  // The time the form filled in by itself. Reopening the modal later moves it
+  // to now — unless the user set a time of their own, which stays.
+  let autoPlayedAt = playedAt.value
+  function refreshPlayedAt(): void {
+    if (playedAt.value !== autoPlayedAt) return
+    autoPlayedAt = localNowValue()
+    playedAt.value = autoPlayedAt
+  }
 
   // Optional annotation fields — replay code, a note, free-form tags, and the
   // group (teammates) the user queued with. All ride the match annotation.
@@ -185,7 +193,7 @@ export function useManualMatchForm(mode: ManualMatchMode = 'full') {
   }
 
   return {
-    map, playMode, queueType, roleCategory, heroes, heroDraft, result, playedAt,
+    map, playMode, queueType, roleCategory, heroes, heroDraft, result, playedAt, refreshPlayedAt,
     leavers, throwers, toggleLeaver, toggleThrower,
     replayCode, note, tags, tagDraft, members, memberDraft,
     rankTier, rankDivision, rankProgress, rankChange, demotionProtection,

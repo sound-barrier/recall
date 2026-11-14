@@ -35,7 +35,12 @@ export function useParseReport() {
   const savedAs = ref('')
   const savedFiles = ref<ReportFile[]>([])
 
+  // Each open is a generation; a preflight answers for the one it was asked
+  // in. A slow answer from a report since closed must not paint its causes
+  // over the files of the report open now.
+  let generation = 0
   watch(open, (isOpen) => {
+    generation++
     if (!isOpen) return
     picked.value = new Set(candidates.value.map(candidateKey))
     notes.value = {}
@@ -47,11 +52,12 @@ export function useParseReport() {
 
   // Advisory: a failed check leaves the dialog without hints, never blocked.
   async function preflight() {
+    const asked = generation
+    let found: LikelyCause[] = []
     try {
-      causes.value = await PreflightDiagnosticBundle(reportFiles(candidates.value, {}))
-    } catch {
-      causes.value = []
-    }
+      found = await PreflightDiagnosticBundle(reportFiles(candidates.value, {}))
+    } catch { /* advisory: no hints */ }
+    if (asked === generation) causes.value = found
   }
 
   const pickedCandidates = computed(() => candidates.value.filter((c) => picked.value.has(candidateKey(c))))

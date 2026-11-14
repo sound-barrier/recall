@@ -111,6 +111,9 @@ export const useUiStore = defineStore('ui', () => {
     manualMatchOpen.value = true
   }
   function closeManualMatch() { manualMatchOpen.value = false }
+  // Bumped by a create: the overlay keys the modal on it, so the next "Add
+  // match" starts from an empty form instead of the match just saved.
+  const manualMatchForm = ref(0)
 
   // Settings dialog — the ⌘, / app-menu / kebab entry point. A floating
   // Preferences-style modal that mirrors the Settings tab's sections; the tab
@@ -158,6 +161,7 @@ export const useUiStore = defineStore('ui', () => {
   // feed, and open it so the user can add the right-panel review / replay-code.
   async function onManualMatchCreated(rec: MatchRecord) {
     manualMatchOpen.value = false
+    manualMatchForm.value++
     await matchesStore.load()
     revealMatch(rec.match_key)
   }
@@ -216,6 +220,7 @@ export const useUiStore = defineStore('ui', () => {
     expandedWriterOpen,
     manualMatchOpen,
     manualMatchMode,
+    manualMatchForm,
     openManualMatch,
     closeManualMatch,
     onManualMatchCreated,

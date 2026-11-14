@@ -79,7 +79,7 @@ const {
   closeCheatsheet, closeSettingsDialog,
   onFirstRunDismiss, onFirstRunPickSource, onFirstRunPickCustomSource,
 } = uiStore
-const { manualMatchOpen, manualMatchMode, anchorToast, undoHideToast, cheatsheetOpen, paletteOpen, firstRunModalOpen, settingsDialogOpen } = storeToRefs(uiStore)
+const { manualMatchOpen, manualMatchMode, manualMatchForm, anchorToast, undoHideToast, cheatsheetOpen, paletteOpen, firstRunModalOpen, settingsDialogOpen } = storeToRefs(uiStore)
 
 // App store — About (version + update hub) + the non-dismissible startup gate.
 const {
@@ -238,7 +238,7 @@ const lightboxSrc = computed(() => {
   <CommandPalette :open="paletteOpen" @close="uiStore.closePalette()" />
 
   <ManualMatchModal
-    :key="manualMatchMode"
+    :key="`${manualMatchMode}-${manualMatchForm}`"
     :open="manualMatchOpen"
     :mode="manualMatchMode"
     @close="closeManualMatch"
