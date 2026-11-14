@@ -110,7 +110,7 @@ const progressLabel = computed(() => {
   </button>
 
   <p
-    v-if="state.phase === 'error' && state.error"
+    v-if="(state.phase === 'error' || state.phase === 'ready') && state.error"
     class="update-check-modal-selfupdate-error"
     data-self-update-error
     role="alert"

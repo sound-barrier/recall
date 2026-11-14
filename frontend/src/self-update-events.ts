@@ -1,3 +1,5 @@
+import { ApiError } from '@/api-error'
+
 // Wire-string constants for the Wails v3 updater's host→page events.
 //
 // The pinned @wailsio/runtime (3.0.0-alpha.79) ships no Updater.Events
@@ -54,6 +56,17 @@ export interface SelfUpdateState {
 // in lockstep with the Go sentinel, like the event names above.
 export const UPDATE_REFUSAL_TOKEN = 'update refused'
 
+// The problem types of the two 409s the server answers while an update is
+// staged (pkg/cmd/problems.go): a start over the staged binary, and a
+// restart with nothing staged. Matched on the type, never the text.
+export const SELF_UPDATE_STAGED_PROBLEM = 'https://github.com/sound-barrier/recall/problems/self-update-staged'
+export const SELF_UPDATE_NOT_READY_PROBLEM = 'https://github.com/sound-barrier/recall/problems/self-update-not-ready'
+
+/** Whether a rejected request answered with this problem type. */
+export function isProblem(e: unknown, type: string): boolean {
+  return e instanceof ApiError && e.problem?.type === type
+}
+
 /** Tells a release Recall refused to install from an update that failed. */
 export function updaterErrorPhase(message: string | undefined): Extract<SelfUpdatePhase, 'error' | 'refused'> {
   return message?.includes(UPDATE_REFUSAL_TOKEN) ? 'refused' : 'error'
@@ -70,6 +83,8 @@ export function updaterErrorPhase(message: string | undefined): Extract<SelfUpda
 export type SelfUpdateEvent =
   | { type: 'start-requested' }
   | { type: 'start-rejected'; error: string }
+  /** The server refused the start because an update is already staged. */
+  | { type: 'found-staged' }
   | { type: 'check-started' }
   | { type: 'no-update' }
   | { type: 'download-started' }
@@ -79,7 +94,8 @@ export type SelfUpdateEvent =
   | { type: 'ready' }
   | { type: 'failed'; phase: 'error' | 'refused'; error: string }
   | { type: 'restart-requested' }
-  | { type: 'restart-failed'; error: string }
+  /** `staged`: the update is still staged, so Restart stays on offer. */
+  | { type: 'restart-failed'; error: string; staged: boolean }
 
 const IN_FLIGHT: readonly SelfUpdatePhase[] = ['starting', 'downloading', 'verifying', 'installing']
 const SETTLED: readonly SelfUpdatePhase[] = ['idle', 'error', 'refused']
@@ -88,6 +104,7 @@ const SETTLED: readonly SelfUpdatePhase[] = ['idle', 'error', 'refused']
 const LEGAL_FROM: Record<SelfUpdateEvent['type'], readonly SelfUpdatePhase[]> = {
   'start-requested':   SETTLED,
   'start-rejected':    ['starting'],
+  'found-staged':      ['starting'],
   'check-started':     [...SETTLED, 'starting'],
   'no-update':         ['starting'],
   'download-started':  ['starting', 'downloading'],
@@ -114,10 +131,11 @@ const MOVES: Moves = {
   'verifying':         () => state('verifying', 100),
   'installing':        () => state('installing', 100),
   'ready':             () => state('ready', 100),
-  'restart-requested': (_event, current) => ({ ...current, phase: 'restarting' }),
+  'restart-requested': (_event, current) => ({ ...current, phase: 'restarting', error: '' }),
   'failed':            (event) => state(event.phase, null, event.error),
   'start-rejected':    (event) => state('error', null, event.error),
-  'restart-failed':    (event) => state('error', null, event.error),
+  'found-staged':      () => state('ready', 100),
+  'restart-failed':    (event) => (event.staged ? state('ready', 100, event.error) : state('error', null, event.error)),
 }
 
 /** The one transition function: the next state, or null for a move no run makes. */
