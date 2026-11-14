@@ -200,7 +200,13 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # (measured + ~2%, #805) is superseded by this split.
 # 2026-10: app measured 218070B -> 219000; vendor measured 151472B with
 # #802's library bumps -> 160000.
-: "${MAX_INITIAL_APP_JS_BYTES:=219000}"
+# 2026-11: 219000 -> 223000 -- the explicit parse-run machine
+# (parseRunMachine.ts: the run union, its one transition function and the
+# resync-snapshot handling), the stream reopen after a non-200 answer, and
+# the Tesseract re-check after the listeners attach. All of it runs at boot
+# with the parse store, so none of it can be lazy. +3776B over a main that
+# measured 218070B. Measured 221846B.
+: "${MAX_INITIAL_APP_JS_BYTES:=223000}"
 : "${MAX_INITIAL_VENDOR_JS_BYTES:=160000}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
@@ -464,7 +470,10 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # initial-JS note above; supersedes #805's brief combined cap of 2304000.
 # App measured 1092629B; vendor measured 1164869B with #802's library
 # bumps (+5% for library releases).
-: "${MAX_TOTAL_APP_JS_BYTES:=1094000}"
+# 2026-11: 1094000 -> 1098000 -- the same boot-time run machine as the
+# initial-JS note above, plus its Settings and status-bar readers. +4069B over
+# a main that measured 1092609B. Measured 1096678B.
+: "${MAX_TOTAL_APP_JS_BYTES:=1098000}"
 : "${MAX_TOTAL_VENDOR_JS_BYTES:=1224000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
