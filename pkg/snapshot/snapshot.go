@@ -85,7 +85,7 @@ func Write(dbPath, backupsDir, prefix string, keep int) (string, error) {
 		return "", err
 	}
 	SweepPartials(backupsDir)
-	stamp := time.Now().UTC().Format(TimeLayout)
+	stamp := now().UTC().Format(TimeLayout)
 	dest := filepath.Join(backupsDir, prefix+stamp+".db")
 	tmp, err := freshTempPath(backupsDir, "."+prefix+stamp+"-*"+partialSuffix)
 	if err != nil {
@@ -98,6 +98,10 @@ func Write(dbPath, backupsDir, prefix string, keep int) (string, error) {
 	Prune(backupsDir, prefix, keep)
 	return dest, nil
 }
+
+// now is Write's clock. Two writes in one second must name the same file,
+// and only a pinned clock can promise a test that they do.
+var now = time.Now
 
 // partialSuffix ends every in-progress snapshot's name. The leading dot and
 // this suffix keep it out of every "<prefix>*.db" glob Latest and Prune read.
