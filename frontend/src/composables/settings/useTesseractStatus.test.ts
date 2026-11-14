@@ -3,6 +3,7 @@ import { useTesseractStatus, EMPTY_TESSERACT_STATUS, type TesseractStatusApi } f
 import type { TesseractStatus } from '@/api'
 
 const SAMPLE: TesseractStatus = {
+  state: 'ready',
   path: '/usr/local/bin/tesseract',
   found: true,
   version: '5.5.1',

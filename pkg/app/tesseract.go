@@ -22,16 +22,31 @@ import (
 // can shorten it.
 var tesseractProbeTimeout = 10 * time.Second
 
+// TesseractState is where detection of the configured binary stands.
+type TesseractState string
+
+const (
+	// TesseractProbing has no answer yet: the boot-time probe is still out.
+	// Not the same as unavailable — the engine-offline halt waits for it.
+	TesseractProbing TesseractState = "probing"
+	// TesseractReady ran and reported a version.
+	TesseractReady TesseractState = "ready"
+	// TesseractUnavailable is missing, would not run, or is not Tesseract.
+	TesseractUnavailable TesseractState = "unavailable"
+)
+
 // TesseractStatus describes whether the configured tesseract binary
 // resolves to a working executable. The frontend renders the System
-// Alert banner and the Engine setting state from this struct.
+// Alert banner and the Engine setting state from this struct. Found is
+// State == TesseractReady, kept for the many readers that only ask that.
 type TesseractStatus struct {
-	Path      string `json:"path"`
-	Found     bool   `json:"found"`
-	Version   string `json:"version"`
-	Supported bool   `json:"supported"`
-	Error     string `json:"error"`
-	Default   string `json:"default"`
+	State     TesseractState `json:"state"`
+	Path      string         `json:"path"`
+	Found     bool           `json:"found"`
+	Version   string         `json:"version"`
+	Supported bool           `json:"supported"`
+	Error     string         `json:"error"`
+	Default   string         `json:"default"`
 	// Platform is the host's runtime.GOOS value ("darwin", "linux",
 	// "windows", "freebsd", …). Surfaced so the frontend can render
 	// only the install-path guidance that matches where the server
@@ -91,6 +106,7 @@ func defaultTesseractPath() string {
 // for surfacing directly in the UI banner.
 func checkTesseract(path string) TesseractStatus {
 	s := TesseractStatus{
+		State:    TesseractUnavailable,
 		Path:     path,
 		Default:  defaultTesseractPath(),
 		Platform: runtime.GOOS,
@@ -127,6 +143,7 @@ func checkTesseract(path string) TesseractStatus {
 		s.Error = vErr
 		return s
 	}
+	s.State = TesseractReady
 	s.Found = true
 	s.Version = version
 	s.Supported = supported
@@ -172,7 +189,7 @@ var tesseractProbeRetryDelay = 2 * time.Second
 // wruntime.EventsEmit on that — which the Wails runtime answers by FATALLY
 // exiting the process (not a recoverable panic). Only the entry points whose
 // emit path is safe opt in via EnableTesseractProbeOnStartup: the desktop
-// (RunWails, real lifecycle context) and the serveronly server (main_server,
+// (RunWails, real lifecycle context) and every server entry point (RunServer,
 // SSE-only emit). The probe logic is covered directly in tests.
 var probeTesseractOnStartup = false
 
@@ -180,10 +197,40 @@ var probeTesseractOnStartup = false
 // background engine probe. Call once, before Startup runs.
 func EnableTesseractProbeOnStartup() { probeTesseractOnStartup = true }
 
+// setTessStatus publishes a status that supersedes any probe still out.
 func (a *App) setTessStatus(s TesseractStatus) {
 	a.tessMu.Lock()
+	a.tessGen++
 	a.tessStatus = s
 	a.tessMu.Unlock()
+}
+
+// beginTessProbe starts a probe round, superseding any earlier one, and
+// returns the generation its results must carry.
+func (a *App) beginTessProbe() uint64 {
+	a.tessMu.Lock()
+	defer a.tessMu.Unlock()
+	a.tessGen++
+	return a.tessGen
+}
+
+// publishTessProbe records a probe's result unless something newer —
+// another probe, a path the user set — has been published since the probe
+// began. It reports whether the result still stood.
+func (a *App) publishTessProbe(gen uint64, s TesseractStatus) bool {
+	a.tessMu.Lock()
+	defer a.tessMu.Unlock()
+	if gen != a.tessGen {
+		return false
+	}
+	a.tessStatus = s
+	return true
+}
+
+// seedTesseractPlaceholder publishes "still checking" for path, so the
+// path and default render on first paint while the probe is out.
+func (a *App) seedTesseractPlaceholder(path string) {
+	a.setTessStatus(TesseractStatus{State: TesseractProbing, Path: path, Default: defaultTesseractPath()})
 }
 
 func (a *App) tessStatusSnapshot() TesseractStatus {
@@ -195,11 +242,16 @@ func (a *App) tessStatusSnapshot() TesseractStatus {
 // probeTesseractInBackground runs detection off the Startup goroutine (so boot
 // never blocks on the exec) and retries the transient exists-but-couldn't-run
 // case, publishing the status + emitting a "tesseract-status" event each pass
-// so the frontend's System Alert clears once the binary becomes runnable.
+// so the frontend's System Alert clears once the binary becomes runnable. The
+// round ends — no publish, no emit, no further retry — the moment anything
+// newer is published.
 func (a *App) probeTesseractInBackground(path string) {
+	gen := a.beginTessProbe()
 	for attempt := 0; ; attempt++ {
 		s := checkTesseract(path)
-		a.setTessStatus(s)
+		if !a.publishTessProbe(gen, s) {
+			return
+		}
 		a.emitTesseractStatus(s)
 		if s.Found || attempt >= tesseractProbeRetries {
 			return
@@ -226,6 +278,9 @@ func (a *App) GetTesseractStatus() TesseractStatus {
 	if s.Platform == "" {
 		s.Platform = runtime.GOOS
 	}
+	if s.State == "" {
+		s.State = TesseractProbing
+	}
 	return s
 }
 
@@ -243,6 +298,7 @@ func (a *App) SetTesseractPath(path string) (TesseractStatus, error) {
 		// System Alert banner shows what went wrong without an extra
 		// round-trip — this mirrors how checkTesseract surfaces failures.
 		s := TesseractStatus{
+			State:   TesseractUnavailable,
 			Path:    strings.TrimSpace(path),
 			Default: defaultTesseractPath(),
 			Error:   err.Error(),

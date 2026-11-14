@@ -1,17 +1,18 @@
 <script setup lang="ts">
 // Full-width "OCR engine offline" halt banner, rendered above the masthead on a
 // broken install. Reads the Tesseract status from the settings store + owns the
-// deep-link to Settings → Engine; self-gates on !tesseractReady.
+// deep-link to Settings → Engine; self-gates on !tesseractReady, and holds
+// off while the boot probe is still checking (that is not "offline").
 import { storeToRefs } from 'pinia'
 import { useSettingsStore } from '@/stores/settings'
 
 const settingsStore = useSettingsStore()
-const { tesseractStatus, tesseractReady } = storeToRefs(settingsStore)
+const { tesseractStatus, tesseractReady, tesseractChecking } = storeToRefs(settingsStore)
 const { gotoEngineSettings } = settingsStore
 </script>
 
 <template>
-  <div v-if="!tesseractReady" class="system-alert" role="alert">
+  <div v-if="!tesseractReady && !tesseractChecking" class="system-alert" role="alert">
     <div class="system-alert-stripes" aria-hidden="true" />
     <div class="system-alert-icon" aria-hidden="true">
       <svg viewBox="0 0 24 24" width="26" height="26">

@@ -45,6 +45,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const {
     tesseractStatus,
     tesseractReady,
+    tesseractChecking,
     tesseractSupported,
     tesseractPickerBusy,
     tesseractProbing,
@@ -224,6 +225,7 @@ export const useSettingsStore = defineStore('settings', () => {
     setWeekStart,
     tesseractStatus,
     tesseractReady,
+    tesseractChecking,
     tesseractSupported,
     tesseractPickerBusy,
     tesseractProbing,

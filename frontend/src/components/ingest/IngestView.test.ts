@@ -29,7 +29,7 @@ afterEach(() => {
 })
 
 function tess(found: boolean): TesseractStatus {
-  return { path: '/t', found, version: '5.5.0', supported: true, error: '', default: '/t', platform: 'darwin' }
+  return { state: found ? 'ready' : 'unavailable', path: '/t', found, version: '5.5.0', supported: true, error: '', default: '/t', platform: 'darwin' }
 }
 
 function rec(i: number): MatchRecord {

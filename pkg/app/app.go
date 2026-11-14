@@ -75,6 +75,9 @@ type App struct {
 	// SetTesseractPath, PickTesseractBinary, ResetTesseractPath, profile swap.
 	tessMu     sync.RWMutex
 	tessStatus TesseractStatus
+	// tessGen counts published statuses; a background probe publishes
+	// only while no newer status has landed since it began.
+	tessGen uint64
 	// File-watch state. watcher is non-nil while the directory is being
 	// observed; watchTimer holds the debounce timer that fires
 	// ParseScreenshots after no new files have appeared for
@@ -373,7 +376,7 @@ func (a *App) resolveSettings() {
 	// Seed a placeholder status so the path/default render on first paint; the
 	// real detection runs in the background from Startup (probeTesseractInBackground)
 	// so a cold-boot Defender scan can't block boot.
-	a.setTessStatus(TesseractStatus{Path: resolved.TesseractPath, Default: defaultTesseractPath()})
+	a.seedTesseractPlaceholder(resolved.TesseractPath)
 	tesseract.SetPath(resolved.TesseractPath)
 
 	// First-run auto-probe — if the user hasn't set a screenshots

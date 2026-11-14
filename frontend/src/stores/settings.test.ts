@@ -27,7 +27,7 @@ vi.mock('@/api', async (importOriginal) => ({
 }))
 
 function notReady(): TesseractStatus {
-  return { path: '', found: false, version: '', supported: true, error: 'not found', default: '', platform: 'darwin' }
+  return { state: 'unavailable', path: '', found: false, version: '', supported: true, error: 'not found', default: '', platform: 'darwin' }
 }
 
 beforeEach(() => {

@@ -30,17 +30,27 @@ export function useExitOnCloseQuery() {
 
 // A failed probe is a real "not detected" state, not a query error — the
 // Engine section renders the error string, so the queryFn never throws.
+async function fetchTesseractStatus(): Promise<TesseractStatus> {
+  try {
+    return await GetTesseractStatus()
+  } catch (e) {
+    return { state: 'unavailable', path: '', found: false, version: '', supported: false, error: String(e), default: '', platform: '' }
+  }
+}
+
 export function useTesseractQuery() {
-  return useQuery({
-    queryKey: qk.settings.tesseract,
-    queryFn: async (): Promise<TesseractStatus> => {
-      try {
-        return await GetTesseractStatus()
-      } catch (e) {
-        return { path: '', found: false, version: '', supported: false, error: String(e), default: '', platform: '' }
-      }
-    },
-  }, getQueryClient())
+  return useQuery({ queryKey: qk.settings.tesseract, queryFn: fetchTesseractStatus }, getQueryClient())
+}
+
+// The boot-time engine probe reports once, as an event, and events are not
+// replayed. A read that answered "probing" may predate a listener that was
+// not yet attached when the probe's answer went out — so once the listeners
+// are up, wait for that first read and, if it is still "probing", read again.
+// (A refetch issued while the first read is in flight would only join it.)
+export async function recheckTesseractWhileProbing(): Promise<void> {
+  const qc = getQueryClient()
+  const first = await qc.ensureQueryData({ queryKey: qk.settings.tesseract, queryFn: fetchTesseractStatus })
+  if (first.state === 'probing') await qc.refetchQueries({ queryKey: qk.settings.tesseract })
 }
 
 export function useAutoBackupQuery() {

@@ -481,3 +481,23 @@ describe('App.vue — tesseract gate', () => {
     expect(systemAlert()).toBeNull()
   })
 })
+
+describe('App.vue — the boot Tesseract probe', () => {
+  // The probe reports once, as an event, and events are not replayed. A
+  // client whose listeners attached after it fired kept the pre-probe
+  // answer — "checking" — for the whole session, so it reads the status
+  // again once its listeners are up.
+  it('re-reads a status still checking once the event listeners are attached', async () => {
+    await renderApp({ tesseract: { state: 'probing', found: false } })
+    await flushPromises()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(mockedApi().GetTesseractStatus).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not re-read a status that already answered', async () => {
+    await renderApp()
+    await flushPromises()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(mockedApi().GetTesseractStatus).toHaveBeenCalledOnce()
+  })
+})

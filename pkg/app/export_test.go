@@ -43,8 +43,9 @@ var MaybeAutoBackup = (*App).maybeAutoBackup
 
 // ── Other function-variable / tunable seams (pointers for save/swap/restore) ──
 var (
-	RevealCommand         = &revealCommand
-	TesseractProbeTimeout = &tesseractProbeTimeout
+	RevealCommand            = &revealCommand
+	TesseractProbeTimeout    = &tesseractProbeTimeout
+	TesseractProbeRetryDelay = &tesseractProbeRetryDelay
 )
 
 // ── Unexported *App methods (method expressions) ──────────────────────────
@@ -64,8 +65,9 @@ var (
 
 	ProbeTesseractInBackground = (*App).probeTesseractInBackground
 
-	EmitTesseractStatus     = (*App).emitTesseractStatus
-	EmitCoachSessionChanged = (*App).emitCoachSessionChanged
+	EmitTesseractStatus      = (*App).emitTesseractStatus
+	SeedTesseractPlaceholder = (*App).seedTesseractPlaceholder
+	EmitCoachSessionChanged  = (*App).emitCoachSessionChanged
 )
 
 // ── Unexported *App field accessors ───────────────────────────────────────

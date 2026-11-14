@@ -6925,8 +6925,15 @@ components:
 
     TesseractStatus:
       type: object
-      required: [path, found, version, supported, error, default, platform]
+      required: [state, path, found, version, supported, error, default, platform]
       properties:
+        state:
+          type: string
+          enum: [probing, ready, unavailable]
+          description: |
+            Where detection stands. `probing` until the boot-time probe has
+            answered — not the same as `unavailable`, so the engine-offline
+            halt waits for it. `found` is `state == ready`.
         path:
           type: string
           description: The currently-configured path.

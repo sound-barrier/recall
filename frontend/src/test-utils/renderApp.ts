@@ -63,6 +63,7 @@ export function mockedApi(): Record<string, ReturnType<typeof vi.fn>> {
 
 function defaultTesseract(overrides: Partial<TesseractStatus> = {}): TesseractStatus {
   return {
+    state:     overrides.found === false ? 'unavailable' : 'ready',
     path:      '/usr/local/bin/tesseract',
     found:     true,
     version:   '5.5.0',
