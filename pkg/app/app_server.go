@@ -33,26 +33,34 @@ func (a *App) emitMatchUpdated(rec match.Record) {
 }
 
 // emitTesseractStatus broadcasts the background-probe status to SSE
-// subscribers (server mode has no Wails event bus).
+// subscribers (server mode has no Wails event bus). Guaranteed delivery:
+// the probe reports once, and a dropped report leaves the engine banner up
+// for the session.
 func (a *App) emitTesseractStatus(s TesseractStatus) {
 	data, _ := json.Marshal(s)
-	a.SSEHub.BroadcastData("tesseract-status", string(data))
+	a.SSEHub.BroadcastGuaranteed("tesseract-status", string(data))
 }
 
 // emitCoachSessionChanged broadcasts the coaching session's open/closed
 // state to SSE subscribers — the server-mode twin of the Wails emit, so
 // every connected tab flips its write gate together.
-func (a *App) emitCoachSessionChanged(active bool) {
+//
+// It reads the session as it stands NOW rather than taking the caller's
+// view: a close and an open racing past the session lock would otherwise
+// announce in the wrong order, and the last word would be a lie. Guaranteed
+// delivery, because nothing ever re-sends it.
+func (a *App) emitCoachSessionChanged() {
+	active := a.coachSessionActive()
 	data, _ := json.Marshal(CoachSessionChangedEvent{Active: active})
-	a.SSEHub.BroadcastData("coach-session-changed", string(data))
+	a.SSEHub.BroadcastGuaranteed("coach-session-changed", string(data))
 }
 
 // emitRunFinished broadcasts a run's end to SSE subscribers. Terminal
-// event → BroadcastTerminal, so a slow consumer's full buffer can't drop it
+// event → BroadcastGuaranteed, so a slow consumer's full buffer can't drop it
 // (the run would look like it never ended).
 func (a *App) emitRunFinished(ev RunFinishedEvent) {
 	data, _ := json.Marshal(ev)
-	a.SSEHub.BroadcastTerminal("run-finished", string(data))
+	a.SSEHub.BroadcastGuaranteed("run-finished", string(data))
 }
 
 // SaveBackupToFile is not available in server mode (no native dialogs).

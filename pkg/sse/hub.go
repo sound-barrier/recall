@@ -4,8 +4,8 @@
 // every broadcast into all of them. It carries no domain knowledge:
 // an event is a name plus an opaque data string, and the only policy
 // it implements is what to do when a client is not reading fast
-// enough — drop for stream events, evict-and-deliver for terminal
-// ones. See Broadcast and BroadcastData.
+// enough — drop for stream events, evict-and-deliver for the ones
+// nothing supersedes. See BroadcastData and BroadcastGuaranteed.
 package sse
 
 import "sync"
@@ -15,8 +15,8 @@ import "sync"
 type Msg struct{ Event, Data string }
 
 // Hub manages a set of Server-Sent Events subscribers. Each connected
-// browser tab gets its own buffered channel; Broadcast/BroadcastData
-// deliver to all of them without blocking.
+// browser tab gets its own buffered channel; BroadcastData and
+// BroadcastGuaranteed deliver to all of them without blocking.
 type Hub struct {
 	mu      sync.Mutex
 	clients map[chan Msg]struct{}
@@ -71,7 +71,7 @@ func (h *Hub) Unsubscribe(ch chan Msg) {
 }
 
 // BroadcastData sends an event with a JSON data payload, best-effort:
-// stream events (parse-progress, match-updated, tesseract-status) are
+// stream events (parse-progress, match-updated, watch-activity) are
 // superseded by the next one or a reload, so a slow consumer's full
 // buffer drops them rather than blocking the producer. Nil-safe:
 // calling on a nil receiver is a no-op, so the parse loop can fire
@@ -86,12 +86,13 @@ func (h *Hub) BroadcastData(event, data string) {
 	h.send(Msg{event, data}, false)
 }
 
-// BroadcastTerminal sends an event with a JSON data payload and
-// guaranteed delivery — for terminal events (run-finished): nothing
-// supersedes one, so a full buffer evicts its oldest message rather than
-// dropping it, which would strand that client's UI mid-run. Nil-safe; see
-// `BroadcastData`.
-func (h *Hub) BroadcastTerminal(event, data string) {
+// BroadcastGuaranteed sends an event with a JSON data payload and
+// guaranteed delivery — for events nothing supersedes: a run's end
+// (run-finished) and one-shot state changes (tesseract-status,
+// coach-session-changed). A full buffer evicts its oldest message rather
+// than dropping one of these, which would strand that client's UI.
+// Nil-safe; see `BroadcastData`.
+func (h *Hub) BroadcastGuaranteed(event, data string) {
 	if h == nil {
 		return
 	}

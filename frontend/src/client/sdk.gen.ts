@@ -2248,9 +2248,19 @@ export const putSelfReviewMoment = <ThrowOnError extends boolean = false>(option
  * * Keepalive comment lines every 25 s so reverse proxies
  * don't close the connection
  *
- * Clients should reconnect on disconnect; messages are not
- * replayed. After reconnect, the client should re-fetch
- * `GET /api/v1/matches` as the authoritative reconciliation.
+ * Delivery: `run-finished`, `tesseract-status` and
+ * `coach-session-changed` are never dropped — nothing supersedes them,
+ * so a slow client's full buffer evicts its oldest message instead.
+ * `parse-progress`, `match-updated` and `watch-activity` are
+ * best-effort: the next one, or a reload, supersedes a dropped one.
+ * The response headers are sent at once, so a client's `open` fires
+ * on connect rather than on the first event.
+ *
+ * Clients should reconnect on disconnect (including after a non-200
+ * answer, which browsers do not retry on their own); messages are not
+ * replayed. After reconnect, the client should re-read
+ * `GET /api/v1/parses/active` and re-fetch `GET /api/v1/matches` as
+ * the authoritative reconciliation.
  *
  * The desktop build delivers the same events over the Wails event
  * bus instead (the asset server cannot stream), so the payload

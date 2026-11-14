@@ -53,7 +53,7 @@ func (a *App) OpenCoachSession(payload []byte) (coach.SessionView, error) {
 	if err != nil {
 		return coach.SessionView{}, err
 	}
-	a.emitCoachSessionChanged(true)
+	a.emitCoachSessionChanged()
 	return view, nil
 }
 
@@ -389,6 +389,13 @@ func (a *App) assertNoCoachSession() error {
 	return nil
 }
 
+// coachSessionActive reports whether a coaching session is open now.
+func (a *App) coachSessionActive() bool {
+	a.coachMu.RLock()
+	defer a.coachMu.RUnlock()
+	return a.coachSession != nil
+}
+
 // endCoachSession discards any open session and announces the change.
 // Idempotent — the store-teardown paths call it unconditionally.
 func (a *App) endCoachSession() {
@@ -400,7 +407,7 @@ func (a *App) endCoachSession() {
 		return
 	}
 	a.recordSittingEnded(s)
-	a.emitCoachSessionChanged(false)
+	a.emitCoachSessionChanged()
 }
 
 // recordSittingEnded stamps the history row and freezes the focus list as
