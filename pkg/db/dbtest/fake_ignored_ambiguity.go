@@ -173,7 +173,7 @@ func (f *Fake) ResolveAmbiguous(filename, ambiguousMatchKey, newMatchKey string)
 	if !strings.HasPrefix(ambiguousMatchKey, "ambiguous-") {
 		return false, nil
 	}
-	if _, ok := f.Ambiguous[filename]; !ok {
+	if !f.matchKeyHasRowsLocked(ambiguousMatchKey) {
 		return false, nil
 	}
 	delete(f.Ambiguous, filename)
