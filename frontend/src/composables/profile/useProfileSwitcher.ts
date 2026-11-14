@@ -99,7 +99,7 @@ const HANDLERS: Handlers = {
 }
 
 /** The one transition function; null refuses the event and changes nothing. */
-export function stepSwitcher(state: SwitcherState, event: SwitcherEvent): SwitcherState | null {
+function stepSwitcher(state: SwitcherState, event: SwitcherEvent): SwitcherState | null {
   // TypeScript cannot correlate an indexed handler with the event that
   // picked it; the map's mapped type is what guarantees the pairing.
   const handle = HANDLERS[event.type] as (state: SwitcherState, event: SwitcherEvent) => SwitcherState | null
