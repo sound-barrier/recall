@@ -68,7 +68,7 @@ on:
   push:
     branches: [main]
 
-# Two jobs, so the third-party release-please-action never holds the token
+# Separate jobs, so the third-party release-please-action never holds the token
 # that pushes tags and dispatches release.yml. tag-and-dispatch runs only a
 # first-party action and repository code.
 permissions: {}
@@ -95,9 +95,15 @@ jobs:
   # outstanding-PR check never races this job's label flip. The subject
   # filter is only a cheap skip for ordinary pushes; the script re-checks
   # the subject along with everything else before it tags.
+  #
+  # !cancelled(), not the default success(): push-release-tag.sh checks the
+  # release commit itself and reads nothing release-please produced, so a
+  # failed action run must not skip the tag. v0.34.1 was lost that way: a
+  # transient GraphQL error failed release-please on the release commit, the
+  # tag was never pushed, and every later run aborted on the untagged PR.
   tag-and-dispatch:
     needs: release-please
-    if: "startsWith(github.event.head_commit.message, 'chore(main): release ')"
+    if: "${{ !cancelled() && startsWith(github.event.head_commit.message, 'chore(main): release ') }}"
     runs-on: ubuntu-24.04
     permissions:
       contents: write  # git push of the release tag
@@ -132,3 +138,28 @@ jobs:
           # `gh pr edit ... --label ...` (pull-requests: write).
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/release/push-release-tag.sh
+
+  # release-please answers a merged Release PR that still reads
+  # `autorelease: pending` with a warning and a green run, and opens no new
+  # Release PR until someone notices. That hid the untagged v0.34.1 for 12
+  # days. This job turns the stall red on the run that causes it and on every
+  # run after, until the release is tagged. It runs after tag-and-dispatch,
+  # whose label flip a normal release run makes first.
+  release-stall-check:
+    needs: [release-please, tag-and-dispatch]
+    if: "${{ !cancelled() }}"
+    runs-on: ubuntu-24.04
+    permissions:
+      pull-requests: read  # lists merged Release PRs by label
+    steps:
+      - name: Fail on a merged Release PR that was never tagged
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          stalled=$(gh pr list --repo "$GITHUB_REPOSITORY" --state merged \
+            --label 'autorelease: pending' --json number,title \
+            --jq '.[] | "#\(.number) \(.title)"')
+          if [ -n "$stalled" ]; then
+            echo "::error::Merged Release PR never tagged; release-please opens no new one until it is. See RELEASES.md, 'No tag'. Stalled: $stalled"
+            exit 1
+          fi
