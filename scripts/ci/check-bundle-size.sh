@@ -206,7 +206,13 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # the Tesseract re-check after the listeners attach. All of it runs at boot
 # with the parse store, so none of it can be lazy. +3776B over a main that
 # measured 218070B. Measured 221846B.
-: "${MAX_INITIAL_APP_JS_BYTES:=223000}"
+# 2026-11: 223000 -> 231000 -- the frontend state-machine pass: the per-key
+# autosave union (coach + review stores), the coach session union, the
+# profile-switcher union (masthead), the self-update step function (app
+# store), the shared swap hold, and the settings store's cache-backed values.
+# All of it lives in stores and chrome that boot with the app, so none of it
+# can be lazy. +7500B over a main that measured 222496B. Measured 229996B.
+: "${MAX_INITIAL_APP_JS_BYTES:=231000}"
 : "${MAX_INITIAL_VENDOR_JS_BYTES:=160000}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
@@ -473,7 +479,11 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # 2026-11: 1094000 -> 1098000 -- the same boot-time run machine as the
 # initial-JS note above, plus its Settings and status-bar readers. +4069B over
 # a main that measured 1092609B. Measured 1096678B.
-: "${MAX_TOTAL_APP_JS_BYTES:=1098000}"
+# 2026-11: 1098000 -> 1109000 -- the same state-machine pass as the
+# initial-JS note above, plus its lazy readers (first-run modal union, export
+# and replay-code dialogs, the candidate picker). +10487B over a main that
+# measured 1097328B. Measured 1107815B.
+: "${MAX_TOTAL_APP_JS_BYTES:=1109000}"
 : "${MAX_TOTAL_VENDOR_JS_BYTES:=1224000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
