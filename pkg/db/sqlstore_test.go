@@ -1100,14 +1100,14 @@ func TestSQLStore_DemoteMatchToAmbiguous_NoRows_NoOp(t *testing.T) {
 
 func TestSQLStore_IngestedFiles_UpsertThenLoadRoundTrip(t *testing.T) {
 	s := openMemory(t)
-	if err := s.UpsertIngestedFile("a.png", "hash-1", ""); err != nil {
+	if err := s.UpsertIngestedFile(db.FileRef{Filename: "a.png"}, "hash-1", db.FileRef{}); err != nil {
 		t.Fatalf("UpsertIngestedFile: %v", err)
 	}
-	if err := s.UpsertIngestedFile("b.png", "hash-1", "a.png"); err != nil {
+	if err := s.UpsertIngestedFile(db.FileRef{Filename: "b.png"}, "hash-1", db.FileRef{Filename: "a.png"}); err != nil {
 		t.Fatalf("UpsertIngestedFile dup: %v", err)
 	}
 	// Re-upsert overwrites in place (re-parse semantics).
-	if err := s.UpsertIngestedFile("b.png", "hash-2", ""); err != nil {
+	if err := s.UpsertIngestedFile(db.FileRef{Filename: "b.png"}, "hash-2", db.FileRef{}); err != nil {
 		t.Fatalf("UpsertIngestedFile overwrite: %v", err)
 	}
 	got, err := s.LoadIngestedFiles()
@@ -1118,14 +1118,14 @@ func TestSQLStore_IngestedFiles_UpsertThenLoadRoundTrip(t *testing.T) {
 	// earliest-ingest-wins from it, so it must be present.
 	for f, rec := range got {
 		if rec.FirstSeenAt == "" {
-			t.Errorf("%s: FirstSeenAt empty", f)
+			t.Errorf("%+v: FirstSeenAt empty", f)
 		}
 		rec.FirstSeenAt = ""
 		got[f] = rec
 	}
-	want := map[string]db.IngestedFile{
-		"a.png": {ContentHash: "hash-1"},
-		"b.png": {ContentHash: "hash-2"},
+	want := map[db.FileRef]db.IngestedFile{
+		{DirID: db.SentinelScreenshotsDirID, Filename: "a.png"}: {ContentHash: "hash-1"},
+		{DirID: db.SentinelScreenshotsDirID, Filename: "b.png"}: {ContentHash: "hash-2"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("registry = %+v, want %+v", got, want)

@@ -70,18 +70,18 @@ func TestStoreContract_DeleteScreenshotRows_KeepsIngestedRegistration(t *testing
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
 			mustNoErr(t, s.UpsertSummary(db.SummaryRow{Filename: "canon.png", MatchKey: "match-2026-05-03T11-00-00"}))
-			mustNoErr(t, s.UpsertIngestedFile("canon.png", "hash-1", ""))
-			mustNoErr(t, s.UpsertIngestedFile("copy.png", "hash-1", "canon.png"))
+			mustNoErr(t, s.UpsertIngestedFile(db.FileRef{Filename: "canon.png"}, "hash-1", db.FileRef{}))
+			mustNoErr(t, s.UpsertIngestedFile(db.FileRef{Filename: "copy.png"}, "hash-1", db.FileRef{Filename: "canon.png"}))
 
 			_, err := s.DeleteScreenshotRows("canon.png")
 			mustNoErr(t, err)
 
 			reg, err := s.LoadIngestedFiles()
 			mustNoErr(t, err)
-			if _, ok := reg["canon.png"]; !ok {
+			if _, ok := reg[db.FileRef{DirID: db.SentinelScreenshotsDirID, Filename: "canon.png"}]; !ok {
 				t.Errorf("canon.png left the dedup registry; its duplicates would re-parse")
 			}
-			if _, ok := reg["copy.png"]; !ok {
+			if _, ok := reg[db.FileRef{DirID: db.SentinelScreenshotsDirID, Filename: "copy.png"}]; !ok {
 				t.Errorf("copy.png cascaded out of the dedup registry")
 			}
 		})
@@ -144,8 +144,8 @@ func TestStoreContract_DeleteScreenshotRows_ClearsRecognizedRegistrations(t *tes
 	for _, impl := range storeImpls {
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
-			mustNoErr(t, s.UpsertAllHeroesScreenshot("ah.png"))
-			mustNoErr(t, s.UpsertHistoryScreenshot("h.png"))
+			mustNoErr(t, s.UpsertAllHeroesScreenshot(db.FileRef{Filename: "ah.png"}))
+			mustNoErr(t, s.UpsertHistoryScreenshot(db.FileRef{Filename: "h.png"}))
 
 			for _, f := range []string{"ah.png", "h.png"} {
 				orphans, err := s.DeleteScreenshotRows(f)
@@ -154,10 +154,10 @@ func TestStoreContract_DeleteScreenshotRows_ClearsRecognizedRegistrations(t *tes
 					t.Errorf("%s: orphans = %v, want none for a registry-only file", f, orphans)
 				}
 			}
-			if ah, _ := s.LoadAllHeroesFilenames(); ah["ah.png"] {
+			if ah, _ := s.LoadAllHeroesFilenames(db.SentinelScreenshotsDirID); ah["ah.png"] {
 				t.Errorf("all_heroes registration survived; the file would stay skip-listed")
 			}
-			if h, _ := s.LoadHistoryFilenames(); h["h.png"] {
+			if h, _ := s.LoadHistoryFilenames(db.SentinelScreenshotsDirID); h["h.png"] {
 				t.Errorf("history registration survived; the file would stay skip-listed")
 			}
 		})

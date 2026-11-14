@@ -1,6 +1,10 @@
 package db
 
-import "recall/pkg/parser"
+import (
+	"fmt"
+
+	"recall/pkg/parser"
+)
 
 // Failed-file ledger — per-file OCR failure records backing the Unknown
 // tab's "Failed to read" triage section and the diagnostic bundle. A row
@@ -15,18 +19,32 @@ import "recall/pkg/parser"
 // parser's generation, and only rows stamped with the generation asking
 // park, so an upgraded parser gets every parked file one more run.
 
-func (s *SQLStore) RecordFailedFile(filename string, dirID int64, errMsg string) error {
+func (s *SQLStore) RecordFailedFile(file FileRef, kind FailureKind, errMsg string) error {
+	if kind != FailureParseFailed && kind != FailureOCRUnavailable {
+		return fmt.Errorf("record failed file: unknown failure kind %q", kind)
+	}
+	// excluded.attempts is the one this failure counts: 1 for a parse that
+	// ran and failed, 0 for an OCR outage.
 	_, err := s.db.Exec(
-		`INSERT INTO failed_files (filename, screenshots_dir_id, error, parser_generation) VALUES (?, ?, ?, ?)
-		 ON CONFLICT(filename) DO UPDATE SET
+		`INSERT INTO failed_files (screenshots_dir_id, filename, kind, error, attempts, parser_generation)
+		 VALUES (?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(screenshots_dir_id, filename) DO UPDATE SET
+		   kind               = excluded.kind,
 		   error              = excluded.error,
-		   screenshots_dir_id = excluded.screenshots_dir_id,
-		   attempts           = attempts + 1,
+		   attempts           = attempts + excluded.attempts,
 		   last_failed_at     = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'),
 		   parser_generation  = excluded.parser_generation`,
-		filename, dirID, errMsg, parser.Generation,
+		dirIDOrSentinel(file.DirID), file.Filename, kind, errMsg, attemptsCounted(kind), parser.Generation,
 	)
 	return err
+}
+
+// attemptsCounted is how many attempts one failure of this kind costs the file.
+func attemptsCounted(kind FailureKind) int {
+	if kind == FailureParseFailed {
+		return 1
+	}
+	return 0
 }
 
 // LoadFailedFilenames returns one folder's filenames with attempts >=
@@ -56,7 +74,12 @@ func (s *SQLStore) LoadFailedFilenames(dirID int64, minAttempts, generation int)
 	return out, rows.Err()
 }
 
-func (s *SQLStore) RemoveFailedFile(filename string) error {
+func (s *SQLStore) RemoveFailedFile(file FileRef) error {
+	_, err := s.db.Exec(`DELETE FROM failed_files WHERE screenshots_dir_id = ? AND filename = ?`, dirIDOrSentinel(file.DirID), file.Filename)
+	return err
+}
+
+func (s *SQLStore) RemoveFailedFilesNamed(filename string) error {
 	_, err := s.db.Exec(`DELETE FROM failed_files WHERE filename = ?`, filename)
 	return err
 }
@@ -64,7 +87,7 @@ func (s *SQLStore) RemoveFailedFile(filename string) error {
 // ListFailedFiles returns every failure row, most recently failed first.
 func (s *SQLStore) ListFailedFiles() ([]FailedFileRow, error) {
 	rows, err := s.db.Query(
-		`SELECT filename, screenshots_dir_id, error, attempts, first_failed_at, last_failed_at,
+		`SELECT filename, screenshots_dir_id, kind, error, attempts, first_failed_at, last_failed_at,
 		        COALESCE(parser_generation, 0)
 		 FROM failed_files ORDER BY last_failed_at DESC, filename ASC`,
 	)
@@ -75,7 +98,7 @@ func (s *SQLStore) ListFailedFiles() ([]FailedFileRow, error) {
 	out := make([]FailedFileRow, 0)
 	for rows.Next() {
 		var r FailedFileRow
-		if err := rows.Scan(&r.Filename, &r.ScreenshotsDirID, &r.Error, &r.Attempts, &r.FirstFailedAt, &r.LastFailedAt, &r.ParserGeneration); err != nil {
+		if err := rows.Scan(&r.Filename, &r.ScreenshotsDirID, &r.Kind, &r.Error, &r.Attempts, &r.FirstFailedAt, &r.LastFailedAt, &r.ParserGeneration); err != nil {
 			return nil, err
 		}
 		out = append(out, r)

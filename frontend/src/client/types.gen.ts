@@ -526,7 +526,17 @@ export type FailedFile = {
      */
     error: string;
     /**
-     * Failed parse runs since `first_failed_at`.
+     * Why the most recent attempt failed. `parse_failed` — the parse
+     * ran and could not read the file; it counts an attempt.
+     * `ocr_unavailable` — the OCR engine was not there, so the file
+     * was never read; it counts none, and never parks a file.
+     *
+     */
+    kind: 'parse_failed' | 'ocr_unavailable';
+    /**
+     * Failed parse runs since `first_failed_at`. An OCR outage counts
+     * none, so a file that has only met one reads 0.
+     *
      */
     attempts: number;
     /**

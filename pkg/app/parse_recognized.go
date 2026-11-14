@@ -1,6 +1,9 @@
 package app
 
-import "recall/pkg/parser"
+import (
+	"recall/pkg/db"
+	"recall/pkg/parser"
+)
 
 // Recognized non-match screens — the PERSONAL "All Heroes" aggregate and the
 // career HISTORY list — are parse successes that store only a filename in a
@@ -37,17 +40,17 @@ func (st *parseRunState) handleRecognized(filename string, result *parser.MatchR
 }
 
 // recordRecognized retires the file's Unknown state and registers it.
-func (a *App) recordRecognized(filename string, t parser.ScreenshotType) error {
+func (a *App) recordRecognized(file db.FileRef, t parser.ScreenshotType) error {
 	store, release, leaseErr := a.useStore()
 	if leaseErr != nil {
 		return leaseErr
 	}
 	defer release()
-	if err := store.DeleteUnknownScreenshot(filename); err != nil {
+	if err := store.DeleteUnknownScreenshot(file.Filename); err != nil {
 		return err
 	}
 	if t == parser.TypeHistory {
-		return store.UpsertHistoryScreenshot(filename)
+		return store.UpsertHistoryScreenshot(file)
 	}
-	return store.UpsertAllHeroesScreenshot(filename)
+	return store.UpsertAllHeroesScreenshot(file)
 }

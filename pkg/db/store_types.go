@@ -25,15 +25,36 @@ type QueueState struct {
 // chose to Dismiss on the Unknown tab. `IgnoredAt` is the
 // server-assigned timestamp the Settings panel renders so users can
 // distinguish recent ignores from old ones.
+// FileRef names one screenshot file: the folder it was read from (a
+// screenshots_dirs id) and its basename. Every per-file ledger is keyed by
+// it, because a basename alone is not unique across folders.
+type FileRef struct {
+	DirID    int64
+	Filename string
+}
+
 // IngestedFile is one content-hash registry row (see ingested_files in
-// schema.sql). DuplicateOf is ” for originals.
+// schema.sql). DuplicateOf is the zero FileRef for an original.
 type IngestedFile struct {
 	ContentHash string
-	DuplicateOf string
+	DuplicateOf FileRef
 	// FirstSeenAt is the UTC RFC 3339 stamp of the file's first
 	// registration; a re-parse keeps it.
 	FirstSeenAt string
 }
+
+// IsDuplicate reports whether the file was a byte-identical copy of another.
+func (f IngestedFile) IsDuplicate() bool { return f.DuplicateOf.Filename != "" }
+
+// FailureKind says why a file is in the failure ledger: the parse ran and
+// failed, or it never reached the file because the OCR engine was not there.
+// Only a parse failure counts an attempt.
+type FailureKind string
+
+const (
+	FailureParseFailed    FailureKind = "parse_failed"
+	FailureOCRUnavailable FailureKind = "ocr_unavailable"
+)
 
 type IgnoredRow struct {
 	Filename  string
@@ -47,6 +68,7 @@ type IgnoredRow struct {
 type FailedFileRow struct {
 	Filename         string
 	ScreenshotsDirID int64
+	Kind             FailureKind
 	Error            string
 	Attempts         int
 	FirstFailedAt    string

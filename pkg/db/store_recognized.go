@@ -22,12 +22,12 @@ import "strings"
 // reclassified or dismissed, or a stale entry would keep skipping its re-OCR.
 var recognizedRegistryTables = []string{"all_heroes_screenshots", "history_screenshots"}
 
-// recognizedFilenamesSQL selects every filename in any recognized-skip
-// registry, for a NOT IN filter.
+// recognizedFilenamesSQL selects every (folder, filename) in any
+// recognized-skip registry, for a row-value NOT IN filter.
 func recognizedFilenamesSQL() string {
 	selects := make([]string, len(recognizedRegistryTables))
 	for i, t := range recognizedRegistryTables {
-		selects[i] = "SELECT filename FROM " + t
+		selects[i] = "SELECT screenshots_dir_id, filename FROM " + t
 	}
 	return strings.Join(selects, " UNION ")
 }
@@ -59,35 +59,36 @@ func (s *SQLStore) DeleteUnknownScreenshot(filename string) error {
 	return tx.Commit()
 }
 
-func (s *SQLStore) UpsertAllHeroesScreenshot(filename string) error {
-	return s.upsertRecognized("all_heroes_screenshots", filename)
+func (s *SQLStore) UpsertAllHeroesScreenshot(file FileRef) error {
+	return s.upsertRecognized("all_heroes_screenshots", file)
 }
 
-func (s *SQLStore) LoadAllHeroesFilenames() (map[string]bool, error) {
-	return s.loadRecognized("all_heroes_screenshots")
+func (s *SQLStore) LoadAllHeroesFilenames(dirID int64) (map[string]bool, error) {
+	return s.loadRecognized("all_heroes_screenshots", dirID)
 }
 
-func (s *SQLStore) UpsertHistoryScreenshot(filename string) error {
-	return s.upsertRecognized("history_screenshots", filename)
+func (s *SQLStore) UpsertHistoryScreenshot(file FileRef) error {
+	return s.upsertRecognized("history_screenshots", file)
 }
 
-func (s *SQLStore) LoadHistoryFilenames() (map[string]bool, error) {
-	return s.loadRecognized("history_screenshots")
+func (s *SQLStore) LoadHistoryFilenames(dirID int64) (map[string]bool, error) {
+	return s.loadRecognized("history_screenshots", dirID)
 }
 
-func (s *SQLStore) upsertRecognized(table, filename string) error {
+func (s *SQLStore) upsertRecognized(table string, file FileRef) error {
 	// #nosec G202 -- table is one of recognizedRegistryTables, never user input.
 	_, err := s.db.Exec(
-		`INSERT INTO `+table+` (filename) VALUES (?)
-		 ON CONFLICT(filename) DO UPDATE SET recognized_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`,
-		filename,
+		`INSERT INTO `+table+` (screenshots_dir_id, filename) VALUES (?, ?)
+		 ON CONFLICT(screenshots_dir_id, filename) DO UPDATE SET recognized_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`,
+		dirIDOrSentinel(file.DirID), file.Filename,
 	)
 	return err
 }
 
-func (s *SQLStore) loadRecognized(table string) (map[string]bool, error) {
+// loadRecognized reads one folder's names from one registry.
+func (s *SQLStore) loadRecognized(table string, dirID int64) (map[string]bool, error) {
 	// #nosec G202 -- table is one of recognizedRegistryTables, never user input.
-	rows, err := s.db.Query(`SELECT filename FROM ` + table)
+	rows, err := s.db.Query(`SELECT filename FROM `+table+` WHERE screenshots_dir_id = ?`, dirID)
 	if err != nil {
 		return nil, err
 	}

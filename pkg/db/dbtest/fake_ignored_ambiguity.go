@@ -24,24 +24,28 @@ func sortedCandidates(cands []db.AmbiguousCandidate) []db.AmbiguousCandidate {
 	return out
 }
 
-func (f *Fake) UpsertIngestedFile(filename, contentHash, duplicateOf string) error {
+func (f *Fake) UpsertIngestedFile(file db.FileRef, contentHash string, duplicateOf db.FileRef) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.IngestedFiles == nil {
-		f.IngestedFiles = map[string]db.IngestedFile{}
+		f.IngestedFiles = map[db.FileRef]db.IngestedFile{}
 	}
-	firstSeen := f.IngestedFiles[filename].FirstSeenAt
+	file = fileRef(file)
+	if duplicateOf.Filename != "" {
+		duplicateOf = fileRef(duplicateOf)
+	}
+	firstSeen := f.IngestedFiles[file].FirstSeenAt
 	if firstSeen == "" {
 		firstSeen = time.Now().UTC().Format(time.RFC3339)
 	}
-	f.IngestedFiles[filename] = db.IngestedFile{ContentHash: contentHash, DuplicateOf: duplicateOf, FirstSeenAt: firstSeen}
+	f.IngestedFiles[file] = db.IngestedFile{ContentHash: contentHash, DuplicateOf: duplicateOf, FirstSeenAt: firstSeen}
 	return nil
 }
 
-func (f *Fake) LoadIngestedFiles() (map[string]db.IngestedFile, error) {
+func (f *Fake) LoadIngestedFiles() (map[db.FileRef]db.IngestedFile, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	out := make(map[string]db.IngestedFile, len(f.IngestedFiles))
+	out := make(map[db.FileRef]db.IngestedFile, len(f.IngestedFiles))
 	maps.Copy(out, f.IngestedFiles)
 	return out, nil
 }

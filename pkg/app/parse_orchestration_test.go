@@ -135,3 +135,14 @@ func TestApp_ParseScreenshots_DispatchesEachScreenshotType(t *testing.T) {
 		})
 	}
 }
+
+// parseDirID is the screenshots_dirs id a parse run on a files its ledgers
+// under.
+func parseDirID(t *testing.T, a *app.App, fake *dbtest.Fake) int64 {
+	t.Helper()
+	dirID, err := fake.EnsureScreenshotsDir(app.SettingsOf(a).ScreenshotsDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dirID
+}

@@ -65,7 +65,7 @@ type Fake struct {
 	// "fair game" state. Tests seed this map directly or assert on it
 	// after calling AddIgnoredScreenshot.
 	Ignored       map[string]bool
-	IngestedFiles map[string]db.IngestedFile
+	IngestedFiles map[db.FileRef]db.IngestedFile
 
 	// IgnoredAt maps filename → the timestamp at which it was ignored.
 	// Parallel to Ignored so ListIgnoredScreenshots can return rows in
@@ -80,17 +80,17 @@ type Fake struct {
 	// analog of the all_heroes_screenshots table. Presence means the parser
 	// recognized the PERSONAL "All Heroes" aggregate view and the write path
 	// recorded it so the next parse run skips it. Mirrors Ignored's role.
-	AllHeroes map[string]bool
+	AllHeroes map[db.FileRef]bool
 
 	// History is the same recognized-skip set for the career HISTORY list —
 	// the Fake analog of the history_screenshots table.
-	History map[string]bool
+	History map[db.FileRef]bool
 
 	// FailedFiles is the OCR-failure ledger keyed by filename — the Fake
 	// analog of the failed_files table. RecordFailedFile upserts
 	// (attempts+1, refreshed error/last_failed_at); RemoveFailedFile
 	// deletes. Tests seed rows directly or assert after a parse run.
-	FailedFiles map[string]db.FailedFileRow
+	FailedFiles map[db.FileRef]db.FailedFileRow
 
 	// Ambiguous holds one candidate-list per filename. Tests seed it
 	// directly to verify aggregator behavior for ambiguous screenshots
@@ -227,17 +227,17 @@ func (f *Fake) StaleParseCount(current int) (int, error) {
 	// Mirrors SQLStore's exclusion of recognized-registry files, in every
 	// table: their rows are deliberately kept but a re-parse cannot improve
 	// them. (It once applied to summaries only, which the SQL never did.)
-	gen := func(filename, key string, g int) (string, int) {
-		if f.AllHeroes[filename] || f.History[filename] {
+	gen := func(file db.FileRef, key string, g int) (string, int) {
+		if f.AllHeroes[file] || f.History[file] {
 			return "", current
 		}
 		return key, g
 	}
-	staleKeys(f.Summaries, current, keys, func(r db.SummaryRow) (string, int) { return gen(r.Filename, r.MatchKey, r.ParserGeneration) })
-	staleKeys(f.Teams, current, keys, func(r db.TeamsRow) (string, int) { return gen(r.Filename, r.MatchKey, r.ParserGeneration) })
-	staleKeys(f.Personals, current, keys, func(r db.PersonalRow) (string, int) { return gen(r.Filename, r.MatchKey, r.ParserGeneration) })
-	staleKeys(f.Ranks, current, keys, func(r db.RankRow) (string, int) { return gen(r.Filename, r.MatchKey, r.ParserGeneration) })
-	staleKeys(f.Unknowns, current, keys, func(r db.UnknownRow) (string, int) { return gen(r.Filename, r.MatchKey, r.ParserGeneration) })
+	staleKeys(f.Summaries, current, keys, func(r db.SummaryRow) (string, int) { return gen(rowFile(r), r.MatchKey, r.ParserGeneration) })
+	staleKeys(f.Teams, current, keys, func(r db.TeamsRow) (string, int) { return gen(rowFile(r), r.MatchKey, r.ParserGeneration) })
+	staleKeys(f.Personals, current, keys, func(r db.PersonalRow) (string, int) { return gen(rowFile(r), r.MatchKey, r.ParserGeneration) })
+	staleKeys(f.Ranks, current, keys, func(r db.RankRow) (string, int) { return gen(rowFile(r), r.MatchKey, r.ParserGeneration) })
+	staleKeys(f.Unknowns, current, keys, func(r db.UnknownRow) (string, int) { return gen(rowFile(r), r.MatchKey, r.ParserGeneration) })
 	return len(keys), nil
 }
 
@@ -494,7 +494,7 @@ func (f *Fake) HardDeleteMatch(matchKey string) error {
 	for fn := range doomed {
 		delete(f.Ambiguous, fn)
 	}
-	f.forgetIngestedFiles(doomed)
+	f.forgetIngestedFiles(f.filesOfKeyLocked(matchKey))
 	for fn, cands := range f.Ambiguous {
 		kept := cands[:0]
 		for _, c := range cands {
@@ -557,15 +557,27 @@ func (f *Fake) LoadAllDuplicateLinks() (map[string][]string, error) {
 // leave the dedup registry, and ingested_files.duplicate_of ON DELETE CASCADE
 // takes every byte-identical copy of one with them. The Fake keeps no engine,
 // so the cascade is spelled out.
-func (f *Fake) forgetIngestedFiles(doomed map[string]bool) {
-	for fn := range doomed {
-		delete(f.IngestedFiles, fn)
+func (f *Fake) forgetIngestedFiles(doomed map[db.FileRef]bool) {
+	for file := range doomed {
+		delete(f.IngestedFiles, file)
 	}
-	for fn, rec := range f.IngestedFiles {
+	for file, rec := range f.IngestedFiles {
 		if doomed[rec.DuplicateOf] {
-			delete(f.IngestedFiles, fn)
+			delete(f.IngestedFiles, file)
 		}
 	}
+}
+
+// filesOfKeyLocked is every (folder, filename) a parent row of matchKey
+// holds. Callers hold f.mu.
+func (f *Fake) filesOfKeyLocked(matchKey string) map[db.FileRef]bool {
+	out := map[db.FileRef]bool{}
+	collectFilesByKey(f.Summaries, matchKey, out)
+	collectFilesByKey(f.Teams, matchKey, out)
+	collectFilesByKey(f.Personals, matchKey, out)
+	collectFilesByKey(f.Ranks, matchKey, out)
+	collectFilesByKey(f.Unknowns, matchKey, out)
+	return out
 }
 
 // ReAggregateUnknowns walks Fake's Summaries / Teams /

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
 )
 
@@ -189,8 +190,8 @@ func TestPostScreenshotsIgnore_RejectsPathSeparators(t *testing.T) {
 
 func TestGetScreenshotsFailed_ReturnsLedgerRows(t *testing.T) {
 	fs := dbtest.New()
-	_ = fs.RecordFailedFile("corrupt.png", 1, "decoding image: png: invalid format")
-	_ = fs.RecordFailedFile("corrupt.png", 1, "tesseract failed: exit status 1")
+	_ = fs.RecordFailedFile(db.FileRef{DirID: 1, Filename: "corrupt.png"}, db.FailureParseFailed, "decoding image: png: invalid format")
+	_ = fs.RecordFailedFile(db.FileRef{DirID: 1, Filename: "corrupt.png"}, db.FailureParseFailed, "tesseract failed: exit status 1")
 	_, mux := newTestApp(t, fs)
 	rec := get(t, mux, "/api/v1/screenshots/failed")
 	if rec.Code != http.StatusOK {
@@ -223,14 +224,14 @@ func TestGetScreenshotsFailed_ReturnsLedgerRows(t *testing.T) {
 // failure row resets attempts and restores the file to the pending set.
 func TestDeleteScreenshotsFailed_RemovesRowAndReturns204(t *testing.T) {
 	fs := dbtest.New()
-	_ = fs.RecordFailedFile("stuck.png", 1, "boom")
+	_ = fs.RecordFailedFile(db.FileRef{DirID: 1, Filename: "stuck.png"}, db.FailureParseFailed, "boom")
 	_, mux := newTestApp(t, fs)
 
 	rec := del(t, mux, "/api/v1/screenshots/stuck.png/failure")
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want 204", rec.Code)
 	}
-	if _, still := fs.FailedFiles["stuck.png"]; still {
+	if _, still := fs.FailedFileNamed("stuck.png"); still {
 		t.Errorf("failure row survived DELETE; got=%v", fs.FailedFiles)
 	}
 }

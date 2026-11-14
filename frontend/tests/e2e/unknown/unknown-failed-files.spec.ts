@@ -15,6 +15,7 @@ import { test, expect } from '../_fixtures'
 const failedRows = () => ([
   {
     filename: 'corrupt.png',
+    kind: 'parse_failed',
     error: 'decoding image: png: invalid format',
     attempts: 6,
     parked: false,
@@ -23,6 +24,7 @@ const failedRows = () => ([
   },
   {
     filename: 'menu-shot.png',
+    kind: 'parse_failed',
     error: 'could not locate the highlighted (lighter blue) row in the teams',
     attempts: 3,
     parked: false,

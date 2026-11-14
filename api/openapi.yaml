@@ -5249,7 +5249,7 @@ components:
 
     FailedFile:
       type: object
-      required: [filename, error, attempts, parked, first_failed_at, last_failed_at]
+      required: [filename, kind, error, attempts, parked, first_failed_at, last_failed_at]
       properties:
         filename:
           type: string
@@ -5263,11 +5263,21 @@ components:
           type: string
           example: "decoding image: png: invalid format"
           description: The most recent attempt's error message, verbatim.
+        kind:
+          type: string
+          enum: [parse_failed, ocr_unavailable]
+          description: |
+            Why the most recent attempt failed. `parse_failed` — the parse
+            ran and could not read the file; it counts an attempt.
+            `ocr_unavailable` — the OCR engine was not there, so the file
+            was never read; it counts none, and never parks a file.
         attempts:
           type: integer
-          minimum: 1
+          minimum: 0
           example: 6
-          description: Failed parse runs since `first_failed_at`.
+          description: |
+            Failed parse runs since `first_failed_at`. An OCR outage counts
+            none, so a file that has only met one reads 0.
         parked:
           type: boolean
           example: true

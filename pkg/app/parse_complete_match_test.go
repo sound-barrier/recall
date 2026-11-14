@@ -65,7 +65,7 @@ func TestApp_ParseScreenshots_CompleteOpenQueueMatchFolds(t *testing.T) {
 	if rec.SourceTypes[allHeroesFile] != "" {
 		t.Errorf("All Heroes screenshot must not be a match source, got type %q", rec.SourceTypes[allHeroesFile])
 	}
-	if recognized, _ := fake.LoadAllHeroesFilenames(); !recognized[allHeroesFile] {
+	if recognized, _ := fake.LoadAllHeroesFilenames(parseDirID(t, a, fake)); !recognized[allHeroesFile] {
 		t.Error("All Heroes screenshot not recorded in the recognized-skip list")
 	}
 }

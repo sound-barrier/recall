@@ -116,7 +116,7 @@ func (a *App) runClaimedParse(ctx context.Context, id RunID, force bool, screens
 	parsed, parked := skips.skip, skips.parked
 	// Byte-identical copies of already-ingested files skip OCR entirely
 	// (dedup.go) — they join the skip set before the loop starts.
-	a.dedupNewFiles(screenshotsDir, parsed)
+	a.dedupNewFiles(screenshotsDir, dirID, parsed)
 
 	// Per-file work runs INSIDE the parser callback (parseRunState.handleFile)
 	// so insert + match-updated emit fire as each screenshot finishes OCR.
@@ -228,7 +228,7 @@ func (a *App) parsedSkipSet(dir string, dirID int64, force bool) (skipSet, error
 	for f := range ignored {
 		skip[f] = true
 	}
-	for f := range a.standingDuplicates() {
+	for f := range a.standingDuplicates(dirID) {
 		skip[f] = true
 	}
 	// A screenshot another profile owns is never this profile's to parse,
@@ -250,8 +250,8 @@ func addAutoSuppressions(store db.Store, dirID int64, own, skip, parked map[stri
 	// registries here so a normal re-parse doesn't re-OCR them. Skipped
 	// only on a normal run (not force): the recognition is automatic, so
 	// a full ReParseAll should reconsider it.
-	for _, load := range []func() (map[string]bool, error){store.LoadAllHeroesFilenames, store.LoadHistoryFilenames} {
-		recognized, _ := load()
+	for _, load := range []func(int64) (map[string]bool, error){store.LoadAllHeroesFilenames, store.LoadHistoryFilenames} {
+		recognized, _ := load(dirID)
 		for f := range recognized {
 			skip[f] = true
 		}
@@ -391,11 +391,25 @@ func (st *parseRunState) handleParseFailure(filename string, parseErr error, ev 
 		errMsg = parseErr.Error()
 		ev.Error = errMsg
 	}
-	if err := st.store.RecordFailedFile(filename, st.dirID, errMsg); err != nil {
+	if err := st.store.RecordFailedFile(st.file(filename), failureKindOf(parseErr), errMsg); err != nil {
 		applog.Subsystem("parse").Warn("record failed file", "filename", filename, "err", err)
 	}
 	st.filesFailed++
 	st.app.emitParseProgress(ev)
+}
+
+// file is one of this run's screenshots by its ledger key.
+func (st *parseRunState) file(filename string) db.FileRef {
+	return db.FileRef{DirID: st.dirID, Filename: filename}
+}
+
+// failureKindOf says whether a failed parse is a verdict on the file or an
+// OCR outage that never reached it. Only the first counts an attempt.
+func failureKindOf(parseErr error) db.FailureKind {
+	if errors.Is(parseErr, parser.ErrOCRUnavailable) {
+		return db.FailureOCRUnavailable
+	}
+	return db.FailureParseFailed
 }
 
 // recordLeakedFailure ledgers a file whose parse succeeded but whose
@@ -404,7 +418,7 @@ func (st *parseRunState) handleParseFailure(filename string, parseErr error, ev 
 // candidate write. Without a row, neither would surface in the Failed
 // section. Ledger writes stay best-effort.
 func (st *parseRunState) recordLeakedFailure(filename, msg string) {
-	if err := st.store.RecordFailedFile(filename, st.dirID, msg); err != nil {
+	if err := st.store.RecordFailedFile(st.file(filename), db.FailureParseFailed, msg); err != nil {
 		applog.Subsystem("parse").Warn("record failed file", "filename", filename, "err", err)
 	}
 }
@@ -419,13 +433,13 @@ func (st *parseRunState) recordLeakedFailure(filename, msg string) {
 // logs.
 func (st *parseRunState) reconcileFailureLedger(filename string, result *parser.MatchResult) {
 	if len(result.Warnings) == 0 {
-		if err := st.store.RemoveFailedFile(filename); err != nil {
+		if err := st.store.RemoveFailedFile(st.file(filename)); err != nil {
 			applog.Subsystem("parse").Warn("clear failed file", "filename", filename, "err", err)
 		}
 		return
 	}
 	summary := strings.Join(result.Warnings, "; ")
-	if err := st.store.RecordFailedFile(filename, st.dirID, summary); err != nil {
+	if err := st.store.RecordFailedFile(st.file(filename), db.FailureParseFailed, summary); err != nil {
 		applog.Subsystem("parse").Warn("record degraded file", "filename", filename, "err", err)
 	}
 }
@@ -610,7 +624,7 @@ func (a *App) insertParsed(filename, key string, t parser.ScreenshotType, dirID 
 		// Recognized but not match data: only the filename is recorded, so
 		// the next parse run skips it (no re-OCR) without a garbage match row
 		// or an Unknown-tab entry.
-		return a.recordRecognized(filename, t)
+		return a.recordRecognized(db.FileRef{DirID: dirID, Filename: filename}, t)
 	case parser.TypeUnknown:
 		return store.UpsertUnknown(buildUnknownRow(filename, key, dirID))
 	}

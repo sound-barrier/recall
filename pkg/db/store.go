@@ -286,8 +286,8 @@ type Store interface {
 	// hash (+ the canonical filename when it was a byte-identical
 	// copy); LoadIngestedFiles is the one bulk read the parse loop's
 	// dedup pre-scan consults.
-	UpsertIngestedFile(filename, contentHash, duplicateOf string) error
-	LoadIngestedFiles() (map[string]IngestedFile, error)
+	UpsertIngestedFile(file FileRef, contentHash string, duplicateOf FileRef) error
+	LoadIngestedFiles() (map[FileRef]IngestedFile, error)
 
 	AddIgnoredScreenshot(filename string) error
 	RemoveIgnoredScreenshot(filename string) error
@@ -296,15 +296,18 @@ type Store interface {
 	ClearIgnoredScreenshots() error
 
 	// Failed-file ledger — per-file OCR failure records for the Unknown
-	// tab's "Failed to read" triage section. RecordFailedFile upserts
-	// (attempts+1, refreshed error/last_failed_at, preserved
+	// tab's "Failed to read" triage section, keyed by (folder, filename).
+	// RecordFailedFile upserts (attempts+1 for a parse_failed kind, none for
+	// ocr_unavailable; refreshed kind/error/last_failed_at, preserved
 	// first_failed_at); RemoveFailedFile is the idempotent delete the
-	// success path, Dismiss, and Retry call; ListFailedFiles returns
-	// rows most recently failed first. LoadFailedFilenames(dirID,
+	// success path and Retry call; RemoveFailedFilesNamed drops the name in
+	// every folder (Dismiss, whose ignore list is by name); ListFailedFiles
+	// returns rows most recently failed first. LoadFailedFilenames(dirID,
 	// minAttempts) is the parked-set loader: one folder's filenames at
 	// or past the app layer's attempt cap, which normal runs skip.
-	RecordFailedFile(filename string, dirID int64, errMsg string) error
-	RemoveFailedFile(filename string) error
+	RecordFailedFile(file FileRef, kind FailureKind, errMsg string) error
+	RemoveFailedFile(file FileRef) error
+	RemoveFailedFilesNamed(filename string) error
 	ListFailedFiles() ([]FailedFileRow, error)
 	LoadFailedFilenames(dirID int64, minAttempts, generation int) (map[string]bool, error)
 
@@ -316,13 +319,13 @@ type Store interface {
 	// skip on every future parse run" — the same hot-path role
 	// LoadIgnoredFilenames plays — which keeps the screen out of both the
 	// match aggregation and the Unknown tab without re-OCRing it each run.
-	UpsertAllHeroesScreenshot(filename string) error
-	LoadAllHeroesFilenames() (map[string]bool, error)
+	UpsertAllHeroesScreenshot(file FileRef) error
+	LoadAllHeroesFilenames(dirID int64) (map[string]bool, error)
 
 	// History-screenshots surface — the same recognized-skip role for the
 	// career profile's HISTORY list, which is not a match screen at all.
-	UpsertHistoryScreenshot(filename string) error
-	LoadHistoryFilenames() (map[string]bool, error)
+	UpsertHistoryScreenshot(file FileRef) error
+	LoadHistoryFilenames(dirID int64) (map[string]bool, error)
 	// DeleteUnknownScreenshot retires a recognized file's Unknown row and its
 	// pending ambiguity, leaving any typed row alone.
 	DeleteUnknownScreenshot(filename string) error
@@ -534,7 +537,7 @@ func (s *SQLStore) collectStaleKeys(table string, current int, seen map[string]s
 	rows, err := s.db.Query(
 		"SELECT DISTINCT match_key FROM "+table+
 			" WHERE (parser_generation IS NULL OR parser_generation < ?)"+
-			" AND filename NOT IN ("+recognizedFilenamesSQL()+")", current)
+			" AND (screenshots_dir_id, filename) NOT IN ("+recognizedFilenamesSQL()+")", current)
 	if err != nil {
 		return fmt.Errorf("stale parse count %s: %w", table, err)
 	}

@@ -18,9 +18,9 @@ func TestApp_ParkedFailuresFromAnOlderParserAreRetried(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fake.FailedFiles = map[string]db.FailedFileRow{
-		"old.png": {Filename: "old.png", ScreenshotsDirID: dirID, Attempts: 3, ParserGeneration: parser.Generation - 1, LastFailedAt: "2026-09-20T00:00:00Z"},
-		"new.png": {Filename: "new.png", ScreenshotsDirID: dirID, Attempts: 3, ParserGeneration: parser.Generation, LastFailedAt: "2026-09-21T00:00:00Z"},
+	fake.FailedFiles = map[db.FileRef]db.FailedFileRow{
+		{DirID: dirID, Filename: "old.png"}: {Filename: "old.png", ScreenshotsDirID: dirID, Attempts: 3, ParserGeneration: parser.Generation - 1, LastFailedAt: "2026-09-20T00:00:00Z"},
+		{DirID: dirID, Filename: "new.png"}: {Filename: "new.png", ScreenshotsDirID: dirID, Attempts: 3, ParserGeneration: parser.Generation, LastFailedAt: "2026-09-21T00:00:00Z"},
 	}
 	var skip map[string]bool
 	stubParseCapturingSkip(t, &skip)

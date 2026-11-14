@@ -126,25 +126,14 @@ func orphanedKeys(tx *sql.Tx, keys map[string]bool) ([]string, error) {
 }
 
 // deleteSiblingRows removes filename's rows in folder dirID from every parent
-// table except keep's (children CASCADE), and from the recognized-skip
-// registries. The registries record a bare filename with no folder, so
-// they cannot be scoped; a stale entry there only costs a re-OCR.
+// table and recognized-skip registry except keep's (children CASCADE).
 func deleteSiblingRows(tx *sql.Tx, keep string, dirID int64, filename string) error {
-	for _, t := range parentTables {
+	for _, t := range append(append([]string{}, parentTables...), recognizedRegistryTables...) {
 		if t == keep {
 			continue
 		}
 		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
 		if _, err := tx.Exec(`DELETE FROM `+t+` WHERE filename = ? AND screenshots_dir_id = ?`, filename, dirID); err != nil {
-			return err
-		}
-	}
-	for _, t := range recognizedRegistryTables {
-		if t == keep {
-			continue
-		}
-		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
-		if _, err := tx.Exec(`DELETE FROM `+t+` WHERE filename = ?`, filename); err != nil {
 			return err
 		}
 	}

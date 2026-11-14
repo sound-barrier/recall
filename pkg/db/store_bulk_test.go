@@ -2,6 +2,8 @@ package db_test
 
 import (
 	"testing"
+
+	"recall/pkg/db"
 )
 
 // Clear deletes failed_files BEFORE screenshots_dirs on purpose: the ledger's
@@ -15,7 +17,7 @@ func TestSQLStore_Clear_DeletesFailedFilesBeforeTheirScreenshotsDir(t *testing.T
 	if err != nil {
 		t.Fatalf("EnsureScreenshotsDir: %v", err)
 	}
-	if err := s.RecordFailedFile("broken.png", dirID, "tesseract exited 1"); err != nil {
+	if err := s.RecordFailedFile(db.FileRef{DirID: dirID, Filename: "broken.png"}, db.FailureParseFailed, "tesseract exited 1"); err != nil {
 		t.Fatalf("RecordFailedFile: %v", err)
 	}
 

@@ -96,8 +96,8 @@ func forgetIngestedFiles(tx *sql.Tx, matchKey string) error {
 	for _, t := range parentTables {
 		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
 		if _, err := tx.Exec(
-			`DELETE FROM ingested_files WHERE filename IN
-			 (SELECT filename FROM `+t+` WHERE match_key = ?)`, matchKey,
+			`DELETE FROM ingested_files WHERE (screenshots_dir_id, filename) IN
+			 (SELECT screenshots_dir_id, filename FROM `+t+` WHERE match_key = ?)`, matchKey,
 		); err != nil {
 			return err
 		}
