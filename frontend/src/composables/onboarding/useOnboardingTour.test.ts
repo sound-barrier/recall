@@ -89,7 +89,7 @@ describe('useOnboardingTour — step navigation', () => {
     await nextTick()
     const seen: string[] = [tour.step.value.heading]
     for (let i = 1; i < ONBOARDING_STEPS.length; i++) {
-      void tour.next()
+      await tour.next()
       seen.push(tour.step.value.heading)
     }
     expect(seen).toEqual(ONBOARDING_STEPS.map(s => s.heading))
@@ -99,23 +99,23 @@ describe('useOnboardingTour — step navigation', () => {
   it('prev() steps back; bottoms out at step 0', async () => {
     const tour = mountWithTour()
     await nextTick()
-    void tour.next()
-    void tour.next()
+    await tour.next()
+    await tour.next()
     expect(tour.stepIndex.value).toBe(2)
-    void tour.prev()
+    await tour.prev()
     expect(tour.stepIndex.value).toBe(1)
-    void tour.prev()
+    await tour.prev()
     expect(tour.stepIndex.value).toBe(0)
-    void tour.prev() // no-op
+    await tour.prev() // no-op
     expect(tour.stepIndex.value).toBe(0)
   })
 
   it('next() on the last step finishes the tour', async () => {
     const tour = mountWithTour()
     await nextTick()
-    for (let i = 0; i < ONBOARDING_STEPS.length - 1; i++) void tour.next()
+    for (let i = 0; i < ONBOARDING_STEPS.length - 1; i++) await tour.next()
     expect(tour.isLastStep.value).toBe(true)
-    void tour.next()
+    await tour.next()
     expect(tour.open.value).toBe(false)
     expect(localStorage.getItem(ONBOARDING_COMPLETED_KEY)).toBe('true')
   })
@@ -143,8 +143,8 @@ describe('useOnboardingTour — finish / skip / restart', () => {
   it('finish() resets stepIndex to 0 so a future restart starts at the top', async () => {
     const tour = mountWithTour()
     await nextTick()
-    void tour.next()
-    void tour.next()
+    await tour.next()
+    await tour.next()
     expect(tour.stepIndex.value).toBe(2)
     tour.finish()
     expect(tour.stepIndex.value).toBe(0)
@@ -275,7 +275,7 @@ describe('useOnboardingTour — skip fast-forwards to the seeded sample', () => 
     const seed = vi.fn().mockResolvedValue(undefined)
     const tour = mountWithTour({ actions: actionsStub(seed) })
     await nextTick()
-    void tour.next() // move off step 0 — skip jumps to the sample from anywhere
+    await tour.next() // move off step 0 — skip jumps to the sample from anywhere
     await tour.skip()
     // Skip parks the LAST step so the reload reopens on Done, in the test profile.
     expect(seed).toHaveBeenCalledWith(doneIdx)

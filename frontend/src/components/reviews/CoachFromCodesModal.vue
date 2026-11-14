@@ -60,17 +60,24 @@ function removeCode(code: string): void {
   codes.value = codes.value.filter((c) => c !== code)
 }
 
+// While the open is on the wire the dialog holds: Escape and the backdrop
+// used to close it, reopening reset `busy`, and a second Start sent a second
+// session open. A refused open keeps the dialog — and the codes typed into it.
 async function startReview(): Promise<void> {
   if (!canOpen.value) return
   busy.value = true
-  await coach.openFromReplayCodes(codes.value, props.preset ?? undefined)
+  const opened = await coach.openFromReplayCodes(codes.value, props.preset ?? undefined)
   busy.value = false
-  open.value = false
+  if (opened) open.value = false
+}
+
+function close(): void {
+  if (!busy.value) open.value = false
 }
 
 useModalFocusTrap(open, {
   containerSelector: '.coach-codes-box',
-  onClose: () => { open.value = false },
+  onClose: close,
   keepOpenOnFieldEscape: true,
 })
 </script>
@@ -84,7 +91,7 @@ useModalFocusTrap(open, {
     aria-labelledby="coach-codes-title"
     data-testid="coach-from-codes"
   >
-    <div class="sheet-backdrop" aria-hidden="true" @click="open = false" />
+    <div class="sheet-backdrop" aria-hidden="true" @click="close" />
     <form class="sheet-box coach-codes-box" @submit.prevent="startReview">
       <p class="eyebrow accent sheet-fixed">
         Coaching
@@ -144,7 +151,7 @@ useModalFocusTrap(open, {
       </p>
 
       <div class="sheet-actions">
-        <button type="button" class="btn ghost" @click="open = false">
+        <button type="button" class="btn ghost" :disabled="busy" @click="close">
           Cancel
         </button>
         <button type="submit" class="btn primary" :disabled="!canOpen">

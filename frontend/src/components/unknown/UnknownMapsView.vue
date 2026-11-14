@@ -106,8 +106,21 @@ const unknownRecords = computed(() => matchesStore.unknownRecords)
 
 // Resolve an ambiguous record to a candidate (or a freshly-minted "new match"
 // key); the UnknownCandidatePicker child owns the picker UI + emits the key.
-function onPickCandidate(rec: MatchRecord, resolvedTo: string) {
-  void onResolveAmbiguous(rec.match_key, resolvedTo)
+// One decision per card: from the pick until the reload retires the card it
+// is resolving, and a second pick on it is refused (it would send a second
+// decision on a key the first already resolved).
+const resolving = ref<Set<string>>(new Set())
+async function onPickCandidate(rec: MatchRecord, resolvedTo: string) {
+  const key = rec.match_key
+  if (resolving.value.has(key)) return
+  resolving.value = new Set([...resolving.value, key])
+  try {
+    await onResolveAmbiguous(key, resolvedTo)
+  } finally {
+    const next = new Set(resolving.value)
+    next.delete(key)
+    resolving.value = next
+  }
 }
 
 // Click the ambiguous card head: expand the card AND, if expanding
@@ -269,7 +282,7 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
                 </div>
                 <ReportParseProblemButton :record="rec" />
               </div>
-              <UnknownCandidatePicker :rec="rec" @pick="onPickCandidate(rec, $event)" />
+              <UnknownCandidatePicker :rec="rec" :resolving="resolving.has(rec.match_key)" @pick="onPickCandidate(rec, $event)" />
 
               <div v-if="rec.source_files?.length" class="unknown-delete-zone">
                 <button

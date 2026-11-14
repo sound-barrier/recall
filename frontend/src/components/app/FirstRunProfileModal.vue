@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import type { NamedCandidate, ProfilesResponse } from '@/api-client'
+import type { NamedCandidate } from '@/api-client'
 import { renameProfile } from '@/queries/profiles'
 import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
 import ScreenshotSourcePicker from '@/components/settings/ScreenshotSourcePicker.vue'
@@ -49,22 +49,34 @@ const emit = defineEmits<{
   // Step 2: user clicked "Pick a different folder…". Parent triggers
   // PickScreenshotsDir; on success it also calls SetScreenshotsDir
   // + ackFirstRun(), which unmounts the modal via the gate prop.
-  'pick-custom-source': []
+  // It carries `renamedTo` like `dismiss` does: the parent dismisses the
+  // modal itself once the folder lands, and without it a rename made on step 1
+  // never moved the storage scope or reloaded.
+  'pick-custom-source': [renamedTo: string | null]
 }>()
 
 const NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,39}$/
 
 // ─── Step state machine ─────────────────────────────────────────
-type Step = 'name' | 'source'
-const step = ref<Step>('name')
+// One union, and it carries what the server already knows: whether "main"
+// has been renamed, and to what. Step, busy and the pending rename used to be
+// three refs, so Back then Save renamed "main" a second time (gone by then,
+// so it failed) and Keep after a rename reported that nothing was renamed.
+type FirstRunState =
+  | { status: 'name'; renamedTo: string | null; error: string | null }
+  | { status: 'saving'; renamedTo: string | null }
+  | { status: 'source'; renamedTo: string | null }
+const state = ref<FirstRunState>({ status: 'name', renamedTo: null, error: null })
+
+const step = computed(() => (state.value.status === 'source' ? 'source' : 'name'))
+const busy = computed(() => state.value.status === 'saving')
+const error = computed(() => (state.value.status === 'name' ? state.value.error : null))
+/** What the main profile is called on the server right now. */
+const currentName = computed(() => state.value.renamedTo ?? 'main')
 
 // Persisted across the back-button arc — the user can rename, advance
 // to step 2, hit Back, see their name typed-in, edit, advance again.
 const inputValue = ref('')
-const busy       = ref(false)
-const error      = ref<string | null>(null)
-// What we'll emit on the final dismiss. Carries forward across steps.
-const pendingRenamedTo = ref<string | null>(null)
 
 const inputValid = computed(() => NAME_RE.test(inputValue.value))
 // `inputDirty` no longer gates the hint — the rules are shown from
@@ -76,31 +88,34 @@ const inputDirty = computed(() => inputValue.value.length > 0)
 const inputEl = ref<HTMLInputElement | null>(null)
 
 // ─── Step 1: name ───────────────────────────────────────────────
+// Renames whatever the profile is called NOW — "main", or the name a first
+// Save already gave it — and only when the name actually changes.
 async function onSave() {
-  if (busy.value || !inputValid.value || step.value !== 'name') return
-  busy.value = true
-  error.value = null
+  const from = state.value
+  if (from.status !== 'name' || !inputValid.value) return
+  const next = inputValue.value.trim()
+  if (next === currentName.value) {
+    await advanceToSource(from.renamedTo)
+    return
+  }
+  state.value = { status: 'saving', renamedTo: from.renamedTo }
   try {
-    const next = inputValue.value.trim()
-    const _resp: ProfilesResponse = await renameProfile('main', next)
-    void _resp
-    pendingRenamedTo.value = next
-    await advanceToSource()
+    await renameProfile(currentName.value, next)
+    await advanceToSource(next)
   } catch (e) {
-    error.value = String(e)
-  } finally {
-    busy.value = false
+    state.value = { status: 'name', renamedTo: from.renamedTo, error: String(e) }
   }
 }
 
+// Keep the name the profile has — which, after a Save and Back, is the new
+// one: the rename happened, and the dismiss still has to report it.
 function onKeepDefault() {
-  if (busy.value || step.value !== 'name') return
-  pendingRenamedTo.value = null
-  void advanceToSource()
+  if (state.value.status !== 'name') return
+  void advanceToSource(state.value.renamedTo)
 }
 
-async function advanceToSource() {
-  step.value = 'source'
+async function advanceToSource(renamedTo: string | null) {
+  state.value = { status: 'source', renamedTo }
   // Let the picker mount, then move focus to the first focusable
   // inside the new step — typically the first source card or the
   // custom-pick button (when no cards are visible).
@@ -119,12 +134,12 @@ function onPickSource(_name: NamedCandidate['name'], path: string) {
   // Dismiss immediately — parent has the path; SetScreenshotsDir
   // happens in parallel; reload (when renamedTo !== null) wipes the
   // tree anyway.
-  emit('dismiss', pendingRenamedTo.value)
+  emit('dismiss', state.value.renamedTo)
 }
 
 function onPickCustomSource() {
   if (props.picking) return
-  emit('pick-custom-source')
+  emit('pick-custom-source', state.value.renamedTo)
   // Don't auto-dismiss — wait for the parent's PickScreenshotsDir
   // promise to resolve. If the user cancels the native dialog the
   // modal stays on step 2 so they can try again.
@@ -133,11 +148,11 @@ function onPickCustomSource() {
 function onSkipSource() {
   // User opted to set up the folder later on Settings. Dismiss with
   // whatever rename state we have.
-  emit('dismiss', pendingRenamedTo.value)
+  emit('dismiss', state.value.renamedTo)
 }
 
 async function onBackToName() {
-  step.value = 'name'
+  state.value = { status: 'name', renamedTo: state.value.renamedTo, error: null }
   await nextTick()
   inputEl.value?.focus({ preventScroll: true })
 }
@@ -237,7 +252,7 @@ watch(trapOpen, async (open) => {
             data-step-keep
             @click="onKeepDefault"
           >
-            Keep as "main"
+            Keep as "{{ currentName }}"
           </button>
           <button
             type="submit"

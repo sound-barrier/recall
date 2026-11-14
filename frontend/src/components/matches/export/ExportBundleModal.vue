@@ -22,6 +22,13 @@ const props = defineProps<{
   selectedCount:  number
   hiddenCount:    number
   unknownCount:   number
+  /**
+   * True while the export this dialog asked for is running. The CALLER owns
+   * it because the caller owns the request: a flag set and cleared around the
+   * synchronous emit never held, so a double-click sent two bundles and Cancel
+   * stayed live under a running export.
+   */
+  exporting?:     boolean
 }>()
 
 const emit = defineEmits<{
@@ -53,7 +60,7 @@ function defaultFilename(): string {
 const filename       = ref(defaultFilename())
 const includeHidden  = ref(false)
 const includeUnknown = ref(false)
-const busy           = ref(false)
+const busy           = computed(() => props.exporting === true)
 
 // Declared ahead of the open-watch below: that watch runs immediately
 // (see its note), so both refs must already be initialized when it does.
@@ -75,7 +82,6 @@ watch(() => props.open, async (next, prev) => {
     filename.value       = defaultFilename()
     includeHidden.value  = false
     includeUnknown.value = false
-    busy.value           = false
     lastFocus.value =
       document.activeElement instanceof HTMLElement ? document.activeElement : null
     document.addEventListener('keydown', onKeydown)
@@ -105,18 +111,13 @@ const canSubmit = computed(() => !busy.value && previewCount.value > 0)
 const submitBlockedReason = computed(() =>
   (busy.value || canSubmit.value ? undefined : 'Nothing selected to export.'))
 
-async function onSubmit() {
+function onSubmit() {
   if (!canSubmit.value) return
-  busy.value = true
-  try {
-    emit('export', {
-      filename: filename.value.trim(),
-      includeHidden: includeHidden.value,
-      includeUnknown: includeUnknown.value,
-    })
-  } finally {
-    busy.value = false
-  }
+  emit('export', {
+    filename: filename.value.trim(),
+    includeHidden: includeHidden.value,
+    includeUnknown: includeUnknown.value,
+  })
 }
 
 function onCancel() {

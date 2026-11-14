@@ -305,19 +305,21 @@ export const useCoachStore = defineStore('coach', () => {
   // focus list, same autosave, same export — so it reuses this whole store
   // rather than getting one of its own. The only differences are where the
   // corpus comes from and that it can grow, which is these three functions.
+  // Answers whether the session opened, so the dialog that asked keeps the
+  // codes when it did not.
   async function openFromReplayCodes(
     codes: string[],
     as?: { handle: string; kind: 'player' | 'team' },
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (tourOpen.value) {
       useAppStore().setError(TOUR_CONFLICT_REASON)
-      return
+      return false
     }
     try {
       setCoachSessionData(await OpenCoachReplaySession(codes))
     } catch (e) {
       useAppStore().setErrorFromRaw(String(e))
-      return
+      return false
     }
     // Pre-addressed (the dossier's door): the identity is confirmed before
     // the room renders, so "Who is this?" never has to ask about someone
@@ -337,6 +339,7 @@ export const useCoachStore = defineStore('coach', () => {
     setCoachSessionResume(true)
     suspendCoachNarrow()
     await useAppStore().goToView('reviews')
+    return true
   }
 
   // Codes arrive one at a time over voice chat, so the reel grows mid-session.

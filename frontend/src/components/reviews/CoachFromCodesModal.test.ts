@@ -11,7 +11,7 @@ beforeEach(() => { setActivePinia(createPinia()) })
 
 function renderModal() {
   const coach = useCoachStore()
-  const open = vi.spyOn(coach, 'openFromReplayCodes').mockResolvedValue(undefined)
+  const open = vi.spyOn(coach, 'openFromReplayCodes').mockResolvedValue(true)
   const view = render(CoachFromCodesModal, { props: { modelValue: true } })
   return { coach, open, view }
 }
