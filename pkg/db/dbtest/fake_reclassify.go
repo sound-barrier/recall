@@ -11,25 +11,25 @@ import (
 	"recall/pkg/parser"
 )
 
-func (f *Fake) DeleteScreenshotSiblings(filename string, keepType parser.ScreenshotType) error {
+func (f *Fake) DeleteScreenshotSiblings(dirID int64, filename string, keepType parser.ScreenshotType) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	oldKeys := map[string]bool{}
 	collect := func(key string) { oldKeys[key] = true }
 	if keepType != "summary" {
-		f.Summaries = deleteByFilename(f.Summaries, filename, collect)
+		f.Summaries = deleteInFolder(f.Summaries, dirID, filename, collect)
 	}
 	if keepType != "teams" {
-		f.Teams = deleteByFilename(f.Teams, filename, collect)
+		f.Teams = deleteInFolder(f.Teams, dirID, filename, collect)
 	}
 	if keepType != "personal" {
-		f.Personals = deleteByFilename(f.Personals, filename, collect)
+		f.Personals = deleteInFolder(f.Personals, dirID, filename, collect)
 	}
 	if keepType != "rank" {
-		f.Ranks = deleteByFilename(f.Ranks, filename, collect)
+		f.Ranks = deleteInFolder(f.Ranks, dirID, filename, collect)
 	}
 	if keepType != "unknown" {
-		f.Unknowns = deleteByFilename(f.Unknowns, filename, collect)
+		f.Unknowns = deleteInFolder(f.Unknowns, dirID, filename, collect)
 	}
 	if keepType != "all_heroes" {
 		delete(f.AllHeroes, filename)

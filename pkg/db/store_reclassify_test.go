@@ -17,7 +17,7 @@ func TestDeleteScreenshotSiblings_RemovesStaleTypeRows(t *testing.T) {
 			s := impl.open(t)
 			mustNoErr(t, s.UpsertSummary(db.SummaryRow{Filename: "f.png", MatchKey: "match-2026-07-05T14-54-48", Result: "defeat"}))
 			mustNoErr(t, s.UpsertRank(db.RankRow{Filename: "f.png", MatchKey: "match-2026-07-05T14-54-48", Rank: "platinum"}))
-			mustNoErr(t, s.DeleteScreenshotSiblings("f.png", "rank"))
+			mustNoErr(t, s.DeleteScreenshotSiblings(1, "f.png", "rank"))
 			shots, err := s.LoadAll()
 			mustNoErr(t, err)
 			if len(shots.Summaries) != 0 {
@@ -39,12 +39,12 @@ func TestDeleteScreenshotSiblings_Idempotent(t *testing.T) {
 	for _, impl := range storeImpls {
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
-			if err := s.DeleteScreenshotSiblings("never-seen.png", "summary"); err != nil {
+			if err := s.DeleteScreenshotSiblings(1, "never-seen.png", "summary"); err != nil {
 				t.Fatalf("unknown filename must not error: %v", err)
 			}
 			mustNoErr(t, s.UpsertUnknown(db.UnknownRow{Filename: "u.png", MatchKey: "unmatched-dQ"}))
 			for range 2 {
-				mustNoErr(t, s.DeleteScreenshotSiblings("u.png", "unknown"))
+				mustNoErr(t, s.DeleteScreenshotSiblings(1, "u.png", "unknown"))
 			}
 			shots, err := s.LoadAll()
 			mustNoErr(t, err)
@@ -72,7 +72,7 @@ func TestDeleteScreenshotSiblings_DropsCandidatesOfOrphanedKeys(t *testing.T) {
 			mustNoErr(t, s.ApplyAmbiguity("pending.png", cands))
 			// f1's reclassification to rank stores the new row under a
 			// DIFFERENT key (EAD bridge), so the old key dies with this wipe.
-			mustNoErr(t, s.DeleteScreenshotSiblings("f1.png", "rank"))
+			mustNoErr(t, s.DeleteScreenshotSiblings(1, "f1.png", "rank"))
 			got, err := s.LoadAmbiguousCandidatesFor("pending.png")
 			mustNoErr(t, err)
 			for _, c := range got {
@@ -95,7 +95,7 @@ func TestDeleteScreenshotSiblings_ClearsAllHeroesRegistry(t *testing.T) {
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
 			mustNoErr(t, s.UpsertAllHeroesScreenshot("ah.png"))
-			mustNoErr(t, s.DeleteScreenshotSiblings("ah.png", "summary"))
+			mustNoErr(t, s.DeleteScreenshotSiblings(1, "ah.png", "summary"))
 			skips, err := s.LoadAllHeroesFilenames()
 			mustNoErr(t, err)
 			if skips["ah.png"] {
@@ -103,7 +103,7 @@ func TestDeleteScreenshotSiblings_ClearsAllHeroesRegistry(t *testing.T) {
 			}
 			// Keeping all_heroes must preserve its registry row.
 			mustNoErr(t, s.UpsertAllHeroesScreenshot("keep.png"))
-			mustNoErr(t, s.DeleteScreenshotSiblings("keep.png", "all_heroes"))
+			mustNoErr(t, s.DeleteScreenshotSiblings(1, "keep.png", "all_heroes"))
 			skips, err = s.LoadAllHeroesFilenames()
 			mustNoErr(t, err)
 			if !skips["keep.png"] {
@@ -120,18 +120,45 @@ func TestDeleteScreenshotSiblings_ClearsHistoryRegistry(t *testing.T) {
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
 			mustNoErr(t, s.UpsertHistoryScreenshot("h.png"))
-			mustNoErr(t, s.DeleteScreenshotSiblings("h.png", "teams"))
+			mustNoErr(t, s.DeleteScreenshotSiblings(1, "h.png", "teams"))
 			skips, err := s.LoadHistoryFilenames()
 			mustNoErr(t, err)
 			if skips["h.png"] {
 				t.Error("history registry must forget a reclassified file")
 			}
 			mustNoErr(t, s.UpsertHistoryScreenshot("keep.png"))
-			mustNoErr(t, s.DeleteScreenshotSiblings("keep.png", "history"))
+			mustNoErr(t, s.DeleteScreenshotSiblings(1, "keep.png", "history"))
 			skips, err = s.LoadHistoryFilenames()
 			mustNoErr(t, err)
 			if !skips["keep.png"] {
 				t.Error("history keepType must preserve the registry row")
+			}
+		})
+	}
+}
+
+// A filename is a basename, and two screenshots folders can each hold a
+// file of the same name. Reclassifying the one in folder A used to delete
+// folder B's row too — a match's screenshot gone because an unrelated
+// file elsewhere shared its name.
+func TestDeleteScreenshotSiblings_LeavesOtherFoldersAlone(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			dirA, err := s.EnsureScreenshotsDir("/shots/a")
+			mustNoErr(t, err)
+			dirB, err := s.EnsureScreenshotsDir("/shots/b")
+			mustNoErr(t, err)
+			mustNoErr(t, s.UpsertSummary(db.SummaryRow{Filename: "f.png", MatchKey: "match-2026-07-05T14-54-48", ScreenshotsDirID: dirA}))
+			mustNoErr(t, s.UpsertSummary(db.SummaryRow{Filename: "f.png", MatchKey: "match-2026-08-01T20-00-00", ScreenshotsDirID: dirB}))
+			mustNoErr(t, s.UpsertRank(db.RankRow{Filename: "f.png", MatchKey: "match-2026-07-05T14-54-48", ScreenshotsDirID: dirA}))
+
+			mustNoErr(t, s.DeleteScreenshotSiblings(dirA, "f.png", "rank"))
+
+			shots, err := s.LoadAll()
+			mustNoErr(t, err)
+			if len(shots.Summaries) != 1 || shots.Summaries[0].ScreenshotsDirID != dirB {
+				t.Errorf("summaries after reclassifying folder A's f.png = %+v, want folder B's row only", shots.Summaries)
 			}
 		})
 	}

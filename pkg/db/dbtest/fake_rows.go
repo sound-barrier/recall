@@ -108,6 +108,40 @@ func rekeyRows[T parentRow](rows []T, from, to string) int {
 	return n
 }
 
+// rowDirID is the folder a row was stored under; an unset folder is the
+// sentinel the SQL store writes for it.
+func rowDirID[T parentRow](r T) int64 {
+	var id int64
+	switch v := any(r).(type) {
+	case db.SummaryRow:
+		id = v.ScreenshotsDirID
+	case db.TeamsRow:
+		id = v.ScreenshotsDirID
+	case db.PersonalRow:
+		id = v.ScreenshotsDirID
+	case db.RankRow:
+		id = v.ScreenshotsDirID
+	case db.UnknownRow:
+		id = v.ScreenshotsDirID
+	}
+	if id == 0 {
+		return db.SentinelScreenshotsDirID
+	}
+	return id
+}
+
+// deleteInFolder drops every row carrying filename in folder dirID,
+// reporting each dropped row's match key to collect.
+func deleteInFolder[T parentRow](rows []T, dirID int64, filename string, collect func(key string)) []T {
+	return slices.DeleteFunc(rows, func(r T) bool {
+		if rowFilename(r) == filename && rowDirID(r) == dirID {
+			collect(rowMatchKey(r))
+			return true
+		}
+		return false
+	})
+}
+
 // deleteByFilename drops every row carrying filename, reporting each
 // dropped row's match key to collect.
 func deleteByFilename[T parentRow](rows []T, filename string, collect func(key string)) []T {

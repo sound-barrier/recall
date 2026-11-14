@@ -21,12 +21,14 @@ type Store interface {
 	UpsertRank(r RankRow) error
 	UpsertUnknown(r UnknownRow) error
 
-	// DeleteScreenshotSiblings removes filename's rows from every
-	// screenshot table except keepType's (children CASCADE), including
-	// the all_heroes skip registry. The write path calls it on every
-	// insert so a re-parse that reclassifies a screenshot doesn't strand
-	// the old-type row beside the new one. Idempotent.
-	DeleteScreenshotSiblings(filename string, keepType parser.ScreenshotType) error
+	// DeleteScreenshotSiblings removes filename's rows in screenshots
+	// folder dirID from every screenshot table except keepType's (children
+	// CASCADE), including the recognized-skip registries. The write path
+	// calls it on every insert so a re-parse that reclassifies a
+	// screenshot doesn't strand the old-type row beside the new one. Rows
+	// of the same name in other folders are other screenshots and stay.
+	// Idempotent.
+	DeleteScreenshotSiblings(dirID int64, filename string, keepType parser.ScreenshotType) error
 
 	// DeleteScreenshotRows removes filename's rows from every screenshot
 	// table (children CASCADE) and its pending candidate set, returning —

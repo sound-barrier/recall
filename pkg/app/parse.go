@@ -570,7 +570,7 @@ func (a *App) insertParsed(filename, key string, t parser.ScreenshotType, dirID 
 	// EXCEPT toward a recognized non-match screen, which never evicts a typed
 	// row (parse_recognized.go says why).
 	if !isRecognizedNonMatch(t) {
-		if err := a.store.DeleteScreenshotSiblings(filename, t); err != nil {
+		if err := a.store.DeleteScreenshotSiblings(dirID, filename, t); err != nil {
 			return err
 		}
 	}
