@@ -419,37 +419,7 @@ yet fixed. They are ordered by likelihood × blast radius.
   (`ocr_unavailable | parse_failed`), and count an attempt only for
   `parse_failed`. A single `screenshot_files` status table with a `CHECK`
   is the end state.
-- **Frontend autosave and editors (M).**
-  - The annotation `watch` overwrites a note being typed after a tag
-    commit refetches.
-  - Deleting a moment does not cancel its queued PUT, so the moment comes
-    back.
-  - Self-review writes read `openId` when they run, not when they are
-    queued.
-  - Two PUTs for one key can land out of order.
-  - "saved" shows during the debounce of a newer edit.
-
-  Fix: a per-key `idle | queued | saving | saved | error` union that
-  serializes writes and captures each write's target at queue time.
-- **Arm/confirm flows (S).**
-  - A double-click on End skips the unexported-notes confirm.
-  - End can run twice.
-  - Clear sits outside the `anyBusy` mutex.
-
-  Fix: hold the confirm after arming, the way `STOP_HOLD_MS` does in the
-  parse union.
-- **§16 regressions (S).** These read server state into refs:
-  - `useIgnoredScreenshots` and `useScreenshotFolderStats`, while
-    `qk.ignored` and `qk.candidateStats` sit unused.
-  - The settings store's mirrors, which write back only to the refs.
-
-  Move them onto the query cache with `setQueryData`.
 - **Smaller (S each).**
-  - The tour's demo overlay can stick when Escape lands before the chunk
-    loads.
-  - The records pulse never fires in the normal path, because upserts
-    grow the cache before `load()` measures it.
-  - Game-data apply re-arms mid-apply.
   - Self-review `finished_at` is nullable and Finish is not atomic.
   - `IgnoreScreenshot` spans four transactions.
   - Clear/restore never release the claims ledger.
