@@ -61,13 +61,15 @@ type FailedFile struct {
 // Idempotent on absent rows; write-gated like every other mutation
 // while a coach session holds the DB read-only.
 func (a *App) RetryFailedFile(filename string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
+	defer release()
 	if filename == "" {
 		return matchedit.ErrIgnoreFilenameRequired
 	}
-	if err := a.store.RemoveFailedFile(filename); err != nil {
+	if err := store.RemoveFailedFile(filename); err != nil {
 		return fmt.Errorf("remove failed file %s: %w", filename, err)
 	}
 	return nil
@@ -77,7 +79,12 @@ func (a *App) RetryFailedFile(filename string) error {
 // first. Wails-bound; server mode serves it at
 // GET /api/v1/screenshots/failed.
 func (a *App) GetFailedFiles() ([]FailedFile, error) {
-	rows, err := a.store.ListFailedFiles()
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return nil, leaseErr
+	}
+	defer release()
+	rows, err := store.ListFailedFiles()
 	if err != nil {
 		return nil, fmt.Errorf("list failed files: %w", err)
 	}
@@ -91,7 +98,7 @@ func (a *App) GetFailedFiles() ([]FailedFile, error) {
 		stored, ok := storedByDir[r.ScreenshotsDirID]
 		if !ok {
 			var err error
-			stored, err = a.store.LoadFilenamesForDir(r.ScreenshotsDirID)
+			stored, err = store.LoadFilenamesForDir(r.ScreenshotsDirID)
 			if err != nil {
 				return nil, fmt.Errorf("load stored filenames: %w", err)
 			}

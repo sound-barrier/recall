@@ -33,13 +33,18 @@ type PendingScreenshots struct {
 // failures get the complementary treatment: they leave Count (the run skips
 // them) and surface in Parked instead — but only while still on disk.
 func (a *App) GetNewScreenshotCount() (PendingScreenshots, error) {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return PendingScreenshots{}, leaseErr
+	}
+	defer release()
 	dir := a.settingsSnapshot().ScreenshotsDir
 	if dir == "" {
 		return PendingScreenshots{}, nil
 	}
 	// Same folder the run itself would use, so the count and the run cannot
 	// disagree about what is already parsed.
-	dirID, err := a.store.EnsureScreenshotsDir(dir)
+	dirID, err := store.EnsureScreenshotsDir(dir)
 	if err != nil {
 		return PendingScreenshots{}, err
 	}
@@ -123,21 +128,23 @@ func (a *App) GetMatchByKey(matchKey string) (match.Record, error) {
 // standard "factory reset" semantic; pass `true` when the user
 // explicitly opts into keeping their curated ignore list.
 func (a *App) ClearDatabase(keepIgnored bool) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
+	defer release()
 	if !keepIgnored {
-		return a.store.Clear()
+		return store.Clear()
 	}
-	snapshot, err := a.store.LoadIgnoredFilenames()
+	snapshot, err := store.LoadIgnoredFilenames()
 	if err != nil {
 		return fmt.Errorf("snapshot ignored filenames: %w", err)
 	}
-	if err := a.store.Clear(); err != nil {
+	if err := store.Clear(); err != nil {
 		return err
 	}
 	for filename := range snapshot {
-		if err := a.store.AddIgnoredScreenshot(filename); err != nil {
+		if err := store.AddIgnoredScreenshot(filename); err != nil {
 			return fmt.Errorf("restore ignored %s: %w", filename, err)
 		}
 	}

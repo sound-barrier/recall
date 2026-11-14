@@ -20,9 +20,11 @@ func (a *App) BackupDatabase() ([]byte, error) {
 // tears down the store (mirroring the profile-switch teardown), atomically
 // swaps the file, drops stale WAL/shm sidecars, and reopens.
 func (a *App) RestoreDatabase(payload []byte) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	leave, gateErr := a.enterWriteGate()
+	if gateErr != nil {
+		return gateErr
 	}
+	defer leave()
 	dst := dbPath(a.dataDir())
 
 	staged, err := snapshot.StageRestore(payload, filepath.Dir(dst))
@@ -43,7 +45,7 @@ func (a *App) RestoreDatabase(payload []byte) error {
 
 	// Serialize against the OCR write path: refuse if a parse is mid-flight
 	// and block a new one from starting during the swap.
-	return a.withRunSlot(RunKindRestore, func() error {
+	return a.withStoreSwap(RunKindRestore, func() error {
 		a.closeStoreForSwap()
 
 		// #nosec G703 -- staged is os.CreateTemp's own name (see the deferred
@@ -68,10 +70,5 @@ func (a *App) closeStoreForSwap() {
 	a.endCoachSession()
 	a.saveSettingsBestEffort()
 	a.stopWatching()
-	if a.store != nil {
-		if closer, ok := a.store.(interface{ Close() error }); ok {
-			_ = closer.Close()
-		}
-		a.store = nil
-	}
+	a.closeStoreForSwapOnly()
 }

@@ -8,7 +8,7 @@ import (
 	"recall/pkg/app"
 )
 
-// A profile activation tears down and replaces a.store. If a parse holds
+// A profile activation tears down and replaces the store. If a parse holds
 // the single-flight slot, its OCR loop is writing through the OLD store
 // handle — the switch must refuse (typed sentinel → HTTP 409) instead of
 // closing the store out from under it.

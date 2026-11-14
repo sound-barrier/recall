@@ -48,7 +48,12 @@ type FocusEntry struct {
 // newest-first. Done items are included — retiring one is not deleting it —
 // and the caller decides what to show.
 func (a *App) FocusList() ([]FocusEntry, error) {
-	received, err := a.store.LoadReceivedFocusItems()
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return nil, leaseErr
+	}
+	defer release()
+	received, err := store.LoadReceivedFocusItems()
 	if err != nil {
 		return nil, fmt.Errorf("focus: load received items: %w", err)
 	}
@@ -61,11 +66,11 @@ func (a *App) FocusList() ([]FocusEntry, error) {
 		})
 	}
 
-	sittings, err := a.store.LoadSelfReviews()
+	sittings, err := store.LoadSelfReviews()
 	if err != nil {
 		return nil, fmt.Errorf("focus: load sittings: %w", err)
 	}
-	byReview, err := a.store.LoadAllSelfReviewFocusItems()
+	byReview, err := store.LoadAllSelfReviewFocusItems()
 	if err != nil {
 		return nil, fmt.Errorf("focus: load own items: %w", err)
 	}
@@ -104,14 +109,16 @@ func day(instant string) string {
 // (new → working), and "Done with this" retires it (→ done) without deleting what
 // was said.
 func (a *App) SetFocusItemStatus(itemID, status string) error {
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
+	}
+	defer release()
 	// The one lock: while a coach session is open the visible records are
 	// someone else's loan, and this list is the player's own.
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
-	}
 	if strings.TrimSpace(itemID) == "" {
 		return fmt.Errorf("%w: no item id", db.ErrFocusItemUnknown)
 	}
 	// The wire carries a string; this is the one place it becomes a status.
-	return a.store.SetFocusItemStatus(itemID, db.FocusStatus(status))
+	return store.SetFocusItemStatus(itemID, db.FocusStatus(status))
 }

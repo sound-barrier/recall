@@ -99,6 +99,7 @@ var sentinels = []sentinel{
 	{"ErrProfileSwitchDuringParse", app.ErrProfileSwitchDuringParse, "profiles: a parse is in flight — retry when it finishes"},
 	{"ErrRunNotCancelable", app.ErrRunNotCancelable, "the running operation cannot be canceled"},
 	{"ErrStoreSwapInProgress", app.ErrStoreSwapInProgress, "the database is being swapped — retry in a moment"},
+	{"ErrStoreUnavailable", app.ErrStoreUnavailable, "no database is open"},
 	{"ErrRestoreInvalid", app.ErrRestoreInvalid, "restore: not a valid Recall database"},
 	{"ErrShareNeedsReplayCode", app.ErrShareNeedsReplayCode, "share needs a replay code on every match"},
 	{"ErrSelfUpdateUnavailable", app.ErrSelfUpdateUnavailable, "self-update unavailable on this install"},

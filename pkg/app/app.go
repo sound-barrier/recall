@@ -34,7 +34,6 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	"recall/pkg/applog"
-	"recall/pkg/coach"
 	"recall/pkg/db"
 	"recall/pkg/profiles"
 	"recall/pkg/tesseract"
@@ -64,9 +63,11 @@ type App struct {
 	// it if needed) without persisting "this is now the default" — the
 	// override is for the single launch only.
 	profileOverride string
-	// store is the persistence layer. *db.SQLStore in production wiring,
-	// can be a fake in tests via NewWithStore.
-	store db.Store
+	// stores holds the persistence layer — *db.SQLStore in production
+	// wiring, a fake in tests via NewWithStore. Every read and write leases
+	// it through useStore (store_holder.go), so a swap never closes the
+	// store under a caller and a caller never sees a nil one.
+	stores storeHolder
 	// tessStatus is the last result of checkTesseract(). Startup now probes
 	// in a BACKGROUND goroutine (so a cold-boot Windows Defender scan can't
 	// stall boot), which races with the GetTesseractStatus binding the
@@ -117,17 +118,14 @@ type App struct {
 	// where there is no window to resize, so ResetWindowSize keys off one
 	// field the way SelfUpdate does. See pkg/app/window.go.
 	WindowSize WindowSizer
-	// coachMu guards coachSession. The session methods take it for
-	// write, every mutating orchestrator reads it through
-	// assertNoCoachSession, and the store-teardown paths discard
-	// through it — so a profile swap can never strand a session
-	// pointing at another profile's coach rows.
-	coachMu sync.RWMutex
-	// coachSession is the open coaching session: a player's exported
-	// bundle rendered to records in memory. Non-nil only between
-	// OpenCoachSession and CloseCoachSession. The records NEVER reach a
-	// store (design rule 3) — pkg/app/coach_session.go.
-	coachSession *coach.Session
+	// coachMu guards coachSlot: the open coaching session and the gated
+	// writes in flight (store_holder.go). The session methods take it for
+	// write, every mutating orchestrator enters the write gate through it,
+	// and the store-teardown paths end the session through it — so a
+	// profile swap can never strand a session pointing at another
+	// profile's coach rows.
+	coachMu   sync.RWMutex
+	coachSlot coachSlot
 	// startupErr records a non-recoverable Startup failure (profile
 	// init, --profile override, DB-dir create, DB open) without
 	// crashing the process. Callers can read it via StartupError()
@@ -177,7 +175,11 @@ func pathIsMissingOrNotADir(path string) bool {
 // tests that pass an in-memory fake (or a *db.SQLStore opened at ":memory:").
 // Production code paths use New() + Startup() which constructs the SQLStore.
 func NewWithStore(s db.Store) *App {
-	return &App{store: s, run: newRunSlot(time.Now())}
+	a := &App{run: newRunSlot(time.Now())}
+	if s != nil {
+		a.stores.store, a.stores.phase = s, storeOpen
+	}
+	return a
 }
 
 // StartupError returns any non-recoverable failure captured during
@@ -396,13 +398,18 @@ func (a *App) openStore() bool {
 		a.captureFatal("create db directory "+dbDir, err)
 		return false
 	}
-	if a.store == nil {
-		s, err := db.NewSQLStore(filepath.Join(dbDir, "recall.db"))
-		if err != nil {
-			a.captureFatal("open SQLite "+filepath.Join(dbDir, "recall.db"), err)
-			return false
-		}
-		a.store = s
+	if a.stores.isOpen() {
+		return true
+	}
+	s, err := db.NewSQLStore(filepath.Join(dbDir, "recall.db"))
+	if err != nil {
+		a.captureFatal("open SQLite "+filepath.Join(dbDir, "recall.db"), err)
+		return false
+	}
+	if err := a.stores.open(s); err != nil {
+		_ = s.Close()
+		a.captureFatal("install SQLite store", err)
+		return false
 	}
 	return true
 }

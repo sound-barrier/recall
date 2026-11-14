@@ -20,37 +20,43 @@ var _ review.Store = (db.Store)(nil)
 
 // ListSelfReviews returns every sitting, newest first.
 func (a *App) ListSelfReviews() ([]review.Session, error) {
-	return review.List(a.store)
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return nil, leaseErr
+	}
+	defer release()
+	return review.List(store)
 }
 
 // GetSelfReview returns one sitting whole.
 func (a *App) GetSelfReview(reviewID string) (review.Session, error) {
-	return review.Get(a.store, reviewID)
-}
-
-// assertSelfReviewWritable is the lock every sitting write asks: no open
-// coach session — the visible records are someone else's loan then. (It
-// used to also require a mutable profile; the tour's sample is a writable
-// sandbox now, so the coach session is the one remaining lock.)
-func (a *App) assertSelfReviewWritable() error {
-	return a.assertNoCoachSession()
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return review.Session{}, leaseErr
+	}
+	defer release()
+	return review.Get(store, reviewID)
 }
 
 // CreateSelfReview opens a sitting over the given matches.
 func (a *App) CreateSelfReview(in review.CreateInput) (review.Session, error) {
-	if err := a.assertSelfReviewWritable(); err != nil {
-		return review.Session{}, err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return review.Session{}, leaseErr
 	}
-	return review.Create(a.store, in)
+	defer release()
+	return review.Create(store, in)
 }
 
 // UpdateSelfReview renames the sitting. What it concluded lives in its
 // focus items — SetSelfReviewFocusItems.
 func (a *App) UpdateSelfReview(reviewID string, in review.UpdateInput) (review.Session, error) {
-	if err := a.assertSelfReviewWritable(); err != nil {
-		return review.Session{}, err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return review.Session{}, leaseErr
 	}
-	r, err := review.Update(a.store, reviewID, in)
+	defer release()
+	r, err := review.Update(store, reviewID, in)
 	if err != nil {
 		return review.Session{}, err
 	}
@@ -62,14 +68,16 @@ func (a *App) UpdateSelfReview(reviewID string, in review.UpdateInput) (review.S
 // SetSelfReviewMatches replaces the sitting's set; a note on a match that
 // leaves goes with it, so that match is re-broadcast too.
 func (a *App) SetSelfReviewMatches(reviewID string, matchKeys []string) (review.Session, error) {
-	if err := a.assertSelfReviewWritable(); err != nil {
-		return review.Session{}, err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return review.Session{}, leaseErr
 	}
-	before, err := review.Get(a.store, reviewID)
+	defer release()
+	before, err := review.Get(store, reviewID)
 	if err != nil {
 		return review.Session{}, err
 	}
-	r, err := review.SetMatches(a.store, reviewID, matchKeys)
+	r, err := review.SetMatches(store, reviewID, matchKeys)
 	if err != nil {
 		return review.Session{}, err
 	}
@@ -80,16 +88,18 @@ func (a *App) SetSelfReviewMatches(reviewID string, matchKeys []string) (review.
 // DeleteSelfReview removes the sitting and its blocks from every match it
 // touched; the reviewed-by flags a finish stamped stay.
 func (a *App) DeleteSelfReview(reviewID string) error {
-	if err := a.assertSelfReviewWritable(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
+	defer release()
 	// Read the set first so the matches that lose a block can be
 	// re-broadcast; absent is a no-op, like the store's own delete.
-	r, ok, err := a.store.LoadSelfReview(reviewID)
+	r, ok, err := store.LoadSelfReview(reviewID)
 	if err != nil || !ok {
 		return err
 	}
-	if err := review.Delete(a.store, reviewID); err != nil {
+	if err := review.Delete(store, reviewID); err != nil {
 		return err
 	}
 	a.emitMatchesByKey(r.MatchKeys)
@@ -99,10 +109,12 @@ func (a *App) DeleteSelfReview(reviewID string) error {
 // FinishSelfReview stamps the sitting done and every member match reviewed
 // by self where a coach has not already.
 func (a *App) FinishSelfReview(reviewID string) (review.Session, error) {
-	if err := a.assertSelfReviewWritable(); err != nil {
-		return review.Session{}, err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return review.Session{}, leaseErr
 	}
-	r, err := review.Finish(a.store, reviewID)
+	defer release()
+	r, err := review.Finish(store, reviewID)
 	if err != nil {
 		return review.Session{}, err
 	}
@@ -112,10 +124,12 @@ func (a *App) FinishSelfReview(reviewID string) (review.Session, error) {
 
 // PutSelfReviewNote saves the sitting's note about one match.
 func (a *App) PutSelfReviewNote(reviewID, matchKey string, in coach.NoteInput) (review.Note, error) {
-	if err := a.assertSelfReviewWritable(); err != nil {
-		return review.Note{}, err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return review.Note{}, leaseErr
 	}
-	n, err := review.PutNote(a.store, reviewID, matchKey, in)
+	defer release()
+	n, err := review.PutNote(store, reviewID, matchKey, in)
 	if err != nil {
 		return review.Note{}, err
 	}
@@ -125,10 +139,12 @@ func (a *App) PutSelfReviewNote(reviewID, matchKey string, in coach.NoteInput) (
 
 // DeleteSelfReviewNote removes the sitting's note about one match.
 func (a *App) DeleteSelfReviewNote(reviewID, matchKey string) error {
-	if err := a.assertSelfReviewWritable(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	if err := review.DeleteNote(a.store, db.SelfReviewNoteRef{ReviewID: reviewID, MatchKey: matchKey}); err != nil {
+	defer release()
+	if err := review.DeleteNote(store, db.SelfReviewNoteRef{ReviewID: reviewID, MatchKey: matchKey}); err != nil {
 		return err
 	}
 	a.emitMatchByKey(matchKey)
@@ -138,10 +154,12 @@ func (a *App) DeleteSelfReviewNote(reviewID, matchKey string) error {
 // PutSelfReviewMoment saves one timestamped moment on the sitting's note
 // about a match, opening the note as reviewed_only when there is none.
 func (a *App) PutSelfReviewMoment(reviewID, matchKey, momentID string, in matchedit.MomentInput) (review.Moment, error) {
-	if err := a.assertSelfReviewWritable(); err != nil {
-		return review.Moment{}, err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return review.Moment{}, leaseErr
 	}
-	m, err := review.PutMoment(a.store, momentRef(reviewID, matchKey, momentID), in)
+	defer release()
+	m, err := review.PutMoment(store, momentRef(reviewID, matchKey, momentID), in)
 	if err != nil {
 		return review.Moment{}, err
 	}
@@ -151,10 +169,12 @@ func (a *App) PutSelfReviewMoment(reviewID, matchKey, momentID string, in matche
 
 // DeleteSelfReviewMoment removes one moment from the sitting's note.
 func (a *App) DeleteSelfReviewMoment(reviewID, matchKey, momentID string) error {
-	if err := a.assertSelfReviewWritable(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	if err := review.DeleteMoment(a.store, momentRef(reviewID, matchKey, momentID)); err != nil {
+	defer release()
+	if err := review.DeleteMoment(store, momentRef(reviewID, matchKey, momentID)); err != nil {
 		return err
 	}
 	a.emitMatchByKey(matchKey)
@@ -176,9 +196,11 @@ func (a *App) emitMatchesByKey(keys []string) {
 // on them — a coach's items arrive New because acknowledging one is a
 // separate act from being told it.
 func (a *App) SetSelfReviewFocusItems(reviewID string, items []db.FocusItem) (review.Session, error) {
-	if err := a.assertSelfReviewWritable(); err != nil {
-		return review.Session{}, err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return review.Session{}, leaseErr
 	}
+	defer release()
 	if err := review.ValidateFocusItems(items); err != nil {
 		return review.Session{}, err
 	}
@@ -186,10 +208,10 @@ func (a *App) SetSelfReviewFocusItems(reviewID string, items []db.FocusItem) (re
 	// carries no problem-ladder entry, so returning it as-is answered 500
 	// for a sitting that simply is not there — where every sibling route
 	// answers 404.
-	if err := a.store.SetSelfReviewFocusItems(reviewID, items); err != nil {
+	if err := store.SetSelfReviewFocusItems(reviewID, items); err != nil {
 		return review.Session{}, review.MapStoreErr(err)
 	}
-	return review.Get(a.store, reviewID)
+	return review.Get(store, reviewID)
 }
 
 // momentRef assembles the ref from what the RPC boundary is handed.

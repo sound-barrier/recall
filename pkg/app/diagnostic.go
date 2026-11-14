@@ -72,10 +72,15 @@ func (a *App) PreflightDiagnosticBundle(files []ReportFile) ([]bundle.LikelyCaus
 }
 
 func (a *App) diagnosticInputs(picked []ReportFile) (bundle.DiagnosticInputs, error) {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return bundle.DiagnosticInputs{}, leaseErr
+	}
+	defer release()
 	if err := validateReportFiles(picked); err != nil {
 		return bundle.DiagnosticInputs{}, err
 	}
-	rows, err := a.store.ListFailedFiles()
+	rows, err := store.ListFailedFiles()
 	if err != nil {
 		return bundle.DiagnosticInputs{}, fmt.Errorf("diagnostic bundle: list failed files: %w", err)
 	}
@@ -175,6 +180,11 @@ func ledgerFailure(r db.FailedFileRow, parked map[string]bool) *bundle.Diagnosti
 // bundle + the screenshot handler).
 func (a *App) resolveReportDirs(files []bundle.DiagnosticFile) map[int64]string {
 	dirByID := map[int64]string{}
+	store, release, err := a.useStore()
+	if err != nil {
+		return dirByID
+	}
+	defer release()
 	for _, f := range files {
 		if f.ScreenshotsDirID <= 0 {
 			continue
@@ -182,7 +192,7 @@ func (a *App) resolveReportDirs(files []bundle.DiagnosticFile) map[int64]string 
 		if _, seen := dirByID[f.ScreenshotsDirID]; seen {
 			continue
 		}
-		if p, err := a.store.LookupScreenshotsDir(f.ScreenshotsDirID); err == nil && p != "" {
+		if p, err := store.LookupScreenshotsDir(f.ScreenshotsDirID); err == nil && p != "" {
 			dirByID[f.ScreenshotsDirID] = p
 		}
 	}

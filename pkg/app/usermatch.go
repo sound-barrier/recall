@@ -18,10 +18,12 @@ import (
 // omitted). The override layer is kept separate from the parsed OCR rows, so a
 // later ResetMatchData restores the original. Emits the re-aggregated record.
 func (a *App) UpdateMatchData(matchKey string, input match.UserMatchDataInput) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	if err := matchedit.SetUserData(a.store, matchKey, input); err != nil {
+	defer release()
+	if err := matchedit.SetUserData(store, matchKey, input); err != nil {
 		return err
 	}
 	a.emitMatchByKey(matchKey)
@@ -32,10 +34,12 @@ func (a *App) UpdateMatchData(matchKey string, input match.UserMatchDataInput) e
 // OCR match to pure OCR. (Deleting a hand-entered match is HardDeleteMatch, which
 // also clears its queue / play-mode aux rows.) Idempotent.
 func (a *App) ResetMatchData(matchKey string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	if err := matchedit.ResetUserData(a.store, matchKey); err != nil {
+	defer release()
+	if err := matchedit.ResetUserData(store, matchKey); err != nil {
 		return err
 	}
 	a.emitMatchByKey(matchKey)
@@ -47,10 +51,12 @@ func (a *App) ResetMatchData(matchKey string) error {
 // the shell re-reads the key to aggregate the record the API returns. The
 // right-side detail-panel choosers then work unchanged — they key on match_key.
 func (a *App) CreateManualMatch(input match.ManualMatchInput) (match.Record, error) {
-	if err := a.assertNoCoachSession(); err != nil {
-		return match.Record{}, err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return match.Record{}, leaseErr
 	}
-	key, err := matchedit.CreateManual(a.store, input)
+	defer release()
+	key, err := matchedit.CreateManual(store, input)
 	if err != nil {
 		return match.Record{}, err
 	}

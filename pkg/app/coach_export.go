@@ -20,7 +20,7 @@ import (
 func (a *App) ExportCoachNotes(sheetHTML []byte) (name string, payload []byte, err error) {
 	a.coachMu.RLock()
 	defer a.coachMu.RUnlock()
-	s := a.coachSession
+	s := a.coachSlot.session
 	if s == nil {
 		return "", nil, coach.ErrNoSession
 	}
@@ -60,6 +60,11 @@ func (a *App) ExportCoachNotes(sheetHTML []byte) (name string, payload []byte, e
 // archive honest about what it holds — which is why WriteNotesArchive is free
 // to refuse the mismatch outright.
 func (a *App) withAttachedFrames(f coach.NotesFile) (coach.NotesFile, map[string][]byte, error) {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return coach.NotesFile{}, nil, leaseErr
+	}
+	defer release()
 	images := map[string][]byte{}
 	for i := range f.Notes {
 		for j := range f.Notes[i].Moments {
@@ -67,7 +72,7 @@ func (a *App) withAttachedFrames(f coach.NotesFile) (coach.NotesFile, map[string
 			if sha == "" {
 				continue
 			}
-			img, ok, err := a.store.LoadMomentImage(sha)
+			img, ok, err := store.LoadMomentImage(sha)
 			if err != nil {
 				return coach.NotesFile{}, nil, fmt.Errorf("read attached frame: %w", err)
 			}
@@ -84,20 +89,25 @@ func (a *App) withAttachedFrames(f coach.NotesFile) (coach.NotesFile, map[string
 // coachNotesFileLocked assembles the notes file for the open session. The
 // caller holds coachMu and has already resolved the coach's name.
 func (a *App) coachNotesFileLocked(coachName string, now time.Time) (coach.NotesFile, error) {
-	s := a.coachSession
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return coach.NotesFile{}, leaseErr
+	}
+	defer release()
+	s := a.coachSlot.session
 	playerRef := s.PlayerRef()
 	if playerRef == 0 {
 		return coach.NotesFile{}, coach.ErrHandleRequired
 	}
-	stored, err := a.store.LoadCoachNotes(playerRef)
+	stored, err := store.LoadCoachNotes(playerRef)
 	if err != nil {
 		return coach.NotesFile{}, fmt.Errorf("coach: load notes: %w", err)
 	}
-	moments, err := a.store.LoadCoachNoteMoments(playerRef)
+	moments, err := store.LoadCoachNoteMoments(playerRef)
 	if err != nil {
 		return coach.NotesFile{}, fmt.Errorf("coach: load note moments: %w", err)
 	}
-	items, err := a.store.LoadCoachFocusItems(playerRef)
+	items, err := store.LoadCoachFocusItems(playerRef)
 	if err != nil {
 		return coach.NotesFile{}, fmt.Errorf("coach: load focus items: %w", err)
 	}

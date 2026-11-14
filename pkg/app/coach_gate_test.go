@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"recall/pkg/app"
 	"recall/pkg/coach"
@@ -246,7 +247,7 @@ var ungatedByDesign = map[string]string{
 
 // The gate list is COMPLETE: every exported *App method that reads as a
 // mutation is either gated or exempt on the record. This is the net that
-// catches a future orchestrator added without assertNoCoachSession.
+// catches a future orchestrator added without the write gate.
 func TestCoachSession_GateListIsComplete(t *testing.T) {
 	a, _ := coachApp(t)
 	gated := gatedWrites(a)
@@ -256,7 +257,7 @@ func TestCoachSession_GateListIsComplete(t *testing.T) {
 			continue
 		}
 		t.Errorf("*App.%s reads as a mutation but is neither in gatedWrites nor in ungatedByDesign — "+
-			"add assertNoCoachSession() and a row, or state why it is exempt", name)
+			"enter the write gate (useStoreForWrite / enterWriteGate) and add a row, or state why it is exempt", name)
 	}
 }
 
@@ -281,5 +282,51 @@ func TestCoachSession_ProfileSwitchEndsTheSession(t *testing.T) {
 	mustNoErr(t, a.CreateProfile("second"))
 	if _, err := a.GetCoachSession(); !errors.Is(err, coach.ErrNoSession) {
 		t.Errorf("GetCoachSession after a profile switch = %v, want coach.ErrNoSession", err)
+	}
+}
+
+// hideGateStore stops a HideMatch inside the store, so a test can open a
+// session while the gated write is mid-flight.
+type hideGateStore struct {
+	db.Store
+	entered chan struct{}
+	release chan struct{}
+}
+
+func (s *hideGateStore) MatchKeyExists(string) (bool, error) { return true, nil }
+
+func (s *hideGateStore) HideMatch(key string) error {
+	close(s.entered)
+	<-s.release
+	return s.Store.HideMatch(key)
+}
+
+// The traced check-then-act: the gate was a check that let go before the
+// write ran, so a session opened in between still got the write. The gate
+// holds for the whole write now — a session cannot open until it is done.
+func TestCoachSession_CannotOpenUnderAGatedWriteInFlight(t *testing.T) {
+	isolateInstall(t)
+	store := &hideGateStore{Store: dbtest.New(), entered: make(chan struct{}), release: make(chan struct{})}
+	a := app.NewWithStore(store)
+
+	wrote := make(chan error, 1)
+	go func() { wrote <- a.HideMatch("k") }()
+	<-store.entered
+
+	opened := make(chan error, 1)
+	go func() {
+		_, err := a.OpenCoachReplaySession([]string{"ABC123"})
+		opened <- err
+	}()
+	select {
+	case err := <-opened:
+		t.Fatalf("a session opened (err %v) while a gated write was still writing", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	close(store.release)
+	mustNoErr(t, <-wrote)
+	if err := <-opened; err != nil {
+		t.Errorf("open once the write finished = %v, want it to open", err)
 	}
 }

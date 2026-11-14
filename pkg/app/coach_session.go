@@ -17,8 +17,8 @@ import (
 // Coaching-session lifecycle. A session loans a player's exported bundle
 // into memory for the length of a review and discards it on End; the
 // player's records never reach a store (design rule 3), and while one is
-// open the coach's own database is frozen by assertNoCoachSession (design
-// rule 1). The only rows a session writes are the coach's OWN notes about
+// open the coach's own database is frozen by the write gate
+// (store_holder.go, design rule 1). The only rows a session writes are the coach's OWN notes about
 // the player, which are keyed by player and resurface next time.
 
 // maxCoachHandleRunes bounds the display handle a coach confirms — the
@@ -75,15 +75,28 @@ func (a *App) claimCoachSession(payload []byte, now time.Time) (coach.SessionVie
 func (a *App) claimCoachSessionWith(open func(time.Time) (*coach.Session, error), now time.Time) (coach.SessionView, error) {
 	a.coachMu.Lock()
 	defer a.coachMu.Unlock()
-	// A swap closes the store a session's notes are written to, and ends any
-	// open session on its way in by taking this lock. Checked under it, the
-	// open either sees the swap and refuses, or finishes first and the swap
-	// ends it; checked before it, a swap could slip in between.
+	if err := a.coachSlot.beginOpen(&a.coachMu); err != nil {
+		return coach.SessionView{}, err
+	}
+	view, err := a.openClaimedSlot(open, now)
+	if err != nil {
+		a.coachSlot.abandonOpen()
+		return coach.SessionView{}, err
+	}
+	return view, nil
+}
+
+// openClaimedSlot builds the session into a slot beginOpen claimed. The
+// caller holds coachMu.
+//
+// A swap closes the store a session's notes are written to, and ends any
+// open session on its way in by taking coachMu. Checked under it — after
+// the wait for gated writes, since a swap can start during that wait — the
+// open either sees the swap and refuses, or finishes first and the swap
+// ends it.
+func (a *App) openClaimedSlot(open func(time.Time) (*coach.Session, error), now time.Time) (coach.SessionView, error) {
 	if a.storeSwapping() {
 		return coach.SessionView{}, ErrStoreSwapInProgress
-	}
-	if a.coachSession != nil {
-		return coach.SessionView{}, coach.ErrSessionActive
 	}
 	s, err := open(now)
 	if err != nil {
@@ -92,10 +105,9 @@ func (a *App) claimCoachSessionWith(open func(time.Time) (*coach.Session, error)
 	if err := a.adoptSessionPlayer(s); err != nil {
 		return coach.SessionView{}, err
 	}
-	a.coachSession = s
+	a.coachSlot.finishOpen(s)
 	view, err := a.coachViewLocked(now)
 	if err != nil {
-		a.coachSession = nil
 		return coach.SessionView{}, err
 	}
 	a.recordSittingOpened(s)
@@ -110,11 +122,17 @@ func (a *App) claimCoachSessionWith(open func(time.Time) (*coach.Session, error)
 // Best-effort — losing a line of history is not worth refusing the session
 // the coach actually asked for.
 func (a *App) recordSittingOpened(s *coach.Session) {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		applog.Subsystem("coach").Error("session history: open failed", "session_id", s.SessionID, "err", leaseErr)
+		return
+	}
+	defer release()
 	keys := make([]string, 0, s.MatchCount())
 	for _, r := range s.Records() {
 		keys = append(keys, r.MatchKey)
 	}
-	err := a.store.StartCoachSession(db.CoachSessionRow{
+	err := store.StartCoachSession(db.CoachSessionRow{
 		SessionID: s.SessionID,
 		PlayerRef: s.PlayerRef(),
 		Handle:    s.Player.Handle,
@@ -132,10 +150,15 @@ func (a *App) recordSittingOpened(s *coach.Session) {
 // names. A bundle with no handle leaves the session player-less — the
 // coach confirms one before any note can be written.
 func (a *App) adoptSessionPlayer(s *coach.Session) error {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return leaseErr
+	}
+	defer release()
 	if s.Player.Handle == "" {
 		return nil
 	}
-	p, err := a.store.EnsureCoachPlayer(s.Player.ID, s.Player.Handle, db.CoachKindPlayer)
+	p, err := store.EnsureCoachPlayer(s.Player.ID, s.Player.Handle, db.CoachKindPlayer)
 	if err != nil {
 		return fmt.Errorf("coach: resolve player: %w", err)
 	}
@@ -149,22 +172,22 @@ func (a *App) adoptSessionPlayer(s *coach.Session) error {
 func (a *App) GetCoachSession() (coach.SessionView, error) {
 	a.coachMu.RLock()
 	defer a.coachMu.RUnlock()
-	if a.coachSession == nil {
+	if a.coachSlot.session == nil {
 		return coach.SessionView{}, coach.ErrNoSession
 	}
 	return a.coachViewLocked(time.Now())
 }
 
 // GetCoachSessionMatches returns the loaned corpus — the records the six
-// tabs render while a session is open. Read-only: the slice is the
-// session's own.
+// tabs render while a session is open. A copy: the caller encodes it after
+// the lock is gone, while a context edit rewrites the session's own records.
 func (a *App) GetCoachSessionMatches() ([]match.Record, error) {
 	a.coachMu.RLock()
 	defer a.coachMu.RUnlock()
-	if a.coachSession == nil {
+	if a.coachSlot.session == nil {
 		return nil, coach.ErrNoSession
 	}
-	return a.coachSession.Records(), nil
+	return slices.Clone(a.coachSlot.session.Records()), nil
 }
 
 // CloseCoachSession discards the loaned records. Idempotent — the
@@ -185,6 +208,11 @@ func (a *App) CloseCoachSession() error {
 // shared review filed under the group's name). "" means player. A bundle
 // session refuses a team — the manifest already named its player.
 func (a *App) SetCoachSessionPlayer(handle, kind string) (coach.SessionView, error) {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return coach.SessionView{}, leaseErr
+	}
+	defer release()
 	handle, err := validateCoachHandle(handle)
 	if err != nil {
 		return coach.SessionView{}, err
@@ -194,21 +222,16 @@ func (a *App) SetCoachSessionPlayer(handle, kind string) (coach.SessionView, err
 	}
 	a.coachMu.Lock()
 	defer a.coachMu.Unlock()
-	s := a.coachSession
+	s := a.coachSlot.session
 	if s == nil {
 		return coach.SessionView{}, coach.ErrNoSession
 	}
 	if kind == db.CoachKindTeam && s.Source != coach.SessionFromReplay {
 		return coach.SessionView{}, coach.ErrBundleNamesPlayer
 	}
-	p, err := a.store.EnsureCoachPlayer(s.Player.ID, handle, kind)
+	p, err := resolveNamedPlayer(store, s.Player.ID, handle, kind)
 	if err != nil {
-		return coach.SessionView{}, fmt.Errorf("coach: resolve player: %w", err)
-	}
-	if p.Handle != handle {
-		if err := a.store.RenameCoachPlayer(p.ID, handle); err != nil {
-			return coach.SessionView{}, fmt.Errorf("coach: rename player: %w", err)
-		}
+		return coach.SessionView{}, err
 	}
 	s.Player.Handle = handle
 	s.Player.Kind = kind
@@ -216,11 +239,26 @@ func (a *App) SetCoachSessionPlayer(handle, kind string) (coach.SessionView, err
 	// The history row was written before anyone knew whose sitting this
 	// was, and the coach may be correcting an earlier answer — so it is
 	// re-pointed every time, not only the first.
-	if err := a.store.PointCoachSessionAt(s.SessionID, p.ID, handle, kind); err != nil {
+	if err := store.PointCoachSessionAt(s.SessionID, p.ID, handle, kind); err != nil {
 		applog.Subsystem("coach").Error("session history: re-point failed",
 			"session_id", s.SessionID, "err", err)
 	}
 	return a.coachViewLocked(time.Now())
+}
+
+// resolveNamedPlayer finds (or creates) the coach_players row the coach just
+// named and renames it to the handle they typed.
+func resolveNamedPlayer(store db.Store, playerID, handle, kind string) (db.CoachPlayer, error) {
+	p, err := store.EnsureCoachPlayer(playerID, handle, kind)
+	if err != nil {
+		return db.CoachPlayer{}, fmt.Errorf("coach: resolve player: %w", err)
+	}
+	if p.Handle != handle {
+		if err := store.RenameCoachPlayer(p.ID, handle); err != nil {
+			return db.CoachPlayer{}, fmt.Errorf("coach: rename player: %w", err)
+		}
+	}
+	return p, nil
 }
 
 // PutCoachNote saves the coach's one note about one of the session's
@@ -228,6 +266,11 @@ func (a *App) SetCoachSessionPlayer(handle, kind string) (coach.SessionView, err
 // earlier one for the same match; its identity (note_id) is minted once
 // and survives every re-save and re-export.
 func (a *App) PutCoachNote(matchKey string, in coach.NoteInput) (coach.Note, error) {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return coach.Note{}, leaseErr
+	}
+	defer release()
 	normalized, err := coach.ValidateNoteInput(in)
 	if err != nil {
 		return coach.Note{}, err
@@ -238,7 +281,7 @@ func (a *App) PutCoachNote(matchKey string, in coach.NoteInput) (coach.Note, err
 	if err != nil {
 		return coach.Note{}, err
 	}
-	saved, err := a.store.UpsertCoachNote(coach.NoteToRow(playerRef, matchKey, normalized))
+	saved, err := store.UpsertCoachNote(coach.NoteToRow(playerRef, matchKey, normalized))
 	if err != nil {
 		return coach.Note{}, fmt.Errorf("coach: save note: %w", err)
 	}
@@ -248,13 +291,18 @@ func (a *App) PutCoachNote(matchKey string, in coach.NoteInput) (coach.Note, err
 // DeleteCoachNote removes the coach's note about one of the session's
 // matches — the autosave path's "the draft went empty" call. Idempotent.
 func (a *App) DeleteCoachNote(matchKey string) error {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return leaseErr
+	}
+	defer release()
 	a.coachMu.Lock()
 	defer a.coachMu.Unlock()
 	_, playerRef, err := a.noteTargetLocked(matchKey)
 	if err != nil {
 		return err
 	}
-	if err := a.store.DeleteCoachNote(playerRef, matchKey); err != nil {
+	if err := store.DeleteCoachNote(playerRef, matchKey); err != nil {
 		return fmt.Errorf("coach: delete note: %w", err)
 	}
 	return nil
@@ -268,6 +316,11 @@ func (a *App) DeleteCoachNote(matchKey string) error {
 // Addressed by the MOMENT's id rather than the match's, because several share
 // a match. An empty momentID mints a new one.
 func (a *App) PutCoachMoment(matchKey, momentID string, in coach.MomentInput) (coach.Moment, error) {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return coach.Moment{}, leaseErr
+	}
+	defer release()
 	normalized, err := coach.ValidateMomentInput(in)
 	if err != nil {
 		return coach.Moment{}, err
@@ -282,7 +335,7 @@ func (a *App) PutCoachMoment(matchKey, momentID string, in coach.MomentInput) (c
 	if err != nil {
 		return coach.Moment{}, err
 	}
-	moments, err := a.store.LoadCoachNoteMoments(playerRef)
+	moments, err := store.LoadCoachNoteMoments(playerRef)
 	if err != nil {
 		return coach.Moment{}, fmt.Errorf("coach: load note moments: %w", err)
 	}
@@ -295,7 +348,7 @@ func (a *App) PutCoachMoment(matchKey, momentID string, in coach.MomentInput) (c
 	// moment its typo was fixed — and since the wire carries only array order,
 	// the stored sort_order is the order the strip renders.
 	row := coach.MomentRowFromInput(note.NoteID, momentID, matchedit.SortOrderFor(existing, momentID), normalized)
-	saved, err := a.store.UpsertCoachNoteMoment(playerRef, row)
+	saved, err := store.UpsertCoachNoteMoment(playerRef, row)
 	if err != nil {
 		return coach.Moment{}, fmt.Errorf("coach: save moment: %w", err)
 	}
@@ -320,14 +373,19 @@ func checkMomentRoom(existing []db.CoachNoteMoment, momentID string) error {
 // reviewed_only mark rather than a blank note: the coach HAS reviewed the
 // match — they just said it with a timestamp instead of a paragraph.
 func (a *App) ensureNoteForMomentLocked(playerRef int64, matchKey string) (db.CoachNote, error) {
-	stored, err := a.store.LoadCoachNotes(playerRef)
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return db.CoachNote{}, leaseErr
+	}
+	defer release()
+	stored, err := store.LoadCoachNotes(playerRef)
 	if err != nil {
 		return db.CoachNote{}, fmt.Errorf("coach: load notes: %w", err)
 	}
 	if n, ok := stored[matchKey]; ok {
 		return n, nil
 	}
-	created, err := a.store.UpsertCoachNote(db.CoachNote{
+	created, err := store.UpsertCoachNote(db.CoachNote{
 		PlayerRef: playerRef,
 		MatchKey:  matchKey,
 		Kind:      coach.KindReviewedOnly,
@@ -342,13 +400,18 @@ func (a *App) ensureNoteForMomentLocked(playerRef int64, matchKey string) (db.Co
 // the note behind: a match whose last moment was deleted is still a match the
 // coach looked at.
 func (a *App) DeleteCoachMoment(matchKey, momentID string) error {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return leaseErr
+	}
+	defer release()
 	a.coachMu.Lock()
 	defer a.coachMu.Unlock()
 	_, playerRef, err := a.noteTargetLocked(matchKey)
 	if err != nil {
 		return err
 	}
-	if err := a.store.DeleteCoachNoteMoment(playerRef, momentID); err != nil {
+	if err := store.DeleteCoachNoteMoment(playerRef, momentID); err != nil {
 		return fmt.Errorf("coach: delete moment: %w", err)
 	}
 	return nil
@@ -359,6 +422,11 @@ func (a *App) DeleteCoachMoment(matchKey, momentID string) error {
 // not per session — it re-surfaces every time that bundle is opened, which
 // is the whole point of telling someone what to work on.
 func (a *App) PutCoachFocusItems(items []coach.FocusItem) error {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return leaseErr
+	}
+	defer release()
 	a.coachMu.Lock()
 	defer a.coachMu.Unlock()
 	playerRef, err := a.sessionPlayerLocked()
@@ -374,41 +442,17 @@ func (a *App) PutCoachFocusItems(items []coach.FocusItem) error {
 	for _, it := range items {
 		rows = append(rows, db.FocusItem{ItemID: it.ItemID, Text: strings.TrimSpace(it.Text)})
 	}
-	if err := a.store.SetCoachFocusItems(playerRef, rows); err != nil {
+	if err := store.SetCoachFocusItems(playerRef, rows); err != nil {
 		return fmt.Errorf("coach: save focus items: %w", err)
 	}
 	return nil
-}
-
-// assertNoCoachSession is the write gate (design rule 1): the first line of
-// every mutating orchestrator. While a
-// session is open the coach is looking at somebody else's history, so a
-// write aimed at "this match" would land on a key their own database has
-// never seen. Deliberately NOT applied to the folder watcher's debounce
-// parse (watcher.go) — that ingests the coach's own screenshots into the
-// coach's own store and must keep running.
-func (a *App) assertNoCoachSession() error {
-	a.coachMu.RLock()
-	defer a.coachMu.RUnlock()
-	if a.coachSession != nil {
-		return coach.ErrSessionActive
-	}
-	return nil
-}
-
-// coachSessionActive reports whether a coaching session is open now.
-func (a *App) coachSessionActive() bool {
-	a.coachMu.RLock()
-	defer a.coachMu.RUnlock()
-	return a.coachSession != nil
 }
 
 // endCoachSession discards any open session and announces the change.
 // Idempotent — the store-teardown paths call it unconditionally.
 func (a *App) endCoachSession() {
 	a.coachMu.Lock()
-	s := a.coachSession
-	a.coachSession = nil
+	s := a.coachSlot.end()
 	a.coachMu.Unlock()
 	if s == nil {
 		return
@@ -425,9 +469,15 @@ func (a *App) endCoachSession() {
 // Best-effort, like the open: the session is already over, and a failure
 // here costs a line of history rather than any of the coach's work.
 func (a *App) recordSittingEnded(s *coach.Session) {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		applog.Subsystem("coach").Error("session history: end failed", "session_id", s.SessionID, "err", leaseErr)
+		return
+	}
+	defer release()
 	var frozen []db.CoachSessionFocusRow
 	if ref := s.PlayerRef(); ref != 0 {
-		items, err := a.store.LoadCoachFocusItems(ref)
+		items, err := store.LoadCoachFocusItems(ref)
 		if err != nil {
 			applog.Subsystem("coach").Error("session history: read focus failed",
 				"session_id", s.SessionID, "err", err)
@@ -436,7 +486,7 @@ func (a *App) recordSittingEnded(s *coach.Session) {
 			frozen = append(frozen, db.CoachSessionFocusRow{Text: item.Text, Status: item.Status})
 		}
 	}
-	if err := a.store.EndCoachSession(s.SessionID, frozen); err != nil {
+	if err := store.EndCoachSession(s.SessionID, frozen); err != nil {
 		applog.Subsystem("coach").Error("session history: end failed",
 			"session_id", s.SessionID, "err", err)
 	}
@@ -445,7 +495,7 @@ func (a *App) recordSittingEnded(s *coach.Session) {
 // coachViewLocked assembles the wire view of the open session. The caller
 // holds coachMu.
 func (a *App) coachViewLocked(now time.Time) (coach.SessionView, error) {
-	s := a.coachSession
+	s := a.coachSlot.session
 	notes, focus, err := a.coachWorkLocked(s)
 	if err != nil {
 		return coach.SessionView{}, err
@@ -456,19 +506,24 @@ func (a *App) coachViewLocked(now time.Time) (coach.SessionView, error) {
 // coachWorkLocked loads what the coach has already written about this
 // player. A session with no confirmed player has nothing to load.
 func (a *App) coachWorkLocked(s *coach.Session) ([]coach.Note, []coach.FocusItem, error) {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return nil, nil, leaseErr
+	}
+	defer release()
 	playerRef := s.PlayerRef()
 	if playerRef == 0 {
 		return nil, nil, nil
 	}
-	stored, err := a.store.LoadCoachNotes(playerRef)
+	stored, err := store.LoadCoachNotes(playerRef)
 	if err != nil {
 		return nil, nil, fmt.Errorf("coach: load notes: %w", err)
 	}
-	moments, err := a.store.LoadCoachNoteMoments(playerRef)
+	moments, err := store.LoadCoachNoteMoments(playerRef)
 	if err != nil {
 		return nil, nil, fmt.Errorf("coach: load note moments: %w", err)
 	}
-	items, err := a.store.LoadCoachFocusItems(playerRef)
+	items, err := store.LoadCoachFocusItems(playerRef)
 	if err != nil {
 		return nil, nil, fmt.Errorf("coach: load focus items: %w", err)
 	}
@@ -488,12 +543,12 @@ func toWireFocusItems(rows []db.FocusItem) []coach.FocusItem {
 // off. The caller holds coachMu.
 func (a *App) sessionPlayerLocked() (int64, error) {
 	switch {
-	case a.coachSession == nil:
+	case a.coachSlot.session == nil:
 		return 0, coach.ErrNoSession
-	case a.coachSession.PlayerRef() == 0:
+	case a.coachSlot.session.PlayerRef() == 0:
 		return 0, coach.ErrHandleRequired
 	}
-	return a.coachSession.PlayerRef(), nil
+	return a.coachSlot.session.PlayerRef(), nil
 }
 
 // noteTargetLocked resolves the three preconditions every note write
@@ -504,7 +559,7 @@ func (a *App) noteTargetLocked(matchKey string) (*coach.Session, int64, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-	s := a.coachSession
+	s := a.coachSlot.session
 	if !coach.IsReviewableMatchKey(matchKey) || !s.HasMatch(matchKey) {
 		return nil, 0, fmt.Errorf("%w: %q", coach.ErrMatchNotInSession, matchKey)
 	}
@@ -529,12 +584,17 @@ func validateCoachHandle(handle string) (string, error) {
 // a dossier for a player who is not on the roster is a bug, not an empty
 // list.
 func (a *App) ListCoachPlayerSessions(playerRef int64) ([]db.CoachSessionRow, error) {
-	roster, err := a.store.LoadCoachPlayers()
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return nil, leaseErr
+	}
+	defer release()
+	roster, err := store.LoadCoachPlayers()
 	if err != nil {
 		return nil, err
 	}
 	if !slices.ContainsFunc(roster, func(p db.CoachPlayerSummary) bool { return p.ID == playerRef }) {
 		return nil, db.ErrCoachPlayerUnknown
 	}
-	return a.store.ListCoachSessions(playerRef)
+	return store.ListCoachSessions(playerRef)
 }

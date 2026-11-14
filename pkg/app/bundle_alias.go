@@ -105,7 +105,12 @@ func (a *App) ExportShareBundle(opts ExportBundleOptions, player SharePlayer) ([
 // and says how many do not — the dialog mirrors this check so a user
 // normally never reaches the 409.
 func (a *App) assertShareReplayCodes(matchKeys []string) error {
-	annotations, err := a.store.LoadAnnotations()
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return leaseErr
+	}
+	defer release()
+	annotations, err := store.LoadAnnotations()
 	if err != nil {
 		return fmt.Errorf("load annotations for share: %w", err)
 	}
@@ -130,12 +135,18 @@ func (a *App) assertShareReplayCodes(matchKeys []string) error {
 // handle exactly as the bundle's manifest did. Failing to write the receipt
 // is a warning, never an eaten share.
 func (a *App) RecordShareReceipt(player SharePlayer, savedPath string, matchKeys []string) {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		slog.Warn("share receipt not recorded", "error", leaseErr)
+		return
+	}
+	defer release()
 	identity, err := a.shareIdentity(player)
 	if err != nil {
 		slog.Warn("share receipt not recorded", "error", err)
 		return
 	}
-	if _, err := a.store.RecordShareExport(identity.Handle, player.Message, savedPath, matchKeys); err != nil {
+	if _, err := store.RecordShareExport(identity.Handle, player.Message, savedPath, matchKeys); err != nil {
 		slog.Warn("share receipt not recorded", "error", err)
 	}
 }
@@ -143,13 +154,23 @@ func (a *App) RecordShareReceipt(player SharePlayer, savedPath string, matchKeys
 // ListShareExports reads the sent ledger, newest first — the Reviews tab's
 // "Sent" strip.
 func (a *App) ListShareExports() ([]db.ShareExport, error) {
-	return a.store.ListShareExports()
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return nil, leaseErr
+	}
+	defer release()
+	return store.ListShareExports()
 }
 
 // ListCoachPlayers reads the roster — every player this user has coached,
 // most recently touched first. The Reviews tab's 03 section.
 func (a *App) ListCoachPlayers() ([]db.CoachPlayerSummary, error) {
-	return a.store.LoadCoachPlayers()
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return nil, leaseErr
+	}
+	defer release()
+	return store.LoadCoachPlayers()
 }
 
 // CoachPlayerNote is one dossier row: the stored note plus how many
@@ -164,21 +185,26 @@ type CoachPlayerNote struct {
 // the existence check: it is tiny, and reusing it keeps the store surface
 // unchanged. db.ErrCoachPlayerUnknown for a ref the roster does not carry.
 func (a *App) ListCoachPlayerNotes(playerRef int64) ([]CoachPlayerNote, error) {
-	roster, err := a.store.LoadCoachPlayers()
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return nil, leaseErr
+	}
+	defer release()
+	roster, err := store.LoadCoachPlayers()
 	if err != nil {
 		return nil, err
 	}
 	if !slices.ContainsFunc(roster, func(p db.CoachPlayerSummary) bool { return p.ID == playerRef }) {
 		return nil, db.ErrCoachPlayerUnknown
 	}
-	byKey, err := a.store.LoadCoachNotes(playerRef)
+	byKey, err := store.LoadCoachNotes(playerRef)
 	if err != nil {
 		return nil, err
 	}
 	// Moments are content the note text cannot show — a reviewed_only note
 	// with twelve moments is a match the coach annotated in detail, and a
 	// list that said "nothing to add" over it would lie.
-	momentsByNote, err := a.store.LoadCoachNoteMoments(playerRef)
+	momentsByNote, err := store.LoadCoachNoteMoments(playerRef)
 	if err != nil {
 		return nil, err
 	}
@@ -197,11 +223,16 @@ func (a *App) ListCoachPlayerNotes(playerRef int64) ([]CoachPlayerNote, error) {
 
 // exportBundle is the shared aggregate-then-pack tail of both export modes.
 func (a *App) exportBundle(opts ExportBundleOptions) ([]byte, error) {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return nil, leaseErr
+	}
+	defer release()
 	recs, err := a.GetMatchResults()
 	if err != nil {
 		return nil, fmt.Errorf("export bundle: aggregate: %w", err)
 	}
-	return bundle.Export(a.store, opts, recs, a.settingsSnapshot().ScreenshotsDir, Version)
+	return bundle.Export(store, opts, recs, a.settingsSnapshot().ScreenshotsDir, Version)
 }
 
 // ValidateBundle inspects a bundle without importing it — the

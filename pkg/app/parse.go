@@ -88,6 +88,11 @@ func (a *App) validateParsePreconditions() (string, error) {
 // the run, whatever this returns, so a failure anywhere still tells the
 // client the run is over.
 func (a *App) runClaimedParse(ctx context.Context, id RunID, force bool, screenshotsDir string) (ParseRunSummary, error) {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return ParseRunSummary{}, leaseErr
+	}
+	defer release()
 	started := time.Now()
 	// A force run (Re-parse All) rewrites every row from OCR — take a
 	// silent safety snapshot first (backup_auto.go; never blocks).
@@ -100,7 +105,7 @@ func (a *App) runClaimedParse(ctx context.Context, id RunID, force bool, screens
 	// Record the source folder once per batch so every screenshot in this
 	// Parse run is FK'd to the same screenshots_dirs row — and so the skip
 	// set below can be scoped to it.
-	dirID, err := a.store.EnsureScreenshotsDir(screenshotsDir)
+	dirID, err := store.EnsureScreenshotsDir(screenshotsDir)
 	if err != nil {
 		return ParseRunSummary{}, err
 	}
@@ -124,12 +129,12 @@ func (a *App) runClaimedParse(ctx context.Context, id RunID, force bool, screens
 	// whole store twice per screenshot. Sidecars stay best-effort like
 	// the per-file loads they replace: a failed load just mutes the
 	// correction tallies, never the parse.
-	snap, err := a.store.LoadAll()
+	snap, err := store.LoadAll()
 	if err != nil {
 		return ParseRunSummary{}, err
 	}
 	st := &parseRunState{
-		app: a, runID: id, dirID: dirID, matchesUpdated: map[string]struct{}{},
+		app: a, store: store, runID: id, dirID: dirID, matchesUpdated: map[string]struct{}{},
 		snap: snap, sidecars: a.loadSidecars(),
 		preRunKeys: snapshotMatchKeys(snap),
 	}
@@ -205,36 +210,21 @@ type skipSet struct {
 }
 
 func (a *App) parsedSkipSet(dir string, dirID int64, force bool) (skipSet, error) {
-	own, err := a.store.LoadFilenamesForDir(dirID)
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return skipSet{}, leaseErr
+	}
+	defer release()
+	own, err := store.LoadFilenamesForDir(dirID)
 	if err != nil {
 		return skipSet{}, err
 	}
 	skip := map[string]bool{}
 	parked := map[string]bool{}
 	if !force {
-		maps.Copy(skip, own)
-		// All-Heroes and history screens carry no stored parent row, so
-		// LoadFilenamesForDir misses them; union their recognized-skip
-		// registries here so a normal re-parse doesn't re-OCR them. Skipped
-		// only on a normal run (not force): the recognition is automatic, so
-		// a full ReParseAll should reconsider it.
-		for _, load := range []func() (map[string]bool, error){a.store.LoadAllHeroesFilenames, a.store.LoadHistoryFilenames} {
-			recognized, _ := load()
-			for f := range recognized {
-				skip[f] = true
-			}
-		}
-		// Best-effort like the other suppression loads: a load error means
-		// an empty set, and the files simply retry this run.
-		capReached, _ := a.store.LoadFailedFilenames(dirID, parkedAttemptCap, parser.Generation)
-		for f := range capReached {
-			if !skip[f] {
-				parked[f] = true
-			}
-			skip[f] = true
-		}
+		addAutoSuppressions(store, dirID, own, skip, parked)
 	}
-	ignored, _ := a.store.LoadIgnoredFilenames()
+	ignored, _ := store.LoadIgnoredFilenames()
 	for f := range ignored {
 		skip[f] = true
 	}
@@ -250,11 +240,40 @@ func (a *App) parsedSkipSet(dir string, dirID int64, force bool) (skipSet, error
 	return skipSet{skip: skip, parked: parked, elsewhere: elsewhere}, nil
 }
 
+// addAutoSuppressions adds what a normal run skips and a force run
+// reconsiders: the already-parsed files, the recognized non-match screens and
+// the parked failures (the parked ones also into parked).
+func addAutoSuppressions(store db.Store, dirID int64, own, skip, parked map[string]bool) {
+	maps.Copy(skip, own)
+	// All-Heroes and history screens carry no stored parent row, so
+	// LoadFilenamesForDir misses them; union their recognized-skip
+	// registries here so a normal re-parse doesn't re-OCR them. Skipped
+	// only on a normal run (not force): the recognition is automatic, so
+	// a full ReParseAll should reconsider it.
+	for _, load := range []func() (map[string]bool, error){store.LoadAllHeroesFilenames, store.LoadHistoryFilenames} {
+		recognized, _ := load()
+		for f := range recognized {
+			skip[f] = true
+		}
+	}
+	// Best-effort like the other suppression loads: a load error means
+	// an empty set, and the files simply retry this run.
+	capReached, _ := store.LoadFailedFilenames(dirID, parkedAttemptCap, parser.Generation)
+	for f := range capReached {
+		if !skip[f] {
+			parked[f] = true
+		}
+		skip[f] = true
+	}
+}
+
 // parseRunState accumulates per-file outcomes across one Parse batch so the
 // callback can report cumulative counts (matches updated, hero/map
 // corrections) as each screenshot finishes OCR.
 type parseRunState struct {
-	app             *App
+	app *App
+	// store is the run's lease (runClaimedParse holds it for the whole run).
+	store           db.Store
 	runID           RunID
 	dirID           int64
 	matchesUpdated  map[string]struct{}
@@ -321,7 +340,7 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 	// ApplyAmbiguity wipes any prior ambiguous record for this filename and
 	// re-inserts iff ambigCands is non-empty — a re-parse that newly resolves
 	// (or newly surfaces) ambiguity updates the candidates table in lockstep.
-	if err := a.store.ApplyAmbiguity(filename, ambigCands); err != nil {
+	if err := st.store.ApplyAmbiguity(filename, ambigCands); err != nil {
 		ev.Error = "ambiguity: " + err.Error()
 		st.recordLeakedFailure(filename, ev.Error)
 		st.filesFailed++
@@ -372,7 +391,7 @@ func (st *parseRunState) handleParseFailure(filename string, parseErr error, ev 
 		errMsg = parseErr.Error()
 		ev.Error = errMsg
 	}
-	if err := st.app.store.RecordFailedFile(filename, st.dirID, errMsg); err != nil {
+	if err := st.store.RecordFailedFile(filename, st.dirID, errMsg); err != nil {
 		applog.Subsystem("parse").Warn("record failed file", "filename", filename, "err", err)
 	}
 	st.filesFailed++
@@ -385,7 +404,7 @@ func (st *parseRunState) handleParseFailure(filename string, parseErr error, ev 
 // candidate write. Without a row, neither would surface in the Failed
 // section. Ledger writes stay best-effort.
 func (st *parseRunState) recordLeakedFailure(filename, msg string) {
-	if err := st.app.store.RecordFailedFile(filename, st.dirID, msg); err != nil {
+	if err := st.store.RecordFailedFile(filename, st.dirID, msg); err != nil {
 		applog.Subsystem("parse").Warn("record failed file", "filename", filename, "err", err)
 	}
 }
@@ -400,13 +419,13 @@ func (st *parseRunState) recordLeakedFailure(filename, msg string) {
 // logs.
 func (st *parseRunState) reconcileFailureLedger(filename string, result *parser.MatchResult) {
 	if len(result.Warnings) == 0 {
-		if err := st.app.store.RemoveFailedFile(filename); err != nil {
+		if err := st.store.RemoveFailedFile(filename); err != nil {
 			applog.Subsystem("parse").Warn("clear failed file", "filename", filename, "err", err)
 		}
 		return
 	}
 	summary := strings.Join(result.Warnings, "; ")
-	if err := st.app.store.RecordFailedFile(filename, st.dirID, summary); err != nil {
+	if err := st.store.RecordFailedFile(filename, st.dirID, summary); err != nil {
 		applog.Subsystem("parse").Warn("record degraded file", "filename", filename, "err", err)
 	}
 }
@@ -469,7 +488,12 @@ type ParseStaleness struct {
 
 // GetParseStaleness implements the staleness surface.
 func (a *App) GetParseStaleness() (ParseStaleness, error) {
-	n, err := a.store.StaleParseCount(parser.Generation)
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return ParseStaleness{}, leaseErr
+	}
+	defer release()
+	n, err := store.StaleParseCount(parser.Generation)
 	if err != nil {
 		return ParseStaleness{}, err
 	}
@@ -558,32 +582,37 @@ func buildUnknownRow(filename, key string, dirID int64) db.UnknownRow {
 }
 
 func (a *App) insertParsed(filename, key string, t parser.ScreenshotType, dirID int64, r *parser.MatchResult) error {
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return leaseErr
+	}
+	defer release()
 	// A re-parse can reclassify a file (a parser fix reading a screen that
 	// once stored as another type); wipe its rows from the sibling type
 	// tables first or the stale row aggregates beside the new one forever.
 	// EXCEPT toward a recognized non-match screen, which never evicts a typed
 	// row (parse_recognized.go says why).
 	if !isRecognizedNonMatch(t) {
-		if err := a.store.DeleteScreenshotSiblings(dirID, filename, t); err != nil {
+		if err := store.DeleteScreenshotSiblings(dirID, filename, t); err != nil {
 			return err
 		}
 	}
 	switch t {
 	case parser.TypeSummary:
-		return a.store.UpsertSummary(buildSummaryRow(filename, key, dirID, r))
+		return store.UpsertSummary(buildSummaryRow(filename, key, dirID, r))
 	case parser.TypeTeams:
-		return a.store.UpsertTeams(buildTeamsRow(filename, key, dirID, r))
+		return store.UpsertTeams(buildTeamsRow(filename, key, dirID, r))
 	case parser.TypePersonal:
-		return a.store.UpsertPersonal(buildPersonalRow(filename, key, dirID, r))
+		return store.UpsertPersonal(buildPersonalRow(filename, key, dirID, r))
 	case parser.TypeRank:
-		return a.store.UpsertRank(buildRankRow(filename, key, dirID, r))
+		return store.UpsertRank(buildRankRow(filename, key, dirID, r))
 	case parser.TypeAllHeroes, parser.TypeHistory:
 		// Recognized but not match data: only the filename is recorded, so
 		// the next parse run skips it (no re-OCR) without a garbage match row
 		// or an Unknown-tab entry.
 		return a.recordRecognized(filename, t)
 	case parser.TypeUnknown:
-		return a.store.UpsertUnknown(buildUnknownRow(filename, key, dirID))
+		return store.UpsertUnknown(buildUnknownRow(filename, key, dirID))
 	}
 	panic("unhandled parser.ScreenshotType")
 }

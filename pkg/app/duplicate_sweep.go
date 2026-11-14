@@ -126,7 +126,7 @@ func filterCandidateKeys(cands []db.AmbiguousCandidate, allowed map[string]struc
 // was demoted (store error or the rows vanished mid-run).
 func (st *parseRunState) demoteDuplicate(c createdKey, cands []db.AmbiguousCandidate) bool {
 	sentinel := match.NewAmbiguousMatchKey(c.earliestFile).String()
-	ok, err := st.app.store.DemoteMatchToAmbiguous(c.key, sentinel, c.earliestFile, cands)
+	ok, err := st.store.DemoteMatchToAmbiguous(c.key, sentinel, c.earliestFile, cands)
 	if err != nil {
 		applog.Subsystem("parse").Error("duplicate sweep: demote failed",
 			"match_key", c.key, "err", err)

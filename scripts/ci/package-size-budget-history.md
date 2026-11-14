@@ -122,3 +122,4 @@ a folder silently regrows what it just shed.
 | 2026-10-06 | shared-ui-families | frontend/src/styles | 22 → 23 | `menu.css` — the popover menu family six menus had each spelled out; collapsed into one panel/item/rule set. |
 | 2026-10-17 | profile-screenshot-claims | pkg/app | 53 → 54 | `screenshot_claims.go` — cross-profile screenshot ownership hooks, split out of `dedup.go`, which owns within-profile copies. |
 | 2026-10-17 | profile-screenshot-claims | frontend/tests/e2e/settings | 19 → 20 | `profile-switch-pending.spec.ts` — the profile switcher's notice for unparsed screenshots; profile specs live in this folder whole. |
+| 2026-11-14 | app-shell-state | pkg/app | 54 → 55 | `store_holder.go` — the store holder and the coaching write gate: who may touch the store now. |

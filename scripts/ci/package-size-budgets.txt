@@ -107,7 +107,14 @@
 # first, because that file owns the hashing it builds on, but it is a separate
 # reason to change: dedup is about copies within one profile, claims about
 # ownership across profiles.
-pkg/app                                       54
+# 55: store_holder.go — admission to the store. Every read and write leases
+# the store through one holder (open | swapping | closed), so a swap waits out
+# the leases already taken and refuses new ones instead of closing a database
+# under a caller; the coaching write gate is the same shape (a write admitted,
+# held for its duration, and a session open waiting it out), so it lives
+# beside it. A cluster of its own, like settings and the watcher: it guards
+# state, not a feature.
+pkg/app                                       55
 
 # pkg/db — the SQLite store: schema + additive-column registry, the migration
 # engine, per-screenshot-type CRUD, the Store interface and its *SQLStore

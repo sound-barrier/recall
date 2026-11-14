@@ -39,7 +39,7 @@ func (a *App) OpenCoachReplaySession(codes []string) (coach.SessionView, error) 
 func (a *App) AddCoachSessionReplayCode(code string) (coach.SessionView, error) {
 	a.coachMu.Lock()
 	defer a.coachMu.Unlock()
-	s := a.coachSession
+	s := a.coachSlot.session
 	if s == nil {
 		return coach.SessionView{}, coach.ErrNoSession
 	}
@@ -57,7 +57,7 @@ func (a *App) AddCoachSessionReplayCode(code string) (coach.SessionView, error) 
 func (a *App) SetCoachSessionMatchContext(matchKey string, ctx coach.ObservedContext) (coach.SessionView, error) {
 	a.coachMu.Lock()
 	defer a.coachMu.Unlock()
-	s := a.coachSession
+	s := a.coachSlot.session
 	if s == nil {
 		return coach.SessionView{}, coach.ErrNoSession
 	}

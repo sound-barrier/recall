@@ -225,3 +225,29 @@ func TestListCoachPlayerNotes_UnknownPlayerIsNotFound(t *testing.T) {
 		t.Fatalf("ListCoachPlayerNotes(999) = %v, want ErrCoachPlayerUnknown", err)
 	}
 }
+
+// The traced race: GetCoachSessionMatches handed out the session's own slice,
+// which the HTTP layer encodes after the lock is gone — while a context edit
+// rewrites the same records in place. What a caller got is a snapshot: a
+// later edit does not reach into it.
+func TestGetCoachSessionMatches_IsASnapshotALaterEditDoesNotTouch(t *testing.T) {
+	a, _ := openReplaySession(t, "A1B2C3")
+	before, err := a.GetCoachSessionMatches()
+	mustNoErr(t, err)
+
+	read := make(chan string, 1)
+	go func() { read <- before[0].Data.Map }()
+	if _, err := a.SetCoachSessionMatchContext("replay-A1B2C3", coach.ObservedContext{Map: "ilios"}); err != nil {
+		t.Fatalf("SetCoachSessionMatchContext: %v", err)
+	}
+	<-read
+
+	if before[0].Data.Map != "" {
+		t.Errorf("records handed out before the edit now read map %q, want them untouched", before[0].Data.Map)
+	}
+	after, err := a.GetCoachSessionMatches()
+	mustNoErr(t, err)
+	if after[0].Data.Map != "ilios" {
+		t.Errorf("records after the edit read map %q, want ilios", after[0].Data.Map)
+	}
+}

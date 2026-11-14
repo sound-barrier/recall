@@ -83,8 +83,13 @@ var (
 // IO-performing public setters).
 func SettingsOf(a *App) *Settings { return &a.settings }
 
-// Store bridges the persistence handle.
-func Store(a *App) db.Store { return a.store }
+// Store bridges the persistence handle: whatever the holder has open, nil
+// mid-swap or closed. A peek, not a lease — tests drive one call at a time.
+func Store(a *App) db.Store {
+	a.stores.mu.Lock()
+	defer a.stores.mu.Unlock()
+	return a.stores.store
+}
 
 // TessStatus exposes the cached Tesseract status so a parse test can mark
 // the engine "found" without shelling out to a real binary.

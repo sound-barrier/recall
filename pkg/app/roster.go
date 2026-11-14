@@ -21,7 +21,12 @@ var ErrRosterTagEmpty = errors.New("roster: a teammate needs a tag")
 
 // Roster returns every saved teammate, ordered by display name.
 func (a *App) Roster() ([]db.RosterMember, error) {
-	members, err := a.store.LoadRoster()
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return nil, leaseErr
+	}
+	defer release()
+	members, err := store.LoadRoster()
 	if err != nil {
 		return nil, fmt.Errorf("roster: load: %w", err)
 	}
@@ -32,11 +37,13 @@ func (a *App) Roster() ([]db.RosterMember, error) {
 // the tag, because a roster entry with no name shows nothing where the chip
 // used to show something.
 func (a *App) SaveRosterMember(m db.RosterMember) error {
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
+	}
+	defer release()
 	// The one lock: while a coach session is open the app is looking at
 	// somebody else's history, and this list is the player's own.
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
-	}
 	m.Tag = strings.TrimSpace(m.Tag)
 	if m.Tag == "" {
 		return ErrRosterTagEmpty
@@ -46,7 +53,7 @@ func (a *App) SaveRosterMember(m db.RosterMember) error {
 		m.DisplayName = m.Tag
 	}
 	m.Note = strings.TrimSpace(m.Note)
-	if err := a.store.SetRosterMember(m); err != nil {
+	if err := store.SetRosterMember(m); err != nil {
 		return fmt.Errorf("roster: save %q: %w", m.Tag, err)
 	}
 	return nil
@@ -55,10 +62,12 @@ func (a *App) SaveRosterMember(m db.RosterMember) error {
 // RemoveRosterMember drops one teammate from the roster. The matches they were
 // tagged on keep the tag — this list is a lookup, not a foreign key.
 func (a *App) RemoveRosterMember(tag string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
 	}
-	if err := a.store.DeleteRosterMember(strings.TrimSpace(tag)); err != nil {
+	defer release()
+	if err := store.DeleteRosterMember(strings.TrimSpace(tag)); err != nil {
 		return fmt.Errorf("roster: remove %q: %w", tag, err)
 	}
 	return nil
