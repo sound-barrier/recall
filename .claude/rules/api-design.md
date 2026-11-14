@@ -57,6 +57,7 @@ default" as `DELETE` on the setting.
 | `409 Conflict` | Request was syntactically valid but the resource state or payload semantics prevent the action (duplicate profile name, semantic-validation failure on `POST /api/v1/imports`, etc.). Distinct from `400`: a `400` is "your bytes don't parse"; a `409` is "your request parses fine but I can't do it." |
 | `422 Unprocessable Entity` | Semantic-validation failure with a domain-specific shape that warrants its own code rather than the generic `409`. Current example: SHA-256 sidecar verification failure on `POST /api/v1/system/data-update` — see the shared `SHAVerificationFailed` response in `components.responses`. |
 | `500 Internal Server Error` | Unexpected store/I/O failure. Anything reproducibly triggered by user input is 4xx, not 5xx. |
+| `503 Service Unavailable` | The store cannot serve ANY request right now, whatever it asks: `store-swapping` (a restore / profile switch / rename is replacing it — carries `Retry-After: 1`) or `store-unavailable` (none is open). Every store-backed operation `$ref`s the shared `StoreUnavailable` response. Not 409: nothing about the request or its resource is in conflict. |
 
 ## Response shapes
 
@@ -73,8 +74,10 @@ default" as `DELETE` on the setting.
   `writeError(w, r, err, errStatus{app.ErrX, probX}, …)`: first matching sentinel
   wins, unmatched falls through to a 500 problem;
   `if writeError(w, r, a.Foo()) { return }` guards the happy path. Use
-  `writeJSON(w, r, v, err)` for the value-returning equivalent (err → 500
-  problem, else encode). **§3.2 extension members:** `withFieldErrors(…)` adds a
+  `writeJSON(w, r, v, err)` for the value-returning equivalent (err → the
+  same `defaultProblems` ladder as `writeError`, unmatched → 500; else
+  encode).
+  **§3.2 extension members:** `withFieldErrors(…)` adds a
   per-field `errors` array on body-validation 400s; `withFailedAssets(…)` adds
   the `failed_assets` list on the data-update 422 (the asset comes from
   `app.ChecksumError` via `errors.As`). Don't hand-roll the `errors.Is` ladder or

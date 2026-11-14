@@ -31,6 +31,35 @@ paths:
   explicit takeover (moves the owner's matches, then transfers). Seeded once
   from every profile's `ingested_files`, earliest ingest wins. A nil ledger
   (`NewWithStore` tests) turns the feature off.
+- **The store holder (`store_holder.go`).** There is no bare `a.store`:
+  every read and write leases the store through `useStore()` (or
+  `useStoreForWrite()`, below) and defers the release. The holder is a
+  typed machine, `closed | open | swapping`. A lease never blocks — a swap
+  refuses it with `ErrStoreSwapInProgress`, no store with
+  `ErrStoreUnavailable`, both 503 over HTTP (`store-swapping` carries
+  `Retry-After`) — so a lease taken inside another lease cannot deadlock.
+  The store swaps (restore, profile switch, profile rename) run under
+  `withStoreSwap(kind, work)`: `closeStoreForSwapOnly` steps to swapping,
+  waits out the leases already taken and only then closes the old store;
+  `endSwap` installs the new one, and `withStoreSwap` abandons the swap to
+  `closed` if none could be opened. A swap's caller must hold no lease
+  (it would wait on itself). Long holders are fine: a parse leases once for
+  its whole run (`parseRunState.store`), and the run slot already keeps
+  swaps out of its way.
+- **The coaching write gate (`store_holder.go`, design rule 1).** Every
+  mutating orchestrator enters the gate before it touches anything and
+  holds it until the write lands — `useStoreForWrite()` (lease + gate) or
+  `enterWriteGate()` when the method leases nothing itself. The session
+  slot is a typed machine, `coachSlot{empty | opening | open}` under
+  `coachMu`: entering is refused (`coach.ErrSessionActive`) unless the
+  slot is empty, and an open steps to opening and waits out the writes
+  already admitted before it builds the session. Entering never blocks,
+  so a gated write calling another cannot deadlock against an opener.
+  User-initiated parses hold the gate only while they claim the run slot
+  (`claimParseGated`) — once claimed, a parse only ingests the coach's own
+  screenshots, which the watcher's parse does during a session anyway.
+  `GetCoachSessionMatches` hands out a copy: the HTTP layer encodes it
+  after the lock is gone, while a context edit rewrites the records.
 - File watcher (`watcher`, `watchedDir`, `watchTrigger`, `watchMu`) with
   `watchDebounce = 60*time.Second`. `watchTrigger` is an explicit machine
   (`debounce` in `watcher.go`: idle → armed → idle, or armed → deferred when
@@ -38,7 +67,22 @@ paths:
   a timer whose generation was replaced by a later arm or a stop does
   nothing. Expiry runs `parseSync` (which ends its run with `run-finished`
   itself); a busy slot defers the round, and `finishRun` re-arms it shortly
-  after the slot frees instead of dropping it.
+  after the slot frees instead of dropping it. The watcher's own lifecycle
+  is `watchState` (`off | watching | unavailable`, the API's
+  `watch_state` on `GET /settings/watcher` and the guaranteed `watch-state`
+  event): Watch on with a folder that is unset, missing or unreadable — or
+  removed/renamed while watched (fsnotify Remove/Rename on the folder
+  itself, which closes the watcher) — is `unavailable`, and a recheck
+  timer it owns (`watchRecheckInterval`, generation-guarded like the
+  debounce) returns it to `watching` when the folder comes back. Setting a
+  new folder restarts the watcher at once. The masthead dot reads this
+  state, never the setting.
+- **Self-update (`selfupdate.go`).** One typed phase, `idle | checking |
+  downloading | ready | error`, mirroring the framework updater's and
+  owned by the app alone. A start while a pass runs is a no-op; once
+  `ready`, a start refuses with `ErrSelfUpdateStaged` (another pass would
+  discard the staged binary) and `RestartToApply` refuses with
+  `ErrSelfUpdateNotReady` until then — both 409.
 - **Duplicate sweep** (`pkg/app/duplicate_sweep.go`): runs at the END of
   `runClaimedParse`, after the OCR loop, and demotes run-created tracked
   matches that duplicate an existing one into the ambiguous queue via
