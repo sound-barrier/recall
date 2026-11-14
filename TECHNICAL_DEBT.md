@@ -383,48 +383,6 @@ schema shape is final:
 **Effort:** M. **Risk:** High — on-disk schema management. Deliberately sequenced
 last so the schema is frozen before the baseline is captured.
 
-## 21. State machines the 2026-11-14 pass left implicit
-
-The 2026-11-14 pass inventoried every implicit state machine and made the
-riskiest explicit. Four were made explicit in this repo: the run slot, the
-parse-run union, the Tesseract probe and the watcher trigger. Three more
-traced bugs were fixed: the profile swap, the bundle import, and the
-ambiguous sentinel. The shape is in `pkg/CLAUDE.md` and `frontend/CLAUDE.md`
-→ **State**. The machines below each have a bug that was traced but is not
-yet fixed. They are ordered by likelihood × blast radius.
-
-- **Frontend autosave and editors (M).**
-  - The annotation `watch` overwrites a note being typed after a tag
-    commit refetches.
-  - Deleting a moment does not cancel its queued PUT, so the moment comes
-    back.
-  - Self-review writes read `openId` when they run, not when they are
-    queued.
-  - Two PUTs for one key can land out of order.
-  - "saved" shows during the debounce of a newer edit.
-
-  Fix: a per-key `idle | queued | saving | saved | error` union that
-  serializes writes and captures each write's target at queue time.
-- **Arm/confirm flows (S).**
-  - A double-click on End skips the unexported-notes confirm.
-  - End can run twice.
-  - Clear sits outside the `anyBusy` mutex.
-
-  Fix: hold the confirm after arming, the way `STOP_HOLD_MS` does in the
-  parse union.
-- **§16 regressions (S).** These read server state into refs:
-  - `useIgnoredScreenshots` and `useScreenshotFolderStats`, while
-    `qk.ignored` and `qk.candidateStats` sit unused.
-  - The settings store's mirrors, which write back only to the refs.
-
-  Move them onto the query cache with `setQueryData`.
-- **Smaller (S each).**
-  - The tour's demo overlay can stick when Escape lands before the chunk
-    loads.
-  - The records pulse never fires in the normal path, because upserts
-    grow the cache before `load()` measures it.
-  - Game-data apply re-arms mid-apply.
-
 ## Out of scope — deliberately not building
 
 So a future pass doesn't re-propose them:
