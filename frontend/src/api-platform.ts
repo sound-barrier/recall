@@ -354,19 +354,36 @@ export function setEventStreamStatusHandler(cb: ((status: EventStreamStatus) => 
 
 let _serverSource: EventSource | null = null
 const _serverListeners: Record<string, (e: Event) => void> = {}
+// Pending reopen after the browser gave up on the stream. Owned here and
+// cleared when the last listener leaves, so a torn-down bridge never
+// resurrects a stream nobody wants.
+let _reopenTimer: ReturnType<typeof setTimeout> | null = null
+const REOPEN_DELAY_MS = 3000
 
 function ensureServerSource(): EventSource {
   if (_serverSource) return _serverSource
   const es = new EventSource('/api/v1/events')
   es.onopen = () => { _streamStatusHandler?.('connected') }
   es.onerror = () => {
-    // The browser auto-reconnects (readyState CONNECTING) unless the
-    // source was explicitly closed; surface the gap so the UI can show
-    // "reconnecting", and onopen flips it back to 'connected'.
-    if (es.readyState !== EventSource.CLOSED) _streamStatusHandler?.('reconnecting')
+    // A deliberate close (EventsOff) already let go of the source.
+    if (_serverSource !== es) return
+    _streamStatusHandler?.('reconnecting')
+    // CONNECTING: the browser is retrying on its own. CLOSED: it gave up
+    // (a non-200 answer) and never will — reopen it ourselves.
+    if (es.readyState === EventSource.CLOSED) scheduleReopen()
   }
+  for (const [name, listener] of Object.entries(_serverListeners)) es.addEventListener(name, listener)
   _serverSource = es
   return es
+}
+
+function scheduleReopen(): void {
+  _serverSource = null
+  if (_reopenTimer) return
+  _reopenTimer = setTimeout(() => {
+    _reopenTimer = null
+    if (Object.keys(_serverListeners).length > 0) ensureServerSource()
+  }, REOPEN_DELAY_MS)
 }
 
 export function EventsOn<T = unknown>(eventName: string, callback: (data: T) => void): void {
@@ -401,8 +418,9 @@ export function EventsOff(eventName: string): void {
   delete _serverListeners[eventName]
   // Close the shared source once nothing is listening (mirrors the old
   // per-source close on the last EventsOff).
-  if (_serverSource && Object.keys(_serverListeners).length === 0) {
-    _serverSource.close()
+  if (Object.keys(_serverListeners).length === 0) {
+    _serverSource?.close()
     _serverSource = null
+    if (_reopenTimer) { clearTimeout(_reopenTimer); _reopenTimer = null }
   }
 }

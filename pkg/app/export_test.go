@@ -63,6 +63,9 @@ var (
 	AutoProbeOnFirstRun = (*App).autoProbeOnFirstRun
 
 	ProbeTesseractInBackground = (*App).probeTesseractInBackground
+
+	EmitTesseractStatus     = (*App).emitTesseractStatus
+	EmitCoachSessionChanged = (*App).emitCoachSessionChanged
 )
 
 // ── Unexported *App field accessors ───────────────────────────────────────

@@ -28,7 +28,7 @@ func (a *App) OpenCoachReplaySession(codes []string) (coach.SessionView, error) 
 	if err != nil {
 		return coach.SessionView{}, err
 	}
-	a.emitCoachSessionChanged(true)
+	a.emitCoachSessionChanged()
 	return view, nil
 }
 

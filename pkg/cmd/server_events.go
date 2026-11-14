@@ -30,6 +30,10 @@ func registerEventsRoutes(apiMux *http.ServeMux, a *app.App) {
 
 		ch := a.SSEHub.Subscribe()
 		defer a.SSEHub.Unsubscribe(ch)
+		// Send the headers now. A browser's EventSource opens on them;
+		// held back until the first event, an idle server left the client
+		// "connecting" for up to the 25 s keepalive.
+		flusher.Flush()
 
 		// Send a keepalive comment every 25 s so proxies don't close the connection.
 		ticker := time.NewTicker(25 * time.Second)

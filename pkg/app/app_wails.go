@@ -56,30 +56,37 @@ func (a *App) emitMatchUpdated(rec match.Record) {
 // emitTesseractStatus notifies the frontend that the background engine probe
 // published a new status, so the System Alert / Engine row self-heals once a
 // cold-boot Defender scan releases the binary — no app restart needed.
+// Guaranteed delivery: the probe reports once.
 func (a *App) emitTesseractStatus(s TesseractStatus) {
 	data, _ := json.Marshal(s)
 	emitEvent("tesseract-status", s)
-	a.SSEHub.BroadcastData("tesseract-status", string(data))
+	a.SSEHub.BroadcastGuaranteed("tesseract-status", string(data))
 }
 
 // emitCoachSessionChanged tells every surface that a coaching session
 // opened or ended, so a second window (or a second browser tab in
 // --server mode) flips its write gate without polling.
-func (a *App) emitCoachSessionChanged(active bool) {
+//
+// It reads the session as it stands NOW rather than taking the caller's
+// view: a close and an open racing past the session lock would otherwise
+// announce in the wrong order, and the last word would be a lie. Guaranteed
+// delivery, because nothing ever re-sends it.
+func (a *App) emitCoachSessionChanged() {
+	active := a.coachSessionActive()
 	ev := CoachSessionChangedEvent{Active: active}
 	data, _ := json.Marshal(ev)
 	emitEvent("coach-session-changed", ev)
-	a.SSEHub.BroadcastData("coach-session-changed", string(data))
+	a.SSEHub.BroadcastGuaranteed("coach-session-changed", string(data))
 }
 
 // emitRunFinished tells the frontend a run released the slot, however it
-// ended. Terminal event → BroadcastTerminal, so a slow SSE consumer's full
+// ended. Terminal event → BroadcastGuaranteed, so a slow SSE consumer's full
 // buffer can't drop it (the run would look like it never ended). A completed
 // parse also posts the desktop notification.
 func (a *App) emitRunFinished(ev RunFinishedEvent) {
 	data, _ := json.Marshal(ev)
 	emitEvent("run-finished", ev)
-	a.SSEHub.BroadcastTerminal("run-finished", string(data))
+	a.SSEHub.BroadcastGuaranteed("run-finished", string(data))
 	if ev.Summary != nil {
 		notifyParseComplete(ev.Summary.MatchesUpdated)
 	}

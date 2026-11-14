@@ -40,5 +40,5 @@ func TestHub_UnsubscribeIsIdempotent(t *testing.T) {
 	h.Unsubscribe(ch)
 	h.Unsubscribe(ch) // must not panic
 
-	h.BroadcastTerminal("after-unsubscribe", "{}") // must not send on a closed channel
+	h.BroadcastGuaranteed("after-unsubscribe", "{}") // must not send on a closed channel
 }

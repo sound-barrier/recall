@@ -187,6 +187,37 @@ describe('server-mode event bridge — connection status', () => {
     expect(onStatus).not.toHaveBeenCalled()
   })
 
+  // The browser gives up for good on a non-200 answer (the server mid
+  // restart, a proxy error page): readyState goes CLOSED and it never
+  // retries. The bridge used to stay silent, so the page looked connected
+  // with no stream behind it.
+  it('reopens a stream the browser gave up on, keeping every listener', async () => {
+    vi.useFakeTimers()
+    try {
+      const { EventsOn, setEventStreamStatusHandler } = await loadPlatform()
+      const onStatus = vi.fn()
+      const onProgress = vi.fn()
+      setEventStreamStatusHandler(onStatus)
+      EventsOn('parse-progress', onProgress)
+      const first = onlySource()
+
+      first.readyState = FakeEventSource.CLOSED
+      first.onerror?.()
+      expect(onStatus).toHaveBeenLastCalledWith('reconnecting')
+
+      vi.advanceTimersByTime(5000)
+      expect(FakeEventSource.instances).toHaveLength(2)
+      const second = FakeEventSource.instances[1]!
+      second.onopen?.()
+      second.emit('parse-progress', JSON.stringify({ done: 2 }))
+
+      expect(onStatus).toHaveBeenLastCalledWith('connected')
+      expect(onProgress).toHaveBeenCalledWith({ done: 2 })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('detaches the observer when the handler is cleared', async () => {
     const { EventsOn, setEventStreamStatusHandler } = await loadPlatform()
     const onStatus = vi.fn()
