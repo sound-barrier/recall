@@ -220,25 +220,23 @@ func (a *App) ClaimFolderScreenshots() (ClaimTransfer, error) {
 	if err != nil {
 		return ClaimTransfer{}, err
 	}
-	if _, ok := a.claimRunSlot("screenshot-takeover"); !ok {
-		return ClaimTransfer{}, ErrParseInFlight
-	}
-	defer a.endParse()
-
-	byOwner, err := a.foreignScreenshotsByOwner(dir)
-	if err != nil {
-		return ClaimTransfer{}, err
-	}
 	var out ClaimTransfer
-	for owner, files := range byOwner {
-		moved, err := a.takeScreenshotsFrom(owner, files)
+	err = a.withRunSlot(RunKindScreenshotTakeover, func() error {
+		byOwner, err := a.foreignScreenshotsByOwner(dir)
 		if err != nil {
-			return out, err
+			return err
 		}
-		out.MatchesMoved += moved
-		out.Screenshots += len(files)
-	}
-	return out, nil
+		for owner, files := range byOwner {
+			moved, err := a.takeScreenshotsFrom(owner, files)
+			if err != nil {
+				return err
+			}
+			out.MatchesMoved += moved
+			out.Screenshots += len(files)
+		}
+		return nil
+	})
+	return out, err
 }
 
 // foreignScreenshotsByOwner groups the images in dir that another profile

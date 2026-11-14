@@ -154,11 +154,10 @@ func (a *App) scheduleParseDebounced() {
 		defer applog.RecoverPanic("watch")
 		logger := applog.Subsystem("watch")
 		logger.Info("debounce elapsed, running the watched-folder parse")
-		// parseSync is synchronous + emits parse-complete itself on
-		// success (runClaimedParse owns that emit for every path), so the
-		// watcher no longer signals completion separately. A busy slot
-		// returns ErrParseInFlight — a logged skip; the debounce re-fires
-		// on the next file event.
+		// parseSync is synchronous and ends its run with run-finished
+		// (runParse owns that emit for every path), so the watcher signals
+		// nothing itself. A busy slot returns ErrParseInFlight — a logged
+		// skip; the debounce re-fires on the next file event.
 		//
 		// Deliberately parseSync and NOT ParseScreenshots: the coaching
 		// write gate sits on the user-initiated entry points, and the

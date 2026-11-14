@@ -32,6 +32,7 @@ var ParseScreenshotsDirFunc = parser.ParseScreenshotsDir
 // re-aggregate completes with a changed hero/map field; the UI
 // reads the latest value, not per-file deltas.
 type ParseProgressEvent struct {
+	RunID    RunID                 `json:"run_id"`
 	Done     int                   `json:"done"`
 	Total    int                   `json:"total"`
 	Filename string                `json:"filename"`
@@ -49,7 +50,7 @@ type ParseProgressEvent struct {
 	MapCorrections  int `json:"map_corrections,omitempty"`
 }
 
-// ParseRunSummary rides the parse-complete event: the run's own tally,
+// ParseRunSummary rides a completed parse's run-finished event: the run's own tally,
 // so the end-of-run report can say "X read · Y failed to read" without
 // inferring it from a refetched ledger (which cannot tell this run's
 // failures from standing degraded rows). FilesParsed counts files whose
@@ -82,12 +83,11 @@ func (a *App) validateParsePreconditions() (string, error) {
 }
 
 // runClaimedParse is the OCR loop body. Preconditions are already
-// validated and the run slot already claimed (claimParse); this drives
-// the parse and emits the lifecycle events. It emits parse-complete on
-// success so EVERY path (server POST, Wails IPC, watcher) signals
-// completion the same way — the linchpin that lets the server return
-// 202 up-front instead of holding the request open for the whole run.
-func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir string) error {
+// validated and the run slot already claimed as run id; this drives the
+// parse and returns its tally. It emits no terminal event: runParse ends
+// the run, whatever this returns, so a failure anywhere still tells the
+// client the run is over.
+func (a *App) runClaimedParse(ctx context.Context, id RunID, force bool, screenshotsDir string) (ParseRunSummary, error) {
 	started := time.Now()
 	// A force run (Re-parse All) rewrites every row from OCR — take a
 	// silent safety snapshot first (backup_auto.go; never blocks).
@@ -102,11 +102,11 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	// set below can be scoped to it.
 	dirID, err := a.store.EnsureScreenshotsDir(screenshotsDir)
 	if err != nil {
-		return err
+		return ParseRunSummary{}, err
 	}
 	skips, err := a.parsedSkipSet(screenshotsDir, dirID, force)
 	if err != nil {
-		return err
+		return ParseRunSummary{}, err
 	}
 	parsed, parked := skips.skip, skips.parked
 	// Byte-identical copies of already-ingested files skip OCR entirely
@@ -118,7 +118,7 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	// Before this shape, the writes lived in a post-OCR for-loop that only ran
 	// after every file had been OCR'd; the UI saw `parse-progress` stream
 	// cleanly but `match-updated` arrived in a single last-instant burst, so
-	// the Matches tab stayed blank until parse-complete.
+	// the Matches tab stayed blank until the run ended.
 	// One snapshot + sidecar load per RUN (patched in-memory per file —
 	// see parse_snapshot.go); the loop previously re-materialized the
 	// whole store twice per screenshot. Sidecars stay best-effort like
@@ -126,27 +126,24 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	// correction tallies, never the parse.
 	snap, err := a.store.LoadAll()
 	if err != nil {
-		return err
+		return ParseRunSummary{}, err
 	}
 	st := &parseRunState{
-		app: a, dirID: dirID, matchesUpdated: map[string]struct{}{},
+		app: a, runID: id, dirID: dirID, matchesUpdated: map[string]struct{}{},
 		snap: snap, sidecars: a.loadSidecars(),
 		preRunKeys: snapshotMatchKeys(snap),
 	}
 	_, err = ParseScreenshotsDirFunc(ctx, screenshotsDir, parsed, st.handleFile)
 	// User pressed Stop mid-batch. The partial state already committed to
 	// SQLite stays put (each per-file insert ran inside the callback before
-	// the next iteration). Emit parse-canceled so the frontend can flip the
-	// Stop button back to Run; skip the normal error return because the user
-	// asked for this.
+	// the next iteration).
 	if errors.Is(err, context.Canceled) {
 		st.logRun("parse run canceled", force, len(parked), started)
-		a.emitParseCanceled()
-		return nil
+		return ParseRunSummary{}, err
 	}
 	if err != nil {
 		st.logRun("parse run failed", force, len(parked), started, "err", err)
-		return err
+		return ParseRunSummary{}, err
 	}
 	// Only now, with the run's capture sets complete, can a re-captured
 	// match be recognized: its stat line lives under one fresh key
@@ -157,16 +154,11 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	// Periodic safety net — writes a snapshot iff one is due (backup_scheduler.go).
 	a.maybeAutoBackup()
 	st.logRun("parse run finished", force, len(parked), started)
-	// Authoritative completion signal for EVERY parse path. The frontend
-	// drives parseBusy off this (not a held-open request), and the watcher
-	// no longer emits it separately. The distinct-match count feeds the desktop
-	// native notification (no-op in server mode).
-	a.emitParseComplete(ParseRunSummary{
+	return ParseRunSummary{
 		FilesParsed:    st.filesParsed,
 		FilesFailed:    st.filesFailed,
 		MatchesUpdated: len(st.matchesUpdated),
-	})
-	return nil
+	}, nil
 }
 
 // parsedSkipSet builds the set of filenames the parser should skip: the
@@ -263,11 +255,12 @@ func (a *App) parsedSkipSet(dir string, dirID int64, force bool) (skipSet, error
 // corrections) as each screenshot finishes OCR.
 type parseRunState struct {
 	app             *App
+	runID           RunID
 	dirID           int64
 	matchesUpdated  map[string]struct{}
 	heroCorrections int
 	mapCorrections  int
-	// Run tally for the parse-complete summary: parsed counts every file
+	// Run tally for the run-finished summary: parsed counts every file
 	// whose writes all landed (degraded included — it stored what it
 	// read); failed counts every file whose run failed somewhere — OCR
 	// or insert (nothing stored), or the ambiguity write (rows stored,
@@ -293,8 +286,9 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 	a := st.app
 	// Snapshot progress for the GET /parses/active resync anchor before any
 	// per-file work, so a status read always reflects the file in flight.
-	a.noteProgress(done, total)
+	a.noteProgress(st.runID, done, total)
 	ev := ParseProgressEvent{
+		RunID:    st.runID,
 		Done:     done,
 		Total:    total,
 		Filename: filename,

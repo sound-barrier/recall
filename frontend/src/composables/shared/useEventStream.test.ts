@@ -33,7 +33,16 @@ function rec(matchKey: string, extra?: Partial<MatchRecord>): MatchRecord {
 }
 
 function progress(filename: string, done: number, total: number): ParseProgressEvent {
-  return { filename, done, total, screenshot_type: 'summary' } as ParseProgressEvent
+  return { run_id: 1, filename, done, total, screenshot_type: 'summary' }
+}
+
+function streamApi(over: Partial<Parameters<typeof useEventStream>[0]> = {}) {
+  return {
+    records: ref<MatchRecord[]>([]),
+    onParseProgress: vi.fn(),
+    onRunFinished: vi.fn(),
+    ...over,
+  }
 }
 
 // Mount the composable inside a tiny component so onMounted /
@@ -59,45 +68,29 @@ describe('useEventStream', () => {
 
   afterEach(() => { vi.clearAllMocks() })
 
-  it('subscribes to all seven lifecycle events on mount', () => {
-    const records = ref<MatchRecord[]>([])
-    const parseProgress = ref<ParseProgressEvent | null>(null)
-    const parseLog = ref<ParseProgressEvent[]>([])
-    mountComposable({ records, parseProgress, parseLog, onParseComplete: vi.fn() })
-    expect(onCalls.map(c => c.name).sort()).toEqual([
-      'coach-session-changed',
-      'match-updated',
-      'parse-canceled',
-      'parse-complete',
-      'parse-progress',
-      'tesseract-status',
-      'watch-activity',
-    ])
+  const EVENTS = [
+    'coach-session-changed',
+    'match-updated',
+    'parse-progress',
+    'run-finished',
+    'tesseract-status',
+    'watch-activity',
+  ]
+
+  it('subscribes to every event on mount', () => {
+    mountComposable(streamApi())
+    expect(onCalls.map(c => c.name).sort()).toEqual(EVENTS)
   })
 
-  it('unsubscribes from all seven on unmount', () => {
-    const records = ref<MatchRecord[]>([])
-    const parseProgress = ref<ParseProgressEvent | null>(null)
-    const parseLog = ref<ParseProgressEvent[]>([])
-    const { view } = mountComposable({ records, parseProgress, parseLog, onParseComplete: vi.fn() })
+  it('unsubscribes from every event on unmount', () => {
+    const { view } = mountComposable(streamApi())
     view.unmount()
-    expect(offCalls.map(c => c.name).sort()).toEqual([
-      'coach-session-changed',
-      'match-updated',
-      'parse-canceled',
-      'parse-complete',
-      'parse-progress',
-      'tesseract-status',
-      'watch-activity',
-    ])
+    expect(offCalls.map(c => c.name).sort()).toEqual(EVENTS)
   })
 
   it('tesseract-status forwards the published status to onTesseractStatus', () => {
-    const records = ref<MatchRecord[]>([])
-    const parseProgress = ref<ParseProgressEvent | null>(null)
-    const parseLog = ref<ParseProgressEvent[]>([])
     const onTesseractStatus = vi.fn()
-    mountComposable({ records, parseProgress, parseLog, onParseComplete: vi.fn(), onTesseractStatus })
+    mountComposable(streamApi({ onTesseractStatus }))
     const status = { path: '/usr/bin/tesseract', found: true, version: '5.3.0', supported: true, error: '', default: '', platform: 'linux' }
     handlers['tesseract-status']!(status)
     expect(onTesseractStatus).toHaveBeenCalledWith(status)
@@ -107,113 +100,49 @@ describe('useEventStream', () => {
   // it must still lock its writes, or it will try to edit the coach's own
   // matches while the corpus on screen belongs to someone else.
   it('coach-session-changed forwards the active flag to onCoachSessionChanged', () => {
-    const records = ref<MatchRecord[]>([])
-    const parseProgress = ref<ParseProgressEvent | null>(null)
-    const parseLog = ref<ParseProgressEvent[]>([])
     const onCoachSessionChanged = vi.fn()
-    mountComposable({ records, parseProgress, parseLog, onParseComplete: vi.fn(), onCoachSessionChanged })
+    mountComposable(streamApi({ onCoachSessionChanged }))
     handlers['coach-session-changed']!({ active: true })
     expect(onCoachSessionChanged).toHaveBeenCalledWith(true)
     handlers['coach-session-changed']!({ active: false })
     expect(onCoachSessionChanged).toHaveBeenLastCalledWith(false)
   })
 
-  it('parse-canceled fires the caller-supplied onParseCanceled when provided', () => {
-    const records = ref<MatchRecord[]>([])
-    const parseProgress = ref<ParseProgressEvent | null>(null)
-    const parseLog = ref<ParseProgressEvent[]>([])
-    const onParseComplete = vi.fn()
-    const onParseCanceled = vi.fn()
-    mountComposable({ records, parseProgress, parseLog, onParseComplete, onParseCanceled })
-    handlers['parse-canceled']!(null)
-    expect(onParseCanceled).toHaveBeenCalled()
-    expect(onParseComplete).not.toHaveBeenCalled()
-  })
-
-  it('parse-canceled falls back to onParseComplete when no cancel hook supplied', () => {
-    const records = ref<MatchRecord[]>([])
-    const parseProgress = ref<ParseProgressEvent | null>(null)
-    const parseLog = ref<ParseProgressEvent[]>([])
-    const onParseComplete = vi.fn()
-    mountComposable({ records, parseProgress, parseLog, onParseComplete })
-    handlers['parse-canceled']!(null)
-    expect(onParseComplete).toHaveBeenCalled()
-  })
-
-  it('parse-progress writes to parseProgress and appends to parseLog', () => {
-    const records = ref<MatchRecord[]>([])
-    const parseProgress = ref<ParseProgressEvent | null>(null)
-    const parseLog = ref<ParseProgressEvent[]>([])
-    mountComposable({ records, parseProgress, parseLog, onParseComplete: vi.fn() })
+  it('parse-progress hands each tick to onParseProgress', () => {
+    const api = streamApi()
+    mountComposable(api)
     const ev = progress('a.png', 1, 3)
     handlers['parse-progress']!(ev)
-    expect(parseProgress.value).toEqual(ev)
-    expect(parseLog.value).toEqual([ev])
+    expect(api.onParseProgress).toHaveBeenCalledWith(ev)
   })
 
-  it('parse-progress null payload is ignored', () => {
-    const records = ref<MatchRecord[]>([])
-    const parseProgress = ref<ParseProgressEvent | null>(null)
-    const parseLog = ref<ParseProgressEvent[]>([])
-    mountComposable({ records, parseProgress, parseLog, onParseComplete: vi.fn() })
+  it('run-finished hands the run\'s end to onRunFinished', () => {
+    const api = streamApi()
+    mountComposable(api)
+    const ev = { run_id: 1, kind: 'parse', outcome: 'failed', error: 'disk full' }
+    handlers['run-finished']!(ev)
+    expect(api.onRunFinished).toHaveBeenCalledWith(ev)
+  })
+
+  it('a null payload reaches neither run handler', () => {
+    const api = streamApi()
+    mountComposable(api)
     handlers['parse-progress']!(null)
-    expect(parseProgress.value).toBeNull()
-    expect(parseLog.value).toEqual([])
-  })
-
-  it('parseLog is capped at the cap option (default 50)', () => {
-    const records = ref<MatchRecord[]>([])
-    const parseProgress = ref<ParseProgressEvent | null>(null)
-    const parseLog = ref<ParseProgressEvent[]>([])
-    mountComposable({ records, parseProgress, parseLog, onParseComplete: vi.fn(), logCap: 3 })
-    for (let i = 0; i < 5; i++) handlers['parse-progress']!(progress(`f${i}.png`, i, 5))
-    expect(parseLog.value.length).toBe(3)
-    expect(parseLog.value[0]!.filename).toBe('f2.png') // oldest evicted
-    expect(parseLog.value[2]!.filename).toBe('f4.png')
-  })
-
-  it('parse-complete fires the caller-supplied callback', () => {
-    const records = ref<MatchRecord[]>([])
-    const parseProgress = ref<ParseProgressEvent | null>(null)
-    const parseLog = ref<ParseProgressEvent[]>([])
-    const onParseComplete = vi.fn()
-    mountComposable({ records, parseProgress, parseLog, onParseComplete })
-    handlers['parse-complete']!(null)
-    expect(onParseComplete).toHaveBeenCalled()
-  })
-
-  // The payload narrowing: a real run summary passes through verbatim;
-  // the legacy filler shapes (null above, "{}" here) reach the callback
-  // as undefined — truthy-but-empty must not masquerade as a tally.
-  it('parse-complete forwards a valid run summary and rejects the {} filler', () => {
-    const records = ref<MatchRecord[]>([])
-    const parseProgress = ref<ParseProgressEvent | null>(null)
-    const parseLog = ref<ParseProgressEvent[]>([])
-    const onParseComplete = vi.fn()
-    mountComposable({ records, parseProgress, parseLog, onParseComplete })
-
-    const summary = { files_parsed: 4, files_failed: 2, matches_updated: 3 }
-    handlers['parse-complete']!(summary)
-    expect(onParseComplete).toHaveBeenLastCalledWith(summary)
-
-    handlers['parse-complete']!({})
-    expect(onParseComplete).toHaveBeenLastCalledWith(undefined)
+    handlers['run-finished']!(null)
+    expect(api.onParseProgress).not.toHaveBeenCalled()
+    expect(api.onRunFinished).not.toHaveBeenCalled()
   })
 
   it('match-updated inserts a new record at the end', () => {
     const records = ref<MatchRecord[]>([rec('k1')])
-    const parseProgress = ref<ParseProgressEvent | null>(null)
-    const parseLog = ref<ParseProgressEvent[]>([])
-    mountComposable({ records, parseProgress, parseLog, onParseComplete: vi.fn() })
+    mountComposable(streamApi({ records }))
     handlers['match-updated']!(rec('k2'))
     expect(records.value.map(r => r.match_key)).toEqual(['k1', 'k2'])
   })
 
   it('match-updated upserts an existing record by match_key (in place)', () => {
     const records = ref<MatchRecord[]>([rec('k1'), rec('k2', { data: { map: 'rialto' } })])
-    const parseProgress = ref<ParseProgressEvent | null>(null)
-    const parseLog = ref<ParseProgressEvent[]>([])
-    mountComposable({ records, parseProgress, parseLog, onParseComplete: vi.fn() })
+    mountComposable(streamApi({ records }))
     handlers['match-updated']!(rec('k2', { data: { map: 'ilios' } }))
     expect(records.value.map(r => r.match_key)).toEqual(['k1', 'k2'])
     expect(records.value[1]!.data?.map).toBe('ilios')
@@ -221,9 +150,7 @@ describe('useEventStream', () => {
 
   it('match-updated ignores null and empty match_key', () => {
     const records = ref<MatchRecord[]>([rec('k1')])
-    const parseProgress = ref<ParseProgressEvent | null>(null)
-    const parseLog = ref<ParseProgressEvent[]>([])
-    mountComposable({ records, parseProgress, parseLog, onParseComplete: vi.fn() })
+    mountComposable(streamApi({ records }))
     handlers['match-updated']!(null)
     handlers['match-updated']!(rec(''))
     expect(records.value.length).toBe(1)

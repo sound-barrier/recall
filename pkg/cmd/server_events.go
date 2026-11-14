@@ -10,7 +10,7 @@ import (
 
 // registerEventsRoutes attaches the /api/v1/events SSE handler.
 // One route — the indefinite-duration server-sent event stream the
-// frontend subscribes to for parse-complete + parse-progress
+// frontend subscribes to for run-finished + parse-progress
 // notifications. Kept in its own file because the streaming /
 // flusher / keepalive shape is structurally different from every
 // other handler in the package + makes the file diffs cleaner when

@@ -59,9 +59,13 @@ export function emitSSEEvent(page: Page, name: string, data?: unknown): Promise<
   }, [name, data] as const)
 }
 
-/** Fire one parse event from the page. */
-export function emitParseEvent(page: Page, name = 'parse-complete'): Promise<void> {
-  return emitSSEEvent(page, name)
+// Every run the server reports carries a fresh, growing id; the app drops
+// an end it has already seen, so each faked end gets its own.
+let nextRunId = 1
+
+/** Tell the page a parse run finished, the way the server does. */
+export function emitParseEvent(page: Page, payload: Record<string, unknown> = {}): Promise<void> {
+  return emitSSEEvent(page, 'run-finished', { run_id: nextRunId++, kind: 'parse', outcome: 'completed', ...payload })
 }
 
 /**

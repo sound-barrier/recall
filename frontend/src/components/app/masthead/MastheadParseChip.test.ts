@@ -6,6 +6,7 @@ import MastheadParseChip from '@/components/app/masthead/MastheadParseChip.vue'
 import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
 
 const evt = (over: Partial<ParseProgressEvent> = {}): ParseProgressEvent => ({
+  run_id: 1,
   done: 0,
   total: 0,
   filename: '',

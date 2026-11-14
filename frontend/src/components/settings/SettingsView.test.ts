@@ -14,6 +14,7 @@ import type { WeekStart } from '@/composables/shared/useWeekStart'
 import type { MatchRecord, TesseractStatus, DataLocation, NamedCandidate } from '@/api'
 import { qk } from '@/queries/keys'
 import { seedQuery } from '@/test-utils/queryTestUtils'
+import { seedParseRun } from '@/test-utils'
 
 // SettingsView reads everything from the stores now + distributes to its
 // sub-section components, so these tests seed the stores (the same shape the
@@ -124,7 +125,7 @@ function renderSettings(opts: { props?: SettingsOver } = {}) {
   settings.probeTried = over.probeTried ?? []
   settings.tesseractPickerBusy = over.tesseractPickerBusy
 
-  parse.parseBusy = over.parseBusy
+  if (over.parseBusy) seedParseRun(parse, { state: 'running' })
   database.backingUp = over.backingUp
   database.restoring = over.restoring
   database.restoreArmed = over.restoreArmed

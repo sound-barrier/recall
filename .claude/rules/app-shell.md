@@ -33,7 +33,7 @@ paths:
   (`NewWithStore` tests) turns the feature off.
 - File watcher (`watcher`, `watchedDir`, `watchTimer`, `watchMu`) with
   `watchDebounce = 60*time.Second`: any new `.png`/`.jpg` resets a timer; expiry
-  runs `ParseScreenshots` (which now emits `parse-complete` itself).
+  runs `parseSync` (which ends its run with `run-finished` itself).
 - **Duplicate sweep** (`pkg/app/duplicate_sweep.go`): runs at the END of
   `runClaimedParse`, after the OCR loop, and demotes run-created tracked
   matches that duplicate an existing one into the ambiguous queue via
@@ -50,17 +50,28 @@ paths:
   snapshot, which made a first import quadratic (18 s at 5 000 matches).
   Resolving to a fresh key records the verdict in `duplicate_matches`, and
   both cards carry a "possible duplicate of" chip naming the other.
-- **Parse run-state (single-flight, async-job)**: `parseRunning` + the
-  progress snapshot (`parseDone`/`parseTotal`/`parseScope`) + `parseCancel` all
-  live under `parseCancelMu`. `claimParse`/`endParse` bracket a run; a second
-  trigger fails fast with `ErrParseInFlight` (no queuing). `StartParse(force)`
-  runs the parse in a **background goroutine** (server `POST /parses`, returns
-  202 up-front); `ParseScreenshots`/`ReParseAll` are the synchronous Wails-IPC +
-  watcher + test path. `runClaimedParse` emits `parse-complete` on success for
-  EVERY path, so the frontend drives `parseBusy` off SSE, not a held-open
-  request. `ActiveParse()` (`GET /api/v1/parses/active`) is the resync snapshot
-  for a reconnecting/reloading client.
-- `SSEHub *SSEHub` — non-nil in server mode; broadcasts `parse-complete` to
+- **The run slot (`run_slot.go`) — single-flight, an explicit state
+  machine.** One `runSlot` value under `runMu`: `idle | running | canceling`,
+  with the run's `RunKind` (`parse`, `reparse`, and the store swaps
+  `restore`, `maintenance`, `profile_switch`, `profile_rename`,
+  `screenshot_takeover`), its `RunID` and its progress. Only the methods in
+  that file step it: `claim`, `progress`, `requestCancel`, `end` — each
+  returns the next value or an error, and a report or end naming an old
+  `RunID` is refused, never applied. `claimRun` / `finishRun` bracket every
+  holder; store swaps use `withRunSlot(kind, work)`. A second claim fails
+  fast with `ErrParseInFlight` (no queuing). `CancelParse` stops only a
+  parse or re-parse — a store swap answers `ErrRunNotCancelable` (409),
+  because stopping one halfway would strand the app between two databases.
+  **Every claim ends in exactly one `run-finished{run_id, kind, outcome,
+  summary?, error?}`**, emitted by `finishRun` from a `defer` — completed,
+  canceled, failed or panicked alike — so a client never waits on a run
+  that already ended. `StartParse(force)` runs the parse in a **background
+  goroutine** and returns its `RunID` (server `POST /parses`, 202 with
+  `{run_id}`); `ParseScreenshots`/`ReParseAll` are the synchronous Wails-IPC,
+  watcher and test path. `parse-progress` carries `run_id` too.
+  `ActiveParse()` (`GET /api/v1/parses/active`) is the resync snapshot,
+  discriminated on `state`; an idle slot carries nothing else.
+- `SSEHub *SSEHub` — non-nil in server mode; broadcasts the run events to
   connected browser tabs.
 
 **File layout**: `ls pkg/app/*.go` — file-per-concern (`tesseract.go`,

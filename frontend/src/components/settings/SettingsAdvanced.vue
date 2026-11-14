@@ -34,7 +34,11 @@ const databaseStore = useDatabaseStore()
 const parseStore = useParseStore()
 const matchesStore = useMatchesStore()
 const { clearingDB, clearConfirm } = storeToRefs(databaseStore)
-const { ignoredCount, parseProgress, parseBusy: reparsing } = storeToRefs(parseStore)
+const { ignoredCount, parseProgress, parseRun } = storeToRefs(parseStore)
+const reparsing = computed(() => {
+  const run = parseRun.value
+  return (run.status === 'running' || run.status === 'canceling') && run.kind === 'reparse'
+})
 const matchedCount = computed(() => matchesStore.records.length)
 const unknownCount = computed(() => matchesStore.unknownRecords.length)
 
@@ -46,8 +50,10 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
 const lastReparseSummary = ref<{ updated: number; hero: number; map: number; total: number } | null>(null)
 let reparseClearTimer: ReturnType<typeof setTimeout> | null = null
 
+// Only a Re-parse All reports here: a normal parse also counts the matches
+// it touched, and its tally is not a re-parse result.
 watch(parseProgress, (next) => {
-  if (next && (next.matches_updated || next.hero_corrections || next.map_corrections)) {
+  if (reparsing.value && next && (next.matches_updated || next.hero_corrections || next.map_corrections)) {
     lastReparseSummary.value = {
       updated: next.matches_updated ?? 0,
       hero:    next.hero_corrections ?? 0,

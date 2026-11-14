@@ -14,6 +14,7 @@ import {
   OpenCoachBundle,
   RestoreDatabase,
   ImportMatches,
+  CancelParse,
   ParseScreenshots,
   PickScreenshotsDir,
   PickTesseractBinary,
@@ -107,7 +108,7 @@ describe('URL construction', () => {
   })
 
   it('ReParseAll posts to /api/v1/parses?scope=all', async () => {
-    const spy = stubFetch(emptyReply(202))
+    const spy = stubFetch(jsonReply(202, { run_id: 7 }))
     await ReParseAll()
     const req = lastRequest(spy)
     expect(req.method).toBe('POST')
@@ -303,9 +304,14 @@ describe('writers', () => {
     await expect(SetWatchEnabled(true)).resolves.toBeUndefined()
   })
 
-  it('202 resolves to undefined', async () => {
+  it('a bodyless 202 resolves to undefined', async () => {
     stubFetch(emptyReply(202))
-    await expect(ParseScreenshots()).resolves.toBeUndefined()
+    await expect(CancelParse()).resolves.toBeUndefined()
+  })
+
+  it('POST /parses answers 202 with the run id its events will carry', async () => {
+    stubFetch(jsonReply(202, { run_id: 7 }))
+    await expect(ParseScreenshots()).resolves.toEqual({ run_id: 7 })
   })
 
   it('sends the body as JSON with the content-type header', async () => {

@@ -50,7 +50,7 @@ default" as `DELETE` on the setting.
 |---|---|
 | `200 OK` | GET with body, or write that echoes new state (e.g. `GET`/`PUT`/`DELETE /api/v1/settings/tesseract` all return re-detected status). Also: `PUT` that replaces server-side state without creating a new resource (`PUT /api/v1/profiles/active` switches the active profile). |
 | `201 Created` | `POST` that creates a new resource — the response represents the just-created entity. Canonical: `POST /api/v1/profiles` (new profile + activated as a side effect). Don't unify `POST`-create's 201 with `PUT`-replace's 200; the asymmetry is HTTP-idiomatic. |
-| `202 Accepted` | Action whose meaningful effect is out-of-band — `POST /api/v1/parses` writes SQLite + broadcasts SSE; HTTP body irrelevant. |
+| `202 Accepted` | Action whose meaningful effect is out-of-band. The body, when there is one, names the job so the client can recognize its events and status — `POST /api/v1/parses` answers `{run_id}`, the id its `parse-progress` / `run-finished` events carry. A pure trigger (`DELETE /api/v1/parses/active`) carries none. |
 | `204 No Content` | Write succeeded with no useful body (most setters, `PUT /matches/{key}/visibility`, `PUT /matches/{key}/annotation`, `DELETE /api/v1/matches`). |
 | `400 Bad Request` | Client validation failure. Reach via a typed sentinel (`app.ErrInvalidScreenshotsDir`, `app.ErrInvalidLeaver`, `app.ErrInvalidTesseractPath`, `app.ErrImportMalformed`) and `errors.Is` so it stays out of the catch-all 500. |
 | `405 Method Not Allowed` | Wrong method on a registered route. Handled automatically by `apiMux` — see Mux structure. |
@@ -82,7 +82,7 @@ default" as `DELETE` on the setting.
   plain (native ServeMux + the `methodNotAllowed` stubs), not problem+json. The
   shared `components.responses` ($ref'd everywhere) + a `ProblemDetails` schema in
   `api/openapi.yaml` document the contract.
-- `204` / `202` carry no body; `_fetch` in `api.ts` resolves both to `undefined`.
+- `204` carries no body; `unwrapVoid` resolves it to `undefined`. A `202` with a job reference body goes through `unwrap` like any JSON response; a bodyless `202` through `unwrapVoid`.
 
 ## Request shapes
 
@@ -150,7 +150,7 @@ FileServer (404) instead of returning 405. Keep `/api/v1/` on the dedicated
    commit.
 3. Add the `api.ts` facade wrapper over the generated SDK function
    (`unwrap(sdk.<operationId>({ path, body, query }))`, `unwrapVoid` for
-   204/202 writers) and call it via `@/api-client`. ONE fetch transport
+   bodyless 204/202 writers) and call it via `@/api-client`. ONE fetch transport
    serves desktop and server mode — there is no dual-path step anymore, and
    a missing wrapper is a compile error at its call site.
 
@@ -181,10 +181,10 @@ Public Swagger UI auto-deploys from `main` on every spec change to
 
 ## Transport gotchas
 
-- **204 / 202 responses resolve to `undefined` via `unwrapVoid`.** The
-  generated client parses empty bodies as `{}`; the facade's `unwrapVoid`
-  discards that so void-returning callers keep the historical contract
-  (pinned by `api.test.ts`'s "r.json()-on-204 regression" case).
+- **Bodyless 204 / 202 responses resolve to `undefined` via `unwrapVoid`.**
+  The generated client parses empty bodies as `{}`; the facade's
+  `unwrapVoid` discards that so void-returning callers keep the historical
+  contract (pinned by `api.test.ts`'s "r.json()-on-204 regression" case).
 
 - **Frontend imports api functions from `@/api-client`** (the test seam over
   `frontend/src/api.ts`). `api.ts` is a named-function facade over the

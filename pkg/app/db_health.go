@@ -25,24 +25,25 @@ func (a *App) GetDatabaseHealth() (db.Health, error) {
 // RestoreDatabase: VACUUM takes an exclusive lock for its duration,
 // and running it mid-parse would stall both.
 func (a *App) RunDatabaseMaintenance(operation string) (db.Health, error) {
-	if _, claimed := a.claimParse(false); !claimed {
-		return db.Health{}, ErrParseInFlight
-	}
-	defer a.endParse()
-
-	var err error
+	var run func() error
 	switch operation {
 	case "optimize":
-		err = a.store.Optimize()
+		run = func() error { return a.store.Optimize() }
 	case "vacuum":
-		err = a.store.Vacuum()
+		run = func() error { return a.store.Vacuum() }
 	default:
 		return db.Health{}, fmt.Errorf("%w: %q", ErrInvalidMaintenanceOp, operation)
 	}
-	if err != nil {
-		return db.Health{}, err
-	}
-	return a.store.Health()
+	var health db.Health
+	err := a.withRunSlot(RunKindMaintenance, func() error {
+		if err := run(); err != nil {
+			return err
+		}
+		h, err := a.store.Health()
+		health = h
+		return err
+	})
+	return health, err
 }
 
 // optimizeAfterParse is the auto half of the "Vacuum scheduler"

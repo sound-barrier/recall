@@ -3,6 +3,8 @@ import { render } from '@testing-library/vue'
 import { flushPromises } from '@/test-utils'
 import { defineComponent, ref, type Ref } from 'vue'
 
+import type { ActiveRun } from '@/api-client'
+import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
 import { useParseRecovery, type ParseConnectionState } from '@/composables/ingest/useParseRecovery'
 
 // Capture the status callback the composable registers so tests can
@@ -14,22 +16,27 @@ vi.mock('@/api', () => ({
   },
 }))
 
-interface Active { running: boolean; done: number; total: number; scope: string }
+const running: ActiveRun = { state: 'running', run_id: 4, kind: 'parse', done: 5, total: 12 }
+const idle: ActiveRun = { state: 'idle' }
 
-function harness(opts: { active: Active; parseBusy?: boolean; staleMs?: number }) {
+function harness(opts: { active: ActiveRun | (() => Promise<ActiveRun>); parseBusy?: boolean; staleMs?: number; generation?: number }) {
   const parseBusy = ref(opts.parseBusy ?? false)
-  const parseProgress = ref<{ done: number; total: number; filename: string } | null>(null)
+  const parseProgress = ref<ParseProgressEvent | null>(null)
   const reload = vi.fn(async () => {})
-  const getActiveParse = vi.fn(async () => opts.active)
+  const source = opts.active
+  const getActiveParse = vi.fn(typeof source === 'function' ? source : async () => source)
+  const applySnapshot = vi.fn()
   let state!: Ref<ParseConnectionState>
-  let refresh!: () => void
+  let refresh!: () => Promise<void>
   const Harness = defineComponent({
     setup() {
       const r = useParseRecovery({
         parseBusy,
-        parseProgress: parseProgress as never,
+        parseProgress,
         reload,
         getActiveParse,
+        runGeneration: () => opts.generation ?? 7,
+        applySnapshot,
         staleMs: opts.staleMs ?? 30,
       })
       state = r.connectionState
@@ -37,75 +44,109 @@ function harness(opts: { active: Active; parseBusy?: boolean; staleMs?: number }
       return () => null
     },
   })
-  const wrapper = render(Harness)
-  return { wrapper, parseBusy, parseProgress, reload, getActiveParse, state: () => state.value, refresh }
+  render(Harness)
+  return { parseBusy, parseProgress, reload, getActiveParse, applySnapshot, state: () => state.value, refresh: () => refresh() }
 }
 
 beforeEach(() => { capturedStatus = null })
 
 describe('useParseRecovery', () => {
-  it('resyncs on mount: a server-side running parse restores the panel', async () => {
-    const h = harness({ active: { running: true, done: 5, total: 12, scope: 'new' } })
+  it('resyncs on mount, handing the snapshot back with the generation it was read at', async () => {
+    const h = harness({ active: running, generation: 3 })
     await flushPromises()
-    expect(h.getActiveParse).toHaveBeenCalled()
-    expect(h.parseBusy.value).toBe(true)
-    expect(h.parseProgress.value).toMatchObject({ done: 5, total: 12 })
+    expect(h.applySnapshot).toHaveBeenCalledWith(running, 3)
     expect(h.state()).toBe('connected')
   })
 
-  it('idle mount does not flip parseBusy or reload', async () => {
-    const h = harness({ active: { running: false, done: 0, total: 0, scope: '' }, parseBusy: false })
+  it('reads the generation BEFORE the request, so a run that moves meanwhile makes the snapshot stale', async () => {
+    let generation = 3
+    let answer!: (a: ActiveRun) => void
+    const parseBusy = ref(false)
+    const applySnapshot = vi.fn()
+    const Harness = defineComponent({
+      setup() {
+        useParseRecovery({
+          parseBusy,
+          parseProgress: ref(null),
+          reload: vi.fn(),
+          getActiveParse: () => new Promise<ActiveRun>((r) => { answer = r }),
+          runGeneration: () => generation,
+          applySnapshot,
+        })
+        return () => null
+      },
+    })
+    render(Harness)
+    generation = 4
+    answer(running)
     await flushPromises()
-    expect(h.parseBusy.value).toBe(false)
-    expect(h.reload).not.toHaveBeenCalled()
+    expect(applySnapshot).toHaveBeenCalledWith(running, 3)
   })
 
-  it('SSE drop during a parse shows reconnecting, reconnect resyncs', async () => {
-    const h = harness({ active: { running: true, done: 3, total: 10, scope: 'new' }, parseBusy: true })
+  it('an SSE drop shows reconnecting; the reconnect resyncs and reloads the matches', async () => {
+    const h = harness({ active: running, parseBusy: true })
     await flushPromises()
     capturedStatus!('reconnecting')
     expect(h.state()).toBe('reconnecting')
     capturedStatus!('connected')
     await flushPromises()
     expect(h.state()).toBe('connected')
-    // resync ran a second time on reconnect.
-    expect(h.getActiveParse.mock.calls.length).toBeGreaterThanOrEqual(2)
+    expect(h.getActiveParse).toHaveBeenCalledTimes(2)
+    expect(h.reload).toHaveBeenCalledOnce()
   })
 
-  it('a persistent reconnecting escalates to lost after staleMs', async () => {
-    const h = harness({ active: { running: true, done: 1, total: 9, scope: 'new' }, parseBusy: true, staleMs: 20 })
+  // The folder watcher runs while nobody is looking: a drop while idle can
+  // swallow a whole run's match-updated events, so the reconnect reconciles
+  // whether or not anything looked busy.
+  it('reconciles on a reconnect while idle too', async () => {
+    const h = harness({ active: idle, parseBusy: false })
     await flushPromises()
     capturedStatus!('reconnecting')
-    expect(h.state()).toBe('reconnecting')
+    capturedStatus!('connected')
+    await flushPromises()
+    expect(h.getActiveParse).toHaveBeenCalledTimes(2)
+    expect(h.reload).toHaveBeenCalledOnce()
+  })
+
+  it('a persistent reconnecting escalates to lost after staleMs while a run is busy', async () => {
+    const h = harness({ active: running, parseBusy: true, staleMs: 20 })
+    await flushPromises()
+    capturedStatus!('reconnecting')
     await new Promise((r) => setTimeout(r, 40))
     expect(h.state()).toBe('lost')
   })
 
-  it('a fresh parse-progress tick clears the reconnecting state', async () => {
-    const h = harness({ active: { running: true, done: 1, total: 9, scope: 'new' }, parseBusy: true })
+  it('never escalates to lost while idle', async () => {
+    const h = harness({ active: idle, parseBusy: false, staleMs: 20 })
     await flushPromises()
     capturedStatus!('reconnecting')
+    await new Promise((r) => setTimeout(r, 40))
     expect(h.state()).toBe('reconnecting')
-    h.parseProgress.value = { done: 2, total: 9, filename: 'b.png' }
-    await flushPromises()
-    expect(h.state()).toBe('connected')
   })
 
-  it('reconnecting is ignored when no parse is busy', async () => {
-    const h = harness({ active: { running: false, done: 0, total: 0, scope: '' }, parseBusy: false })
+  it('a fresh parse-progress tick clears the reconnecting state', async () => {
+    const h = harness({ active: running, parseBusy: true })
     await flushPromises()
     capturedStatus!('reconnecting')
+    h.parseProgress.value = { run_id: 4, done: 2, total: 9, filename: 'b.png', screenshot_type: '' }
+    await flushPromises()
     expect(h.state()).toBe('connected')
   })
 
-  it('refresh re-pulls run-state; a missed completion clears the panel', async () => {
-    // parseBusy stuck true but the server says idle → reload + clear.
-    const h = harness({ active: { running: false, done: 0, total: 0, scope: '' }, parseBusy: true })
-    await flushPromises() // mount resync already heals this case
-    expect(h.parseBusy.value).toBe(false)
-    expect(h.reload).toHaveBeenCalled()
-    h.refresh()
+  it('refresh reads connected only once the server has answered', async () => {
+    let fail = false
+    const h = harness({ active: async () => { if (fail) throw new Error('down'); return running }, parseBusy: true, staleMs: 10 })
     await flushPromises()
+    capturedStatus!('reconnecting')
+    await new Promise((r) => setTimeout(r, 20))
+    expect(h.state()).toBe('lost')
+
+    fail = true
+    await h.refresh()
+    expect(h.state()).toBe('lost')
+
+    fail = false
+    await h.refresh()
     expect(h.state()).toBe('connected')
   })
 })

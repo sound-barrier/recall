@@ -22,17 +22,17 @@ export type DbHealth = {
 };
 
 /**
- * Payload of the `parse-complete` event (SSE in server mode, the
- * desktop event bus in Wails mode) — the finished run's own tally,
+ * The `summary` of a completed parse's `run-finished` event — the
+ * finished run's own tally,
  * so the end-of-run report can say "X read · Y failed to read"
  * without inferring it from a refetched ledger. `files_parsed`
  * counts files whose writes all landed (degraded parses included);
  * `files_failed` counts files whose run failed somewhere — OCR or
  * insert failure (nothing stored), or an ambiguity-write failure
- * (rows stored, candidate record lost). A canceled run emits
- * `parse-canceled` instead and carries no summary; a client that
- * reconnects after missing the event gets no replay — treat the
- * summary as a toast, not durable state.
+ * (rows stored, candidate record lost). A canceled or failed run
+ * carries no summary; a client that reconnects after missing the
+ * event gets no replay — treat the summary as a toast, not durable
+ * state.
  *
  */
 export type ParseRunSummary = {
@@ -55,6 +55,7 @@ export type ParseRunSummary = {
  *
  */
 export type ParseProgressEvent = {
+    run_id: RunId;
     done: number;
     total: number;
     filename: string;
@@ -139,28 +140,81 @@ export type FieldError = {
 };
 
 /**
- * Snapshot of the in-flight parse run. The resync anchor for the
- * async parse pipeline — read after an SSE reconnect or a page
- * reload to restore the parse panel without replaying events.
+ * Identifies one claim of the run slot. Ids grow for the life of the
+ * server process and start from its boot clock, so an id is never
+ * reused — a client that saw run N finish can drop any later event or
+ * snapshot naming N.
  *
  */
-export type ActiveParse = {
+export type RunId = number;
+
+/**
+ * What holds the run slot. Only `parse` and `reparse` can be canceled
+ * or report progress; the rest are store swaps that need the database
+ * to themselves.
+ *
+ */
+export type RunKind = 'parse' | 'reparse' | 'restore' | 'maintenance' | 'profile_switch' | 'profile_rename' | 'screenshot_takeover';
+
+/**
+ * How a run ended.
+ */
+export type RunOutcome = 'completed' | 'canceled' | 'failed';
+
+/**
+ * The `202` body of `POST /api/v1/parses`.
+ */
+export type ParseAccepted = {
+    run_id: RunId;
+};
+
+export type ActiveRunIdle = {
+    state: 'idle';
+};
+
+export type ActiveRunBusy = {
     /**
-     * Whether a parse is currently in flight.
+     * `canceling` once a cancel was accepted and the loop has yet to unwind.
      */
-    running: boolean;
+    state: 'running' | 'canceling';
+    run_id: RunId;
+    kind: RunKind;
     /**
-     * Screenshot files OCR'd so far this run.
+     * Screenshot files OCR'd so far this run (0 for a store swap).
      */
     done: number;
     /**
-     * Total files to process this run (0 when idle).
+     * Total files this run will process (0 until known, and for a store swap).
      */
     total: number;
-    /**
-     * "new" (default parse) or "all" (re-parse); empty when idle.
-     */
-    scope: string;
+};
+
+/**
+ * Snapshot of the run slot, discriminated on `state`. The resync
+ * anchor for the async parse pipeline — read after an SSE reconnect
+ * or a page reload to restore the parse panel without replaying
+ * events.
+ *
+ */
+export type ActiveRun = ({
+    state: 'idle';
+} & ActiveRunIdle) | ({
+    state: 'running' | 'canceling';
+} & ActiveRunBusy);
+
+/**
+ * Payload of the `run-finished` event (SSE in server mode, the
+ * desktop event bus in Wails mode) — emitted exactly once for every
+ * run that held the slot. `summary` rides a completed parse; `error`
+ * a failed run.
+ *
+ */
+export type RunFinishedEvent = {
+    run_id: RunId;
+    kind: RunKind;
+    outcome: RunOutcome;
+    summary?: ParseRunSummary;
+    error?: string;
 };
 
 /**
@@ -3433,10 +3487,12 @@ export type ParseScreenshotsError = ParseScreenshotsErrors[keyof ParseScreenshot
 
 export type ParseScreenshotsResponses = {
     /**
-     * Parse accepted and started; subscribe to events for progress + completion.
+     * Parse accepted and started; its events carry the returned run id.
      */
-    202: unknown;
+    202: ParseAccepted;
 };
+
+export type ParseScreenshotsResponse = ParseScreenshotsResponses[keyof ParseScreenshotsResponses];
 
 export type CancelParseData = {
     body?: never;
@@ -3464,7 +3520,7 @@ export type CancelParseError = CancelParseErrors[keyof CancelParseErrors];
 
 export type CancelParseResponses = {
     /**
-     * Cancellation signaled; SSE `parse-canceled` follows once the loop unwinds.
+     * Cancellation signaled; `run-finished` follows once the loop unwinds.
      */
     202: unknown;
 };
@@ -3489,7 +3545,7 @@ export type GetActiveParseResponses = {
     /**
      * Current parse run-state.
      */
-    200: ActiveParse;
+    200: ActiveRun;
 };
 
 export type GetActiveParseResponse = GetActiveParseResponses[keyof GetActiveParseResponses];

@@ -173,7 +173,7 @@ const lightboxSrc = computed(() => {
   />
 
   <!-- End-of-run outcome — "X read · Y failed to read" off the
-       parse-complete payload, with the door to the Unknown tab's triage
+       completed run's run-finished payload, with the door to the Unknown tab's triage
        when anything failed. Transient by design; the Failed section
        keeps the durable record. -->
   <ParseOutcomeToast

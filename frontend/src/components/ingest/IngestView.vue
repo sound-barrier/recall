@@ -33,8 +33,9 @@ const { goToView } = appStore
 const { tesseractReady, watchEnabled, screenshotsDir } = storeToRefs(settingsStore)
 const { toggleWatch } = settingsStore
 const {
+  parseRun,
   parseBusy,
-  cancelingParse,
+  canStop,
   newScreenshotCount,
   parkedCount,
   claimedElsewhere,
@@ -49,6 +50,17 @@ const { parse, onCancelParse, refreshParse } = parseStore
 // while a coaching session holds the view (the one write lock), so
 // both affordances go dead with the reason on them.
 const { writesLocked, sessionActive, lockReason } = useWriteGate()
+// What the button in Run's place says while the slot is held: a run being
+// stopped, our own start not yet answered, a store swap (restore, profile
+// switch, …) that cannot be stopped, or a parse that can.
+const stopLabel = computed(() => {
+  switch (parseRun.value.status) {
+    case 'canceling': return 'Canceling…'
+    case 'starting': return 'Starting…'
+    case 'running': return parseRun.value.kind === 'parse' || parseRun.value.kind === 'reparse' ? 'Stop Parse' : 'Busy…'
+    case 'idle': return 'Stop Parse'
+  }
+})
 const matchedCount = computed(() => matchesStore.records.length)
 const unknownCount = computed(() => matchesStore.unknownRecords.length)
 
@@ -181,7 +193,7 @@ const runParseTitle = computed(() => {
             <p
               v-else-if="lastParsedAt && !parseBusy"
               class="setting-meta"
-              :title="`Most recent successful parse run on this profile, written to localStorage on parse-complete. Absolute time: ${new Date(lastParsedAt).toLocaleString()}.`"
+              :title="`Most recent successful parse run on this profile, written to localStorage when a parse completes. Absolute time: ${new Date(lastParsedAt).toLocaleString()}.`"
             >
               <span class="meta-dot" />
               Last run · {{ formatRelativeTime(lastParsedAt) }} · {{ matchedCount + unknownCount }} record{{ (matchedCount + unknownCount) === 1 ? '' : 's' }} on record
@@ -197,18 +209,17 @@ const runParseTitle = computed(() => {
                  lands at the next between-files OCR boundary
                  (tesseract is shelled out per file and not
                  context-aware), so the button shows
-                 "Canceling…" between click and the SSE
-                 parse-canceled confirmation. -->
+                 "Canceling…" between click and the run's
+                 run-finished. -->
             <button
               v-if="parseBusy"
               class="btn danger big"
               data-testid="cancel-parse-btn"
-              :disabled="cancelingParse"
+              :disabled="!canStop"
               @click="onCancelParse()"
             >
               <span class="btn-dot" />
-              <span v-if="cancelingParse">Canceling…</span>
-              <span v-else>Stop Parse</span>
+              <span>{{ stopLabel }}</span>
             </button>
             <button
               v-else

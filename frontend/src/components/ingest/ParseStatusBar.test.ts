@@ -8,6 +8,7 @@ import ParseStatusBar from '@/components/ingest/ParseStatusBar.vue'
 import { useAppStore } from '@/stores/app'
 import { useParseStore } from '@/stores/parse'
 import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
+import { seedParseRun } from '@/test-utils'
 
 // ParseStatusBar is the persistent footer that shows "ingesting N of M" across
 // every tab. It reads the parse lifecycle from the matches store now, so these
@@ -20,6 +21,7 @@ import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
 // present ⇔ visible-to-AT.
 
 const evt = (over: Partial<ParseProgressEvent> = {}): ParseProgressEvent => ({
+  run_id: 1,
   done: 0,
   total: 0,
   filename: '',
@@ -43,8 +45,9 @@ function renderBar(over: { parseProgress?: ParseProgressEvent | null; cancelingP
   setActivePinia(pinia)
   const appStore = useAppStore()
   const parseStore = useParseStore()
-  parseStore.parseProgress = over.parseProgress ?? null
-  parseStore.cancelingParse = over.cancelingParse ?? false
+  if (over.parseProgress) {
+    seedParseRun(parseStore, { state: over.cancelingParse ? 'canceling' : 'running', progress: over.parseProgress })
+  }
   // Spy before render — the component destructures onCancelParse at setup.
   const cancelSpy = vi.spyOn(parseStore, 'onCancelParse').mockResolvedValue(undefined)
   const view = render(ParseStatusBar, { global: { plugins: [pinia] } })
@@ -99,7 +102,7 @@ describe('ParseStatusBar', () => {
       expect(bar()).toBeInTheDocument()
 
       // Bump to done === total → bar should remain visible during grace.
-      parseStore.parseProgress = evt({ done: 3, total: 3, filename: 'a.png' })
+      parseStore.onParseProgress(evt({ done: 3, total: 3, filename: 'a.png' }))
       await nextTick()
       expect(bar()).toBeInTheDocument()
 

@@ -55,15 +55,17 @@ async function installSSEMock(page: Page) {
   })
 }
 
-// Mutable active-parse state the GET /parses/active route reflects, so a
+// Mutable run-slot state the GET /parses/active route reflects, so a
 // test can flip "running" between drop + reconnect.
-type ActiveParse = { running: boolean; done: number; total: number; scope: string }
+type ActiveRun = { state: 'idle' } | { state: 'running'; run_id: number; kind: 'parse'; done: number; total: number }
 
-async function routeBackend(page: Page, active: () => ActiveParse) {
+const midParse: ActiveRun = { state: 'running', run_id: 3, kind: 'parse', done: 6, total: 20 }
+
+async function routeBackend(page: Page, active: () => ActiveRun) {
   await page.route('**/api/v1/matches', (r: Route) => r.fulfill({ status: 200, contentType: 'application/json', body: '[]' }))
   // Exact /parses (POST) — a trailing-** glob would also swallow
   // /parses/active and starve the resync of its JSON snapshot.
-  await page.route('**/api/v1/parses', (r: Route) => r.fulfill({ status: 202 }))
+  await page.route('**/api/v1/parses', (r: Route) => r.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ run_id: 3 }) }))
   await page.route('**/api/v1/parses/active', (r: Route) => {
     if (r.request().method() !== 'GET') return r.fulfill({ status: 202 })
     return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(active()) })
@@ -78,7 +80,7 @@ const panel = '.parse-progress-panel'
 test.describe('parse-stream recovery', () => {
   test('reload mid-parse restores the panel from GET /parses/active', async ({ page }) => {
     await installSSEMock(page)
-    await routeBackend(page, () => ({ running: true, done: 6, total: 20, scope: 'new' }))
+    await routeBackend(page, () => midParse)
     await page.goto('/')
     await page.getByRole('tab', { name: 'Parse' }).click()
     // No Parse click — the panel comes back purely from the resync.
@@ -88,7 +90,7 @@ test.describe('parse-stream recovery', () => {
 
   test('SSE drop shows reconnecting; reconnect clears it', async ({ page }) => {
     await installSSEMock(page)
-    await routeBackend(page, () => ({ running: true, done: 6, total: 20, scope: 'new' }))
+    await routeBackend(page, () => midParse)
     await page.goto('/')
     await page.getByRole('tab', { name: 'Parse' }).click()
     await expect(page.locator(panel)).toBeVisible()
@@ -104,7 +106,7 @@ test.describe('parse-stream recovery', () => {
     await page.clock.install()
     await installSSEMock(page)
     let running = true
-    await routeBackend(page, () => ({ running, done: 6, total: 20, scope: 'new' }))
+    await routeBackend(page, () => (running ? midParse : { state: 'idle' }))
     await page.goto('/')
     await page.getByRole('tab', { name: 'Parse' }).click()
     await expect(page.locator(panel)).toBeVisible()

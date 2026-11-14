@@ -85,21 +85,6 @@ func TestApp_ParseScreenshots_MissingDirIsError(t *testing.T) {
 	}
 }
 
-func TestApp_ClaimParse_SingleFlight(t *testing.T) {
-	a := app.NewWithStore(dbtest.New())
-	if _, ok := app.ClaimParse(a, false); !ok {
-		t.Fatal("first claim should take the slot")
-	}
-	if _, ok := app.ClaimParse(a, false); ok {
-		t.Error("second claim must fail while a parse holds the slot")
-	}
-	app.EndParse(a)
-	if _, ok := app.ClaimParse(a, false); !ok {
-		t.Error("claim should succeed again after EndParse")
-	}
-	app.EndParse(a)
-}
-
 func TestApp_ParseScreenshots_DispatchesEachScreenshotType(t *testing.T) {
 	// Keyed by type and checked against parser.ScreenshotTypes below, because
 	// this table used to cover FOUR of the six while its name promised all of

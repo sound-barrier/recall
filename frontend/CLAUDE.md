@@ -445,7 +445,7 @@ not the wiring:
 - **Tesseract gate**: `tesseractReady` computed drives a System Alert banner + disables Parse/Watch when OCR engine missing.
 - **Unknown Maps view**: records with no `data.map` surface via `unknownRecords` computed.
 - **Per-card expand/preview state** in plain objects, reassigned on toggle for reactivity. `screenshotURL(filename)` → `/_screenshot/<encoded>` served by `ScreenshotHandler()`.
-- **Event subscription**: `EventsOn('parse-complete', load)` on mount, `EventsOff` on unmount.
+- **Event subscription**: `useServerEvents` subscribes on mount and unsubscribes on unmount; `parse-progress` and `run-finished` go to the parse store's run machine (`composables/ingest/parseRunMachine.ts`), whose run end reloads the matches.
 
 ## Tests
 
@@ -490,7 +490,7 @@ tests use `renderApp(overrides?)` from `@/test-utils` (installs an api mock via
 `setApiBacking()` on the `@/api-client` seam, so the Wails/fetch shim never
 fires): `await renderApp({ records: [...] })` then assert via `screen`. The
 barrel also exports `fireBackendEvent(name, data?)` for driving captured
-`EventsOn` handlers (simulating `parse-complete` / `parse-progress`) — pair with
+`EventsOn` handlers (simulating `run-finished` / `parse-progress`) — pair with
 `await flushPromises()` (also from `@/test-utils`) for async handlers — plus
 `renderWidget` for dashboard widgets (fragment roots: query via `screen`, not
 `container`). Import TL query APIs from `@testing-library/vue` (one dom

@@ -101,8 +101,8 @@ useServerEvents()
          until focused, then snaps in over the top-left corner. -->
     <a class="skip-link" href="#main-content" @click="focusMain">Skip to main content</a>
 
-    <!-- Polite parse-lifecycle announcer. Sets briefly on
-         parse-complete + parse-canceled, then clears so the next
+    <!-- Polite parse-lifecycle announcer. Sets briefly when a parse
+         ends (completed, canceled or failed), then clears so the next
          terminal state re-announces. Invisible to sighted users —
          the masthead chip + status bar carry the visual signal. -->
     <div class="sr-only" role="status" aria-live="polite">

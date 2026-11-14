@@ -6,12 +6,13 @@ import { useParseStore } from '@/stores/parse'
 import { useUiStore } from '@/stores/ui'
 
 // Persistent parse-status footer. Reads the parse lifecycle from the parse
-// store: parseProgress drives the counter / ticks / visibility state machine,
-// cancelingParse drives the ABORT tile's "ABORTING…" state. The ABORT click +
+// store: parseProgress drives the counter / ticks / visibility,
+// cancelingParse the ABORT tile's "ABORTING…" state and canStop whether it
+// can be pressed. The ABORT click +
 // the click-to-jump-to-Parse gesture go straight to the stores. Self-applies
 // `inert` while hidden OR while a modal has frozen the background.
 const parseStore = useParseStore()
-const { parseProgress, cancelingParse } = storeToRefs(parseStore)
+const { parseProgress, cancelingParse, canStop } = storeToRefs(parseStore)
 const { onCancelParse } = parseStore
 const { goToView } = useAppStore()
 const { backgroundFrozen } = storeToRefs(useUiStore())
@@ -186,7 +187,7 @@ function onJumpToIngest(e: MouseEvent) {
          jump-to-Ingest handler; @click.stop is belt-and-suspenders
          in case a future refactor changes that pathway. Visible
          only while inFlight so the bar's grace-tail (final 1.5 s
-         after parse-complete) doesn't briefly show an unclickable
+         after the run ends) doesn't briefly show an unclickable
          button. -->
     <div v-if="inFlight" class="group group-abort">
       <button
@@ -194,7 +195,7 @@ function onJumpToIngest(e: MouseEvent) {
         class="btn-mono is-danger abort-btn"
         data-no-jump
         data-testid="status-bar-cancel-btn"
-        :disabled="cancelingParse"
+        :disabled="!canStop"
         :aria-label="cancelingParse ? 'Aborting parse' : 'Abort parse'"
         @click.stop="onCancelParse"
       >

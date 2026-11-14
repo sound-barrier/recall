@@ -6,6 +6,7 @@ import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
 
 function progress(over: Partial<ParseProgressEvent> = {}): ParseProgressEvent {
   return {
+    run_id: 1,
     done: 1,
     total: 5,
     filename: 'sample.png',

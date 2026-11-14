@@ -128,10 +128,10 @@ describe('App.vue', () => {
 })
 
 describe('App.vue — scoreboard pulse on watcher refresh', () => {
-  // Watcher-driven (or manual) parse fires a parse-complete event. The
+  // Watcher-driven (or manual) parse fires a run-finished event. The
   // App's handler calls load(); when load sees the records count grew,
   // it flashes a pulse class on the scoreboard so the user notices.
-  it('adds .pulse to the scoreboard when records grow on parse-complete', async () => {
+  it('adds .pulse to the scoreboard when records grow on run-finished', async () => {
     const initial: MatchRecord[] = [
       { match_key: 'match-2026-05-10T21-29-28', source_files: ['a.png'], data: {
         map: 'rialto', date: '2026-05-10', finished_at: '21:29', result: 'victory',
@@ -154,20 +154,20 @@ describe('App.vue — scoreboard pulse on watcher refresh', () => {
     // Fire the watcher event the way the runtime would. The handler
     // re-runs load() asynchronously, so flushPromises lets the
     // Promise.all + the post-load reactive update settle.
-    expect(fireBackendEvent('parse-complete')).toBe(true)
+    expect(fireBackendEvent('run-finished', { run_id: 1, kind: 'parse', outcome: 'completed' })).toBe(true)
     await flushPromises()
     // eslint-disable-next-line no-restricted-syntax -- the pulse flash is a purely visual attention cue with no ARIA state
     expect(scoreboard()).toHaveClass('pulse')
   })
 
-  it('does NOT pulse when records count is unchanged on parse-complete', async () => {
+  it('does NOT pulse when records count is unchanged on run-finished', async () => {
     const seed: MatchRecord[] = [
       { match_key: 'match-2026-05-10T21-29-28', source_files: ['a.png'], data: {
         map: 'rialto', date: '2026-05-10', finished_at: '21:29', result: 'victory',
       } },
     ]
     await renderApp({ records: seed })
-    expect(fireBackendEvent('parse-complete')).toBe(true)
+    expect(fireBackendEvent('run-finished', { run_id: 1, kind: 'parse', outcome: 'completed' })).toBe(true)
     await flushPromises()
     // eslint-disable-next-line no-restricted-syntax -- the pulse flash is a purely visual attention cue with no ARIA state
     expect(scoreboard()).not.toHaveClass('pulse')
@@ -420,11 +420,11 @@ describe('App.vue — first-run modal gating (item 6 coverage lift)', () => {
     expect(screen.queryByRole('dialog', { name: /main account name/i })).not.toBeInTheDocument()
   })
 
-  it('keeps the first-run modal hidden across a parse-complete fire', async () => {
+  it('keeps the first-run modal hidden across a run-finished fire', async () => {
     // Defense-in-depth: a runtime event must not flip an
     // already-acknowledged first-run state back on.
     await renderApp({ records: [] })
-    expect(fireBackendEvent('parse-complete')).toBe(true)
+    expect(fireBackendEvent('run-finished', { run_id: 1, kind: 'parse', outcome: 'completed' })).toBe(true)
     await flushPromises()
     expect(screen.queryByRole('dialog', { name: /main account name/i })).not.toBeInTheDocument()
   })

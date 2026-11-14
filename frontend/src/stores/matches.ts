@@ -54,7 +54,7 @@ export const useMatchesStore = defineStore('matches', () => {
       // Cancel any in-flight fetch first: a direct write is newer than
       // whatever that response would carry (the match-updated upsert in
       // production, cache seeding in tests), and the authoritative
-      // parse-complete refetch follows anyway.
+      // refetch at the run's end follows anyway.
       void getQueryClient().cancelQueries({ queryKey: qk.matches })
       getQueryClient().setQueryData(qk.matches, next)
     },
@@ -124,7 +124,7 @@ export const useMatchesStore = defineStore('matches', () => {
 
   // ── Reload seam ───────────────────────────────────────────────────
   // load() keeps its name as the awaitable cluster refetch — the callers
-  // (parse-complete, clear-DB, manual-match create) rely on "reload
+  // (a run's end, clear-DB, manual-match create) rely on "reload
   // finished" ordering. Error/banner handling moved to the query layer:
   // the matches query carries the banner meta, the siblings are silent
   // keep-last, and per-subsystem isolation falls out of one query per

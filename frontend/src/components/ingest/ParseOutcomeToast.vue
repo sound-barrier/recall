@@ -4,7 +4,7 @@ import type { ParseRunSummary } from '@/components/ingest/parse-progress'
 import { useAppStore } from '@/stores/app'
 
 // End-of-run outcome — "4 read · 2 failed to read", from the
-// parse-complete payload rather than a refetched ledger (which cannot
+// run-finished payload rather than a refetched ledger (which cannot
 // tell this run's failures from standing degraded rows). Rendered as an
 // app-level toast because the watcher can finish a run while the user
 // is on any tab; "View failed" is the door to the Unknown tab's triage

@@ -84,7 +84,7 @@ test.describe('masthead parse-queue chip', () => {
     await page.evaluate(() => {
       ;(window as unknown as { __recallSSE: { emit: (n: string, d: unknown) => void } }).__recallSSE.emit(
         'parse-progress',
-        { done: 12, total: 47, filename: 'overwatch-12.png', screenshot_type: 'summary' },
+        { run_id: 1, done: 12, total: 47, filename: 'overwatch-12.png', screenshot_type: 'summary' },
       )
     })
 
@@ -111,7 +111,7 @@ test.describe('masthead parse-queue chip', () => {
     await page.evaluate(() => {
       ;(window as unknown as { __recallSSE: { emit: (n: string, d: unknown) => void } }).__recallSSE.emit(
         'parse-progress',
-        { done: 1, total: 3, filename: 'a.png', screenshot_type: 'summary' },
+        { run_id: 1, done: 1, total: 3, filename: 'a.png', screenshot_type: 'summary' },
       )
     })
     await expect(page.locator('.masthead-parse-chip')).toBeVisible()
@@ -121,7 +121,7 @@ test.describe('masthead parse-queue chip', () => {
     await page.evaluate(() => {
       ;(window as unknown as { __recallSSE: { emit: (n: string, d: unknown) => void } }).__recallSSE.emit(
         'parse-progress',
-        { done: 3, total: 3, filename: 'c.png', screenshot_type: 'summary' },
+        { run_id: 1, done: 3, total: 3, filename: 'c.png', screenshot_type: 'summary' },
       )
     })
     await expect(page.locator('.masthead-parse-chip')).toContainText('3')

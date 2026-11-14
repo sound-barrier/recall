@@ -46,7 +46,7 @@ func (a *App) emitWatchActivity(ev WatchActivityEvent) {
 // emitMatchUpdated broadcasts a freshly-aggregated match.Record to the
 // Wails event bus and the SSE hub. Fired after each per-screenshot insert
 // resolves a match_key so the frontend can incrementally render the affected
-// card without waiting for parse-complete.
+// card without waiting for the run to end.
 func (a *App) emitMatchUpdated(rec match.Record) {
 	data, _ := json.Marshal(rec)
 	emitEvent("match-updated", rec)
@@ -72,23 +72,23 @@ func (a *App) emitCoachSessionChanged(active bool) {
 	a.SSEHub.BroadcastData("coach-session-changed", string(data))
 }
 
-// emitParseComplete notifies the Wails frontend that a parse run finished,
-// carrying the run's summary. Terminal event → BroadcastTerminal, so a
-// slow SSE consumer's full buffer can't drop it (the spinner would
-// strand). Gated by the !serveronly build tag so the v3 application
-// import is absent from server-only binaries.
-func (a *App) emitParseComplete(s ParseRunSummary) {
-	data, _ := json.Marshal(s)
-	emitEvent("parse-complete", s)
-	// Also broadcast via SSE when the Wails binary is run with --server.
-	a.SSEHub.BroadcastTerminal("parse-complete", string(data))
-	notifyParseComplete(s.MatchesUpdated)
+// emitRunFinished tells the frontend a run released the slot, however it
+// ended. Terminal event → BroadcastTerminal, so a slow SSE consumer's full
+// buffer can't drop it (the run would look like it never ended). A completed
+// parse also posts the desktop notification.
+func (a *App) emitRunFinished(ev RunFinishedEvent) {
+	data, _ := json.Marshal(ev)
+	emitEvent("run-finished", ev)
+	a.SSEHub.BroadcastTerminal("run-finished", string(data))
+	if ev.Summary != nil {
+		notifyParseComplete(ev.Summary.MatchesUpdated)
+	}
 }
 
 // parseCompleteNotifier posts a native "parse complete" desktop notification.
 // The desktop runtime (pkg/cmd RunWails) sets it via SetParseCompleteNotifier;
 // it stays nil under tests + when the Wails binary runs in --server mode, so
-// emitParseComplete silently skips it there.
+// emitRunFinished silently skips it there.
 var parseCompleteNotifier func(matchCount int)
 
 // SetParseCompleteNotifier wires the desktop notification sender — called once
@@ -99,14 +99,6 @@ func notifyParseComplete(matchCount int) {
 	if parseCompleteNotifier != nil && matchCount > 0 {
 		parseCompleteNotifier(matchCount)
 	}
-}
-
-// emitParseCanceled notifies the frontend that a parse run was aborted via
-// CancelParse. Distinct from parse-complete so the UI can render "stopped" vs
-// "done" copy.
-func (a *App) emitParseCanceled() {
-	emitEvent("parse-canceled")
-	a.SSEHub.Broadcast("parse-canceled")
 }
 
 // PickTesseractBinary opens a native file chooser and applies the selection

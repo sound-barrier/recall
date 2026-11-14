@@ -90,7 +90,7 @@ test.describe('parse staleness notice', () => {
     let reparseUrl: string | null = null
     await page.route('**/api/v1/parses*', async (route: Route) => {
       reparseUrl = route.request().url()
-      await route.fulfill({ status: 202, body: '' })
+      await route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ run_id: 1 }) })
     })
 
     await page.goto('/')

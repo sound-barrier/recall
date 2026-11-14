@@ -120,6 +120,17 @@ func writeJSON(w http.ResponseWriter, r *http.Request, v any, err error) {
 	}
 }
 
+// writeJSONStatus encodes v as JSON under a status other than the implicit
+// 200. Content-Type must be set before WriteHeader: once the status line is
+// on the wire, header changes are no-ops and the body goes out as text/plain.
+func writeJSONStatus(w http.ResponseWriter, _ *http.Request, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if encErr := json.NewEncoder(w).Encode(v); encErr != nil {
+		applog.Subsystem("server").Error("json encode", "err", encErr)
+	}
+}
+
 // errStatus pairs an app-layer sentinel error with the problem type that
 // writeError maps it to.
 type errStatus struct {

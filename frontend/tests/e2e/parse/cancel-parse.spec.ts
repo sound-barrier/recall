@@ -5,7 +5,7 @@
  *
  *   user clicks Stop
  *     → DELETE /api/v1/parses/active hits the server
- *     → SSE parse-canceled fires
+ *     → SSE run-finished (outcome canceled) fires
  *     → useEventStream calls onParseCanceled
  *     → App.vue clears cancelingParse + reloads records
  *     → IngestView's Stop button flips back to Run
@@ -13,7 +13,7 @@
  * The POST /parses mock never resolves (keeps parseBusy=true) so
  * the spec can deterministically exercise the Stop affordance.
  * The SSE mock from parse-queue-and-skeletons.spec.ts is reused
- * to drive the parse-canceled event after the DELETE lands.
+ * to drive the run-finished event after the DELETE lands.
  */
 import type { Route } from '@playwright/test'
 
@@ -58,7 +58,7 @@ async function installSSEMock(page: import('@playwright/test').Page) {
 }
 
 test.describe('cancel-parse — Stop affordance + SSE confirmation', () => {
-  test('Stop click fires DELETE + flips the button back on parse-canceled', async ({ page }) => {
+  test('Stop click fires DELETE + flips the button back on the canceled run-finished', async ({ page }) => {
     await installSSEMock(page)
 
     // Boot mocks: clean records, configured screenshots dir, found
@@ -79,15 +79,10 @@ test.describe('cancel-parse — Stop affordance + SSE confirmation', () => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ count: 5, parked: 0 }) })
     })
 
-    // POST /api/v1/parses never resolves — keeps parseBusy=true so
-    // the Stop button stays visible for the test's lifetime. The
-    // pending request gets cleaned up when the page tears down.
-    let parsePending: () => void = () => undefined
+    // POST /api/v1/parses answers 202 with the run's id; the run stays
+    // in flight until the test fires its run-finished.
     await page.route('**/api/v1/parses', async (route: Route) => {
-      await new Promise<void>((resolve) => {
-        parsePending = resolve
-      })
-      await route.fulfill({ status: 202 })
+      await route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ run_id: 1 }) })
     })
 
     // DELETE /api/v1/parses/active — count the calls + return 202.
@@ -99,15 +94,15 @@ test.describe('cancel-parse — Stop affordance + SSE confirmation', () => {
         deleteCount++
         await route.fulfill({ status: 202 })
       } else {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ running: false, done: 0, total: 0, scope: '' }) })
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ state: 'idle' }) })
       }
     })
 
     await page.goto('/')
     await page.getByRole('tab', { name: 'Parse' }).click()
 
-    // Click Run Parse — POST stays pending; parseBusy flips true;
-    // the Stop button replaces Run Parse.
+    // Click Run Parse — the run is in flight; the Stop button replaces
+    // Run Parse (held for a beat, so click() waits until it is enabled).
     const runBtn = page.locator('button.btn.primary.big').filter({ hasText: 'Run Parse' })
     await runBtn.click()
 
@@ -122,14 +117,12 @@ test.describe('cancel-parse — Stop affordance + SSE confirmation', () => {
     await expect(stopBtn).toContainText('Canceling…')
     await expect(stopBtn).toBeDisabled()
 
-    // Server fires parse-canceled over SSE → App.vue clears
-    // cancelingParse + parseBusy via the onParseCanceled hook
-    // (which calls load()). Run Parse comes back.
+    // The run's run-finished (outcome canceled) returns it to idle.
+    // Run Parse comes back.
     await page.evaluate(() => {
-      ;(window as unknown as { __recallSSE: { emit: (n: string, d?: unknown) => void } }).__recallSSE.emit('parse-canceled')
+      ;(window as unknown as { __recallSSE: { emit: (n: string, d?: unknown) => void } }).__recallSSE
+        .emit('run-finished', { run_id: 1, kind: 'parse', outcome: 'canceled' })
     })
-    // Release the pending POST so the runParse() finally block fires.
-    parsePending()
 
     await expect(page.getByTestId('cancel-parse-btn')).toHaveCount(0)
     await expect(page.locator('button.btn.primary.big').filter({ hasText: 'Run Parse' })).toBeVisible()
@@ -162,7 +155,7 @@ test.describe('cancel-parse — Stop affordance + SSE confirmation', () => {
         deleteCount++
         await route.fulfill({ status: 202 })
       } else {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ running: false, done: 0, total: 0, scope: '' }) })
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ state: 'idle' }) })
       }
     })
 
@@ -176,7 +169,7 @@ test.describe('cancel-parse — Stop affordance + SSE confirmation', () => {
     await page.evaluate(() => {
       ;(window as unknown as { __recallSSE: { emit: (n: string, d?: unknown) => void } }).__recallSSE.emit(
         'parse-progress',
-        { done: 5, total: 20, filename: 'mid.png', screenshot_type: 'summary' },
+        { run_id: 1, done: 5, total: 20, filename: 'mid.png', screenshot_type: 'summary' },
       )
     })
 
@@ -196,4 +189,81 @@ test.describe('cancel-parse — Stop affordance + SSE confirmation', () => {
     // for data-no-jump + @click.stop).
     await expect(page.getByRole('tab', { name: /^Matches/ })).toHaveAttribute('aria-selected', 'true')
   })
+
+  // Stop takes Run's place on the same spot: the second click of a
+  // double-click on Run used to land on Stop and cancel the fresh run.
+  test('a double-click on Run Parse does not cancel the run it starts', async ({ page }) => {
+    await installSSEMock(page)
+    await bootParseReady(page)
+    let deleteCount = 0
+    await page.route('**/api/v1/parses', async (route: Route) => {
+      await route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ run_id: 1 }) })
+    })
+    await page.route('**/api/v1/parses/active', async (route: Route) => {
+      if (route.request().method() === 'DELETE') deleteCount++
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ state: 'idle' }) })
+    })
+
+    await page.goto('/')
+    await page.getByRole('tab', { name: 'Parse' }).click()
+    // A person's double-click: the second press lands on the same spot a
+    // beat later — after the POST has answered and Stop has taken Run's place.
+    const box = await page.getByTestId('run-parse-btn').boundingBox()
+    if (!box) throw new Error('Run Parse has no box')
+    const x = box.x + box.width / 2
+    const y = box.y + box.height / 2
+    await page.mouse.click(x, y)
+    await expect(page.getByTestId('cancel-parse-btn')).toContainText('Stop Parse')
+    await page.mouse.click(x, y)
+
+    await page.waitForTimeout(300)
+    expect(deleteCount).toBe(0)
+  })
+
+  // A restore or a profile switch holds the same run slot. A client that
+  // loads mid-restore used to read it as a parse, offer Stop, and sit on
+  // "Canceling…" forever after a cancel the server ignored.
+  test('a store swap holding the slot shows a disabled Busy…, not Stop', async ({ page }) => {
+    await installSSEMock(page)
+    await bootParseReady(page)
+    await page.route('**/api/v1/parses/active', async (route: Route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({ state: 'running', run_id: 4, kind: 'restore', done: 0, total: 0 }),
+      })
+    })
+
+    await page.goto('/')
+    await page.getByRole('tab', { name: 'Parse' }).click()
+
+    const busy = page.getByTestId('cancel-parse-btn')
+    await expect(busy).toContainText('Busy…')
+    await expect(busy).toBeDisabled()
+
+    await page.evaluate(() => {
+      ;(window as unknown as { __recallSSE: { emit: (n: string, d?: unknown) => void } }).__recallSSE
+        .emit('run-finished', { run_id: 4, kind: 'restore', outcome: 'completed' })
+    })
+    await expect(page.getByTestId('run-parse-btn')).toBeVisible()
+  })
 })
+
+// Clean records, a configured folder, a found Tesseract and pending files,
+// so Run Parse is enabled.
+async function bootParseReady(page: import('@playwright/test').Page) {
+  await page.route('**/api/v1/matches', async (route: Route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+  })
+  await page.route('**/api/v1/settings/screenshots-folder', async (route: Route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ path: '/srv/recall' }) })
+  })
+  await page.route('**/api/v1/settings/tesseract', async (route: Route) => {
+    await route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ path: '/usr/local/bin/tesseract', found: true, version: '5.5.0', supported: true, error: '', default: '/usr/local/bin/tesseract', platform: 'darwin' }),
+    })
+  })
+  await page.route('**/api/v1/screenshots/pending-count', async (route: Route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ count: 5, parked: 0 }) })
+  })
+}

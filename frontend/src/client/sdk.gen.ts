@@ -533,15 +533,16 @@ export const bulkSetMatchPlayMode = <ThrowOnError extends boolean = false>(optio
  * on match_key and survive the re-parse. ~1 s per screenshot.
  *
  * Runs the parse in a BACKGROUND goroutine and returns
- * `202 Accepted` **immediately** — the request is not held open
- * for the OCR loop. Subscribe to `GET /api/v1/events` for progress
- * + completion (`parse-progress` / `parse-complete`), and poll
- * `GET /api/v1/parses/active` to resync after a reconnect or page
- * reload (SSE is not replayed). Re-fetch `GET /api/v1/matches` on
- * completion.
+ * `202 Accepted` **immediately** with the run's id — the request is
+ * not held open for the OCR loop. Subscribe to `GET /api/v1/events`
+ * for progress and the run's end (`parse-progress` / `run-finished`,
+ * both carrying that id), and read `GET /api/v1/parses/active` to
+ * resync after a reconnect or page reload (SSE is not replayed).
+ * Re-fetch `GET /api/v1/matches` once the run has finished.
  *
- * `409 Conflict` when a parse is already in flight (single-flight,
- * fail-fast) or the screenshots folder is unset/unreadable.
+ * `409 Conflict` when the run slot is already held (single-flight,
+ * fail-fast — by a parse or by a store swap such as a restore) or
+ * the screenshots folder is unset/unreadable.
  *
  */
 export const parseScreenshots = <ThrowOnError extends boolean = false>(options?: Options<ParseScreenshotsData, ThrowOnError>): RequestResult<ParseScreenshotsResponses, ParseScreenshotsErrors, ThrowOnError> => (options?.client ?? client).post<ParseScreenshotsResponses, ParseScreenshotsErrors, ThrowOnError>({ url: '/api/v1/parses', ...options });
@@ -557,22 +558,26 @@ export const parseScreenshots = <ThrowOnError extends boolean = false>(options?:
  *
  * Any per-screenshot rows already committed to SQLite stay put;
  * a follow-up `GET /api/v1/matches` reflects the partial state.
- * The frontend learns about completion via the SSE
- * `parse-canceled` event so it can flip the Stop button back
+ * The frontend learns the run has stopped from its `run-finished`
+ * event (`outcome: canceled`), so it can flip the Stop button back
  * to Run without polling.
  *
- * `202` on success, `409` when no parse is in flight.
+ * `202` on success. `409` when nothing is running, or when the slot
+ * is held by a run that cannot be stopped (a store swap — stopping
+ * one halfway would strand the app between two databases).
  *
  */
 export const cancelParse = <ThrowOnError extends boolean = false>(options?: Options<CancelParseData, ThrowOnError>): RequestResult<CancelParseResponses, CancelParseErrors, ThrowOnError> => (options?.client ?? client).delete<CancelParseResponses, CancelParseErrors, ThrowOnError>({ url: '/api/v1/parses/active', ...options });
 
 /**
- * Active-parse status snapshot
+ * Run-slot status snapshot
  *
  * The resync anchor for the async parse pipeline. SSE messages are
  * not replayed on connect, so a client that reconnects or reloads
- * mid-parse reads this to restore "is a parse running, and how far
- * along." `running=false` when idle.
+ * mid-run reads this to restore "is something running, what, and how
+ * far along." The slot is held by a parse or by a store swap (restore,
+ * maintenance, profile switch or rename, screenshot takeover); `kind`
+ * says which. An idle slot carries nothing but `state`.
  *
  */
 export const getActiveParse = <ThrowOnError extends boolean = false>(options?: Options<GetActiveParseData, ThrowOnError>): RequestResult<GetActiveParseResponses, GetActiveParseErrors, ThrowOnError> => (options?.client ?? client).get<GetActiveParseResponses, GetActiveParseErrors, ThrowOnError>({ url: '/api/v1/parses/active', ...options });
@@ -2226,10 +2231,10 @@ export const putSelfReviewMoment = <ThrowOnError extends boolean = false>(option
  * element of `GET /api/v1/matches`. May fire multiple
  * times for the same match within a single parse batch as
  * additional screenshots refine its fields.
- * * `parse-complete` — fired after a parse run finishes; no
- * payload.
- * * `parse-canceled` — fired when an in-flight run is aborted
- * via `DELETE /api/v1/parses/active`; no payload.
+ * * `run-finished` — fired exactly once for every run that held
+ * the run slot, however it ended (`completed`, `canceled` or
+ * `failed`); payload is `RunFinishedEvent`. A guaranteed
+ * delivery: a slow consumer is never dropped from it.
  * * `tesseract-status` — fired when the background engine probe
  * resolves; payload is `TesseractStatus`.
  * * `watch-activity` — fired when the folder watcher sees a new
