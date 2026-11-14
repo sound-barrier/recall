@@ -55,7 +55,7 @@ paths:
   snapshot, which made a first import quadratic (18 s at 5 000 matches).
   Resolving to a fresh key records the verdict in `duplicate_matches`, and
   both cards carry a "possible duplicate of" chip naming the other.
-- **The run slot (`run_slot.go`) — single-flight, an explicit state
+- **The run slot (`parse_run.go`) — single-flight, an explicit state
   machine.** One `runSlot` value under `runMu`: `idle | running | canceling`,
   with the run's `RunKind` (`parse`, `reparse`, and the store swaps
   `restore`, `maintenance`, `profile_switch`, `profile_rename`,
