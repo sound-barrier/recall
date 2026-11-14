@@ -31,6 +31,7 @@ export interface SelfReviewNoteWire {
 export interface SelfReviewWire {
   review_id: string
   title: string
+  status: 'open' | 'finished'
   focus_items: FocusItemWire[]
   created_at: string
   updated_at: string
@@ -106,6 +107,12 @@ function nowIso(offsetMs = 0): string {
   return new Date(Date.now() + offsetMs).toISOString().replace(/\.\d{3}Z$/, 'Z')
 }
 
+/** The same sitting, still being written in. */
+export function openSitting(over: Partial<SelfReviewWire> = {}): SelfReviewWire {
+  const { finished_at: _finished, ...open } = finishedSitting()
+  return { ...open, status: 'open', ...over }
+}
+
 /** A finished sitting over the two newest fixture matches, with one note. */
 export function finishedSitting(over: Partial<SelfReviewWire> = {}): SelfReviewWire {
   const [first, second] = SESSION_FIXTURE.matches
@@ -113,6 +120,7 @@ export function finishedSitting(over: Partial<SelfReviewWire> = {}): SelfReviewW
   return {
     review_id: SITTING_ID,
     title: "Tuesday's Ana games",
+    status: 'finished',
     focus_items: [{ item_id: 'a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d', text: 'Stop chasing flanks; hold the high ground and let them come.', status: 'working' }],
     created_at: created,
     updated_at: created,
@@ -224,7 +232,7 @@ export async function mockSelfReviews(page: Page, opts: SelfReviewsMockOptions =
         const id = state.minted === 0 ? SITTING_ID : `${OTHER_SITTING_ID.slice(0, -1)}${state.minted}`
         state.minted += 1
         const created: SelfReviewWire = {
-          review_id: id, title: body.title ?? '', focus_items: [], created_at: nowIso(), updated_at: nowIso(),
+          review_id: id, title: body.title ?? '', status: 'open', focus_items: [], created_at: nowIso(), updated_at: nowIso(),
           match_keys: [...new Set(body.match_keys)], notes: {},
         }
         state.reviews.set(id, created)
@@ -263,13 +271,25 @@ const SITTING_SUB_ROUTES: Record<
   'focus-items:PUT': handleSetFocusItems,
   'completion:POST': (route, review, ctx) => {
     review.finished_at ??= nowIso()
+    review.status = 'finished'
     ctx.mock.finished.push(review.review_id)
     return fulfillJSON(route, review)
   },
 }
 
+/**
+ * The server's rule, mirrored: a finished sitting is on the record, and every
+ * edit to it is a 409. Reading it, deleting it whole and re-finishing it stay.
+ */
+function editsAFinishedSitting(seg: string[], method: string, review: SelfReviewWire): boolean {
+  if (review.status !== 'finished' || method === 'GET') return false
+  if (seg.length === 1) return method === 'PUT'
+  return seg[1] !== 'completion'
+}
+
 async function handleSittingRoute(route: Route, seg: string[], review: SelfReviewWire, ctx: MockContext): Promise<void> {
   const method = route.request().method()
+  if (editsAFinishedSitting(seg, method, review)) return fulfillProblem(route, 409, 'self review is finished')
   if (seg.length === 1) return handleSittingHeader(route, method, review, ctx)
   const sub = seg.length === 2 ? SITTING_SUB_ROUTES[`${seg[1]}:${method}`] : undefined
   if (sub) return sub(route, review, ctx)

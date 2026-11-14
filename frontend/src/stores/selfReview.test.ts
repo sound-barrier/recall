@@ -21,7 +21,7 @@ const KEY_B = 'match-2026-08-02T20-00-00'
 
 function sitting(over: Partial<SelfReview> = {}): SelfReview {
   return {
-    review_id: 'r-1', title: '', focus_items: [], created_at: '2026-08-18T19:00:00Z', updated_at: '2026-08-18T19:00:00Z',
+    review_id: 'r-1', title: '', status: 'open', focus_items: [], created_at: '2026-08-18T19:00:00Z', updated_at: '2026-08-18T19:00:00Z',
     match_keys: [KEY_B, KEY_A], notes: {}, ...over,
   }
 }
@@ -38,7 +38,7 @@ beforeEach(() => {
     GetSelfReview: vi.fn(async () => sitting()),
     UpdateSelfReview: vi.fn(async (_id: string, title: string) => sitting({ title })),
     SetSelfReviewFocusItems: vi.fn(async (_id: string, items: FocusItem[]) => sitting({ focus_items: items })),
-    FinishSelfReview: vi.fn(async () => sitting({ finished_at: '2026-08-18T20:00:00Z' })),
+    FinishSelfReview: vi.fn(async () => sitting({ status: 'finished', finished_at: '2026-08-18T20:00:00Z' })),
     DeleteSelfReview: vi.fn(async () => undefined),
     SetSelfReviewMatches: vi.fn(async (_id: string, keys: string[]) => sitting({ match_keys: keys })),
     PutSelfReviewNote: vi.fn(async () => undefined),
@@ -233,7 +233,7 @@ describe('selfReview store — editing the set and refusing twins', () => {
   })
 
   it('createFromKeys does NOT reopen a finished sitting over the same keys', async () => {
-    const done = sitting({ review_id: 'r-done', match_keys: [KEY_A], finished_at: '2026-08-18T20:00:00Z' })
+    const done = sitting({ review_id: 'r-done', match_keys: [KEY_A], status: 'finished', finished_at: '2026-08-18T20:00:00Z' })
     api.ListSelfReviews = vi.fn(async () => [done])
     setApiBacking(api)
     const store = useSelfReviewStore()

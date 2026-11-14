@@ -46,12 +46,11 @@ func TestSelfReviewRoutes_RoundTrip(t *testing.T) {
 	mustStatus(t, fire(t, mux, http.MethodPost, base+"/completion", nil), http.StatusOK, "finish")
 	assertFinishedOnListAndFlags(t, mux, fs)
 
-	if rec := del(t, mux, base+"/notes/match-b/moments/m-1"); rec.Code != http.StatusNoContent {
-		t.Errorf("delete moment = %d", rec.Code)
-	}
-	if rec := del(t, mux, base+"/notes/match-a"); rec.Code != http.StatusNoContent {
-		t.Errorf("delete note = %d", rec.Code)
-	}
+	// A finished sitting is on the record: an edit is a 409 problem.
+	mustStatus(t, del(t, mux, base+"/notes/match-b/moments/m-1"), http.StatusConflict, "delete moment after finish")
+	mustStatus(t, del(t, mux, base+"/notes/match-a"), http.StatusConflict, "delete note after finish")
+	mustStatus(t, put(t, mux, base+"/notes/match-a", map[string]any{"kind": "note", "text": "later"}), http.StatusConflict, "put note after finish")
+	mustStatus(t, put(t, mux, base, map[string]any{"title": "renamed"}), http.StatusConflict, "rename after finish")
 	if rec := del(t, mux, base); rec.Code != http.StatusNoContent {
 		t.Errorf("delete sitting = %d", rec.Code)
 	}
@@ -125,7 +124,7 @@ func assertFinishedOnListAndFlags(t *testing.T, mux *http.ServeMux, fs *dbtest.F
 	if err := json.Unmarshal(list.Body.Bytes(), &all); err != nil {
 		t.Fatal(err)
 	}
-	if len(all) != 1 || all[0].FinishedAt == "" {
+	if len(all) != 1 || all[0].FinishedAt == "" || all[0].Status != review.StatusFinished {
 		t.Errorf("list after finish = %+v", all)
 	}
 	if flags, _ := fs.LoadReviews(); flags["match-a"].ReviewedBy != "self" || flags["match-b"].ReviewedBy != "self" {

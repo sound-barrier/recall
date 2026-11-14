@@ -438,7 +438,6 @@ yet fixed. They are ordered by likelihood × blast radius.
   - The records pulse never fires in the normal path, because upserts
     grow the cache before `load()` measures it.
   - Game-data apply re-arms mid-apply.
-  - Self-review `finished_at` is nullable and Finish is not atomic.
   - `IgnoreScreenshot` spans four transactions.
   - Clear/restore never release the claims ledger.
 - **§11 typed-discriminant gaps (S).** These are still bare strings:

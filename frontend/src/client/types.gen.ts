@@ -1504,6 +1504,15 @@ export type SelfReview = {
     review_id: string;
     title: string;
     /**
+     * `open` while the player is writing in it. `finished` once the
+     * completion stamped it and marked its matches reviewed: the
+     * sitting is on the record, and every edit to it (title, set,
+     * notes, moments, focus list) answers `409`. Deleting it, and
+     * moving one of its focus items' status, stay open.
+     *
+     */
+    status: 'open' | 'finished';
+    /**
      * What the sitting concluded, in the player's order.
      */
     focus_items: Array<FocusItem>;

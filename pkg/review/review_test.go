@@ -256,8 +256,9 @@ func TestFinish_StampsSelfWhereACoachHasNot(t *testing.T) {
 func assertFinishKeepsTheFirstStamp(t *testing.T, s *dbtest.Fake) {
 	t.Helper()
 	const firstStamp = "2026-01-01T10:00:00Z"
-	seeded, err := s.CreateSelfReview(db.SelfReview{FinishedAt: firstStamp, MatchKeys: []string{keyA}})
+	seeded, err := s.CreateSelfReview(db.SelfReview{MatchKeys: []string{keyA}})
 	mustNoErr(t, err)
+	mustNoErr(t, s.FinishSelfReview(db.SelfReviewFinish{ReviewID: seeded.ReviewID, At: firstStamp}))
 	again, err := review.Finish(s, seeded.ReviewID)
 	mustNoErr(t, err)
 	if again.FinishedAt != firstStamp {

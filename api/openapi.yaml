@@ -6314,13 +6314,22 @@ components:
         One self-review sitting, whole: the header, the member keys in the
         player's order, and the notes keyed by match. `finished_at` is
         absent while the sitting is in progress.
-      required: [review_id, title, focus_items, created_at, updated_at, match_keys, notes]
+      required: [review_id, title, status, focus_items, created_at, updated_at, match_keys, notes]
       properties:
         review_id:
           type: string
         title:
           type: string
           maxLength: 120
+        status:
+          type: string
+          enum: [open, finished]
+          description: |
+            `open` while the player is writing in it. `finished` once the
+            completion stamped it and marked its matches reviewed: the
+            sitting is on the record, and every edit to it (title, set,
+            notes, moments, focus list) answers `409`. Deleting it, and
+            moving one of its focus items' status, stay open.
         focus_items:
           type: array
           items:

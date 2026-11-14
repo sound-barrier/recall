@@ -27,7 +27,8 @@ export interface NoteBlockView {
   removeLabel: string
   /** What the armed remove says — the label that states the cost. */
   armedRemoveLabel: string
-  removal: NoteBlockRemoval
+  /** Absent when the block is on the record and cannot be taken off the match. */
+  removal?: NoteBlockRemoval
   /** Set when the signature can reopen the sitting it names. */
   reopenReviewId?: string
 }
@@ -67,7 +68,8 @@ export function selfBlockView(note: MatchSelfReviewNote): NoteBlockView {
     sign: `— ${title || 'Your review'} · ${day}`,
     removeLabel: 'Remove from this review',
     armedRemoveLabel: 'Delete this note — moments go with it',
-    removal: { kind: 'self', reviewId: note.review_id },
+    // A finished sitting is on the record; the server refuses edits to it.
+    ...(note.review_finished_at ? {} : { removal: { kind: 'self' as const, reviewId: note.review_id } }),
     reopenReviewId: note.review_id,
   }
 }

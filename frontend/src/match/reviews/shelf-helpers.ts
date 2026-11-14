@@ -46,7 +46,7 @@ export function shelfCard(sitting: SelfReview, records: readonly MatchRecord[]):
     reviewId: sitting.review_id,
     title: sitting.title.trim() || `Review of ${formatPlayerDay(sitting.created_at.slice(0, 10))}`,
     dayKey: sitting.created_at.slice(0, 10),
-    finished: Boolean(sitting.finished_at),
+    finished: sitting.status === 'finished',
     matchCount: sitting.match_keys.length,
     missingCount: sitting.match_keys.length - members.length,
     matchKeys: [...sitting.match_keys],
