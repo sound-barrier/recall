@@ -56,7 +56,7 @@ function settleSaving(slot: Extract<SaveSlot, { status: 'saving' }>, seq: number
 }
 
 /** The one transition function for a key's save. */
-export function stepSave(slot: SaveSlot, event: SaveEvent): SaveStep {
+function stepSave(slot: SaveSlot, event: SaveEvent): SaveStep {
   switch (event.type) {
     case 'queue':
       return slot.status === 'saving'
