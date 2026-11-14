@@ -177,6 +177,22 @@ describe('draft hydration', () => {
     expect(editor.tagDraft.value).toEqual([]) // cleared, not left behind
   })
 
+  // A tag commit refetches the record. The refetch used to overwrite the
+  // note draft wholesale, eating the sentence being typed beside the tags.
+  it('a refetch keeps a note or replay code still being typed', async () => {
+    const source = ref(recWith({ note: 'saved line', tags: [] }))
+    const { editor } = editorOver(() => source.value)
+    editor.noteDraft.value = 'saved line, and more being typed'
+    editor.replayDraft.value = 'AB1'
+
+    source.value = recWith({ note: 'saved line', tags: ['stack'] })
+    await nextTick()
+
+    expect(editor.noteDraft.value).toBe('saved line, and more being typed')
+    expect(editor.replayDraft.value).toBe('AB1')
+    expect(editor.tagDraft.value).toEqual(['stack'])
+  })
+
   it('a refreshed record cancels an in-flight apply so undo cannot resurrect it', async () => {
     const source = ref(recWith({ members: ['Ana'] }))
     const { editor } = editorOver(() => source.value)
@@ -272,13 +288,15 @@ describe('tag chips', () => {
     expect(writes).toHaveLength(1)
   })
 
-  it('a named tag toggles on and off, persisting each transition', () => {
+  it('a named tag toggles on and off, persisting each transition', async () => {
     const { editor, writes } = editorOver(rec)
     editor.toggleNamedTag('Stream')
     expect(editor.tagDraft.value).toEqual(['stream'])
+    await flushMicrotasks()
 
     editor.toggleNamedTag('stream')
     expect(editor.tagDraft.value).toEqual([])
+    await flushMicrotasks()
     expect(writes).toHaveLength(2)
   })
 
@@ -535,5 +553,35 @@ describe('note highlighting', () => {
     // editor draws decorations over a document it must not touch. Neither can
     // use a flat list of text runs.
     expect(editor.noteHighlightTerms.value).toEqual(['clutch'])
+  })
+})
+
+// Every write carries the whole annotation, so the LAST one to land wins.
+// Two in flight at once could land in either order and leave the older set
+// of tags on the server.
+describe('annotation writes go out one at a time', () => {
+  it('holds a second write until the first has landed', async () => {
+    const landed: string[][] = []
+    const pending: (() => void)[] = []
+    const editor = useMatchAnnotationEditor(
+      rec,
+      (input) => new Promise<boolean>((resolve) => {
+        pending.push(() => { landed.push(input.tags ?? []); resolve(true) })
+      }),
+      () => [],
+      () => [],
+    )
+    editor.toggleNamedTag('stack')
+    editor.toggleNamedTag('stream')
+    await flushMicrotasks()
+    expect(pending).toHaveLength(1)
+
+    pending[0]?.()
+    await flushMicrotasks()
+    await flushMicrotasks()
+    expect(pending).toHaveLength(2)
+    pending[1]?.()
+    await flushMicrotasks()
+    expect(landed).toEqual([['stack'], ['stack', 'stream']])
   })
 })

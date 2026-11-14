@@ -194,10 +194,11 @@ function step(key: string | null): void {
  */
 async function onAttachMoment(momentId: string, file: File): Promise<void> {
   const key = room.activeKey.value
-  const current = (props.api.moments()[key] ?? []).find((m) => m.momentId === momentId)
-  if (!current) return
+  const find = () => (props.api.moments()[key] ?? []).find((m) => m.momentId === momentId)
+  if (!find()) return
   try {
-    props.api.updateMoment(key, await attachFrame(current, file))
+    const attached = await attachFrame(file, find)
+    if (attached) props.api.updateMoment(key, attached)
   } catch (e) {
     useAppStore().setErrorFromRaw(String(e))
   }

@@ -17,15 +17,18 @@ function harness() {
   }
   const queued = new Map<string, () => Promise<void>>()
   const dirty = vi.fn()
+  const started = new Set<string>()
   const drafts = useReviewDrafts({
-    writes: writes as unknown as DraftWrites,
+    writes: () => writes as unknown as DraftWrites,
     queueSave: (key, run) => { queued.set(key, run) },
+    cancelSave: (key) => { queued.delete(key) },
+    hasStarted: (key) => started.has(key),
     onDirty: dirty,
   })
   const runAll = async () => {
     for (const [key, run] of [...queued]) { queued.delete(key); await run() }
   }
-  return { drafts, writes, queued, dirty, runAll }
+  return { drafts, writes, queued, started, dirty, runAll }
 }
 
 const KEY = 'match-2026-08-01T20-00-00'
@@ -111,5 +114,54 @@ describe('useReviewDrafts', () => {
     drafts.clear()
     expect(drafts.notes.value).toEqual({})
     expect(drafts.moments.value).toEqual({})
+  })
+
+  // A savable moment queues its PUT; removing it before that PUT went out
+  // used to leave the PUT queued, and the moment was written back.
+  it('a moment removed before its first write leaves no write behind', async () => {
+    const { drafts, writes, runAll } = harness()
+    drafts.updateMoment(KEY, moment('m-1', '04:45', 'peeled late'))
+    drafts.removeMoment(KEY, 'm-1')
+    await runAll()
+    expect(writes.putMoment).not.toHaveBeenCalled()
+    expect(writes.deleteMoment).not.toHaveBeenCalled()
+  })
+
+  // Its PUT already on the wire: the moment WILL exist on the server, so the
+  // remove queues a delete behind it rather than dropping the question.
+  it('a moment removed while its first write is in flight is deleted after it', async () => {
+    const { drafts, writes, queued, started, runAll } = harness()
+    drafts.updateMoment(KEY, moment('m-1', '04:45', 'peeled late'))
+    started.add(momentSaveKey('m-1'))
+    queued.delete(momentSaveKey('m-1'))
+    drafts.removeMoment(KEY, 'm-1')
+    await runAll()
+    expect(writes.deleteMoment).toHaveBeenCalledWith(KEY, 'm-1')
+  })
+
+  // The write's target is the one the edit was made against. A sitting
+  // switched before the debounce fired used to receive the old sitting's note.
+  it('binds each write to the target it was queued under', async () => {
+    let target = 'A'
+    const calls: string[] = []
+    const queued = new Map<string, () => Promise<void>>()
+    const drafts = useReviewDrafts({
+      writes: () => {
+        const at = target
+        return {
+          putNote: async () => { calls.push(`put:${at}`) },
+          deleteNote: async () => { calls.push(`delete:${at}`) },
+          putMoment: async () => { calls.push(`putMoment:${at}`) },
+          deleteMoment: async () => { calls.push(`deleteMoment:${at}`) },
+        }
+      },
+      queueSave: (key, run) => { queued.set(key, run) },
+      cancelSave: (key) => { queued.delete(key) },
+      hasStarted: () => false,
+    })
+    drafts.updateNote(KEY, note('about A'))
+    target = 'B'
+    for (const run of queued.values()) await run()
+    expect(calls).toEqual(['put:A'])
   })
 })

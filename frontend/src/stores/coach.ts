@@ -147,16 +147,19 @@ export const useCoachStore = defineStore('coach', () => {
   // evidence that this one never landed, and the export then found an empty
   // queue and cleared the "not exported" warning on an archive that was
   // missing the note.
-  const { saveStateFor, hasFailedSaves, queueSave, flushSaves, discardSaves } = useCoachAutosave()
+  const { saveStateFor, hasFailedSaves, hasStarted, queueSave, cancelSave, flushSaves, discardSaves } = useCoachAutosave()
 
   // The notes and moments themselves, and the rules for writing them back —
   // shared with the player's own review sitting, which drives the same desk.
   const drafts = useReviewDrafts({
-    writes: {
+    // One open session at a time, addressed by the server — nothing to bind.
+    writes: () => ({
       putNote: PutCoachNote, deleteNote: DeleteCoachNote,
       putMoment: PutCoachMoment, deleteMoment: DeleteCoachMoment,
-    },
+    }),
     queueSave,
+    cancelSave,
+    hasStarted,
     onDirty: markDirty,
   })
   const { notes, moments, updateNote, updateMoment, removeMoment } = drafts
