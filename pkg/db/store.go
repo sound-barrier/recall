@@ -115,7 +115,7 @@ type Store interface {
 	// frozen when it is handed back. An unstamped row is an ABANDONED
 	// sitting and is kept on purpose.
 	StartCoachSession(row CoachSessionRow) error
-	PointCoachSessionAt(sessionID string, playerRef int64, handle, kind string) error
+	PointCoachSessionAt(sessionID string, playerRef int64, handle string, kind CoachKind) error
 	EndCoachSession(sessionID string, outcome SittingStatus, focus []CoachSessionFocusRow) error
 	ListCoachSessions(playerRef int64) ([]CoachSessionRow, error)
 

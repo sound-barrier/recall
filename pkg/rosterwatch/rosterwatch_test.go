@@ -44,8 +44,8 @@ func upstream() rosterwatch.Upstream {
 	}
 }
 
-func kinds(r rosterwatch.Report) []string {
-	out := make([]string, 0, len(r.Findings))
+func kinds(r rosterwatch.Report) []rosterwatch.FindingKind {
+	out := make([]rosterwatch.FindingKind, 0, len(r.Findings))
 	for _, f := range r.Findings {
 		out = append(out, f.Kind)
 	}

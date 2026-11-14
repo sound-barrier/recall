@@ -198,7 +198,7 @@ func keepClosest(best map[string]time.Duration, key string, d time.Duration) {
 
 // rankWithReason folds the per-key distances into the wire shape, stamped
 // with the producer that found them and sorted by distance ascending.
-func rankWithReason(best map[string]time.Duration, reason string) []db.AmbiguousCandidate {
+func rankWithReason(best map[string]time.Duration, reason db.CandidateReason) []db.AmbiguousCandidate {
 	if len(best) == 0 {
 		return nil
 	}

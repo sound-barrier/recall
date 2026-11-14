@@ -26,10 +26,10 @@ var validDisruptionSides = map[string]bool{"self": true, "team": true, "enemy": 
 // the tally unable to tell a placement from a typo. The empty string is the
 // ordinary case — this match counts — and is not listed here; callers treat
 // blank as "no reason given" before validating.
-var validExclusionReasons = map[string]bool{
-	"placement":      true,
-	"mmr_adjustment": true,
-	"outage":         true,
+var validExclusionReasons = map[db.ExclusionReason]bool{
+	match.ExclusionPlacement:     true,
+	match.ExclusionMMRAdjustment: true,
+	match.ExclusionOutage:        true,
 }
 
 // ErrInvalidLeaver is returned by SetAnnotation when a leaver side isn't
@@ -184,13 +184,13 @@ func normalizeAnnotation(in AnnotationInput) (db.Annotation, error) {
 
 // normalizeExclusionReason lowercases + trims, treats blank as "counts
 // normally", and refuses anything outside the vocabulary.
-func normalizeExclusionReason(raw string) (string, error) {
-	reason := strings.ToLower(strings.TrimSpace(raw))
-	if reason == "" {
-		return "", nil
+func normalizeExclusionReason(raw string) (db.ExclusionReason, error) {
+	reason := db.ExclusionReason(strings.ToLower(strings.TrimSpace(raw)))
+	if reason == match.ExclusionNone {
+		return match.ExclusionNone, nil
 	}
 	if !validExclusionReasons[reason] {
-		return "", ErrInvalidExclusionReason
+		return match.ExclusionNone, ErrInvalidExclusionReason
 	}
 	return reason, nil
 }

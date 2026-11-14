@@ -31,7 +31,7 @@ func (f *Fake) StartCoachSession(row db.CoachSessionRow) error {
 	return nil
 }
 
-func (f *Fake) PointCoachSessionAt(sessionID string, playerRef int64, handle, kind string) error {
+func (f *Fake) PointCoachSessionAt(sessionID string, playerRef int64, handle string, kind db.CoachKind) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	row, ok := f.CoachSessions[sessionID]

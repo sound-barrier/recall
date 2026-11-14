@@ -20,9 +20,30 @@ import (
 // The two kinds a coach_players row can be. A team is a codes-session
 // identity for a group — it rides every per-player mechanism unchanged,
 // which is the whole design.
+type CoachKind string
+
 const (
-	CoachKindPlayer = "player"
-	CoachKindTeam   = "team"
+	CoachKindPlayer CoachKind = "player"
+	CoachKindTeam   CoachKind = "team"
+)
+
+// CoachSessionSource is where a sitting's corpus came from: a player's
+// shared bundle, or replay codes the coach typed in.
+type CoachSessionSource string
+
+const (
+	CoachSessionFromBundle CoachSessionSource = "bundle"
+	CoachSessionFromReplay CoachSessionSource = "replay"
+)
+
+// CoachVerdict is the player's verdict on one staged coach note. Two arms
+// and no 'denied': skipping removes a note from your matches rather than
+// rejecting that it was said.
+type CoachVerdict string
+
+const (
+	CoachVerdictAccepted CoachVerdict = "accepted"
+	CoachVerdictSkipped  CoachVerdict = "skipped"
 )
 
 var (
@@ -66,7 +87,7 @@ type CoachStore interface {
 	// A handle-only row later met with a player_id adopts it (backfill), so
 	// a coach's earlier notes follow the player through an upgrade. A
 	// second player_id sharing a handle is a different player.
-	EnsureCoachPlayer(playerID, handle, kind string) (CoachPlayer, error)
+	EnsureCoachPlayer(playerID, handle string, kind CoachKind) (CoachPlayer, error)
 	// LoadCoachPlayers is the roster: every player this user has coached,
 	// with note count, the newest note stamp, and the stored summary —
 	// most recently touched first.
@@ -129,7 +150,7 @@ type CoachStore interface {
 	// SetCoachReturnDecision records the player's verdict on one staged
 	// note ('accepted' | 'skipped'), overwriting a previous one.
 	// ErrCoachReturnUnknown when returnID names no return.
-	SetCoachReturnDecision(returnID int64, noteID, decision string) error
+	SetCoachReturnDecision(returnID int64, noteID string, decision CoachVerdict) error
 	// DeleteCoachReturn removes the staged return and its decisions.
 	// ErrCoachReturnUnknown when id names no row.
 	DeleteCoachReturn(id int64) error

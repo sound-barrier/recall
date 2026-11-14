@@ -284,7 +284,7 @@ func (s *SQLStore) attachCoachDecisions(byID map[int64]*CoachReturn, where strin
 	return rows.Err()
 }
 
-func (s *SQLStore) SetCoachReturnDecision(returnID int64, noteID, decision string) error {
+func (s *SQLStore) SetCoachReturnDecision(returnID int64, noteID string, decision CoachVerdict) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err

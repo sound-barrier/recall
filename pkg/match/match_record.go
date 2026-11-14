@@ -152,11 +152,11 @@ const (
 // candidate row — the re-capture sweep overlaps the EAD bridge on the
 // distance axis, so distance no longer identifies who proposed what.
 type AmbiguousAttribution struct {
-	MatchKey                 string `json:"match_key"`
-	DistanceSeconds          int    `json:"distance_seconds"`
-	Reason                   string `json:"reason,omitempty"`
-	RepresentativeSourceFile string `json:"representative_source_file,omitempty"`
-	RepresentativeDirID      int64  `json:"representative_dir_id,omitempty"`
+	MatchKey                 string          `json:"match_key"`
+	DistanceSeconds          int             `json:"distance_seconds"`
+	Reason                   CandidateReason `json:"reason,omitempty"`
+	RepresentativeSourceFile string          `json:"representative_source_file,omitempty"`
+	RepresentativeDirID      int64           `json:"representative_dir_id,omitempty"`
 }
 
 // Annotation is the per-match user note returned alongside
@@ -181,8 +181,8 @@ type Annotation struct {
 	// Why this match should not count toward the win rate — "placement",
 	// "mmr_adjustment" or "outage". Absent for the matches that count,
 	// which is nearly all of them.
-	ExclusionReason string `json:"exclusion_reason,omitempty"`
-	AnnotatedAt     string `json:"annotated_at,omitempty"`
+	ExclusionReason ExclusionReason `json:"exclusion_reason,omitempty"`
+	AnnotatedAt     string          `json:"annotated_at,omitempty"`
 }
 
 // CoachNote is one accepted coach note on this match — the coach-received
@@ -245,3 +245,26 @@ type CoachNoteMoment struct {
 // ErrMatchNotFound is returned by GetMatchByKey when no match has the
 // requested key. HTTP handlers route this to 404 via errors.Is.
 var ErrMatchNotFound = errors.New("match not found")
+
+// CandidateReason is which producer proposed an ambiguous candidate. The
+// unstamped value is the EAD bridge / timestamp window, the original
+// producer; the two sweeps stamp their own.
+type CandidateReason string
+
+const (
+	CandidateFromWindow         CandidateReason = ""
+	CandidateFromDuplicateStats CandidateReason = "duplicate_stats"
+	CandidateFromSameInstant    CandidateReason = "same_instant"
+)
+
+// ExclusionReason is why a match should not count toward the win rate, or
+// ExclusionNone for the overwhelming majority that simply count. The API
+// publishes it as ExclusionReasonEnum.
+type ExclusionReason string
+
+const (
+	ExclusionNone          ExclusionReason = ""
+	ExclusionPlacement     ExclusionReason = "placement"
+	ExclusionMMRAdjustment ExclusionReason = "mmr_adjustment"
+	ExclusionOutage        ExclusionReason = "outage"
+)

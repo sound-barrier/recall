@@ -160,7 +160,9 @@ func (f *Fake) DemoteMatchToAmbiguous(matchKey, ambiguousMatchKey, filename stri
 // added without its schema entry passes every unit test and fails only in
 // production — inside DemoteMatchToAmbiguous, whose error the sweep logs
 // and swallows, leaving the duplicate flag silently missing.
-var validCandidateReasons = map[string]bool{"": true, "duplicate_stats": true, "same_instant": true}
+var validCandidateReasons = map[db.CandidateReason]bool{
+	db.CandidateFromWindow: true, db.CandidateFromDuplicateStats: true, db.CandidateFromSameInstant: true,
+}
 
 func assertCandidateReasons(cands []db.AmbiguousCandidate) error {
 	for _, c := range cands {

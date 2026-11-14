@@ -96,7 +96,7 @@ func TestStoreContract_ATeamAndAPlayerShareAHandleAsTwoRows(t *testing.T) {
 
 			roster, err := s.LoadCoachPlayers()
 			mustNoErr(t, err)
-			kinds := map[int64]string{}
+			kinds := map[int64]db.CoachKind{}
 			for _, r := range roster {
 				kinds[r.ID] = r.Kind
 			}

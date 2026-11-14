@@ -137,7 +137,7 @@ func (a *App) recordSittingOpened(s *coach.Session) {
 		PlayerRef: s.PlayerRef(),
 		Handle:    s.Player.Handle,
 		Kind:      s.Player.Kind,
-		Source:    string(s.Source),
+		Source:    s.Source,
 		MatchKeys: keys,
 	})
 	if err != nil {
@@ -207,7 +207,7 @@ func (a *App) CloseCoachSession() error {
 // kind widens the answer: a codes session may be confirmed as a TEAM (one
 // shared review filed under the group's name). "" means player. A bundle
 // session refuses a team — the manifest already named its player.
-func (a *App) SetCoachSessionPlayer(handle, kind string) (coach.SessionView, error) {
+func (a *App) SetCoachSessionPlayer(handle string, kind db.CoachKind) (coach.SessionView, error) {
 	store, release, leaseErr := a.useStore()
 	if leaseErr != nil {
 		return coach.SessionView{}, leaseErr
@@ -248,7 +248,7 @@ func (a *App) SetCoachSessionPlayer(handle, kind string) (coach.SessionView, err
 
 // resolveNamedPlayer finds (or creates) the coach_players row the coach just
 // named and renames it to the handle they typed.
-func resolveNamedPlayer(store db.Store, playerID, handle, kind string) (db.CoachPlayer, error) {
+func resolveNamedPlayer(store db.Store, playerID, handle string, kind db.CoachKind) (db.CoachPlayer, error) {
 	p, err := store.EnsureCoachPlayer(playerID, handle, kind)
 	if err != nil {
 		return db.CoachPlayer{}, fmt.Errorf("coach: resolve player: %w", err)

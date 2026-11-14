@@ -429,13 +429,6 @@ yet fixed. They are ordered by likelihood × blast radius.
   - The records pulse never fires in the normal path, because upserts
     grow the cache before `load()` measures it.
   - Game-data apply re-arms mid-apply.
-- **§11 typed-discriminant gaps (S).** These are still bare strings:
-  - `CoachDecision.Decision`
-  - `CoachSessionRow.Source` and `Kind`
-  - `AmbiguousCandidate.Reason`
-  - `Annotation.ExclusionReason`
-  - the maintenance operation
-  - `rosterwatch` `Finding.Kind`, which still has a `default: continue`
 
 ## Out of scope — deliberately not building
 

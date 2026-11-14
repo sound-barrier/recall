@@ -58,7 +58,7 @@ func nextID[T any](rows []T, idOf func(T) int64) int64 {
 
 // coachKindError mirrors the SQL store's kind guards: a kind outside the
 // closed set, or an id paired with a team (adoption is player-only).
-func coachKindError(playerID, kind string) error {
+func coachKindError(playerID string, kind db.CoachKind) error {
 	if kind != db.CoachKindPlayer && kind != db.CoachKindTeam {
 		return fmt.Errorf("%w: %q", db.ErrCoachKindInvalid, kind)
 	}
@@ -68,7 +68,7 @@ func coachKindError(playerID, kind string) error {
 	return nil
 }
 
-func (f *Fake) EnsureCoachPlayer(playerID, handle, kind string) (db.CoachPlayer, error) {
+func (f *Fake) EnsureCoachPlayer(playerID, handle string, kind db.CoachKind) (db.CoachPlayer, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := coachKindError(playerID, kind); err != nil {
@@ -104,7 +104,7 @@ func (f *Fake) EnsureCoachPlayer(playerID, handle, kind string) (db.CoachPlayer,
 // to: every same-kind handle match for an anonymous lookup, only the id-less
 // ones when a player id is in hand. Kind joins both branches — a team and a
 // player may share a handle, and the adopt is a player-only mechanism.
-func idLessHandleMatches(players []db.CoachPlayer, handle, playerID, kind string) []int {
+func idLessHandleMatches(players []db.CoachPlayer, handle, playerID string, kind db.CoachKind) []int {
 	var out []int
 	for i, p := range players {
 		if !strings.EqualFold(p.Handle, handle) || p.Kind != kind {
@@ -328,7 +328,7 @@ func (f *Fake) LoadCoachReturns() ([]db.CoachReturn, error) {
 	return out, nil
 }
 
-func (f *Fake) SetCoachReturnDecision(returnID int64, noteID, decision string) error {
+func (f *Fake) SetCoachReturnDecision(returnID int64, noteID string, decision db.CoachVerdict) error {
 	if decision != "accepted" && decision != "skipped" {
 		return fmt.Errorf("dbtest: decision %q violates the accepted/skipped CHECK", decision)
 	}

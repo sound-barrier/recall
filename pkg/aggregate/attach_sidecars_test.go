@@ -216,7 +216,7 @@ func TestAttachAmbiguity_CarriesTheStoredReason(t *testing.T) {
 	if len(recs[0].Candidates) != 3 {
 		t.Fatalf("expected 3 candidates, got %+v", recs[0].Candidates)
 	}
-	for i, want := range []string{"duplicate_stats", "same_instant", ""} {
+	for i, want := range []db.CandidateReason{"duplicate_stats", "same_instant", ""} {
 		if got := recs[0].Candidates[i].Reason; got != want {
 			t.Errorf("candidate %d reason = %q, want %q", i, got, want)
 		}

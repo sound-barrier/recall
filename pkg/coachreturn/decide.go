@@ -135,7 +135,7 @@ func applyDecision(st Store, r db.CoachReturn, f coach.NotesFile, t decisionTarg
 	if err != nil {
 		return err
 	}
-	if err := st.SetCoachReturnDecision(r.ID, t.note.NoteID, string(t.decision)); err != nil {
+	if err := st.SetCoachReturnDecision(r.ID, t.note.NoteID, t.decision); err != nil {
 		return fmt.Errorf("coach: record decision: %w", err)
 	}
 	return nil

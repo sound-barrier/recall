@@ -12,6 +12,16 @@ import (
 // isn't one of the supported values. Maps to 400 at the HTTP layer.
 var ErrInvalidMaintenanceOp = errors.New("unknown maintenance operation")
 
+// MaintenanceOp is one database maintenance operation the user can run.
+type MaintenanceOp string
+
+const (
+	// MaintenanceOptimize runs PRAGMA optimize: cheap, self-gating.
+	MaintenanceOptimize MaintenanceOp = "optimize"
+	// MaintenanceVacuum compacts the file under an exclusive lock.
+	MaintenanceVacuum MaintenanceOp = "vacuum"
+)
+
 // GetDatabaseHealth runs the read-only health report (integrity check
 // + size/freelist stats). Safe concurrently with a parse — WAL
 // readers don't block the writer.
@@ -29,7 +39,7 @@ func (a *App) GetDatabaseHealth() (db.Health, error) {
 // round-trip. Serialized against the OCR write path exactly like
 // RestoreDatabase: VACUUM takes an exclusive lock for its duration,
 // and running it mid-parse would stall both.
-func (a *App) RunDatabaseMaintenance(operation string) (db.Health, error) {
+func (a *App) RunDatabaseMaintenance(operation MaintenanceOp) (db.Health, error) {
 	store, release, leaseErr := a.useStore()
 	if leaseErr != nil {
 		return db.Health{}, leaseErr
@@ -37,9 +47,9 @@ func (a *App) RunDatabaseMaintenance(operation string) (db.Health, error) {
 	defer release()
 	var run func() error
 	switch operation {
-	case "optimize":
+	case MaintenanceOptimize:
 		run = func() error { return store.Optimize() }
-	case "vacuum":
+	case MaintenanceVacuum:
 		run = func() error { return store.Vacuum() }
 	default:
 		return db.Health{}, fmt.Errorf("%w: %q", ErrInvalidMaintenanceOp, operation)

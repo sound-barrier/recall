@@ -55,8 +55,8 @@ type CoachSessionRow struct {
 	SessionID string
 	PlayerRef int64
 	Handle    string
-	Kind      string
-	Source    string
+	Kind      CoachKind
+	Source    CoachSessionSource
 	Status    SittingStatus
 	OpenedAt  string
 	EndedAt   string
@@ -104,7 +104,7 @@ func (s *SQLStore) StartCoachSession(row CoachSessionRow) error {
 
 // PointCoachSessionAt files an already-open sitting under a player. Called
 // when the coach names them, and again whenever they correct it.
-func (s *SQLStore) PointCoachSessionAt(sessionID string, playerRef int64, handle, kind string) error {
+func (s *SQLStore) PointCoachSessionAt(sessionID string, playerRef int64, handle string, kind CoachKind) error {
 	_, err := s.db.Exec(
 		`UPDATE coach_sessions SET player_ref = ?, handle = ?, kind = ? WHERE session_id = ?`,
 		nullableRef(playerRef), handle, kindOrPlayer(kind), sessionID,
@@ -228,7 +228,7 @@ func nullableRef(ref int64) any {
 	return ref
 }
 
-func kindOrPlayer(kind string) string {
+func kindOrPlayer(kind CoachKind) CoachKind {
 	if kind == "" {
 		return CoachKindPlayer
 	}
