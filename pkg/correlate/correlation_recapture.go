@@ -9,7 +9,7 @@ import (
 // ReasonSameInstant marks a candidate proposed by the re-capture sweep:
 // two matches whose SUMMARY rows report the same played-at instant, map,
 // result and final score.
-const ReasonSameInstant = "same_instant"
+const ReasonSameInstant = db.CandidateFromSameInstant
 
 // The re-capture sweep — the duplicate detector for players who screenshot
 // the SUMMARY screen and nothing else.

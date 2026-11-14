@@ -96,7 +96,7 @@ func (a *App) rememberKeepSeparate(resolvedTo string, cands []db.AmbiguousCandid
 		return // a merge: the two are one match now, nothing left to point at
 	}
 	for _, c := range cands {
-		if c.Reason == "" {
+		if c.Reason == db.CandidateFromWindow {
 			continue
 		}
 		if err := store.LinkDuplicateMatches(resolvedTo, c.MatchKey); err != nil {

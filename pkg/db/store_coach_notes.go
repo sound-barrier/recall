@@ -16,7 +16,7 @@ const (
 	coachNoteParentColumn   = "coach_note_id"
 )
 
-func (s *SQLStore) EnsureCoachPlayer(playerID, handle, kind string) (CoachPlayer, error) {
+func (s *SQLStore) EnsureCoachPlayer(playerID, handle string, kind CoachKind) (CoachPlayer, error) {
 	if kind != CoachKindPlayer && kind != CoachKindTeam {
 		return CoachPlayer{}, fmt.Errorf("%w: %q", ErrCoachKindInvalid, kind)
 	}
@@ -57,7 +57,7 @@ func (s *SQLStore) EnsureCoachPlayer(playerID, handle, kind string) (CoachPlayer
 // are two different files of notes. The id branch is untouched — only
 // players carry a player_id (a team is a codes-only identity), and the
 // adopt below is likewise a player-only mechanism.
-func findOrAdoptCoachPlayer(tx txn, playerID, handle, kind string) (CoachPlayer, bool, error) {
+func findOrAdoptCoachPlayer(tx txn, playerID, handle string, kind CoachKind) (CoachPlayer, bool, error) {
 	if playerID != "" {
 		p, found, err := selectCoachPlayer(tx, `WHERE player_id = ?`, playerID)
 		if err != nil || found {
@@ -130,7 +130,7 @@ func selectCoachPlayer(tx txn, where string, args ...any) (CoachPlayer, bool, er
 	return p, true, nil
 }
 
-func insertCoachPlayer(tx txn, playerID, handle, kind string) (CoachPlayer, error) {
+func insertCoachPlayer(tx txn, playerID, handle string, kind CoachKind) (CoachPlayer, error) {
 	p := CoachPlayer{PlayerID: playerID, Handle: handle, Kind: kind}
 	// An empty player_id is stored as NULL so the UNIQUE constraint tolerates
 	// any number of anonymous players.

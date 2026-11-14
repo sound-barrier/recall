@@ -121,7 +121,7 @@ func handleSetCoachSessionPlayer(a *app.App) http.HandlerFunc {
 		Handle string `json:"handle"`
 		// Kind is optional; "" means player. Only a codes session may say
 		// team — the app refuses it on a bundle.
-		Kind string `json:"kind"`
+		Kind db.CoachKind `json:"kind"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		var b body
@@ -576,8 +576,8 @@ func handleListCoachPlayerNotes(a *app.App) http.HandlerFunc {
 type coachSessionWire struct {
 	SessionID  string                  `json:"session_id"`
 	Handle     string                  `json:"handle,omitempty"`
-	Kind       string                  `json:"kind"`
-	Source     string                  `json:"source"`
+	Kind       db.CoachKind            `json:"kind"`
+	Source     db.CoachSessionSource   `json:"source"`
 	Status     db.SittingStatus        `json:"status"`
 	OpenedAt   string                  `json:"opened_at"`
 	EndedAt    string                  `json:"ended_at,omitempty"`
@@ -625,12 +625,12 @@ func coachSessionToWire(row db.CoachSessionRow) coachSessionWire {
 
 // coachPlayerSummaryWire is one roster row on the wire.
 type coachPlayerSummaryWire struct {
-	ID         int64    `json:"id"`
-	Handle     string   `json:"handle"`
-	Kind       string   `json:"kind"`
-	NoteCount  int      `json:"note_count"`
-	LastNoteAt string   `json:"last_note_at,omitempty"`
-	FocusItems []string `json:"focus_items,omitempty"`
+	ID         int64        `json:"id"`
+	Handle     string       `json:"handle"`
+	Kind       db.CoachKind `json:"kind"`
+	NoteCount  int          `json:"note_count"`
+	LastNoteAt string       `json:"last_note_at,omitempty"`
+	FocusItems []string     `json:"focus_items,omitempty"`
 }
 
 // handleListCoachPlayers reads the roster — every player this user has

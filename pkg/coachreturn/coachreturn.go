@@ -46,7 +46,7 @@ type Store interface {
 	LookupCoachReturnByHash(hash string) (db.CoachReturn, bool, error)
 	LoadCoachReturns() ([]db.CoachReturn, error)
 	LoadCoachReturn(id int64) (db.CoachReturn, bool, error)
-	SetCoachReturnDecision(returnID int64, noteID, decision string) error
+	SetCoachReturnDecision(returnID int64, noteID string, decision db.CoachVerdict) error
 	DeleteCoachReturn(id int64) error
 	UpsertReceivedFocusItem(item db.ReceivedFocusItem) error
 	// PutMomentImage takes custody of a frame the archive carried. Stored at
@@ -92,11 +92,11 @@ var (
 // Decision is the verdict a player can give one returned note. Two arms, and
 // no 'denied': a coach's note is theirs to have written, so skipping removes it
 // from your matches rather than rejecting that it was said.
-type Decision string
+type Decision = db.CoachVerdict
 
 const (
-	DecisionAccepted Decision = "accepted"
-	DecisionSkipped  Decision = "skipped"
+	DecisionAccepted = db.CoachVerdictAccepted
+	DecisionSkipped  = db.CoachVerdictSkipped
 )
 
 // Status is where a note on the return sheet stands — a superset of Decision,
@@ -135,7 +135,7 @@ type Sheet struct {
 	FocusItems []coach.FocusItem `json:"focus_items"`
 	Notes      []Item            `json:"notes"`
 	// Decisions is keyed by note_id; a note with no entry is undecided.
-	Decisions map[string]string `json:"decisions"`
+	Decisions map[string]Decision `json:"decisions"`
 	// Pending counts the notes still awaiting a decision (orphans excluded).
 	Pending int `json:"pending"`
 	// PlayerMismatch flags a file written about someone else — the local
@@ -336,7 +336,7 @@ func buildSheet(st Store, r db.CoachReturn, localHandle string) (Sheet, error) {
 		ID: r.ID, CoachName: r.CoachName, PlayerHandle: r.PlayerHandle, SessionDate: r.SessionDate,
 		ImportedAt: r.ImportedAt, FocusItems: emptyIfNilItems(f.FocusItems),
 		Notes:          make([]Item, 0, len(f.Notes)),
-		Decisions:      make(map[string]string, len(r.Decisions)),
+		Decisions:      make(map[string]Decision, len(r.Decisions)),
 		PlayerMismatch: addressedElsewhere(localHandle, r.PlayerHandle, r.Kind),
 	}
 	for id, d := range r.Decisions {
@@ -369,7 +369,7 @@ func buildSheet(st Store, r db.CoachReturn, localHandle string) (Sheet, error) {
 // exists to stop a STRANGER's homework landing on your list, which a file
 // addressed to the team you play for is not. Reading one as a mismatch
 // cost the captain every focus item in it.
-func addressedElsewhere(local, fromFile, kind string) bool {
+func addressedElsewhere(local, fromFile string, kind db.CoachKind) bool {
 	if kind == db.CoachKindTeam {
 		return false
 	}

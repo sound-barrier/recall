@@ -1,5 +1,7 @@
 package db
 
+import "recall/pkg/match"
+
 // Domain types — the row/state structs the Store reads and writes. Split
 // out of store.go, which keeps the Store interface + the SQLStore impl.
 
@@ -113,7 +115,7 @@ type Annotation struct {
 	// ExclusionReason says why this match should not count toward the win
 	// rate — one of the closed vocabulary the schema constrains, or "" for
 	// the overwhelming majority that simply count.
-	ExclusionReason string
+	ExclusionReason ExclusionReason
 	AnnotatedAt     string
 }
 
@@ -378,8 +380,22 @@ type AmbiguousCandidate struct {
 	// occupied complementary bands, and the re-capture sweep matches on
 	// the match's own instant, so it can land anywhere on the axis —
 	// including inside the EAD bridge's window.
-	Reason string
+	Reason CandidateReason
 }
+
+// The two vocabularies below are match's (the read model carries them to
+// the wire); the store's rows hold the same types, and the schema's CHECK
+// constraints mirror them.
+type (
+	CandidateReason = match.CandidateReason
+	ExclusionReason = match.ExclusionReason
+)
+
+const (
+	CandidateFromWindow         = match.CandidateFromWindow
+	CandidateFromDuplicateStats = match.CandidateFromDuplicateStats
+	CandidateFromSameInstant    = match.CandidateFromSameInstant
+)
 
 // ── Coaching ────────────────────────────────────────────────────────────
 //
@@ -403,7 +419,7 @@ type CoachPlayer struct {
 	PlayerID string
 	Handle   string
 	// Kind is CoachKindPlayer or CoachKindTeam.
-	Kind string
+	Kind CoachKind
 }
 
 // CoachNote is one coach-authored note against one of a player's matches.
@@ -482,7 +498,7 @@ func (m CoachNoteMoment) MomentSlot() (id string, order int) { return m.MomentID
 type CoachPlayerSummary struct {
 	ID         int64
 	Handle     string
-	Kind       string
+	Kind       CoachKind
 	NoteCount  int
 	LastNoteAt string
 	// FocusItems is what this coach told that player to work on, in order —
@@ -547,7 +563,7 @@ type CoachReturn struct {
 	// Kind says whether PlayerHandle names a player or a TEAM. Without it
 	// the sheet cannot tell "this is addressed to your team" from "this is
 	// about somebody else" — and the two want opposite answers.
-	Kind        string
+	Kind        CoachKind
 	SessionDate string
 	NotesJSON   []byte
 	ImportedAt  string
@@ -557,7 +573,7 @@ type CoachReturn struct {
 
 // CoachDecision is the player's verdict on one staged note.
 type CoachDecision struct {
-	Decision  string // "accepted" | "skipped"
+	Decision  CoachVerdict
 	DecidedAt string
 }
 

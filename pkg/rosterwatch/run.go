@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -126,7 +125,9 @@ func applyFindings(opts Options, report Report) ([]string, error) {
 		case KindMapMissing:
 			file = "maps.yaml"
 			edit = func(b []byte) ([]byte, error) { return ApplyMap(b, Map{Name: f.Name, GameMode: f.Group}, opts.Season) }
-		default:
+		case KindHeroSpelling, KindMapSpelling, KindPatchMissing, KindSeasonExpired, KindChannelStale, KindAcceptedStale:
+			// Nothing this writer can be sure of: a spelling or a date is
+			// the maintainer's call, so the finding stays in the report.
 			continue
 		}
 		path := filepath.Join(opts.RepoRoot, "pkg", "parser", file)
@@ -163,8 +164,8 @@ func writeReport(w io.Writer, res Result) {
 		_, _ = fmt.Fprintln(w, "The shipped roster matches the game.")
 		return
 	}
-	byKind := map[string][]Finding{}
-	order := []string{}
+	byKind := map[FindingKind][]Finding{}
+	order := []FindingKind{}
 	for _, f := range res.Report.Findings {
 		if _, seen := byKind[f.Kind]; !seen {
 			order = append(order, f.Kind)
@@ -187,7 +188,7 @@ func writeReport(w io.Writer, res Result) {
 	}
 }
 
-func headingFor(kind string) string {
+func headingFor(kind FindingKind) string {
 	switch kind {
 	case KindHeroMissing:
 		return "Heroes the game has and the roster does not"
@@ -206,7 +207,7 @@ func headingFor(kind string) string {
 	case KindAcceptedStale:
 		return "Accepted differences that match nothing"
 	}
-	return strings.ToUpper(kind[:1]) + kind[1:]
+	return string(kind)
 }
 
 // UnreadableSource reports whether err means an upstream could not be read, so

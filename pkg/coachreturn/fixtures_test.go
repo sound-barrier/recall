@@ -92,7 +92,7 @@ func statusesOf(sheet coachreturn.Sheet) map[string]coachreturn.Status {
 // the whole shape at once keeps a decision test one assertion long.
 type decisionState struct {
 	Statuses  map[string]coachreturn.Status
-	Decisions map[string]string
+	Decisions map[string]coachreturn.Decision
 	Pending   int
 }
 
@@ -181,7 +181,7 @@ func wantStagedSheet(id int64, importedAt string) coachreturn.Sheet {
 				FocusTags: []string{"comms"}, ExtraTags: []string{},
 				Match: &coach.MatchContext{Map: "busan", Hero: "ana", Result: "defeat", Date: "2030-01-01", FinishedAt: "00:00"}, Status: coachreturn.StatusOrphan},
 		},
-		Decisions: map[string]string{},
+		Decisions: map[string]coachreturn.Decision{},
 		Pending:   2,
 	}
 }

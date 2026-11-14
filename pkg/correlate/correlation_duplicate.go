@@ -23,7 +23,7 @@ const DuplicateMatchWindow = 7 * 24 * time.Hour
 // rather than by the EAD bridge / timestamp window. Stamped onto the
 // candidate and stored with it — see correlation_recapture.go for why a
 // third producer made deriving it from distance untenable.
-const ReasonDuplicateStats = "duplicate_stats"
+const ReasonDuplicateStats = db.CandidateFromDuplicateStats
 
 // The end-of-parse sweep's merge policy, applied by
 // DuplicateScan.CandidatesFor.

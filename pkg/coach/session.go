@@ -20,7 +20,7 @@ type Player struct {
 	Message string `json:"message"`
 	// Kind is db.CoachKindPlayer or db.CoachKindTeam. A bundle always names
 	// a player; only a codes session can be confirmed as a team.
-	Kind string `json:"kind"`
+	Kind db.CoachKind `json:"kind"`
 }
 
 // Session is one open coaching session: the player's bundle rendered to
@@ -55,15 +55,15 @@ type Session struct {
 }
 
 // SessionSource distinguishes the two ways a session's corpus arrives.
-type SessionSource string
+type SessionSource = db.CoachSessionSource
 
 const (
 	// SessionFromBundle is the original: the player exported their matches
 	// and the coach opened the file.
-	SessionFromBundle SessionSource = "bundle"
+	SessionFromBundle = db.CoachSessionFromBundle
 	// SessionFromReplay is a corpus the coach typed: replay codes and
 	// nothing else, with no screenshots and no parsed data behind them.
-	SessionFromReplay SessionSource = "replay"
+	SessionFromReplay = db.CoachSessionFromReplay
 )
 
 // SessionView is the session as GET/POST /coach/session return it.

@@ -4,6 +4,7 @@ import (
 	"math/rand"
 
 	"recall/pkg/db"
+	"recall/pkg/match"
 )
 
 // Annotation seed pools — the realistic markup a competitive OW player leaves on
@@ -86,16 +87,16 @@ func rollAnnotation(rng *rand.Rand, matchKey string) db.Annotation {
 // said "this happened", the reason says "and it does not count", which is
 // the whole point of the field. One roll picks among the three by weight,
 // because a match has at most one reason.
-func rollExclusionReason(rng *rand.Rand) string {
+func rollExclusionReason(rng *rand.Rand) match.ExclusionReason {
 	switch r := rng.Float64(); {
 	case r < 0.03:
-		return "placement"
+		return match.ExclusionPlacement
 	case r < 0.04:
-		return "mmr_adjustment"
+		return match.ExclusionMMRAdjustment
 	case r < 0.045:
-		return "outage"
+		return match.ExclusionOutage
 	default:
-		return ""
+		return match.ExclusionNone
 	}
 }
 
