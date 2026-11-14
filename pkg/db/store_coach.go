@@ -2,7 +2,6 @@ package db
 
 import (
 	"crypto/rand"
-	"database/sql"
 	"errors"
 	"fmt"
 	"slices"
@@ -175,7 +174,7 @@ func distinctSorted(values []string) []string {
 // OR IGNORE, which would also swallow the vocabulary CHECK on the focus-tag
 // tables. Every id-keyed child in the coaching schema is a `tag` column, so
 // the value column is fixed.
-func replaceTagSetByID(tx *sql.Tx, table, parentColumn string, parentID int64, tags []string) error {
+func replaceTagSetByID(tx txn, table, parentColumn string, parentID int64, tags []string) error {
 	// #nosec G202 -- table/column names come from the constants in this
 	// package, never from user input; SQL identifiers can't be bound.
 	if _, err := tx.Exec("DELETE FROM "+table+" WHERE "+parentColumn+" = ?", parentID); err != nil {

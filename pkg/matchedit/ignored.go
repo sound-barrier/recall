@@ -32,11 +32,19 @@ func IgnoreScreenshot(s db.Store, filename string) error {
 	if filename == "" {
 		return ErrIgnoreFilenameRequired
 	}
+	return s.InTransaction(func(tx db.Store) error { return ignoreIn(tx, filename) })
+}
+
+// ignoreIn is Dismiss's four steps, run inside one transaction so a failure
+// at any of them leaves the file, its rows and its match exactly as they
+// were.
+func ignoreIn(s db.Store, filename string) error {
 	if err := s.AddIgnoredScreenshot(filename); err != nil {
 		return fmt.Errorf("add ignored screenshot: %w", err)
 	}
-	// An ignored file is skipped on every future run, so a standing
-	// OCR-failure row would sit in the triage list forever — clear it.
+	// An ignored file is skipped on every future run, in every folder, so a
+	// standing OCR-failure row would sit in the triage list forever — clear
+	// it wherever it is.
 	if err := s.RemoveFailedFilesNamed(filename); err != nil {
 		return fmt.Errorf("clear failed-file row for %s: %w", filename, err)
 	}

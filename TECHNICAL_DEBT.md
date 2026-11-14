@@ -393,11 +393,6 @@ ambiguous sentinel. The shape is in `pkg/CLAUDE.md` and `frontend/CLAUDE.md`
 → **State**. The machines below each have a bug that was traced but is not
 yet fixed. They are ordered by likelihood × blast radius.
 
-- **Bundle import is not one transaction (M).** The pre-write checks now
-  refuse every conflict the database would refuse later. A crash between
-  the parent rows and the user layer can still strand the parents, and a
-  retry then skips them as existing. Fix: a `Store` method that runs the
-  whole import in one transaction (the `dbtest.Fake` mirror included).
 - **Per-file ledgers are four tables (S).** `failed_files`, `ingested_files`
   and the two recognized-skip registries are now keyed by
   `(screenshots_dir_id, filename)`, and a failure carries its kind. They are
@@ -434,8 +429,6 @@ yet fixed. They are ordered by likelihood × blast radius.
   - The records pulse never fires in the normal path, because upserts
     grow the cache before `load()` measures it.
   - Game-data apply re-arms mid-apply.
-  - `IgnoreScreenshot` spans four transactions.
-  - Clear/restore never release the claims ledger.
 - **§11 typed-discriminant gaps (S).** These are still bare strings:
   - `CoachDecision.Decision`
   - `CoachSessionRow.Source` and `Kind`

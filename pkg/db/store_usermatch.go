@@ -1,7 +1,6 @@
 package db
 
 import (
-	"database/sql"
 	"fmt"
 	"time"
 
@@ -98,7 +97,7 @@ func (s *SQLStore) UpsertUserMatchData(d UserMatchData) error {
 // deleteUserMatchChildren wipes every child row for the match so the inserts
 // that follow replace them wholesale — a re-save that drops a hero must remove
 // that hero's old row, which a plain UPSERT wouldn't.
-func deleteUserMatchChildren(tx *sql.Tx, matchKey string) error {
+func deleteUserMatchChildren(tx txn, matchKey string) error {
 	for _, q := range []string{
 		`DELETE FROM user_match_heroes WHERE match_key = ?`,
 		`DELETE FROM user_match_hero_stats WHERE match_key = ?`,
@@ -120,7 +119,7 @@ func deleteUserMatchChildren(tx *sql.Tx, matchKey string) error {
 // parent row first in the SAME transaction. So OR IGNORE can only suppress the
 // composite-PK duplicate, which IS the intended dedupe. The modifiers table
 // has a vocabulary CHECK that must surface, hence its ON CONFLICT form.
-func insertUserMatchHeroes(tx *sql.Tx, matchKey string, heroes []UserMatchHero) error {
+func insertUserMatchHeroes(tx txn, matchKey string, heroes []UserMatchHero) error {
 	for _, h := range heroes {
 		if h.Hero == "" {
 			continue
@@ -141,7 +140,7 @@ func insertUserMatchHeroes(tx *sql.Tx, matchKey string, heroes []UserMatchHero) 
 	return nil
 }
 
-func insertUserMatchHeroStats(tx *sql.Tx, matchKey string, stats []UserMatchHeroStat) error {
+func insertUserMatchHeroStats(tx txn, matchKey string, stats []UserMatchHeroStat) error {
 	for _, st := range stats {
 		if st.Hero == "" || st.StatKey == "" {
 			continue
@@ -157,7 +156,7 @@ func insertUserMatchHeroStats(tx *sql.Tx, matchKey string, stats []UserMatchHero
 	return nil
 }
 
-func insertUserMatchSR(tx *sql.Tx, matchKey string, srs []HeroSR) error {
+func insertUserMatchSR(tx txn, matchKey string, srs []HeroSR) error {
 	for _, sr := range srs {
 		if sr.Hero == "" {
 			continue
@@ -172,7 +171,7 @@ func insertUserMatchSR(tx *sql.Tx, matchKey string, srs []HeroSR) error {
 	return nil
 }
 
-func insertUserMatchModifiers(tx *sql.Tx, matchKey string, mods []string) error {
+func insertUserMatchModifiers(tx txn, matchKey string, mods []string) error {
 	for _, m := range mods {
 		if m == "" {
 			continue

@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// querier is the read surface shared by *sql.DB and *sql.Tx. LoadAll's
+// querier is the read surface shared by *sql.DB and txn. LoadAll's
 // bulk loaders take it so the whole snapshot reads through ONE deferred
 // transaction instead of racing pooled connections.
 type querier interface {

@@ -158,6 +158,19 @@ is composite `(parent_id, hero[, stat_key])`, and a re-parse that drops a hero
 must wipe that hero's old row — UPSERT alone wouldn't remove it. Idempotent:
 re-clicking Parse replaces rows in place, no duplicates.
 
+## One unit across several methods: `InTransaction`
+
+A write that spans several Store methods (a bundle import, a Dismiss) runs
+inside `Store.InTransaction(fn)`: every write fn makes lands, or none does.
+`SQLStore` runs its SQL through a `conn` seam (`db.go`) — the pool, or one
+open transaction — and a method that opens its own transaction gets a
+SAVEPOINT inside an outer one, so the same method body is atomic alone and
+composes into a larger unit. A nested `InTransaction` is
+`ErrNestedTransaction`. `dbtest.Fake` mirrors it with a snapshot of every
+table, restored on failure; a test wrapper that embeds the Fake to fail one
+method must override `InTransaction` to hand fn itself, or the override is
+bypassed inside the transaction.
+
 ## Read path (`pkg/app/aggregate.go::aggregateAll`)
 
 One bulk SELECT per parent + one per child table — every table hit exactly once

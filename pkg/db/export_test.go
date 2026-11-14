@@ -9,7 +9,7 @@ import (
 // so black-box tests can assert on child-table state (cascade cleanup, server-
 // stamped timestamps) that the exported Load/Save surface does not reveal. It is
 // compiled only under test, so it is not part of the package's real API.
-func RawDB(s *SQLStore) *sql.DB { return s.db }
+func RawDB(s *SQLStore) *sql.DB { return s.db.(poolConn).DB }
 
 // Migration-engine bridges. The framework is inert pre-1.0 (no shipped
 // migration files), so it has no public driver — these re-exports let the

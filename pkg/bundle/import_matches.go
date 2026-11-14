@@ -58,15 +58,27 @@ func Import(store db.Store, payload []byte) (ImportSummary, error) {
 	if err != nil {
 		return ImportSummary{}, err
 	}
+	if contents.Manifest.Player != nil {
+		return ImportSummary{}, ErrCoachBundle
+	}
+	var summary ImportSummary
+	err = store.InTransaction(func(tx db.Store) error {
+		summary, err = importContents(tx, contents, payload)
+		return err
+	})
+	return summary, err
+}
+
+// importContents is the whole import, run inside one transaction: a failure
+// anywhere leaves the database as it was, rather than parent rows a retry
+// would then skip as already present.
+func importContents(store db.Store, contents Contents, payload []byte) (ImportSummary, error) {
 	// The frames the incoming moments name. Taken into custody BEFORE the
 	// moments themselves, so a moment is never written pointing at bytes this
 	// database does not yet hold — content-addressed, so re-importing the same
 	// bundle stores nothing twice.
 	if err := importMomentImages(store, payload); err != nil {
 		return ImportSummary{}, err
-	}
-	if contents.Manifest.Player != nil {
-		return ImportSummary{}, ErrCoachBundle
 	}
 	data := contents.Data
 	incoming := parentTables{

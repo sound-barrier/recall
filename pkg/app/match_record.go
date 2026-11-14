@@ -133,6 +133,10 @@ func (a *App) ClearDatabase(keepIgnored bool) error {
 		return leaseErr
 	}
 	defer release()
+	// The profile holds nothing after a Clear, so it owns nothing either.
+	// Deferred after release's registration so it runs first, under the
+	// write lease; its own read lease nests (leases are counted).
+	defer a.resyncClaims()
 	if !keepIgnored {
 		return store.Clear()
 	}

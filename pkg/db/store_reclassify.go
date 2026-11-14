@@ -1,7 +1,6 @@
 package db
 
 import (
-	"database/sql"
 	"slices"
 
 	"recall/pkg/parser"
@@ -110,7 +109,7 @@ func (s *SQLStore) DeleteScreenshotRows(filename string) ([]string, error) {
 }
 
 // orphanedKeys returns, sorted, the keys with no remaining parent rows.
-func orphanedKeys(tx *sql.Tx, keys map[string]bool) ([]string, error) {
+func orphanedKeys(tx txn, keys map[string]bool) ([]string, error) {
 	out := []string{}
 	for key := range keys {
 		none, err := matchKeyHasNoRows(tx, key)
@@ -127,7 +126,7 @@ func orphanedKeys(tx *sql.Tx, keys map[string]bool) ([]string, error) {
 
 // deleteSiblingRows removes filename's rows in folder dirID from every parent
 // table and recognized-skip registry except keep's (children CASCADE).
-func deleteSiblingRows(tx *sql.Tx, keep string, dirID int64, filename string) error {
+func deleteSiblingRows(tx txn, keep string, dirID int64, filename string) error {
 	for _, t := range append(append([]string{}, parentTables...), recognizedRegistryTables...) {
 		if t == keep {
 			continue
@@ -142,7 +141,7 @@ func deleteSiblingRows(tx *sql.Tx, keep string, dirID int64, filename string) er
 
 // dropOrphanedCandidates deletes the ambiguous candidates of any key the
 // sibling wipe left without a single parent row.
-func dropOrphanedCandidates(tx *sql.Tx, keys map[string]bool) error {
+func dropOrphanedCandidates(tx txn, keys map[string]bool) error {
 	for key := range keys {
 		orphaned, err := matchKeyHasNoRows(tx, key)
 		if err != nil {
@@ -160,7 +159,7 @@ func dropOrphanedCandidates(tx *sql.Tx, keys map[string]bool) error {
 
 // collectFolderMatchKeys adds the match keys of filename's rows in folder
 // dirID in table to out.
-func collectFolderMatchKeys(tx *sql.Tx, table string, dirID int64, filename string, out map[string]bool) error {
+func collectFolderMatchKeys(tx txn, table string, dirID int64, filename string, out map[string]bool) error {
 	// #nosec G202 -- table name comes from a hard-coded slice, not user input.
 	rows, err := tx.Query(`SELECT match_key FROM `+table+` WHERE filename = ? AND screenshots_dir_id = ?`, filename, dirID)
 	if err != nil {
@@ -170,7 +169,7 @@ func collectFolderMatchKeys(tx *sql.Tx, table string, dirID int64, filename stri
 }
 
 // collectMatchKeys adds the match keys of filename's rows in table to out.
-func collectMatchKeys(tx *sql.Tx, table, filename string, out map[string]bool) error {
+func collectMatchKeys(tx txn, table, filename string, out map[string]bool) error {
 	// #nosec G202 -- table name comes from a hard-coded slice, not user input.
 	rows, err := tx.Query(`SELECT match_key FROM `+table+` WHERE filename = ?`, filename)
 	if err != nil {
@@ -180,7 +179,7 @@ func collectMatchKeys(tx *sql.Tx, table, filename string, out map[string]bool) e
 }
 
 // matchKeyHasNoRows reports whether no parent table holds a row for key.
-func matchKeyHasNoRows(tx *sql.Tx, key string) (bool, error) {
+func matchKeyHasNoRows(tx txn, key string) (bool, error) {
 	for _, t := range parentTables {
 		var n int
 		// #nosec G202 -- table name comes from a hard-coded slice, not user input.

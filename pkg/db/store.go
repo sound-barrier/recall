@@ -364,6 +364,12 @@ type Store interface {
 	Vacuum() error
 
 	Close() error
+
+	// InTransaction runs fn against a Store whose every write lands in one
+	// transaction: all of them when fn returns nil, none when it returns an
+	// error or panics. A nested call is ErrNestedTransaction. The Store fn
+	// receives is valid only inside fn.
+	InTransaction(fn func(Store) error) error
 }
 
 // SQLStore is the production Store, backed by *sql.DB. Methods are
@@ -381,7 +387,7 @@ type Store interface {
 // id may also change semantically on conflict-update. Wiping and
 // re-inserting is correct and simple.
 type SQLStore struct {
-	db *sql.DB
+	db conn
 	// path is the on-disk database location (":memory:" for test
 	// stores) — retained so Health() can stat the file + WAL sizes.
 	path string
@@ -467,7 +473,7 @@ func NewSQLStore(path string) (*SQLStore, error) {
 		_ = d.Close()
 		return nil, err
 	}
-	store := &SQLStore{db: d, path: path}
+	store := &SQLStore{db: poolConn{d}, path: path}
 	// Reclaim screenshots_dirs rows orphaned by deleted matches / changed watch
 	// folders (the FK is RESTRICT, so they never go on their own).
 	if _, err := store.PruneScreenshotsDirs(); err != nil {
@@ -481,7 +487,15 @@ func NewSQLStore(path string) (*SQLStore, error) {
 	return store, nil
 }
 
-func (s *SQLStore) Close() error { return s.db.Close() }
+// Close closes the database. A Store handed out by InTransaction has
+// nothing of its own to close.
+func (s *SQLStore) Close() error {
+	pool, ok := s.db.(poolConn)
+	if !ok {
+		return ErrNestedTransaction
+	}
+	return pool.Close()
+}
 
 // suppliedInstantOrNow is the VALUES expression for a server-assigned
 // timestamp the caller may override: the instant bound to the placeholder

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"recall/pkg/app"
+	"recall/pkg/db"
 	"recall/pkg/parser"
 	"recall/pkg/snapshot"
 )
@@ -366,5 +367,39 @@ func TestClaims_OverrideWithNothingToTakeIsANoOp(t *testing.T) {
 	mustNoErr(t, err)
 	if got.Screenshots != 0 || got.MatchesMoved != 0 {
 		t.Errorf("override = %+v, want nothing taken", got)
+	}
+}
+
+// Clearing the database empties the profile, so it owns nothing any more:
+// its screenshots are free for another profile to parse.
+func TestClaims_ClearReleasesTheProfilesScreenshots(t *testing.T) {
+	a, shared := newSharedFolderApp(t)
+	writeFile(t, shared, shotA, []byte("match-one"))
+	parseOneMatch(t, a)
+	mustNoErr(t, a.ClearDatabase(false))
+
+	switchTo(t, a, "alt")
+	if skip := parseCapturingSkip(t, a); skip[shotA] {
+		t.Errorf("a cleared profile still owns its screenshot; skip=%v", skip)
+	}
+}
+
+// Restoring a backup makes the profile hold what the backup holds. A
+// screenshot parsed after that backup is no longer this profile's.
+func TestClaims_RestoreHandsBackWhatTheBackupDoesNotHold(t *testing.T) {
+	a, shared := newSharedFolderApp(t)
+	writeFile(t, shared, shotA, []byte("match-one"))
+	prev := snapshot.BackupToFunc
+	snapshot.BackupToFunc = db.BackupTo
+	empty, err := a.BackupDatabase()
+	snapshot.BackupToFunc = prev
+	mustNoErr(t, err)
+	parseOneMatch(t, a)
+
+	mustNoErr(t, a.RestoreDatabase(empty))
+
+	switchTo(t, a, "alt")
+	if skip := parseCapturingSkip(t, a); skip[shotA] {
+		t.Errorf("after restoring a backup without it, the screenshot is still owned; skip=%v", skip)
 	}
 }
