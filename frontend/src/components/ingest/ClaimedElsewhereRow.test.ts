@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import { flushPromises } from '@/test-utils'
+import { flushPromises, waitOutSwapHold } from '@/test-utils'
 
 // The Parse tab's takeover row. Its contract: say how many of the folder's
 // screenshots other profiles own, move them here only after a second click,
@@ -47,6 +47,7 @@ describe('ClaimedElsewhereRow', () => {
     expect(screen.getByText('Matches built from them leave the other profiles and move here too.')).toBeInTheDocument()
     expect(ClaimFolderScreenshots).not.toHaveBeenCalled()
 
+    await waitOutSwapHold()
     await user().click(confirmButton())
     await flushPromises()
 
@@ -59,6 +60,7 @@ describe('ClaimedElsewhereRow', () => {
     render(ClaimedElsewhereRow, { props: { count: 1 } })
 
     await user().click(armButton()!)
+    await waitOutSwapHold()
     await user().click(confirmButton())
     await flushPromises()
 
@@ -80,6 +82,7 @@ describe('ClaimedElsewhereRow', () => {
     render(ClaimedElsewhereRow, { props: { count: 2 } })
 
     await user().click(armButton()!)
+    await waitOutSwapHold()
     await user().click(confirmButton())
     await flushPromises()
 
@@ -104,6 +107,7 @@ describe('ClaimedElsewhereRow', () => {
     render(ClaimedElsewhereRow, { props: { count: 2 } })
 
     await user().click(armButton()!)
+    await waitOutSwapHold()
     await user().click(confirmButton())
     await flushPromises()
 

@@ -165,6 +165,7 @@ const requestEnd = () => coach.requestEndSession()
         <button
           type="button"
           class="paper-btn primary coach-slip-btn"
+          :aria-disabled="coach.endHeld || undefined"
           :title="coach.endArmedTitle"
           @click="requestEnd"
         >

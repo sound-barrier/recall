@@ -2,6 +2,7 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
 
+import { SWAP_HOLD_MS } from '@/composables/shared/useSwapHold'
 import { setApiBacking } from '@/api-client'
 import { emptyDraft, type CoachNoteDraft } from '@/match/coach/coach-notes'
 import { getQueryClient } from '@/queries/client'
@@ -521,11 +522,35 @@ describe('coach store — ending the session', () => {
     coach.cancelEndSession()
     expect(coach.endArmed).toBe(false)
 
-    // Asked again, and answered.
+    // Asked again — and the second press of the same double-click is not
+    // the answer: "End anyway" holds for a beat after it takes End's place.
     coach.requestEndSession()
     coach.requestEndSession()
     await settle()
+    expect(api.CloseCoachSession).not.toHaveBeenCalled()
+    expect(coach.endArmed).toBe(true)
+
+    // Answered, deliberately.
+    await vi.advanceTimersByTimeAsync(SWAP_HOLD_MS)
+    coach.requestEndSession()
+    await settle()
     expect(api.CloseCoachSession).toHaveBeenCalledTimes(1)
+  })
+
+  // A clean session ends on the first press; the second press of a
+  // double-click used to run the whole end again.
+  it('ends once however many times End is pressed while it runs', async () => {
+    const coach = useCoachStore()
+    await coach.openBundle()
+    await settle()
+
+    coach.requestEndSession()
+    coach.requestEndSession()
+    await coach.endSession()
+    await settle()
+
+    expect(api.CloseCoachSession).toHaveBeenCalledTimes(1)
+    expect(coach.sessionPhase.status).toBe('none')
   })
 
   // Wails' native save dialog returns "" when the coach cancels it — no

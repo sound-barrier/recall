@@ -10,7 +10,7 @@ import AxeBuilder from '@axe-core/playwright'
 import type { Page, Route } from '@playwright/test'
 
 import { routeCapture } from '../_capture'
-import { test, expect } from '../_fixtures'
+import { clickTwiceInPlace, pressEnterTwice, test, expect } from '../_fixtures'
 
 type Pending = { count: number; parked: number; claimed_elsewhere: number }
 
@@ -80,6 +80,48 @@ test.describe('Parse tab — screenshots owned by other profiles', () => {
     await page.getByRole('button', { name: 'Cancel' }).click()
     await expect(page.getByRole('button', { name: 'Move them here…' })).toBeVisible()
     expect(posted).toBe(false)
+  })
+
+  // Confirm takes the arm button's place, so the second click of a
+  // double-click used to land on it and move another profile's matches here
+  // with no deliberate second decision.
+  test('a double-click on Move them here… arms without moving anything', async ({ page }) => {
+    await bootWith(page, { count: 0, parked: 0, claimed_elsewhere: 3 })
+    let posted = 0
+    await page.route('**/api/v1/profiles/active/screenshot-claims', async (route: Route) => {
+      posted++
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ screenshots: 3, matches_moved: 1 }) })
+    })
+
+    const confirm = page.getByRole('button', { name: 'Confirm move' })
+    await clickTwiceInPlace(page, page.getByRole('button', { name: 'Move them here…' }), async () => {
+      await expect(confirm).toBeVisible()
+    })
+
+    await page.waitForTimeout(300)
+    expect(posted).toBe(0)
+    await expect(confirm).toBeVisible()
+  })
+
+  // Arming hands focus to Confirm, so Enter pressed twice walked the same path.
+  test('Enter pressed twice on Move them here… arms without moving anything', async ({ page }) => {
+    await bootWith(page, { count: 0, parked: 0, claimed_elsewhere: 3 })
+    let posted = 0
+    await page.route('**/api/v1/profiles/active/screenshot-claims', async (route: Route) => {
+      posted++
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ screenshots: 3, matches_moved: 1 }) })
+    })
+
+    await page.getByRole('button', { name: 'Move them here…' }).focus()
+    const confirm = page.getByRole('button', { name: 'Confirm move' })
+    await pressEnterTwice(page, async () => { await expect(confirm).toBeFocused() })
+
+    await page.waitForTimeout(300)
+    expect(posted).toBe(0)
+    // Held, not dead: once the beat passes the same Enter confirms.
+    await expect(confirm).not.toHaveAttribute('aria-disabled', 'true')
+    await page.keyboard.press('Enter')
+    await expect.poll(() => posted).toBe(1)
   })
 
   // The armed confirm is a filled danger button; its label must clear AA on

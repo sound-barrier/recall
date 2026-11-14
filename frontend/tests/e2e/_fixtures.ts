@@ -20,7 +20,7 @@
  * default test-file glob (the runner picks up *.spec.ts but skips
  * everything else).
  */
-import { test as base, expect } from '@playwright/test'
+import { test as base, expect, type Locator, type Page } from '@playwright/test'
 import { CoverageReport } from 'monocart-coverage-reports'
 
 import { COVERAGE_ENABLED, coverageOptions } from './coverage-options'
@@ -75,3 +75,38 @@ export const test = base.extend({
 })
 
 export { expect }
+
+/**
+ * A person's double-click on a control that swaps in place for its opposite.
+ *
+ * The first press lands, the replacement renders in the same spot, and the
+ * second press arrives a beat later at the same coordinates — through the
+ * mouse, not the locator, so Playwright's wait-until-enabled cannot rescue a
+ * control that should have been held. `swapped` resolves once the
+ * replacement is on screen.
+ */
+export async function clickTwiceInPlace(
+  page: Page,
+  target: Locator,
+  swapped: () => Promise<void>,
+  // Where on the control the press lands, as fractions of its box — for a
+  // replacement that covers only part of the original's footprint.
+  at: { x: number; y: number } = { x: 0.5, y: 0.5 },
+): Promise<void> {
+  // The mouse clicks viewport coordinates, so the control has to be on screen.
+  await target.scrollIntoViewIfNeeded()
+  const box = await target.boundingBox()
+  if (!box) throw new Error('the control has no box to click')
+  const x = box.x + box.width * at.x
+  const y = box.y + box.height * at.y
+  await page.mouse.click(x, y)
+  await swapped()
+  await page.mouse.click(x, y)
+}
+
+/** The Enter-Enter twin of clickTwiceInPlace: two presses on whatever holds focus. */
+export async function pressEnterTwice(page: Page, swapped: () => Promise<void>): Promise<void> {
+  await page.keyboard.press('Enter')
+  await swapped()
+  await page.keyboard.press('Enter')
+}

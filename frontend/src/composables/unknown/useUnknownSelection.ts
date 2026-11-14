@@ -1,5 +1,6 @@
 import { computed, onScopeDispose, ref, watch, type ComputedRef, type Ref } from 'vue'
 
+import { useSwapHold } from '@/composables/shared/useSwapHold'
 import { ARM_WINDOW_MS } from '@/composables/unknown/useArmedAction'
 
 /**
@@ -53,6 +54,9 @@ export function useUnknownSelection(opts: UseUnknownSelectionOptions) {
   // any change to that set has to disarm, or the user confirms one thing and
   // dismisses another.
   const armed = ref(false)
+  // Confirm takes Dismiss's place at the bar's end, so it is held for a beat
+  // after arming: the second press of a double-click must not be the confirm.
+  const { held: confirmHeld, hold: holdConfirm, release: releaseConfirm } = useSwapHold()
 
   // A row carrying no files cannot be dismissed — the per-card path hides its
   // button outright — so it is not selectable either. Counting one would arm a
@@ -113,6 +117,7 @@ export function useUnknownSelection(opts: UseUnknownSelectionOptions) {
   function requestDismiss() {
     if (selectedCount.value === 0) return
     armed.value = true
+    holdConfirm()
     clearTimeout(armTimer)
     // Auto-disarm, exactly like the per-card button. This is the ONE control
     // here that suppresses many files at once, so it should be no braver than
@@ -121,11 +126,13 @@ export function useUnknownSelection(opts: UseUnknownSelectionOptions) {
   }
 
   function cancelDismiss() {
+    releaseConfirm()
     armed.value = false
     clearTimeout(armTimer)
   }
 
   function commitDismiss() {
+    if (!armed.value || confirmHeld.value) return
     clearTimeout(armTimer)
     const files = selectedFiles.value
     if (files.length === 0) {
@@ -141,6 +148,7 @@ export function useUnknownSelection(opts: UseUnknownSelectionOptions) {
   return {
     selectedIds: selectedIds as Ref<Set<string>>,
     armed,
+    confirmHeld,
     selectedRows,
     selectedCount,
     selectedFiles,

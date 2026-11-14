@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 
 import type { MatchRecord } from '@/api-client'
 import { screenshotURL, hasDuplicateCandidate } from '@/match/match-helpers'
-import { useArmedAction } from '@/composables/unknown/useArmedAction'
+import { armKey, useArmedAction } from '@/composables/unknown/useArmedAction'
 import { useUnknownSelection, unknownRowLabel } from '@/composables/unknown/useUnknownSelection'
 import UnknownBulkBar from '@/components/unknown/UnknownBulkBar.vue'
 import UnknownCandidatePicker from '@/components/unknown/UnknownCandidatePicker.vue'
@@ -57,19 +57,22 @@ const openLightbox = uiStore.preview.openLightbox
 // sections; a write, so a coaching session locks it. Dismissal is
 // card-whole (every source file), and the label says so when the group
 // carries more than one.
-const { trigger: triggerDismiss, isArmed: isDismissArmed } = useArmedAction()
+const { trigger: triggerDismiss, isArmed: isDismissArmed, isHeld: isDismissHeld } = useArmedAction()
+// The arm is about THIS card's files: a parse that merges another screenshot
+// into the card changes the key, which disarms it.
+const dismissKey = (rec: MatchRecord) => armKey(rec.match_key, rec.source_files ?? [])
 
 function onDismissAmbiguous(rec: MatchRecord) {
   const files = rec.source_files ?? []
   if (files.length === 0) return
-  triggerDismiss(rec.match_key, () => { void onDismissFiles(files) })
+  triggerDismiss(dismissKey(rec), () => { void onDismissFiles(files) })
 }
 
 
 function ambiguousDismissLabel(rec: MatchRecord): string {
   const files = rec.source_files ?? []
   const what = files.length === 1 ? (files[0] ?? '') : `${files.length} screenshots of this group`
-  return isDismissArmed(rec.match_key) ? `Confirm dismissing ${what}` : `Dismiss ${what}`
+  return isDismissArmed(dismissKey(rec)) ? `Confirm dismissing ${what}` : `Dismiss ${what}`
 }
 
 const unknownExpanded = ref<Record<string, boolean>>({})
@@ -272,14 +275,15 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
                 <button
                   type="button"
                   class="btn-mono is-lg is-danger unknown-delete-btn"
-                  :class="{ armed: isDismissArmed(rec.match_key) }"
+                  :class="{ armed: isDismissArmed(dismissKey(rec)) }"
                   :aria-label="ambiguousDismissLabel(rec)"
                   :data-ignore-btn="rec.match_key"
                   :disabled="writesLocked"
+                  :aria-disabled="isDismissHeld(dismissKey(rec)) || undefined"
                   :title="lockReason || undefined"
                   @click="onDismissAmbiguous(rec)"
                 >
-                  {{ isDismissArmed(rec.match_key) ? 'Confirm dismiss?' : 'Dismiss' }}
+                  {{ isDismissArmed(dismissKey(rec)) ? 'Confirm dismiss?' : 'Dismiss' }}
                 </button>
                 <span class="unknown-delete-hint">
                   Not a match worth keeping? Recall will skip these files on

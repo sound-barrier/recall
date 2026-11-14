@@ -5,7 +5,7 @@ import ReportParseProblemButton from '@/components/report/ReportParseProblemButt
 import type { MatchRecord } from '@/api-client'
 import { detectScreenshotSlots, screenshotURL } from '@/match/match-helpers'
 import { formatParsedAt } from '@/match/match-time-helpers'
-import { useArmedAction } from '@/composables/unknown/useArmedAction'
+import { armKey, useArmedAction } from '@/composables/unknown/useArmedAction'
 import { useUnknownSelection, unknownRowLabel } from '@/composables/unknown/useUnknownSelection'
 import UnknownBulkBar from '@/components/unknown/UnknownBulkBar.vue'
 import { useHoverThumbnail } from '@/composables/shared/media/useHoverThumbnail'
@@ -40,7 +40,10 @@ const unknownRecords = computed(() => matchesStore.unknownRecords)
 // cards don't collide. A card is dismissed whole: EVERY source file it
 // carries joins the suppress-list, or a two-screenshot card would come
 // straight back on the surviving file.
-const { trigger: triggerDismiss, isArmed: isDismissArmed } = useArmedAction()
+const { trigger: triggerDismiss, isArmed: isDismissArmed, isHeld: isDismissHeld } = useArmedAction()
+// The arm is about THIS card's files: a parse that merges another screenshot
+// into the card changes the key, which disarms it.
+const dismissKey = (rec: MatchRecord) => armKey(rec.match_key, rec.source_files ?? [])
 
 // Bulk dismiss — the post-import cleanup spree, where a folder of desktop
 // screenshots all deserve the same verdict. The checkbox on each card IS the
@@ -58,13 +61,13 @@ function selectLabel(rec: MatchRecord): string {
 function onDismissClick(rec: MatchRecord) {
   const files = rec.source_files ?? []
   if (files.length === 0) return
-  triggerDismiss(rec.match_key, () => { void onDismissFiles(files) })
+  triggerDismiss(dismissKey(rec), () => { void onDismissFiles(files) })
 }
 
 function dismissLabel(rec: MatchRecord): string {
   const files = rec.source_files ?? []
   const what = files.length === 1 ? (files[0] ?? '') : `${files.length} screenshots of ${rec.match_key}`
-  return isDismissArmed(rec.match_key) ? `Confirm dismissing ${what}` : `Dismiss ${what}`
+  return isDismissArmed(dismissKey(rec)) ? `Confirm dismissing ${what}` : `Dismiss ${what}`
 }
 
 // Hover-preview state for the Unknown card list. Mouseenter on a collapsed card
@@ -349,14 +352,15 @@ function onCardHeadClick(rec: MatchRecord) {
             <button
               type="button"
               class="btn-mono is-lg is-danger unknown-delete-btn"
-              :class="{ armed: isDismissArmed(rec.match_key) }"
+              :class="{ armed: isDismissArmed(dismissKey(rec)) }"
               :aria-label="dismissLabel(rec)"
               :data-ignore-btn="rec.match_key"
               :disabled="writesLocked"
+              :aria-disabled="isDismissHeld(dismissKey(rec)) || undefined"
               :title="lockReason || undefined"
               @click="onDismissClick(rec)"
             >
-              {{ isDismissArmed(rec.match_key) ? 'Confirm dismiss?' : 'Dismiss' }}
+              {{ isDismissArmed(dismissKey(rec)) ? 'Confirm dismiss?' : 'Dismiss' }}
             </button>
             <span class="unknown-delete-hint">
               Recall will skip these files on future parses. The files stay
