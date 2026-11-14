@@ -21,8 +21,10 @@ var screenshotTypeTables = map[parser.ScreenshotType]string{
 	parser.TypeHistory:   "history_screenshots",
 }
 
-// DeleteScreenshotSiblings removes filename's rows from every screenshot
-// table except keepType's (children CASCADE). A re-parse that reclassifies
+// DeleteScreenshotSiblings removes filename's rows in folder dirID from every
+// screenshot table except keepType's (children CASCADE). A filename is a
+// basename, so the folder is what makes it one screenshot: a same-named
+// file in another folder is someone else's row. A re-parse that reclassifies
 // a screenshot — a rank screen once stored as a garbage summary row, an
 // unknown that a parser fix now reads — must not strand the old-type row
 // beside the new one. When the wipe removes a match key's LAST parent row,
@@ -30,7 +32,7 @@ var screenshotTypeTables = map[parser.ScreenshotType]string{
 // invariant: resolving a pending screenshot onto a dead key would
 // resurrect its identity). Idempotent; a filename absent everywhere is a
 // no-op.
-func (s *SQLStore) DeleteScreenshotSiblings(filename string, keepType parser.ScreenshotType) error {
+func (s *SQLStore) DeleteScreenshotSiblings(dirID int64, filename string, keepType parser.ScreenshotType) error {
 	keep := screenshotTypeTables[keepType]
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -43,11 +45,11 @@ func (s *SQLStore) DeleteScreenshotSiblings(filename string, keepType parser.Scr
 		if t == keep {
 			continue
 		}
-		if err := collectMatchKeys(tx, t, filename, oldKeys); err != nil {
+		if err := collectFolderMatchKeys(tx, t, dirID, filename, oldKeys); err != nil {
 			return err
 		}
 	}
-	if err := deleteSiblingRows(tx, keep, filename); err != nil {
+	if err := deleteSiblingRows(tx, keep, dirID, filename); err != nil {
 		return err
 	}
 	if err := dropOrphanedCandidates(tx, oldKeys); err != nil {
@@ -123,10 +125,21 @@ func orphanedKeys(tx *sql.Tx, keys map[string]bool) ([]string, error) {
 	return out, nil
 }
 
-// deleteSiblingRows removes filename's rows from every screenshot table
-// (parents + the recognized-skip registries) except keep's; children CASCADE.
-func deleteSiblingRows(tx *sql.Tx, keep, filename string) error {
-	for _, t := range append(append([]string{}, parentTables...), recognizedRegistryTables...) {
+// deleteSiblingRows removes filename's rows in folder dirID from every parent
+// table except keep's (children CASCADE), and from the recognized-skip
+// registries. The registries record a bare filename with no folder, so
+// they cannot be scoped; a stale entry there only costs a re-OCR.
+func deleteSiblingRows(tx *sql.Tx, keep string, dirID int64, filename string) error {
+	for _, t := range parentTables {
+		if t == keep {
+			continue
+		}
+		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
+		if _, err := tx.Exec(`DELETE FROM `+t+` WHERE filename = ? AND screenshots_dir_id = ?`, filename, dirID); err != nil {
+			return err
+		}
+	}
+	for _, t := range recognizedRegistryTables {
 		if t == keep {
 			continue
 		}
@@ -156,6 +169,17 @@ func dropOrphanedCandidates(tx *sql.Tx, keys map[string]bool) error {
 	return nil
 }
 
+// collectFolderMatchKeys adds the match keys of filename's rows in folder
+// dirID in table to out.
+func collectFolderMatchKeys(tx *sql.Tx, table string, dirID int64, filename string, out map[string]bool) error {
+	// #nosec G202 -- table name comes from a hard-coded slice, not user input.
+	rows, err := tx.Query(`SELECT match_key FROM `+table+` WHERE filename = ? AND screenshots_dir_id = ?`, filename, dirID)
+	if err != nil {
+		return err
+	}
+	return scanMatchKeys(rows, out)
+}
+
 // collectMatchKeys adds the match keys of filename's rows in table to out.
 func collectMatchKeys(tx *sql.Tx, table, filename string, out map[string]bool) error {
 	// #nosec G202 -- table name comes from a hard-coded slice, not user input.
@@ -163,15 +187,7 @@ func collectMatchKeys(tx *sql.Tx, table, filename string, out map[string]bool) e
 	if err != nil {
 		return err
 	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		var k string
-		if err := rows.Scan(&k); err != nil {
-			return err
-		}
-		out[k] = true
-	}
-	return rows.Err()
+	return scanMatchKeys(rows, out)
 }
 
 // matchKeyHasNoRows reports whether no parent table holds a row for key.
