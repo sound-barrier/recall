@@ -383,6 +383,95 @@ schema shape is final:
 **Effort:** M. **Risk:** High — on-disk schema management. Deliberately sequenced
 last so the schema is frozen before the baseline is captured.
 
+## 21. State machines the 2026-11-14 pass left implicit
+
+The 2026-11-14 pass inventoried every implicit state machine and made the
+riskiest explicit. Four were made explicit in this repo: the run slot, the
+parse-run union, the Tesseract probe and the watcher trigger. Three more
+traced bugs were fixed: the profile swap, the bundle import, and the
+ambiguous sentinel. The shape is in `pkg/CLAUDE.md` and `frontend/CLAUDE.md`
+→ **State**. The machines below each have a bug that was traced but is not
+yet fixed. They are ordered by likelihood × blast radius.
+
+- **Coach-return block provenance (M).** `match_coach_notes` keys a block
+  by `note_id` alone. Two returns that carry the same note therefore share
+  one block. Skipping the note in the newer return deletes the block the
+  older return's accept wrote (`pkg/coachreturn/decide.go` `skipNote`).
+  Accepting the older return overwrites newer text. Fix: a `return_id`
+  column (ON DELETE SET NULL); skip removes only a block its own return
+  wrote. Same area, smaller:
+  - `coach_session_focus_items.status` has no `CHECK`, and the frozen
+    status is always `''`.
+  - A coach who quits is recorded as abandoned.
+  - Re-staging a return reassigns a received focus item's `return_id`, so
+    discarding the newer return deletes the item.
+- **Bundle import is not one transaction (M).** The pre-write checks now
+  refuse every conflict the database would refuse later. A crash between
+  the parent rows and the user layer can still strand the parents, and a
+  retry then skips them as existing. Fix: a `Store` method that runs the
+  whole import in one transaction (the `dbtest.Fake` mirror included).
+- **Per-file ledger keyed by basename (L).** `failed_files`, `ingested_files`
+  and the two recognized-skip registries use the filename alone as key.
+  Parking and unparking therefore reach across screenshots folders.
+  Separately, a Tesseract outage counts an attempt against every file it
+  touches, so it can park the whole backlog. Fix: key every per-file table
+  by `(screenshots_dir_id, filename)`. Add a failure kind
+  (`ocr_unavailable | parse_failed`), and count an attempt only for
+  `parse_failed`. A single `screenshot_files` status table with a `CHECK`
+  is the end state.
+- **Unsynchronized `a.store` reads during a swap (M).** A swap now always
+  ends on an open store, and opening a coaching session mid-swap is
+  refused. Other reads (`GetDatabaseHealth`, every list endpoint) still
+  read `a.store` with no lock while a restore or switch replaces it.
+  Fix: a holder with an RWMutex and a `swapping` state, through which every
+  read goes. That touches every call site, so it is its own PR.
+- **Folder watcher on a deleted folder (S).** The watcher keeps running
+  after its folder is removed. The masthead dot reads the Watch *setting*,
+  not whether a watcher is actually running. Fix: a `watch_state` enum on
+  the API, and the trigger machine moving to `unavailable` when the folder
+  goes away.
+- **Frontend autosave and editors (M).**
+  - The annotation `watch` overwrites a note being typed after a tag
+    commit refetches.
+  - Deleting a moment does not cancel its queued PUT, so the moment comes
+    back.
+  - Self-review writes read `openId` when they run, not when they are
+    queued.
+  - Two PUTs for one key can land out of order.
+  - "saved" shows during the debounce of a newer edit.
+
+  Fix: a per-key `idle | queued | saving | saved | error` union that
+  serializes writes and captures each write's target at queue time.
+- **Arm/confirm flows (S).**
+  - A double-click on End skips the unexported-notes confirm.
+  - End can run twice.
+  - Clear sits outside the `anyBusy` mutex.
+
+  Fix: hold the confirm after arming, the way `STOP_HOLD_MS` does in the
+  parse union.
+- **§16 regressions (S).** These read server state into refs:
+  - `useIgnoredScreenshots` and `useScreenshotFolderStats`, while
+    `qk.ignored` and `qk.candidateStats` sit unused.
+  - The settings store's mirrors, which write back only to the refs.
+
+  Move them onto the query cache with `setQueryData`.
+- **Smaller (S each).**
+  - The tour's demo overlay can stick when Escape lands before the chunk
+    loads.
+  - The records pulse never fires in the normal path, because upserts
+    grow the cache before `load()` measures it.
+  - Game-data apply re-arms mid-apply.
+  - Self-review `finished_at` is nullable and Finish is not atomic.
+  - `IgnoreScreenshot` spans four transactions.
+  - Clear/restore never release the claims ledger.
+- **§11 typed-discriminant gaps (S).** These are still bare strings:
+  - `CoachDecision.Decision`
+  - `CoachSessionRow.Source` and `Kind`
+  - `AmbiguousCandidate.Reason`
+  - `Annotation.ExclusionReason`
+  - the maintenance operation
+  - `rosterwatch` `Finding.Kind`, which still has a `default: continue`
+
 ## Out of scope — deliberately not building
 
 So a future pass doesn't re-propose them:
