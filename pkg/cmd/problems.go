@@ -48,9 +48,14 @@ var (
 	// macOS, or an unwritable install dir). 409 not 400: the request is
 	// well-formed, the server just can't act on it here.
 	probSelfUpdateUnavailable = problemType{"self-update-unavailable", "Conflict", http.StatusConflict}
-	probDataVerify            = problemType{"data-verification-failed", "Unprocessable Entity", http.StatusUnprocessableEntity}
-	probRestoreInvalid        = problemType{"restore-invalid", "Unprocessable Entity", http.StatusUnprocessableEntity}
-	probBadGateway            = problemType{"upstream-fetch-failed", "Bad Gateway", http.StatusBadGateway}
+	// A release is already downloaded and staged: another pass would discard
+	// it. The client offers Restart instead of Update.
+	probSelfUpdateStaged = problemType{"self-update-staged", "Conflict", http.StatusConflict}
+	// Restart asked for with nothing staged yet.
+	probSelfUpdateNotReady = problemType{"self-update-not-ready", "Conflict", http.StatusConflict}
+	probDataVerify         = problemType{"data-verification-failed", "Unprocessable Entity", http.StatusUnprocessableEntity}
+	probRestoreInvalid     = problemType{"restore-invalid", "Unprocessable Entity", http.StatusUnprocessableEntity}
+	probBadGateway         = problemType{"upstream-fetch-failed", "Bad Gateway", http.StatusBadGateway}
 	// An attachment past the per-image cap. 413 rather than 400: the request
 	// is well-formed and the answer is about its size, which is the one thing
 	// the sender can act on without guessing.

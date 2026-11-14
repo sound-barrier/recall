@@ -82,7 +82,9 @@ paths:
   owned by the app alone. A start while a pass runs is a no-op; once
   `ready`, a start refuses with `ErrSelfUpdateStaged` (another pass would
   discard the staged binary) and `RestartToApply` refuses with
-  `ErrSelfUpdateNotReady` until then — both 409.
+  `ErrSelfUpdateNotReady` until then — both 409, with their own problem
+  types (`self-update-staged`, `self-update-not-ready`) so a client tells
+  them apart without reading the detail text.
 - **Duplicate sweep** (`pkg/app/duplicate_sweep.go`): runs at the END of
   `runClaimedParse`, after the OCR loop, and demotes run-created tracked
   matches that duplicate an existing one into the ambiguous queue via

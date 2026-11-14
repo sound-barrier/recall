@@ -5107,10 +5107,10 @@ export type StartSelfUpdateData = {
 
 export type StartSelfUpdateErrors = {
     /**
-     * The request was syntactically valid, but the resource state or
-     * a payload value prevents the action (e.g. duplicate profile
-     * name, screenshots directory not configured, invalid Tesseract
-     * binary path, non-candidate resolution target).
+     * Self-update cannot start. Problem `type` tells the cases apart:
+     * `.../problems/self-update-unavailable` (no updater on this
+     * install) or `.../problems/self-update-staged` (a release is
+     * already staged — restart to apply it).
      *
      */
     409: ProblemDetails;
@@ -5134,10 +5134,10 @@ export type RestartToApplyData = {
 
 export type RestartToApplyErrors = {
     /**
-     * The request was syntactically valid, but the resource state or
-     * a payload value prevents the action (e.g. duplicate profile
-     * name, screenshots directory not configured, invalid Tesseract
-     * binary path, non-candidate resolution target).
+     * Nothing to apply. Problem `type` tells the cases apart:
+     * `.../problems/self-update-unavailable` (no updater on this
+     * install) or `.../problems/self-update-not-ready` (no release is
+     * staged yet).
      *
      */
     409: ProblemDetails;
