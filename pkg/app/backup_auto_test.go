@@ -185,3 +185,58 @@ func TestMaybeAutoBackup_WritesWhenDue_SkipsWhenFreshOrOff(t *testing.T) {
 		t.Errorf("disabled scheduler must never back up, got %v", log)
 	}
 }
+
+// The boot backup runs inside the run slot, so it can never overlap a
+// restore, a profile rename or a parse writing the same file. A busy slot
+// just skips this round; the next start or parse takes it.
+func TestBootBackup_SkipsWhileTheRunSlotIsBusy(t *testing.T) {
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	a, _ := newParseReadyApp(t)
+	var log []string
+	stubBackup(t, &log, false)
+	_, id, err := app.ClaimRun(a, app.RunKindRestore)
+	mustNoErr(t, err)
+
+	app.StartBootBackup(a)
+	mustNoErr(t, a.ServiceShutdown())
+
+	if len(log) != 0 {
+		t.Errorf("the boot backup ran beside a held run slot: %v", log)
+	}
+	app.FinishRun(a, id, nil, nil)
+	app.StartBootBackup(a)
+	mustNoErr(t, a.ServiceShutdown())
+	if len(log) != 1 {
+		t.Errorf("with the slot free the boot backup must run once, got %v", log)
+	}
+}
+
+// The boot backup's goroutine is the App's: quitting waits for it rather than
+// tearing the process down under a VACUUM INTO.
+func TestBootBackup_ShutdownWaitsForIt(t *testing.T) {
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	a, _ := newParseReadyApp(t)
+	entered, release := make(chan struct{}), make(chan struct{})
+	prev := snapshot.BackupToFunc
+	snapshot.BackupToFunc = func(_, dest string) error {
+		close(entered)
+		<-release
+		return os.WriteFile(dest, []byte("snapshot"), 0o600)
+	}
+	t.Cleanup(func() { snapshot.BackupToFunc = prev })
+
+	app.StartBootBackup(a)
+	<-entered
+	done := make(chan struct{})
+	go func() {
+		_ = a.ServiceShutdown()
+		close(done)
+	}()
+	select {
+	case <-done:
+		t.Fatal("ServiceShutdown returned while the boot backup was still writing")
+	case <-time.After(50 * time.Millisecond):
+	}
+	close(release)
+	<-done
+}

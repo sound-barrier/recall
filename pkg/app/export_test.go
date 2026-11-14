@@ -43,7 +43,10 @@ func RunWatchEvents(events <-chan fsnotify.Event, errs <-chan error, onNewImage 
 // The VACUUM INTO seam and the prune helper moved to pkg/snapshot with the
 // carve; tests reach them there. What is left is the one *App method the
 // shell kept, because scheduling needs the profile's paths and settings.
-var MaybeAutoBackup = (*App).maybeAutoBackup
+var (
+	MaybeAutoBackup = (*App).maybeAutoBackup
+	StartBootBackup = (*App).startBootBackup
+)
 
 // ── Other function-variable / tunable seams (pointers for save/swap/restore) ──
 var (

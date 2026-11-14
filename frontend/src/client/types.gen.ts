@@ -150,11 +150,11 @@ export type RunId = number;
 
 /**
  * What holds the run slot. Only `parse` and `reparse` can be canceled
- * or report progress; the rest are store swaps that need the database
- * to themselves.
+ * or report progress; the rest need the database to themselves —
+ * `backup` is the boot-time automatic snapshot.
  *
  */
-export type RunKind = 'parse' | 'reparse' | 'restore' | 'maintenance' | 'profile_switch' | 'profile_rename' | 'screenshot_takeover';
+export type RunKind = 'parse' | 'reparse' | 'restore' | 'maintenance' | 'profile_switch' | 'profile_rename' | 'screenshot_takeover' | 'backup';
 
 /**
  * How a run ended.

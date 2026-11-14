@@ -4767,11 +4767,11 @@ components:
         snapshot naming N.
     RunKind:
       type: string
-      enum: [parse, reparse, restore, maintenance, profile_switch, profile_rename, screenshot_takeover]
+      enum: [parse, reparse, restore, maintenance, profile_switch, profile_rename, screenshot_takeover, backup]
       description: |
         What holds the run slot. Only `parse` and `reparse` can be canceled
-        or report progress; the rest are store swaps that need the database
-        to themselves.
+        or report progress; the rest need the database to themselves —
+        `backup` is the boot-time automatic snapshot.
     RunOutcome:
       type: string
       enum: [completed, canceled, failed]
