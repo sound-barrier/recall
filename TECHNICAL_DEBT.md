@@ -393,11 +393,6 @@ ambiguous sentinel. The shape is in `pkg/CLAUDE.md` and `frontend/CLAUDE.md`
 → **State**. The machines below each have a bug that was traced but is not
 yet fixed. They are ordered by likelihood × blast radius.
 
-- **Per-file ledgers are four tables (S).** `failed_files`, `ingested_files`
-  and the two recognized-skip registries are now keyed by
-  `(screenshots_dir_id, filename)`, and a failure carries its kind. They are
-  still four tables saying four things about one file; a single
-  `screenshot_files` status table with a `CHECK` is the end state.
 - **Frontend autosave and editors (M).**
   - The annotation `watch` overwrites a note being typed after a tag
     commit refetches.
@@ -489,6 +484,20 @@ with measurements, so the next pass does not re-derive them:
   screenshot-type vocabulary**, though they spell some of the same words —
   the probe table says `"all-heroes"` with a hyphen. Both were left alone when
   §11 typed the real vocabulary.
+
+**Checked and dismissed by the 2026-11-14 state pass:**
+
+- **The per-file ledgers stay four tables, not one `screenshot_files`
+  status column.** They record facts a file holds AT ONCE, so a single
+  `status` would have to drop one. A file's hash is registered before OCR,
+  for dedup and the claims ledger, so a file that then fails is registered
+  AND failed. A recognized screen whose read was degraded is skip-listed
+  AND on the Failed list. `pkg/app/ledger_overlap_test.go` pins both
+  overlaps. Collapsing them would cost one of three things: a copy of a
+  failed file escaping dedup, a degraded recognized screen re-OCR'd on
+  every run, or that degradation hidden. What the tables did lack was a
+  shared key, and they now have one: every table is keyed by
+  `(screenshots_dir_id, filename)`.
 
 **Swept clean by the 2026-08-22 standards audit** — recorded so the next pass
 doesn't re-derive them. Each was checked against source, not assumed:
