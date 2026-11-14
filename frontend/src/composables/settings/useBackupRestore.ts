@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { computed, ref, type Ref } from 'vue'
 
 import type { CoachReturnSheet } from '@/api-client'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
@@ -49,19 +49,29 @@ export interface BackupRestoreApi {
   // receipt. Required, not optional: an unwired host would swallow every
   // notes import silently.
   onCoachNotes: (sheet: CoachReturnSheet) => void
+  /** The shared operation slot, when another flow (Clear) must share it. */
+  op?: Ref<DatabaseOp | null>
 }
 
 const AUTO_CLEAR_MS = 5000
+
+/**
+ * The one whole-database operation in flight, or null. ONE value for all four
+ * — backup, restore, import and clear — so two of them can never run at once:
+ * a Clear landing mid-restore wiped the database the restore was replacing.
+ */
+export type DatabaseOp = 'backup' | 'restore' | 'import' | 'clear'
 
 export function useBackupRestore(api: BackupRestoreApi) {
   // Restore REPLACES the database and an import MERGES into it; both are
   // refused on a read-only profile and while a coaching session is open.
   // Backup is a read, so it stays available.
   const { guardWrite } = useWriteGate()
-  const backingUp = ref(false)
-  const restoring = ref(false)
+  const op = api.op ?? ref<DatabaseOp | null>(null)
+  const backingUp = computed(() => op.value === 'backup')
+  const restoring = computed(() => op.value === 'restore')
   const restoreArmed = ref(false)
-  const importingMatches = ref(false)
+  const importingMatches = computed(() => op.value === 'import')
   const status = ref<ExportStatus | null>(null)
 
   // Capture the chip by reference and auto-clear after AUTO_CLEAR_MS ONLY if no
@@ -75,11 +85,11 @@ export function useBackupRestore(api: BackupRestoreApi) {
     }, AUTO_CLEAR_MS)
   }
 
-  const anyBusy = () => backingUp.value || restoring.value || importingMatches.value
+  const anyBusy = () => op.value !== null
 
   async function backup() {
     if (anyBusy()) return
-    backingUp.value = true
+    op.value = 'backup'
     status.value = null
     try {
       const path = await api.backup()
@@ -88,7 +98,7 @@ export function useBackupRestore(api: BackupRestoreApi) {
     } catch (e) {
       status.value = { ok: false, message: `Backup failed: ${String(e)}` }
     } finally {
-      backingUp.value = false
+      op.value = null
       scheduleAutoClear()
     }
   }
@@ -105,7 +115,7 @@ export function useBackupRestore(api: BackupRestoreApi) {
   async function restore() {
     if (!guardWrite()) return
     if (anyBusy()) return
-    restoring.value = true
+    op.value = 'restore'
     restoreArmed.value = false
     try {
       const path = await api.restore()
@@ -116,7 +126,7 @@ export function useBackupRestore(api: BackupRestoreApi) {
     } catch (e) {
       status.value = { ok: false, message: `Restore failed: ${String(e)}` }
     } finally {
-      restoring.value = false
+      op.value = null
       scheduleAutoClear()
     }
   }
@@ -124,7 +134,7 @@ export function useBackupRestore(api: BackupRestoreApi) {
   async function importMatches() {
     if (!guardWrite()) return
     if (anyBusy()) return
-    importingMatches.value = true
+    op.value = 'import'
     status.value = null
     try {
       const result = await api.importMatches()
@@ -132,7 +142,7 @@ export function useBackupRestore(api: BackupRestoreApi) {
     } catch (e) {
       status.value = { ok: false, message: `Import failed: ${String(e)}` }
     } finally {
-      importingMatches.value = false
+      op.value = null
       scheduleAutoClear()
     }
   }

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { waitOutSwapHold } from '@/test-utils'
 import { render, screen, fireEvent } from '@testing-library/vue'
 import { nextTick } from 'vue'
 import UnknownBulkBar from '@/components/unknown/UnknownBulkBar.vue'
@@ -69,6 +70,7 @@ describe('UnknownBulkBar', () => {
   it('dismisses every file behind the ticked rows on the second press', async () => {
     const { onDismissFiles } = renderBar({ tick: ['a', 'b'] })
     await fireEvent.click(screen.getByRole('button', { name: /^Dismiss/ }))
+    await waitOutSwapHold()
     await fireEvent.click(screen.getByRole('button', { name: /^Confirm dismissing/ }))
     expect(onDismissFiles).toHaveBeenCalledWith(['a.png', 'b1.png', 'b2.png'])
   })

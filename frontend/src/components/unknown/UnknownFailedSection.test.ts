@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { waitOutSwapHold } from '@/test-utils'
 import { render, screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { createPinia, setActivePinia } from 'pinia'
@@ -99,6 +100,7 @@ describe('UnknownFailedSection', () => {
     expect(armed).toHaveTextContent(/Confirm dismiss\?/i)
     expect(IgnoreScreenshot).not.toHaveBeenCalled()
 
+    await waitOutSwapHold()
     await user().click(armed)
     expect(IgnoreScreenshot).toHaveBeenCalledWith('corrupt.png')
   })

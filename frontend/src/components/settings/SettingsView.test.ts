@@ -1,3 +1,4 @@
+import type { DatabaseOp } from '@/composables/settings/useBackupRestore'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within, fireEvent } from '@testing-library/vue'
 import { nextTick } from 'vue'
@@ -101,6 +102,16 @@ const SETTINGS_BASE = {
 // Seeds the three stores from the old prop shape (theme/week-start are seeded
 // via the real setters BEFORE the spies are installed so the seed isn't counted
 // as a click), then spies on every action a sub-section button drives.
+// The database store holds ONE operation slot; the flags this suite speaks in
+// are views of it.
+function databaseOpOf(over: SettingsOver): DatabaseOp | null {
+  if (over.backingUp) return 'backup'
+  if (over.restoring) return 'restore'
+  if (over.importingMatches) return 'import'
+  if (over.clearingDB) return 'clear'
+  return null
+}
+
 function renderSettings(opts: { props?: SettingsOver } = {}) {
   const over = { ...SETTINGS_BASE, ...opts.props }
   setActivePinia(createPinia())
@@ -126,13 +137,10 @@ function renderSettings(opts: { props?: SettingsOver } = {}) {
   settings.tesseractPickerBusy = over.tesseractPickerBusy
 
   if (over.parseBusy) seedParseRun(parse, { state: 'running' })
-  database.backingUp = over.backingUp
-  database.restoring = over.restoring
+  database.databaseOp = databaseOpOf(over)
   database.restoreArmed = over.restoreArmed
-  database.importingMatches = over.importingMatches
   database.backupStatus = over.backupStatus
   database.clearConfirm = over.clearConfirm
-  database.clearingDB = over.clearingDB
   matches.records = makeRecords(over.matchedCount, over.unknownCount)
   if (over.ignoredCount != null) {
     parse.ignoredScreenshots = Array.from({ length: over.ignoredCount }, (_, i) => ({ filename: `ig-${i}.png`, ignored_at: '2026-05-10T00:00:00Z' }))

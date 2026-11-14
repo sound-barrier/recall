@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import {
@@ -8,7 +8,7 @@ import {
   RestoreDatabase,
 } from '@/api-client'
 import { profileScopedKey } from '@/composables/profile/profileStorage'
-import { useBackupRestore } from '@/composables/settings/useBackupRestore'
+import { useBackupRestore, type DatabaseOp } from '@/composables/settings/useBackupRestore'
 import { useClearDatabase } from '@/composables/settings/useClearDatabase'
 import { useAppStore } from '@/stores/app'
 import { useCoachReturnsStore } from '@/stores/coachReturns'
@@ -34,11 +34,19 @@ export const useDatabaseStore = defineStore('database', () => {
     await useParseStore().loadIgnored()
   }
 
+  // The ONE whole-database operation in flight. Clear and the backup /
+  // restore / import trio share it, so none of them can start while another
+  // is running — Clear used to sit outside it and could wipe the database a
+  // restore was in the middle of replacing.
+  const op = ref<DatabaseOp | null>(null)
+  const databaseBusy = computed(() => op.value !== null)
+
   // ── Clear database ────────────────────────────────────────────────
   // pendingClearOpts carries SettingsAdvanced's "Keep suppress-list" choice
   // into the api seam, which takes the flag but not the click that set it.
   const pendingClearOpts = ref<{ keepIgnored: boolean }>({ keepIgnored: false })
-  const { clearingDB, clearConfirm, clearDatabase, armClear, cancelClear } = useClearDatabase({
+  const { clearingDB, clearConfirm, clearConfirmHeld, clearDatabase, armClear, cancelClear } = useClearDatabase({
+    op,
     clearDatabase: () => ClearDatabase(pendingClearOpts.value.keepIgnored),
     afterClear: reloadRecordsAndIgnored,
     resetLastParsedAt: () => {
@@ -76,11 +84,15 @@ export const useDatabaseStore = defineStore('database', () => {
     // suppress-list entries — refresh the ignored list along with the
     // cluster so the Settings panel doesn't show a stale one.
     reload: reloadRecordsAndIgnored,
+    op,
   })
 
   return {
+    databaseOp: op,
+    databaseBusy,
     clearingDB,
     clearConfirm,
+    clearConfirmHeld,
     armClear,
     cancelClear,
     onClearDatabase,

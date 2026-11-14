@@ -35,7 +35,7 @@ function onReportParseProblem() {
 }
 
 // Dismiss arm/disarm — keyed by filename (failed rows have no match_key).
-const { trigger: triggerDismiss, isArmed: isDismissArmed } = useArmedAction()
+const { trigger: triggerDismiss, isArmed: isDismissArmed, isHeld: isDismissHeld } = useArmedAction()
 
 function onDismissClick(row: FailedFile) {
   triggerDismiss(row.filename, () => { void onDismissFiles([row.filename]) })
@@ -149,6 +149,7 @@ const { writesLocked, lockReason } = useWriteGate()
               : `Dismiss ${row.filename}`"
             :data-failed-ignore="row.filename"
             :disabled="writesLocked"
+            :aria-disabled="isDismissHeld(row.filename) || undefined"
             :title="lockReason || undefined"
             @click="onDismissClick(row)"
           >

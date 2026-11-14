@@ -16,6 +16,7 @@ import {
 } from '@/composables/ingest/parseRunMachine'
 import { currentSessionSummary, type SessionSummary } from '@/match/dossier/match-momentum-helpers'
 import { profileScopedKey } from '@/composables/profile/profileStorage'
+import { useSwapHold } from '@/composables/shared/useSwapHold'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import type { ParseConnectionState } from '@/composables/ingest/useParseRecovery'
 import { useAppStore } from '@/stores/app'
@@ -120,14 +121,7 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
   // Stop takes Run's place on the same spot, so the second click of a
   // double-click on Run would land on Stop and cancel the run it just
   // started. Stop stays held for a beat after a start this client asked for.
-  const STOP_HOLD_MS = 600
-  const stopHeld = ref(false)
-  let stopHoldTimer: ReturnType<typeof setTimeout> | null = null
-  function holdStop() {
-    if (stopHoldTimer) clearTimeout(stopHoldTimer)
-    stopHeld.value = true
-    stopHoldTimer = setTimeout(() => { stopHeld.value = false; stopHoldTimer = null }, STOP_HOLD_MS)
-  }
+  const { held: stopHeld, hold: holdStop } = useSwapHold()
   const canStop = computed(() => {
     const run = parseRun.value
     return run.status === 'running' && isCancelableKind(run.kind) && !stopHeld.value

@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { nextTick, ref } from 'vue'
+
+import { SWAP_HOLD_MS } from '@/composables/shared/useSwapHold'
 import { useUnknownSelection, type UnknownSelectableRow } from '@/composables/unknown/useUnknownSelection'
 
 const ROWS: UnknownSelectableRow[] = [
@@ -59,21 +61,38 @@ describe('useUnknownSelection', () => {
   })
 
   it('dismisses every file behind the ticked rows, once each', () => {
+    vi.useFakeTimers()
     const { sel, onDismissFiles } = setup()
     sel.toggleSelected('a')
     sel.toggleSelected('b')
     sel.requestDismiss()
+    vi.advanceTimersByTime(SWAP_HOLD_MS)
     sel.commitDismiss()
     expect(onDismissFiles).toHaveBeenCalledWith(['a.png', 'b1.png', 'b2.png'])
   })
 
   it('clears the selection as it commits, so the bar collapses', () => {
+    vi.useFakeTimers()
     const { sel } = setup()
     sel.toggleSelected('a')
     sel.requestDismiss()
+    vi.advanceTimersByTime(SWAP_HOLD_MS)
     sel.commitDismiss()
     expect(sel.selectedCount.value).toBe(0)
     expect(sel.armed.value).toBe(false)
+  })
+
+  // Confirm takes Dismiss's place, so the second press of a double-click
+  // lands on it — and must not be the confirm.
+  it('refuses the confirm for a beat after arming', () => {
+    vi.useFakeTimers()
+    const { sel, onDismissFiles } = setup()
+    sel.toggleSelected('a')
+    sel.requestDismiss()
+    expect(sel.confirmHeld.value).toBe(true)
+    sel.commitDismiss()
+    expect(onDismissFiles).not.toHaveBeenCalled()
+    expect(sel.armed.value).toBe(true)
   })
 
   it('arms before it fires', () => {

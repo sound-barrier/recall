@@ -10,7 +10,7 @@
 // their source modules — import them there if a test ever needs one.)
 export { renderApp, fireBackendEvent, mockedApi } from '@/test-utils/renderApp'
 export { renderWidget } from '@/test-utils/renderWidget'
-export { flushPromises } from '@/test-utils/flush'
+export { flushPromises, waitOutSwapHold } from '@/test-utils/flush'
 export { installMemoryLocalStorage } from '@/test-utils/localStorage'
 export { runTick, seedParseRun, SEEDED_RUN_ID } from '@/test-utils/parseRun'
 export { editorReady, leaveWriter, markdownField } from '@/test-utils/noteWriter'

@@ -3,6 +3,7 @@ import { computed, nextTick, ref } from 'vue'
 import type { ClaimTransfer } from '@/api-client'
 import { plainLanguageError } from '@/error-helpers'
 import { takeFolderScreenshots } from '@/queries/matches'
+import { useSwapHold } from '@/composables/shared/useSwapHold'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // The Parse tab's row for screenshots another profile owns. A screenshot
@@ -22,6 +23,10 @@ const props = defineProps<{
 
 const { writesLocked, lockedTitle, guardWrite } = useWriteGate()
 const armed = ref(false)
+// Confirm takes the arm button's place and is handed focus, so a double-click
+// or Enter pressed twice would otherwise move the matches with no second
+// decision. It refuses for a beat after arming.
+const { held: confirmHeld, hold: holdConfirm } = useSwapHold()
 const busy = ref(false)
 const taken = ref<ClaimTransfer | null>(null)
 const error = ref<string | null>(null)
@@ -47,6 +52,7 @@ function arm() {
   error.value = null
   taken.value = null
   armed.value = true
+  holdConfirm()
   void nextTick(() => confirmEl.value?.focus())
 }
 
@@ -56,7 +62,7 @@ function disarm() {
 }
 
 async function confirm() {
-  if (!guardWrite() || busy.value) return
+  if (confirmHeld.value || busy.value || !guardWrite()) return
   busy.value = true
   try {
     taken.value = await takeFolderScreenshots()
@@ -107,6 +113,7 @@ async function confirm() {
           type="button"
           class="btn danger"
           :disabled="busy || writesLocked"
+          :aria-disabled="confirmHeld || undefined"
           :title="lockedTitle('Move these screenshots and their matches to this profile')"
           @click="confirm"
         >

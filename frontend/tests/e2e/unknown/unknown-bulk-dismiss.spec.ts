@@ -19,7 +19,7 @@
  */
 import type { Route } from '@playwright/test'
 
-import { test, expect } from '../_fixtures'
+import { clickTwiceInPlace, test, expect } from '../_fixtures'
 import { mockCoachSession, pinSessionResume } from '../_coach'
 
 const card = (key: string, files: string[]) => ({
@@ -88,6 +88,34 @@ test.describe('Unknown tab — bulk dismiss', () => {
     // The untouched card survives, and the bar is gone with the selection.
     await expect(page.locator('.unknown-card')).toHaveCount(1)
     await expect(page.getByRole('button', { name: /^Dismiss \d+ card/ })).toHaveCount(0)
+  })
+
+  // Confirm takes Dismiss's place at the bar's end, so the second click of a
+  // double-click landed on it and suppressed every ticked file.
+  test('a double-click on the bar\'s Dismiss arms it and suppresses nothing', async ({ page }) => {
+    const cards = [card('unmatched-a.png', ['a.png']), card('unmatched-c.png', ['c.png'])]
+    const ignored: string[] = []
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(cards) })
+    })
+    await page.route('**/api/v1/screenshots/*/ignore', async (route: Route) => {
+      ignored.push(route.request().url())
+      await route.fulfill({ status: 204, body: '' })
+    })
+
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
+    await page.getByRole('checkbox', { name: 'Select a.png' }).click()
+    await page.getByRole('checkbox', { name: 'Select c.png' }).click()
+
+    const confirm = page.getByRole('button', { name: /^Confirm dismissing 2 cards/ })
+    await clickTwiceInPlace(page, page.getByRole('button', { name: /^Dismiss 2 cards/ }), async () => {
+      await expect(confirm).toBeVisible()
+    })
+
+    await page.waitForTimeout(300)
+    expect(ignored).toEqual([])
+    await expect(confirm).toBeVisible()
   })
 
   test('changing the selection disarms a pending confirm', async ({ page }) => {

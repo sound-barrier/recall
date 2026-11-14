@@ -10,8 +10,10 @@ import {
   type CoachSessionView, type FocusItem, type ObservedContext,
 } from '@/api-client'
 import type { RoomApi } from '@/components/coach/room/coach-room-props'
+import { stepCoachSession, type CoachSessionEvent, type CoachSessionState } from '@/composables/coach/coachSessionMachine'
 import { useCoachAutosave } from '@/composables/coach/useCoachAutosave'
 import { useReviewDrafts } from '@/composables/coach/useReviewDrafts'
+import { useSwapHold } from '@/composables/shared/useSwapHold'
 import { FOCUS_SAVE_KEY } from '@/match/coach/coach-notes'
 import { savableItems } from '@/match/reviews/focus-items'
 import {
@@ -96,13 +98,29 @@ export const useCoachStore = defineStore('coach', () => {
   const selectedKey = ref('')
   const dirtySinceExport = ref(false)
 
-  // The arming lives HERE rather than in one button because there are two:
-  // the loan slip's asked, the session sheet's ended immediately, and which
-  // one a coach happened to click decided whether their work was protected.
+  // Where the session stands on the client: none / open / End armed /
+  // ending — one union, one step function (coachSessionMachine). The arming
+  // lives HERE rather than in one button because there are two: the loan
+  // slip's asked, the session sheet's ended immediately, and which one a
+  // coach happened to click decided whether their work was protected.
   // Declared above markDirty, which withdraws it — a const read by a function
   // defined above it is a temporal-dead-zone crash waiting for the first
   // caller.
-  const endArmed = ref(false)
+  const sessionPhase = ref<CoachSessionState>({ status: 'none' })
+  function dispatchSession(event: CoachSessionEvent): boolean {
+    const step = stepCoachSession(sessionPhase.value, event)
+    if (step.ok) sessionPhase.value = step.state
+    return step.ok
+  }
+  // sync: endSession may be called in the same tick the session arrived.
+  watch(sessionActive, (active) => {
+    dispatchSession({ type: active ? 'session-opened' : 'session-closed' })
+  }, { immediate: true, flush: 'sync' })
+  const endArmed = computed(() => sessionPhase.value.status === 'endArmed')
+  // "End anyway" takes End's place, so the second click of a double-click on
+  // End would answer the unexported-notes question for the coach. Held for a
+  // beat after arming.
+  const { held: endHeld, hold: holdEnd } = useSwapHold()
 
   // Any new work makes the archive stale AND withdraws a pending "end the
   // session?" — writing more is the clearest possible "not yet", and an
@@ -110,7 +128,7 @@ export const useCoachStore = defineStore('coach', () => {
   // second question on notes that are unexported all over again.
   function markDirty(): void {
     dirtySinceExport.value = true
-    endArmed.value = false
+    dispatchSession({ type: 'disarm-end' })
     // And the receipt, which is a claim about the archive on disk: "Notes
     // saved to …" beside notes that are unexported again reads as
     // reassurance for work the player will not receive.
@@ -207,17 +225,19 @@ export const useCoachStore = defineStore('coach', () => {
   // a second question rather than a silent goodbye.
   //
   function requestEndSession(): void {
-    if (dirtySinceExport.value && !endArmed.value) {
-      endArmed.value = true
+    const phase = sessionPhase.value.status
+    if (phase === 'endArmed' && endHeld.value) return
+    if (phase === 'open' && dirtySinceExport.value) {
+      dispatchSession({ type: 'arm-end' })
+      holdEnd()
       return
     }
-    endArmed.value = false
     void endSession()
   }
 
   /** Back out of the armed state — the answer "no, not yet". */
   function cancelEndSession(): void {
-    endArmed.value = false
+    dispatchSession({ type: 'disarm-end' })
   }
 
   // ── Session lifecycle ─────────────────────────────────────────────
@@ -341,6 +361,9 @@ export const useCoachStore = defineStore('coach', () => {
   // this bundle is opened — so a draft caught inside the debounce would
   // otherwise be lost for good.
   async function endSession(): Promise<void> {
+    // Once: a second End while the first is still flushing would close the
+    // session twice and announce it twice.
+    if (!dispatchSession({ type: 'end' })) return
     await flushSaves()
     // The loan goes back either way — refusing to end would trap the coach
     // in a session a broken server can never let them leave — but a note the
@@ -519,7 +542,7 @@ export const useCoachStore = defineStore('coach', () => {
       // moment. (In a bundle session this same disarm is a flagged
       // trade: the labels say which artifact their Recall can import.)
       dirtySinceExport.value = false
-      endArmed.value = false
+      dispatchSession({ type: 'disarm-end' })
     } catch (e) {
       useAppStore().setErrorFromRaw(String(e))
     }
@@ -542,7 +565,7 @@ export const useCoachStore = defineStore('coach', () => {
       dirtySinceExport.value = false
       // The armed button reads "End anyway — notes not exported". They are
       // exported now, so the question it was asking no longer exists.
-      endArmed.value = false
+      dispatchSession({ type: 'disarm-end' })
       // Say so. The export succeeded silently before — no toast, no path, no
       // change to the slip — so the only way to know the file existed was to
       // go and look for it, on the one action in the room whose whole purpose
@@ -594,6 +617,8 @@ export const useCoachStore = defineStore('coach', () => {
     selectKey,
     updateNote,
     endArmed,
+    endHeld,
+    sessionPhase,
     endArmedLabel,
     endArmedTitle,
     exportedTo,
