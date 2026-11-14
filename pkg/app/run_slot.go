@@ -80,6 +80,30 @@ type RunID int64
 // maps it to 409.
 var ErrRunNotCancelable = errors.New("the running operation cannot be canceled")
 
+// ErrStoreSwapInProgress is returned by an operation that needs the store
+// while a restore, profile switch or rename has it closed. The HTTP layer
+// maps it to 409; the caller retries once the swap ends.
+var ErrStoreSwapInProgress = errors.New("the database is being swapped — retry in a moment")
+
+// swapsStore reports whether a run of this kind closes the store while it
+// runs.
+func (k RunKind) swapsStore() bool {
+	switch k {
+	case RunKindRestore, RunKindProfileSwitch, RunKindProfileRename:
+		return true
+	case RunKindParse, RunKindReparse, RunKindMaintenance, RunKindScreenshotTakeover:
+		return false
+	}
+	return false
+}
+
+// storeSwapping reports whether a store swap holds the run slot now.
+func (a *App) storeSwapping() bool {
+	a.runMu.Lock()
+	defer a.runMu.Unlock()
+	return a.run.phase != RunPhaseIdle && a.run.kind.swapsStore()
+}
+
 // errStaleRun is a progress report or end for a run that no longer holds the
 // slot. It never reaches a caller: it marks a transition the slot refused.
 var errStaleRun = errors.New("stale run")

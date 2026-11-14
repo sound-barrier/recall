@@ -243,16 +243,9 @@ func (a *App) DeleteProfile(name string) error {
 	return a.profiles.Delete(name)
 }
 
-// activateAndReload is the common tail of Create/Switch. After the
-// profile name change is recorded, we tear down the active store +
-// background services and re-build them at the new profile's dir.
-//
-// Failure path is best-effort: if the teardown succeeds but the
-// re-init fails (e.g. SQLite can't open the new path), the App is
-// left in a broken state and the operator restarts. Acceptable
-// because the only realistic failure is filesystem-level (out of
-// disk, permission). The HTTP handler returns 500 and the user
-// retries.
+// activateAndReload is the common tail of Create/Switch: tear down the
+// active store and background services, and stand them up at the new
+// profile's dir — or, if that fails, back at the old one (swapToProfile).
 func (a *App) activateAndReload(name string) error {
 	// Hold the run slot for the whole swap: a watcher- or user-triggered
 	// parse mid-switch would write through the store this function is
@@ -265,62 +258,52 @@ func (a *App) activateAndReload(name string) error {
 }
 
 // swapToProfile closes the active store and opens name's, holding the run
-// slot activateAndReload claimed.
+// slot activateAndReload claimed. A swap ends on a profile with an open
+// store either way: if name cannot be opened, the profile it left is opened
+// again — its settings, its store and its watcher — and the error says why
+// the switch failed. Opening the target can fail for reasons the caller
+// cannot fix by retrying (a database whose column shape this build
+// refuses, most of all); leaving the app storeless with the broken profile
+// recorded as active made every later call, and every relaunch, fail too.
 func (a *App) swapToProfile(name string) error {
-	// Remembered BEFORE the swap so a failure can put the app back where it
-	// was. Opening the target can fail for reasons the caller cannot fix by
-	// retrying — a database whose column shape this build refuses, most of all
-	// — and without this the store is left nil while the BROKEN profile stays
-	// recorded as active, so every later call nil-derefs and every relaunch
-	// reopens the same unopenable file.
 	previous := a.profiles.Active()
-
 	a.closeActiveStore()
+	err := a.openProfile(name)
+	if err == nil {
+		return nil
+	}
+	applog.Subsystem("profiles").Error("open profile", "name", applog.Scrub(name), "err", err)
+	if previous == "" || previous == name {
+		return err
+	}
+	if rerr := a.openProfile(previous); rerr != nil {
+		applog.Subsystem("profiles").Error("reopen previous profile", "name", applog.Scrub(previous), "err", rerr)
+		return errors.Join(err, rerr)
+	}
+	return err
+}
 
+// openProfile activates name and stands up what hangs off it: settings, the
+// store, and the watcher when the profile has it on. On error the app has
+// no store; swapToProfile is what decides where to land instead.
+func (a *App) openProfile(name string) error {
 	if err := a.profiles.Activate(name); err != nil {
 		return err
 	}
-
 	resolved := a.reloadProfileSettings()
-
 	dbDir := filepath.Join(a.dataDir(), "db")
 	if err := os.MkdirAll(dbDir, 0o700); err != nil {
 		return fmt.Errorf("profiles: ensure db dir for %q: %w", name, err)
 	}
 	s, err := db.NewSQLStore(filepath.Join(dbDir, "recall.db"))
 	if err != nil {
-		applog.Subsystem("profiles").Error("open db", "name", applog.Scrub(name), "err", err)
-		a.revertToProfile(previous)
 		return fmt.Errorf("profiles: open db for %q: %w", name, err)
 	}
 	a.store = s
-
 	if resolved.WatchEnabled {
 		a.startWatching()
 	}
 	return nil
-}
-
-// revertToProfile puts the app back on a profile whose database it could
-// already open, after a switch failed partway through. Best-effort by nature —
-// if the previous profile cannot be reopened either there is nothing further to
-// try — but the common case (the TARGET is broken, the source was fine) leaves
-// the user on a working app with an error message instead of a dead one.
-func (a *App) revertToProfile(previous string) {
-	if previous == "" || previous == a.profiles.Active() {
-		return
-	}
-	if err := a.profiles.Activate(previous); err != nil {
-		applog.Subsystem("profiles").Error("revert activate", "name", applog.Scrub(previous), "err", err)
-		return
-	}
-	a.reloadProfileSettings()
-	s, err := db.NewSQLStore(filepath.Join(a.dataDir(), "db", "recall.db"))
-	if err != nil {
-		applog.Subsystem("profiles").Error("revert open db", "name", applog.Scrub(previous), "err", err)
-		return
-	}
-	a.store = s
 }
 
 // closeActiveStore tears down everything tied to the OLD profile before its
