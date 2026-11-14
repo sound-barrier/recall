@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"path/filepath"
 	"strings"
 	"time"
@@ -15,7 +16,11 @@ import (
 // in quick succession (SUMMARY → TEAMS → PERSONAL → rank screen); we
 // don't want to fire ParseScreenshots once per file. 60 seconds is
 // generous enough to absorb a slow tab-cycler.
-const watchDebounce = 60 * time.Second
+var watchDebounce = 60 * time.Second
+
+// watchRetryAfterBusy is how soon a debounce that found the run slot busy
+// tries again once the slot frees.
+var watchRetryAfterBusy = 5 * time.Second
 
 // startWatching begins watching the configured screenshots directory
 // for newly created image files. Each new file resets a debounce timer;
@@ -141,34 +146,100 @@ func runWatchEvents(events <-chan fsnotify.Event, errs <-chan error, onTrigger f
 	}
 }
 
+// debouncePhase is where the watcher's parse trigger stands.
+type debouncePhase int
+
+const (
+	// debounceIdle has nothing pending.
+	debounceIdle debouncePhase = iota
+	// debounceArmed waits on its timer: watchDebounce after the last file.
+	debounceArmed
+	// debounceDeferred fired while the run slot was busy and waits for the
+	// slot to free.
+	debounceDeferred
+)
+
+// debounce is the watcher's parse trigger, held under watchMu. gen grows on
+// every arm and every stop, so a timer that fires after either is stale and
+// does nothing. Only the methods below change it.
+type debounce struct {
+	phase debouncePhase
+	gen   uint64
+	timer *time.Timer
+}
+
 // scheduleParseDebounced (re)arms the debounce timer. Each call resets
 // it, so a burst of file-create events within watchDebounce collapses
-// into a single ParseScreenshots invocation.
+// into a single parse. A no-op once the watcher has stopped: the event
+// loop can still be draining an event when it does.
 func (a *App) scheduleParseDebounced() {
 	a.watchMu.Lock()
 	defer a.watchMu.Unlock()
-	if a.watchTimer != nil {
-		a.watchTimer.Stop()
+	if a.watcher == nil {
+		return
 	}
-	a.watchTimer = time.AfterFunc(watchDebounce, func() {
+	a.armDebounceLocked(watchDebounce)
+}
+
+// armDebounceLocked starts a fresh round that fires after d. Callers hold
+// watchMu.
+func (a *App) armDebounceLocked(d time.Duration) {
+	if a.watchTrigger.timer != nil {
+		a.watchTrigger.timer.Stop()
+	}
+	a.watchTrigger.gen++
+	gen := a.watchTrigger.gen
+	a.watchTrigger.phase = debounceArmed
+	a.watchTrigger.timer = time.AfterFunc(d, func() {
 		defer applog.RecoverPanic("watch")
-		logger := applog.Subsystem("watch")
-		logger.Info("debounce elapsed, running the watched-folder parse")
-		// parseSync is synchronous and ends its run with run-finished
-		// (runParse owns that emit for every path), so the watcher signals
-		// nothing itself. A busy slot returns ErrParseInFlight — a logged
-		// skip; the debounce re-fires on the next file event.
-		//
-		// Deliberately parseSync and NOT ParseScreenshots: the coaching
-		// write gate sits on the user-initiated entry points, and the
-		// watcher is exempt (design rule 1). It only ever ingests the
-		// coach's own screenshots into the coach's own store, invisibly —
-		// the frontend suppresses its announcements in-session instead.
-		if err := a.parseSync(false); err != nil {
-			logger.Error("parse failed", "err", err)
-			return
-		}
+		a.debounceElapsed(gen)
 	})
+}
+
+// debounceElapsed runs the watched-folder parse for round gen, unless a
+// later arm or a stop has replaced it. A busy run slot defers the round
+// until the slot frees (runSlotReleased) instead of dropping it.
+//
+// Deliberately parseSync and NOT ParseScreenshots: the coaching write gate
+// sits on the user-initiated entry points, and the watcher is exempt
+// (design rule 1). It only ever ingests the coach's own screenshots into
+// the coach's own store, invisibly — the frontend suppresses its
+// announcements in-session instead.
+func (a *App) debounceElapsed(gen uint64) {
+	a.watchMu.Lock()
+	if gen != a.watchTrigger.gen || a.watchTrigger.phase != debounceArmed {
+		a.watchMu.Unlock()
+		return
+	}
+	a.watchTrigger.phase = debounceIdle
+	a.watchTrigger.timer = nil
+	a.watchMu.Unlock()
+
+	logger := applog.Subsystem("watch")
+	logger.Info("debounce elapsed, running the watched-folder parse")
+	err := a.parseSync(false)
+	switch {
+	case errors.Is(err, ErrParseInFlight):
+		a.watchMu.Lock()
+		if gen == a.watchTrigger.gen {
+			a.watchTrigger.phase = debounceDeferred
+			logger.Info("run slot busy; parsing once it frees")
+		}
+		a.watchMu.Unlock()
+	case err != nil:
+		logger.Error("parse failed", "err", err)
+	}
+}
+
+// runSlotReleased re-arms a round deferred by a busy slot, shortly: asynchronous,
+// because the release can sit inside a request (a VACUUM, a restore) that
+// must not wait on a whole parse.
+func (a *App) runSlotReleased() {
+	a.watchMu.Lock()
+	defer a.watchMu.Unlock()
+	if a.watchTrigger.phase == debounceDeferred && a.watcher != nil {
+		a.armDebounceLocked(watchRetryAfterBusy)
+	}
 }
 
 // stopWatching tears down the watcher and cancels any pending debounce
@@ -176,10 +247,10 @@ func (a *App) scheduleParseDebounced() {
 func (a *App) stopWatching() {
 	a.watchMu.Lock()
 	defer a.watchMu.Unlock()
-	if a.watchTimer != nil {
-		a.watchTimer.Stop()
-		a.watchTimer = nil
+	if a.watchTrigger.timer != nil {
+		a.watchTrigger.timer.Stop()
 	}
+	a.watchTrigger = debounce{phase: debounceIdle, gen: a.watchTrigger.gen + 1}
 	a.watchPending = 0
 	if a.watcher == nil {
 		return

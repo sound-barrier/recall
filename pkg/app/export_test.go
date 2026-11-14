@@ -46,22 +46,25 @@ var (
 	RevealCommand            = &revealCommand
 	TesseractProbeTimeout    = &tesseractProbeTimeout
 	TesseractProbeRetryDelay = &tesseractProbeRetryDelay
+	WatchDebounce            = &watchDebounce
+	WatchRetryAfterBusy      = &watchRetryAfterBusy
 )
 
 // ── Unexported *App methods (method expressions) ──────────────────────────
 var (
-	ClaimRun            = (*App).claimRun
-	FinishRun           = (*App).finishRun
-	NoteProgress        = (*App).noteProgress
-	CaptureFatal        = (*App).captureFatal
-	StartWatching       = (*App).startWatching
-	StopWatching        = (*App).stopWatching
-	NoteWatchActivity   = (*App).noteWatchActivity
-	ResetWatchActivity  = (*App).resetWatchActivity
-	LoadSettings        = (*App).loadSettings
-	SaveSettings        = (*App).saveSettings
-	DataDir             = (*App).dataDir
-	AutoProbeOnFirstRun = (*App).autoProbeOnFirstRun
+	ClaimRun               = (*App).claimRun
+	FinishRun              = (*App).finishRun
+	NoteProgress           = (*App).noteProgress
+	CaptureFatal           = (*App).captureFatal
+	StartWatching          = (*App).startWatching
+	StopWatching           = (*App).stopWatching
+	ScheduleParseDebounced = (*App).scheduleParseDebounced
+	NoteWatchActivity      = (*App).noteWatchActivity
+	ResetWatchActivity     = (*App).resetWatchActivity
+	LoadSettings           = (*App).loadSettings
+	SaveSettings           = (*App).saveSettings
+	DataDir                = (*App).dataDir
+	AutoProbeOnFirstRun    = (*App).autoProbeOnFirstRun
 
 	ProbeTesseractInBackground = (*App).probeTesseractInBackground
 

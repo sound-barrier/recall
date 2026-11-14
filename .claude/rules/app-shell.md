@@ -31,9 +31,14 @@ paths:
   explicit takeover (moves the owner's matches, then transfers). Seeded once
   from every profile's `ingested_files`, earliest ingest wins. A nil ledger
   (`NewWithStore` tests) turns the feature off.
-- File watcher (`watcher`, `watchedDir`, `watchTimer`, `watchMu`) with
-  `watchDebounce = 60*time.Second`: any new `.png`/`.jpg` resets a timer; expiry
-  runs `parseSync` (which ends its run with `run-finished` itself).
+- File watcher (`watcher`, `watchedDir`, `watchTrigger`, `watchMu`) with
+  `watchDebounce = 60*time.Second`. `watchTrigger` is an explicit machine
+  (`debounce` in `watcher.go`: idle → armed → idle, or armed → deferred when
+  the run slot is busy). Any new `.png`/`.jpg` re-arms it in a new generation;
+  a timer whose generation was replaced by a later arm or a stop does
+  nothing. Expiry runs `parseSync` (which ends its run with `run-finished`
+  itself); a busy slot defers the round, and `finishRun` re-arms it shortly
+  after the slot frees instead of dropping it.
 - **Duplicate sweep** (`pkg/app/duplicate_sweep.go`): runs at the END of
   `runClaimedParse`, after the OCR loop, and demotes run-created tracked
   matches that duplicate an existing one into the ambiguous queue via
