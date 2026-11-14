@@ -314,8 +314,29 @@ Exemplar: the parse run, `composables/ingest/parseRunMachine.ts`.
 - **Server truth stays in vue-query; the machine holds only what the client
   knows that the server does not:** that its own start is in flight, that
   its own Stop was pressed.
-- **A control that swaps in place for its opposite is held after the swap**
-  (`STOP_HOLD_MS`), so the second click of a double-click cannot land on it.
+- **A control that swaps in place for its opposite is held after the swap**,
+  so the second click of a double-click (or Enter pressed twice) cannot land
+  on it. One helper: `useSwapHold()` (`SWAP_HOLD_MS`) — call `hold()` at the
+  swap, render the replacement `aria-disabled` while `held` (not `disabled`,
+  which drops the focus a keyboard user was just handed) and refuse in the
+  handler. Run/Stop, every arm/confirm and coach End use it; the Unknown tab's
+  one-button Dismiss keeps the same hold per key in `useArmedAction`.
+- **One write in flight per key.** An autosaved field goes through the
+  per-key queue in `useCoachAutosave` (`idle | queued | saving | saved |
+  error`, stepped by `stepSave`): a newer edit replaces the waiting write and
+  never starts while an older one is on the wire, and "saved" is never shown
+  over an edit still settling. A write captures its target when it is
+  QUEUED (the review drafts' `writes()` binds the open sitting then), and a
+  key deleted before its write went out cancels it.
+- **A late answer names what it answers for.** Where a read or an async
+  load can land after the user has moved on (a preflight, a lazy chunk, a
+  count read before a switch), it carries a generation or sequence number
+  and is dropped when it no longer matches — `useParseReport`,
+  `onTourActiveChange`, `stepSwitcher`.
+- **A write lands in the cache, not in a copy.** The settings store's
+  server-backed values are `settingRef`s over their query entries; a write
+  goes through `writeSetting`, which also makes a read already in flight
+  answer with the written value rather than its stale one.
 
 ## Styles
 
