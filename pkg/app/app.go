@@ -79,15 +79,15 @@ type App struct {
 	// only while no newer status has landed since it began.
 	tessGen uint64
 	// File-watch state. watcher is non-nil while the directory is being
-	// observed; watchTimer holds the debounce timer that fires
-	// ParseScreenshots after no new files have appeared for
+	// observed; watchTrigger is the debounced parse trigger (watcher.go)
+	// that fires a parse once no new files have appeared for
 	// watchDebounce. watchPending counts files the watcher has seen
 	// since the last parse run started (the masthead's "watching · N
 	// new" dot); watchLastSeen stamps the most recent file event for
 	// its tooltip. watchMu guards all of these plus watchedDir.
 	watcher       *fsnotify.Watcher
 	watchedDir    string
-	watchTimer    *time.Timer
+	watchTrigger  debounce
 	watchPending  int
 	watchLastSeen time.Time
 	watchMu       sync.Mutex

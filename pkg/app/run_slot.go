@@ -245,6 +245,7 @@ func (a *App) finishRun(id RunID, workErr error, summary *ParseRunSummary) {
 	if cancel != nil {
 		cancel()
 	}
+	a.runSlotReleased()
 	ev := RunFinishedEvent{RunID: id, Kind: kind, Outcome: outcomeOf(workErr)}
 	switch ev.Outcome {
 	case RunOutcomeCompleted:
