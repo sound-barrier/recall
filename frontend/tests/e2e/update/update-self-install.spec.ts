@@ -116,6 +116,54 @@ test.describe('in-app self-update', () => {
     await expect(page.locator('[data-update-check-open-release]')).toBeVisible()
   })
 
+  // An update already staged answers the start with a 409 and keeps the
+  // binary. That is not a failure: the way on is Restart, not another Install.
+  test('a start refused over an already-staged update offers Restart, not an error', async ({ page }) => {
+    await mockVersion(page, '1.0.0')
+    await mockUpdate(page, true)
+    await page.route('**/api/v1/system/self-update', (route: Route) =>
+      route.fulfill({
+        status: 409, contentType: 'application/problem+json',
+        body: JSON.stringify({ type: 'https://github.com/sound-barrier/recall/problems/self-update-staged', title: 'Conflict', status: 409, detail: 'an update is already staged — restart to apply it' }),
+      }))
+
+    await page.goto('/')
+    await openAbout(page)
+    await page.locator('[data-self-update-install]').click()
+
+    await expect(page.locator('[data-self-update-restart]')).toBeVisible()
+    await expect(page.locator('[data-self-update-install]')).toHaveCount(0)
+    await expect(page.locator('[data-self-update-error]')).toHaveCount(0)
+  })
+
+  // A failed swap leaves the staged update in place, so Restart stays on
+  // offer beside what went wrong — not an Install that would start over.
+  test('a failed restart keeps offering Restart and says why', async ({ page }) => {
+    await installSSEMock(page)
+    await mockVersion(page, '1.0.0')
+    await mockUpdate(page, true)
+    await page.route('**/api/v1/system/self-update', (route: Route) =>
+      route.fulfill({ status: 202, contentType: 'application/json', body: '' }))
+    await page.route('**/api/v1/system/self-update/restart', (route: Route) =>
+      route.fulfill({
+        status: 500, contentType: 'application/problem+json',
+        body: JSON.stringify({ title: 'Internal Server Error', status: 500, detail: 'swap failed: the file is in use' }),
+      }))
+
+    await page.goto('/')
+    await openAbout(page)
+    await page.locator('[data-self-update-install]').click()
+    for (const name of ['download-started', 'download-complete', 'installing', 'update-ready']) {
+      await emitSSEEvent(page, `wails:updater:${name}`)
+    }
+    const restart = page.locator('[data-self-update-restart]')
+    await restart.click()
+
+    await expect(page.locator('[data-self-update-error]')).toContainText('the file is in use')
+    await expect(restart).toBeVisible()
+    await expect(page.locator('[data-self-update-install]')).toHaveCount(0)
+  })
+
   test('explains a refused update in place of the raw error, without sending anyone to install it by hand', async ({ page }) => {
     await refuseTheUpdate(page)
 
