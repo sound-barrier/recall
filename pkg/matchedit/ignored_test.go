@@ -178,3 +178,31 @@ func TestClearIgnoredScreenshots_TruncatesSuppressList(t *testing.T) {
 		t.Errorf("expected empty list after ClearIgnoredScreenshots; got %v", out)
 	}
 }
+
+// hardDeleteFails stands in for a failure at the last of Dismiss's steps.
+type hardDeleteFails struct{ *dbtest.Fake }
+
+func (f hardDeleteFails) HardDeleteMatch(string) error { return errors.New("disk full") }
+
+func (f hardDeleteFails) InTransaction(fn func(db.Store) error) error {
+	return f.Fake.InTransaction(func(db.Store) error { return fn(f) })
+}
+
+// Dismiss is one unit. It used to run as four writes, so a failure at the
+// last left the file on the ignore list with its rows gone but its emptied
+// match still standing — a match no future parse could ever rebuild.
+func TestIgnoreScreenshot_AFailureLeavesEverythingAsItWas(t *testing.T) {
+	encU := match.NewUnmatchedMatchKey("sb.png").String()
+	fake := &dbtest.Fake{Teams: []db.TeamsRow{{Filename: "sb.png", MatchKey: encU}}}
+
+	if err := matchedit.IgnoreScreenshot(hardDeleteFails{Fake: fake}, "sb.png"); err == nil {
+		t.Fatal("IgnoreScreenshot succeeded through a failing hard delete")
+	}
+
+	if got, _ := fake.LoadIgnoredFilenames(); got["sb.png"] {
+		t.Error("a failed dismiss left the file on the ignore list")
+	}
+	if len(fake.Teams) != 1 {
+		t.Errorf("a failed dismiss removed the file's rows: %+v", fake.Teams)
+	}
+}

@@ -36,7 +36,7 @@ const (
 // also swallow a CHECK-constraint violation — the side tables' whole job is to
 // reject a value outside {self, team, enemy}, and OR IGNORE turned that into a
 // silent no-op.
-func replaceChildSet(tx *sql.Tx, table, column, matchKey string, values []string) error {
+func replaceChildSet(tx txn, table, column, matchKey string, values []string) error {
 	// #nosec G202 -- table/column come from the constants above, never from
 	// user input; SQL identifiers can't be bound as parameters.
 	if _, err := tx.Exec("DELETE FROM "+table+" WHERE match_key = ?", matchKey); err != nil {

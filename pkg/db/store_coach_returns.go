@@ -67,7 +67,7 @@ func (s *SQLStore) UpsertMatchCoachNote(n MatchCoachNote) (int64, error) {
 // way the tag sets are replaced: a re-import carries the coach's current list,
 // and merging would leave a moment they deleted between sessions on a match
 // the player already accepted.
-func replaceNoteMoments(tx *sql.Tx, noteID int64, moments []MatchCoachNoteMoment) error {
+func replaceNoteMoments(tx txn, noteID int64, moments []MatchCoachNoteMoment) error {
 	if _, err := tx.Exec(
 		`DELETE FROM match_coach_note_moments WHERE match_coach_note_id = ?`, noteID); err != nil {
 		return fmt.Errorf("clear note moments: %w", err)
@@ -132,7 +132,7 @@ func (s *SQLStore) LoadMatchCoachNotes() (map[string][]MatchCoachNote, error) {
 
 // attachNoteMoments hangs each block's moments on it, already in reading
 // order — the ORDER BY is the strip's order, so no caller has to re-sort.
-func attachNoteMoments(q *sql.DB, byID map[int64]*MatchCoachNote) error {
+func attachNoteMoments(q querier, byID map[int64]*MatchCoachNote) error {
 	rows, err := q.Query(
 		`SELECT match_coach_note_id, moment_id, match_clock, text, focus_tag, sort_order,
 		        COALESCE(image_sha256, '')

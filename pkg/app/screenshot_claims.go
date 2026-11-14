@@ -350,3 +350,24 @@ func (a *App) moveMatchesHere(owner string, files map[string]string) (int, error
 	}
 	return len(keys), nil
 }
+
+// resyncClaims makes the ledger say what the active profile's database now
+// holds, after the database was replaced wholesale (a Clear, a restore): the
+// profile's old claims go, and each screenshot the new database registered
+// is claimed again — first come, so one another profile took in the meantime
+// stays theirs. Best-effort like every hook here.
+func (a *App) resyncClaims() {
+	if a.claims == nil || a.profiles == nil {
+		return
+	}
+	active := a.profiles.Active()
+	if err := a.claims.ReleaseProfile(active); err != nil {
+		applog.Subsystem("claims").Error("release profile claims failed", "err", applog.Scrub(err.Error()))
+		return
+	}
+	for f, hash := range a.registeredHashes() {
+		if _, err := a.claims.Claim(hash, active, f.Filename); err != nil {
+			applog.Subsystem("claims").Error("reclaim failed", "file", applog.Scrub(f.Filename), "err", err)
+		}
+	}
+}

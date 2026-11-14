@@ -1,7 +1,6 @@
 package db
 
 import (
-	"database/sql"
 	"fmt"
 )
 
@@ -173,7 +172,7 @@ func loadAllAmbiguousCandidates(q querier) (map[string][]AmbiguousCandidate, err
 // SynthesizeManualMatches looks for).
 //
 // The cascading children come along on their parents' ON UPDATE CASCADE.
-func renameMatchKey(tx *sql.Tx, from, to string) error {
+func renameMatchKey(tx txn, from, to string) error {
 	for _, c := range secondaryMatchKeyColumns {
 		// #nosec G202 -- table and column names come from a hard-coded registry.
 		if _, err := tx.Exec(

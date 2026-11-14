@@ -26,7 +26,8 @@ paths:
   `<base>/claims.db`): a content hash belongs to the first profile that
   registers it (`Claim` in dedup). `parsedSkipSet` skips foreign-owned files
   even on Re-parse All, never the profile's own. Released on hard delete and on
-  dismiss (`pkg/app/screenshot_claims.go`); transferred by `MoveMatches`; kept
+  dismiss (`pkg/app/screenshot_claims.go`); re-synced to what the database
+  holds after a Clear or a restore (`resyncClaims`); transferred by `MoveMatches`; kept
   on profile delete; renamed with the profile. `ClaimFolderScreenshots` is the
   explicit takeover (moves the owner's matches, then transfers). Seeded once
   from every profile's `ingested_files`, earliest ingest wins. A nil ledger
