@@ -245,6 +245,41 @@ test.describe('ambiguous attribution — pick a candidate via Unknown tab', () =
     await expect(page.locator('.needs-review-heading')).toHaveCount(0)
   })
 
+  // The pick went straight out with nothing marking the card as resolving,
+  // so a second pick before the reload sent a second decision on a key the
+  // first had already resolved.
+  test('a second pick while the first is resolving is refused', async ({ page }) => {
+    let putCount = 0
+    let resolved = false
+    let release: () => void = () => {}
+    const held = new Promise<void>((resolve) => { release = resolve })
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      const list = resolved ? [candidateMatchRecord('scoreboard-2.png')] : [candidateMatchRecord(), ambiguousRecord()]
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(list) })
+    })
+    await page.route(RESOLUTION_PATH_GLOB, async (route: Route) => {
+      putCount++
+      await held
+      resolved = true
+      await route.fulfill({ status: 204, body: '' })
+    })
+
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
+    await page.locator('.ambiguous-card').first().locator('.unknown-card-head').click()
+    const attach = page.locator('.candidate-row button.candidate-attach').first()
+    await expect(attach).toBeVisible()
+    await attach.evaluate((b) => { (b as HTMLButtonElement).click(); (b as HTMLButtonElement).click() })
+
+    await expect.poll(() => putCount).toBe(1)
+    await expect(attach).toBeDisabled()
+    await page.waitForTimeout(300)
+    expect(putCount).toBe(1)
+    release()
+    await expect(page.locator('.ambiguous-card')).toHaveCount(0)
+    expect(putCount).toBe(1)
+  })
+
   test('each candidate renders a representative-screenshot thumbnail beside its headline', async ({ page }) => {
     // 1×1 PNG so the <img> actually paints in the headless browser.
     const STUB_PNG = Buffer.from(

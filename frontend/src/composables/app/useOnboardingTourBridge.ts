@@ -14,6 +14,10 @@ import { ONBOARDING_RESUME_KEY } from '@/composables/shared/storageKeys'
 // open/close-narrow handlers click the real trigger buttons; the filter mutators
 // write straight to the shared matchesNarrowState refs so narrowedRecords + the
 // panel update in one pass. Lives in a composable because it reaches into the DOM.
+/** Why the tour moves on without the sample profile during a session. */
+const SESSION_SKIPS_SAMPLE
+  = 'A coaching session is open, so the tour skipped the sample data — it would replace the records you are reviewing.'
+
 export function useOnboardingTourBridge() {
   const appStore = useAppStore()
   const uiStore = useUiStore()
@@ -27,8 +31,15 @@ export function useOnboardingTourBridge() {
   // Seed + switch to the demo "test" profile, parking the step to resume on.
   // SwitchProfile reloads the SPA, so the tour reopens at resumeStepIndex (now
   // in the test profile) via the resume key.
+  //
+  // A coaching session refuses it — and says so. The refusal used to return
+  // quietly, which the tour read as success: Next and Skip did nothing at all.
+  // Rejecting sends the tour down its plain path (advance, or finish).
   async function onTourSeedAndSwitch(resumeStepIndex: number): Promise<void> {
-    if (sessionActive.value) return
+    if (sessionActive.value) {
+      appStore.setNotice(SESSION_SKIPS_SAMPLE)
+      throw new Error(SESSION_SKIPS_SAMPLE)
+    }
     await SeedTestProfile()
     try { localStorage.setItem(ONBOARDING_RESUME_KEY, String(resumeStepIndex)) } catch (_) { /* ignore */ }
     await SwitchProfile('test')

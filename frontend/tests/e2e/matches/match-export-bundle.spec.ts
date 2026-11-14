@@ -127,6 +127,51 @@ test.describe('matches — export bundle', () => {
   })
 })
 
+// The modal's busy flag was set and cleared around a synchronous emit, so it
+// never held while the export ran: a double-click on Export sent two bundles
+// (two save dialogs), and Cancel stayed live under a running export.
+test.describe('export bundle — one export per confirm', () => {
+  test('a double-click on Export sends one bundle, and Cancel waits for it', async ({ page }) => {
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(KEYS.map((_, i) => record(i))) })
+    })
+    let posts = 0
+    let release: () => void = () => {}
+    const held = new Promise<void>((resolve) => { release = resolve })
+    await page.route('**/api/v1/exports/bundle', async (route: Route) => {
+      posts++
+      await held
+      await route.fulfill({
+        status: 200,
+        headers: { 'Content-Type': 'application/zip', 'Content-Disposition': 'attachment; filename="b.zip"' },
+        body: Buffer.from([0x50, 0x4b, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+      })
+    })
+
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Matches/ }).click()
+    await page.locator('.leaf-row').nth(0).locator('.leaf-checkbox').click()
+    await page.getByTestId('bulk-export-bundle').click()
+    const modal = page.getByTestId('export-bundle-modal')
+    await expect(modal).toBeVisible()
+
+    const submit = modal.getByTestId('export-submit')
+    const box = await submit.boundingBox()
+    if (!box) throw new Error('Export has no box')
+    await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2)
+
+    await expect.poll(() => posts).toBe(1)
+    await expect(submit).toBeDisabled()
+    await expect(modal.getByRole('button', { name: 'Cancel' })).toBeDisabled()
+    await page.waitForTimeout(300)
+    expect(posts).toBe(1)
+
+    release()
+    await expect(modal).toBeHidden()
+    expect(posts).toBe(1)
+  })
+})
+
 /**
  * The dialog has to fit the window, or be scrollable to.
  *
