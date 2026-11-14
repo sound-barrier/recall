@@ -73,6 +73,12 @@ func (a *App) claimCoachSession(payload []byte, now time.Time) (coach.SessionVie
 // two places racing to take it is the bug this shape prevents by
 // construction.
 func (a *App) claimCoachSessionWith(open func(time.Time) (*coach.Session, error), now time.Time) (coach.SessionView, error) {
+	// A swap closes the store a session's notes are written to, and ends any
+	// open session on its way in; one opened in that window would reach a
+	// store that is not there.
+	if a.storeSwapping() {
+		return coach.SessionView{}, ErrStoreSwapInProgress
+	}
 	a.coachMu.Lock()
 	defer a.coachMu.Unlock()
 	if a.coachSession != nil {

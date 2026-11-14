@@ -175,6 +175,8 @@ var defaultProblems = []errStatus{
 	// below); it is spec-valid, since the schema cannot say "unique by
 	// item_id", so the contradiction answers 409.
 	{db.ErrFocusItemDuplicate, probConflict},
+	// A restore or profile switch has the store closed; retry shortly.
+	{app.ErrStoreSwapInProgress, probConflict},
 
 	// 400 — the request body doesn't hold up.
 	// An empty match key is malformed input, not a server fault. The
