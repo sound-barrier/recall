@@ -91,7 +91,13 @@ type App struct {
 	watchTrigger  debounce
 	watchPending  int
 	watchLastSeen time.Time
-	watchMu       sync.Mutex
+	// watchState is what the watcher is doing (watcher.go); watchRecheck
+	// looks for an unavailable folder again, and watchRecheckGen retires a
+	// recheck a stop or a newer round replaced.
+	watchState      WatchState
+	watchRecheck    *time.Timer
+	watchRecheckGen uint64
+	watchMu         sync.Mutex
 	// run is the single-flight run slot (parse_run.go) — held by a parse or
 	// by a store swap. runMu is a small lock of its own so CancelParse, the
 	// GET /parses/active snapshot and the claim/end transitions never wait

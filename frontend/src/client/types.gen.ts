@@ -2224,6 +2224,31 @@ export type EnabledFlag = {
     enabled: boolean;
 };
 
+export type WatcherStatus = {
+    enabled: boolean;
+    watch_state: WatchStateEnum;
+};
+
+/**
+ * What the folder watcher is doing — not what the Watch setting asks
+ * for. `off`: Watch is off. `watching`: a watcher is open on the
+ * screenshots folder. `unavailable`: Watch is on but there is no
+ * folder it can watch (unset, missing, unreadable, or deleted while
+ * watched); it returns to `watching` by itself when the folder comes
+ * back, and at once when a new folder is set.
+ *
+ */
+export type WatchStateEnum = 'off' | 'watching' | 'unavailable';
+
+/**
+ * Payload of the `watch-state` event, sent whenever the watcher's
+ * state changes. Guaranteed delivery.
+ *
+ */
+export type WatchStateEvent = {
+    watch_state: WatchStateEnum;
+};
+
 export type CloseBehaviorFlag = {
     /**
      * true → closing the window quits Recall; false → hide to the tray
@@ -4350,7 +4375,7 @@ export type GetWatchEnabledResponses = {
     /**
      * Current state.
      */
-    200: EnabledFlag;
+    200: WatcherStatus;
 };
 
 export type GetWatchEnabledResponse = GetWatchEnabledResponses[keyof GetWatchEnabledResponses];

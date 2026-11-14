@@ -9,9 +9,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"recall/pkg/app"
 	"recall/pkg/cmd"
@@ -459,6 +462,50 @@ func TestServerMux_WatchEnabled_RoundTrip(t *testing.T) {
 	if got["enabled"] {
 		t.Errorf("watch should default to off, got %+v", got)
 	}
+}
+
+// The GET carries what the watcher is DOING beside what the setting asks
+// for: Watch on over a folder that was then deleted reports unavailable.
+func TestServerMux_Watcher_ReportsWatchState(t *testing.T) {
+	a, mux := newTestApp(t, nil)
+	dir := filepath.Join(t.TempDir(), "shots")
+	if err := os.Mkdir(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if rec := put(t, mux, "/api/v1/settings/screenshots-folder", map[string]string{"path": dir}); rec.Code != http.StatusOK {
+		t.Fatalf("PUT folder status %d: %s", rec.Code, rec.Body.String())
+	}
+	if rec := put(t, mux, "/api/v1/settings/watcher", map[string]bool{"enabled": true}); rec.Code != http.StatusNoContent {
+		t.Fatalf("PUT watcher status %d", rec.Code)
+	}
+	t.Cleanup(func() { _ = a.SetWatchEnabled(false) })
+	if got := watcherStatus(t, mux); got.WatchState != "watching" {
+		t.Fatalf("watching a real folder: %+v, want watch_state watching", got)
+	}
+	if err := os.RemoveAll(dir); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	got := watcherStatus(t, mux)
+	for got.WatchState != "unavailable" && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+		got = watcherStatus(t, mux)
+	}
+	if !got.Enabled || got.WatchState != "unavailable" {
+		t.Errorf("after the folder was deleted: %+v, want enabled with watch_state unavailable", got)
+	}
+}
+
+type watcherStatusBody struct {
+	Enabled    bool   `json:"enabled"`
+	WatchState string `json:"watch_state"`
+}
+
+func watcherStatus(t *testing.T, mux *http.ServeMux) watcherStatusBody {
+	t.Helper()
+	var got watcherStatusBody
+	_ = json.Unmarshal(get(t, mux, "/api/v1/settings/watcher").Body.Bytes(), &got)
+	return got
 }
 
 func TestServerMux_CloseBehavior_RoundTrip(t *testing.T) {

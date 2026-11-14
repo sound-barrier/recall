@@ -34,6 +34,16 @@ func (a *App) emitParseProgress(p ParseProgressEvent) {
 	a.SSEHub.BroadcastData("parse-progress", string(data))
 }
 
+// emitWatchState announces what the watcher is doing now — read at send
+// time, so two changes racing to announce still leave the last word true.
+// Guaranteed delivery: nothing re-sends it.
+func (a *App) emitWatchState() {
+	ev := WatchStateEvent{WatchState: a.GetWatchState()}
+	data, _ := json.Marshal(ev)
+	emitEvent("watch-state", ev)
+	a.SSEHub.BroadcastGuaranteed("watch-state", string(data))
+}
+
 // emitWatchActivity broadcasts the watcher's pending-file tally to the
 // Wails event bus and (in --server mode) the SSE hub — the masthead's
 // "watching · N new" dot.

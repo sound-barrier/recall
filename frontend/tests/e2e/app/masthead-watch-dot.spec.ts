@@ -7,7 +7,9 @@
  * pending count), the dot reads "WATCHING · N NEW" and its tooltip
  * carries the most recent activity timestamp. While a parse is in
  * flight the existing accent-pulsing parse chip takes over and the dot
- * yields. Watch disabled → no dot at all.
+ * yields. Watch disabled → no dot at all. The dot follows what the watcher
+ * is DOING (`watch_state`), not the setting: a folder deleted out from under
+ * it reads "unavailable" until the `watch-state` event says it is back.
  *
  * Same MockEventSource + __recallSSE pattern as
  * parse-queue-and-skeletons.spec.ts.
@@ -66,7 +68,9 @@ function emitSSE(page: Page, name: string, data: unknown) {
   }, [name, data])
 }
 
-async function mockBackend(page: Page, watchEnabled: boolean) {
+type WatchState = 'off' | 'watching' | 'unavailable'
+
+async function mockBackend(page: Page, watchState: WatchState) {
   await page.route('**/api/v1/matches', async (route: Route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
   })
@@ -74,7 +78,7 @@ async function mockBackend(page: Page, watchEnabled: boolean) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ enabled: watchEnabled }),
+      body: JSON.stringify({ enabled: watchState !== 'off', watch_state: watchState }),
     })
   })
 }
@@ -82,7 +86,7 @@ async function mockBackend(page: Page, watchEnabled: boolean) {
 test.describe('masthead watch dot', () => {
   test('idle dot when watching; pending count + tooltip on watch-activity', async ({ page }) => {
     await installSSEMock(page)
-    await mockBackend(page, true)
+    await mockBackend(page, 'watching')
     await page.goto('/')
 
     // Idle state: dot present, no count, no parse chip.
@@ -104,7 +108,7 @@ test.describe('masthead watch dot', () => {
 
   test('dot yields to the parse chip while a parse is in flight', async ({ page }) => {
     await installSSEMock(page)
-    await mockBackend(page, true)
+    await mockBackend(page, 'watching')
     await page.goto('/')
 
     await expect(page.locator('.masthead-watch-dot')).toBeVisible()
@@ -118,11 +122,36 @@ test.describe('masthead watch dot', () => {
 
   test('no dot when folder-watch is disabled', async ({ page }) => {
     await installSSEMock(page)
-    await mockBackend(page, false)
+    await mockBackend(page, 'off')
     await page.goto('/')
 
     // The masthead is up (nav renders) but no watch dot.
     await expect(page.getByRole('tab', { name: /^Matches/ })).toBeVisible()
     await expect(page.locator('.masthead-watch-dot')).toHaveCount(0)
+  })
+
+  test('reads unavailable when the watched folder is gone, and recovers', async ({ page }) => {
+    await installSSEMock(page)
+    await mockBackend(page, 'watching')
+    await page.goto('/')
+
+    const dot = page.locator('.masthead-watch-dot')
+    await expect(dot).toContainText(/watching/i)
+
+    await emitSSE(page, 'watch-state', { watch_state: 'unavailable' })
+    await expect(dot).toContainText(/folder unavailable/i)
+    await expect(dot).not.toContainText(/watching/i)
+    await expect(dot).toHaveAttribute('title', /can't be read/i)
+
+    await emitSSE(page, 'watch-state', { watch_state: 'watching' })
+    await expect(dot).toContainText(/watching/i)
+  })
+
+  test('boots unavailable when the watcher already is', async ({ page }) => {
+    await installSSEMock(page)
+    await mockBackend(page, 'unavailable')
+    await page.goto('/')
+
+    await expect(page.locator('.masthead-watch-dot')).toContainText(/folder unavailable/i)
   })
 })

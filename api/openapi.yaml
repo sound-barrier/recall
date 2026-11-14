@@ -1582,17 +1582,19 @@ paths:
     get:
       operationId: GetWatchEnabled
       tags: [Settings]
-      summary: Get the file-watcher toggle
+      summary: Get the file-watcher toggle and what the watcher is doing
       description: |
-        `true` iff the fsnotify watcher is armed against the configured
-        screenshots folder.
+        `enabled` is the Watch setting; `watch_state` is what the watcher
+        is actually doing about it — `unavailable` when Watch is on but the
+        folder is unset, missing, unreadable or was deleted while watched.
+        Changes are pushed as the `watch-state` event.
       responses:
         "200":
           description: Current state.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/EnabledFlag"
+                $ref: "#/components/schemas/WatcherStatus"
     put:
       operationId: SetWatchEnabled
       tags: [Settings]
@@ -4447,6 +4449,8 @@ paths:
               $ref: "#/components/schemas/TesseractStatus"
             watch-activity:
               $ref: "#/components/schemas/WatchActivityEvent"
+            watch-state:
+              $ref: "#/components/schemas/WatchStateEvent"
             coach-session-changed:
               $ref: "#/components/schemas/CoachSessionChangedEvent"
 
@@ -7176,6 +7180,36 @@ components:
       properties:
         enabled:
           type: boolean
+
+    WatcherStatus:
+      type: object
+      required: [enabled, watch_state]
+      properties:
+        enabled:
+          type: boolean
+        watch_state:
+          $ref: "#/components/schemas/WatchStateEnum"
+
+    WatchStateEnum:
+      type: string
+      enum: [off, watching, unavailable]
+      description: |
+        What the folder watcher is doing — not what the Watch setting asks
+        for. `off`: Watch is off. `watching`: a watcher is open on the
+        screenshots folder. `unavailable`: Watch is on but there is no
+        folder it can watch (unset, missing, unreadable, or deleted while
+        watched); it returns to `watching` by itself when the folder comes
+        back, and at once when a new folder is set.
+
+    WatchStateEvent:
+      type: object
+      description: |
+        Payload of the `watch-state` event, sent whenever the watcher's
+        state changes. Guaranteed delivery.
+      required: [watch_state]
+      properties:
+        watch_state:
+          $ref: "#/components/schemas/WatchStateEnum"
 
     CloseBehaviorFlag:
       type: object

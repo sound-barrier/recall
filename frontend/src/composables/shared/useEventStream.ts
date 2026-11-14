@@ -1,5 +1,7 @@
 import { onBeforeUnmount, onMounted, type Ref } from 'vue'
-import { EventsOn, EventsOff, type MatchRecord, type RunFinishedEvent, type TesseractStatus } from '@/api-client'
+import {
+  EventsOn, EventsOff, type MatchRecord, type RunFinishedEvent, type TesseractStatus, type WatchStateEnum,
+} from '@/api-client'
 import type { ParseProgressEvent, WatchActivityEvent } from '@/components/ingest/parse-progress'
 
 // Live-stream subscriptions for the events the backend emits: the run's
@@ -25,6 +27,9 @@ export interface EventStreamApi {
   // this install. Both windows share one backend, so the one that did not
   // open the session still has to lock its writes.
   onCoachSessionChanged?: (active: boolean) => void
+  // Called when the folder watcher's state changes — the masthead dot
+  // follows what the watcher is doing, not the Watch setting.
+  onWatchState?: (state: WatchStateEnum) => void
 }
 
 export function useEventStream(api: EventStreamApi) {
@@ -68,6 +73,9 @@ export function useEventStream(api: EventStreamApi) {
     EventsOn<WatchActivityEvent>('watch-activity', (ev) => {
       if (ev && api.watchActivity) api.watchActivity.value = ev
     })
+    EventsOn<{ watch_state?: WatchStateEnum }>('watch-state', (ev) => {
+      if (ev?.watch_state) api.onWatchState?.(ev.watch_state)
+    })
   }
 
   function unsubscribe() {
@@ -77,6 +85,7 @@ export function useEventStream(api: EventStreamApi) {
     EventsOff('tesseract-status')
     EventsOff('coach-session-changed')
     EventsOff('watch-activity')
+    EventsOff('watch-state')
   }
 
   onMounted(subscribe)

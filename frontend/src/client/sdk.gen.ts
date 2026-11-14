@@ -810,10 +810,12 @@ export const setTesseractPath = <ThrowOnError extends boolean = false>(options: 
 });
 
 /**
- * Get the file-watcher toggle
+ * Get the file-watcher toggle and what the watcher is doing
  *
- * `true` iff the fsnotify watcher is armed against the configured
- * screenshots folder.
+ * `enabled` is the Watch setting; `watch_state` is what the watcher
+ * is actually doing about it — `unavailable` when Watch is on but the
+ * folder is unset, missing, unreadable or was deleted while watched.
+ * Changes are pushed as the `watch-state` event.
  *
  */
 export const getWatchEnabled = <ThrowOnError extends boolean = false>(options?: Options<GetWatchEnabledData, ThrowOnError>): RequestResult<GetWatchEnabledResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetWatchEnabledResponses, unknown, ThrowOnError>({ url: '/api/v1/settings/watcher', ...options });

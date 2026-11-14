@@ -66,6 +66,7 @@ export type {
   TesseractStatus,
   UpdateInfo,
   UserMatchDataInput,
+  WatchStateEnum,
 } from '@/client/types.gen'
 
 
