@@ -440,7 +440,7 @@ func (a *App) PutCoachFocusItems(items []coach.FocusItem) error {
 	}
 	rows := make([]db.FocusItem, 0, len(items))
 	for _, it := range items {
-		rows = append(rows, db.FocusItem{ItemID: it.ItemID, Text: strings.TrimSpace(it.Text)})
+		rows = append(rows, db.FocusItem{ItemID: it.ItemID, Text: strings.TrimSpace(it.Text), Status: it.Status})
 	}
 	if err := store.SetCoachFocusItems(playerRef, rows); err != nil {
 		return fmt.Errorf("coach: save focus items: %w", err)
@@ -451,13 +451,23 @@ func (a *App) PutCoachFocusItems(items []coach.FocusItem) error {
 // endCoachSession discards any open session and announces the change.
 // Idempotent — the store-teardown paths call it unconditionally.
 func (a *App) endCoachSession() {
+	a.releaseCoachSession(db.SittingEnded)
+}
+
+// interruptCoachSession is the quit path's end: the coach did not hand the
+// corpus back, the app went away under them, and the history says so.
+func (a *App) interruptCoachSession() {
+	a.releaseCoachSession(db.SittingInterrupted)
+}
+
+func (a *App) releaseCoachSession(outcome db.SittingStatus) {
 	a.coachMu.Lock()
 	s := a.coachSlot.end()
 	a.coachMu.Unlock()
 	if s == nil {
 		return
 	}
-	a.recordSittingEnded(s)
+	a.recordSittingEnded(s, outcome)
 	a.emitCoachSessionChanged()
 }
 
@@ -468,7 +478,7 @@ func (a *App) endCoachSession() {
 //
 // Best-effort, like the open: the session is already over, and a failure
 // here costs a line of history rather than any of the coach's work.
-func (a *App) recordSittingEnded(s *coach.Session) {
+func (a *App) recordSittingEnded(s *coach.Session, outcome db.SittingStatus) {
 	store, release, leaseErr := a.useStore()
 	if leaseErr != nil {
 		applog.Subsystem("coach").Error("session history: end failed", "session_id", s.SessionID, "err", leaseErr)
@@ -486,7 +496,7 @@ func (a *App) recordSittingEnded(s *coach.Session) {
 			frozen = append(frozen, db.CoachSessionFocusRow{Text: item.Text, Status: item.Status})
 		}
 	}
-	if err := store.EndCoachSession(s.SessionID, frozen); err != nil {
+	if err := store.EndCoachSession(s.SessionID, outcome, frozen); err != nil {
 		applog.Subsystem("coach").Error("session history: end failed",
 			"session_id", s.SessionID, "err", err)
 	}
@@ -534,7 +544,7 @@ func (a *App) coachWorkLocked(s *coach.Session) ([]coach.Note, []coach.FocusItem
 func toWireFocusItems(rows []db.FocusItem) []coach.FocusItem {
 	out := make([]coach.FocusItem, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, coach.FocusItem{ItemID: r.ItemID, Text: r.Text})
+		out = append(out, coach.FocusItem{ItemID: r.ItemID, Text: r.Text, Status: r.Status})
 	}
 	return out
 }

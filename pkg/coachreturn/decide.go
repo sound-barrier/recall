@@ -47,7 +47,7 @@ func Decide(st Store, id int64, decisions []Verdict, localHandle string, create 
 		return Sheet{}, err
 	}
 	for _, t := range targets {
-		if err := applyDecision(st, r.ID, f, t, create); err != nil {
+		if err := applyDecision(st, r, f, t, create); err != nil {
 			return Sheet{}, err
 		}
 	}
@@ -125,17 +125,17 @@ func boundCreations(targets []decisionTarget, resolver keyResolver) error {
 	return nil
 }
 
-func applyDecision(st Store, returnID int64, f coach.NotesFile, t decisionTarget, create MatchMaker) error {
+func applyDecision(st Store, r db.CoachReturn, f coach.NotesFile, t decisionTarget, create MatchMaker) error {
 	var err error
 	if t.decision == DecisionAccepted {
-		err = acceptNote(st, f, t.note, create)
+		err = acceptNote(st, r, f, t.note, create)
 	} else {
-		err = skipNote(st, t.note)
+		err = skipNote(st, r.ID, t.note)
 	}
 	if err != nil {
 		return err
 	}
-	if err := st.SetCoachReturnDecision(returnID, t.note.NoteID, string(t.decision)); err != nil {
+	if err := st.SetCoachReturnDecision(r.ID, t.note.NoteID, string(t.decision)); err != nil {
 		return fmt.Errorf("coach: record decision: %w", err)
 	}
 	return nil
@@ -144,7 +144,7 @@ func applyDecision(st Store, returnID int64, f coach.NotesFile, t decisionTarget
 // acceptNote writes the accept's effect: the block for a note, then the
 // coach review either way. The store stamps reviewed_at with its own clock;
 // dating it with the coach's session date is left to the store's caller.
-func acceptNote(st Store, f coach.NotesFile, n coach.Note, create MatchMaker) error {
+func acceptNote(st Store, r db.CoachReturn, f coach.NotesFile, n coach.Note, create MatchMaker) error {
 	// Bind first, and MAKE the match if nothing here answers to the code.
 	// Everything below writes on the resolved key: writing on the coach's
 	// replay key would put their words on a match the player cannot see.
@@ -161,8 +161,8 @@ func acceptNote(st Store, f coach.NotesFile, n coach.Note, create MatchMaker) er
 	// kind check alone threw the whole payload away on accept, silently, and
 	// then reported the note accepted.
 	if n.Kind != coach.KindReviewedOnly || len(n.Moments) > 0 {
-		if _, err := st.UpsertMatchCoachNote(coach.MatchCoachNoteFromNote(n, f.CoachName, f.SessionDate, teamAddressee(f))); err != nil {
-			return fmt.Errorf("coach: accept note %s: %w", n.NoteID, err)
+		if err := writeBlock(st, r, f, n); err != nil {
+			return err
 		}
 	}
 	if err := st.SetReview(n.MatchKey, reviewedByCoach); err != nil {
@@ -193,15 +193,63 @@ func landingKeyFor(st Store, n coach.Note, create MatchMaker) (string, error) {
 	return created, nil
 }
 
-// skipNote undoes an earlier accept's block, if one exists; the review
-// flag stays (whether it was the player's own cannot be known).
-func skipNote(st Store, n coach.Note) error {
+// writeBlock upserts the accepted note's block, stamped with the return
+// that wrote it — unless a NEWER return already wrote this note, in which
+// case accepting the older file records the verdict and leaves the newer
+// words where they are.
+func writeBlock(st Store, r db.CoachReturn, f coach.NotesFile, n coach.Note) error {
+	supersededBy, err := newerAuthor(st, r, n.NoteID)
+	if err != nil {
+		return err
+	}
+	if supersededBy {
+		return nil
+	}
+	block := coach.MatchCoachNoteFromNote(n, f.CoachName, f.SessionDate, teamAddressee(f))
+	block.ReturnID = r.ID
+	if _, err := st.UpsertMatchCoachNote(block); err != nil {
+		return fmt.Errorf("coach: accept note %s: %w", n.NoteID, err)
+	}
+	return nil
+}
+
+// newerAuthor reports whether the block for noteID was written by a return
+// newer than r. Newer is the later session date, and on a tie the later
+// import — a coach's corrected afternoon file shares the morning's date.
+// A block with no return to answer to (discarded, or brought by a bundle)
+// is never newer: accepting a staged file is the only fresh word on it.
+func newerAuthor(st Store, r db.CoachReturn, noteID string) (bool, error) {
+	blocks, err := loadBlocksByNoteID(st)
+	if err != nil {
+		return false, err
+	}
+	b, ok := blocks[noteID]
+	if !ok || b.ReturnID == 0 || b.ReturnID == r.ID {
+		return false, nil
+	}
+	author, found, err := st.LoadCoachReturn(b.ReturnID)
+	if err != nil {
+		return false, fmt.Errorf("coach: load return %d: %w", b.ReturnID, err)
+	}
+	if !found {
+		return false, nil
+	}
+	if author.SessionDate != r.SessionDate {
+		return author.SessionDate > r.SessionDate, nil
+	}
+	return author.ID > r.ID, nil
+}
+
+// skipNote undoes this return's earlier accept, if it wrote a block; a block
+// another return wrote is that return's to keep. The review flag stays
+// (whether it was the player's own cannot be known).
+func skipNote(st Store, returnID int64, n coach.Note) error {
 	blocks, err := loadBlocksByNoteID(st)
 	if err != nil {
 		return err
 	}
 	b, ok := blocks[n.NoteID]
-	if !ok {
+	if !ok || b.ReturnID != returnID {
 		return nil
 	}
 	if err := st.DeleteMatchCoachNote(b.ID); err != nil {

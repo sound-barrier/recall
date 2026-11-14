@@ -34,17 +34,19 @@ func (s *SQLStore) UpsertMatchCoachNote(n MatchCoachNote) (int64, error) {
 	// (the live accept).
 	var id int64
 	err = tx.QueryRow(
-		`INSERT INTO match_coach_notes (note_id, match_key, coach_name, session_date, text, match_clock, for_team, accepted_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, `+suppliedInstantOrNow+`)
+		`INSERT INTO match_coach_notes (note_id, match_key, coach_name, session_date, text, match_clock, for_team, return_id, accepted_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, `+suppliedInstantOrNow+`)
 		 ON CONFLICT(note_id) DO UPDATE SET
 		   match_key    = excluded.match_key,
 		   coach_name   = excluded.coach_name,
 		   session_date = excluded.session_date,
 		   text         = excluded.text,
 		   match_clock  = excluded.match_clock,
-		   for_team     = excluded.for_team
+		   for_team     = excluded.for_team,
+		   return_id    = excluded.return_id
 		 RETURNING id`,
-		n.NoteID, n.MatchKey, n.CoachName, n.SessionDate, n.Text, n.MatchClock, n.ForTeam, n.AcceptedAt,
+		n.NoteID, n.MatchKey, n.CoachName, n.SessionDate, n.Text, n.MatchClock, n.ForTeam,
+		sql.NullInt64{Int64: n.ReturnID, Valid: n.ReturnID != 0}, n.AcceptedAt,
 	).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("upsert match coach note: %w", err)
@@ -158,7 +160,8 @@ func attachNoteMoments(q *sql.DB, byID map[int64]*MatchCoachNote) error {
 // the (accepted_at, id) order the per-match lists are assembled in.
 func (s *SQLStore) loadMatchCoachNoteRows() (map[int64]*MatchCoachNote, []int64, error) {
 	rows, err := s.db.Query(
-		`SELECT id, note_id, match_key, coach_name, session_date, text, match_clock, for_team, accepted_at
+		`SELECT id, note_id, match_key, coach_name, session_date, text, match_clock, for_team,
+		        COALESCE(return_id, 0), accepted_at
 		 FROM match_coach_notes ORDER BY accepted_at, id`,
 	)
 	if err != nil {
@@ -169,7 +172,7 @@ func (s *SQLStore) loadMatchCoachNoteRows() (map[int64]*MatchCoachNote, []int64,
 	var order []int64
 	for rows.Next() {
 		var n MatchCoachNote
-		if err := rows.Scan(&n.ID, &n.NoteID, &n.MatchKey, &n.CoachName, &n.SessionDate, &n.Text, &n.MatchClock, &n.ForTeam, &n.AcceptedAt); err != nil {
+		if err := rows.Scan(&n.ID, &n.NoteID, &n.MatchKey, &n.CoachName, &n.SessionDate, &n.Text, &n.MatchClock, &n.ForTeam, &n.ReturnID, &n.AcceptedAt); err != nil {
 			return nil, nil, fmt.Errorf("load match coach notes: %w", err)
 		}
 		byID[n.ID] = &n

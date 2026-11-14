@@ -857,6 +857,10 @@ CREATE TABLE IF NOT EXISTS coach_focus_items (
   item_id TEXT NOT NULL UNIQUE,
   player_ref INTEGER NOT NULL REFERENCES coach_players (id) ON DELETE CASCADE,
   text TEXT NOT NULL,
+  -- Where the coach thinks the player stands on it. A coach's item starts
+  -- 'new'; the session freeze copies it, so "what changed since last time"
+  -- can say which items moved, not only which were reworded.
+  status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'working', 'done')),
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
@@ -882,7 +886,13 @@ CREATE TABLE IF NOT EXISTS match_coach_notes (
   -- Empty for an ordinary per-player file. Carried so the block the player
   -- keeps can say who it was FOR — a team review that reads as a personal
   -- note has lost the one thing that made it a team review.
-  for_team TEXT NOT NULL DEFAULT ''
+  for_team TEXT NOT NULL DEFAULT '',
+  -- The staged return whose accept wrote this block. Two returns share a
+  -- note_id whenever a coach re-exports a review, so without this a skip in
+  -- one return deleted the block another return's accept wrote. NULL once
+  -- that return is discarded, or for a block a bundle or a move brought:
+  -- the block outlives the archive, it just has no return to answer to.
+  return_id INTEGER REFERENCES coach_returns (id) ON DELETE SET NULL
 ) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_match_coach_notes_match_key ON match_coach_notes (match_key);
@@ -992,9 +1002,15 @@ CREATE TABLE IF NOT EXISTS coach_return_decisions (
 -- touched" and "what changed since last time" had no last time to compare
 -- against. A session that produced no notes left no trace at all.
 --
--- ended_at NULL is an ABANDONED sitting, and that is worth keeping: a coach
--- who opened a bundle and walked away did something, and a dossier that
--- silently dropped it would misreport how often they meet.
+-- status is the sitting's lifecycle, named rather than inferred from a NULL:
+--   open        — in progress; at most one, the live session
+--   ended       — the coach closed it (or a restore/profile swap did)
+--   interrupted — the app quit with it open; stamped and frozen on the way out
+--   abandoned   — the process died with it open, found 'open' at the next
+--                 start (AbandonOpenCoachSessions). A coach who opened a
+--                 bundle and walked away did something, and a dossier that
+--                 silently dropped it would misreport how often they meet.
+-- ended_at is stamped for ended and interrupted, and NULL otherwise.
 --
 -- player_ref is nullable because a session has no identity until the coach
 -- answers "who is this?" — and can be re-pointed when they answer it wrong.
@@ -1006,6 +1022,7 @@ CREATE TABLE IF NOT EXISTS coach_sessions (
   handle TEXT NOT NULL DEFAULT '',
   kind TEXT NOT NULL DEFAULT 'player' CHECK (kind IN ('player', 'team')),
   source TEXT NOT NULL CHECK (source IN ('bundle', 'replay')),
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'ended', 'interrupted', 'abandoned')),
   opened_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   ended_at TEXT
 ) STRICT;
@@ -1035,7 +1052,7 @@ CREATE TABLE IF NOT EXISTS coach_session_focus_items (
   session_id TEXT NOT NULL REFERENCES coach_sessions (session_id) ON DELETE CASCADE,
   sort_order INTEGER NOT NULL,
   text TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'new',
+  status TEXT NOT NULL CHECK (status IN ('new', 'working', 'done')),
   PRIMARY KEY (session_id, sort_order)
 ) STRICT;
 -- statement-end

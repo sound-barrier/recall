@@ -393,18 +393,6 @@ ambiguous sentinel. The shape is in `pkg/CLAUDE.md` and `frontend/CLAUDE.md`
 → **State**. The machines below each have a bug that was traced but is not
 yet fixed. They are ordered by likelihood × blast radius.
 
-- **Coach-return block provenance (M).** `match_coach_notes` keys a block
-  by `note_id` alone. Two returns that carry the same note therefore share
-  one block. Skipping the note in the newer return deletes the block the
-  older return's accept wrote (`pkg/coachreturn/decide.go` `skipNote`).
-  Accepting the older return overwrites newer text. Fix: a `return_id`
-  column (ON DELETE SET NULL); skip removes only a block its own return
-  wrote. Same area, smaller:
-  - `coach_session_focus_items.status` has no `CHECK`, and the frozen
-    status is always `''`.
-  - A coach who quits is recorded as abandoned.
-  - Re-staging a return reassigns a received focus item's `return_id`, so
-    discarding the newer return deletes the item.
 - **Bundle import is not one transaction (M).** The pre-write checks now
   refuse every conflict the database would refuse later. A crash between
   the parent rows and the user layer can still strand the parents, and a

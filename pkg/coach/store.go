@@ -102,11 +102,25 @@ func ExportNotes(s *Session, notes []Note, focus []FocusItem, coachName, recallV
 		// in the file traveling back.
 		Player:      Player{ID: s.Player.ID, Handle: s.Player.Handle, Kind: s.Player.Kind},
 		SessionDate: SessionDate(now),
-		FocusItems:  focus,
+		FocusItems:  withoutStatus(focus),
 		Notes:       notes,
 	}
 	if err := ValidateNotesFile(f); err != nil {
 		return NotesFile{}, fmt.Errorf("export notes: %w", err)
 	}
 	return f, nil
+}
+
+// withoutStatus strips the coach's own status off the list an archive
+// carries: the player's progress is theirs, and every item lands as new.
+func withoutStatus(items []FocusItem) []FocusItem {
+	if items == nil {
+		return nil
+	}
+	out := make([]FocusItem, 0, len(items))
+	for _, it := range items {
+		it.Status = ""
+		out = append(out, it)
+	}
+	return out
 }

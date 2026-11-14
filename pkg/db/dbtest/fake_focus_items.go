@@ -56,9 +56,8 @@ func (f *Fake) SetCoachFocusItems(playerRef int64, items []db.FocusItem) error {
 		f.CoachFocusItems = map[int64][]db.FocusItem{}
 	}
 	stamped := stampFocus(items, f.CoachFocusItems[playerRef])
-	// The coach's authored list carries no status — mirror the SQL columns.
 	for i := range stamped {
-		stamped[i].Status = ""
+		stamped[i].Status = focusStatusOr(stamped[i].Status, db.FocusNew)
 	}
 	f.CoachFocusItems[playerRef] = stamped
 	return nil
@@ -118,8 +117,8 @@ func (f *Fake) UpsertReceivedFocusItem(item db.ReceivedFocusItem) error {
 			continue
 		}
 		// A re-import updates the words and the order but NEVER the status:
-		// the player has already acted on this one.
-		existing.ReturnID = item.ReturnID
+		// the player has already acted on this one. Nor the return: the item
+		// belongs to the file that first carried it.
 		existing.Text = item.Text
 		existing.SortOrder = item.SortOrder
 		existing.UpdatedAt = now

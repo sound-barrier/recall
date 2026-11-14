@@ -36,12 +36,19 @@ const notes = computed(() => notesQuery.data.value ?? [])
 const sessionsQuery = useCoachPlayerSessionsQuery(() => props.player.id, true)
 const sessions = computed(() => sessionsQuery.data.value ?? [])
 
-// A sitting with no end is one the coach walked away from. Saying so beats
-// showing a blank where a duration would go, and beats dropping the row —
-// it happened, and how often the two of them meet is the point of the list.
+// A sitting that did not end the ordinary way says how it did. Saying so
+// beats showing a blank where a duration would go, and beats dropping the
+// row — it happened, and how often the two of them meet is the point of
+// the list.
+const SITTING_TAIL: Record<CoachSession['status'], string> = {
+  ended: '',
+  open: ' · in progress',
+  interrupted: ' · app closed mid-sitting',
+  abandoned: ' · never ended',
+}
+
 function sessionLine(s: CoachSession): string {
-  const covered = pluralize(s.match_keys.length, 'match', 'matches')
-  return s.ended_at ? covered : `${covered} · never ended`
+  return `${pluralize(s.match_keys.length, 'match', 'matches')}${SITTING_TAIL[s.status]}`
 }
 
 const subLine = computed(() => {

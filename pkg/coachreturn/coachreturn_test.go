@@ -228,7 +228,7 @@ func TestDecide_AcceptANoteWritesTheBlockAndReviews(t *testing.T) {
 		t.Error("accepted_at not stamped")
 	}
 	// The store reads an empty tag list back as nil (its documented shape).
-	want := db.MatchCoachNote{ID: block.ID, NoteID: noteIDOne, MatchKey: keyIlios, CoachName: "Ordo", SessionDate: "2026-08-15", Text: "hold high ground", MatchClock: "06:40", FocusTags: []string{"positioning"}, AcceptedAt: block.AcceptedAt}
+	want := db.MatchCoachNote{ID: block.ID, NoteID: noteIDOne, MatchKey: keyIlios, CoachName: "Ordo", SessionDate: "2026-08-15", Text: "hold high ground", MatchClock: "06:40", FocusTags: []string{"positioning"}, AcceptedAt: block.AcceptedAt, ReturnID: sheet.ID}
 	if !reflect.DeepEqual(block, want) {
 		t.Errorf("block = %+v\nwant  %+v", block, want)
 	}

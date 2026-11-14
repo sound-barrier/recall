@@ -1,9 +1,11 @@
 package app_test
 
 import (
+	"errors"
 	"testing"
 
 	"recall/pkg/app"
+	"recall/pkg/coach"
 	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
 )
@@ -76,5 +78,76 @@ func TestCoachSession_EndingStampsIt(t *testing.T) {
 		if row.EndedAt == "" {
 			t.Errorf("ended_at was not stamped on %+v", row)
 		}
+	}
+}
+
+// The freeze is a snapshot of what the list SAID, status included. It used
+// to copy a status the coach's rows never stored, so every frozen item read
+// back as ” — outside the FocusStatus enum the API publishes.
+func TestCoachSession_EndingFreezesTheFocusListWithAStatus(t *testing.T) {
+	a, fake := sessionApp(t)
+	if _, err := a.SetCoachSessionPlayer("Kestrel", db.CoachKindPlayer); err != nil {
+		t.Fatalf("SetCoachSessionPlayer: %v", err)
+	}
+	if err := a.PutCoachFocusItems([]coach.FocusItem{{ItemID: sessionFocusID, Text: "ult economy"}}); err != nil {
+		t.Fatalf("PutCoachFocusItems: %v", err)
+	}
+	if err := a.CloseCoachSession(); err != nil {
+		t.Fatalf("CloseCoachSession: %v", err)
+	}
+
+	for _, row := range fake.CoachSessions {
+		if len(row.FocusItems) != 1 || row.FocusItems[0].Status != db.FocusNew {
+			t.Errorf("frozen focus = %+v, want the one item frozen as %q", row.FocusItems, db.FocusNew)
+		}
+	}
+}
+
+// The coach's view carries each item's status rather than dropping it on
+// the way to the wire.
+func TestCoachSession_TheViewCarriesEachFocusStatus(t *testing.T) {
+	a, _ := sessionApp(t)
+	if _, err := a.SetCoachSessionPlayer("Kestrel", db.CoachKindPlayer); err != nil {
+		t.Fatalf("SetCoachSessionPlayer: %v", err)
+	}
+	if err := a.PutCoachFocusItems([]coach.FocusItem{{ItemID: sessionFocusID, Text: "ult economy", Status: db.FocusDone}}); err != nil {
+		t.Fatalf("PutCoachFocusItems: %v", err)
+	}
+	view, err := a.GetCoachSession()
+	if err != nil {
+		t.Fatalf("GetCoachSession: %v", err)
+	}
+	if len(view.FocusItems) != 1 || view.FocusItems[0].Status != db.FocusDone {
+		t.Errorf("view focus = %+v, want the item done", view.FocusItems)
+	}
+}
+
+// Closing the session is the coach handing the corpus back: ended.
+func TestCoachSession_ClosingRecordsAnEndedSitting(t *testing.T) {
+	a, fake := sessionApp(t)
+	if err := a.CloseCoachSession(); err != nil {
+		t.Fatalf("CloseCoachSession: %v", err)
+	}
+	for _, row := range fake.CoachSessions {
+		if row.Status != db.SittingEnded {
+			t.Errorf("status = %q, want %q", row.Status, db.SittingEnded)
+		}
+	}
+}
+
+// Quitting the app with a session open is not walking away from it: the
+// sitting is recorded as interrupted, stamped, and its focus list frozen.
+func TestCoachSession_QuittingTheAppRecordsAnInterruptedSitting(t *testing.T) {
+	a, fake := sessionApp(t)
+	if err := a.ServiceShutdown(); err != nil {
+		t.Fatalf("ServiceShutdown: %v", err)
+	}
+	for _, row := range fake.CoachSessions {
+		if row.Status != db.SittingInterrupted || row.EndedAt == "" {
+			t.Errorf("sitting = %+v, want interrupted and stamped", row)
+		}
+	}
+	if _, err := a.GetCoachSession(); !errors.Is(err, coach.ErrNoSession) {
+		t.Errorf("GetCoachSession after shutdown = %v, want ErrNoSession", err)
 	}
 }

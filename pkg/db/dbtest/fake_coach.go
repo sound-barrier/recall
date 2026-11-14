@@ -357,6 +357,12 @@ func (f *Fake) DeleteCoachReturn(id int64) error {
 	// engine, so the cascade is spelled here.
 	f.ReceivedFocusItems = slices.DeleteFunc(f.ReceivedFocusItems,
 		func(it db.ReceivedFocusItem) bool { return it.ReturnID == id })
+	// match_coach_notes.return_id is ON DELETE SET NULL: the block stays.
+	for i := range f.MatchCoachNotes {
+		if f.MatchCoachNotes[i].ReturnID == id {
+			f.MatchCoachNotes[i].ReturnID = 0
+		}
+	}
 	return nil
 }
 

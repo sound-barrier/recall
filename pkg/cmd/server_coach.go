@@ -571,14 +571,14 @@ func handleListCoachPlayerNotes(a *app.App) http.HandlerFunc {
 	}
 }
 
-// coachSessionWire is one sitting on the wire — when it happened, what it
-// covered, and the focus list it froze. `ended_at` absent means the coach
-// walked away without handing the corpus back.
+// coachSessionWire is one sitting on the wire — when it happened, how it
+// ended, what it covered, and the focus list it froze.
 type coachSessionWire struct {
 	SessionID  string                  `json:"session_id"`
 	Handle     string                  `json:"handle,omitempty"`
 	Kind       string                  `json:"kind"`
 	Source     string                  `json:"source"`
+	Status     db.SittingStatus        `json:"status"`
 	OpenedAt   string                  `json:"opened_at"`
 	EndedAt    string                  `json:"ended_at,omitempty"`
 	MatchKeys  []string                `json:"match_keys"`
@@ -617,7 +617,7 @@ func coachSessionToWire(row db.CoachSessionRow) coachSessionWire {
 	}
 	return coachSessionWire{
 		SessionID: row.SessionID, Handle: row.Handle, Kind: row.Kind,
-		Source: row.Source, OpenedAt: row.OpenedAt, EndedAt: row.EndedAt,
+		Source: row.Source, Status: row.Status, OpenedAt: row.OpenedAt, EndedAt: row.EndedAt,
 		MatchKeys:  append([]string{}, row.MatchKeys...),
 		FocusItems: focus,
 	}
