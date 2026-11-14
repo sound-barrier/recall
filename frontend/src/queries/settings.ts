@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/vue-query'
+import { useQuery, type QueryKey } from '@tanstack/vue-query'
+import { computed, type WritableComputedRef } from 'vue'
 
 import {
   GetAutoBackupStatus,
@@ -6,33 +7,86 @@ import {
   GetExitOnClose,
   GetScreenshotsDir,
   GetScreenshotsFolderCandidates,
+  GetScreenshotsFolderCandidateStats,
   GetTesseractStatus,
-  GetWatchEnabled,
-  GetWatchState,
+  GetWatcherStatus,
   SetCoachingSettings,
   type CoachingSettings,
   type NamedCandidate,
+  type NamedCandidateStats,
   type TesseractStatus,
+  type WatchStateEnum,
+  type WatcherStatus,
 } from '@/api-client'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 
+// ── Writes land in the cache ─────────────────────────────────────────
+// A setting the user changes is written straight into its cache entry — the
+// cache IS the store's state, there is no copy to keep in step. Each write
+// bumps the key's generation, and a read started before the write answers
+// with the cache as it now stands instead of its own (older) value: the boot
+// GET of the Watch flag landing after the user flipped it used to flip it
+// back on screen while the server held the new value.
+const writeGenerations = new Map<string, number>()
+const generationOf = (key: QueryKey) => writeGenerations.get(JSON.stringify(key)) ?? 0
+
+/** Put a value the server has just accepted (or announced) into the cache. */
+export function writeSetting<T>(key: QueryKey, value: T): void {
+  writeGenerations.set(JSON.stringify(key), generationOf(key) + 1)
+  getQueryClient().setQueryData(key, value)
+}
+
+function readUnlessWritten<T>(key: QueryKey, read: () => Promise<T>): () => Promise<T> {
+  return async () => {
+    const asked = generationOf(key)
+    const value = await read()
+    if (asked === generationOf(key)) return value
+    return getQueryClient().getQueryData<T>(key) ?? value
+  }
+}
+
+/** The cache entry as a ref: reads the query, writes through writeSetting. */
+export function settingRef<T>(key: QueryKey, data: () => T | undefined, fallback: T): WritableComputedRef<T> {
+  return computed<T>({
+    get: () => data() ?? fallback,
+    set: (next) => { writeSetting(key, next) },
+  })
+}
+
 export function useScreenshotsDirQuery() {
-  return useQuery({ queryKey: qk.settings.screenshotsDir, queryFn: GetScreenshotsDir }, getQueryClient())
+  return useQuery({
+    queryKey: qk.settings.screenshotsDir,
+    queryFn: readUnlessWritten(qk.settings.screenshotsDir, GetScreenshotsDir),
+  }, getQueryClient())
 }
 
-export function useWatchEnabledQuery() {
-  return useQuery({ queryKey: qk.settings.watch, queryFn: GetWatchEnabled }, getQueryClient())
+// The Watch setting and the watcher's state, as one cache entry: Settings'
+// toggle reads `enabled`, the masthead dot reads `watch_state`. A toggle
+// writes `enabled` (and `off` when it turns Watch off); the `watch-state`
+// event writes the state. Both go through writeSetting, so a boot read still
+// in flight cannot paint over either.
+export function useWatcherQuery() {
+  return useQuery({
+    queryKey: qk.settings.watch,
+    queryFn: readUnlessWritten(qk.settings.watch, GetWatcherStatus),
+  }, getQueryClient())
 }
 
-// What the watcher is doing — seeded by this read, then kept current by the
-// `watch-state` event writing into the same cache entry (useServerEvents).
-export function useWatchStateQuery() {
-  return useQuery({ queryKey: qk.settings.watchState, queryFn: GetWatchState }, getQueryClient())
+/** The `watch-state` event: what the watcher is doing now. */
+export function applyWatchState(watchState: WatchStateEnum): void {
+  // Before the first read answers there is no setting to keep; a watcher
+  // that is running (or waiting on its folder) means Watch is on.
+  const known = getQueryClient().getQueryData<WatcherStatus>(qk.settings.watch)
+  writeSetting<WatcherStatus>(qk.settings.watch, { enabled: known?.enabled ?? watchState !== 'off', watch_state: watchState })
 }
+
 
 export function useExitOnCloseQuery() {
-  return useQuery({ queryKey: qk.settings.exitOnClose, queryFn: GetExitOnClose }, getQueryClient())
+  return useQuery({
+    queryKey: qk.settings.exitOnClose,
+    queryFn: readUnlessWritten(qk.settings.exitOnClose, GetExitOnClose),
+  }, getQueryClient())
 }
 
 // A failed probe is a real "not detected" state, not a query error — the
@@ -46,7 +100,10 @@ async function fetchTesseractStatus(): Promise<TesseractStatus> {
 }
 
 export function useTesseractQuery() {
-  return useQuery({ queryKey: qk.settings.tesseract, queryFn: fetchTesseractStatus }, getQueryClient())
+  return useQuery({
+    queryKey: qk.settings.tesseract,
+    queryFn: readUnlessWritten(qk.settings.tesseract, fetchTesseractStatus),
+  }, getQueryClient())
 }
 
 // The boot-time engine probe reports once, as an event, and events are not
@@ -73,6 +130,23 @@ export function useCandidatesQuery() {
     queryFn: async (): Promise<NamedCandidate[]> => {
       try {
         return await GetScreenshotsFolderCandidates()
+      } catch (_) {
+        return []
+      }
+    },
+  }, getQueryClient())
+}
+
+// The per-source diagnostics behind the picker cards (a bounded directory
+// walk per source — seconds on a synced cloud folder, so it is fetched after
+// the cards mount, never at boot). Enrichment only: a failure is an empty
+// list, and the cards just skip their second line.
+export function useCandidateStatsQuery() {
+  return useQuery({
+    queryKey: qk.candidateStats,
+    queryFn: async (): Promise<NamedCandidateStats[]> => {
+      try {
+        return await GetScreenshotsFolderCandidateStats()
       } catch (_) {
         return []
       }

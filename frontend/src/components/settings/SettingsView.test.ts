@@ -143,7 +143,7 @@ function renderSettings(opts: { props?: SettingsOver } = {}) {
   database.clearConfirm = over.clearConfirm
   matches.records = makeRecords(over.matchedCount, over.unknownCount)
   if (over.ignoredCount != null) {
-    parse.ignoredScreenshots = Array.from({ length: over.ignoredCount }, (_, i) => ({ filename: `ig-${i}.png`, ignored_at: '2026-05-10T00:00:00Z' }))
+    seedQuery(qk.ignored, Array.from({ length: over.ignoredCount }, (_, i) => ({ filename: `ig-${i}.png`, ignored_at: '2026-05-10T00:00:00Z' })))
   }
 
   seedQuery(qk.system.dataLocation, over.dataLocation)

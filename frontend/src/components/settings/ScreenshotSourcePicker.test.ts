@@ -175,6 +175,19 @@ describe('ScreenshotSourcePicker — per-source diagnostics', () => {
     expect(await screen.findByText('5 files')).toBeInTheDocument()
   })
 
+  // Server state belongs to the query cache: the stats are one read per
+  // session however many pickers mount (Settings, then the first-run step),
+  // not a fresh directory walk per mount kept in a private ref.
+  it('two pickers on screen share one stats read', async () => {
+    const read = vi.fn(async () => [stats({ name: 'nvidia', file_count: 5, recognized_count: 5, last_modified: isoMinutesAgo(0) })])
+    setApiBacking({ GetScreenshotsFolderCandidateStats: read })
+    render(ScreenshotSourcePicker, { props: { platform: 'windows', candidates: namedCards(['nvidia']) } })
+    render(ScreenshotSourcePicker, { props: { platform: 'windows', candidates: namedCards(['nvidia']) } })
+
+    expect(await screen.findAllByText('5 files · just now')).toHaveLength(2)
+    expect(read).toHaveBeenCalledTimes(1)
+  })
+
   it('renders no diagnostic line for a source the stats call never covered', async () => {
     // Enrichment only — a source missing from the response (or a failed
     // fetch) must leave the card intact, not blank or error out.

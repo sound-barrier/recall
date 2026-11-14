@@ -14,7 +14,7 @@ import { useWhatsNew } from '@/composables/app/useWhatsNew'
 import { useCoachReturnsStore } from '@/stores/coachReturns'
 import { useMatchesStore } from '@/stores/matches'
 import { useParseStore } from '@/stores/parse'
-import { useWatchStateQuery } from '@/queries/settings'
+import { useSettingsStore } from '@/stores/settings'
 import { tallyWLD } from '@/match/match-stats-helpers'
 import { winrateOrNull } from '@/match/dossier/match-dossier-tally'
 import { TABS, useTabKeyboardNav } from '@/composables/shared/keyboard/useTabKeyboardNav'
@@ -43,7 +43,7 @@ const { view, appVersion } = storeToRefs(appStore)
 const { goToView } = appStore
 const { records, unknownRecords } = storeToRefs(matchesStore)
 const { parseProgress, watchActivity, recordsPulse } = storeToRefs(useParseStore())
-const { data: watchState } = useWatchStateQuery()
+const { watchState } = storeToRefs(useSettingsStore())
 const { matchesNarrow } = matchesStore
 
 // Tablist Arrow/Home/End nav — owned here (App keeps useAppKeyboard for the

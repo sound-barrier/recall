@@ -39,12 +39,17 @@ export interface TesseractStatusApi {
   // Optional: jump the active view to Settings and scroll the
   // Engine section into view. Wired from the System Alert CTA.
   navigateToEngine?: () => Promise<void> | void
+  /**
+   * Where the status lives. The settings store hands in its query-cache
+   * entry, so a write lands in the cache rather than in a copy of it.
+   */
+  state?: Ref<TesseractStatus>
 }
 
 export type ProbeStatus = '' | 'success' | 'blocked'
 
 export function useTesseractStatus(api: TesseractStatusApi) {
-  const tesseractStatus = ref<TesseractStatus>(EMPTY_TESSERACT_STATUS)
+  const tesseractStatus = api.state ?? ref<TesseractStatus>(EMPTY_TESSERACT_STATUS)
   const tesseractReady = computed(() => !!tesseractStatus.value?.found)
   // The boot-time probe has not answered yet. Not the same as unavailable:
   // the engine-offline halt waits for an answer rather than flashing up.

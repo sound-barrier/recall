@@ -12,7 +12,6 @@ export const qk = {
   settings: {
     screenshotsDir: ['settings', 'screenshots-dir'] as const,
     watch:          ['settings', 'watch'] as const,
-    watchState:     ['settings', 'watch-state'] as const,
     exitOnClose:    ['settings', 'exit-on-close'] as const,
     tesseract:      ['settings', 'tesseract'] as const,
     autoBackup:     ['settings', 'auto-backup'] as const,

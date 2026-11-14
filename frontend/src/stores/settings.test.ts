@@ -3,7 +3,8 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import { useSettingsStore } from '@/stores/settings'
 import { useAppStore } from '@/stores/app'
-import type { TesseractStatus } from '@/api'
+import { applyWatchState } from '@/queries/settings'
+import type { TesseractStatus, WatcherStatus } from '@/api'
 
 // Direct unit tests for the settings store's OWN logic — the candidate-load,
 // detected-source commit, and watch-enable gate. The composables it wires
@@ -82,6 +83,76 @@ describe('settings store — watch gate', () => {
     expect(spy).toHaveBeenCalled()
     expect(api.SetWatchEnabled).not.toHaveBeenCalled()
     expect(s.watchEnabled).toBe(false)
+  })
+})
+
+// The settings reads are server truth in the query cache; the store used to
+// copy them into refs. The boot GET of the Watch flag answering AFTER the user
+// had already flipped it then overwrote the flip — the switch snapped back
+// while the server held the new value.
+describe('settings store — writes land in the cache', () => {
+  it('a Watch toggle made while the boot read is in flight survives that read', async () => {
+    let answerBoot: (status: WatcherStatus) => void = () => {}
+    const GetWatcherStatus = vi.fn(() => new Promise<WatcherStatus>((resolve) => { answerBoot = resolve }))
+    const { setApiBacking } = await import('@/api-client')
+    const api2 = await import('@/api')
+    setApiBacking({ ...api2, GetWatcherStatus, SetWatchEnabled: vi.fn(async () => undefined) })
+    const s = useSettingsStore()
+    s.setTesseractStatus({ ...notReady(), state: 'ready', found: true, error: '' })
+    await new Promise(r => setTimeout(r, 0))
+    expect(GetWatcherStatus).toHaveBeenCalled()
+
+    await s.toggleWatch()
+    expect(s.watchEnabled).toBe(true)
+
+    answerBoot({ enabled: false, watch_state: 'off' })
+    await new Promise(r => setTimeout(r, 0))
+    expect(s.watchEnabled).toBe(true)
+    setApiBacking(api2)
+  })
+})
+
+// The Watch setting and what the watcher is doing are ONE read and one cache
+// entry: the toggle reads its `enabled`, the masthead dot its `watch_state`.
+describe('settings store — the watcher entry', () => {
+  async function bootWith(read: () => Promise<WatcherStatus>) {
+    const { setApiBacking } = await import('@/api-client')
+    const api2 = await import('@/api')
+    setApiBacking({ ...api2, GetWatcherStatus: vi.fn(read), SetWatchEnabled: vi.fn(async () => undefined) })
+    return () => { setApiBacking(api2) }
+  }
+
+  it('a watch-state event that lands during the boot read survives that read', async () => {
+    let answerBoot: (status: WatcherStatus) => void = () => {}
+    const restore = await bootWith(() => new Promise((resolve) => { answerBoot = resolve }))
+    const s = useSettingsStore()
+    await new Promise(r => setTimeout(r, 0))
+
+    applyWatchState('unavailable')
+    answerBoot({ enabled: true, watch_state: 'watching' })
+    await new Promise(r => setTimeout(r, 0))
+
+    expect(s.watchState).toBe('unavailable')
+    expect(s.watchEnabled).toBe(true)
+    restore()
+  })
+
+  it('turning Watch off says the watcher is off; turning it on waits for the event', async () => {
+    const restore = await bootWith(async () => ({ enabled: true, watch_state: 'watching' }))
+    const s = useSettingsStore()
+    s.setTesseractStatus({ ...notReady(), state: 'ready', found: true, error: '' })
+    await new Promise(r => setTimeout(r, 0))
+
+    await s.toggleWatch()
+    expect(s.watchEnabled).toBe(false)
+    expect(s.watchState).toBe('off')
+
+    await s.toggleWatch()
+    expect(s.watchEnabled).toBe(true)
+    expect(s.watchState).toBe('off')
+    applyWatchState('unavailable')
+    expect(s.watchState).toBe('unavailable')
+    restore()
   })
 })
 

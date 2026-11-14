@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/vue-query'
 
 import {
-  ClaimFolderScreenshots, CreateManualMatch, GetFailedFiles, GetMatchResults, GetNewScreenshotCount,
+  ClaimFolderScreenshots, CreateManualMatch, GetFailedFiles, GetIgnoredScreenshots, GetMatchResults,
+  GetNewScreenshotCount,
 } from '@/api-client'
-import type { ClaimTransfer, MatchRecord } from '@/api-client'
+import type { ClaimTransfer, IgnoredScreenshot, MatchRecord } from '@/api-client'
 import { getQueryClient } from '@/queries/client'
 import { matchesCluster, qk } from '@/queries/keys'
 
@@ -47,6 +48,22 @@ export function useFailedFilesQuery() {
     queryKey: qk.failedFiles,
     queryFn: async () => (await GetFailedFiles()) ?? [],
   }, getQueryClient())
+}
+
+// The suppress-list. Not fetched by mounting an observer — the boot fan-out
+// and every write that changes the list ask for it explicitly (refreshIgnored),
+// which keeps the boot request count where it was.
+export function useIgnoredQuery() {
+  return useQuery({
+    queryKey: qk.ignored,
+    queryFn: GetIgnoredScreenshots,
+    enabled: false,
+  }, getQueryClient())
+}
+
+/** Re-read the suppress-list into its cache entry. Throws when the read fails. */
+export async function refreshIgnored(): Promise<IgnoredScreenshot[]> {
+  return getQueryClient().fetchQuery({ queryKey: qk.ignored, queryFn: GetIgnoredScreenshots, staleTime: 0 })
 }
 
 // Refetch the whole cluster — the replacement for the old load(): awaited
