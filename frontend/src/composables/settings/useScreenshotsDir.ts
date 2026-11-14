@@ -38,10 +38,12 @@ export interface ScreenshotsDirApi {
   // Default: always allow the pick (no confirm UI).
   shouldConfirmPickWhile?: () => boolean
   onError?: (message: string) => void
+  /** Where the path lives — the settings store's query-cache entry. */
+  state?: Ref<string>
 }
 
 export function useScreenshotsDir(api: ScreenshotsDirApi) {
-  const screenshotsDir = ref('')
+  const screenshotsDir = api.state ?? ref('')
 
   // Probe state — mirrors into SettingsView's "Detect Overwatch
   // Folder" button. `probeStatus` is split from `probeMessage` so

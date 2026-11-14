@@ -20,7 +20,7 @@ import type { MatchRecord, TesseractStatus, DataLocation } from '@/api'
 const api = vi.hoisted(() => ({
   GetMatchResults:       vi.fn(),
   GetScreenshotsDir:     vi.fn(),
-  GetWatchEnabled:       vi.fn(),
+  GetWatcherStatus:      vi.fn(),
   GetTesseractStatus:    vi.fn(),
   GetExitOnClose:        vi.fn(),
   GetNewScreenshotCount: vi.fn(),
@@ -56,7 +56,7 @@ const DATA_LOC = {
 function setHappyDefaults() {
   api.GetMatchResults.mockResolvedValue([rec('m-1'), rec('m-2')])
   api.GetScreenshotsDir.mockResolvedValue('/srv/recall')
-  api.GetWatchEnabled.mockResolvedValue(true)
+  api.GetWatcherStatus.mockResolvedValue({ enabled: true, watch_state: 'watching' })
   api.GetTesseractStatus.mockResolvedValue(tess())
   api.GetExitOnClose.mockResolvedValue(false)
   api.GetNewScreenshotCount.mockResolvedValue({ count: 3, parked: 0 })

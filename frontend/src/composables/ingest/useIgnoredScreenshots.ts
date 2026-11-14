@@ -2,10 +2,10 @@ import { computed, ref } from 'vue'
 
 import {
   ClearIgnoredScreenshots,
-  GetIgnoredScreenshots,
   UnignoreScreenshot,
   type IgnoredScreenshot,
 } from '@/api-client'
+import { refreshIgnored, useIgnoredQuery } from '@/queries/matches'
 import type { TabId } from '@/composables/shared/keyboard/useTabKeyboardNav'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 
@@ -27,13 +27,17 @@ export function useIgnoredScreenshots(deps: IgnoredScreenshotsDeps) {
   // Restoring a suppressed file and clearing the whole suppress-list are
   // writes; the panel disables them too, this is the backstop.
   const { guardWrite } = useWriteGate()
-  const ignoredScreenshots = ref<IgnoredScreenshot[]>([])
+  // Server truth, so it lives in the query cache (qk.ignored) — this used to
+  // be a ref the store filled by hand, a second copy nothing else could
+  // invalidate.
+  const ignoredQuery = useIgnoredQuery()
+  const ignoredScreenshots = computed<IgnoredScreenshot[]>(() => ignoredQuery.data.value ?? [])
   const ignoredCount = computed(() => ignoredScreenshots.value.length)
   const ignoredPanelOpen = ref(false)
 
   async function loadIgnored() {
     try {
-      ignoredScreenshots.value = await GetIgnoredScreenshots()
+      await refreshIgnored()
     } catch (e) {
       // Best-effort — failing to refresh the count shouldn't block the primary
       // record reload that triggered us.
