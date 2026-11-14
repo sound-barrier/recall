@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { effectScope } from 'vue'
 
-import { useArmedAction } from '@/composables/unknown/useArmedAction'
+import { SWAP_HOLD_MS } from '@/composables/shared/useSwapHold'
+import { armKey, useArmedAction } from '@/composables/unknown/useArmedAction'
 
 // The shared two-click destructive confirm: arm, fire-inside-the-window,
 // auto-disarm past it — keyed so sibling cards stay independent, and
@@ -23,9 +24,42 @@ describe('useArmedAction', () => {
     expect(isArmed('k')).toBe(true)
     expect(fire).not.toHaveBeenCalled()
 
+    vi.advanceTimersByTime(SWAP_HOLD_MS)
     trigger('k', fire)
     expect(fire).toHaveBeenCalledTimes(1)
     expect(isArmed('k')).toBe(false)
+  })
+
+  // One button arms and fires, so the second press of a double-click must
+  // not be the confirm.
+  it('refuses the confirm for a beat after arming', () => {
+    const { trigger, isArmed, isHeld } = useArmedAction()
+    const fire = vi.fn()
+
+    trigger('k', fire)
+    expect(isHeld('k')).toBe(true)
+    trigger('k', fire)
+    expect(fire).not.toHaveBeenCalled()
+    expect(isArmed('k')).toBe(true)
+
+    vi.advanceTimersByTime(SWAP_HOLD_MS)
+    expect(isHeld('k')).toBe(false)
+    trigger('k', fire)
+    expect(fire).toHaveBeenCalledTimes(1)
+  })
+
+  // The arm is about a file set. A card that gained a screenshot since it was
+  // armed is a different confirm, and the next press arms it afresh.
+  it('a card whose files changed reads as unarmed', () => {
+    const { trigger, isArmed } = useArmedAction()
+    const fire = vi.fn()
+
+    trigger(armKey('m', ['a.png']), fire)
+    vi.advanceTimersByTime(SWAP_HOLD_MS)
+    expect(isArmed(armKey('m', ['a.png', 'b.png']))).toBe(false)
+
+    trigger(armKey('m', ['a.png', 'b.png']), fire)
+    expect(fire).not.toHaveBeenCalled()
   })
 
   it('auto-disarms after the window so a stale second click re-arms instead of firing', () => {
@@ -51,6 +85,7 @@ describe('useArmedAction', () => {
     expect(isArmed('a')).toBe(true)
     expect(isArmed('b')).toBe(true)
 
+    vi.advanceTimersByTime(SWAP_HOLD_MS)
     trigger('a', fireA)
     expect(fireA).toHaveBeenCalledTimes(1)
     expect(fireB).not.toHaveBeenCalled()

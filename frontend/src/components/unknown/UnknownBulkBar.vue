@@ -35,7 +35,7 @@ const props = defineProps<{
 
 const { writesLocked, lockedTitle } = useWriteGate()
 
-const { selectedCount, selectedFiles, armed } = props.selection
+const { selectedCount, selectedFiles, armed, confirmHeld } = props.selection
 
 // The noun phrase both the armed and unarmed labels are built from, so the two
 // can never drift apart.
@@ -86,6 +86,7 @@ const target = computed(() => (props.rowNoun === 'screenshot'
         type="button"
         class="ubb-dismiss armed"
         :disabled="writesLocked"
+        :aria-disabled="confirmHeld || undefined"
         :title="lockedTitle('Stop showing these screenshots')"
         @click="selection.commitDismiss()"
       >

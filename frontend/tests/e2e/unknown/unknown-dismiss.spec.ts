@@ -15,7 +15,7 @@
  */
 import type { Route } from '@playwright/test'
 
-import { test, expect } from '../_fixtures'
+import { clickTwiceInPlace, test, expect } from '../_fixtures'
 
 const FILENAME = 'broken.png'
 const MATCH_KEY = `unmatched-${FILENAME}`
@@ -218,6 +218,32 @@ test.describe('Unknown tab — Dismiss', () => {
     await expect(page.getByRole('alert')).toBeVisible()
     // …and the reload still happened (self-healing refetch).
     await expect.poll(() => matchesFetches).toBeGreaterThan(fetchesBeforeDismiss)
+  })
+
+  // One button arms AND fires, so a double-click used to be both clicks of
+  // the confirm: every file on the card suppressed by one gesture.
+  test('a double-click on Dismiss arms it and suppresses nothing', async ({ page }) => {
+    let ignoreHits = 0
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([unknownRecord()]) })
+    })
+    await page.route(`**/api/v1/screenshots/${FILENAME}/ignore`, async (route: Route) => {
+      ignoreHits++
+      await route.fulfill({ status: 204, body: '' })
+    })
+
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
+    await page.locator('.unknown-card .unknown-card-head').first().click()
+    const btn = page.locator(`[data-ignore-btn="${MATCH_KEY}"]`)
+
+    await clickTwiceInPlace(page, btn, async () => {
+      await expect(btn).toHaveText(/Confirm dismiss\?/i)
+    })
+
+    await page.waitForTimeout(300)
+    expect(ignoreHits).toBe(0)
+    await expect(btn).toHaveText(/Confirm dismiss\?/i)
   })
 
   test('auto-disarms after 3 s without a second click', async ({ page }) => {

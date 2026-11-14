@@ -9,7 +9,7 @@
  */
 import type { Route } from '@playwright/test'
 
-import { test, expect } from '../_fixtures'
+import { clickTwiceInPlace, test, expect } from '../_fixtures'
 
 test.describe('Settings — Re-parse all screenshots', () => {
   test('two-step confirm fires POST /api/v1/parses?scope=all', async ({ page }) => {
@@ -149,3 +149,73 @@ for (const theme of THEMES) {
     await expect.poll(async () => (await label.boundingBox())!.x).toBe(idleLabelX)
   })
 }
+
+test.describe('Settings — Advanced arm/confirm under a double-click', () => {
+  // Confirm takes the arm button's place, so the second click of a
+  // double-click used to start a full re-OCR of every screenshot.
+  test('a double-click on Re-parse all… arms it and starts nothing', async ({ page }) => {
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+    })
+    await page.route('**/api/v1/settings/tesseract', async (route: Route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json', body: JSON.stringify({
+          path: '/opt/homebrew/bin/tesseract', found: true, version: '5.3.4', supported: true, error: '', platform: 'darwin',
+        }),
+      })
+    })
+    let posts = 0
+    await page.route('**/api/v1/parses*', async (route: Route) => {
+      if (route.request().method() === 'POST') posts++
+      await route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ run_id: 1 }) })
+    })
+
+    await page.goto('/')
+    await page.getByRole('tab', { name: 'Settings' }).click()
+    await page.locator('#sec-advanced').evaluate(el => (el as HTMLDetailsElement).open = true)
+    const confirmBtn = page.locator('[data-reparse-all-confirm]')
+    // Confirm stacks above Cancel where the arm button stood: the upper part
+    // of "Re-parse all…" is the part Confirm covers.
+    await clickTwiceInPlace(page, page.locator('[data-reparse-all-arm]'), async () => {
+      await expect(confirmBtn).toBeVisible()
+    }, { x: 0.5, y: 0.2 })
+
+    await page.waitForTimeout(300)
+    expect(posts).toBe(0)
+    await expect(confirmBtn).toBeVisible()
+  })
+
+  // The same swap on the most destructive button in the app: "Delete N
+  // Records" takes "Clear Database…"'s place.
+  test('a double-click on Clear Database… arms it and deletes nothing', async ({ page }) => {
+    let deletes = 0
+    await page.route(/\/api\/v1\/matches(\?.*)?$/, async (route: Route) => {
+      if (route.request().method() === 'DELETE') {
+        deletes++
+        await route.fulfill({ status: 204 })
+        return
+      }
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify([{
+          match_key: 'match-2026-05-01T10-00-00', source_files: ['summary-1.png'],
+          source_types: { 'summary-1.png': 'summary' },
+          data: { map: 'rialto', playlist: 'competitive', hero: 'lucio', date: '2026-05-01' },
+          parsed_at: '2026-05-01T10:00:00Z',
+        }]),
+      })
+    })
+
+    await page.goto('/')
+    await page.getByRole('tab', { name: 'Settings' }).click()
+    await page.locator('#sec-advanced').evaluate(el => (el as HTMLDetailsElement).open = true)
+    const deleteBtn = page.getByRole('button', { name: /^Delete 1 Record/ })
+    await clickTwiceInPlace(page, page.getByRole('button', { name: 'Clear Database…' }), async () => {
+      await expect(deleteBtn).toBeVisible()
+    })
+
+    await page.waitForTimeout(300)
+    expect(deletes).toBe(0)
+    await expect(deleteBtn).toBeVisible()
+  })
+})

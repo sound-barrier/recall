@@ -16,7 +16,7 @@
 import type { Route } from '@playwright/test'
 
 import { must } from '../_capture'
-import { test, expect } from '../_fixtures'
+import { clickTwiceInPlace, test, expect } from '../_fixtures'
 import {
   ANONYMOUS_BUNDLE_FIXTURE,
   COACH_OWN_MATCHES,
@@ -86,6 +86,50 @@ test.describe('coaching session — open and end', () => {
     await expect(page.locator('.profile-chip')).toBeVisible()
     await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.leaf-row')).toHaveCount(COACH_OWN_MATCHES.length)
+  })
+
+  // The armed "End anyway" takes End's place on the slip, so a double-click
+  // on End used to answer the unexported-notes question for the coach.
+  test('a double-click on End with unexported notes arms the question and ends nothing', async ({ page }) => {
+    const session = await mockCoachSession(page)
+    await page.goto('/')
+    await openSessionViaReviewsTab(page)
+    await enterFilmRoom(page)
+    const editor = page.getByRole('textbox', { name: /note/i }).first()
+    await editor.click()
+    await page.keyboard.type('Hold the high ground until their dive commits.')
+    await editor.blur()
+
+    const endAnyway = loanSlip(page).getByRole('button', { name: /^End anyway/ })
+    await clickTwiceInPlace(page, loanSlip(page).getByRole('button', { name: '2 · End session' }), async () => {
+      await expect(endAnyway).toBeVisible()
+    })
+
+    await page.waitForTimeout(300)
+    expect(session.isActive()).toBe(true)
+    await expect(endAnyway).toBeVisible()
+  })
+
+  // A clean session ends on the first click; the second click of the same
+  // double-click used to run the whole end a second time.
+  test('a double-click on End of a clean session closes it once', async ({ page }) => {
+    await mockCoachSession(page)
+    let closes = 0
+    await page.route('**/api/v1/coach/session', async (route: Route) => {
+      if (route.request().method() === 'DELETE') closes++
+      await route.fallback()
+    })
+    await page.goto('/')
+    await openSessionViaReviewsTab(page)
+    await expect(loanSlip(page)).toBeVisible()
+
+    const end = loanSlip(page).getByRole('button', { name: '2 · End session' })
+    const box = must(await end.boundingBox(), 'End has no box')
+    await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2)
+
+    await expect(page.locator('.profile-chip')).toBeVisible()
+    await page.waitForTimeout(300)
+    expect(closes).toBe(1)
   })
 
   test('a mid-session reload resumes the session and the room shows the marks', async ({ page }) => {

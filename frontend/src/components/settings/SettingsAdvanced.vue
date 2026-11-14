@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onScopeDispose } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import SupportedSourcesRow from '@/components/settings/SupportedSourcesRow.vue'
@@ -8,6 +8,7 @@ import { useUiStore } from '@/stores/ui'
 import { useDatabaseStore } from '@/stores/database'
 import { useMatchesStore } from '@/stores/matches'
 import { useParseStore } from '@/stores/parse'
+import { useSwapHold } from '@/composables/shared/useSwapHold'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // Advanced collapsible at the bottom of Settings — destructive Clear
@@ -33,7 +34,7 @@ const { writesLocked, lockedTitle } = useWriteGate()
 const databaseStore = useDatabaseStore()
 const parseStore = useParseStore()
 const matchesStore = useMatchesStore()
-const { clearingDB, clearConfirm } = storeToRefs(databaseStore)
+const { databaseBusy, clearingDB, clearConfirm, clearConfirmHeld } = storeToRefs(databaseStore)
 const { ignoredCount, parseProgress, parseRun } = storeToRefs(parseStore)
 const reparsing = computed(() => {
   const run = parseRun.value
@@ -92,11 +93,15 @@ const reparseProgressLine = computed(() => {
 // affordance — mirrors the Clear DB pattern but lives here because
 // the lifecycle is shorter (single-shot, no extra opt-out
 // checkbox). Auto-disarm after 6 s so a stale arm doesn't fire on
-// an accidental click an hour later.
+// an accidental click an hour later. Confirm takes the arm button's
+// place, so it is held for a beat after arming (useSwapHold): the second
+// click of a double-click must not start a full re-OCR.
 const reparseConfirm = ref(false)
+const { held: reparseConfirmHeld, hold: holdReparseConfirm } = useSwapHold()
 let reparseDisarmTimer: ReturnType<typeof setTimeout> | null = null
 function armReparse() {
   reparseConfirm.value = true
+  holdReparseConfirm()
   if (reparseDisarmTimer) clearTimeout(reparseDisarmTimer)
   reparseDisarmTimer = setTimeout(() => { reparseConfirm.value = false }, 6000)
 }
@@ -108,9 +113,17 @@ function cancelReparse() {
   }
 }
 function confirmReparse() {
+  if (reparseConfirmHeld.value) return
   cancelReparse()
   void parseStore.onReParseAll()
 }
+
+// Leaving Settings mid-arm or mid-summary must not leave either timer
+// writing to a component that is gone.
+onScopeDispose(() => {
+  cancelReparse()
+  if (reparseClearTimer) clearTimeout(reparseClearTimer)
+})
 
 // Opt-out checkbox state. Default false so the Clear arm's "factory
 // reset" semantic wins by default; the user has to actively opt into
@@ -202,6 +215,7 @@ watch(
               <button
                 class="btn danger"
                 :disabled="reparsing"
+                :aria-disabled="reparseConfirmHeld || undefined"
                 data-reparse-all-confirm
                 @click="confirmReparse"
               >
@@ -280,7 +294,7 @@ watch(
           <template v-if="!clearConfirm">
             <button
               class="btn danger-outline"
-              :disabled="clearingDB || writesLocked || ((matchedCount ?? 0) + (unknownCount ?? 0)) === 0"
+              :disabled="databaseBusy || writesLocked || ((matchedCount ?? 0) + (unknownCount ?? 0)) === 0"
               :title="lockedTitle('Delete every parsed match')"
               @click="databaseStore.armClear()"
             >
@@ -291,7 +305,8 @@ watch(
             <div class="clear-confirm-group">
               <button
                 class="btn danger"
-                :disabled="clearingDB"
+                :disabled="databaseBusy"
+                :aria-disabled="clearConfirmHeld || undefined"
                 @click="databaseStore.onClearDatabase({ keepIgnored: keepIgnoredOnClear })"
               >
                 <span v-if="clearingDB">Deleting…</span>

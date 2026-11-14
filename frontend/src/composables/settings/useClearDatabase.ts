@@ -1,5 +1,7 @@
-import { ref } from 'vue'
+import { computed, ref, type Ref } from 'vue'
 
+import type { DatabaseOp } from '@/composables/settings/useBackupRestore'
+import { useSwapHold } from '@/composables/shared/useSwapHold'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // Two-step destructive "Clear database" flow.
@@ -22,18 +24,28 @@ export interface ClearDatabaseApi {
   resetLastParsedAt?: () => void
   // Surfaces an error string into the global error banner.
   onError?: (message: string) => void
+  /**
+   * The database store's one operation slot, shared with backup / restore /
+   * import: a Clear must not run while a restore is replacing the database.
+   */
+  op?: Ref<DatabaseOp | null>
 }
 
 export function useClearDatabase(api: ClearDatabaseApi) {
   // The most destructive write in the app — armed UI or not, it asks the
   // gate before it wipes anything.
   const { guardWrite } = useWriteGate()
-  const clearingDB = ref(false)
+  const op = api.op ?? ref<DatabaseOp | null>(null)
+  const clearingDB = computed(() => op.value === 'clear')
   const clearConfirm = ref(false)
+  // "Delete N Records" takes "Clear Database…"'s place: held for a beat after
+  // arming, so a double-click on Clear cannot be its own confirm.
+  const { held: clearConfirmHeld, hold: holdClearConfirm } = useSwapHold()
 
   async function clearDatabase() {
+    if (clearConfirmHeld.value || op.value !== null) return
     if (!guardWrite()) return
-    clearingDB.value = true
+    op.value = 'clear'
     clearConfirm.value = false
     try {
       await api.clearDatabase()
@@ -42,17 +54,19 @@ export function useClearDatabase(api: ClearDatabaseApi) {
     } catch (e) {
       api.onError?.(String(e))
     } finally {
-      clearingDB.value = false
+      op.value = null
     }
   }
 
   function armClear() {
+    if (op.value !== null) return
     clearConfirm.value = true
+    holdClearConfirm()
   }
 
   function cancelClear() {
     clearConfirm.value = false
   }
 
-  return { clearingDB, clearConfirm, clearDatabase, armClear, cancelClear }
+  return { clearingDB, clearConfirm, clearConfirmHeld, clearDatabase, armClear, cancelClear }
 }

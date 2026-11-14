@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { waitOutSwapHold } from '@/test-utils'
 import { nextTick, ref, type Ref } from 'vue'
 import { fireEvent, render, screen } from '@testing-library/vue'
 import { createPinia, setActivePinia } from 'pinia'
@@ -224,6 +225,7 @@ describe('UnknownUnmatchedSection — two-click Dismiss', () => {
     expect(armed).toHaveTextContent('Confirm dismiss?')
     expect(IgnoreScreenshot).not.toHaveBeenCalled()
 
+    await waitOutSwapHold()
     await fireEvent.click(armed)
     expect(IgnoreScreenshot).toHaveBeenCalledWith('a.png')
     // Disarmed again — the button is no longer a live confirm.
@@ -236,6 +238,7 @@ describe('UnknownUnmatchedSection — two-click Dismiss', () => {
 
     const btn = screen.getByRole('button', { name: 'Dismiss 2 screenshots of match-2026-05-10T22-21-11' })
     await fireEvent.click(btn)
+    await waitOutSwapHold()
     await fireEvent.click(screen.getByRole('button', { name: 'Confirm dismissing 2 screenshots of match-2026-05-10T22-21-11' }))
 
     expect(IgnoreScreenshot).toHaveBeenNthCalledWith(1, 'a.png')
