@@ -85,6 +85,9 @@ export const useCoachStore = defineStore('coach', () => {
   // coach typed rather than one the player loaned.
   const sessionSource = computed(() => session.value?.source ?? 'bundle')
   const sessionActive = computed(() => session.value !== null)
+  // True once the session read has answered at least once — the boot's
+  // resume decision waits for it (useAppBoot).
+  const sessionSettled = computed(() => sessionQuery.isFetched.value)
   const player = computed(() => session.value?.player ?? null)
   const coachName = computed(() => session.value?.coach_name ?? '')
 
@@ -607,6 +610,7 @@ export const useCoachStore = defineStore('coach', () => {
     roomApi,
     session,
     sessionActive,
+    sessionSettled,
     player,
     coachName,
     loanedRecords,

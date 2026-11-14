@@ -45,6 +45,28 @@ describe('ParseReportDialog', () => {
     expect(screen.getByRole('textbox', { name: 'What’s wrong with b.png?' })).toBeInTheDocument()
   })
 
+  // A preflight carries no generation, so A's slow answer landed after B's
+  // dialog had opened and painted A's causes over B's files.
+  it('drops a preflight answer from a report that was closed since', async () => {
+    let answerA: (causes: LikelyCause[]) => void = () => {}
+    vi.mocked(PreflightDiagnosticBundle)
+      .mockImplementationOnce(() => new Promise((resolve) => { answerA = resolve }))
+      .mockResolvedValueOnce([{ code: 'unusual_aspect_ratio', filename: 'b.png', message: 'b.png is not 16:9.' }])
+    await openWith([A])
+    const store = useParseReportStore()
+    store.closeReport()
+    await nextTick()
+    store.openReport([B])
+    await nextTick()
+    await new Promise((r) => setTimeout(r))
+
+    answerA([{ code: 'tesseract_unsupported', message: 'A stale answer about a.png.' }])
+    await new Promise((r) => setTimeout(r))
+
+    expect(screen.queryByText('A stale answer about a.png.')).not.toBeInTheDocument()
+    expect(screen.getByText('b.png is not 16:9.')).toBeInTheDocument()
+  })
+
   it('shows setup causes up top and file causes under their file', async () => {
     vi.mocked(PreflightDiagnosticBundle).mockResolvedValueOnce([
       { code: 'tesseract_unsupported', message: 'Tesseract 4 is too old.' },

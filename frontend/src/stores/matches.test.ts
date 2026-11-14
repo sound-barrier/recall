@@ -5,6 +5,7 @@ import { useMatchesStore } from '@/stores/matches'
 import { useAppStore } from '@/stores/app'
 import { useParseStore } from '@/stores/parse'
 import { useSettingsStore } from '@/stores/settings'
+import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 import { seedQuery } from '@/test-utils/queryTestUtils'
 import type { MatchRecord, TesseractStatus, DataLocation } from '@/api'
@@ -180,6 +181,20 @@ describe('matches store — load() boot coordinator', () => {
     expect(matches.records.map(r => r.match_key)).toEqual(['loan-1'])
   })
 
+  // The demo chunk loads asynchronously. Escape landing before it arrived
+  // closed the tour, and the chunk then switched the overlay back on — demo
+  // records stuck over the real ones with no tour on screen to close.
+  it('a tour closed while the demo data loads stays closed', async () => {
+    const matches = useMatchesStore()
+    const opening = matches.onTourActiveChange(true)
+    await matches.onTourActiveChange(false)
+    await opening
+
+    expect(matches.tourActive).toBe(false)
+    await new Promise(r => setTimeout(r, 0))
+    expect(matches.records.map(r => r.match_key)).toEqual(['m-1', 'm-2'])
+  })
+
   it('keeps demo records showing while the tour is active — the real fetch lands in the cache', async () => {
     const matches = useMatchesStore()
     await matches.onTourActiveChange(true) // overlays DEMO_MATCHES + flags tourActive
@@ -218,6 +233,24 @@ describe('matches store — the records pulse', () => {
 
     api.GetMatchResults.mockResolvedValue([rec('m-1'), rec('m-2'), rec('m-3')])
     await matches.load()
+    expect(parse.recordsPulse).toBe(true)
+  })
+
+  // The normal path: a watcher parse streams each match into the cache as a
+  // match-updated upsert BEFORE the run's closing reload. Counting the cache
+  // before that reload saw the upserted rows as already there, so the pulse
+  // never fired for exactly the deliveries it exists for.
+  it('flashes for records that streamed in as upserts before the reload', async () => {
+    const matches = useMatchesStore()
+    const parse = useParseStore()
+    await matches.load()
+    await new Promise(r => setTimeout(r, 0))
+
+    const delivered = [rec('m-1'), rec('m-2'), rec('m-3')]
+    getQueryClient().setQueryData(qk.matches, delivered)
+    api.GetMatchResults.mockResolvedValue(delivered)
+    await matches.load()
+
     expect(parse.recordsPulse).toBe(true)
   })
 

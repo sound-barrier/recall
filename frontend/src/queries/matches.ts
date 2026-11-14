@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/vue-query'
 import {
   ClaimFolderScreenshots, CreateManualMatch, GetFailedFiles, GetMatchResults, GetNewScreenshotCount,
 } from '@/api-client'
-import type { ClaimTransfer } from '@/api-client'
+import type { ClaimTransfer, MatchRecord } from '@/api-client'
 import { getQueryClient } from '@/queries/client'
 import { matchesCluster, qk } from '@/queries/keys'
 
@@ -11,10 +11,18 @@ import { matchesCluster, qk } from '@/queries/keys'
 // The one read that surfaces failures on the global banner (with a Retry
 // that refetches this key); the sibling cluster reads stay silent
 // keep-last, exactly like the old load()'s Promise.allSettled split.
-export function useMatchesQuery() {
+//
+// `onFetched` sees every list the SERVER answered with — never the
+// match-updated upserts written into the same cache entry — so a caller can
+// tell what a fetch delivered from what the event stream already showed.
+export function useMatchesQuery(onFetched: (records: MatchRecord[]) => void) {
   return useQuery({
     queryKey: qk.matches,
-    queryFn: GetMatchResults,
+    queryFn: async () => {
+      const records = await GetMatchResults()
+      onFetched(records)
+      return records
+    },
     // retryKeys: the banner's Retry heals the WHOLE cluster, matching the
     // old load()-as-retry behavior — without it, pending-count and
     // failed-files would stay at their failed defaults after an outage.

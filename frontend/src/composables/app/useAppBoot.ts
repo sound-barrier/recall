@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia'
 
 import { fetchStartupError } from '@/queries/system'
 import { useAppStore } from '@/stores/app'
+import { coachSessionResumeArmed } from '@/queries/coach'
 import { useCoachStore } from '@/stores/coach'
 import { useParseStore } from '@/stores/parse'
 import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
@@ -37,18 +38,21 @@ export function useAppBoot() {
   // time — with their own history read-only and no explanation on the tab
   // they were looking at.
   //
-  // Watched rather than read once: the session query resolves after mount, so
-  // there is nothing to resume at the moment onMounted runs.
+  // Decided by the boot read's ANSWER, once: watching for the first session
+  // this window ever saw also caught one opened later in ANOTHER window, and
+  // yanked this window off whatever tab it was on. A window that booted with
+  // no session to resume has nothing to land on.
   //
   // `once` rather than a stop handle called from inside the callback: that
   // form reads the const while defining it, so adding `immediate` later — or
   // any change that makes the watcher fire during creation — is a
   // temporal-dead-zone crash at boot, with the whole app blank behind it.
   const coachStore = useCoachStore()
-  watch(() => coachStore.sessionActive, (active) => {
-    if (!active) return
-    void appStore.goToView('reviews')
-  }, { once: true })
+  if (coachSessionResumeArmed()) {
+    watch(() => coachStore.sessionSettled, (settled) => {
+      if (settled && coachStore.sessionActive) void appStore.goToView('reviews')
+    }, { once: true })
+  }
 
   onMounted(() => {
     parseStore.restoreLastParsedAt()
