@@ -12,6 +12,7 @@ import type { TesseractStatus, ProbeResult } from '@/api-client'
 // mounting the full app.
 
 export const EMPTY_TESSERACT_STATUS: TesseractStatus = {
+  state: 'probing',
   path: '',
   found: false,
   version: '',
@@ -45,6 +46,9 @@ export type ProbeStatus = '' | 'success' | 'blocked'
 export function useTesseractStatus(api: TesseractStatusApi) {
   const tesseractStatus = ref<TesseractStatus>(EMPTY_TESSERACT_STATUS)
   const tesseractReady = computed(() => !!tesseractStatus.value?.found)
+  // The boot-time probe has not answered yet. Not the same as unavailable:
+  // the engine-offline halt waits for an answer rather than flashing up.
+  const tesseractChecking = computed(() => tesseractStatus.value.state === 'probing')
   const tesseractSupported = computed(
     () => tesseractReady.value && !!tesseractStatus.value?.supported,
   )
@@ -115,6 +119,7 @@ export function useTesseractStatus(api: TesseractStatusApi) {
   return {
     tesseractStatus: tesseractStatus as Readonly<Ref<TesseractStatus>>,
     tesseractReady,
+    tesseractChecking,
     tesseractSupported,
     tesseractPickerBusy,
     tesseractProbing,

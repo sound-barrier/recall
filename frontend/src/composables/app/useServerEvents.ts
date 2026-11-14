@@ -1,4 +1,4 @@
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import { GetActiveParse, type MatchRecord } from '@/api-client'
@@ -6,6 +6,7 @@ import { useEventStream } from '@/composables/shared/useEventStream'
 import { useParseRecovery } from '@/composables/ingest/useParseRecovery'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
+import { recheckTesseractWhileProbing } from '@/queries/settings'
 import { useCoachStore } from '@/stores/coach'
 import { useMatchesStore } from '@/stores/matches'
 import { useParseStore } from '@/stores/parse'
@@ -51,6 +52,11 @@ export function useServerEvents() {
     // window from offering edits the server is about to refuse.
     onCoachSessionChanged: (active) => { void useCoachStore().onSessionChangedElsewhere(active) },
   })
+
+  // The boot probe's one tesseract-status event may have gone out before
+  // the listener above attached. Registered after useEventStream's own
+  // onMounted, so it runs after the subscription.
+  onMounted(() => { void recheckTesseractWhileProbing() })
 
   // Server-mode parse-stream recovery: detect a mid-parse SSE drop,
   // resync against GET /parses/active, surface a manual Refresh. No-op in

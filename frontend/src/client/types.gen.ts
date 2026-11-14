@@ -2180,6 +2180,13 @@ export type SeedTestProfileResponse = {
 
 export type TesseractStatus = {
     /**
+     * Where detection stands. `probing` until the boot-time probe has
+     * answered — not the same as `unavailable`, so the engine-offline
+     * halt waits for it. `found` is `state == ready`.
+     *
+     */
+    state: 'probing' | 'ready' | 'unavailable';
+    /**
      * The currently-configured path.
      */
     path: string;

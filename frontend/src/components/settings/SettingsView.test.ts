@@ -33,7 +33,7 @@ afterEach(() => {
 })
 
 function defaultTess(o: Partial<TesseractStatus> = {}): TesseractStatus {
-  return { path: '/t', found: true, version: '5.5.0', supported: true, error: '', default: '/t', platform: 'darwin', ...o }
+  return { state: 'ready', path: '/t', found: true, version: '5.5.0', supported: true, error: '', default: '/t', platform: 'darwin', ...o }
 }
 
 function makeRecords(matched: number, unknown: number): MatchRecord[] {
@@ -364,6 +364,7 @@ describe('SettingsView', () => {
 
 function readyTesseract(over: Partial<TesseractStatus> = {}): TesseractStatus {
   return {
+    state: 'ready',
     path: '/usr/local/bin/tesseract',
     found: true,
     version: '5.5.0',

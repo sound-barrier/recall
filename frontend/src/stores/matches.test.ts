@@ -42,7 +42,7 @@ vi.mock('@/api', async (importOriginal) => ({
 }))
 
 function tess(over: Partial<TesseractStatus> = {}): TesseractStatus {
-  return { path: '/usr/bin/tesseract', found: true, version: '5.5.0', supported: true, error: '', default: '/usr/bin/tesseract', platform: 'darwin', ...over }
+  return { state: 'ready', path: '/usr/bin/tesseract', found: true, version: '5.5.0', supported: true, error: '', default: '/usr/bin/tesseract', platform: 'darwin', ...over }
 }
 function rec(key: string): MatchRecord {
   return { match_key: key, source_files: [], data: { map: 'rialto', date: '2026-05-10' } }

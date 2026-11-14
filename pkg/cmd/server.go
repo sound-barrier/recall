@@ -29,6 +29,13 @@ import (
 // embedded frontend + a JSON REST API on 127.0.0.1:7000.
 func RunServer(a *app.App, assets embed.FS) {
 	a.SSEHub = app.NewSSEHub()
+	// Every server entry point — the serveronly binary and the desktop
+	// binary's --server flag alike — gets the boot-time engine probe and
+	// backup safety net. Both emit over SSE only, which is safe here. The
+	// --server flag once skipped them, so its engine status never left
+	// "probing" and Parse stayed off until the user pressed Detect.
+	app.EnableTesseractProbeOnStartup()
+	app.EnableAutoBackupOnStartup()
 
 	// Startup loads settings, initializes SQLite, optionally starts
 	// the metrics server and file watcher. Failures are captured on

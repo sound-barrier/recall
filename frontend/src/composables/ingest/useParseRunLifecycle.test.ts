@@ -40,7 +40,7 @@ const LEGACY_LAST_PARSED_KEY = 'recall.lastParsedAt'
 
 function tess(over: Partial<TesseractStatus> = {}): TesseractStatus {
   return {
-    path: '/usr/bin/tesseract', found: true, version: '5.5.0', supported: true,
+    state: 'ready', path: '/usr/bin/tesseract', found: true, version: '5.5.0', supported: true,
     error: '', default: '/usr/bin/tesseract', platform: 'linux', ...over,
   }
 }
