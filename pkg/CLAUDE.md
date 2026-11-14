@@ -67,6 +67,35 @@ Known departures worth naming up front:
 - **`ls <dir>/*.go` is the source of truth** for file-per-concern packages — do
   not maintain literal file lists in any CLAUDE.md or rule.
 
+## State
+
+When behavior depends on which of several modes a thing is in, and the modes
+have rules about which may follow which, declare the machine. Don't infer
+the mode from bools, a nil field, a status string or a running timer.
+Exemplar: the run slot, `pkg/app/run_slot.go`.
+
+- **One closed set of states, one owner.** A typed enum (`int` with
+  `String()`, or a string type when the value crosses the API or the
+  database) with each state's data beside it. `exhaustive` keeps every
+  switch over it honest.
+- **Transitions are methods that return the next value or an error.**
+  `runSlot.claim/progress/requestCancel/end` are the only code that changes
+  the slot. An illegal move returns an error rather than doing nothing.
+- **Results that arrive late carry who they belong to.** A run id, a
+  generation, a round. A report for a run, probe or timer that has since
+  been replaced is refused. Examples: `finishRun` with an old `RunID`;
+  `publishTessProbe` after a newer status; a watcher timer from an old
+  generation.
+- **The machine owns its timers and goroutines.** They end on the
+  transition that ends them, and an end is always announced, from a
+  `defer`, so a panic still says the run is over.
+- **On the wire,** the states are a string enum in `api/openapi.yaml`, and
+  snapshots are discriminated on them (`ActiveRun`). **In SQLite,** a status
+  column gets a `CHECK`, and a state a crash could leave half-written is
+  either impossible (one transaction) or named, with a recovery on open.
+- **No state-machine library.** None of these machines exceeds five states;
+  a type and a handful of methods is the whole cost.
+
 ## Package size
 
 A package is *one* cohesive responsibility behind a small, intentional exported
