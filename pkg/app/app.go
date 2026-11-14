@@ -35,11 +35,15 @@ import (
 	"recall/pkg/applog"
 	"recall/pkg/db"
 	"recall/pkg/profiles"
+	"recall/pkg/snapshot"
 	"recall/pkg/tesseract"
 )
 
 type App struct {
 	ctx context.Context
+	// bootBackup tracks the boot-time snapshot goroutine, so quitting waits
+	// for it (startBootBackup).
+	bootBackup sync.WaitGroup
 	// settingsMu guards settings. Wails-bound calls, server-mode HTTP
 	// handlers, and the watcher/parse goroutines all touch settings
 	// concurrently — every access goes through settingsSnapshot /
@@ -261,6 +265,7 @@ func (a *App) Startup(ctx context.Context) {
 	if !a.initProfiles() {
 		return
 	}
+	recoverGameData()
 	// Open the store BEFORE resolving settings so the data path (the
 	// frontend's GetMatchResults) is never gated on the Tesseract probe.
 	// resolveSettings shells out to `tesseract --version`, which — even with
@@ -287,11 +292,38 @@ func (a *App) Startup(ctx context.Context) {
 	// history and must not stall first paint. Gated like the probe so
 	// Startup-running tests never race the goroutine (backup_scheduler.go).
 	if autoBackupOnStartup {
-		go func() {
-			defer applog.RecoverPanic("backup")
-			a.maybeAutoBackup()
-		}()
+		a.startBootBackup()
 	}
+}
+
+// startBootBackup takes the boot-time automatic snapshot off the boot path.
+// The goroutine is the App's: ServiceShutdown waits for it. It runs inside
+// the run slot, so it cannot overlap a restore or a rename of the file it is
+// copying; a busy slot skips this round, and the next start (or the next
+// parse, which checks due-ness inside its own claim) takes it.
+func (a *App) startBootBackup() {
+	a.bootBackup.Go(func() {
+		defer applog.RecoverPanic("backup")
+		err := a.withRunSlot(RunKindBackup, func() error {
+			// What a write the last process never finished left behind.
+			snapshot.SweepPartials(a.backupsDir())
+			a.maybeAutoBackup()
+			return nil
+		})
+		if errors.Is(err, ErrParseInFlight) {
+			applog.Subsystem("backup").Info("boot backup skipped; the run slot is busy")
+		}
+	})
+}
+
+// ServiceShutdown is the quit path, for the Wails service lifecycle and the
+// server's signal handler alike: a coaching session still open is recorded
+// as interrupted rather than left to read as abandoned, and a boot backup
+// still writing is waited for rather than cut off mid-file.
+func (a *App) ServiceShutdown() error {
+	err := a.interruptCoachSession()
+	a.bootBackup.Wait()
+	return err
 }
 
 // initProfiles loads (or initializes) the profile manager — every

@@ -94,17 +94,17 @@ func TestDeleteScreenshotSiblings_ClearsAllHeroesRegistry(t *testing.T) {
 	for _, impl := range storeImpls {
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
-			mustNoErr(t, s.UpsertAllHeroesScreenshot("ah.png"))
+			mustNoErr(t, s.UpsertAllHeroesScreenshot(db.FileRef{Filename: "ah.png"}))
 			mustNoErr(t, s.DeleteScreenshotSiblings(1, "ah.png", "summary"))
-			skips, err := s.LoadAllHeroesFilenames()
+			skips, err := s.LoadAllHeroesFilenames(db.SentinelScreenshotsDirID)
 			mustNoErr(t, err)
 			if skips["ah.png"] {
 				t.Error("all_heroes registry must forget a reclassified file")
 			}
 			// Keeping all_heroes must preserve its registry row.
-			mustNoErr(t, s.UpsertAllHeroesScreenshot("keep.png"))
+			mustNoErr(t, s.UpsertAllHeroesScreenshot(db.FileRef{Filename: "keep.png"}))
 			mustNoErr(t, s.DeleteScreenshotSiblings(1, "keep.png", "all_heroes"))
-			skips, err = s.LoadAllHeroesFilenames()
+			skips, err = s.LoadAllHeroesFilenames(db.SentinelScreenshotsDirID)
 			mustNoErr(t, err)
 			if !skips["keep.png"] {
 				t.Error("all_heroes keepType must preserve the registry row")
@@ -119,16 +119,16 @@ func TestDeleteScreenshotSiblings_ClearsHistoryRegistry(t *testing.T) {
 	for _, impl := range storeImpls {
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
-			mustNoErr(t, s.UpsertHistoryScreenshot("h.png"))
+			mustNoErr(t, s.UpsertHistoryScreenshot(db.FileRef{Filename: "h.png"}))
 			mustNoErr(t, s.DeleteScreenshotSiblings(1, "h.png", "teams"))
-			skips, err := s.LoadHistoryFilenames()
+			skips, err := s.LoadHistoryFilenames(db.SentinelScreenshotsDirID)
 			mustNoErr(t, err)
 			if skips["h.png"] {
 				t.Error("history registry must forget a reclassified file")
 			}
-			mustNoErr(t, s.UpsertHistoryScreenshot("keep.png"))
+			mustNoErr(t, s.UpsertHistoryScreenshot(db.FileRef{Filename: "keep.png"}))
 			mustNoErr(t, s.DeleteScreenshotSiblings(1, "keep.png", "history"))
-			skips, err = s.LoadHistoryFilenames()
+			skips, err = s.LoadHistoryFilenames(db.SentinelScreenshotsDirID)
 			mustNoErr(t, err)
 			if !skips["keep.png"] {
 				t.Error("history keepType must preserve the registry row")

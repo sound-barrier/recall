@@ -115,8 +115,12 @@ type Store interface {
 	// frozen when it is handed back. An unstamped row is an ABANDONED
 	// sitting and is kept on purpose.
 	StartCoachSession(row CoachSessionRow) error
-	PointCoachSessionAt(sessionID string, playerRef int64, handle, kind string) error
-	EndCoachSession(sessionID string, focus []CoachSessionFocusRow) error
+	PointCoachSessionAt(sessionID string, playerRef int64, handle string, kind CoachKind) error
+	EndCoachSession(sessionID string, outcome SittingStatus, focus []CoachSessionFocusRow) error
+	// CoverCoachSessionMatches records the sitting's whole reel, in order —
+	// a replay session's reel grows after open. ErrCoachSessionUnknown when
+	// the sitting has no row; so do PointCoachSessionAt and EndCoachSession.
+	CoverCoachSessionMatches(sessionID string, matchKeys []string) error
 	ListCoachSessions(playerRef int64) ([]CoachSessionRow, error)
 
 	LinkDuplicateMatches(matchKey, duplicateOf string) error
@@ -286,8 +290,8 @@ type Store interface {
 	// hash (+ the canonical filename when it was a byte-identical
 	// copy); LoadIngestedFiles is the one bulk read the parse loop's
 	// dedup pre-scan consults.
-	UpsertIngestedFile(filename, contentHash, duplicateOf string) error
-	LoadIngestedFiles() (map[string]IngestedFile, error)
+	UpsertIngestedFile(file FileRef, contentHash string, duplicateOf FileRef) error
+	LoadIngestedFiles() (map[FileRef]IngestedFile, error)
 
 	AddIgnoredScreenshot(filename string) error
 	RemoveIgnoredScreenshot(filename string) error
@@ -296,15 +300,18 @@ type Store interface {
 	ClearIgnoredScreenshots() error
 
 	// Failed-file ledger — per-file OCR failure records for the Unknown
-	// tab's "Failed to read" triage section. RecordFailedFile upserts
-	// (attempts+1, refreshed error/last_failed_at, preserved
+	// tab's "Failed to read" triage section, keyed by (folder, filename).
+	// RecordFailedFile upserts (attempts+1 for a parse_failed kind, none for
+	// ocr_unavailable; refreshed kind/error/last_failed_at, preserved
 	// first_failed_at); RemoveFailedFile is the idempotent delete the
-	// success path, Dismiss, and Retry call; ListFailedFiles returns
-	// rows most recently failed first. LoadFailedFilenames(dirID,
+	// success path and Retry call; RemoveFailedFilesNamed drops the name in
+	// every folder (Dismiss, whose ignore list is by name); ListFailedFiles
+	// returns rows most recently failed first. LoadFailedFilenames(dirID,
 	// minAttempts) is the parked-set loader: one folder's filenames at
 	// or past the app layer's attempt cap, which normal runs skip.
-	RecordFailedFile(filename string, dirID int64, errMsg string) error
-	RemoveFailedFile(filename string) error
+	RecordFailedFile(file FileRef, kind FailureKind, errMsg string) error
+	RemoveFailedFile(file FileRef) error
+	RemoveFailedFilesNamed(filename string) error
 	ListFailedFiles() ([]FailedFileRow, error)
 	LoadFailedFilenames(dirID int64, minAttempts, generation int) (map[string]bool, error)
 
@@ -316,13 +323,13 @@ type Store interface {
 	// skip on every future parse run" — the same hot-path role
 	// LoadIgnoredFilenames plays — which keeps the screen out of both the
 	// match aggregation and the Unknown tab without re-OCRing it each run.
-	UpsertAllHeroesScreenshot(filename string) error
-	LoadAllHeroesFilenames() (map[string]bool, error)
+	UpsertAllHeroesScreenshot(file FileRef) error
+	LoadAllHeroesFilenames(dirID int64) (map[string]bool, error)
 
 	// History-screenshots surface — the same recognized-skip role for the
 	// career profile's HISTORY list, which is not a match screen at all.
-	UpsertHistoryScreenshot(filename string) error
-	LoadHistoryFilenames() (map[string]bool, error)
+	UpsertHistoryScreenshot(file FileRef) error
+	LoadHistoryFilenames(dirID int64) (map[string]bool, error)
 	// DeleteUnknownScreenshot retires a recognized file's Unknown row and its
 	// pending ambiguity, leaving any typed row alone.
 	DeleteUnknownScreenshot(filename string) error
@@ -361,6 +368,12 @@ type Store interface {
 	Vacuum() error
 
 	Close() error
+
+	// InTransaction runs fn against a Store whose every write lands in one
+	// transaction: all of them when fn returns nil, none when it returns an
+	// error or panics. A nested call is ErrNestedTransaction. The Store fn
+	// receives is valid only inside fn.
+	InTransaction(fn func(Store) error) error
 }
 
 // SQLStore is the production Store, backed by *sql.DB. Methods are
@@ -378,7 +391,7 @@ type Store interface {
 // id may also change semantically on conflict-update. Wiping and
 // re-inserting is correct and simple.
 type SQLStore struct {
-	db *sql.DB
+	db conn
 	// path is the on-disk database location (":memory:" for test
 	// stores) — retained so Health() can stat the file + WAL sizes.
 	path string
@@ -464,17 +477,29 @@ func NewSQLStore(path string) (*SQLStore, error) {
 		_ = d.Close()
 		return nil, err
 	}
-	store := &SQLStore{db: d, path: path}
+	store := &SQLStore{db: poolConn{d}, path: path}
 	// Reclaim screenshots_dirs rows orphaned by deleted matches / changed watch
 	// folders (the FK is RESTRICT, so they never go on their own).
 	if _, err := store.PruneScreenshotsDirs(); err != nil {
 		_ = d.Close()
 		return nil, fmt.Errorf("prune screenshots_dirs: %w", err)
 	}
+	if err := store.abandonOpenCoachSessions(); err != nil {
+		_ = d.Close()
+		return nil, err
+	}
 	return store, nil
 }
 
-func (s *SQLStore) Close() error { return s.db.Close() }
+// Close closes the database. A Store handed out by InTransaction has
+// nothing of its own to close.
+func (s *SQLStore) Close() error {
+	pool, ok := s.db.(poolConn)
+	if !ok {
+		return ErrNestedTransaction
+	}
+	return pool.Close()
+}
 
 // suppliedInstantOrNow is the VALUES expression for a server-assigned
 // timestamp the caller may override: the instant bound to the placeholder
@@ -530,7 +555,7 @@ func (s *SQLStore) collectStaleKeys(table string, current int, seen map[string]s
 	rows, err := s.db.Query(
 		"SELECT DISTINCT match_key FROM "+table+
 			" WHERE (parser_generation IS NULL OR parser_generation < ?)"+
-			" AND filename NOT IN ("+recognizedFilenamesSQL()+")", current)
+			" AND (screenshots_dir_id, filename) NOT IN ("+recognizedFilenamesSQL()+")", current)
 	if err != nil {
 		return fmt.Errorf("stale parse count %s: %w", table, err)
 	}

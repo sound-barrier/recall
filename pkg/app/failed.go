@@ -44,12 +44,13 @@ func isParked(r db.FailedFileRow, storedInDir map[string]bool) bool {
 // Either way the row clears when a later parse comes back clean, or when
 // the user dismisses the file.
 type FailedFile struct {
-	Filename      string `json:"filename"`
-	Error         string `json:"error"`
-	Attempts      int    `json:"attempts"`
-	Parked        bool   `json:"parked"`
-	FirstFailedAt string `json:"first_failed_at"`
-	LastFailedAt  string `json:"last_failed_at"`
+	Filename      string         `json:"filename"`
+	Kind          db.FailureKind `json:"kind"`
+	Error         string         `json:"error"`
+	Attempts      int            `json:"attempts"`
+	Parked        bool           `json:"parked"`
+	FirstFailedAt string         `json:"first_failed_at"`
+	LastFailedAt  string         `json:"last_failed_at"`
 }
 
 // RetryFailedFile deletes filename's failure row — the Retry on a
@@ -59,7 +60,9 @@ type FailedFile struct {
 // leg) merely loses its triage entry — it stays in the skip set until a
 // Re-parse All, which is why the UI offers Retry only on parked rows.
 // Idempotent on absent rows; write-gated like every other mutation
-// while a coach session holds the DB read-only.
+// while a coach session holds the DB read-only. Scoped to the current
+// screenshots folder: a same-named file parked in another folder is another
+// screenshot, and stays parked.
 func (a *App) RetryFailedFile(filename string) error {
 	store, release, leaseErr := a.useStoreForWrite()
 	if leaseErr != nil {
@@ -69,7 +72,11 @@ func (a *App) RetryFailedFile(filename string) error {
 	if filename == "" {
 		return matchedit.ErrIgnoreFilenameRequired
 	}
-	if err := store.RemoveFailedFile(filename); err != nil {
+	dirID, err := store.EnsureScreenshotsDir(a.settingsSnapshot().ScreenshotsDir)
+	if err != nil {
+		return fmt.Errorf("resolve screenshots folder: %w", err)
+	}
+	if err := store.RemoveFailedFile(db.FileRef{DirID: dirID, Filename: filename}); err != nil {
 		return fmt.Errorf("remove failed file %s: %w", filename, err)
 	}
 	return nil
@@ -106,6 +113,7 @@ func (a *App) GetFailedFiles() ([]FailedFile, error) {
 		}
 		out[i] = FailedFile{
 			Filename:      r.Filename,
+			Kind:          r.Kind,
 			Error:         r.Error,
 			Attempts:      r.Attempts,
 			Parked:        isParked(r, stored),

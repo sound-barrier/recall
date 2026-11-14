@@ -1,7 +1,5 @@
 package db
 
-import "database/sql"
-
 // reaggPending is one (row id, canonical value) pair resolved by a
 // re-aggregation pass, batched into UPDATE statements by promoteColumn.
 type reaggPending struct {
@@ -13,7 +11,7 @@ type reaggPending struct {
 // value the matcher resolves to a non-empty canonical. The SELECT lives in its
 // own function so the single `defer rows.Close()` covers every return path
 // (sqlclosecheck).
-func collectReaggPending(tx *sql.Tx, query string, fn func(string) string) ([]reaggPending, error) {
+func collectReaggPending(tx txn, query string, fn func(string) string) ([]reaggPending, error) {
 	rows, err := tx.Query(query)
 	if err != nil {
 		return nil, err
@@ -36,7 +34,7 @@ func collectReaggPending(tx *sql.Tx, query string, fn func(string) string) ([]re
 // promoteColumn resolves one (select, update) pair via the matcher and writes
 // the canonical values back, returning how many rows it promoted. A blank
 // selectSQL (a table without that column, e.g. personal has no map) is a no-op.
-func promoteColumn(tx *sql.Tx, selectSQL, updateSQL string, fn func(string) string) (int, error) {
+func promoteColumn(tx txn, selectSQL, updateSQL string, fn func(string) string) (int, error) {
 	if selectSQL == "" {
 		return 0, nil
 	}

@@ -7,11 +7,21 @@ import "recall/pkg/db"
 // one set of components, and they read a self-review note the way they read
 // a coach's draft.
 
+// Status is where a sitting stands on the wire: open, or finished — on the
+// record, refusing edits.
+type Status = db.SelfReviewStatus
+
+const (
+	StatusOpen     = db.SelfReviewOpen
+	StatusFinished = db.SelfReviewFinished
+)
+
 // Session is one self-review sitting: the header, the member keys in the
 // player's order, and the notes keyed by match.
 type Session struct {
 	ReviewID   string          `json:"review_id"`
 	Title      string          `json:"title"`
+	Status     Status          `json:"status"`
 	FocusItems []FocusItem     `json:"focus_items"`
 	CreatedAt  string          `json:"created_at"`
 	UpdatedAt  string          `json:"updated_at"`
@@ -60,7 +70,7 @@ type Moment struct {
 
 func sessionFromRow(r db.SelfReview) Session {
 	out := Session{
-		ReviewID: r.ReviewID, Title: r.Title, FocusItems: focusItemsFromRows(r.FocusItems),
+		ReviewID: r.ReviewID, Title: r.Title, Status: r.Status, FocusItems: focusItemsFromRows(r.FocusItems),
 		CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt, FinishedAt: r.FinishedAt,
 		MatchKeys: emptyIfNil(r.MatchKeys), Notes: make(map[string]Note, len(r.Notes)),
 	}

@@ -73,21 +73,82 @@ func Read(dbPath string) ([]byte, error) {
 // Write VACUUMs the database at dbPath into
 // <backupsDir>/<prefix><stamp>.db and prunes that prefix down to keep
 // copies. Returns the written path.
+//
+// The snapshot is written under a temporary name (see partialPattern),
+// synced, and renamed into place only once whole: a write the process never
+// finished leaves a temporary that nothing counts as a snapshot — not
+// Latest, so the next backup is still due, and not Prune, so it cannot evict
+// a good one — and that SweepPartials removes. A second write in the same
+// second names the same file and replaces it: it holds the newer state.
 func Write(dbPath, backupsDir, prefix string, keep int) (string, error) {
 	if err := os.MkdirAll(backupsDir, 0o750); err != nil {
 		return "", err
 	}
-	dest := filepath.Join(backupsDir, prefix+time.Now().UTC().Format(TimeLayout)+".db")
-	if _, err := os.Stat(dest); err == nil {
-		// Same-second collision (test-speed re-runs) — VACUUM INTO
-		// refuses to overwrite, so reuse the existing snapshot.
-		return dest, nil
+	SweepPartials(backupsDir)
+	stamp := now().UTC().Format(TimeLayout)
+	dest := filepath.Join(backupsDir, prefix+stamp+".db")
+	tmp, err := freshTempPath(backupsDir, "."+prefix+stamp+"-*"+partialSuffix)
+	if err != nil {
+		return "", fmt.Errorf("backup: temp path: %w", err)
 	}
-	if err := BackupToFunc(dbPath, dest); err != nil {
+	if err := writeWhole(dbPath, tmp, dest); err != nil {
+		_ = os.Remove(tmp)
 		return "", err
 	}
 	Prune(backupsDir, prefix, keep)
 	return dest, nil
+}
+
+// now is Write's clock. Two writes in one second must name the same file,
+// and only a pinned clock can promise a test that they do.
+var now = time.Now
+
+// partialSuffix ends every in-progress snapshot's name. The leading dot and
+// this suffix keep it out of every "<prefix>*.db" glob Latest and Prune read.
+const partialSuffix = ".partial"
+
+// writeWhole VACUUMs into tmp, makes it durable, and renames it to dest.
+func writeWhole(dbPath, tmp, dest string) error {
+	if err := BackupToFunc(dbPath, tmp); err != nil {
+		return err
+	}
+	if err := syncFile(tmp); err != nil {
+		return fmt.Errorf("backup: sync snapshot: %w", err)
+	}
+	if err := os.Rename(tmp, dest); err != nil {
+		return fmt.Errorf("backup: rename snapshot into place: %w", err)
+	}
+	// The rename is durable once the directory entry is; not every platform
+	// can sync a directory, and the snapshot is whole either way.
+	_ = syncFile(filepath.Dir(dest))
+	return nil
+}
+
+func syncFile(path string) error {
+	f, err := os.Open(path) // #nosec G304 -- a path this package just created
+	if err != nil {
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		return err
+	}
+	return f.Close()
+}
+
+// SweepPartials removes the temporaries of writes that never finished — a
+// crash or a kill between the VACUUM and the rename. Best-effort: one that
+// cannot be removed is only clutter, never mistaken for a snapshot.
+func SweepPartials(backupsDir string) {
+	leftovers, err := filepath.Glob(filepath.Join(backupsDir, ".*"+partialSuffix))
+	if err != nil {
+		return
+	}
+	for _, f := range leftovers {
+		if err := os.Remove(f); err != nil {
+			applog.Subsystem("backup").Error("remove unfinished snapshot", "file", f, "err", err)
+		}
+	}
 }
 
 // Prune removes all but the newest keep files matching prefix*.db in

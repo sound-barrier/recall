@@ -179,8 +179,8 @@ func TestStoreContract_ClearEmptiesEverySurfaceAndStaysUsable(t *testing.T) {
 			const key = "match-2026-01-01T12-00-00"
 			seedFullMatch(t, s, key, "a.png")
 			mustNoErr(t, s.AddIgnoredScreenshot("b.png"))
-			mustNoErr(t, s.UpsertAllHeroesScreenshot("all.png"))
-			mustNoErr(t, s.UpsertHistoryScreenshot("history.png"))
+			mustNoErr(t, s.UpsertAllHeroesScreenshot(db.FileRef{Filename: "all.png"}))
+			mustNoErr(t, s.UpsertHistoryScreenshot(db.FileRef{Filename: "history.png"}))
 
 			mustNoErr(t, s.Clear())
 
@@ -197,10 +197,10 @@ func TestStoreContract_ClearEmptiesEverySurfaceAndStaysUsable(t *testing.T) {
 // which a surviving Clear would leave skipping files forever.
 func assertRecognizedRegistriesCleared(t *testing.T, s db.Store) {
 	t.Helper()
-	if ah, _ := s.LoadAllHeroesFilenames(); len(ah) != 0 {
+	if ah, _ := s.LoadAllHeroesFilenames(db.SentinelScreenshotsDirID); len(ah) != 0 {
 		t.Errorf("all-heroes list survived Clear: %v", ah)
 	}
-	if h, _ := s.LoadHistoryFilenames(); len(h) != 0 {
+	if h, _ := s.LoadHistoryFilenames(db.SentinelScreenshotsDirID); len(h) != 0 {
 		t.Errorf("history list survived Clear: %v", h)
 	}
 }
@@ -381,11 +381,11 @@ func TestStoreContract_FailedFileLifecycle(t *testing.T) {
 	for _, impl := range storeImpls {
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
-			mustNoErr(t, s.RecordFailedFile("f.png", 1, "first error"))
-			mustNoErr(t, s.RecordFailedFile("f.png", 1, "second error"))
+			mustNoErr(t, s.RecordFailedFile(db.FileRef{DirID: 1, Filename: "f.png"}, db.FailureParseFailed, "first error"))
+			mustNoErr(t, s.RecordFailedFile(db.FileRef{DirID: 1, Filename: "f.png"}, db.FailureParseFailed, "second error"))
 			assertRerecordedFailedRow(t, s)
-			mustNoErr(t, s.RemoveFailedFile("f.png"))
-			mustNoErr(t, s.RemoveFailedFile("f.png")) // remove absent must be a no-op
+			mustNoErr(t, s.RemoveFailedFile(db.FileRef{Filename: "f.png"}))
+			mustNoErr(t, s.RemoveFailedFile(db.FileRef{Filename: "f.png"})) // remove absent must be a no-op
 			rows, err := s.ListFailedFiles()
 			if err != nil || len(rows) != 0 {
 				t.Fatalf("want empty after remove, got %v (err %v)", rows, err)
@@ -1103,7 +1103,7 @@ func TestStoreContract_CoachSessionEndFreezesTheFocusList(t *testing.T) {
 				Kind: db.CoachKindPlayer, Source: "bundle",
 			}))
 
-			mustNoErr(t, s.EndCoachSession("sess-1", []db.CoachSessionFocusRow{
+			mustNoErr(t, s.EndCoachSession("sess-1", db.SittingEnded, []db.CoachSessionFocusRow{
 				{Text: "Hold high ground longer", Status: "working"},
 				{Text: "Ult economy on defense", Status: "new"},
 			}))
@@ -1138,7 +1138,7 @@ func TestStoreContract_CoachSessionKeepsAnAbandonedSitting(t *testing.T) {
 					Kind: db.CoachKindPlayer, Source: "bundle",
 				}))
 			}
-			mustNoErr(t, s.EndCoachSession("sess-2", nil))
+			mustNoErr(t, s.EndCoachSession("sess-2", db.SittingEnded, nil))
 
 			got, err := s.ListCoachSessions(p.ID)
 			mustNoErr(t, err)

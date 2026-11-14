@@ -558,14 +558,23 @@ CREATE TABLE IF NOT EXISTS match_play_mode (
 -- row, no failed_files entry, nothing on the Unknown tab. CASCADE means the
 -- copy cannot outlive what it is a copy of.
 --
--- NULL rather than '' for originals because SQLite exempts a NULL child key
--- from the FK check; '' would demand a parent row named ''. The Go surface
--- keeps "" and the store maps the two at the boundary.
+-- Keyed by (folder, filename): a filename is a basename, and two folders
+-- hold same-named captures. A copy may live in another folder than its
+-- canonical, so duplicate_of carries the canonical's folder too.
+--
+-- NULL rather than '' for originals because SQLite exempts a child key with
+-- a NULL column from the FK check; '' would demand a parent row named ''. The
+-- Go surface keeps a zero FileRef and the store maps the two at the boundary.
 CREATE TABLE IF NOT EXISTS ingested_files (
-  filename TEXT PRIMARY KEY,
+  screenshots_dir_id INTEGER NOT NULL REFERENCES screenshots_dirs (id) ON DELETE RESTRICT,
+  filename TEXT NOT NULL,
   content_hash TEXT NOT NULL,
-  duplicate_of TEXT REFERENCES ingested_files (filename) ON DELETE CASCADE,
-  first_seen_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+  duplicate_of_dir_id INTEGER,
+  duplicate_of TEXT,
+  first_seen_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  PRIMARY KEY (screenshots_dir_id, filename),
+  FOREIGN KEY (duplicate_of_dir_id, duplicate_of)
+    REFERENCES ingested_files (screenshots_dir_id, filename) ON DELETE CASCADE
 ) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_ingested_files_hash ON ingested_files (content_hash);
@@ -587,35 +596,48 @@ CREATE TABLE IF NOT EXISTS ignored_screenshots (
 -- it. screenshots_dir_id lets the diagnostic bundle resolve the on-disk
 -- path later (PruneScreenshotsDirs unions this table so a dir referenced
 -- only here survives the startup GC).
+--
+-- Keyed by (folder, filename) so parking and unparking stay in the folder
+-- they happened in. kind says whether the parse ran and failed
+-- ('parse_failed', which counts an attempt) or never reached the file
+-- because the OCR engine was not there ('ocr_unavailable', which counts
+-- none — an outage is not a verdict on the file, and must not park the
+-- whole backlog it touched).
 CREATE TABLE IF NOT EXISTS failed_files (
-  filename TEXT PRIMARY KEY,
   screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs (id) ON DELETE RESTRICT,
+  filename TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'parse_failed' CHECK (kind IN ('ocr_unavailable', 'parse_failed')),
   error TEXT NOT NULL DEFAULT '',
   attempts INTEGER NOT NULL DEFAULT 1,
   first_failed_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   last_failed_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
-  parser_generation INTEGER
+  parser_generation INTEGER,
+  PRIMARY KEY (screenshots_dir_id, filename)
 ) STRICT;
 -- statement-end
 
 -- Recognized-but-unstored skip list for the PERSONAL "All Heroes" aggregate
 -- view. The parser classifies it ("all_heroes") but extracts nothing — its
 -- combat totals duplicate the TEAMS screen and its card icons defeat the OCR.
--- Recording only the filename keeps the screen out of the next OCR run (like
+-- Recording only the file (folder + name) keeps the screen out of the next OCR run (like
 -- ignored_screenshots) without a garbage match row or an Unknown-tab entry.
 CREATE TABLE IF NOT EXISTS all_heroes_screenshots (
-  filename TEXT PRIMARY KEY,
-  recognized_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+  screenshots_dir_id INTEGER NOT NULL REFERENCES screenshots_dirs (id) ON DELETE RESTRICT,
+  filename TEXT NOT NULL,
+  recognized_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  PRIMARY KEY (screenshots_dir_id, filename)
 ) STRICT;
 -- statement-end
 
 -- Recognized-but-unstored skip list for the career profile's HISTORY -> GAME
 -- REPORTS list. It is not a match screen, so the parser classifies it
--- ("history") and extracts nothing; recording the filename keeps it out of the
+-- ("history") and extracts nothing; recording the file (folder + name) keeps it out of the
 -- next OCR run, the failed-files ledger, and the Unknown tab.
 CREATE TABLE IF NOT EXISTS history_screenshots (
-  filename TEXT PRIMARY KEY,
-  recognized_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+  screenshots_dir_id INTEGER NOT NULL REFERENCES screenshots_dirs (id) ON DELETE RESTRICT,
+  filename TEXT NOT NULL,
+  recognized_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  PRIMARY KEY (screenshots_dir_id, filename)
 ) STRICT;
 -- statement-end
 
@@ -857,6 +879,10 @@ CREATE TABLE IF NOT EXISTS coach_focus_items (
   item_id TEXT NOT NULL UNIQUE,
   player_ref INTEGER NOT NULL REFERENCES coach_players (id) ON DELETE CASCADE,
   text TEXT NOT NULL,
+  -- Where the coach thinks the player stands on it. A coach's item starts
+  -- 'new'; the session freeze copies it, so "what changed since last time"
+  -- can say which items moved, not only which were reworded.
+  status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'working', 'done')),
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
@@ -882,7 +908,13 @@ CREATE TABLE IF NOT EXISTS match_coach_notes (
   -- Empty for an ordinary per-player file. Carried so the block the player
   -- keeps can say who it was FOR — a team review that reads as a personal
   -- note has lost the one thing that made it a team review.
-  for_team TEXT NOT NULL DEFAULT ''
+  for_team TEXT NOT NULL DEFAULT '',
+  -- The staged return whose accept wrote this block. Two returns share a
+  -- note_id whenever a coach re-exports a review, so without this a skip in
+  -- one return deleted the block another return's accept wrote. NULL once
+  -- that return is discarded, or for a block a bundle or a move brought:
+  -- the block outlives the archive, it just has no return to answer to.
+  return_id INTEGER REFERENCES coach_returns (id) ON DELETE SET NULL
 ) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_match_coach_notes_match_key ON match_coach_notes (match_key);
@@ -992,9 +1024,15 @@ CREATE TABLE IF NOT EXISTS coach_return_decisions (
 -- touched" and "what changed since last time" had no last time to compare
 -- against. A session that produced no notes left no trace at all.
 --
--- ended_at NULL is an ABANDONED sitting, and that is worth keeping: a coach
--- who opened a bundle and walked away did something, and a dossier that
--- silently dropped it would misreport how often they meet.
+-- status is the sitting's lifecycle, named rather than inferred from a NULL:
+--   open        — in progress; at most one, the live session
+--   ended       — the coach closed it (or a restore/profile swap did)
+--   interrupted — the app quit with it open; stamped and frozen on the way out
+--   abandoned   — the process died with it open, found 'open' at the next
+--                 start (AbandonOpenCoachSessions). A coach who opened a
+--                 bundle and walked away did something, and a dossier that
+--                 silently dropped it would misreport how often they meet.
+-- ended_at is stamped for ended and interrupted, and NULL otherwise.
 --
 -- player_ref is nullable because a session has no identity until the coach
 -- answers "who is this?" — and can be re-pointed when they answer it wrong.
@@ -1006,6 +1044,7 @@ CREATE TABLE IF NOT EXISTS coach_sessions (
   handle TEXT NOT NULL DEFAULT '',
   kind TEXT NOT NULL DEFAULT 'player' CHECK (kind IN ('player', 'team')),
   source TEXT NOT NULL CHECK (source IN ('bundle', 'replay')),
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'ended', 'interrupted', 'abandoned')),
   opened_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   ended_at TEXT
 ) STRICT;
@@ -1035,7 +1074,7 @@ CREATE TABLE IF NOT EXISTS coach_session_focus_items (
   session_id TEXT NOT NULL REFERENCES coach_sessions (session_id) ON DELETE CASCADE,
   sort_order INTEGER NOT NULL,
   text TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'new',
+  status TEXT NOT NULL CHECK (status IN ('new', 'working', 'done')),
   PRIMARY KEY (session_id, sort_order)
 ) STRICT;
 -- statement-end
@@ -1045,7 +1084,13 @@ CREATE TABLE IF NOT EXISTS self_reviews (
   title TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
-  finished_at TEXT
+  -- open while the player is writing in it; finished once Finish has stamped
+  -- it and marked its matches, in one transaction. A finished sitting is on
+  -- the record and refuses edits. The second CHECK keeps the stamp and the
+  -- state from disagreeing, whichever writer set them.
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'finished')),
+  finished_at TEXT,
+  CHECK ((status = 'finished') = (finished_at IS NOT NULL))
 ) STRICT;
 -- statement-end
 

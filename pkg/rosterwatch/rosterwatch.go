@@ -19,17 +19,20 @@ import (
 	"recall/pkg/parser"
 )
 
-// Finding kinds. Stable strings: the accepted-differences file keys on
-// "<kind>:<name>", and the workflow greps them.
+// FindingKind is what a finding says is wrong. Stable strings: the
+// accepted-differences file keys on "<kind>:<name>", and the workflow greps
+// them.
+type FindingKind string
+
 const (
-	KindHeroMissing   = "hero-missing"
-	KindHeroSpelling  = "hero-spelling"
-	KindMapMissing    = "map-missing"
-	KindMapSpelling   = "map-spelling"
-	KindPatchMissing  = "patch-missing"
-	KindSeasonExpired = "season-expired"
-	KindChannelStale  = "channel-stale"
-	KindAcceptedStale = "accepted-stale"
+	KindHeroMissing   FindingKind = "hero-missing"
+	KindHeroSpelling  FindingKind = "hero-spelling"
+	KindMapMissing    FindingKind = "map-missing"
+	KindMapSpelling   FindingKind = "map-spelling"
+	KindPatchMissing  FindingKind = "patch-missing"
+	KindSeasonExpired FindingKind = "season-expired"
+	KindChannelStale  FindingKind = "channel-stale"
+	KindAcceptedStale FindingKind = "accepted-stale"
 )
 
 // Hero and Map are one upstream entry each, narrowed to what a roster edit
@@ -85,7 +88,7 @@ type Accepted map[string]string
 
 // Finding is one thing a human can act on.
 type Finding struct {
-	Kind string
+	Kind FindingKind
 	// Name is the upstream name (a hero, a map) or a formatted date.
 	Name string
 	// Group is the key the entry files under — a role, a game mode — or "".
@@ -95,7 +98,7 @@ type Finding struct {
 }
 
 // Key is the accepted-differences key for this finding.
-func (f Finding) Key() string { return f.Kind + ":" + f.Name }
+func (f Finding) Key() string { return string(f.Kind) + ":" + f.Name }
 
 type Report struct {
 	Findings []Finding
@@ -145,7 +148,7 @@ func Compare(shipped Shipped, up Upstream, now time.Time, accepted Accepted) Rep
 		})
 	}
 	slices.SortStableFunc(r.Findings, func(a, b Finding) int {
-		if c := strings.Compare(a.Kind, b.Kind); c != 0 {
+		if c := strings.Compare(string(a.Kind), string(b.Kind)); c != 0 {
 			return c
 		}
 		return strings.Compare(a.Name, b.Name)

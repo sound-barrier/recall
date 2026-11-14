@@ -232,6 +232,7 @@ var defaultProblems = []errStatus{
 	{coach.ErrCoachNameRequired, probConflict},
 	{coach.ErrNothingToExport, probConflict},
 	{review.ErrNoMatches, probConflict},
+	{review.ErrFinished, probConflict},
 	// Reachable from BOTH coach-player paths — opening a session on a bundle
 	// and confirming the handle by hand — which is why it sits here rather
 	// than on either handler.

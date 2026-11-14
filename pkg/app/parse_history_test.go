@@ -3,6 +3,7 @@ package app_test
 import (
 	"testing"
 
+	"recall/pkg/db"
 	"recall/pkg/parser"
 )
 
@@ -21,7 +22,7 @@ func TestApp_ParseScreenshots_HistoryRecognizedNotStoredNotFailed(t *testing.T) 
 		t.Fatalf("ParseScreenshots: %v", err)
 	}
 
-	recognized, _ := fake.LoadHistoryFilenames()
+	recognized, _ := fake.LoadHistoryFilenames(parseDirID(t, a, fake))
 	if !recognized[filename] {
 		t.Errorf("history filename not recorded in the skip registry; got=%v", recognized)
 	}
@@ -41,7 +42,7 @@ func TestApp_ParseScreenshots_HistoryRecognizedNotStoredNotFailed(t *testing.T) 
 func TestApp_ParseScreenshots_SkipsRecognizedHistory(t *testing.T) {
 	a, fake := newParseReadyApp(t)
 	const filename = "recognized-history.png"
-	if err := fake.UpsertHistoryScreenshot(filename); err != nil {
+	if err := fake.UpsertHistoryScreenshot(db.FileRef{DirID: parseDirID(t, a, fake), Filename: filename}); err != nil {
 		t.Fatalf("seed UpsertHistoryScreenshot: %v", err)
 	}
 
@@ -84,7 +85,7 @@ func TestApp_ReParseAll_HistoryEvictsItsStaleUnknownRow(t *testing.T) {
 	if len(fake.Unknowns) != 0 {
 		t.Errorf("stale Unknown row survived the history reclassification: %+v", fake.Unknowns)
 	}
-	if recognized, _ := fake.LoadHistoryFilenames(); !recognized[filename] {
+	if recognized, _ := fake.LoadHistoryFilenames(parseDirID(t, a, fake)); !recognized[filename] {
 		t.Errorf("history filename not recorded after reclassification; got=%v", recognized)
 	}
 }

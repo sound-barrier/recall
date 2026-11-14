@@ -199,7 +199,7 @@ func assertRefusesWhatIsNotThere(t *testing.T, s db.Store, reviewID string) {
 			return err
 		}, db.ErrSelfReviewMatchUnknown},
 		{"update missing", func() error { return s.UpdateSelfReview("ghost", "t") }, db.ErrSelfReviewUnknown},
-		{"finish missing", func() error { return s.FinishSelfReview("ghost") }, db.ErrSelfReviewUnknown},
+		{"finish missing", func() error { return s.FinishSelfReview(db.SelfReviewFinish{ReviewID: "ghost"}) }, db.ErrSelfReviewUnknown},
 	}
 	for _, tc := range refusals {
 		if err := tc.call(); !errors.Is(err, tc.want) {
@@ -232,8 +232,8 @@ func TestSelfReviewContract_ResaveKeepsFirstInstantAndMoments(t *testing.T) {
 	}
 }
 
-// assertFinishKeepsTheFirstStamp seeds a sitting already finished at a
-// supplied instant, so a second finish's "keep the first stamp" is checked
+// assertFinishKeepsTheFirstStamp finishes a sitting at a supplied instant
+// (the replay path), so a second finish's "keep the first stamp" is checked
 // against a value the clock cannot coincide with — two finishes inside one
 // second would otherwise pass vacuously.
 func assertFinishKeepsTheFirstStamp(t *testing.T, s db.Store) {
@@ -241,10 +241,11 @@ func assertFinishKeepsTheFirstStamp(t *testing.T, s db.Store) {
 	const firstStamp = "2026-01-01T10:00:00Z"
 	done, err := s.CreateSelfReview(db.SelfReview{FinishedAt: firstStamp, MatchKeys: []string{reviewKeyA}})
 	mustNoErr(t, err)
-	if done.FinishedAt != firstStamp {
-		t.Fatalf("created finished_at = %q, want the supplied %q", done.FinishedAt, firstStamp)
+	if done.FinishedAt != "" || done.Status != db.SelfReviewOpen {
+		t.Fatalf("created = %+v, want an open sitting whatever FinishedAt says", done)
 	}
-	mustNoErr(t, s.FinishSelfReview(done.ReviewID))
+	mustNoErr(t, s.FinishSelfReview(db.SelfReviewFinish{ReviewID: done.ReviewID, At: firstStamp}))
+	mustNoErr(t, s.FinishSelfReview(db.SelfReviewFinish{ReviewID: done.ReviewID}))
 	again, _, err := s.LoadSelfReview(done.ReviewID)
 	mustNoErr(t, err)
 	if again.FinishedAt != firstStamp {
@@ -297,6 +298,91 @@ func seedTwoSittingsOnA(t *testing.T, s db.Store) string {
 		_, err = s.UpsertSelfReviewNote(db.SelfReviewNote{ReviewID: id, MatchKey: reviewKeyA, Kind: "note", Text: id})
 		mustNoErr(t, err)
 	}
-	mustNoErr(t, s.FinishSelfReview(earlier.ReviewID))
+	mustNoErr(t, s.FinishSelfReview(db.SelfReviewFinish{ReviewID: earlier.ReviewID}))
 	return later.ReviewID
+}
+
+// A finished sitting is on the record: every edit is refused inside the
+// writer's own transaction, a delete included, while deleting the whole
+// sitting and moving a focus item's status stay open.
+func TestSelfReviewContract_AFinishedSittingRefusesEdits(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			r, err := s.CreateSelfReview(db.SelfReview{MatchKeys: []string{reviewKeyA}})
+			mustNoErr(t, err)
+			const itemID = "a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
+			mustNoErr(t, s.SetSelfReviewFocusItems(r.ReviewID, []db.FocusItem{{ItemID: itemID, Text: "x"}}))
+			mustNoErr(t, s.FinishSelfReview(db.SelfReviewFinish{ReviewID: r.ReviewID, MarkSelf: []string{reviewKeyA}}))
+			got, _, err := s.LoadSelfReview(r.ReviewID)
+			mustNoErr(t, err)
+			if got.Status != db.SelfReviewFinished || got.FinishedAt == "" {
+				t.Fatalf("after finish = %+v, want finished and stamped", got)
+			}
+			note := db.SelfReviewNoteRef{ReviewID: r.ReviewID, MatchKey: reviewKeyA}
+			for name, call := range map[string]func() error{
+				"rename":      func() error { return s.UpdateSelfReview(r.ReviewID, "t") },
+				"set matches": func() error { return s.SetSelfReviewMatches(r.ReviewID, []string{reviewKeyA}) },
+				"focus items": func() error { return s.SetSelfReviewFocusItems(r.ReviewID, nil) },
+				"delete note": func() error { return s.DeleteSelfReviewNote(note) },
+				"delete moment": func() error {
+					return s.DeleteSelfReviewMoment(db.SelfReviewMomentRef{ReviewID: r.ReviewID, MatchKey: reviewKeyA, MomentID: "m"})
+				},
+				"note": func() error {
+					_, err := s.UpsertSelfReviewNote(db.SelfReviewNote{ReviewID: r.ReviewID, MatchKey: reviewKeyA, Kind: "note"})
+					return err
+				},
+				"moment": func() error {
+					_, err := s.UpsertSelfReviewMoment(note, db.SelfReviewMoment{MomentID: "m", MatchClock: "01:00", Text: "x"})
+					return err
+				},
+			} {
+				if err := call(); !errors.Is(err, db.ErrSelfReviewFinished) {
+					t.Errorf("%s on a finished sitting = %v, want ErrSelfReviewFinished", name, err)
+				}
+			}
+			mustNoErr(t, s.SetFocusItemStatus(itemID, db.FocusDone))
+			mustNoErr(t, s.DeleteSelfReview(r.ReviewID))
+		})
+	}
+}
+
+// A sitting over nothing is refused at every door: created empty, emptied,
+// or finished once every member is gone.
+func TestSelfReviewContract_ASittingNeedsAMember(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			if _, err := s.CreateSelfReview(db.SelfReview{}); !errors.Is(err, db.ErrSelfReviewEmpty) {
+				t.Errorf("create with no matches = %v, want ErrSelfReviewEmpty", err)
+			}
+			r, err := s.CreateSelfReview(db.SelfReview{MatchKeys: []string{reviewKeyA}})
+			mustNoErr(t, err)
+			if err := s.SetSelfReviewMatches(r.ReviewID, nil); !errors.Is(err, db.ErrSelfReviewEmpty) {
+				t.Errorf("emptying = %v, want ErrSelfReviewEmpty", err)
+			}
+			mustNoErr(t, s.HardDeleteMatch(reviewKeyA))
+			if err := s.FinishSelfReview(db.SelfReviewFinish{ReviewID: r.ReviewID}); !errors.Is(err, db.ErrSelfReviewEmpty) {
+				t.Errorf("finish of an emptied sitting = %v, want ErrSelfReviewEmpty", err)
+			}
+		})
+	}
+}
+
+// Finish marks what it is told, and never over a coach's mark.
+func TestSelfReviewContract_FinishMarksButNeverOverACoach(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			mustNoErr(t, s.SetReview(reviewKeyB, "coach"))
+			r, err := s.CreateSelfReview(db.SelfReview{MatchKeys: []string{reviewKeyA, reviewKeyB}})
+			mustNoErr(t, err)
+			mustNoErr(t, s.FinishSelfReview(db.SelfReviewFinish{ReviewID: r.ReviewID, MarkSelf: []string{reviewKeyA, reviewKeyB}}))
+			flags, err := s.LoadReviews()
+			mustNoErr(t, err)
+			if flags[reviewKeyA].ReviewedBy != "self" || flags[reviewKeyB].ReviewedBy != "coach" {
+				t.Errorf("flags = %+v, want A self and B still coach", flags)
+			}
+		})
+	}
 }

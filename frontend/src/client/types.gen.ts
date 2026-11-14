@@ -150,11 +150,11 @@ export type RunId = number;
 
 /**
  * What holds the run slot. Only `parse` and `reparse` can be canceled
- * or report progress; the rest are store swaps that need the database
- * to themselves.
+ * or report progress; the rest need the database to themselves —
+ * `backup` is the boot-time automatic snapshot.
  *
  */
-export type RunKind = 'parse' | 'reparse' | 'restore' | 'maintenance' | 'profile_switch' | 'profile_rename' | 'screenshot_takeover';
+export type RunKind = 'parse' | 'reparse' | 'restore' | 'maintenance' | 'profile_switch' | 'profile_rename' | 'screenshot_takeover' | 'backup';
 
 /**
  * How a run ended.
@@ -526,7 +526,17 @@ export type FailedFile = {
      */
     error: string;
     /**
-     * Failed parse runs since `first_failed_at`.
+     * Why the most recent attempt failed. `parse_failed` — the parse
+     * ran and could not read the file; it counts an attempt.
+     * `ocr_unavailable` — the OCR engine was not there, so the file
+     * was never read; it counts none, and never parks a file.
+     *
+     */
+    kind: 'parse_failed' | 'ocr_unavailable';
+    /**
+     * Failed parse runs since `first_failed_at`. An OCR outage counts
+     * none, so a file that has only met one reads 0.
+     *
      */
     attempts: number;
     /**
@@ -1415,12 +1425,21 @@ export type CoachSession = {
      */
     source: 'bundle' | 'replay';
     /**
+     * How the sitting stands. `open` — in progress. `ended` — the coach
+     * closed it (or a restore or profile switch did). `interrupted` —
+     * the app quit with it open. `abandoned` — the app stopped without
+     * quitting (a crash, a killed process) and the next start found it
+     * still open.
+     *
+     */
+    status: 'open' | 'ended' | 'interrupted' | 'abandoned';
+    /**
      * RFC3339. When the coach claimed the corpus.
      */
     opened_at: string;
     /**
-     * RFC3339. Absent on an ABANDONED sitting — the coach opened the
-     * corpus and never handed it back.
+     * RFC3339. Present on an `ended` or `interrupted` sitting; absent
+     * while it is `open` and on an `abandoned` one.
      *
      */
     ended_at?: string;
@@ -1494,6 +1513,15 @@ export type ShareExport = {
 export type SelfReview = {
     review_id: string;
     title: string;
+    /**
+     * `open` while the player is writing in it. `finished` once the
+     * completion stamped it and marked its matches reviewed: the
+     * sitting is on the record, and every edit to it (title, set,
+     * notes, moments, focus list) answers `409`. Deleting it, and
+     * moving one of its focus items' status, stay open.
+     *
+     */
+    status: 'open' | 'finished';
     /**
      * What the sitting concluded, in the player's order.
      */

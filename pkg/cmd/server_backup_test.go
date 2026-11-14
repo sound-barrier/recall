@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
 )
 
@@ -156,7 +157,7 @@ func TestExportDiagnostic_EmptyLedgerIs409(t *testing.T) {
 
 func TestExportDiagnostic_StreamsZipWithDisposition(t *testing.T) {
 	fs := dbtest.New()
-	_ = fs.RecordFailedFile("bad.png", 0, "boom")
+	_ = fs.RecordFailedFile(db.FileRef{DirID: 0, Filename: "bad.png"}, db.FailureParseFailed, "boom")
 	_, mux := newTestApp(t, fs)
 
 	// No screenshots dir configured and no file on disk: the bundle is

@@ -100,6 +100,15 @@ func (c *Claims) Release(hash, profile string) error {
 	return nil
 }
 
+// ReleaseProfile frees every claim profile holds — the ledger's half of
+// emptying that profile's database.
+func (c *Claims) ReleaseProfile(profile string) error {
+	if _, err := c.db.Exec(`DELETE FROM claims WHERE profile = ?`, profile); err != nil {
+		return fmt.Errorf("release %s's claims: %w", profile, err)
+	}
+	return nil
+}
+
 // Transfer makes profile the owner of hash, whoever owned it before.
 func (c *Claims) Transfer(hash, profile, filename string) error {
 	if _, err := c.db.Exec(

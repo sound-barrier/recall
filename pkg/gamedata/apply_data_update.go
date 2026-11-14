@@ -108,6 +108,15 @@ var RenameFunc = os.Rename
 // reader that fails on a file which exists but cannot be read.
 var ReadFileFunc = os.ReadFile
 
+// WriteFileFunc is the rollback's write seam: the test swaps it to prove a
+// rollback that could not put the old data back is reported, not logged.
+var WriteFileFunc = os.WriteFile
+
+// ErrDataUpdateRollbackFailed rides beside the error that triggered a
+// rollback when the rollback itself could not restore the old data — the
+// live roster is then a mix the UI must not report as merely "failed".
+var ErrDataUpdateRollbackFailed = errors.New("data update: rollback could not restore the previous data")
+
 // tmpSuffix names the staging sibling of every file the apply writes —
 // <file>.tmp is written first, then renamed into place.
 const tmpSuffix = ".tmp"
@@ -339,9 +348,7 @@ func (s stagedApply) run() error {
 		return err
 	}
 	if err := s.renameAssets(); err != nil {
-		s.restore()
-		s.removeStaged()
-		return err
+		return s.rollBack(err)
 	}
 	if err := s.commitManifest(); err != nil {
 		// The assets are already renamed at this point, so "the manifest is
@@ -349,11 +356,21 @@ func (s stagedApply) run() error {
 		// the apply returns an error while the NEW dataset is live on disk
 		// under the OLD manifest — the exact state this staging was written
 		// to eliminate, and the one the previous implementation produced.
-		s.restore()
-		s.removeStaged()
-		return err
+		return s.rollBack(err)
 	}
 	return nil
+}
+
+// rollBack restores the pre-apply data after cause and drops the staging.
+// A restore that fails is joined to cause, so the caller learns the live
+// roster may now be a mix rather than the old dataset it asked to keep.
+func (s stagedApply) rollBack(cause error) error {
+	restoreErr := s.restore()
+	s.removeStaged()
+	if restoreErr != nil {
+		return errors.Join(cause, fmt.Errorf("%w: %w", ErrDataUpdateRollbackFailed, restoreErr))
+	}
+	return cause
 }
 
 // stage writes every file the apply will commit — the assets and the
@@ -369,7 +386,9 @@ func (s stagedApply) stage() error {
 func (s stagedApply) stageAssets() error {
 	for _, name := range dataYAMLFiles {
 		tmp := filepath.Join(s.dataDir, name+tmpSuffix)
-		if err := os.WriteFile(tmp, s.verified[name].bytes, 0o600); err != nil {
+		// Synced, not just written: a staged manifest is the promise that
+		// every asset under it is whole, and Recover rolls forward on it.
+		if err := writeSynced(tmp, s.verified[name].bytes); err != nil {
 			return fmt.Errorf("%w: write %s%s: %w", ErrDataUpdateIO, name, tmpSuffix, err)
 		}
 	}
@@ -385,7 +404,7 @@ func (s stagedApply) stageManifest() error {
 	if err != nil {
 		return fmt.Errorf("%w: marshal manifest: %w", ErrDataUpdateIO, err)
 	}
-	if err := os.WriteFile(manifestPath(s.baseDir)+tmpSuffix, b, 0o600); err != nil {
+	if err := writeSynced(manifestPath(s.baseDir)+tmpSuffix, b); err != nil {
 		return fmt.Errorf("%w: write manifest%s: %w", ErrDataUpdateIO, tmpSuffix, err)
 	}
 	return nil
@@ -412,27 +431,26 @@ func (s stagedApply) commitManifest() error {
 	return nil
 }
 
-// restore puts each snapshotted file back. A nil entry means the file was
-// absent before the apply, so it is removed.
-// restore replays the pre-apply snapshot. Failures here are logged rather
-// than returned: the caller is already returning the error that triggered the
-// rollback, and that error is the more useful one. But they must not be
-// silent — a rollback that did not roll back leaves the user's live roster
-// holding a payload the UI just reported as failed, and that is exactly the
-// swallowed-error class this file was auditing.
-func (s stagedApply) restore() {
+// restore replays the pre-apply snapshot: each file put back, and one that
+// was absent before the apply (a nil entry) removed. It keeps going past a
+// failure so as much as possible is restored, and returns every failure: a
+// rollback that did not roll back leaves the live roster holding a payload
+// the UI just reported as failed, and the caller must say so.
+func (s stagedApply) restore() error {
+	var errs []error
 	for name, b := range s.snapshot {
 		final := filepath.Join(s.dataDir, name)
 		if b == nil {
 			if err := os.Remove(final); err != nil && !errors.Is(err, fs.ErrNotExist) {
-				applog.Subsystem("apply_data_update").Error("rollback could not remove file", "file", name, "err", err)
+				errs = append(errs, fmt.Errorf("remove %s: %w", name, err))
 			}
 			continue
 		}
-		if err := os.WriteFile(final, b, 0o600); err != nil {
-			applog.Subsystem("apply_data_update").Error("rollback could not restore file", "file", name, "err", err)
+		if err := WriteFileFunc(final, b, 0o600); err != nil {
+			errs = append(errs, fmt.Errorf("restore %s: %w", name, err))
 		}
 	}
+	return errors.Join(errs...)
 }
 
 // removeStaged drops every .tmp file the apply may have left behind,

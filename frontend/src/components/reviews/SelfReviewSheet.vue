@@ -9,6 +9,7 @@ import type { FocusItem } from '@/api'
 import type { FocusCount } from '@/match/coach/coach-notes'
 import { formatPlayerDay } from '@/match/coach/coach-time'
 import type { WLDTally } from '@/match/match-stats-helpers'
+import { FINISHED_SITTING_REASON } from '@/match/reviews/reviews-helpers'
 
 // The sitting's sheet: its name, how the set went, what you want to work on,
 // and Finish. Same paper, same record / tally / focus pieces as the coach's
@@ -72,6 +73,10 @@ function onFinish(): void {
 }
 
 const finished = computed(() => props.finishedAt !== '')
+// What locks the title and the focus list: the profile's own lock, or the
+// sitting being finished. Re-finish answers only to the first — finishing
+// again is not an edit.
+const editLockReason = computed(() => props.blockedReason || (finished.value ? FINISHED_SITTING_REASON : ''))
 
 // finished_at is a UTC instant; the chip speaks the VIEWER's day.
 const finishedDay = computed(() => {
@@ -108,7 +113,7 @@ function onTitleInput(e: Event): void {
         spellcheck="true"
         autocorrect="off"
         placeholder="Name this review…"
-        :disabled="blockedReason !== ''"
+        :disabled="editLockReason !== ''"
         :aria-describedby="showNameNudge ? 'self-sheet-name-nudge' : undefined"
         @input="onTitleInput"
       >
@@ -128,7 +133,7 @@ function onTitleInput(e: Event): void {
       id="self-review-focus"
       :items="focusItems"
       :save-state="focusSaveState"
-      :blocked-reason="blockedReason"
+      :blocked-reason="editLockReason"
       :show-status="false"
       placeholder="One thing to take into your next games…"
       @update="(items: FocusItem[]) => emit('update-focus-items', items)"

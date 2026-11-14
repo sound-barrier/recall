@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"recall/pkg/app"
+	"recall/pkg/db"
 	"recall/pkg/parser"
 )
 
@@ -25,7 +26,7 @@ func TestApp_ParseScreenshots_AllHeroesRecognizedNotStored(t *testing.T) {
 		t.Fatalf("ParseScreenshots: %v", err)
 	}
 
-	recognized, _ := fake.LoadAllHeroesFilenames()
+	recognized, _ := fake.LoadAllHeroesFilenames(parseDirID(t, a, fake))
 	if !recognized[filename] {
 		t.Errorf("All-Heroes filename not recorded in skip list; got=%v", recognized)
 	}
@@ -43,7 +44,7 @@ func TestApp_ParseScreenshots_AllHeroesRecognizedNotStored(t *testing.T) {
 func TestApp_ParseScreenshots_SkipsRecognizedAllHeroes(t *testing.T) {
 	a, fake := newParseReadyApp(t)
 	const filename = "recognized-all-heroes.png"
-	if err := fake.UpsertAllHeroesScreenshot(filename); err != nil {
+	if err := fake.UpsertAllHeroesScreenshot(db.FileRef{DirID: parseDirID(t, a, fake), Filename: filename}); err != nil {
 		t.Fatalf("seed UpsertAllHeroesScreenshot: %v", err)
 	}
 

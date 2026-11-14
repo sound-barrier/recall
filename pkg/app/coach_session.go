@@ -107,10 +107,12 @@ func (a *App) openClaimedSlot(open func(time.Time) (*coach.Session, error), now 
 	}
 	a.coachSlot.finishOpen(s)
 	view, err := a.coachViewLocked(now)
+	if err == nil {
+		err = a.recordSittingOpened(s)
+	}
 	if err != nil {
 		return coach.SessionView{}, err
 	}
-	a.recordSittingOpened(s)
 	return view, nil
 }
 
@@ -119,31 +121,36 @@ func (a *App) openClaimedSlot(open func(time.Time) (*coach.Session, error), now 
 // dossier that only knew about finished sittings would misreport how often
 // they meet. The row learns its player later, when the coach names them.
 //
-// Best-effort — losing a line of history is not worth refusing the session
-// the coach actually asked for.
-func (a *App) recordSittingOpened(s *coach.Session) {
+// A failure refuses the open. Every later history write — the player's
+// name, the reel as it grows, the end and its frozen focus list — updates
+// this row, so a sitting without one would be recorded as nothing at all.
+func (a *App) recordSittingOpened(s *coach.Session) error {
 	store, release, leaseErr := a.useStore()
 	if leaseErr != nil {
-		applog.Subsystem("coach").Error("session history: open failed", "session_id", s.SessionID, "err", leaseErr)
-		return
+		return leaseErr
 	}
 	defer release()
-	keys := make([]string, 0, s.MatchCount())
-	for _, r := range s.Records() {
-		keys = append(keys, r.MatchKey)
-	}
 	err := store.StartCoachSession(db.CoachSessionRow{
 		SessionID: s.SessionID,
 		PlayerRef: s.PlayerRef(),
 		Handle:    s.Player.Handle,
 		Kind:      s.Player.Kind,
-		Source:    string(s.Source),
-		MatchKeys: keys,
+		Source:    s.Source,
+		MatchKeys: reelKeys(s),
 	})
 	if err != nil {
-		applog.Subsystem("coach").Error("session history: open failed",
-			"session_id", s.SessionID, "err", err)
+		return fmt.Errorf("coach: record the sitting: %w", err)
 	}
+	return nil
+}
+
+// reelKeys is the session's match keys in reel order.
+func reelKeys(s *coach.Session) []string {
+	keys := make([]string, 0, s.MatchCount())
+	for _, r := range s.Records() {
+		keys = append(keys, r.MatchKey)
+	}
+	return keys
 }
 
 // adoptSessionPlayer resolves the coach_players row a bundle's identity
@@ -192,10 +199,10 @@ func (a *App) GetCoachSessionMatches() ([]match.Record, error) {
 
 // CloseCoachSession discards the loaned records. Idempotent — the
 // frontend calls it to clear a resume that turned out to be stale, and a
-// "there was nothing to close" is not an error.
+// "there was nothing to close" is not an error. A sitting whose end could
+// not be recorded still closes, and the error says so.
 func (a *App) CloseCoachSession() error {
-	a.endCoachSession()
-	return nil
+	return a.releaseCoachSession(db.SittingEnded)
 }
 
 // SetCoachSessionPlayer confirms (or corrects) who the session is about.
@@ -207,7 +214,7 @@ func (a *App) CloseCoachSession() error {
 // kind widens the answer: a codes session may be confirmed as a TEAM (one
 // shared review filed under the group's name). "" means player. A bundle
 // session refuses a team — the manifest already named its player.
-func (a *App) SetCoachSessionPlayer(handle, kind string) (coach.SessionView, error) {
+func (a *App) SetCoachSessionPlayer(handle string, kind db.CoachKind) (coach.SessionView, error) {
 	store, release, leaseErr := a.useStore()
 	if leaseErr != nil {
 		return coach.SessionView{}, leaseErr
@@ -233,22 +240,22 @@ func (a *App) SetCoachSessionPlayer(handle, kind string) (coach.SessionView, err
 	if err != nil {
 		return coach.SessionView{}, err
 	}
+	// The history row was written before anyone knew whose sitting this
+	// was, and the coach may be correcting an earlier answer — so it is
+	// re-pointed every time, not only the first. Before the session moves:
+	// a re-point that fails leaves the session as it was.
+	if err := store.PointCoachSessionAt(s.SessionID, p.ID, handle, kind); err != nil {
+		return coach.SessionView{}, fmt.Errorf("coach: file the sitting: %w", err)
+	}
 	s.Player.Handle = handle
 	s.Player.Kind = kind
 	s.SetPlayerRef(p.ID)
-	// The history row was written before anyone knew whose sitting this
-	// was, and the coach may be correcting an earlier answer — so it is
-	// re-pointed every time, not only the first.
-	if err := store.PointCoachSessionAt(s.SessionID, p.ID, handle, kind); err != nil {
-		applog.Subsystem("coach").Error("session history: re-point failed",
-			"session_id", s.SessionID, "err", err)
-	}
 	return a.coachViewLocked(time.Now())
 }
 
 // resolveNamedPlayer finds (or creates) the coach_players row the coach just
 // named and renames it to the handle they typed.
-func resolveNamedPlayer(store db.Store, playerID, handle, kind string) (db.CoachPlayer, error) {
+func resolveNamedPlayer(store db.Store, playerID, handle string, kind db.CoachKind) (db.CoachPlayer, error) {
 	p, err := store.EnsureCoachPlayer(playerID, handle, kind)
 	if err != nil {
 		return db.CoachPlayer{}, fmt.Errorf("coach: resolve player: %w", err)
@@ -440,7 +447,7 @@ func (a *App) PutCoachFocusItems(items []coach.FocusItem) error {
 	}
 	rows := make([]db.FocusItem, 0, len(items))
 	for _, it := range items {
-		rows = append(rows, db.FocusItem{ItemID: it.ItemID, Text: strings.TrimSpace(it.Text)})
+		rows = append(rows, db.FocusItem{ItemID: it.ItemID, Text: strings.TrimSpace(it.Text), Status: it.Status})
 	}
 	if err := store.SetCoachFocusItems(playerRef, rows); err != nil {
 		return fmt.Errorf("coach: save focus items: %w", err)
@@ -450,46 +457,59 @@ func (a *App) PutCoachFocusItems(items []coach.FocusItem) error {
 
 // endCoachSession discards any open session and announces the change.
 // Idempotent — the store-teardown paths call it unconditionally.
+// The store swaps call it on their way through, so a history failure is
+// logged there: the swap cannot stop for it.
 func (a *App) endCoachSession() {
+	if err := a.releaseCoachSession(db.SittingEnded); err != nil {
+		applog.Subsystem("coach").Error("session history: end failed", "err", err)
+	}
+}
+
+// interruptCoachSession is the quit path's end: the coach did not hand the
+// corpus back, the app went away under them, and the history says so.
+func (a *App) interruptCoachSession() error {
+	return a.releaseCoachSession(db.SittingInterrupted)
+}
+
+// releaseCoachSession ends any open session. The session is released
+// whatever the history write does — a coach who asked to close is not kept
+// in one — and a history failure is returned for the caller to report.
+func (a *App) releaseCoachSession(outcome db.SittingStatus) error {
 	a.coachMu.Lock()
 	s := a.coachSlot.end()
 	a.coachMu.Unlock()
 	if s == nil {
-		return
+		return nil
 	}
-	a.recordSittingEnded(s)
+	err := a.recordSittingEnded(s, outcome)
 	a.emitCoachSessionChanged()
+	return err
 }
 
 // recordSittingEnded stamps the history row and freezes the focus list as
 // it stood — by value, because the coach's focus rows are delete-and-
 // reinserted on every autosave, and because "what changed since last time"
 // wants what the list SAID then.
-//
-// Best-effort, like the open: the session is already over, and a failure
-// here costs a line of history rather than any of the coach's work.
-func (a *App) recordSittingEnded(s *coach.Session) {
+func (a *App) recordSittingEnded(s *coach.Session, outcome db.SittingStatus) error {
 	store, release, leaseErr := a.useStore()
 	if leaseErr != nil {
-		applog.Subsystem("coach").Error("session history: end failed", "session_id", s.SessionID, "err", leaseErr)
-		return
+		return leaseErr
 	}
 	defer release()
 	var frozen []db.CoachSessionFocusRow
 	if ref := s.PlayerRef(); ref != 0 {
 		items, err := store.LoadCoachFocusItems(ref)
 		if err != nil {
-			applog.Subsystem("coach").Error("session history: read focus failed",
-				"session_id", s.SessionID, "err", err)
+			return fmt.Errorf("coach: read the focus list to freeze: %w", err)
 		}
 		for _, item := range items {
 			frozen = append(frozen, db.CoachSessionFocusRow{Text: item.Text, Status: item.Status})
 		}
 	}
-	if err := store.EndCoachSession(s.SessionID, frozen); err != nil {
-		applog.Subsystem("coach").Error("session history: end failed",
-			"session_id", s.SessionID, "err", err)
+	if err := store.EndCoachSession(s.SessionID, outcome, frozen); err != nil {
+		return fmt.Errorf("coach: record the sitting's end: %w", err)
 	}
+	return nil
 }
 
 // coachViewLocked assembles the wire view of the open session. The caller
@@ -534,7 +554,7 @@ func (a *App) coachWorkLocked(s *coach.Session) ([]coach.Note, []coach.FocusItem
 func toWireFocusItems(rows []db.FocusItem) []coach.FocusItem {
 	out := make([]coach.FocusItem, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, coach.FocusItem{ItemID: r.ItemID, Text: r.Text})
+		out = append(out, coach.FocusItem{ItemID: r.ItemID, Text: r.Text, Status: r.Status})
 	}
 	return out
 }

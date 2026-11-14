@@ -55,6 +55,7 @@ function remove() {
   }
   armed.value = false
   const removal = props.block.removal
+  if (!removal) return
   if (removal.kind === 'coach') {
     void returns.removeCoachNote(props.matchKey, removal.id)
   } else {
@@ -141,6 +142,7 @@ function reopenSitting() {
       <span v-else class="cnb-sign">{{ block.sign }}</span>
       <span class="cnb-foot-actions">
         <button
+          v-if="block.removal"
           type="button"
           class="paper-btn cnb-remove"
           :disabled="writesLocked"

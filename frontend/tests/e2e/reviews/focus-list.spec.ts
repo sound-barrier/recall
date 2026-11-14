@@ -15,7 +15,7 @@ import { type Page } from '@playwright/test'
 
 import { test, expect } from '../_fixtures'
 import { seedCoachOwnMatches } from '../_coach'
-import { finishedSitting, mockFocus, mockSelfReviews, type FocusEntryWire } from '../_reviews'
+import { mockFocus, mockSelfReviews, openSitting, type FocusEntryWire } from '../_reviews'
 import { seedProfiles, silenceParseEvents } from '../_theme-matrix'
 
 const tab = (page: Page) => page.getByRole('tab', { name: /^Reviews/ })
@@ -118,7 +118,7 @@ test.describe("07 Reviews — what you're working on", () => {
 
   test('a sitting writes its list through PUT /self-reviews/{id}/focus-items', async ({ page }) => {
     await mockFocus(page, [])
-    const reviews = await mockSelfReviews(page, { reviews: [finishedSitting()] })
+    const reviews = await mockSelfReviews(page, { reviews: [openSitting()] })
     await openTab(page)
 
     await page.getByRole('article', { name: /Tuesday's Ana games/ })

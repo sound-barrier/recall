@@ -2,7 +2,6 @@ package db
 
 import (
 	"crypto/rand"
-	"database/sql"
 	"errors"
 	"fmt"
 	"slices"
@@ -21,9 +20,30 @@ import (
 // The two kinds a coach_players row can be. A team is a codes-session
 // identity for a group — it rides every per-player mechanism unchanged,
 // which is the whole design.
+type CoachKind string
+
 const (
-	CoachKindPlayer = "player"
-	CoachKindTeam   = "team"
+	CoachKindPlayer CoachKind = "player"
+	CoachKindTeam   CoachKind = "team"
+)
+
+// CoachSessionSource is where a sitting's corpus came from: a player's
+// shared bundle, or replay codes the coach typed in.
+type CoachSessionSource string
+
+const (
+	CoachSessionFromBundle CoachSessionSource = "bundle"
+	CoachSessionFromReplay CoachSessionSource = "replay"
+)
+
+// CoachVerdict is the player's verdict on one staged coach note. Two arms
+// and no 'denied': skipping removes a note from your matches rather than
+// rejecting that it was said.
+type CoachVerdict string
+
+const (
+	CoachVerdictAccepted CoachVerdict = "accepted"
+	CoachVerdictSkipped  CoachVerdict = "skipped"
 )
 
 var (
@@ -46,6 +66,9 @@ var (
 	ErrMomentMatchMismatch = errors.New("moment belongs to another match")
 	// ErrCoachReturnUnknown reports a returnID no coach_returns row carries.
 	ErrCoachReturnUnknown = errors.New("coach return not found")
+	// ErrCoachSessionUnknown reports a session_id no coach_sessions row
+	// carries — a history row that was never written or has gone.
+	ErrCoachSessionUnknown = errors.New("coach session not found")
 	// ErrMatchCoachNoteUnknown reports a match_coach_notes id that does not
 	// exist (already deleted, or never accepted).
 	ErrMatchCoachNoteUnknown = errors.New("match coach note not found")
@@ -67,7 +90,7 @@ type CoachStore interface {
 	// A handle-only row later met with a player_id adopts it (backfill), so
 	// a coach's earlier notes follow the player through an upgrade. A
 	// second player_id sharing a handle is a different player.
-	EnsureCoachPlayer(playerID, handle, kind string) (CoachPlayer, error)
+	EnsureCoachPlayer(playerID, handle string, kind CoachKind) (CoachPlayer, error)
 	// LoadCoachPlayers is the roster: every player this user has coached,
 	// with note count, the newest note stamp, and the stored summary —
 	// most recently touched first.
@@ -130,7 +153,7 @@ type CoachStore interface {
 	// SetCoachReturnDecision records the player's verdict on one staged
 	// note ('accepted' | 'skipped'), overwriting a previous one.
 	// ErrCoachReturnUnknown when returnID names no return.
-	SetCoachReturnDecision(returnID int64, noteID, decision string) error
+	SetCoachReturnDecision(returnID int64, noteID string, decision CoachVerdict) error
 	// DeleteCoachReturn removes the staged return and its decisions.
 	// ErrCoachReturnUnknown when id names no row.
 	DeleteCoachReturn(id int64) error
@@ -175,7 +198,7 @@ func distinctSorted(values []string) []string {
 // OR IGNORE, which would also swallow the vocabulary CHECK on the focus-tag
 // tables. Every id-keyed child in the coaching schema is a `tag` column, so
 // the value column is fixed.
-func replaceTagSetByID(tx *sql.Tx, table, parentColumn string, parentID int64, tags []string) error {
+func replaceTagSetByID(tx txn, table, parentColumn string, parentID int64, tags []string) error {
 	// #nosec G202 -- table/column names come from the constants in this
 	// package, never from user input; SQL identifiers can't be bound.
 	if _, err := tx.Exec("DELETE FROM "+table+" WHERE "+parentColumn+" = ?", parentID); err != nil {

@@ -16,7 +16,7 @@ const PLAYER: CoachPlayerSummary = {
 
 function session(over: Partial<CoachSession> = {}): CoachSession {
   return {
-    session_id: 's-1', handle: 'Sable', kind: 'player', source: 'bundle',
+    session_id: 's-1', handle: 'Sable', kind: 'player', source: 'bundle', status: 'ended',
     opened_at: '2026-08-10T18:00:00Z',
     ended_at: '2026-08-10T19:20:00Z',
     match_keys: ['match-a', 'match-b'],
@@ -58,9 +58,23 @@ describe('CoachPlayerDossier', () => {
   // row would misreport how often the two of them meet; a blank where a
   // duration goes would just look broken.
   it('says when a sitting was never ended', async () => {
-    renderDossier([session({ ended_at: undefined })])
+    renderDossier([session({ status: 'abandoned', ended_at: undefined })])
     const list = await screen.findByRole('list', { name: 'Sessions' })
     expect(list).toHaveTextContent(/never ended/i)
+  })
+
+  // Quitting the app mid-sitting is not walking away from it.
+  it('says when the app closed on a sitting rather than calling it abandoned', async () => {
+    renderDossier([session({ status: 'interrupted' })])
+    const list = await screen.findByRole('list', { name: 'Sessions' })
+    expect(list).toHaveTextContent(/app closed/i)
+    expect(list).not.toHaveTextContent(/never ended/i)
+  })
+
+  it('says a sitting is still in progress', async () => {
+    renderDossier([session({ status: 'open', ended_at: undefined })])
+    const list = await screen.findByRole('list', { name: 'Sessions' })
+    expect(list).toHaveTextContent(/in progress/i)
   })
 
   it('shows no session list at all before there is one', () => {

@@ -176,7 +176,7 @@ export const useSelfReviewStore = defineStore('selfReview', () => {
   async function findOpenTwin(matchKeys: string[]): Promise<string> {
     const fresh = (await listQuery.refetch()).data ?? reviews.value
     const wanted = new Set(matchKeys)
-    const twin = fresh.find((r) => !r.finished_at
+    const twin = fresh.find((r) => r.status === 'open'
       && r.match_keys.length === wanted.size
       && r.match_keys.every((k) => wanted.has(k)))
     return twin?.review_id ?? ''

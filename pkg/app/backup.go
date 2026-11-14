@@ -58,7 +58,12 @@ func (a *App) RestoreDatabase(payload []byte) error {
 		_ = os.Remove(dst + "-wal")
 		_ = os.Remove(dst + "-shm")
 
-		return a.reopenActiveStore()
+		if err := a.reopenActiveStore(); err != nil {
+			return err
+		}
+		// The profile now holds what the backup held, and owns that.
+		a.resyncClaims()
+		return nil
 	})
 }
 

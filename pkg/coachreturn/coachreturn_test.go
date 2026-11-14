@@ -228,7 +228,7 @@ func TestDecide_AcceptANoteWritesTheBlockAndReviews(t *testing.T) {
 		t.Error("accepted_at not stamped")
 	}
 	// The store reads an empty tag list back as nil (its documented shape).
-	want := db.MatchCoachNote{ID: block.ID, NoteID: noteIDOne, MatchKey: keyIlios, CoachName: "Ordo", SessionDate: "2026-08-15", Text: "hold high ground", MatchClock: "06:40", FocusTags: []string{"positioning"}, AcceptedAt: block.AcceptedAt}
+	want := db.MatchCoachNote{ID: block.ID, NoteID: noteIDOne, MatchKey: keyIlios, CoachName: "Ordo", SessionDate: "2026-08-15", Text: "hold high ground", MatchClock: "06:40", FocusTags: []string{"positioning"}, AcceptedAt: block.AcceptedAt, ReturnID: sheet.ID}
 	if !reflect.DeepEqual(block, want) {
 		t.Errorf("block = %+v\nwant  %+v", block, want)
 	}
@@ -241,7 +241,7 @@ func TestDecide_AcceptANoteWritesTheBlockAndReviews(t *testing.T) {
 			noteIDTwo:    coachreturn.StatusPending,
 			orphanNoteID: coachreturn.StatusOrphan,
 		},
-		Decisions: map[string]string{noteIDOne: string(coachreturn.DecisionAccepted)},
+		Decisions: map[string]coachreturn.Decision{noteIDOne: coachreturn.DecisionAccepted},
 		Pending:   1,
 	}
 	if state := stateOf(got); !reflect.DeepEqual(state, wantState) {
@@ -276,7 +276,7 @@ func TestDecide_SkipAfterAcceptDeletesTheBlock(t *testing.T) {
 	}
 	wantSkipped := decisionState{
 		Statuses:  map[string]coachreturn.Status{noteIDOne: coachreturn.StatusSkipped, noteIDTwo: coachreturn.StatusPending, orphanNoteID: coachreturn.StatusOrphan},
-		Decisions: map[string]string{noteIDOne: string(coachreturn.DecisionSkipped)},
+		Decisions: map[string]coachreturn.Decision{noteIDOne: coachreturn.DecisionSkipped},
 		Pending:   1,
 	}
 	if state := stateOf(got); !reflect.DeepEqual(state, wantSkipped) {
@@ -287,7 +287,7 @@ func TestDecide_SkipAfterAcceptDeletesTheBlock(t *testing.T) {
 	got = decide(t, st, sheet.ID, coachreturn.Verdict{NoteID: noteIDTwo, Decision: coachreturn.DecisionSkipped})
 	wantBothSkipped := decisionState{
 		Statuses:  map[string]coachreturn.Status{noteIDOne: coachreturn.StatusSkipped, noteIDTwo: coachreturn.StatusSkipped, orphanNoteID: coachreturn.StatusOrphan},
-		Decisions: map[string]string{noteIDOne: string(coachreturn.DecisionSkipped), noteIDTwo: string(coachreturn.DecisionSkipped)},
+		Decisions: map[string]coachreturn.Decision{noteIDOne: coachreturn.DecisionSkipped, noteIDTwo: coachreturn.DecisionSkipped},
 		Pending:   0,
 	}
 	if state := stateOf(got); !reflect.DeepEqual(state, wantBothSkipped) {
@@ -310,8 +310,8 @@ func TestDecide_SkipsAnOrphanWithTheRestOfTheBatch(t *testing.T) {
 		Statuses: map[string]coachreturn.Status{
 			noteIDOne: coachreturn.StatusAccepted, noteIDTwo: coachreturn.StatusSkipped, orphanNoteID: coachreturn.StatusOrphan,
 		},
-		Decisions: map[string]string{
-			noteIDOne: string(coachreturn.DecisionAccepted), noteIDTwo: string(coachreturn.DecisionSkipped), orphanNoteID: string(coachreturn.DecisionSkipped),
+		Decisions: map[string]coachreturn.Decision{
+			noteIDOne: coachreturn.DecisionAccepted, noteIDTwo: coachreturn.DecisionSkipped, orphanNoteID: coachreturn.DecisionSkipped,
 		},
 		Pending: 0,
 	}

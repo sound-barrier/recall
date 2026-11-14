@@ -112,6 +112,12 @@ func newFailingStore(method string) *failingStore {
 	return &failingStore{Fake: dbtest.New(), fail: method}
 }
 
+// InTransaction hands fn this wrapper, not the Fake inside it, so a write
+// made inside the transaction still meets the failure.
+func (s *failingStore) InTransaction(fn func(db.Store) error) error {
+	return s.Fake.InTransaction(func(db.Store) error { return fn(s) })
+}
+
 func (s *failingStore) boom(method string) error {
 	if s.fail == method {
 		return errStoreDown

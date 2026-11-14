@@ -31,6 +31,7 @@ afterEach(() => {
 
 const row = (over: Partial<FailedFile> = {}): FailedFile => ({
   filename: 'corrupt.png',
+  kind: 'parse_failed',
   error: 'decoding image: png: invalid format',
   attempts: 6,
   parked: false,

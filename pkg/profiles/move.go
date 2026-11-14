@@ -487,6 +487,9 @@ func copyMomentImage(srcStore, targetStore db.Store, sha string) error {
 // phase 2 upserts in place instead of duplicating.
 func copyCoachNotes(targetStore db.Store, k string, notes []db.MatchCoachNote) error {
 	for _, n := range notes {
+		// The return that wrote the block is a row in the SOURCE database;
+		// carried over, the id would name an unrelated return on the target.
+		n.ReturnID = 0
 		if _, err := targetStore.UpsertMatchCoachNote(n); err != nil {
 			return fmt.Errorf("move: copy coach note %q for %q: %w", n.NoteID, k, err)
 		}

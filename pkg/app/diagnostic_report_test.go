@@ -12,6 +12,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/bundle"
+	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
 )
 
@@ -49,8 +50,8 @@ func TestApp_ExportDiagnosticBundle_CarriesAPickedParsedFile(t *testing.T) {
 func TestApp_ExportDiagnosticBundle_JoinsAPickedFailureToTheLedger(t *testing.T) {
 	a, fake, shots := reportApp(t)
 	mustNoErr(t, os.WriteFile(filepath.Join(shots, "bad.png"), []byte("x"), 0o600))
-	mustNoErr(t, fake.RecordFailedFile("bad.png", 0, "decoding image: png: invalid format"))
-	mustNoErr(t, fake.RecordFailedFile("other.png", 0, "boom"))
+	mustNoErr(t, fake.RecordFailedFile(db.FileRef{DirID: 0, Filename: "bad.png"}, db.FailureParseFailed, "decoding image: png: invalid format"))
+	mustNoErr(t, fake.RecordFailedFile(db.FileRef{DirID: 0, Filename: "other.png"}, db.FailureParseFailed, "boom"))
 	stubDiagnose(t)
 
 	m := exportManifest(t, a, app.ReportFile{Filename: "bad.png", Note: "this is a SUMMARY"})

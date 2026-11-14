@@ -34,17 +34,19 @@ func (s *SQLStore) UpsertMatchCoachNote(n MatchCoachNote) (int64, error) {
 	// (the live accept).
 	var id int64
 	err = tx.QueryRow(
-		`INSERT INTO match_coach_notes (note_id, match_key, coach_name, session_date, text, match_clock, for_team, accepted_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, `+suppliedInstantOrNow+`)
+		`INSERT INTO match_coach_notes (note_id, match_key, coach_name, session_date, text, match_clock, for_team, return_id, accepted_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, `+suppliedInstantOrNow+`)
 		 ON CONFLICT(note_id) DO UPDATE SET
 		   match_key    = excluded.match_key,
 		   coach_name   = excluded.coach_name,
 		   session_date = excluded.session_date,
 		   text         = excluded.text,
 		   match_clock  = excluded.match_clock,
-		   for_team     = excluded.for_team
+		   for_team     = excluded.for_team,
+		   return_id    = excluded.return_id
 		 RETURNING id`,
-		n.NoteID, n.MatchKey, n.CoachName, n.SessionDate, n.Text, n.MatchClock, n.ForTeam, n.AcceptedAt,
+		n.NoteID, n.MatchKey, n.CoachName, n.SessionDate, n.Text, n.MatchClock, n.ForTeam,
+		sql.NullInt64{Int64: n.ReturnID, Valid: n.ReturnID != 0}, n.AcceptedAt,
 	).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("upsert match coach note: %w", err)
@@ -65,7 +67,7 @@ func (s *SQLStore) UpsertMatchCoachNote(n MatchCoachNote) (int64, error) {
 // way the tag sets are replaced: a re-import carries the coach's current list,
 // and merging would leave a moment they deleted between sessions on a match
 // the player already accepted.
-func replaceNoteMoments(tx *sql.Tx, noteID int64, moments []MatchCoachNoteMoment) error {
+func replaceNoteMoments(tx txn, noteID int64, moments []MatchCoachNoteMoment) error {
 	if _, err := tx.Exec(
 		`DELETE FROM match_coach_note_moments WHERE match_coach_note_id = ?`, noteID); err != nil {
 		return fmt.Errorf("clear note moments: %w", err)
@@ -130,7 +132,7 @@ func (s *SQLStore) LoadMatchCoachNotes() (map[string][]MatchCoachNote, error) {
 
 // attachNoteMoments hangs each block's moments on it, already in reading
 // order — the ORDER BY is the strip's order, so no caller has to re-sort.
-func attachNoteMoments(q *sql.DB, byID map[int64]*MatchCoachNote) error {
+func attachNoteMoments(q querier, byID map[int64]*MatchCoachNote) error {
 	rows, err := q.Query(
 		`SELECT match_coach_note_id, moment_id, match_clock, text, focus_tag, sort_order,
 		        COALESCE(image_sha256, '')
@@ -158,7 +160,8 @@ func attachNoteMoments(q *sql.DB, byID map[int64]*MatchCoachNote) error {
 // the (accepted_at, id) order the per-match lists are assembled in.
 func (s *SQLStore) loadMatchCoachNoteRows() (map[int64]*MatchCoachNote, []int64, error) {
 	rows, err := s.db.Query(
-		`SELECT id, note_id, match_key, coach_name, session_date, text, match_clock, for_team, accepted_at
+		`SELECT id, note_id, match_key, coach_name, session_date, text, match_clock, for_team,
+		        COALESCE(return_id, 0), accepted_at
 		 FROM match_coach_notes ORDER BY accepted_at, id`,
 	)
 	if err != nil {
@@ -169,7 +172,7 @@ func (s *SQLStore) loadMatchCoachNoteRows() (map[int64]*MatchCoachNote, []int64,
 	var order []int64
 	for rows.Next() {
 		var n MatchCoachNote
-		if err := rows.Scan(&n.ID, &n.NoteID, &n.MatchKey, &n.CoachName, &n.SessionDate, &n.Text, &n.MatchClock, &n.ForTeam, &n.AcceptedAt); err != nil {
+		if err := rows.Scan(&n.ID, &n.NoteID, &n.MatchKey, &n.CoachName, &n.SessionDate, &n.Text, &n.MatchClock, &n.ForTeam, &n.ReturnID, &n.AcceptedAt); err != nil {
 			return nil, nil, fmt.Errorf("load match coach notes: %w", err)
 		}
 		byID[n.ID] = &n
@@ -281,7 +284,7 @@ func (s *SQLStore) attachCoachDecisions(byID map[int64]*CoachReturn, where strin
 	return rows.Err()
 }
 
-func (s *SQLStore) SetCoachReturnDecision(returnID int64, noteID, decision string) error {
+func (s *SQLStore) SetCoachReturnDecision(returnID int64, noteID string, decision CoachVerdict) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err

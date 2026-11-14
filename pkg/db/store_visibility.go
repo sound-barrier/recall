@@ -1,7 +1,6 @@
 package db
 
 import (
-	"database/sql"
 	"fmt"
 )
 
@@ -92,12 +91,12 @@ func (s *SQLStore) HardDeleteMatch(matchKey string) error {
 //
 // Reads the parent rows for filenames, so it must run BEFORE the parent wipe,
 // like forgetAmbiguitySurface below.
-func forgetIngestedFiles(tx *sql.Tx, matchKey string) error {
+func forgetIngestedFiles(tx txn, matchKey string) error {
 	for _, t := range parentTables {
 		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
 		if _, err := tx.Exec(
-			`DELETE FROM ingested_files WHERE filename IN
-			 (SELECT filename FROM `+t+` WHERE match_key = ?)`, matchKey,
+			`DELETE FROM ingested_files WHERE (screenshots_dir_id, filename) IN
+			 (SELECT screenshots_dir_id, filename FROM `+t+` WHERE match_key = ?)`, matchKey,
 		); err != nil {
 			return err
 		}
@@ -111,7 +110,7 @@ func forgetIngestedFiles(tx *sql.Tx, matchKey string) error {
 // ambiguous sentinel — the candidate set of its source screenshots, keyed by
 // filename. The filename lookup reads the parent rows, so both deletes must
 // run before HardDeleteMatch's parent wipe.
-func forgetAmbiguitySurface(tx *sql.Tx, matchKey string) error {
+func forgetAmbiguitySurface(tx txn, matchKey string) error {
 	if _, err := tx.Exec(`DELETE FROM ambiguous_candidates WHERE match_key = ?`, matchKey); err != nil {
 		return err
 	}

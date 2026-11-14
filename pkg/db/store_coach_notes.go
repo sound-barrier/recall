@@ -16,7 +16,7 @@ const (
 	coachNoteParentColumn   = "coach_note_id"
 )
 
-func (s *SQLStore) EnsureCoachPlayer(playerID, handle, kind string) (CoachPlayer, error) {
+func (s *SQLStore) EnsureCoachPlayer(playerID, handle string, kind CoachKind) (CoachPlayer, error) {
 	if kind != CoachKindPlayer && kind != CoachKindTeam {
 		return CoachPlayer{}, fmt.Errorf("%w: %q", ErrCoachKindInvalid, kind)
 	}
@@ -57,7 +57,7 @@ func (s *SQLStore) EnsureCoachPlayer(playerID, handle, kind string) (CoachPlayer
 // are two different files of notes. The id branch is untouched — only
 // players carry a player_id (a team is a codes-only identity), and the
 // adopt below is likewise a player-only mechanism.
-func findOrAdoptCoachPlayer(tx *sql.Tx, playerID, handle, kind string) (CoachPlayer, bool, error) {
+func findOrAdoptCoachPlayer(tx txn, playerID, handle string, kind CoachKind) (CoachPlayer, bool, error) {
 	if playerID != "" {
 		p, found, err := selectCoachPlayer(tx, `WHERE player_id = ?`, playerID)
 		if err != nil || found {
@@ -80,7 +80,7 @@ func findOrAdoptCoachPlayer(tx *sql.Tx, playerID, handle, kind string) (CoachPla
 // ErrCoachHandleAmbiguous when there are two. LIMIT 2 rather than LIMIT 1: the
 // point is to SEE the second row, which an ORDER BY over LIMIT 1 hides behind
 // a stable, plausible answer.
-func selectSoleIDLessPlayer(tx *sql.Tx, handle string) (CoachPlayer, bool, error) {
+func selectSoleIDLessPlayer(tx txn, handle string) (CoachPlayer, bool, error) {
 	rows, err := tx.Query(
 		`SELECT id, player_id, handle, kind FROM coach_players
 		  WHERE handle = ? AND player_id IS NULL AND kind = 'player'
@@ -115,7 +115,7 @@ func selectSoleIDLessPlayer(tx *sql.Tx, handle string) (CoachPlayer, bool, error
 // selectCoachPlayer reads one row by the given predicate; (zero, false, nil)
 // when none matches. The handle column is declared COLLATE NOCASE, so the
 // handle predicates compare case-insensitively without spelling it out.
-func selectCoachPlayer(tx *sql.Tx, where string, args ...any) (CoachPlayer, bool, error) {
+func selectCoachPlayer(tx txn, where string, args ...any) (CoachPlayer, bool, error) {
 	var p CoachPlayer
 	var playerID sql.NullString
 	// #nosec G202 -- where is one of the constant predicates above.
@@ -130,7 +130,7 @@ func selectCoachPlayer(tx *sql.Tx, where string, args ...any) (CoachPlayer, bool
 	return p, true, nil
 }
 
-func insertCoachPlayer(tx *sql.Tx, playerID, handle, kind string) (CoachPlayer, error) {
+func insertCoachPlayer(tx txn, playerID, handle string, kind CoachKind) (CoachPlayer, error) {
 	p := CoachPlayer{PlayerID: playerID, Handle: handle, Kind: kind}
 	// An empty player_id is stored as NULL so the UNIQUE constraint tolerates
 	// any number of anonymous players.
@@ -168,7 +168,7 @@ func requireAffected(res sql.Result, missing error) error {
 
 // requireCoachPlayer maps a dangling playerRef to ErrCoachPlayerUnknown
 // before a write would otherwise fail on the FK with an opaque SQLite error.
-func requireCoachPlayer(tx *sql.Tx, playerRef int64) error {
+func requireCoachPlayer(tx txn, playerRef int64) error {
 	var exists bool
 	if err := tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM coach_players WHERE id = ?)`, playerRef).Scan(&exists); err != nil {
 		return err
@@ -294,7 +294,7 @@ const coachMomentFocusTagsTable = "coach_note_moment_focus_tags"
 
 // noteRowID resolves a note's public id to its row id, scoped to the player so
 // one session can never reach another's notes through a guessed id.
-func noteRowID(tx *sql.Tx, playerRef int64, noteID string) (int64, error) {
+func noteRowID(tx txn, playerRef int64, noteID string) (int64, error) {
 	var id int64
 	err := tx.QueryRow(
 		`SELECT id FROM coach_notes WHERE note_id = ? AND player_ref = ?`, noteID, playerRef,

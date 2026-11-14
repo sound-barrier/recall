@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 )
 
@@ -14,6 +15,36 @@ import (
 // at all. Coach-AUTHORED, like coach_notes: it survives Clear(), and the
 // match keys in it belong to another player's corpus.
 
+// SittingStatus is where one sitting stands. A string type because it is a
+// column with a CHECK and a wire enum; see schema.sql for each state.
+type SittingStatus string
+
+// Sitting lifecycle: open → ended | interrupted, or open → abandoned when the
+// process died with it open and the next start found it so.
+const (
+	SittingOpen        SittingStatus = "open"
+	SittingEnded       SittingStatus = "ended"
+	SittingInterrupted SittingStatus = "interrupted"
+	SittingAbandoned   SittingStatus = "abandoned"
+)
+
+// ErrSittingOutcomeInvalid refuses an end that is not one of the two ways
+// a live process closes a sitting.
+var ErrSittingOutcomeInvalid = errors.New("coach session: a sitting ends as ended or interrupted")
+
+// IsSittingEnd reports whether outcome is a state a live process may end a
+// sitting in. Abandoned is not one: only a start that finds a sitting still
+// open can say the process died.
+func IsSittingEnd(outcome SittingStatus) bool {
+	switch outcome {
+	case SittingEnded, SittingInterrupted:
+		return true
+	case SittingOpen, SittingAbandoned:
+		return false
+	}
+	return false
+}
+
 // CoachSessionRow is one sitting: who it was about, where its corpus came
 // from, when it opened and — once handed back — when it ended.
 //
@@ -24,8 +55,9 @@ type CoachSessionRow struct {
 	SessionID string
 	PlayerRef int64
 	Handle    string
-	Kind      string
-	Source    string
+	Kind      CoachKind
+	Source    CoachSessionSource
+	Status    SittingStatus
 	OpenedAt  string
 	EndedAt   string
 	MatchKeys []string
@@ -58,42 +90,85 @@ func (s *SQLStore) StartCoachSession(row CoachSessionRow) error {
 	); err != nil {
 		return fmt.Errorf("coach session: open: %w", err)
 	}
-	for i, key := range row.MatchKeys {
+	if err := coverMatches(tx, row.SessionID, row.MatchKeys); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// coverMatches writes the reel in order, a repeated key kept at its first
+// position.
+func coverMatches(tx txn, sessionID string, matchKeys []string) error {
+	for i, key := range matchKeys {
 		if _, err := tx.Exec(
 			`INSERT INTO coach_session_matches (session_id, match_key, sort_order)
 			 VALUES (?,?,?) ON CONFLICT(session_id, match_key) DO NOTHING`,
-			row.SessionID, key, i,
+			sessionID, key, i,
 		); err != nil {
 			return fmt.Errorf("coach session: cover %s: %w", key, err)
 		}
+	}
+	return nil
+}
+
+func (s *SQLStore) CoverCoachSessionMatches(sessionID string, matchKeys []string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var exists bool
+	if err := tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM coach_sessions WHERE session_id = ?)`, sessionID).Scan(&exists); err != nil {
+		return err
+	}
+	if !exists {
+		return ErrCoachSessionUnknown
+	}
+	// The reel as it stands replaces the one recorded, so the history is
+	// exactly what the sitting covers.
+	if _, err := tx.Exec(`DELETE FROM coach_session_matches WHERE session_id = ?`, sessionID); err != nil {
+		return fmt.Errorf("coach session: clear cover: %w", err)
+	}
+	if err := coverMatches(tx, sessionID, matchKeys); err != nil {
+		return err
 	}
 	return tx.Commit()
 }
 
 // PointCoachSessionAt files an already-open sitting under a player. Called
 // when the coach names them, and again whenever they correct it.
-func (s *SQLStore) PointCoachSessionAt(sessionID string, playerRef int64, handle, kind string) error {
-	_, err := s.db.Exec(
+func (s *SQLStore) PointCoachSessionAt(sessionID string, playerRef int64, handle string, kind CoachKind) error {
+	res, err := s.db.Exec(
 		`UPDATE coach_sessions SET player_ref = ?, handle = ?, kind = ? WHERE session_id = ?`,
 		nullableRef(playerRef), handle, kindOrPlayer(kind), sessionID,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	return requireAffected(res, ErrCoachSessionUnknown)
 }
 
-// EndCoachSession stamps the sitting and freezes the focus list as it
-// stood. Idempotent on the focus rows: ending twice replaces the snapshot
-// rather than doubling it.
-func (s *SQLStore) EndCoachSession(sessionID string, focus []CoachSessionFocusRow) error {
+// EndCoachSession stamps the sitting with how it ended and freezes the
+// focus list as it stood. Idempotent on the focus rows: ending twice
+// replaces the snapshot rather than doubling it.
+func (s *SQLStore) EndCoachSession(sessionID string, outcome SittingStatus, focus []CoachSessionFocusRow) error {
+	if !IsSittingEnd(outcome) {
+		return fmt.Errorf("%w: %q", ErrSittingOutcomeInvalid, outcome)
+	}
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.Exec(
-		`UPDATE coach_sessions SET ended_at = STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')
-		 WHERE session_id = ?`, sessionID,
-	); err != nil {
+	res, err := tx.Exec(
+		`UPDATE coach_sessions SET status = ?, ended_at = STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')
+		 WHERE session_id = ?`, outcome, sessionID,
+	)
+	if err != nil {
 		return fmt.Errorf("coach session: end: %w", err)
+	}
+	if err := requireAffected(res, ErrCoachSessionUnknown); err != nil {
+		return err
 	}
 	if _, err := tx.Exec(`DELETE FROM coach_session_focus_items WHERE session_id = ?`, sessionID); err != nil {
 		return err
@@ -114,7 +189,7 @@ func (s *SQLStore) EndCoachSession(sessionID string, focus []CoachSessionFocusRo
 // what it covered and the focus list it froze.
 func (s *SQLStore) ListCoachSessions(playerRef int64) ([]CoachSessionRow, error) {
 	rows, err := s.db.Query(
-		`SELECT session_id, handle, kind, source, opened_at, COALESCE(ended_at, '')
+		`SELECT session_id, handle, kind, source, status, opened_at, COALESCE(ended_at, '')
 		   FROM coach_sessions WHERE player_ref = ?
 		   ORDER BY opened_at DESC, session_id DESC`, playerRef)
 	if err != nil {
@@ -140,7 +215,7 @@ func scanCoachSessions(rows *sql.Rows, playerRef int64) ([]CoachSessionRow, erro
 	var out []CoachSessionRow
 	for rows.Next() {
 		r := CoachSessionRow{PlayerRef: playerRef}
-		if err := rows.Scan(&r.SessionID, &r.Handle, &r.Kind, &r.Source, &r.OpenedAt, &r.EndedAt); err != nil {
+		if err := rows.Scan(&r.SessionID, &r.Handle, &r.Kind, &r.Source, &r.Status, &r.OpenedAt, &r.EndedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, r)
@@ -193,9 +268,20 @@ func nullableRef(ref int64) any {
 	return ref
 }
 
-func kindOrPlayer(kind string) string {
+func kindOrPlayer(kind CoachKind) CoachKind {
 	if kind == "" {
 		return CoachKindPlayer
 	}
 	return kind
+}
+
+// abandonOpenCoachSessions is the recovery on open. A session lives only in
+// the process that claimed it, so a sitting still 'open' when a store opens
+// was left by a process that died without ending it: name it abandoned.
+func (s *SQLStore) abandonOpenCoachSessions() error {
+	if _, err := s.db.Exec(
+		`UPDATE coach_sessions SET status = 'abandoned' WHERE status = 'open'`); err != nil {
+		return fmt.Errorf("coach session: abandon stale sittings: %w", err)
+	}
+	return nil
 }

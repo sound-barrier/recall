@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"recall/pkg/app"
+	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
 	"recall/pkg/parser"
 )
@@ -82,10 +83,11 @@ func TestApp_ExportDiagnosticBundle_DiagnosesTheMostRecentFailures(t *testing.T)
 	for i := range total {
 		name := fmt.Sprintf("shot-%02d.png", i)
 		mustNoErr(t, os.WriteFile(filepath.Join(shots, name), []byte("x"), 0o600))
-		mustNoErr(t, fake.RecordFailedFile(name, 0, "boom"))
-		row := fake.FailedFiles[name]
+		mustNoErr(t, fake.RecordFailedFile(db.FileRef{DirID: 0, Filename: name}, db.FailureParseFailed, "boom"))
+		ref := db.FileRef{DirID: db.SentinelScreenshotsDirID, Filename: name}
+		row := fake.FailedFiles[ref]
 		row.LastFailedAt = fmt.Sprintf("2026-09-%02dT00:00:00Z", i+1)
-		fake.FailedFiles[name] = row
+		fake.FailedFiles[ref] = row
 	}
 	calls := stubDiagnose(t)
 
@@ -114,9 +116,9 @@ func TestApp_ExportDiagnosticBundle_MarksParkedFailures(t *testing.T) {
 	a := app.NewWithStore(fake)
 	app.SettingsOf(a).ScreenshotsDir = t.TempDir()
 	for range 3 {
-		mustNoErr(t, fake.RecordFailedFile("parked.png", 0, "boom"))
+		mustNoErr(t, fake.RecordFailedFile(db.FileRef{DirID: 0, Filename: "parked.png"}, db.FailureParseFailed, "boom"))
 	}
-	mustNoErr(t, fake.RecordFailedFile("fresh.png", 0, "boom"))
+	mustNoErr(t, fake.RecordFailedFile(db.FileRef{DirID: 0, Filename: "fresh.png"}, db.FailureParseFailed, "boom"))
 	stubDiagnose(t)
 
 	for _, f := range exportManifest(t, a).Files {

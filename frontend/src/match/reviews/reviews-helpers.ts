@@ -3,6 +3,12 @@ import { formatPlayerDay, localDay } from '@/match/coach/coach-time'
 import { pluralize } from '@/match/match-label-helpers'
 
 /**
+ * Why a finished sitting's room reads but does not write: the server answers
+ * every edit to it with a 409, so the room says so before the player types.
+ */
+export const FINISHED_SITTING_REASON = 'This review is finished — it is on the record.'
+
+/**
  * One coach's one sitting, reassembled from the blocks that landed on
  * matches. The app keeps no separate record of a received review —
  * `(coach_name, session_date)` is its identity, because that is what every

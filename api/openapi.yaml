@@ -4767,11 +4767,11 @@ components:
         snapshot naming N.
     RunKind:
       type: string
-      enum: [parse, reparse, restore, maintenance, profile_switch, profile_rename, screenshot_takeover]
+      enum: [parse, reparse, restore, maintenance, profile_switch, profile_rename, screenshot_takeover, backup]
       description: |
         What holds the run slot. Only `parse` and `reparse` can be canceled
-        or report progress; the rest are store swaps that need the database
-        to themselves.
+        or report progress; the rest need the database to themselves —
+        `backup` is the boot-time automatic snapshot.
     RunOutcome:
       type: string
       enum: [completed, canceled, failed]
@@ -5249,7 +5249,7 @@ components:
 
     FailedFile:
       type: object
-      required: [filename, error, attempts, parked, first_failed_at, last_failed_at]
+      required: [filename, kind, error, attempts, parked, first_failed_at, last_failed_at]
       properties:
         filename:
           type: string
@@ -5263,11 +5263,21 @@ components:
           type: string
           example: "decoding image: png: invalid format"
           description: The most recent attempt's error message, verbatim.
+        kind:
+          type: string
+          enum: [parse_failed, ocr_unavailable]
+          description: |
+            Why the most recent attempt failed. `parse_failed` — the parse
+            ran and could not read the file; it counts an attempt.
+            `ocr_unavailable` — the OCR engine was not there, so the file
+            was never read; it counts none, and never parks a file.
         attempts:
           type: integer
-          minimum: 1
+          minimum: 0
           example: 6
-          description: Failed parse runs since `first_failed_at`.
+          description: |
+            Failed parse runs since `first_failed_at`. An OCR outage counts
+            none, so a file that has only met one reads 0.
         parked:
           type: boolean
           example: true
@@ -6205,7 +6215,7 @@ components:
 
     CoachSession:
       type: object
-      required: [session_id, kind, source, opened_at, match_keys, focus_items]
+      required: [session_id, kind, source, status, opened_at, match_keys, focus_items]
       properties:
         session_id:
           type: string
@@ -6222,14 +6232,23 @@ components:
           type: string
           enum: [bundle, replay]
           description: Where the sitting's corpus came from.
+        status:
+          type: string
+          enum: [open, ended, interrupted, abandoned]
+          description: |
+            How the sitting stands. `open` — in progress. `ended` — the coach
+            closed it (or a restore or profile switch did). `interrupted` —
+            the app quit with it open. `abandoned` — the app stopped without
+            quitting (a crash, a killed process) and the next start found it
+            still open.
         opened_at:
           type: string
           description: RFC3339. When the coach claimed the corpus.
         ended_at:
           type: string
           description: |
-            RFC3339. Absent on an ABANDONED sitting — the coach opened the
-            corpus and never handed it back.
+            RFC3339. Present on an `ended` or `interrupted` sitting; absent
+            while it is `open` and on an `abandoned` one.
         match_keys:
           type: array
           description: What the sitting covered, in reel order.
@@ -6305,13 +6324,22 @@ components:
         One self-review sitting, whole: the header, the member keys in the
         player's order, and the notes keyed by match. `finished_at` is
         absent while the sitting is in progress.
-      required: [review_id, title, focus_items, created_at, updated_at, match_keys, notes]
+      required: [review_id, title, status, focus_items, created_at, updated_at, match_keys, notes]
       properties:
         review_id:
           type: string
         title:
           type: string
           maxLength: 120
+        status:
+          type: string
+          enum: [open, finished]
+          description: |
+            `open` while the player is writing in it. `finished` once the
+            completion stamped it and marked its matches reviewed: the
+            sitting is on the record, and every edit to it (title, set,
+            notes, moments, focus list) answers `409`. Deleting it, and
+            moving one of its focus items' status, stay open.
         focus_items:
           type: array
           items:

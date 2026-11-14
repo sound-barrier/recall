@@ -23,7 +23,7 @@ import (
 // acceptedKinds are the finding kinds an entry may name. Checked on parse
 // because a typo'd kind can never match anything, and an exemption that can
 // never match is worse than no exemption: it reads as handled.
-var acceptedKinds = []string{
+var acceptedKinds = []FindingKind{
 	KindHeroMissing, KindHeroSpelling, KindMapMissing,
 	KindPatchMissing, KindSeasonExpired, KindChannelStale,
 }
@@ -42,9 +42,9 @@ func ParseAccepted(r io.Reader) (Accepted, error) {
 		if !ok {
 			return nil, fmt.Errorf("roster-watch accepted list, line %d: %q has no '<kind>:' prefix", line, key)
 		}
-		if !slices.Contains(acceptedKinds, kind) {
-			return nil, fmt.Errorf("roster-watch accepted list, line %d: %q is not a finding kind (%s)",
-				line, kind, strings.Join(acceptedKinds, ", "))
+		if !slices.Contains(acceptedKinds, FindingKind(kind)) {
+			return nil, fmt.Errorf("roster-watch accepted list, line %d: %q is not a finding kind (%v)",
+				line, kind, acceptedKinds)
 		}
 		out[key] = reason
 	}

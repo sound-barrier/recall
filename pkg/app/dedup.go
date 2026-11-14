@@ -22,7 +22,7 @@ import (
 // future copies of THEM match. Best-effort throughout — any error is
 // logged and the parse proceeds; the worst case is an un-deduped OCR
 // pass, which is exactly the pre-feature behavior.
-func (a *App) dedupNewFiles(dir string, parsed map[string]bool) {
+func (a *App) dedupNewFiles(dir string, dirID int64, parsed map[string]bool) {
 	store, release, leaseErr := a.useStore()
 	if leaseErr != nil {
 		return
@@ -36,9 +36,9 @@ func (a *App) dedupNewFiles(dir string, parsed map[string]bool) {
 	}
 	// Standing duplicates are already in `parsed` — parsedSkipSet owns that
 	// marking so the pending count sees the same set (standingDuplicates).
-	byHash := make(map[string]string, len(ingested))
+	byHash := make(map[string]db.FileRef, len(ingested))
 	for f, rec := range ingested {
-		if rec.DuplicateOf == "" {
+		if !rec.IsDuplicate() {
 			byHash[rec.ContentHash] = f
 		}
 	}
@@ -49,21 +49,21 @@ func (a *App) dedupNewFiles(dir string, parsed map[string]bool) {
 		return
 	}
 	for _, e := range entries {
-		if outsideDedupScope(e, parsed, ingested) {
+		file := db.FileRef{DirID: dirID, Filename: e.Name()}
+		if outsideDedupScope(e, file, parsed, ingested) {
 			continue
 		}
-		a.registerIngestedImage(logger, dir, e.Name(), parsed, byHash)
+		a.registerIngestedImage(logger, dir, file, parsed, byHash)
 	}
 }
 
 // outsideDedupScope reports whether a directory entry needs no dedup work:
 // not an image, already in the skip set, or already registered on a prior run.
-func outsideDedupScope(e os.DirEntry, parsed map[string]bool, ingested map[string]db.IngestedFile) bool {
-	base := e.Name()
-	if !isImageEntry(e) || parsed[base] {
+func outsideDedupScope(e os.DirEntry, file db.FileRef, parsed map[string]bool, ingested map[db.FileRef]db.IngestedFile) bool {
+	if !isImageEntry(e) || parsed[file.Filename] {
 		return true
 	}
-	_, seen := ingested[base]
+	_, seen := ingested[file]
 	return seen // original already registered on a prior run
 }
 
@@ -79,24 +79,25 @@ func isImageEntry(e os.DirEntry) bool {
 // registerIngestedImage hashes one new image and records it: a byte-identical
 // copy of a registered original joins the skip set as a duplicate; anything
 // else registers as a fresh original future copies can match.
-func (a *App) registerIngestedImage(logger *slog.Logger, dir, base string, parsed map[string]bool, byHash map[string]string) {
+func (a *App) registerIngestedImage(logger *slog.Logger, dir string, file db.FileRef, parsed map[string]bool, byHash map[string]db.FileRef) {
 	store, release, leaseErr := a.useStore()
 	if leaseErr != nil {
 		return
 	}
 	defer release()
+	base := file.Filename
 	hash, err := hashFile(filepath.Join(dir, base))
 	if err != nil {
 		logger.Error("hash failed", "file", base, "err", err)
 		return
 	}
-	if canonical, dup := byHash[hash]; dup && canonical != base {
-		if err := store.UpsertIngestedFile(base, hash, canonical); err != nil {
+	if canonical, dup := byHash[hash]; dup && canonical != file {
+		if err := store.UpsertIngestedFile(file, hash, canonical); err != nil {
 			logger.Error("record duplicate failed", "file", base, "err", err)
 			return
 		}
 		parsed[base] = true
-		logger.Info("byte-identical copy skipped", "file", base, "duplicate_of", canonical)
+		logger.Info("byte-identical copy skipped", "file", base, "duplicate_of", canonical.Filename)
 		return
 	}
 	if !a.claimScreenshot(hash, base) {
@@ -104,20 +105,20 @@ func (a *App) registerIngestedImage(logger *slog.Logger, dir, base string, parse
 		logger.Info("screenshot owned by another profile skipped", "file", base)
 		return
 	}
-	if err := store.UpsertIngestedFile(base, hash, ""); err != nil {
+	if err := store.UpsertIngestedFile(file, hash, db.FileRef{}); err != nil {
 		logger.Error("record original failed", "file", base, "err", err)
 		return
 	}
-	byHash[hash] = base
+	byHash[hash] = file
 }
 
-// standingDuplicates returns the filenames the registry already knows are
+// standingDuplicates returns the filenames in one folder the registry already knows are
 // byte-identical copies of another ingested file. They skip OCR on every
 // later run — including ReParseAll, where the canonical re-parses instead —
 // and they carry no parent-table row, so LoadAllFilenames can't see them.
 // Best-effort like the rest of the skip set: a registry read failure just
 // means nothing is suppressed and the copies get re-OCR'd.
-func (a *App) standingDuplicates() map[string]bool {
+func (a *App) standingDuplicates(dirID int64) map[string]bool {
 	store, release, leaseErr := a.useStore()
 	if leaseErr != nil {
 		return nil
@@ -130,8 +131,8 @@ func (a *App) standingDuplicates() map[string]bool {
 	}
 	dupes := map[string]bool{}
 	for f, rec := range ingested {
-		if rec.DuplicateOf != "" {
-			dupes[f] = true
+		if f.DirID == dirID && rec.IsDuplicate() {
+			dupes[f.Filename] = true
 		}
 	}
 	return dupes

@@ -19,7 +19,7 @@ import { test, expect } from '../_fixtures'
 import type { Page } from '@playwright/test'
 import { RESURFACED_NOTES, filmRoom, loanSlip, mockCoachSession, pinSessionResume } from '../_coach'
 import {
-  SITTING_ID, finishedSitting, mockSelfReviews,
+  SITTING_ID, finishedSitting, mockSelfReviews, openSitting,
 } from '../_reviews'
 import { seedProfiles, silenceParseEvents } from '../_theme-matrix'
 
@@ -149,6 +149,12 @@ test.describe('self review', () => {
     await expect(sheet(page).getByText(/Finished · /)).toBeVisible()
     const refinish = sheet(page).getByRole('button', { name: 'Re-finish' })
     await expect(refinish).toHaveAttribute('title', /nothing else changes/)
+    await expect(refinish).toBeEnabled()
+    // Finished is on the record: the room reads, it does not write — the
+    // server answers every edit to a finished sitting with a 409.
+    await expect(sheet(page).getByRole('textbox', { name: 'Title' })).toBeDisabled()
+    await expect(filmRoom(page).getByRole('status', { name: 'Note save state' }))
+      .toHaveText(/finished/i)
     await sheet(page).getByRole('button', { name: '← Back to reviews' }).click()
     await expect(shelf(page)).toBeVisible()
 
@@ -343,7 +349,7 @@ test.describe('self review', () => {
   // the sitting, and removing the note is ARMED — a note plus its moments
   // must not die to one stray click (the shelf card's Delete already asks).
   test('the journal block reopens its sitting, and removing a note asks first', async ({ page }) => {
-    const mock = await mockSelfReviews(page, { reviews: [finishedSitting()] })
+    const mock = await mockSelfReviews(page, { reviews: [openSitting()] })
     await page.goto('/')
     await matchesTab(page).click()
     await page.locator('.leaf-row').first().click()
@@ -358,6 +364,19 @@ test.describe('self review', () => {
     await block.getByRole('button', { name: /Tuesday's Ana games/ }).click()
     await expect(filmRoom(page)).toBeVisible()
     await expect(sheet(page).getByRole('textbox', { name: 'Title' })).toHaveValue("Tuesday's Ana games")
+  })
+
+  // A finished sitting's note is on the record: its journal block offers no
+  // way to take it out, because the server would refuse it.
+  test('a finished sitting\'s journal block offers no remove', async ({ page }) => {
+    await mockSelfReviews(page, { reviews: [finishedSitting()] })
+    await page.goto('/')
+    await matchesTab(page).click()
+    await page.locator('.leaf-row').first().click()
+    const block = page.getByRole('region', { name: 'Your review' })
+    await expect(block).toBeVisible()
+    await expect(block.getByRole('button', { name: /Tuesday's Ana games/ })).toBeVisible()
+    await expect(block.getByRole('button', { name: 'Remove from this review' })).toHaveCount(0)
   })
 
   // The shelf card names the sitting in its own face, says its state in

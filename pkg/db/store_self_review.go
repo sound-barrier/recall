@@ -20,7 +20,31 @@ var (
 	// ErrSelfReviewMatchUnknown reports a match the named review does not
 	// hold — a note or moment written for a key outside the review's set.
 	ErrSelfReviewMatchUnknown = errors.New("match is not in this self review")
+	// ErrSelfReviewFinished reports an edit to a sitting that is finished.
+	ErrSelfReviewFinished = errors.New("self review is finished")
+	// ErrSelfReviewEmpty reports a sitting with no members — created over
+	// nothing, emptied, or finished after every member was deleted.
+	ErrSelfReviewEmpty = errors.New("self review has no matches")
 )
+
+// SelfReviewStatus is where a sitting stands: open, then finished. A
+// finished sitting never reopens.
+type SelfReviewStatus string
+
+const (
+	SelfReviewOpen     SelfReviewStatus = "open"
+	SelfReviewFinished SelfReviewStatus = "finished"
+)
+
+// SelfReviewFinish is one finish: the sitting, the instant to stamp (empty
+// for now; a replay supplies the one it carried), and the member keys to
+// mark reviewed by self. A key a coach already marked keeps the coach's
+// mark.
+type SelfReviewFinish struct {
+	ReviewID string
+	At       string
+	MarkSelf []string
+}
 
 const (
 	selfReviewNoteFocusTagsTable = "self_review_note_focus_tags"
@@ -31,19 +55,24 @@ const (
 // SelfReviewStore is the self-review slice of Store. pkg/review depends on
 // this seam alone; dbtest.Fake mirrors it.
 type SelfReviewStore interface {
-	// CreateSelfReview inserts a review with its member keys in the given
-	// order. An empty ReviewID is minted here; a supplied one is kept (a
-	// bundle import or a profile move carries the identity across). The
+	// CreateSelfReview inserts an OPEN review with its member keys in the
+	// given order. An empty ReviewID is minted here; a supplied one is kept
+	// (a bundle import or a profile move carries the identity across). The
 	// instants are honored when supplied and stamped when empty, like every
-	// restore-replayable stamp. Notes on the input are ignored — they are
-	// written through UpsertSelfReviewNote. Returns the stored row.
+	// restore-replayable stamp. Notes and FinishedAt on the input are
+	// ignored — notes go through UpsertSelfReviewNote and a finish through
+	// FinishSelfReview. ErrSelfReviewEmpty for a review over no match.
+	// Returns the stored row.
 	CreateSelfReview(r SelfReview) (SelfReview, error)
 	// UpdateSelfReview renames the sitting. ErrSelfReviewUnknown
 	// when no such review.
 	UpdateSelfReview(reviewID, title string) error
-	// FinishSelfReview stamps finished_at; a second finish keeps the first
-	// stamp. ErrSelfReviewUnknown when no such review.
-	FinishSelfReview(reviewID string) error
+	// FinishSelfReview moves the sitting to finished and marks MarkSelf
+	// reviewed by self (never over a coach's mark), in one transaction. A
+	// second finish keeps the first stamp and re-marks.
+	// ErrSelfReviewUnknown when no such review; ErrSelfReviewEmpty when it
+	// holds no match.
+	FinishSelfReview(f SelfReviewFinish) error
 	// DeleteSelfReview removes the review and everything under it; absent is
 	// a no-op.
 	DeleteSelfReview(reviewID string) error
@@ -86,17 +115,21 @@ func (s *SQLStore) CreateSelfReview(r SelfReview) (SelfReview, error) {
 	if r.ReviewID == "" {
 		r.ReviewID = NewCoachNoteID()
 	}
+	if len(r.MatchKeys) == 0 {
+		return SelfReview{}, ErrSelfReviewEmpty
+	}
 	tx, err := s.db.Begin()
 	if err != nil {
 		return SelfReview{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
+	r.Status, r.FinishedAt = SelfReviewOpen, ""
 	err = tx.QueryRow(
-		`INSERT INTO self_reviews (review_id, title, created_at, updated_at, finished_at)
-		 VALUES (?, ?, `+suppliedInstantOrNow+`, `+suppliedInstantOrNow+`, NULLIF(?, ''))
-		 RETURNING created_at, updated_at, COALESCE(finished_at, '')`,
-		r.ReviewID, r.Title, r.CreatedAt, r.UpdatedAt, r.FinishedAt,
-	).Scan(&r.CreatedAt, &r.UpdatedAt, &r.FinishedAt)
+		`INSERT INTO self_reviews (review_id, title, created_at, updated_at)
+		 VALUES (?, ?, `+suppliedInstantOrNow+`, `+suppliedInstantOrNow+`)
+		 RETURNING created_at, updated_at`,
+		r.ReviewID, r.Title, r.CreatedAt, r.UpdatedAt,
+	).Scan(&r.CreatedAt, &r.UpdatedAt)
 	if err != nil {
 		return SelfReview{}, fmt.Errorf("create self review: %w", err)
 	}
@@ -129,7 +162,7 @@ func distinctKeys(keys []string) []string {
 	return out
 }
 
-func insertSelfReviewMatches(tx *sql.Tx, reviewID string, matchKeys []string) error {
+func insertSelfReviewMatches(tx txn, reviewID string, matchKeys []string) error {
 	for i, k := range distinctKeys(matchKeys) {
 		if _, err := tx.Exec(
 			`INSERT INTO self_review_matches (review_id, match_key, sort_order) VALUES (?, ?, ?)`,
@@ -141,26 +174,62 @@ func insertSelfReviewMatches(tx *sql.Tx, reviewID string, matchKeys []string) er
 }
 
 func (s *SQLStore) UpdateSelfReview(reviewID, title string) error {
-	res, err := s.db.Exec(
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := requireOpenSelfReview(tx, reviewID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(
 		`UPDATE self_reviews SET title = ?,
 		   updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
-		 WHERE review_id = ?`, title, reviewID)
-	if err != nil {
+		 WHERE review_id = ?`, title, reviewID); err != nil {
 		return fmt.Errorf("update self review: %w", err)
 	}
-	return requireAffected(res, ErrSelfReviewUnknown)
+	return tx.Commit()
 }
 
-func (s *SQLStore) FinishSelfReview(reviewID string) error {
-	res, err := s.db.Exec(
-		`UPDATE self_reviews SET
-		   finished_at = COALESCE(finished_at, strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-		   updated_at  = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
-		 WHERE review_id = ?`, reviewID)
+// markSelfReviewedSQL marks a match reviewed by self unless a coach already
+// has: the coach mark outranks in both directions.
+const markSelfReviewedSQL = `INSERT INTO match_reviews (match_key, reviewed_by)
+	 VALUES (?, 'self')
+	 ON CONFLICT(match_key) DO UPDATE SET
+	   reviewed_by = 'self',
+	   reviewed_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+	 WHERE match_reviews.reviewed_by <> 'coach'`
+
+func (s *SQLStore) FinishSelfReview(f SelfReviewFinish) error {
+	tx, err := s.db.Begin()
 	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := requireSelfReview(tx, f.ReviewID); err != nil {
+		return err
+	}
+	var members int
+	if err := tx.QueryRow(`SELECT COUNT(*) FROM self_review_matches WHERE review_id = ?`, f.ReviewID).Scan(&members); err != nil {
+		return fmt.Errorf("finish self review: count matches: %w", err)
+	}
+	if members == 0 {
+		return ErrSelfReviewEmpty
+	}
+	if _, err := tx.Exec(
+		`UPDATE self_reviews SET
+		   status      = 'finished',
+		   finished_at = COALESCE(finished_at, `+suppliedInstantOrNow+`),
+		   updated_at  = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+		 WHERE review_id = ?`, f.At, f.ReviewID); err != nil {
 		return fmt.Errorf("finish self review: %w", err)
 	}
-	return requireAffected(res, ErrSelfReviewUnknown)
+	for _, k := range f.MarkSelf {
+		if _, err := tx.Exec(markSelfReviewedSQL, k); err != nil {
+			return fmt.Errorf("finish self review: mark %s reviewed: %w", k, err)
+		}
+	}
+	return tx.Commit()
 }
 
 func (s *SQLStore) DeleteSelfReview(reviewID string) error {
@@ -175,10 +244,13 @@ func (s *SQLStore) SetSelfReviewMatches(reviewID string, matchKeys []string) err
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	if err := requireSelfReview(tx, reviewID); err != nil {
+	if err := requireOpenSelfReview(tx, reviewID); err != nil {
 		return err
 	}
 	matchKeys = distinctKeys(matchKeys)
+	if len(matchKeys) == 0 {
+		return ErrSelfReviewEmpty
+	}
 	if err := removeDepartingSelfReviewMatches(tx, reviewID, matchKeys); err != nil {
 		return err
 	}
@@ -200,7 +272,7 @@ func (s *SQLStore) SetSelfReviewMatches(reviewID string, matchKeys []string) err
 // so a note on a match that stays is not cascaded away by a wholesale
 // delete-then-insert; the survivors have their sort_order rewritten in place
 // by the caller's upsert.
-func removeDepartingSelfReviewMatches(tx *sql.Tx, reviewID string, matchKeys []string) error {
+func removeDepartingSelfReviewMatches(tx txn, reviewID string, matchKeys []string) error {
 	keep := make(map[string]bool, len(matchKeys))
 	for _, k := range matchKeys {
 		keep[k] = true
@@ -220,13 +292,31 @@ func removeDepartingSelfReviewMatches(tx *sql.Tx, reviewID string, matchKeys []s
 	return nil
 }
 
-func requireSelfReview(tx *sql.Tx, reviewID string) error {
+func requireSelfReview(tx txn, reviewID string) error {
 	var exists bool
 	if err := tx.QueryRow(`SELECT EXISTS (SELECT 1 FROM self_reviews WHERE review_id = ?)`, reviewID).Scan(&exists); err != nil {
 		return fmt.Errorf("check self review: %w", err)
 	}
 	if !exists {
 		return ErrSelfReviewUnknown
+	}
+	return nil
+}
+
+// requireOpenSelfReview is requireSelfReview for a write: the sitting must
+// exist AND still be open. Checked inside the writer's transaction, so a
+// finish that commits first is seen.
+func requireOpenSelfReview(tx txn, reviewID string) error {
+	var status SelfReviewStatus
+	err := tx.QueryRow(`SELECT status FROM self_reviews WHERE review_id = ?`, reviewID).Scan(&status)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrSelfReviewUnknown
+	}
+	if err != nil {
+		return fmt.Errorf("check self review: %w", err)
+	}
+	if status == SelfReviewFinished {
+		return ErrSelfReviewFinished
 	}
 	return nil
 }
@@ -266,7 +356,7 @@ func (s *SQLStore) LoadSelfReview(reviewID string) (SelfReview, bool, error) {
 func (s *SQLStore) loadSelfReviews(where string, args []any) ([]SelfReview, error) {
 	// #nosec G202 -- where is one of the constant predicates above.
 	rows, err := s.db.Query(
-		`SELECT review_id, title, created_at, updated_at, COALESCE(finished_at, '')
+		`SELECT review_id, title, status, created_at, updated_at, COALESCE(finished_at, '')
 		 FROM self_reviews `+where+` ORDER BY created_at DESC, review_id`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("load self reviews: %w", err)
@@ -275,7 +365,7 @@ func (s *SQLStore) loadSelfReviews(where string, args []any) ([]SelfReview, erro
 	var out []SelfReview
 	for rows.Next() {
 		var r SelfReview
-		if err := rows.Scan(&r.ReviewID, &r.Title, &r.CreatedAt, &r.UpdatedAt, &r.FinishedAt); err != nil {
+		if err := rows.Scan(&r.ReviewID, &r.Title, &r.Status, &r.CreatedAt, &r.UpdatedAt, &r.FinishedAt); err != nil {
 			return nil, fmt.Errorf("load self reviews: %w", err)
 		}
 		out = append(out, r)
@@ -447,7 +537,7 @@ func (s *SQLStore) UpsertSelfReviewNote(n SelfReviewNote) (SelfReviewNote, error
 // (a bundle restore, a profile move) and leaves the sitting's own stamp
 // alone, so a restore brings back when the sitting was last worked on
 // rather than when it was restored.
-func touchSelfReviewUnlessReplay(tx *sql.Tx, reviewID, suppliedInstant string) error {
+func touchSelfReviewUnlessReplay(tx txn, reviewID, suppliedInstant string) error {
 	if suppliedInstant != "" {
 		return nil
 	}
@@ -459,8 +549,8 @@ func touchSelfReviewUnlessReplay(tx *sql.Tx, reviewID, suppliedInstant string) e
 
 // requireSelfReviewMatch tells a missing review from a match outside it, so
 // each maps to its own sentinel.
-func requireSelfReviewMatch(tx *sql.Tx, reviewID, matchKey string) error {
-	if err := requireSelfReview(tx, reviewID); err != nil {
+func requireSelfReviewMatch(tx txn, reviewID, matchKey string) error {
+	if err := requireOpenSelfReview(tx, reviewID); err != nil {
 		return err
 	}
 	var member bool
@@ -512,6 +602,11 @@ func (s *SQLStore) deleteTouchingSelfReview(reviewID, stmt string, args ...any) 
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	// Absent stays a no-op, like every delete here; a finished sitting is
+	// the one that refuses.
+	if err := requireOpenSelfReview(tx, reviewID); errors.Is(err, ErrSelfReviewFinished) {
+		return err
+	}
 	res, err := tx.Exec(stmt, args...)
 	if err != nil {
 		return err
@@ -529,7 +624,7 @@ func (s *SQLStore) deleteTouchingSelfReview(reviewID, stmt string, args ...any) 
 // transaction, so the open and the moment land together or not at all; a
 // note write that commits first is left as it is (DO NOTHING), and one that
 // commits after simply upgrades the reviewed_only mark it finds.
-func ensureSelfReviewNoteRow(tx *sql.Tx, reviewID, matchKey string) (int64, error) {
+func ensureSelfReviewNoteRow(tx txn, reviewID, matchKey string) (int64, error) {
 	if err := requireSelfReviewMatch(tx, reviewID, matchKey); err != nil {
 		return 0, err
 	}

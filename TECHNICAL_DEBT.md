@@ -383,54 +383,6 @@ schema shape is final:
 **Effort:** M. **Risk:** High — on-disk schema management. Deliberately sequenced
 last so the schema is frozen before the baseline is captured.
 
-## 21. State machines the 2026-11-14 pass left implicit
-
-The 2026-11-14 pass inventoried every implicit state machine and made the
-riskiest explicit. Four were made explicit in this repo: the run slot, the
-parse-run union, the Tesseract probe and the watcher trigger. Three more
-traced bugs were fixed: the profile swap, the bundle import, and the
-ambiguous sentinel. The shape is in `pkg/CLAUDE.md` and `frontend/CLAUDE.md`
-→ **State**. The machines below each have a bug that was traced but is not
-yet fixed. They are ordered by likelihood × blast radius.
-
-- **Coach-return block provenance (M).** `match_coach_notes` keys a block
-  by `note_id` alone. Two returns that carry the same note therefore share
-  one block. Skipping the note in the newer return deletes the block the
-  older return's accept wrote (`pkg/coachreturn/decide.go` `skipNote`).
-  Accepting the older return overwrites newer text. Fix: a `return_id`
-  column (ON DELETE SET NULL); skip removes only a block its own return
-  wrote. Same area, smaller:
-  - `coach_session_focus_items.status` has no `CHECK`, and the frozen
-    status is always `''`.
-  - A coach who quits is recorded as abandoned.
-  - Re-staging a return reassigns a received focus item's `return_id`, so
-    discarding the newer return deletes the item.
-- **Bundle import is not one transaction (M).** The pre-write checks now
-  refuse every conflict the database would refuse later. A crash between
-  the parent rows and the user layer can still strand the parents, and a
-  retry then skips them as existing. Fix: a `Store` method that runs the
-  whole import in one transaction (the `dbtest.Fake` mirror included).
-- **Per-file ledger keyed by basename (L).** `failed_files`, `ingested_files`
-  and the two recognized-skip registries use the filename alone as key.
-  Parking and unparking therefore reach across screenshots folders.
-  Separately, a Tesseract outage counts an attempt against every file it
-  touches, so it can park the whole backlog. Fix: key every per-file table
-  by `(screenshots_dir_id, filename)`. Add a failure kind
-  (`ocr_unavailable | parse_failed`), and count an attempt only for
-  `parse_failed`. A single `screenshot_files` status table with a `CHECK`
-  is the end state.
-- **Smaller (S each).**
-  - Self-review `finished_at` is nullable and Finish is not atomic.
-  - `IgnoreScreenshot` spans four transactions.
-  - Clear/restore never release the claims ledger.
-- **§11 typed-discriminant gaps (S).** These are still bare strings:
-  - `CoachDecision.Decision`
-  - `CoachSessionRow.Source` and `Kind`
-  - `AmbiguousCandidate.Reason`
-  - `Annotation.ExclusionReason`
-  - the maintenance operation
-  - `rosterwatch` `Finding.Kind`, which still has a `default: continue`
-
 ## Out of scope — deliberately not building
 
 So a future pass doesn't re-propose them:
@@ -490,6 +442,20 @@ with measurements, so the next pass does not re-derive them:
   screenshot-type vocabulary**, though they spell some of the same words —
   the probe table says `"all-heroes"` with a hyphen. Both were left alone when
   §11 typed the real vocabulary.
+
+**Checked and dismissed by the 2026-11-14 state pass:**
+
+- **The per-file ledgers stay four tables, not one `screenshot_files`
+  status column.** They record facts a file holds AT ONCE, so a single
+  `status` would have to drop one. A file's hash is registered before OCR,
+  for dedup and the claims ledger, so a file that then fails is registered
+  AND failed. A recognized screen whose read was degraded is skip-listed
+  AND on the Failed list. `pkg/app/ledger_overlap_test.go` pins both
+  overlaps. Collapsing them would cost one of three things: a copy of a
+  failed file escaping dedup, a degraded recognized screen re-OCR'd on
+  every run, or that degradation hidden. What the tables did lack was a
+  shared key, and they now have one: every table is keyed by
+  `(screenshots_dir_id, filename)`.
 
 **Swept clean by the 2026-08-22 standards audit** — recorded so the next pass
 doesn't re-derive them. Each was checked against source, not assumed:

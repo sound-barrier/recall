@@ -74,6 +74,30 @@ func collectFilenamesByKey[T parentRow](rows []T, matchKey string, into map[stri
 	}
 }
 
+// collectFilesByKey adds the (folder, filename) of every row keyed to
+// matchKey.
+func collectFilesByKey[T parentRow](rows []T, matchKey string, into map[db.FileRef]bool) {
+	for _, r := range rows {
+		if rowMatchKey(r) == matchKey {
+			into[rowFile(r)] = true
+		}
+	}
+}
+
+// rowFile is the (folder, filename) a row was read from.
+func rowFile[T parentRow](r T) db.FileRef {
+	return db.FileRef{DirID: rowDirID(r), Filename: rowFilename(r)}
+}
+
+// fileRef normalizes a caller's ref the way the SQL store binds it: an
+// unset folder is the sentinel row.
+func fileRef(file db.FileRef) db.FileRef {
+	if file.DirID == 0 {
+		file.DirID = db.SentinelScreenshotsDirID
+	}
+	return file
+}
+
 // dropByMatchKey filters rows in place, keeping those not keyed to
 // matchKey.
 func dropByMatchKey[T parentRow](rows []T, matchKey string) []T {

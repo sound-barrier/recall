@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// querier is the read surface shared by *sql.DB and *sql.Tx. LoadAll's
+// querier is the read surface shared by *sql.DB and txn. LoadAll's
 // bulk loaders take it so the whole snapshot reads through ONE deferred
 // transaction instead of racing pooled connections.
 type querier interface {
@@ -173,7 +173,15 @@ func (s *SQLStore) Clear() error {
 		}
 	}
 	for _, t := range []string{
-		"failed_files", // references screenshots_dirs RESTRICT — must precede it
+		// Every per-file ledger references screenshots_dirs RESTRICT, so all
+		// of them precede it.
+		"failed_files",
+		// The dedup registry. A standing duplicate is skipped before OCR on
+		// every run, ReParseAll included, so a row surviving a wipe of the
+		// history it describes silently withholds a screenshot forever.
+		"ingested_files",
+		"all_heroes_screenshots",
+		"history_screenshots",
 		"screenshots_dirs",
 		"match_reviews",
 		"match_queue",
@@ -190,12 +198,6 @@ func (s *SQLStore) Clear() error {
 		"pinned_matches",
 		"ambiguous_candidates",
 		"ignored_screenshots",
-		// The dedup registry. A standing duplicate is skipped before OCR on
-		// every run, ReParseAll included, so a row surviving a wipe of the
-		// history it describes silently withholds a screenshot forever.
-		"ingested_files",
-		"all_heroes_screenshots",
-		"history_screenshots",
 		"user_match_data",   // user_match_* children cascade on the match_key FK
 		"match_coach_notes", // tag children cascade
 		"coach_returns",     // coach_return_decisions cascade

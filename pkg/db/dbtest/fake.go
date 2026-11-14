@@ -16,6 +16,9 @@ import (
 // the *Fake to `app.NewWithStore(...)`.
 type Fake struct {
 	mu sync.Mutex
+	// inTx is set while InTransaction runs, which refuses a nested one as
+	// the SQL store does.
+	inTx bool
 
 	Summaries []db.SummaryRow
 	Teams     []db.TeamsRow
@@ -65,7 +68,7 @@ type Fake struct {
 	// "fair game" state. Tests seed this map directly or assert on it
 	// after calling AddIgnoredScreenshot.
 	Ignored       map[string]bool
-	IngestedFiles map[string]db.IngestedFile
+	IngestedFiles map[db.FileRef]db.IngestedFile
 
 	// IgnoredAt maps filename → the timestamp at which it was ignored.
 	// Parallel to Ignored so ListIgnoredScreenshots can return rows in
@@ -80,17 +83,17 @@ type Fake struct {
 	// analog of the all_heroes_screenshots table. Presence means the parser
 	// recognized the PERSONAL "All Heroes" aggregate view and the write path
 	// recorded it so the next parse run skips it. Mirrors Ignored's role.
-	AllHeroes map[string]bool
+	AllHeroes map[db.FileRef]bool
 
 	// History is the same recognized-skip set for the career HISTORY list —
 	// the Fake analog of the history_screenshots table.
-	History map[string]bool
+	History map[db.FileRef]bool
 
 	// FailedFiles is the OCR-failure ledger keyed by filename — the Fake
 	// analog of the failed_files table. RecordFailedFile upserts
 	// (attempts+1, refreshed error/last_failed_at); RemoveFailedFile
 	// deletes. Tests seed rows directly or assert after a parse run.
-	FailedFiles map[string]db.FailedFileRow
+	FailedFiles map[db.FileRef]db.FailedFileRow
 
 	// Ambiguous holds one candidate-list per filename. Tests seed it
 	// directly to verify aggregator behavior for ambiguous screenshots
@@ -161,215 +164,6 @@ func suppliedInstantOrNow(supplied string) string {
 }
 
 var _ db.Store = (*Fake)(nil)
-
-// LoadFilenamesForDir mirrors the SQL store: the parse skip set is scoped to
-// ONE folder, because filename is a basename and a same-named capture in a
-// second folder is a different screenshot.
-func (f *Fake) LoadFilenamesForDir(dirID int64) (map[string]bool, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	out := map[string]bool{}
-	collectForDir(out, dirID, f.Summaries, func(r db.SummaryRow) (string, int64) { return r.Filename, r.ScreenshotsDirID })
-	collectForDir(out, dirID, f.Teams, func(r db.TeamsRow) (string, int64) { return r.Filename, r.ScreenshotsDirID })
-	collectForDir(out, dirID, f.Personals, func(r db.PersonalRow) (string, int64) { return r.Filename, r.ScreenshotsDirID })
-	collectForDir(out, dirID, f.Ranks, func(r db.RankRow) (string, int64) { return r.Filename, r.ScreenshotsDirID })
-	collectForDir(out, dirID, f.Unknowns, func(r db.UnknownRow) (string, int64) { return r.Filename, r.ScreenshotsDirID })
-	return out, nil
-}
-
-func collectForDir[T any](out map[string]bool, dirID int64, rows []T, at func(T) (string, int64)) {
-	for _, r := range rows {
-		if name, dir := at(r); dir == dirID {
-			out[name] = true
-		}
-	}
-}
-
-func (f *Fake) LoadAllFilenames() (map[string]bool, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	out := map[string]bool{}
-	for _, r := range f.Summaries {
-		out[r.Filename] = true
-	}
-	for _, r := range f.Teams {
-		out[r.Filename] = true
-	}
-	for _, r := range f.Personals {
-		out[r.Filename] = true
-	}
-	for _, r := range f.Ranks {
-		out[r.Filename] = true
-	}
-	for _, r := range f.Unknowns {
-		out[r.Filename] = true
-	}
-	return out, nil
-}
-
-// staleKeys adds the match keys of rows older than current to seen. Generic so
-// the five parent tables share one branch instead of five copies.
-func staleKeys[T any](rows []T, current int, seen map[string]struct{}, read func(T) (key string, gen int)) {
-	for _, r := range rows {
-		if key, gen := read(r); gen < current {
-			seen[key] = struct{}{}
-		}
-	}
-}
-
-// StaleParseCount implements db.Store. Mirrors SQLStore: distinct MATCH keys
-// with at least one row below `current`, treating an unstamped 0 as stale the
-// way the SQL treats NULL.
-func (f *Fake) StaleParseCount(current int) (int, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	keys := map[string]struct{}{}
-	// Mirrors SQLStore's exclusion of recognized-registry files, in every
-	// table: their rows are deliberately kept but a re-parse cannot improve
-	// them. (It once applied to summaries only, which the SQL never did.)
-	gen := func(filename, key string, g int) (string, int) {
-		if f.AllHeroes[filename] || f.History[filename] {
-			return "", current
-		}
-		return key, g
-	}
-	staleKeys(f.Summaries, current, keys, func(r db.SummaryRow) (string, int) { return gen(r.Filename, r.MatchKey, r.ParserGeneration) })
-	staleKeys(f.Teams, current, keys, func(r db.TeamsRow) (string, int) { return gen(r.Filename, r.MatchKey, r.ParserGeneration) })
-	staleKeys(f.Personals, current, keys, func(r db.PersonalRow) (string, int) { return gen(r.Filename, r.MatchKey, r.ParserGeneration) })
-	staleKeys(f.Ranks, current, keys, func(r db.RankRow) (string, int) { return gen(r.Filename, r.MatchKey, r.ParserGeneration) })
-	staleKeys(f.Unknowns, current, keys, func(r db.UnknownRow) (string, int) { return gen(r.Filename, r.MatchKey, r.ParserGeneration) })
-	return len(keys), nil
-}
-
-func (f *Fake) LoadAll() (db.Screenshots, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.LoadErr != nil {
-		return db.Screenshots{}, f.LoadErr
-	}
-	dirs := make(map[int64]string, len(f.DirIDs))
-	for path, id := range f.DirIDs {
-		dirs[id] = path
-	}
-	ambig := make(map[string][]db.AmbiguousCandidate, len(f.Ambiguous))
-	for k, v := range f.Ambiguous {
-		ambig[k] = sortedCandidates(v)
-	}
-	return db.Screenshots{
-		Summaries:           append([]db.SummaryRow(nil), f.Summaries...),
-		Teams:               append([]db.TeamsRow(nil), f.Teams...),
-		Personals:           append([]db.PersonalRow(nil), f.Personals...),
-		Ranks:               append([]db.RankRow(nil), f.Ranks...),
-		Unknowns:            append([]db.UnknownRow(nil), f.Unknowns...),
-		ScreenshotsDirs:     dirs,
-		AmbiguousCandidates: ambig,
-	}, nil
-}
-
-func (f *Fake) UpsertSummary(r db.SummaryRow) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.UpsertCalls++
-	if f.UpsertErr != nil {
-		return f.UpsertErr
-	}
-	for i, ex := range f.Summaries {
-		if ex.Filename == r.Filename && ex.ScreenshotsDirID == r.ScreenshotsDirID {
-			r.ID = ex.ID
-			r.ParsedAt = ex.ParsedAt
-			f.Summaries[i] = r
-			return nil
-		}
-	}
-	r.ParsedAt = suppliedInstantOrNow(r.ParsedAt)
-	r.ID = int64(len(f.Summaries) + 1)
-	f.Summaries = append(f.Summaries, r)
-	return nil
-}
-
-func (f *Fake) UpsertTeams(r db.TeamsRow) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.UpsertCalls++
-	if f.UpsertErr != nil {
-		return f.UpsertErr
-	}
-	for i, ex := range f.Teams {
-		if ex.Filename == r.Filename && ex.ScreenshotsDirID == r.ScreenshotsDirID {
-			r.ID = ex.ID
-			r.ParsedAt = ex.ParsedAt
-			f.Teams[i] = r
-			return nil
-		}
-	}
-	r.ParsedAt = suppliedInstantOrNow(r.ParsedAt)
-	r.ID = int64(len(f.Teams) + 1)
-	f.Teams = append(f.Teams, r)
-	return nil
-}
-
-func (f *Fake) UpsertPersonal(r db.PersonalRow) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.UpsertCalls++
-	if f.UpsertErr != nil {
-		return f.UpsertErr
-	}
-	for i, ex := range f.Personals {
-		if ex.Filename == r.Filename && ex.ScreenshotsDirID == r.ScreenshotsDirID {
-			r.ID = ex.ID
-			r.ParsedAt = ex.ParsedAt
-			f.Personals[i] = r
-			return nil
-		}
-	}
-	r.ParsedAt = suppliedInstantOrNow(r.ParsedAt)
-	r.ID = int64(len(f.Personals) + 1)
-	f.Personals = append(f.Personals, r)
-	return nil
-}
-
-func (f *Fake) UpsertRank(r db.RankRow) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.UpsertCalls++
-	if f.UpsertErr != nil {
-		return f.UpsertErr
-	}
-	for i, ex := range f.Ranks {
-		if ex.Filename == r.Filename && ex.ScreenshotsDirID == r.ScreenshotsDirID {
-			r.ID = ex.ID
-			r.ParsedAt = ex.ParsedAt
-			f.Ranks[i] = r
-			return nil
-		}
-	}
-	r.ParsedAt = suppliedInstantOrNow(r.ParsedAt)
-	r.ID = int64(len(f.Ranks) + 1)
-	f.Ranks = append(f.Ranks, r)
-	return nil
-}
-
-func (f *Fake) UpsertUnknown(r db.UnknownRow) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.UpsertCalls++
-	if f.UpsertErr != nil {
-		return f.UpsertErr
-	}
-	for i, ex := range f.Unknowns {
-		if ex.Filename == r.Filename && ex.ScreenshotsDirID == r.ScreenshotsDirID {
-			r.ID = ex.ID
-			r.ParsedAt = ex.ParsedAt
-			f.Unknowns[i] = r
-			return nil
-		}
-	}
-	r.ParsedAt = suppliedInstantOrNow(r.ParsedAt)
-	r.ID = int64(len(f.Unknowns) + 1)
-	f.Unknowns = append(f.Unknowns, r)
-	return nil
-}
 
 // Health reports a canned always-ok snapshot — the Fake has no file
 // to stat and nothing to corrupt. CheckedAt is fixed so tests are
@@ -494,7 +288,7 @@ func (f *Fake) HardDeleteMatch(matchKey string) error {
 	for fn := range doomed {
 		delete(f.Ambiguous, fn)
 	}
-	f.forgetIngestedFiles(doomed)
+	f.forgetIngestedFiles(f.filesOfKeyLocked(matchKey))
 	for fn, cands := range f.Ambiguous {
 		kept := cands[:0]
 		for _, c := range cands {
@@ -551,21 +345,6 @@ func (f *Fake) LoadAllDuplicateLinks() (map[string][]string, error) {
 		out[of] = append(out[of], key)
 	}
 	return out, nil
-}
-
-// forgetIngestedFiles mirrors the SQL store: the deleted match's own files
-// leave the dedup registry, and ingested_files.duplicate_of ON DELETE CASCADE
-// takes every byte-identical copy of one with them. The Fake keeps no engine,
-// so the cascade is spelled out.
-func (f *Fake) forgetIngestedFiles(doomed map[string]bool) {
-	for fn := range doomed {
-		delete(f.IngestedFiles, fn)
-	}
-	for fn, rec := range f.IngestedFiles {
-		if doomed[rec.DuplicateOf] {
-			delete(f.IngestedFiles, fn)
-		}
-	}
 }
 
 // ReAggregateUnknowns walks Fake's Summaries / Teams /

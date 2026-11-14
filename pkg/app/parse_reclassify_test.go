@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"recall/pkg/app"
+	"recall/pkg/db"
 	"recall/pkg/matchedit"
 	"recall/pkg/parser"
 )
@@ -124,7 +125,11 @@ func TestReParseAll_AllHeroesMisfireDoesNotEvictTypedRow(t *testing.T) {
 	if len(fake.Summaries) != 1 || fake.Summaries[0].Filename != file {
 		t.Fatalf("the typed row must survive an all_heroes classification, got %+v", fake.Summaries)
 	}
-	if !fake.AllHeroes[file] {
+	dirID, err := fake.EnsureScreenshotsDir(app.SettingsOf(a).ScreenshotsDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !fake.AllHeroes[db.FileRef{DirID: dirID, Filename: file}] {
 		t.Error("the all_heroes registry entry should still be recorded")
 	}
 }

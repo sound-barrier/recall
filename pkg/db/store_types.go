@@ -1,5 +1,7 @@
 package db
 
+import "recall/pkg/match"
+
 // Domain types — the row/state structs the Store reads and writes. Split
 // out of store.go, which keeps the Store interface + the SQLStore impl.
 
@@ -25,15 +27,36 @@ type QueueState struct {
 // chose to Dismiss on the Unknown tab. `IgnoredAt` is the
 // server-assigned timestamp the Settings panel renders so users can
 // distinguish recent ignores from old ones.
+// FileRef names one screenshot file: the folder it was read from (a
+// screenshots_dirs id) and its basename. Every per-file ledger is keyed by
+// it, because a basename alone is not unique across folders.
+type FileRef struct {
+	DirID    int64
+	Filename string
+}
+
 // IngestedFile is one content-hash registry row (see ingested_files in
-// schema.sql). DuplicateOf is ” for originals.
+// schema.sql). DuplicateOf is the zero FileRef for an original.
 type IngestedFile struct {
 	ContentHash string
-	DuplicateOf string
+	DuplicateOf FileRef
 	// FirstSeenAt is the UTC RFC 3339 stamp of the file's first
 	// registration; a re-parse keeps it.
 	FirstSeenAt string
 }
+
+// IsDuplicate reports whether the file was a byte-identical copy of another.
+func (f IngestedFile) IsDuplicate() bool { return f.DuplicateOf.Filename != "" }
+
+// FailureKind says why a file is in the failure ledger: the parse ran and
+// failed, or it never reached the file because the OCR engine was not there.
+// Only a parse failure counts an attempt.
+type FailureKind string
+
+const (
+	FailureParseFailed    FailureKind = "parse_failed"
+	FailureOCRUnavailable FailureKind = "ocr_unavailable"
+)
 
 type IgnoredRow struct {
 	Filename  string
@@ -47,6 +70,7 @@ type IgnoredRow struct {
 type FailedFileRow struct {
 	Filename         string
 	ScreenshotsDirID int64
+	Kind             FailureKind
 	Error            string
 	Attempts         int
 	FirstFailedAt    string
@@ -91,7 +115,7 @@ type Annotation struct {
 	// ExclusionReason says why this match should not count toward the win
 	// rate — one of the closed vocabulary the schema constrains, or "" for
 	// the overwhelming majority that simply count.
-	ExclusionReason string
+	ExclusionReason ExclusionReason
 	AnnotatedAt     string
 }
 
@@ -356,8 +380,22 @@ type AmbiguousCandidate struct {
 	// occupied complementary bands, and the re-capture sweep matches on
 	// the match's own instant, so it can land anywhere on the axis —
 	// including inside the EAD bridge's window.
-	Reason string
+	Reason CandidateReason
 }
+
+// The two vocabularies below are match's (the read model carries them to
+// the wire); the store's rows hold the same types, and the schema's CHECK
+// constraints mirror them.
+type (
+	CandidateReason = match.CandidateReason
+	ExclusionReason = match.ExclusionReason
+)
+
+const (
+	CandidateFromWindow         = match.CandidateFromWindow
+	CandidateFromDuplicateStats = match.CandidateFromDuplicateStats
+	CandidateFromSameInstant    = match.CandidateFromSameInstant
+)
 
 // ── Coaching ────────────────────────────────────────────────────────────
 //
@@ -381,7 +419,7 @@ type CoachPlayer struct {
 	PlayerID string
 	Handle   string
 	// Kind is CoachKindPlayer or CoachKindTeam.
-	Kind string
+	Kind CoachKind
 }
 
 // CoachNote is one coach-authored note against one of a player's matches.
@@ -460,7 +498,7 @@ func (m CoachNoteMoment) MomentSlot() (id string, order int) { return m.MomentID
 type CoachPlayerSummary struct {
 	ID         int64
 	Handle     string
-	Kind       string
+	Kind       CoachKind
 	NoteCount  int
 	LastNoteAt string
 	// FocusItems is what this coach told that player to work on, in order —
@@ -493,6 +531,12 @@ type MatchCoachNote struct {
 	// into Text — the player reads them as a list down the match.
 	Moments    []MatchCoachNoteMoment
 	AcceptedAt string
+	// ReturnID is the staged return whose accept wrote this block, or 0 when
+	// that return was discarded or the block arrived by bundle or move. A
+	// skip removes only a block its own return wrote. Never serialized: the
+	// id names a row in THIS database, and a bundle or a move would point it
+	// at an unrelated return.
+	ReturnID int64 `json:"-"`
 }
 
 // MatchCoachNoteMoment is one timestamped observation on an accepted note.
@@ -519,7 +563,7 @@ type CoachReturn struct {
 	// Kind says whether PlayerHandle names a player or a TEAM. Without it
 	// the sheet cannot tell "this is addressed to your team" from "this is
 	// about somebody else" — and the two want opposite answers.
-	Kind        string
+	Kind        CoachKind
 	SessionDate string
 	NotesJSON   []byte
 	ImportedAt  string
@@ -529,7 +573,7 @@ type CoachReturn struct {
 
 // CoachDecision is the player's verdict on one staged note.
 type CoachDecision struct {
-	Decision  string // "accepted" | "skipped"
+	Decision  CoachVerdict
 	DecidedAt string
 }
 
@@ -540,8 +584,12 @@ type CoachDecision struct {
 // FinishedAt is "" while the review is in progress. Loaded whole: the
 // member keys in the player's order and every note, keyed by match.
 type SelfReview struct {
-	ReviewID   string
-	Title      string
+	ReviewID string
+	Title    string
+	// Status is read back from the row; a write never sets it. Not in a
+	// bundle: FinishedAt already says it, and a finish is replayed through
+	// FinishSelfReview rather than written onto the parent row.
+	Status     SelfReviewStatus `json:"-"`
 	CreatedAt  string
 	UpdatedAt  string
 	FinishedAt string

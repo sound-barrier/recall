@@ -14,6 +14,7 @@ import { test, expect } from '../_fixtures'
 
 const failedRow = (filename: string, parked: boolean, attempts: number) => ({
   filename,
+  kind: 'parse_failed',
   error: 'decoding image: png: invalid format',
   attempts,
   parked,

@@ -24,7 +24,7 @@ function at(run: ParseRunStatus, finishedThrough = 0): ParseRunState {
 }
 const idle = at({ status: 'idle' })
 const starting = at({ status: 'starting' })
-const running = (runId = 3, kind: 'parse' | 'restore' = 'parse') =>
+const running = (runId = 3, kind: 'parse' | 'restore' | 'backup' = 'parse') =>
   at({ status: 'running', runId, kind, progress: null }, 2)
 const canceling = (runId = 3) => at({ status: 'canceling', runId, kind: 'parse', progress: null }, 2)
 
@@ -91,6 +91,7 @@ describe('parseRunMachine — refused transitions', () => {
     ['a start while a run holds the slot', running(), { type: 'start-requested' }, 'illegal'],
     ['Stop with nothing running', idle, { type: 'cancel-requested' }, 'illegal'],
     ['Stop on a store swap', running(3, 'restore'), { type: 'cancel-requested' }, 'illegal'],
+    ['Stop on the boot backup', running(3, 'backup'), { type: 'cancel-requested' }, 'illegal'],
     ['Stop twice', canceling(), { type: 'cancel-requested' }, 'illegal'],
     ['a POST answer naming another run than the one ticking', running(3), { type: 'start-accepted', runId: 4, kind: 'parse' }, 'illegal'],
     ['a POST answer for a run already over', at({ status: 'idle' }, 3), { type: 'start-accepted', runId: 3, kind: 'parse' }, 'stale'],

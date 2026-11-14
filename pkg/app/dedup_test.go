@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"recall/pkg/app"
+	"recall/pkg/db"
 	"recall/pkg/parser"
 )
 
@@ -56,13 +57,18 @@ func TestDedup_ByteIdenticalCopySkipsOCRAndLinks(t *testing.T) {
 	if skip["a-original.png"] || skip["c-distinct.png"] {
 		t.Errorf("originals must still parse; skip=%v", skip)
 	}
-	if got := fake.IngestedFiles["b-copy.png"].DuplicateOf; got != "a-original.png" {
-		t.Errorf("duplicate_of = %q, want a-original.png", got)
+	dirID, err := fake.EnsureScreenshotsDir(dir)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if got := fake.IngestedFiles["a-original.png"].DuplicateOf; got != "" {
-		t.Errorf("the canonical file must not be marked a duplicate, got %q", got)
+	in := func(name string) db.FileRef { return db.FileRef{DirID: dirID, Filename: name} }
+	if got := fake.IngestedFiles[in("b-copy.png")].DuplicateOf; got != in("a-original.png") {
+		t.Errorf("duplicate_of = %+v, want a-original.png in this folder", got)
 	}
-	if fake.IngestedFiles["c-distinct.png"].ContentHash == fake.IngestedFiles["a-original.png"].ContentHash {
+	if fake.IngestedFiles[in("a-original.png")].IsDuplicate() {
+		t.Error("the canonical file must not be marked a duplicate")
+	}
+	if fake.IngestedFiles[in("c-distinct.png")].ContentHash == fake.IngestedFiles[in("a-original.png")].ContentHash {
 		t.Error("distinct content must hash differently")
 	}
 }

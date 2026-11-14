@@ -51,7 +51,7 @@ func handleDatabaseHealth(a *app.App) http.HandlerFunc {
 func handleDatabaseMaintenance(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
-			Operation string `json:"operation"`
+			Operation app.MaintenanceOp `json:"operation"`
 		}
 		if err := decodeJSONBody(r, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")

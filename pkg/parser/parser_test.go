@@ -1,10 +1,13 @@
 package parser_test
 
 import (
+	"errors"
+	"path/filepath"
 	"reflect"
 	"testing"
 
 	"recall/pkg/parser"
+	"recall/pkg/tesseract"
 )
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -671,5 +674,18 @@ func TestSnapHeroStatKey(t *testing.T) {
 				t.Errorf("SnapHeroStatKey(%q, %q) = %q, want %q", tc.hero, tc.raw, got, tc.want)
 			}
 		})
+	}
+}
+
+// A missing Tesseract is an outage, not a verdict on the screenshot: the
+// error names it with a sentinel so the failure ledger can refuse to count
+// an attempt against the file.
+func TestParseScreenshot_AMissingTesseractIsAnOCROutage(t *testing.T) {
+	tesseract.SetPath(filepath.Join(t.TempDir(), "no-such-tesseract"))
+	t.Cleanup(func() { tesseract.SetPath("tesseract") })
+
+	_, err := parser.ParseScreenshot(filepath.Join(t.TempDir(), "x.png"))
+	if !errors.Is(err, parser.ErrOCRUnavailable) {
+		t.Errorf("ParseScreenshot with no tesseract = %v, want ErrOCRUnavailable", err)
 	}
 }
