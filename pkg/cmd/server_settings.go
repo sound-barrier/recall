@@ -107,9 +107,16 @@ func handleResetTesseract(a *app.App) http.HandlerFunc {
 	}
 }
 
+// watcherStatus is the GET /settings/watcher body: the setting, and what the
+// watcher is actually doing about it.
+type watcherStatus struct {
+	Enabled    bool           `json:"enabled"`
+	WatchState app.WatchState `json:"watch_state"`
+}
+
 func handleGetWatcher(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, r, map[string]bool{"enabled": a.GetWatchEnabled()}, nil)
+		writeJSON(w, r, watcherStatus{Enabled: a.GetWatchEnabled(), WatchState: a.GetWatchState()}, nil)
 	}
 }
 

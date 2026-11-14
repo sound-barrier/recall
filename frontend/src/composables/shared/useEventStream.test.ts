@@ -75,6 +75,7 @@ describe('useEventStream', () => {
     'run-finished',
     'tesseract-status',
     'watch-activity',
+    'watch-state',
   ]
 
   it('subscribes to every event on mount', () => {
@@ -106,6 +107,17 @@ describe('useEventStream', () => {
     expect(onCoachSessionChanged).toHaveBeenCalledWith(true)
     handlers['coach-session-changed']!({ active: false })
     expect(onCoachSessionChanged).toHaveBeenLastCalledWith(false)
+  })
+
+  // The masthead dot follows what the watcher is doing: a folder deleted
+  // under it arrives as watch-state, never as a change to the setting.
+  it('watch-state forwards the watcher state to onWatchState', () => {
+    const onWatchState = vi.fn()
+    mountComposable(streamApi({ onWatchState }))
+    handlers['watch-state']!({ watch_state: 'unavailable' })
+    expect(onWatchState).toHaveBeenCalledWith('unavailable')
+    handlers['watch-state']!(null)
+    expect(onWatchState).toHaveBeenCalledTimes(1)
   })
 
   it('parse-progress hands each tick to onParseProgress', () => {

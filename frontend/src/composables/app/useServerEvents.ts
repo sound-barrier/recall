@@ -51,6 +51,9 @@ export function useServerEvents() {
     // The write gate reads sessionActive, so this is what keeps a second
     // window from offering edits the server is about to refuse.
     onCoachSessionChanged: (active) => { void useCoachStore().onSessionChangedElsewhere(active) },
+    // The watcher's own state, straight into the cache entry the masthead
+    // dot reads.
+    onWatchState: (state) => { getQueryClient().setQueryData(qk.settings.watchState, state) },
   })
 
   // The boot probe's one tesseract-status event may have gone out before

@@ -32,8 +32,12 @@ var (
 	TesseractProbeCandidates = tesseractProbeCandidates
 	ParseTesseractVersion    = parseTesseractVersion
 	CheckTesseract           = checkTesseract
-	RunWatchEvents           = runWatchEvents
 )
+
+// RunWatchEvents runs the event loop with only a new-image callback.
+func RunWatchEvents(events <-chan fsnotify.Event, errs <-chan error, onNewImage func()) {
+	runWatchEvents(events, errs, watchHandlers{onNewImage: onNewImage})
+}
 
 // ── Backup / snapshot seams ───────────────────────────────────────────────
 // The VACUUM INTO seam and the prune helper moved to pkg/snapshot with the
@@ -48,6 +52,7 @@ var (
 	TesseractProbeRetryDelay = &tesseractProbeRetryDelay
 	WatchDebounce            = &watchDebounce
 	WatchRetryAfterBusy      = &watchRetryAfterBusy
+	WatchRecheckInterval     = &watchRecheckInterval
 )
 
 // ── Unexported *App methods (method expressions) ──────────────────────────

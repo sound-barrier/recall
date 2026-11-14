@@ -8,6 +8,7 @@ import {
   GetScreenshotsFolderCandidates,
   GetTesseractStatus,
   GetWatchEnabled,
+  GetWatchState,
   SetCoachingSettings,
   type CoachingSettings,
   type NamedCandidate,
@@ -22,6 +23,12 @@ export function useScreenshotsDirQuery() {
 
 export function useWatchEnabledQuery() {
   return useQuery({ queryKey: qk.settings.watch, queryFn: GetWatchEnabled }, getQueryClient())
+}
+
+// What the watcher is doing — seeded by this read, then kept current by the
+// `watch-state` event writing into the same cache entry (useServerEvents).
+export function useWatchStateQuery() {
+  return useQuery({ queryKey: qk.settings.watchState, queryFn: GetWatchState }, getQueryClient())
 }
 
 export function useExitOnCloseQuery() {

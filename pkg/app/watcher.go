@@ -22,26 +22,57 @@ var watchDebounce = 60 * time.Second
 // tries again once the slot frees.
 var watchRetryAfterBusy = 5 * time.Second
 
+// WatchState is what the folder watcher is doing — not what the Watch
+// setting asks for. GET /api/v1/settings/watcher and the "watch-state" event
+// carry it.
+type WatchState string
+
+const (
+	// WatchStateOff is no watcher: Watch is off.
+	WatchStateOff WatchState = "off"
+	// WatchStateWatching is a watcher open on the screenshots folder.
+	WatchStateWatching WatchState = "watching"
+	// WatchStateUnavailable is Watch on with no folder it can watch: unset,
+	// missing, unreadable, or deleted while watched. It retries on its own.
+	WatchStateUnavailable WatchState = "unavailable"
+)
+
+// watchRecheckInterval is how often an unavailable watcher looks for its
+// folder again.
+var watchRecheckInterval = 5 * time.Second
+
 // startWatching begins watching the configured screenshots directory
 // for newly created image files. Each new file resets a debounce timer;
 // when the timer elapses (watchDebounce after the last new file), the
-// parser runs and the frontend is notified via a Wails event.
+// parser runs and the frontend is notified via a Wails event. A folder it
+// cannot watch leaves it unavailable, looking again every
+// watchRecheckInterval.
 func (a *App) startWatching() {
 	a.watchMu.Lock()
-	defer a.watchMu.Unlock()
+	changed := a.openWatcherLocked()
+	a.watchMu.Unlock()
+	if changed {
+		a.emitWatchState()
+	}
+}
+
+// openWatcherLocked opens the watcher on the configured folder, or records
+// why it cannot, and reports whether the watch state changed. Callers hold
+// watchMu.
+func (a *App) openWatcherLocked() bool {
 	if a.watcher != nil {
-		return // already watching
+		return false // already watching
 	}
 	dir := a.settingsSnapshot().ScreenshotsDir
 	logger := applog.Subsystem("watch")
 	if dir == "" {
 		logger.Info("no screenshots directory configured, skipping")
-		return
+		return a.setWatchStateLocked(WatchStateUnavailable)
 	}
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		logger.Error("NewWatcher failed", "err", err)
-		return
+		return a.becomeUnavailableLocked()
 	}
 	if err := w.Add(dir); err != nil {
 		// `slog.String("dir", dir)` escapes any control char that
@@ -50,7 +81,7 @@ func (a *App) startWatching() {
 		// the historical `%q` formatting in the log.Printf days.
 		logger.Error("cannot watch directory", "dir", dir, "err", err)
 		_ = w.Close()
-		return
+		return a.becomeUnavailableLocked()
 	}
 	a.watcher = w
 	a.watchedDir = dir
@@ -58,15 +89,107 @@ func (a *App) startWatching() {
 
 	go func() {
 		defer applog.RecoverPanic("watch")
-		a.runWatchLoop(w)
+		a.runWatchLoop(w, dir)
 	}()
+	return a.setWatchStateLocked(WatchStateWatching)
 }
 
-func (a *App) runWatchLoop(w *fsnotify.Watcher) {
-	runWatchEvents(w.Events, w.Errors, func() {
-		a.noteWatchActivity()
-		a.scheduleParseDebounced()
+// becomeUnavailableLocked records a folder the watcher cannot watch and arms
+// the recheck that looks for it again. Callers hold watchMu.
+func (a *App) becomeUnavailableLocked() bool {
+	if a.watchRecheck != nil {
+		a.watchRecheck.Stop()
+	}
+	a.watchRecheckGen++
+	gen := a.watchRecheckGen
+	a.watchRecheck = time.AfterFunc(watchRecheckInterval, func() {
+		defer applog.RecoverPanic("watch")
+		a.recheckWatchedFolder(gen)
 	})
+	return a.setWatchStateLocked(WatchStateUnavailable)
+}
+
+// recheckWatchedFolder tries the folder again for recheck round gen, unless
+// a stop or a newer round has replaced it.
+func (a *App) recheckWatchedFolder(gen uint64) {
+	a.watchMu.Lock()
+	if gen != a.watchRecheckGen || a.watchState != WatchStateUnavailable {
+		a.watchMu.Unlock()
+		return
+	}
+	a.watchRecheck = nil
+	changed := a.openWatcherLocked()
+	a.watchMu.Unlock()
+	if changed {
+		a.emitWatchState()
+	}
+}
+
+// watchedFolderGone closes watcher w after its folder was deleted or moved
+// away, leaving the watch unavailable until the folder returns. A no-op for
+// a watcher already replaced or stopped.
+func (a *App) watchedFolderGone(w *fsnotify.Watcher) {
+	a.watchMu.Lock()
+	if a.watcher != w {
+		a.watchMu.Unlock()
+		return
+	}
+	applog.Subsystem("watch").Warn("watched directory is gone", "dir", a.watchedDir)
+	a.watcher = nil
+	a.watchedDir = ""
+	a.resetDebounceLocked()
+	changed := a.becomeUnavailableLocked()
+	a.watchMu.Unlock()
+	// Closed off this goroutine: it is the event loop's own, and the close
+	// ends that loop.
+	go func() { _ = w.Close() }()
+	if changed {
+		a.emitWatchState()
+	}
+}
+
+// setWatchStateLocked steps the watch state and reports whether it changed.
+// Callers hold watchMu and emit after letting it go.
+func (a *App) setWatchStateLocked(next WatchState) bool {
+	if a.watchState == next {
+		return false
+	}
+	a.watchState = next
+	return true
+}
+
+// GetWatchState reports what the watcher is doing now.
+func (a *App) GetWatchState() WatchState {
+	a.watchMu.Lock()
+	defer a.watchMu.Unlock()
+	if a.watchState == "" {
+		return WatchStateOff
+	}
+	return a.watchState
+}
+
+// WatchStateEvent is the payload of the "watch-state" event.
+type WatchStateEvent struct {
+	WatchState WatchState `json:"watch_state"`
+}
+
+func (a *App) runWatchLoop(w *fsnotify.Watcher, dir string) {
+	runWatchEvents(w.Events, w.Errors, watchHandlers{
+		dir: dir,
+		onNewImage: func() {
+			a.noteWatchActivity()
+			a.scheduleParseDebounced()
+		},
+		onDirGone: func() { a.watchedFolderGone(w) },
+	})
+}
+
+// watchHandlers is what the event loop calls back: onNewImage for each new
+// screenshot, onDirGone (when set) once dir itself is removed or renamed.
+type watchHandlers struct {
+	dir        string
+	onNewImage func()
+	onDirGone  func()
 }
 
 // WatchActivityEvent is emitted on the "watch-activity" channel/event
@@ -117,26 +240,24 @@ func (a *App) watchActivityLocked() WatchActivityEvent {
 // *fsnotify.Watcher so tests can feed synthetic channels. Returns when
 // either channel closes — matches the production behavior where the
 // watcher's goroutine exits on shutdown.
-func runWatchEvents(events <-chan fsnotify.Event, errs <-chan error, onTrigger func()) {
+func runWatchEvents(events <-chan fsnotify.Event, errs <-chan error, on watchHandlers) {
 	for {
 		select {
 		case ev, ok := <-events:
 			if !ok {
 				return
 			}
-			// Care only about new files. Write events fire repeatedly
-			// during a screenshot save; Create is the cleanest signal.
-			if ev.Op&fsnotify.Create == 0 {
-				continue
+			if on.isDirGone(ev) {
+				on.onDirGone()
+				return
 			}
-			ext := strings.ToLower(filepath.Ext(ev.Name))
-			if ext != ".png" && ext != ".jpg" && ext != ".jpeg" {
+			if !isNewImage(ev) {
 				continue
 			}
 			applog.Subsystem("watch").Info("new file — debouncing parse",
 				"file", filepath.Base(ev.Name),
 				"debounce", watchDebounce)
-			onTrigger()
+			on.onNewImage()
 		case err, ok := <-errs:
 			if !ok {
 				return
@@ -144,6 +265,23 @@ func runWatchEvents(events <-chan fsnotify.Event, errs <-chan error, onTrigger f
 			applog.Subsystem("watch").Error("event channel error", "err", err)
 		}
 	}
+}
+
+// isNewImage reports whether ev created a screenshot. Only Create counts:
+// Write events fire repeatedly during a save.
+func isNewImage(ev fsnotify.Event) bool {
+	if ev.Op&fsnotify.Create == 0 {
+		return false
+	}
+	ext := strings.ToLower(filepath.Ext(ev.Name))
+	return ext == ".png" || ext == ".jpg" || ext == ".jpeg"
+}
+
+// isDirGone reports whether ev removed or renamed the watched folder itself.
+func (on watchHandlers) isDirGone(ev fsnotify.Event) bool {
+	return on.onDirGone != nil && on.dir != "" &&
+		filepath.Clean(ev.Name) == filepath.Clean(on.dir) &&
+		ev.Op&(fsnotify.Remove|fsnotify.Rename) != 0
 }
 
 // debouncePhase is where the watcher's parse trigger stands.
@@ -246,20 +384,40 @@ func (a *App) runSlotReleased() {
 // timer. Safe to call when no watcher is running.
 func (a *App) stopWatching() {
 	a.watchMu.Lock()
-	defer a.watchMu.Unlock()
+	changed := a.closeWatcherLocked()
+	a.watchMu.Unlock()
+	if changed {
+		a.emitWatchState()
+	}
+}
+
+// closeWatcherLocked stops the watcher, its debounce and its recheck, and
+// reports whether the watch state changed. Callers hold watchMu.
+func (a *App) closeWatcherLocked() bool {
+	a.resetDebounceLocked()
+	a.watchPending = 0
+	if a.watchRecheck != nil {
+		a.watchRecheck.Stop()
+		a.watchRecheck = nil
+	}
+	a.watchRecheckGen++
+	if a.watcher != nil {
+		prev := a.watchedDir
+		_ = a.watcher.Close()
+		a.watcher = nil
+		a.watchedDir = ""
+		applog.Subsystem("watch").Info("stopped watching", "dir", prev)
+	}
+	return a.setWatchStateLocked(WatchStateOff)
+}
+
+// resetDebounceLocked drops any pending round: a timer still out finds its
+// generation replaced. Callers hold watchMu.
+func (a *App) resetDebounceLocked() {
 	if a.watchTrigger.timer != nil {
 		a.watchTrigger.timer.Stop()
 	}
 	a.watchTrigger = debounce{phase: debounceIdle, gen: a.watchTrigger.gen + 1}
-	a.watchPending = 0
-	if a.watcher == nil {
-		return
-	}
-	prev := a.watchedDir
-	_ = a.watcher.Close()
-	a.watcher = nil
-	a.watchedDir = ""
-	applog.Subsystem("watch").Info("stopped watching", "dir", prev)
 }
 
 // GetWatchEnabled reports whether the watcher is currently active.
