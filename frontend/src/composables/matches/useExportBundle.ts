@@ -24,6 +24,9 @@ export interface ExportBundleRequest {
 export function useExportBundle(deps: ExportBundleDeps) {
   const exportBundleOpen = ref(false)
   const exportBundleSelectedKeys = ref<string[]>([])
+  // The modal's Export and Cancel hold on this until the request ends, and a
+  // second confirm while it is true is refused — one export per confirm.
+  const exportingBundle = ref(false)
   function onExportBundleRequest(matchKeys: string[]) {
     exportBundleSelectedKeys.value = matchKeys
     exportBundleOpen.value = true
@@ -41,6 +44,8 @@ export function useExportBundle(deps: ExportBundleDeps) {
   }
 
   async function onExportBundleConfirm(request: ExportBundleRequest) {
+    if (exportingBundle.value) return
+    exportingBundle.value = true
     try {
       const saved = await ExportBundle({
         matchKeys: exportBundleSelectedKeys.value,
@@ -58,6 +63,7 @@ export function useExportBundle(deps: ExportBundleDeps) {
     } catch (e) {
       deps.onError(String(e))
     } finally {
+      exportingBundle.value = false
       exportBundleOpen.value = false
       exportBundleSelectedKeys.value = []
     }
@@ -66,6 +72,7 @@ export function useExportBundle(deps: ExportBundleDeps) {
   return {
     exportBundleOpen,
     exportBundleSelectedKeys,
+    exportingBundle,
     onExportBundleRequest,
     closeExportBundle,
     onExportMatchesCSV,

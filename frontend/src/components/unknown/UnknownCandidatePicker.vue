@@ -12,7 +12,11 @@ import { useUiStore } from '@/stores/ui'
 // escape. The active candidate (last hovered / focused) drives the pane. Emits
 // `pick` with the resolved-to key — a candidate's match_key, or a freshly-minted
 // match-<ts> key; the parent (UnknownMapsView) calls ResolveAmbiguousMatch.
-const props = defineProps<{ rec: MatchRecord }>()
+const props = defineProps<{
+  rec: MatchRecord
+  /** A pick on this card is in flight — every choice holds until it lands. */
+  resolving?: boolean
+}>()
 const emit = defineEmits<{ pick: [resolvedTo: string] }>()
 
 const matchesStore = useMatchesStore()
@@ -102,7 +106,7 @@ const { writesLocked, lockedTitle, sessionActive } = useWriteGate()
           <button
             type="button"
             class="btn primary candidate-attach"
-            :disabled="writesLocked"
+            :disabled="writesLocked || resolving"
             :title="lockedTitle('Attach this screenshot to the match')"
             @click="emit('pick', cand.match_key)"
           >
@@ -113,7 +117,7 @@ const { writesLocked, lockedTitle, sessionActive } = useWriteGate()
           v-if="freshKey()"
           type="button"
           class="btn ghost candidate-fresh"
-          :disabled="writesLocked"
+          :disabled="writesLocked || resolving"
           :title="lockedTitle('Keep this screenshot as its own match')"
           @click="emit('pick', freshKey()!)"
         >

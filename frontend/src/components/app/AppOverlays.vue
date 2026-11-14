@@ -97,6 +97,7 @@ const {
   unknownRecords,
   exportBundleOpen,
   exportBundleSelectedKeys,
+  exportingBundle,
   records,
 } = storeToRefs(matchesStore)
 
@@ -278,6 +279,7 @@ const lightboxSrc = computed(() => {
     :selected-count="exportBundleSelectedKeys.length"
     :hidden-count="hiddenRecords.length"
     :unknown-count="unknownRecords.length"
+    :exporting="exportingBundle"
     @close="closeExportBundle"
     @export="onExportBundleConfirm"
   />

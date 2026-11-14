@@ -12,6 +12,8 @@
  */
 import { test, expect, type Page } from '@playwright/test'
 
+import { loanSlip, mockCoachSession, pinSessionResume } from '../_coach'
+
 // Walk the tour forward by pressing Next until the callout heading
 // matches `re` — heading-driven so the walk survives step-list edits.
 async function walkToHeading(page: Page, re: RegExp, max = 30) {
@@ -146,6 +148,59 @@ test.describe('onboarding tour — first-launch behavior', () => {
       () => localStorage.getItem('recall.onboardingCompleted'),
     )
     expect(completed).toBe('true')
+  })
+
+  // Next on the sample step seeds and switches, and nothing stopped a second
+  // press while the first was still seeding: both ran, twice each.
+  test('a double press of Next on the sample step seeds once', async ({ page }) => {
+    let seeds = 0
+    let release: () => void = () => {}
+    const held = new Promise<void>((resolve) => { release = resolve })
+    await page.route('**/api/v1/profiles/test/seed', async (route) => {
+      seeds++
+      await held
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ profile: 'test', matches: 500, already_seeded: false }) })
+    })
+    await page.route('**/api/v1/profiles/active', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ active: 'test', profiles: ['main', 'test'] }) })
+    })
+
+    await page.goto('/')
+    const tour = page.getByTestId('onboarding-tour')
+    await expect(tour).toBeVisible()
+    await walkToHeading(page, /explore with real data/i)
+    const next = tour.getByRole('button', { name: /next/i })
+    const box = await next.boundingBox()
+    if (!box) throw new Error('Next has no box')
+    await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2)
+
+    await expect.poll(() => seeds).toBe(1)
+    await page.waitForTimeout(300)
+    expect(seeds).toBe(1)
+    release()
+    await expect(page.locator('.tour-callout-heading')).toContainText(/explore, then clean up/i, { timeout: 15000 })
+  })
+
+  // A coaching session refuses the sample profile, and the refusal came back
+  // as a quiet success: Skip and the sample step's Next did nothing at all,
+  // leaving Escape as the only way out of a tour that would not move.
+  test('Skip during a coaching session finishes the tour and says why', async ({ page }) => {
+    let seeds = 0
+    await page.route('**/api/v1/profiles/test/seed', async (route) => {
+      seeds++
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
+    })
+    await pinSessionResume(page)
+    await mockCoachSession(page, { active: true })
+    await page.goto('/')
+    const tour = page.getByTestId('onboarding-tour')
+    await expect(tour).toBeVisible()
+    await expect(loanSlip(page)).toBeVisible()
+
+    await tour.getByRole('button', { name: /skip/i }).click()
+    await expect(tour).toBeHidden()
+    await expect(page.getByText(/coaching session is open/i).first()).toBeVisible()
+    expect(seeds).toBe(0)
   })
 
   test('does NOT re-appear after completion (reload)', async ({ page }) => {

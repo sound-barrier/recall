@@ -374,4 +374,56 @@ test.describe('coaching from replay codes', () => {
     await expect(page.getByRole('button', { name: /End anyway/ })).toHaveCount(0)
     await expect(page.getByRole('button', { name: /Use a replay code/ })).toBeVisible()
   })
+
+  // Escape closed the dialog while the open was still on the wire, and
+  // reopening reset its busy flag — so a second Start sent a second session
+  // open, and the first to land closed the reopened dialog under the coach.
+  test('Escape cannot close the dialog while its session is opening', async ({ page }) => {
+    let opens = 0
+    let release: () => void = () => {}
+    const held = new Promise<void>((resolve) => { release = resolve })
+    await mockReplaySession(page)
+    await page.route('**/api/v1/coach/session/replay', async (route: Route) => {
+      opens++
+      await held
+      await route.fallback()
+    })
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Reviews/ }).click()
+    await page.getByRole('button', { name: /Use a replay code/ }).click()
+    await addCode(page, CODE_A)
+    await page.getByRole('button', { name: 'Start review' }).click()
+    await expect.poll(() => opens).toBe(1)
+
+    await page.keyboard.press('Escape')
+    const dialog = page.getByTestId('coach-from-codes')
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Start review' })).toBeDisabled()
+
+    release()
+    await confirmPlayer(page, 'Sable')
+    expect(opens).toBe(1)
+  })
+
+  // A refused open used to close the dialog anyway, and the codes the coach
+  // had typed in went with it.
+  test('a refused open keeps the dialog and the codes', async ({ page }) => {
+    await mockReplaySession(page)
+    await page.route('**/api/v1/coach/session/replay', async (route: Route) => {
+      await route.fulfill({ status: 500, contentType: 'application/problem+json', body: '{"title":"the server fell over"}' })
+    })
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Reviews/ }).click()
+    await page.getByRole('button', { name: /Use a replay code/ }).click()
+    await addCode(page, CODE_A)
+    await addCode(page, CODE_B)
+    await page.getByRole('button', { name: 'Start review' }).click()
+
+    await expect(page.getByText(/the server fell over/).first()).toBeVisible()
+    const dialog = page.getByTestId('coach-from-codes')
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByText(CODE_A)).toBeVisible()
+    await expect(dialog.getByText(CODE_B)).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Start review' })).toBeEnabled()
+  })
 })

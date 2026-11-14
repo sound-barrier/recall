@@ -35,10 +35,13 @@ export function useFirstRun() {
     await settingsStore.pickDetectedSource(path)
   }
 
-  async function onFirstRunPickCustomSource() {
+  // Dismisses the way the modal's own buttons do, rename included — the
+  // modal cannot, since it does not know whether the native dialog was
+  // cancelled.
+  async function onFirstRunPickCustomSource(renamedTo: string | null) {
     try {
       await settingsStore.pickDir()
-      if (settingsStore.screenshotsDir) ack()
+      if (settingsStore.screenshotsDir) onFirstRunDismiss(renamedTo)
     } catch (e) {
       appStore.setErrorFromRaw(String(e))
     }

@@ -297,6 +297,7 @@ export const useMatchesStore = defineStore('matches', () => {
     // Export-bundle modal + dispatch (delegated to useExportBundle)
     exportBundleOpen: exportBundle.exportBundleOpen,
     exportBundleSelectedKeys: exportBundle.exportBundleSelectedKeys,
+    exportingBundle: exportBundle.exportingBundle,
     onExportBundleRequest: exportBundle.onExportBundleRequest,
     showOnlyMatches,
     closeExportBundle: exportBundle.closeExportBundle,

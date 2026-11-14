@@ -396,31 +396,57 @@ export function useOnboardingTour(opts: UseOnboardingTourOptions = {}) {
     }
   }
 
+  // One step at a time. Next on the sample step seeds and switches profiles,
+  // and a second press while that was still running did it all twice.
+  // Left set after a seed that succeeded: the reload it started is the end.
+  let stepping = false
+  async function stepOnce(work: () => Promise<boolean | void>) {
+    if (stepping) return
+    stepping = true
+    try {
+      if ((await work()) === true) return
+      stepping = false
+    } catch (e) {
+      stepping = false
+      throw e
+    }
+  }
+
+  // The "explore-sample" step seeds + switches into the test profile, which
+  // reloads the SPA; on success this never returns (the tour reopens at the
+  // parked step). A refusal — a coaching session is open, or the seed failed —
+  // falls through to the caller's plain path so the user still reaches Done.
+  async function seedTowards(resumeIndex: number): Promise<boolean> {
+    if (!opts.actions?.seedAndSwitchToTest) return false
+    try {
+      await opts.actions.seedAndSwitchToTest(resumeIndex)
+      return true
+    } catch (_) {
+      return false
+    }
+  }
+
   async function next() {
-    if (isLastStep.value) {
-      finish()
-      return
-    }
-    // The "explore-sample" step seeds + switches into the test profile,
-    // which reloads the SPA; on success this never returns (the tour
-    // reopens at the parked step). On failure, fall through to a plain
-    // advance so the user still reaches Done.
-    if (step.value.id === 'explore-sample' && opts.actions?.seedAndSwitchToTest) {
-      try {
-        await opts.actions.seedAndSwitchToTest(stepIndex.value + 1)
-        return
-      } catch (_) { /* fall through to a plain advance */ }
-    }
-    const prev = stepIndex.value
-    stepIndex.value += 1
-    await applyStepEffects(stepIndex.value, prev)
+    await stepOnce(async () => {
+      if (isLastStep.value) {
+        finish()
+        return false
+      }
+      if (step.value.id === 'explore-sample' && await seedTowards(stepIndex.value + 1)) return true
+      const prev = stepIndex.value
+      stepIndex.value += 1
+      await applyStepEffects(stepIndex.value, prev)
+      return false
+    })
   }
 
   async function prev() {
     if (isFirstStep.value) return
-    const prevIdx = stepIndex.value
-    stepIndex.value -= 1
-    await applyStepEffects(stepIndex.value, prevIdx)
+    await stepOnce(async () => {
+      const prevIdx = stepIndex.value
+      stepIndex.value -= 1
+      await applyStepEffects(stepIndex.value, prevIdx)
+    })
   }
 
   async function goToStep(index: number) {
@@ -450,13 +476,11 @@ export function useOnboardingTour(opts: UseOnboardingTourOptions = {}) {
   // no seed action wired (the unit harness), or the seed/switch rejects — so
   // Skip never traps the user. (Escape stays a pure finish; see OnboardingTour.)
   async function skip() {
-    if (!isLastStep.value && opts.actions?.seedAndSwitchToTest) {
-      try {
-        await opts.actions.seedAndSwitchToTest(totalSteps - 1)
-        return
-      } catch (_) { /* fall through to a plain finish */ }
-    }
-    finish()
+    await stepOnce(async () => {
+      if (!isLastStep.value && await seedTowards(totalSteps - 1)) return true
+      finish()
+      return false
+    })
   }
 
   // Re-open from step 0 (Settings → Advanced "Replay onboarding tour").
