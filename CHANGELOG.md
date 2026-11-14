@@ -1,5 +1,71 @@
 # Changelog
 
+## [0.35.0](https://github.com/sound-barrier/recall/compare/v0.34.1...v0.35.0) (2026-11-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* **app:** ErrStoreSwapInProgress (a coaching-session open during a swap) answers 503 store-swapping, not 409 conflict. Every store-backed operation may answer 503 (StoreUnavailable response).
+* the parse-complete and parse-canceled events are replaced by run-finished. parse-progress gains run_id. POST /api/v1/parses answers 202 with {run_id}. GET /api/v1/parses/active returns a run-slot snapshot discriminated on state ({state: idle}, or {state, run_id, kind, done, total}) instead of {running, done, total, scope}.
+
+### Features
+
+* **app:** report what the folder watcher is doing as watch_state ([5605faa](https://github.com/sound-barrier/recall/commit/5605faaa7a1ac61939c704748edcc7d2be3ec474))
+
+
+### Bug Fixes
+
+* **ambiguous:** let a screenshot leave the sentinel with no candidates ([317fcd8](https://github.com/sound-barrier/recall/commit/317fcd83ca1bfbfeb5f7059560523b9cb6bd9327))
+* **app:** keep a staged self-update and own its state in one place ([3d858db](https://github.com/sound-barrier/recall/commit/3d858db4d55591fbd2575135c56cca5e03cb8ee7))
+* **app:** lease the store through a holder and hold the write gate ([18f34ad](https://github.com/sound-barrier/recall/commit/18f34addbcc5534e451a70a78df7ebabec063e87))
+* **cmd:** give the two self-update refusals their own problem types ([1c32f8d](https://github.com/sound-barrier/recall/commit/1c32f8d2d6e4a36b782c1fe7d4346869445e135b))
+* **coach:** refuse a session open under the lock a swap takes ([db29ec7](https://github.com/sound-barrier/recall/commit/db29ec7209cbd66066512d497900574df7d11ac3))
+* **db:** scope a reclassify's sibling wipe to the file's own folder ([7b71b37](https://github.com/sound-barrier/recall/commit/7b71b378115f733d7b3e4c54b08693ae0b749d34))
+* **deps:** build with Go 1.27.4 for GO-2026-6859 ([8c7ba67](https://github.com/sound-barrier/recall/commit/8c7ba674efd5f7e16df1a56b4ee19431cd1cf675))
+* give the Tesseract status a state, and let no stale probe win ([4979c04](https://github.com/sound-barrier/recall/commit/4979c04edd0fe723f791b8021d624aebca859da8))
+* **import:** refuse a taken replay code before writing anything ([07f199a](https://github.com/sound-barrier/recall/commit/07f199af8afbbd1bd158f842a25b2fa4b4d85676))
+* make the run slot an explicit state machine ([90e4035](https://github.com/sound-barrier/recall/commit/90e40355697c99c749efaaa71b40637c6559ec77))
+* **profiles:** land a failed profile switch on a working profile ([d3f8f88](https://github.com/sound-barrier/recall/commit/d3f8f887cb3c49262bb269898bee8468d07c71ea))
+* **sse:** open the stream at once and never drop a state event ([0eb2ba5](https://github.com/sound-barrier/recall/commit/0eb2ba5e456b362ac4354452ebce8624055eb441))
+* **watch:** keep a parse trigger that finds the slot busy ([b88e5d4](https://github.com/sound-barrier/recall/commit/b88e5d4aba91f7c8649b082ef8f50830b3bb45f2))
+
+
+### Refactors
+
+* **app:** keep the run slot in the file that drives it ([eb44eb6](https://github.com/sound-barrier/recall/commit/eb44eb6984a12fb2ac92c399630517efb3b55f9d))
+* **matches:** drop the narrow popover's unused clause count ([42bf549](https://github.com/sound-barrier/recall/commit/42bf549f1014ece95c49c02f878b79636a44fe0e))
+
+
+### Documentation
+
+* **debt:** record the state machines this pass left implicit ([dbf453a](https://github.com/sound-barrier/recall/commit/dbf453ab48faea093fe7ec8fea1a356ceebcb65f))
+* record the store holder, write gate, watch_state and updater ([50bcf47](https://github.com/sound-barrier/recall/commit/50bcf47f64530ee722fabed69c6a5c1adf9ab4c3))
+* **releases:** say when re-running the tag job cannot recover ([4eb4421](https://github.com/sound-barrier/recall/commit/4eb4421716df5887315eec8ce2ddba02ebf82ce4))
+* state how an explicit state machine is written here ([b2e9335](https://github.com/sound-barrier/recall/commit/b2e93359418ad58f1cbaa81e7f2d3d4e6b8af9d5))
+
+
+### Build & Packaging
+
+* **deps:** bump jdx/mise-action from 5.2.3 to 5.2.6 ([60324c0](https://github.com/sound-barrier/recall/commit/60324c0bb2381701812ae57320fea614202c8b3f))
+* **deps:** bump the weekly-deps group (frontend, tools, Go, actions) ([8ad8709](https://github.com/sound-barrier/recall/commit/8ad8709b93e43c1b3430494cf30f25689a01870a))
+* **deps:** let @tiptap/vue-3 pin its menu extensions ([9498a9d](https://github.com/sound-barrier/recall/commit/9498a9db7e0f21c11d954108b9be4e4cf7c30d65))
+* raise the app JS budgets for the explicit run machine ([7f6defb](https://github.com/sound-barrier/recall/commit/7f6defbd5fc8a5b54c94ea90134605e0785716ac))
+
+
+### CI
+
+* add the alex-p tesseract-ocr5 PPA signing key ([9cde96d](https://github.com/sound-barrier/recall/commit/9cde96dfa95ab89830dcfb844843788888c24b39))
+* allowlist the pinned Tesseract PPA key fingerprint in gitleaks ([3469adf](https://github.com/sound-barrier/recall/commit/3469adfb22b825c0265437c684b3587e9bf7f048))
+* install Tesseract from the PPA without Launchpad's API ([ff8b15c](https://github.com/sound-barrier/recall/commit/ff8b15ce90a997eef6cd8d664570f6f66789122d))
+* re-run a Dependabot PR's failed jobs once ([6c021d8](https://github.com/sound-barrier/recall/commit/6c021d86ce92fba71fdf06fc1fc8b06e4a299d17))
+* tag a release even when release-please fails, and flag a stall ([f0fa745](https://github.com/sound-barrier/recall/commit/f0fa745b8da6dd13c6b871e3356d7c102f66f5a0))
+* teach typos gpg's fpr record type ([8215ca5](https://github.com/sound-barrier/recall/commit/8215ca55bafc23b662836021f68b46e7429afe8d))
+
+
+### Tests
+
+* **release:** keep the update-check tests off the network ([987c29d](https://github.com/sound-barrier/recall/commit/987c29d3baff0e0e506c1f7dc0494a6ad3972b45))
+
 ## [0.34.1](https://github.com/sound-barrier/recall/compare/v0.34.0...v0.34.1) (2026-11-02)
 
 
