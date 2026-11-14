@@ -294,6 +294,29 @@ enabled type-checked rules are the ones that agree with `vue-tsc`. Corollary:
 can't resolve a type across the SFC boundary (it reads as an error/`any`
 type); put it in a sibling `.ts` module (e.g. `parse-progress.ts`).
 
+## State
+
+The frontend half of the rule in `pkg/CLAUDE.md`'s **State** section.
+Exemplar: the parse run, `composables/ingest/parseRunMachine.ts`.
+
+- **A discriminated union on `status`, with one transition function.**
+  `stepParseRun(state, event)` returns the next state plus at most one effect
+  (`ended`), or a refusal (`stale`, `illegal`) that leaves the state as it
+  was. Nothing else assigns the state. Switch on `status` and let
+  `switch-exhaustiveness-check` keep the cases complete.
+- **The store derives, it does not mirror.** `parseBusy`, `cancelingParse`
+  and `parseProgress` are computeds over the one state. A second ref that
+  must be kept in step is how the old Stop button stuck on "Canceling…".
+- **Events and resync reads carry their run.** Every server event names its
+  `run_id`, and a resync snapshot is applied with the generation it was read
+  at, so a late tick, a replayed end, or a GET that resolves after the run
+  ended changes nothing.
+- **Server truth stays in vue-query; the machine holds only what the client
+  knows that the server does not:** that its own start is in flight, that
+  its own Stop was pressed.
+- **A control that swaps in place for its opposite is held after the swap**
+  (`STOP_HOLD_MS`), so the second click of a double-click cannot land on it.
+
 ## Styles
 
 Component-specific styles live in each leaf SFC's own `<style scoped>`
