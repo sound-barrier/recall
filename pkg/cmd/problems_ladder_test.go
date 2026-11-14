@@ -100,6 +100,8 @@ var sentinels = []sentinel{
 	{"ErrRunNotCancelable", app.ErrRunNotCancelable, "the running operation cannot be canceled"},
 	{"ErrStoreSwapInProgress", app.ErrStoreSwapInProgress, "the database is being swapped — retry in a moment"},
 	{"ErrStoreUnavailable", app.ErrStoreUnavailable, "no database is open"},
+	{"ErrSelfUpdateStaged", app.ErrSelfUpdateStaged, "an update is already staged — restart to apply it"},
+	{"ErrSelfUpdateNotReady", app.ErrSelfUpdateNotReady, "no update is staged to apply"},
 	{"ErrRestoreInvalid", app.ErrRestoreInvalid, "restore: not a valid Recall database"},
 	{"ErrShareNeedsReplayCode", app.ErrShareNeedsReplayCode, "share needs a replay code on every match"},
 	{"ErrSelfUpdateUnavailable", app.ErrSelfUpdateUnavailable, "self-update unavailable on this install"},

@@ -136,3 +136,10 @@ func HoldCoachLock(a *App) (release func()) {
 	a.coachMu.Lock()
 	return a.coachMu.Unlock
 }
+
+// SelfUpdateStateOf names where the self-update pass stands.
+func SelfUpdateStateOf(a *App) string {
+	a.selfUpdateMu.Lock()
+	defer a.selfUpdateMu.Unlock()
+	return a.selfUpdate.String()
+}

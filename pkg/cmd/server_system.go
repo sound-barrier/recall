@@ -125,17 +125,20 @@ func registerSystemProbeAndActionRoutes(apiMux *http.ServeMux, a *app.App) {
 	// won't call this then, but a scripted caller gets a clear problem.
 	apiMux.HandleFunc("POST /api/v1/system/self-update", func(w http.ResponseWriter, r *http.Request) {
 		if writeError(w, r, a.StartSelfUpdate(),
-			errStatus{app.ErrSelfUpdateUnavailable, probSelfUpdateUnavailable}) {
+			errStatus{app.ErrSelfUpdateUnavailable, probSelfUpdateUnavailable},
+			errStatus{app.ErrSelfUpdateStaged, probConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusAccepted)
 	})
 	// Apply a staged self-update: swap the binary in place and relaunch.
 	// On success the process exits, so the client never sees a response;
-	// 202 is the "accepted, restarting" shape. 409 when no updater.
+	// 202 is the "accepted, restarting" shape. 409 when no updater, or when
+	// nothing is staged.
 	apiMux.HandleFunc("POST /api/v1/system/self-update/restart", func(w http.ResponseWriter, r *http.Request) {
 		if writeError(w, r, a.RestartToApply(),
-			errStatus{app.ErrSelfUpdateUnavailable, probSelfUpdateUnavailable}) {
+			errStatus{app.ErrSelfUpdateUnavailable, probSelfUpdateUnavailable},
+			errStatus{app.ErrSelfUpdateNotReady, probConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusAccepted)

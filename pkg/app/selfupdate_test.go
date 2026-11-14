@@ -20,6 +20,9 @@ type fakeSelfUpdater struct {
 	downloads  atomic.Int32
 	restarts   atomic.Int32
 	restartErr error
+	// downloadErr, when set, fails DownloadAndInstall. Set only while no
+	// pass is running.
+	downloadErr error
 }
 
 func (f *fakeSelfUpdater) Check(context.Context) (bool, error) {
@@ -32,7 +35,7 @@ func (f *fakeSelfUpdater) Check(context.Context) (bool, error) {
 
 func (f *fakeSelfUpdater) DownloadAndInstall(context.Context) error {
 	f.downloads.Add(1)
-	return nil
+	return f.downloadErr
 }
 
 func (f *fakeSelfUpdater) Restart(context.Context) error {
@@ -122,20 +125,62 @@ func TestStartSelfUpdate_SingleFlight_SecondCallIsNoOp(t *testing.T) {
 
 	close(gate) // let the first finish
 	eventually(t, func() bool { return f.downloads.Load() == 1 }, "first pass did not complete")
+}
 
-	// After completion a fresh call runs again (running flag reset).
-	f2gate := make(chan struct{})
-	f.checkGate = f2gate
-	close(f2gate)
-	if err := a.StartSelfUpdate(); err != nil {
-		t.Fatalf("post-completion StartSelfUpdate = %v", err)
+// A pass that found nothing (or failed) ends idle, so a later call checks
+// again.
+func TestStartSelfUpdate_AfterAnUpToDatePass_ChecksAgain(t *testing.T) {
+	f := &fakeSelfUpdater{found: false}
+	a := &app.App{SelfUpdate: f}
+	mustNoErr(t, a.StartSelfUpdate())
+	eventually(t, func() bool { return app.SelfUpdateStateOf(a) == "idle" && f.checks.Load() == 1 }, "first pass did not end")
+	mustNoErr(t, a.StartSelfUpdate())
+	eventually(t, func() bool { return f.checks.Load() == 2 }, "updater did not re-run after an up-to-date pass")
+}
+
+// stagedApp is an app whose self-update pass has downloaded and staged a
+// release: Ready to restart.
+func stagedApp(t *testing.T) (*app.App, *fakeSelfUpdater) {
+	t.Helper()
+	f := &fakeSelfUpdater{found: true}
+	a := &app.App{SelfUpdate: f}
+	mustNoErr(t, a.StartSelfUpdate())
+	eventually(t, func() bool { return app.SelfUpdateStateOf(a) == "ready" }, "the pass never reached ready")
+	return a, f
+}
+
+// The traced bug: a second StartSelfUpdate after Ready re-ran Check and then
+// DownloadAndInstall, which discards the staged binary first — so a failed
+// re-download lost an update that was ready to apply. Once staged, a start
+// is refused and the staged binary is left alone.
+func TestStartSelfUpdate_AfterReady_IsRefusedAndKeepsTheStagedUpdate(t *testing.T) {
+	a, f := stagedApp(t)
+	if err := a.StartSelfUpdate(); !errors.Is(err, app.ErrSelfUpdateStaged) {
+		t.Fatalf("StartSelfUpdate after ready = %v, want ErrSelfUpdateStaged", err)
 	}
-	eventually(t, func() bool { return f.checks.Load() == 2 }, "updater did not re-run after the first pass finished")
+	time.Sleep(30 * time.Millisecond)
+	if f.checks.Load() != 1 || f.downloads.Load() != 1 {
+		t.Errorf("checks/downloads = %d/%d after a refused start, want 1/1", f.checks.Load(), f.downloads.Load())
+	}
+	if got := app.SelfUpdateStateOf(a); got != "ready" {
+		t.Errorf("state = %q after a refused start, want ready", got)
+	}
+}
+
+// A failed download ends in error, and error is not a dead end: the user can
+// try again.
+func TestStartSelfUpdate_AfterAFailedDownload_CanRetry(t *testing.T) {
+	f := &fakeSelfUpdater{found: true, downloadErr: errors.New("connection reset")}
+	a := &app.App{SelfUpdate: f}
+	mustNoErr(t, a.StartSelfUpdate())
+	eventually(t, func() bool { return app.SelfUpdateStateOf(a) == "error" }, "a failed download did not end in error")
+	f.downloadErr = nil
+	mustNoErr(t, a.StartSelfUpdate())
+	eventually(t, func() bool { return app.SelfUpdateStateOf(a) == "ready" }, "a retry after an error did not reach ready")
 }
 
 func TestRestartToApply_DelegatesToRestart(t *testing.T) {
-	f := &fakeSelfUpdater{}
-	a := &app.App{SelfUpdate: f}
+	a, f := stagedApp(t)
 	if err := a.RestartToApply(); err != nil {
 		t.Fatalf("RestartToApply = %v", err)
 	}
@@ -145,10 +190,23 @@ func TestRestartToApply_DelegatesToRestart(t *testing.T) {
 }
 
 func TestRestartToApply_PropagatesError(t *testing.T) {
-	sentinel := errors.New("no staged update")
-	f := &fakeSelfUpdater{restartErr: sentinel}
-	a := &app.App{SelfUpdate: f}
+	sentinel := errors.New("swap failed")
+	a, f := stagedApp(t)
+	f.restartErr = sentinel
 	if err := a.RestartToApply(); !errors.Is(err, sentinel) {
 		t.Fatalf("RestartToApply = %v, want the delegated error", err)
+	}
+}
+
+// RestartToApply asks the app's own state, not only the framework's: with
+// nothing staged it refuses before touching the updater.
+func TestRestartToApply_BeforeReady_IsRefused(t *testing.T) {
+	f := &fakeSelfUpdater{}
+	a := &app.App{SelfUpdate: f}
+	if err := a.RestartToApply(); !errors.Is(err, app.ErrSelfUpdateNotReady) {
+		t.Fatalf("RestartToApply with nothing staged = %v, want ErrSelfUpdateNotReady", err)
+	}
+	if f.restarts.Load() != 0 {
+		t.Errorf("Restart called %d times with nothing staged, want 0", f.restarts.Load())
 	}
 }
