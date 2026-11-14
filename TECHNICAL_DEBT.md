@@ -419,17 +419,6 @@ yet fixed. They are ordered by likelihood × blast radius.
   (`ocr_unavailable | parse_failed`), and count an attempt only for
   `parse_failed`. A single `screenshot_files` status table with a `CHECK`
   is the end state.
-- **Unsynchronized `a.store` reads during a swap (M).** A swap now always
-  ends on an open store, and opening a coaching session mid-swap is
-  refused. Other reads (`GetDatabaseHealth`, every list endpoint) still
-  read `a.store` with no lock while a restore or switch replaces it.
-  Fix: a holder with an RWMutex and a `swapping` state, through which every
-  read goes. That touches every call site, so it is its own PR.
-- **Folder watcher on a deleted folder (S).** The watcher keeps running
-  after its folder is removed. The masthead dot reads the Watch *setting*,
-  not whether a watcher is actually running. Fix: a `watch_state` enum on
-  the API, and the trigger machine moving to `unavailable` when the folder
-  goes away.
 - **Frontend autosave and editors (M).**
   - The annotation `watch` overwrites a note being typed after a tag
     commit refetches.
