@@ -286,7 +286,7 @@ Every job in `release.yml` keys off `github.ref_name`, which is the tag name for
 - **No release** — `verify-ref`, `build-windows`, `sbom` or `sign-attest` failed, or the approval was rejected or expired, so `release` never ran. Fix the cause, then **Re-run failed jobs** (a re-run of `sign-attest` waits for approval again), or start a fresh run with `task release-fire TAG=vX.Y.Z`.
 - **A draft with missing assets** — the `release` job failed partway. A draft is not immutable: delete it with `gh release delete vX.Y.Z --yes` (the tag stays), then **Re-run failed jobs**; `release` publishes exactly what `sign-attest` recorded.
 - **A published release that is wrong** — releases here are immutable: its assets and tag can't change, and deleting it retires the tag name for good. Fix forward with the next patch release.
-- **No tag** (the Release PR merged but `tag-and-dispatch` never tagged) — tag the release commit yourself, as in [Emergency manual tag](#emergency-manual-tag-last-resort).
+- **No tag** (the Release PR merged but `tag-and-dispatch` never tagged; `release-stall-check` turns every `release-please.yml` run red until it is fixed) — first re-run that merge's `release-please.yml` run (`gh run rerun <run-id>`), which retries `tag-and-dispatch` with all its checks. Only if that fails, tag the release commit yourself, as in [Emergency manual tag](#emergency-manual-tag-last-resort).
 
 ## Skipping or pausing release-please
 
