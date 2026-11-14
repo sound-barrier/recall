@@ -106,7 +106,8 @@ paths:
   machine.** One `runSlot` value under `runMu`: `idle | running | canceling`,
   with the run's `RunKind` (`parse`, `reparse`, and the store swaps
   `restore`, `maintenance`, `profile_switch`, `profile_rename`,
-  `screenshot_takeover`), its `RunID` and its progress. Only the methods in
+  `screenshot_takeover`, and `backup` — the boot-time automatic snapshot,
+  whose goroutine `ServiceShutdown` waits for), its `RunID` and its progress. Only the methods in
   that file step it: `claim`, `progress`, `requestCancel`, `end` — each
   returns the next value or an error, and a report or end naming an old
   `RunID` is refused, never applied. `claimRun` / `finishRun` bracket every

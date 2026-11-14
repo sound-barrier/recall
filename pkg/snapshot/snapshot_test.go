@@ -142,8 +142,9 @@ func TestWrite_CreatesTheDirectoryStampsTheNameAndPrunes(t *testing.T) {
 		t.Fatalf("Write: %v", err)
 	}
 
-	if len(dests) != 1 || dests[0] != dest {
-		t.Fatalf("VACUUM INTO destinations = %v, want exactly the returned %q", dests, dest)
+	// VACUUM INTO writes a temporary beside the snapshot, renamed into place.
+	if len(dests) != 1 || filepath.Dir(dests[0]) != filepath.Dir(dest) {
+		t.Fatalf("VACUUM INTO destinations = %v, want one write beside the returned %q", dests, dest)
 	}
 	base := filepath.Base(dest)
 	if !strings.HasPrefix(base, snapshot.AutoPrefix) || !strings.HasSuffix(base, ".db") {

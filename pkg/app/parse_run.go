@@ -35,6 +35,9 @@ const (
 	RunKindProfileRename RunKind = "profile_rename"
 	// RunKindScreenshotTakeover moves screenshots another profile owns.
 	RunKindScreenshotTakeover RunKind = "screenshot_takeover"
+	// RunKindBackup is the boot-time automatic snapshot: a VACUUM INTO of
+	// the file a restore or a rename would be replacing.
+	RunKindBackup RunKind = "backup"
 )
 
 // cancelable reports whether CancelParse may stop a run of this kind. The
@@ -45,7 +48,7 @@ func (k RunKind) cancelable() bool {
 	case RunKindParse, RunKindReparse:
 		return true
 	case RunKindRestore, RunKindMaintenance, RunKindProfileSwitch,
-		RunKindProfileRename, RunKindScreenshotTakeover:
+		RunKindProfileRename, RunKindScreenshotTakeover, RunKindBackup:
 		return false
 	}
 	return false
@@ -97,7 +100,7 @@ func (k RunKind) swapsStore() bool {
 	switch k {
 	case RunKindRestore, RunKindProfileSwitch, RunKindProfileRename:
 		return true
-	case RunKindParse, RunKindReparse, RunKindMaintenance, RunKindScreenshotTakeover:
+	case RunKindParse, RunKindReparse, RunKindMaintenance, RunKindScreenshotTakeover, RunKindBackup:
 		return false
 	}
 	return false
