@@ -321,9 +321,9 @@ func (a *App) startBootBackup() {
 // as interrupted rather than left to read as abandoned, and a boot backup
 // still writing is waited for rather than cut off mid-file.
 func (a *App) ServiceShutdown() error {
-	a.interruptCoachSession()
+	err := a.interruptCoachSession()
 	a.bootBackup.Wait()
-	return nil
+	return err
 }
 
 // initProfiles loads (or initializes) the profile manager — every
