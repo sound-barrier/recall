@@ -54,9 +54,6 @@ func (a *App) ResolveAmbiguousMatch(ambiguousMatchKey, resolvedTo string) error 
 	if err != nil {
 		return err
 	}
-	if len(cands) == 0 {
-		return ErrAmbiguousNotFound
-	}
 	if !validResolution(resolvedTo, cands) {
 		return fmt.Errorf("%w: %q", ErrInvalidResolution, resolvedTo)
 	}

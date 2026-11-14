@@ -58,8 +58,11 @@ func (s *SQLStore) LoadAmbiguousCandidatesFor(filename string) ([]AmbiguousCandi
 // row carrying ambiguousMatchKey (the original screenshot plus any
 // sibling rows that adopted the sentinel via the timestamp-window
 // pass) and clears every candidate row for the original screenshot.
-// Returns (false, nil) when no ambiguous candidates exist for the
-// key, letting the caller respond with 404.
+// Returns (false, nil) when no parent row carries the key, letting the
+// caller respond with 404. A screenshot parked under the sentinel is
+// resolvable whether or not candidates remain: deleting a candidate match
+// removes it from every list, and the screenshot must not be stranded on
+// the sentinel when the last one goes.
 func (s *SQLStore) ResolveAmbiguous(filename, ambiguousMatchKey, newMatchKey string) (bool, error) {
 	const prefix = "ambiguous-"
 	if len(ambiguousMatchKey) <= len(prefix) || ambiguousMatchKey[:len(prefix)] != prefix {
@@ -70,16 +73,15 @@ func (s *SQLStore) ResolveAmbiguous(filename, ambiguousMatchKey, newMatchKey str
 		return false, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	res, err := tx.Exec(`DELETE FROM ambiguous_candidates WHERE filename = ?`, filename)
+	nothingParked, err := matchKeyHasNoRows(tx, ambiguousMatchKey)
 	if err != nil {
 		return false, err
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return false, err
-	}
-	if n == 0 {
+	if nothingParked {
 		return false, nil
+	}
+	if _, err := tx.Exec(`DELETE FROM ambiguous_candidates WHERE filename = ?`, filename); err != nil {
+		return false, err
 	}
 	if err := renameMatchKey(tx, ambiguousMatchKey, newMatchKey); err != nil {
 		return false, err

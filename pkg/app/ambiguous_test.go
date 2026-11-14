@@ -6,6 +6,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/db"
+	"recall/pkg/match"
 )
 
 func TestResolveAmbiguousMatch_HappyPath(t *testing.T) {
@@ -144,5 +145,41 @@ func TestResolveAmbiguousMatch_KeepSeparateOnANearMissLinksNothing(t *testing.T)
 	links, _ := fs.LoadAllDuplicateLinks()
 	if len(links) != 0 {
 		t.Errorf("links = %v, want none for a plain attribution choice", links)
+	}
+}
+
+// A screenshot parked as ambiguous keeps its candidate list only while the
+// candidates exist: deleting a candidate match removes it from every list.
+// Delete them all and the screenshot used to be stuck on the ambiguous
+// sentinel for good — resolving it, even to a fresh match of its own,
+// answered "not found" because no candidates were left.
+func TestResolveAmbiguousMatch_StillResolvableOnceEveryCandidateIsGone(t *testing.T) {
+	a := newRealApp(t)
+	const candidate = "match-2026-05-10T21-29-28"
+	const file = "Overwatch 2 Screenshot 2026.05.10 - 21.40.00.00.png"
+	ambiguous := match.NewAmbiguousMatchKey(file).String()
+	seedSummary(t, a, "c.png", candidate)
+	seedSummary(t, a, file, ambiguous)
+	mustNoErr(t, app.Store(a).ApplyAmbiguity(file, []db.AmbiguousCandidate{{MatchKey: candidate, DistanceSeconds: 660}}))
+
+	mustNoErr(t, a.HardDeleteMatch(candidate))
+
+	const fresh = "match-2026-05-10T21-40-00"
+	if err := a.ResolveAmbiguousMatch(ambiguous, fresh); err != nil {
+		t.Fatalf("resolving to a fresh match after the last candidate went: %v", err)
+	}
+	recs, err := a.GetMatchResults()
+	mustNoErr(t, err)
+	if len(recs) != 1 || recs[0].MatchKey != fresh {
+		t.Errorf("matches after the resolve = %+v, want the one fresh match", recs)
+	}
+}
+
+// With nothing parked under the sentinel there is nothing to resolve.
+func TestResolveAmbiguousMatch_NothingParkedIsNotFound(t *testing.T) {
+	a := newRealApp(t)
+	ambiguous := match.NewAmbiguousMatchKey("gone.png").String()
+	if err := a.ResolveAmbiguousMatch(ambiguous, "match-2026-05-10T21-40-00"); !errors.Is(err, app.ErrAmbiguousNotFound) {
+		t.Errorf("ResolveAmbiguousMatch = %v, want ErrAmbiguousNotFound", err)
 	}
 }
