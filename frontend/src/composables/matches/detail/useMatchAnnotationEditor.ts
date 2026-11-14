@@ -1,5 +1,6 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import type { ExclusionReason, MatchRecord, MatchAnnotationInput } from '@/api-client'
+import { useCoachAutosave } from '@/composables/coach/useCoachAutosave'
 import { notePlainText } from '@/match/markdown/note-blocks'
 import { highlightTermsFor, type SearchClause } from '@/match/search-query'
 
@@ -14,6 +15,17 @@ import { highlightTermsFor, type SearchClause } from '@/match/search-query'
 // Which journal cell just saved. Named because two functions now set it
 // and a widening union has to widen in one place.
 type SavedField = 'note' | 'replay' | 'members' | 'tags' | 'exclusion'
+
+/** The queue key every annotation write shares — each one carries the whole row. */
+const ANNOTATION_SAVE_KEY = 'annotation'
+
+// A refetch replaces what the server holds; it must not replace what the
+// user is still typing. A text draft that no longer equals the value it was
+// hydrated from has been edited, so it stays — a tag commit's refetch used to
+// eat the note being typed beside it.
+function keepTyped(draft: string, was: string | undefined, now: string | undefined): string {
+  return draft.trim() === (was ?? '').trim() ? (now ?? '') : draft
+}
 
 export function useMatchAnnotationEditor(
   record: () => MatchRecord,
@@ -47,9 +59,9 @@ const NAMED_TAGS = ['stack', 'stream'] as const
 
 watch(
   () => record().annotation,
-  (next) => {
-    noteDraft.value = next?.note ?? ''
-    replayDraft.value = next?.replay_code ?? ''
+  (next, prev) => {
+    noteDraft.value = keepTyped(noteDraft.value, prev?.note, next?.note)
+    replayDraft.value = keepTyped(replayDraft.value, prev?.replay_code, next?.replay_code)
     memberDraft.value = next?.members ?? []
     tagDraft.value = next?.tags ?? []
     // A refreshed annotation supersedes an in-flight apply — the drafts
@@ -192,21 +204,31 @@ function exitNoteEditMode() {
 // write is a draft commit — the exclusion chooser writes directly, and
 // while the pulse was commitAnnotation's private business that chip was
 // the one control on the journal that saved in silence.
-function pulseWhenPersisted(field: SavedField, outcome: void | boolean | Promise<void | boolean>) {
-  void Promise.resolve(outcome)
-    .then((ok) => {
-      if (ok === false) return
-      savedFlash.value = field
-      setTimeout(() => { if (savedFlash.value === field) savedFlash.value = '' }, 900)
-    })
-    .catch(() => { /* rejected persist — no false receipt */ })
+function pulse(field: SavedField) {
+  savedFlash.value = field
+  setTimeout(() => { if (savedFlash.value === field) savedFlash.value = '' }, 900)
+}
+
+// Every write carries the whole row, so the LAST to land wins — and two in
+// flight at once can land in either order. The per-key autosave queue keeps
+// one on the wire and one waiting (a newer write replaces the waiting one);
+// flushing at once skips the debounce, since each of these is a commit.
+const annotationWrites = useCoachAutosave()
+
+function persist(field: SavedField, input: MatchAnnotationInput) {
+  annotationWrites.queueSave(ANNOTATION_SAVE_KEY, async () => {
+    const ok = await emitAnnotation(input)
+    if (ok === false) throw new Error('the annotation write was refused')
+    pulse(field)
+  })
+  void annotationWrites.flushSaves()
 }
 
 // Setting or clearing the reason a match doesn't count. It carries the
 // rest of the drafts like every other field write, so an in-flight note
 // is never lost to a chip click.
 function setExclusionReason(reason: ExclusionReason) {
-  const outcome = emitAnnotation({
+  persist('exclusion', {
     leavers:     record().annotation?.leavers ?? [],
     throwers:    record().annotation?.throwers ?? [],
     note:        noteDraft.value.trim(),
@@ -215,8 +237,6 @@ function setExclusionReason(reason: ExclusionReason) {
     tags:        tagDraft.value,
     exclusion_reason: reason,
   })
-  pulseWhenPersisted('exclusion', outcome)
-  return outcome
 }
 
 function commitAnnotation(field: Exclude<SavedField, 'exclusion'>) {
@@ -225,7 +245,7 @@ function commitAnnotation(field: Exclude<SavedField, 'exclusion'>) {
   // hereby confirmed implicitly.
   applyPending.value = false
   applySnapshot = null
-  const outcome = emitAnnotation({
+  persist(field, {
     leavers:     record().annotation?.leavers ?? [],
     throwers:    record().annotation?.throwers ?? [],
     note:        noteDraft.value.trim(),
@@ -234,7 +254,6 @@ function commitAnnotation(field: Exclude<SavedField, 'exclusion'>) {
     tags:        tagDraft.value,
     exclusion_reason: (record().annotation?.exclusion_reason ?? '') as ExclusionReason,
   })
-  pulseWhenPersisted(field, outcome)
 }
 
 // ── Apply previous annotation ───────────────────────────────────

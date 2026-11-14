@@ -22,7 +22,7 @@ export interface KnownIdentity {
 }
 
 /** Where the note autosave stands; the editor speaks it through a role=status line. */
-export type CoachSaveState = 'idle' | 'saving' | 'saved' | 'error'
+export type CoachSaveState = 'idle' | 'queued' | 'saving' | 'saved' | 'error'
 
 /**
  * Canonical display names for the stored lowercase map / hero forms.
@@ -53,6 +53,8 @@ export const DEFAULT_COACH_LABELS: CoachLabels = { map: titleCase, hero: titleCa
  */
 export const SAVE_LABEL: Record<CoachSaveState, string> = {
   idle: 'Autosaves as you write',
+  // A newer edit is settling: the last "Saved" no longer describes it.
+  queued: 'Saving\u2026',
   saving: 'Saving\u2026',
   saved: 'Saved',
   error: 'Not saved \u2014 try again',

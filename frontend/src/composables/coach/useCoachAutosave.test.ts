@@ -62,7 +62,8 @@ describe('useCoachAutosave', () => {
 
     // The superseded run must not report for a key it no longer owns —
     // saying 'saved' here would credit the OLD text and drop the new one.
-    expect(auto.saveStateFor('note')).toBe('saving')
+    // The newer write is still waiting out its debounce.
+    expect(auto.saveStateFor('note')).toBe('queued')
 
     await vi.advanceTimersByTimeAsync(AUTOSAVE_MS)
     expect(secondRun).toHaveBeenCalledTimes(1)
@@ -106,6 +107,68 @@ describe('useCoachAutosave', () => {
     expect(summaryRun).toHaveBeenCalledTimes(1)
     expect(auto.saveStateFor('note')).toBe('saved')
     expect(auto.saveStateFor('summary')).toBe('saved')
+  })
+})
+
+describe('the per-key queue: one write in flight, one waiting', () => {
+  // "Saved" is a receipt for the words on screen. While a newer edit is
+  // still settling, the receipt from the last write describes older text.
+  it('never says saved while a newer edit is debouncing', async () => {
+    const auto = useCoachAutosave()
+    auto.queueSave('note', vi.fn(async () => {}))
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_MS)
+    expect(auto.saveStateFor('note')).toBe('saved')
+
+    auto.queueSave('note', vi.fn(async () => {}))
+    expect(auto.saveStateFor('note')).toBe('queued')
+  })
+
+  // Two PUTs for one key on the wire at once can land in either order, and
+  // the server keeps whichever lands last — the older text, half the time.
+  it('holds a newer write until the one in flight lands, so they land in order', async () => {
+    const auto = useCoachAutosave()
+    const order: string[] = []
+    const first = heldRun()
+    auto.queueSave('note', async () => { order.push('first:start'); await first.run(); order.push('first:end') })
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_MS)
+    const second = vi.fn(async () => { order.push('second') })
+    auto.queueSave('note', second)
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_MS * 3)
+
+    expect(second).not.toHaveBeenCalled()
+    expect(auto.saveStateFor('note')).toBe('saving')
+
+    first.settle()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(order).toEqual(['first:start', 'first:end', 'second'])
+    expect(auto.saveStateFor('note')).toBe('saved')
+  })
+
+  it('a flush waits out the write in flight and then sends the one waiting behind it', async () => {
+    const auto = useCoachAutosave()
+    const first = heldRun()
+    auto.queueSave('note', first.run)
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_MS)
+    const second = vi.fn(async () => {})
+    auto.queueSave('note', second)
+
+    const flushing = auto.flushSaves()
+    expect(second).not.toHaveBeenCalled()
+    first.settle()
+    await flushing
+
+    expect(second).toHaveBeenCalledTimes(1)
+    expect(auto.saveStateFor('note')).toBe('saved')
+  })
+
+  it('knows a key whose write has gone out, so a delete can queue behind it', async () => {
+    const auto = useCoachAutosave()
+    const first = heldRun()
+    auto.queueSave('m1', first.run)
+    expect(auto.hasStarted('m1')).toBe(false)
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_MS)
+    expect(auto.hasStarted('m1')).toBe(true)
+    first.settle()
   })
 })
 

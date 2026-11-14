@@ -10,10 +10,15 @@ import type { CoachMoment } from '@/match/coach/coach-moments'
  * content-addressed on the server, so re-attaching the same screenshot costs
  * one request and no extra storage.
  *
- * Returns the UPDATED moment rather than mutating: every writer here treats a
- * moment as a value, and a save is an upsert of the whole row.
+ * The moment is read through `latest` AFTER the upload, not before it: the
+ * upload takes as long as it takes, and a snapshot taken at the drop wrote
+ * back the text from before whatever was typed meanwhile — and resurrected a
+ * moment deleted meanwhile. Null when the moment is gone; only the frame is
+ * patched. Returns the updated moment rather than mutating: every writer here
+ * treats a moment as a value, and a save is an upsert of the whole row.
  */
-export async function attachFrame(moment: CoachMoment, file: File): Promise<CoachMoment> {
+export async function attachFrame(file: File, latest: () => CoachMoment | undefined): Promise<CoachMoment | null> {
   const sha = await PutMomentImage(file)
-  return { ...moment, imageSHA256: sha }
+  const now = latest()
+  return now ? { ...now, imageSHA256: sha } : null
 }

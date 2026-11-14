@@ -72,7 +72,7 @@ const drafts = ref<CoachMoment[]>([])
 // in the record — and a remove in that window must delete rather than 404.
 const savedIds = new Set<string>()
 
-const { saveStateFor, queueSave, cancelSave } = useCoachAutosave()
+const { saveStateFor, queueSave, cancelSave, hasStarted } = useCoachAutosave()
 
 const stored = computed(() => (props.record.moments ?? []).map(fromWireMoment))
 
@@ -118,10 +118,11 @@ function onMomentUpdate(moment: CoachMoment) {
  * moment that is not yet savable holds its picture locally until it is.
  */
 async function onMomentAttach(momentId: string, file: File) {
-  const current = moments.value.find((m) => m.momentId === momentId)
-  if (!current) return
+  const find = () => moments.value.find((m) => m.momentId === momentId)
+  if (!find()) return
   try {
-    onMomentUpdate(await attachFrame(current, file))
+    const attached = await attachFrame(file, find)
+    if (attached) onMomentUpdate(attached)
   } catch (e) {
     appStore.setErrorFromRaw(String(e))
   }
@@ -130,7 +131,13 @@ async function onMomentAttach(momentId: string, file: File) {
 function onMomentRemove(momentId: string) {
   const wasDraft = drafts.value.some((d) => d.momentId === momentId)
   drafts.value = drafts.value.filter((d) => d.momentId !== momentId)
-  // Whatever was still settling for this row is moot now — and would write it
+  // A PUT already on the wire will create the row: the delete queues behind
+  // it on the same key, so it cannot land first and be undone by the PUT.
+  if (hasStarted(momentId) && !savedIds.has(momentId)) {
+    queueSave(momentId, async () => { await onDeleteMatchMoment(props.record.match_key, momentId) })
+    return
+  }
+  // Whatever was still waiting for this row is moot now — and would write it
   // back a moment after the server was told to drop it.
   cancelSave(momentId)
   const onServer = savedIds.has(momentId) || stored.value.some((m) => m.momentId === momentId)
