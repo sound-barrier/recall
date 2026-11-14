@@ -28,7 +28,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -116,9 +115,11 @@ type App struct {
 	// Exported like SSEHub (a setter would join the auto-bound Wails
 	// method surface). See pkg/app/selfupdate.go.
 	SelfUpdate SelfUpdater
-	// selfUpdateRunning single-flights StartSelfUpdate so a double-click
-	// can't launch two concurrent download+install passes.
-	selfUpdateRunning atomic.Bool
+	// selfUpdate is where the self-update pass stands (selfupdate.go),
+	// under selfUpdateMu: single-flight for StartSelfUpdate, and the
+	// "is anything staged?" RestartToApply asks.
+	selfUpdateMu sync.Mutex
+	selfUpdate   selfUpdatePhase
 	// WindowSize is the desktop window-geometry seam, wired by the Wails
 	// wrapper (pkg/cmd) alongside the window itself. Nil in server mode,
 	// where there is no window to resize, so ResetWindowSize keys off one

@@ -1144,7 +1144,9 @@ export const applyGameDataUpdate = <ThrowOnError extends boolean = false>(option
  * directory the running user can't overwrite (a legacy
  * machine-wide Program Files install). The frontend reads
  * `can_self_update` on `GET /system/update` and won't call this
- * when it's false; the `409` is for scripted callers.
+ * when it's false; the `409` is for scripted callers. Also `409`
+ * once a release is downloaded and staged: another pass would
+ * discard it first — apply it with `POST .../self-update/restart`.
  *
  */
 export const startSelfUpdate = <ThrowOnError extends boolean = false>(options?: Options<StartSelfUpdateData, ThrowOnError>): RequestResult<StartSelfUpdateResponses, StartSelfUpdateErrors, ThrowOnError> => (options?.client ?? client).post<StartSelfUpdateResponses, StartSelfUpdateErrors, ThrowOnError>({ url: '/api/v1/system/self-update', ...options });
@@ -1158,7 +1160,8 @@ export const startSelfUpdate = <ThrowOnError extends boolean = false>(options?: 
  * exits and the new binary starts, so the client normally never
  * receives a response; `202` is the "accepted, restarting" shape.
  * `409` when no updater is wired (same gates as
- * `POST /api/v1/system/self-update`).
+ * `POST /api/v1/system/self-update`), or when no release is staged
+ * yet.
  *
  */
 export const restartToApply = <ThrowOnError extends boolean = false>(options?: Options<RestartToApplyData, ThrowOnError>): RequestResult<RestartToApplyResponses, RestartToApplyErrors, ThrowOnError> => (options?.client ?? client).post<RestartToApplyResponses, RestartToApplyErrors, ThrowOnError>({ url: '/api/v1/system/self-update/restart', ...options });
