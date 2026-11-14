@@ -32,8 +32,8 @@ const (
 func seedFocusList(t *testing.T, store *dbtest.Fake) {
 	t.Helper()
 	for _, r := range []db.SelfReview{
-		{ReviewID: reviewOldDay, Title: "February", CreatedAt: oldSittingDay, UpdatedAt: oldSittingDay},
-		{ReviewID: reviewNewDay, Title: "Last night", CreatedAt: newSittingDay, UpdatedAt: newSittingDay},
+		{ReviewID: reviewOldDay, Title: "February", CreatedAt: oldSittingDay, UpdatedAt: oldSittingDay, MatchKeys: []string{"match-focus-seed"}},
+		{ReviewID: reviewNewDay, Title: "Last night", CreatedAt: newSittingDay, UpdatedAt: newSittingDay, MatchKeys: []string{"match-focus-seed"}},
 	} {
 		if _, err := store.CreateSelfReview(r); err != nil {
 			t.Fatalf("seed sitting %s: %v", r.ReviewID, err)

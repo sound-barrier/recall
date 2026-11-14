@@ -20,6 +20,9 @@ func (f *Fake) CreateSelfReview(r db.SelfReview) (db.SelfReview, error) {
 	if r.ReviewID == "" {
 		r.ReviewID = db.NewCoachNoteID()
 	}
+	if len(r.MatchKeys) == 0 {
+		return db.SelfReview{}, db.ErrSelfReviewEmpty
+	}
 	if f.SelfReviews == nil {
 		f.SelfReviews = map[string]db.SelfReview{}
 	}
@@ -35,35 +38,61 @@ func (f *Fake) CreateSelfReview(r db.SelfReview) (db.SelfReview, error) {
 	}
 	r.MatchKeys = distinctKeys(r.MatchKeys)
 	r.Notes = map[string]db.SelfReviewNote{}
+	r.Status, r.FinishedAt = db.SelfReviewOpen, ""
 	f.SelfReviews[r.ReviewID] = r
 	return f.cloneSelfReview(r), nil
+}
+
+// openSelfReview mirrors requireOpenSelfReview. Callers hold f.mu.
+func (f *Fake) openSelfReview(reviewID string) (db.SelfReview, error) {
+	r, ok := f.SelfReviews[reviewID]
+	if !ok {
+		return db.SelfReview{}, db.ErrSelfReviewUnknown
+	}
+	if r.Status == db.SelfReviewFinished {
+		return db.SelfReview{}, db.ErrSelfReviewFinished
+	}
+	return r, nil
 }
 
 func (f *Fake) UpdateSelfReview(reviewID, title string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	r, ok := f.SelfReviews[reviewID]
-	if !ok {
-		return db.ErrSelfReviewUnknown
+	r, err := f.openSelfReview(reviewID)
+	if err != nil {
+		return err
 	}
 	r.Title, r.UpdatedAt = title, nowRFC3339()
 	f.SelfReviews[reviewID] = r
 	return nil
 }
 
-func (f *Fake) FinishSelfReview(reviewID string) error {
+func (f *Fake) FinishSelfReview(fin db.SelfReviewFinish) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	r, ok := f.SelfReviews[reviewID]
+	r, ok := f.SelfReviews[fin.ReviewID]
 	if !ok {
 		return db.ErrSelfReviewUnknown
 	}
-	now := nowRFC3339()
-	if r.FinishedAt == "" {
-		r.FinishedAt = now
+	if len(r.MatchKeys) == 0 {
+		return db.ErrSelfReviewEmpty
 	}
-	r.UpdatedAt = now
-	f.SelfReviews[reviewID] = r
+	// One step under one lock, as the SQL store is one transaction.
+	now := nowRFC3339()
+	for _, k := range fin.MarkSelf {
+		if f.Reviews == nil {
+			f.Reviews = map[string]db.ReviewState{}
+		}
+		if f.Reviews[k].ReviewedBy == "coach" {
+			continue
+		}
+		f.Reviews[k] = db.ReviewState{ReviewedBy: "self", ReviewedAt: now}
+	}
+	if r.FinishedAt == "" {
+		r.FinishedAt = suppliedInstantOrNow(fin.At)
+	}
+	r.Status, r.UpdatedAt = db.SelfReviewFinished, now
+	f.SelfReviews[fin.ReviewID] = r
 	return nil
 }
 
@@ -82,9 +111,12 @@ func (f *Fake) DeleteSelfReview(reviewID string) error {
 func (f *Fake) SetSelfReviewMatches(reviewID string, matchKeys []string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	r, ok := f.SelfReviews[reviewID]
-	if !ok {
-		return db.ErrSelfReviewUnknown
+	r, err := f.openSelfReview(reviewID)
+	if err != nil {
+		return err
+	}
+	if len(distinctKeys(matchKeys)) == 0 {
+		return db.ErrSelfReviewEmpty
 	}
 	// A note on a match that leaves the set goes with it (the composite FK);
 	// one on a match that stays is kept. Repeats collapse to their first
@@ -131,9 +163,9 @@ func (f *Fake) LoadSelfReview(reviewID string) (db.SelfReview, bool, error) {
 func (f *Fake) UpsertSelfReviewNote(n db.SelfReviewNote) (db.SelfReviewNote, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	r, ok := f.SelfReviews[n.ReviewID]
-	if !ok {
-		return db.SelfReviewNote{}, db.ErrSelfReviewUnknown
+	r, err := f.openSelfReview(n.ReviewID)
+	if err != nil {
+		return db.SelfReviewNote{}, err
 	}
 	if !slices.Contains(r.MatchKeys, n.MatchKey) {
 		return db.SelfReviewNote{}, db.ErrSelfReviewMatchUnknown
@@ -175,6 +207,9 @@ func (f *Fake) DeleteSelfReviewNote(ref db.SelfReviewNoteRef) error {
 	if !ok {
 		return nil
 	}
+	if r.Status == db.SelfReviewFinished {
+		return db.ErrSelfReviewFinished
+	}
 	if _, had := r.Notes[matchKey]; had {
 		delete(r.Notes, matchKey)
 		// A delete is always live work on the sitting.
@@ -191,9 +226,9 @@ func (f *Fake) UpsertSelfReviewMoment(ref db.SelfReviewNoteRef, m db.SelfReviewM
 	if m.MomentID == "" {
 		return db.SelfReviewMoment{}, errors.New("upsert self review moment: moment_id is required")
 	}
-	r, ok := f.SelfReviews[reviewID]
-	if !ok {
-		return db.SelfReviewMoment{}, db.ErrSelfReviewUnknown
+	r, err := f.openSelfReview(reviewID)
+	if err != nil {
+		return db.SelfReviewMoment{}, err
 	}
 	if !slices.Contains(r.MatchKeys, matchKey) {
 		return db.SelfReviewMoment{}, db.ErrSelfReviewMatchUnknown
@@ -256,6 +291,9 @@ func (f *Fake) DeleteSelfReviewMoment(ref db.SelfReviewMomentRef) error {
 	r, ok := f.SelfReviews[reviewID]
 	if !ok {
 		return nil
+	}
+	if r.Status == db.SelfReviewFinished {
+		return db.ErrSelfReviewFinished
 	}
 	n, ok := r.Notes[matchKey]
 	if !ok {

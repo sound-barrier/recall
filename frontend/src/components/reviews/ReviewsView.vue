@@ -12,6 +12,7 @@ import ReviewsIndex from '@/components/reviews/ReviewsIndex.vue'
 import SelfReviewSheet from '@/components/reviews/SelfReviewSheet.vue'
 import { FOCUS_SAVE_KEY, HEADER_SAVE_KEY, useSelfReviewStore } from '@/stores/selfReview'
 import { useCoachStore } from '@/stores/coach'
+import { FINISHED_SITTING_REASON } from '@/match/reviews/reviews-helpers'
 
 // 07 Reviews — the home of the review cycle.
 //
@@ -68,6 +69,11 @@ const SELF: CoachPlayerView = { handle: 'you', message: '' }
 // editor, the strip and the sheet refuse with the reason whenever writes
 // are locked, the same as every sibling affordance.
 const { lockReason } = useWriteGate()
+// A finished sitting is on the record: the room reads it and refuses edits,
+// as the server does. Re-finish is not an edit, so the sheet keeps its own
+// lock for that.
+const roomLockReason = computed(() =>
+  lockReason.value || (sitting.value?.status === 'finished' ? FINISHED_SITTING_REASON : ''))
 // Your own matches, so the replay code copies through the Matches action —
 // the same routine the detail panel uses over the same records.
 const { onCopyReplayCode: copyReplayCode } = useMatchActions()
@@ -109,7 +115,7 @@ const { onCopyReplayCode: copyReplayCode } = useMatchActions()
       :key="sitting.review_id"
       :player="SELF"
       voice="your"
-      :locked-reason="lockReason"
+      :locked-reason="roomLockReason"
       :omit-review-id="sitting.review_id"
       :api="selfReview.roomApi"
       :labels="coachLabels"

@@ -72,8 +72,8 @@ func (f *Fake) LoadCoachFocusItems(playerRef int64) ([]db.FocusItem, error) {
 func (f *Fake) SetSelfReviewFocusItems(reviewID string, items []db.FocusItem) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if _, ok := f.SelfReviews[reviewID]; !ok {
-		return db.ErrSelfReviewUnknown
+	if _, err := f.openSelfReview(reviewID); err != nil {
+		return err
 	}
 	if f.SelfReviewFocusItems == nil {
 		f.SelfReviewFocusItems = map[string][]db.FocusItem{}

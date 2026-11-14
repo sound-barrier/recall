@@ -1062,7 +1062,13 @@ CREATE TABLE IF NOT EXISTS self_reviews (
   title TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
-  finished_at TEXT
+  -- open while the player is writing in it; finished once Finish has stamped
+  -- it and marked its matches, in one transaction. A finished sitting is on
+  -- the record and refuses edits. The second CHECK keeps the stamp and the
+  -- state from disagreeing, whichever writer set them.
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'finished')),
+  finished_at TEXT,
+  CHECK ((status = 'finished') = (finished_at IS NOT NULL))
 ) STRICT;
 -- statement-end
 

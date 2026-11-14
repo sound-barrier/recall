@@ -37,7 +37,7 @@ func PutNote(s Store, reviewID, matchKey string, in coach.NoteInput) (Note, erro
 
 // DeleteNote removes the note and its moments; absent is a no-op.
 func DeleteNote(s Store, ref db.SelfReviewNoteRef) error {
-	return s.DeleteSelfReviewNote(ref)
+	return MapStoreErr(s.DeleteSelfReviewNote(ref))
 }
 
 // MomentRef says which moment, in which match, in which sitting.
@@ -88,7 +88,7 @@ func PutMoment(s Store, ref MomentRef, in matchedit.MomentInput) (Moment, error)
 
 // DeleteMoment removes one moment; absent is a no-op.
 func DeleteMoment(s Store, ref MomentRef) error {
-	return s.DeleteSelfReviewMoment(ref)
+	return MapStoreErr(s.DeleteSelfReviewMoment(ref))
 }
 
 // momentsOnMatch reads the moments the sitting already holds on the match —

@@ -546,8 +546,12 @@ type CoachDecision struct {
 // FinishedAt is "" while the review is in progress. Loaded whole: the
 // member keys in the player's order and every note, keyed by match.
 type SelfReview struct {
-	ReviewID   string
-	Title      string
+	ReviewID string
+	Title    string
+	// Status is read back from the row; a write never sets it. Not in a
+	// bundle: FinishedAt already says it, and a finish is replayed through
+	// FinishSelfReview rather than written onto the parent row.
+	Status     SelfReviewStatus `json:"-"`
 	CreatedAt  string
 	UpdatedAt  string
 	FinishedAt string

@@ -212,7 +212,7 @@ func importSelfReviews(store db.Store, reviews []db.SelfReview, existing map[str
 }
 
 // WriteSelfReview reproduces one sitting on the store: the parent with its
-// identity and instants, then every note with its moments. Exported for the
+// identity and instants, then every note with its moments, then its finish. Exported for the
 // profile move, which carries a sitting between profiles the same way an
 // import carries it between machines.
 func WriteSelfReview(store db.Store, r db.SelfReview) error {
@@ -245,6 +245,20 @@ func WriteSelfReview(store db.Store, r db.SelfReview) error {
 				return fmt.Errorf("import: self review moment %q/%q/%q: %w", r.ReviewID, k, m.MomentID, err)
 			}
 		}
+	}
+	return replayFinish(store, r)
+}
+
+// replayFinish finishes a sitting that arrived finished, at the instant it
+// carried. Last, because a finished sitting refuses the notes written above;
+// and marking nothing, because the reviewed flags travel in their own
+// section and are restored there.
+func replayFinish(store db.Store, r db.SelfReview) error {
+	if r.FinishedAt == "" {
+		return nil
+	}
+	if err := store.FinishSelfReview(db.SelfReviewFinish{ReviewID: r.ReviewID, At: r.FinishedAt}); err != nil {
+		return fmt.Errorf("import: finish self review %q: %w", r.ReviewID, err)
 	}
 	return nil
 }

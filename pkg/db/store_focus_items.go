@@ -130,14 +130,8 @@ func (s *SQLStore) SetSelfReviewFocusItems(reviewID string, items []FocusItem) e
 	// child would happily land under a review_id that does not exist (the FK
 	// is declared, and enforced — but a caller deserves the typed 404 its
 	// siblings give rather than a constraint error).
-	var exists int
-	if err := s.db.QueryRow(`SELECT 1 FROM self_reviews WHERE review_id = ?`, reviewID).Scan(&exists); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrSelfReviewUnknown
-		}
-		return fmt.Errorf("look up self review: %w", err)
-	}
 	return s.replaceFocusItems(focusReplace{
+		guard:     func(tx *sql.Tx) error { return requireOpenSelfReview(tx, reviewID) },
 		deleteSQL: `DELETE FROM self_review_focus_items WHERE review_id = ?`,
 		bornSQL:   `SELECT item_id, created_at FROM self_review_focus_items WHERE review_id = ?`,
 		insertSQL: `INSERT INTO self_review_focus_items (item_id, review_id, text, status, sort_order, created_at, updated_at)
@@ -154,6 +148,9 @@ type focusReplace struct {
 	// bornSQL reads (item_id, created_at) for the owner, so a wholesale
 	// replacement can carry each surviving item's birthday across.
 	bornSQL string
+	// guard, when set, runs first inside the transaction and refuses the
+	// replacement (a finished sitting's list is on the record).
+	guard func(tx *sql.Tx) error
 	// defaultStatus is what an item with no (or an unknown) status is
 	// written as.
 	defaultStatus FocusStatus
@@ -171,6 +168,11 @@ func (s *SQLStore) replaceFocusItems(fam focusReplace, items []FocusItem) error 
 		return fmt.Errorf("set focus items: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
+	if fam.guard != nil {
+		if err := fam.guard(tx); err != nil {
+			return err
+		}
+	}
 
 	// When an item was FIRST written, read before the wipe takes it away.
 	// Autosave calls this on every keystroke burst, so re-stamping created_at

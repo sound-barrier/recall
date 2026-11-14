@@ -24,7 +24,6 @@ import (
 
 	"recall/pkg/db"
 	"recall/pkg/match"
-	"recall/pkg/matchedit"
 )
 
 var (
@@ -42,6 +41,9 @@ var (
 	// ErrTooManyMatches reports a set past the ceiling. 400 — the body is
 	// well-formed and the schema says so (maxItems), like a too-long title.
 	ErrTooManyMatches = errors.New("review: too many matches for one self review")
+	// ErrFinished reports an edit to a finished sitting. 409 — a finished
+	// review is on the record.
+	ErrFinished = errors.New("review: this self review is finished")
 )
 
 const (
@@ -60,9 +62,6 @@ type Store interface {
 	// LoadMatchKeys is the registry the create/set-matches guard consults —
 	// one read for the whole batch, refused whole on the first unknown key.
 	LoadMatchKeys() (map[string]bool, error)
-	// The reviewed-by flag Finish writes and reads.
-	LoadReviews() (map[string]db.ReviewState, error)
-	SetReview(matchKey, reviewedBy string) error
 }
 
 // CreateInput is the body of a create: a name (optional) and the set.
@@ -158,21 +157,16 @@ func Delete(s Store, reviewID string) error {
 	return s.DeleteSelfReview(reviewID)
 }
 
-// Finish stamps the sitting done and marks every member match reviewed by
-// self — where a coach has not already: the coach mark outranks in both
-// directions (an accept overwrites self with coach; a finish never
-// overwrites coach with self). Idempotent.
+// Finish moves the sitting to finished and marks every member match
+// reviewed by self — where a coach has not already: the coach mark outranks
+// in both directions (an accept overwrites self with coach; a finish never
+// overwrites coach with self). The stamp and the marks are one store
+// transaction. Finishing again keeps the first stamp and re-marks. A sitting
+// whose members are all gone is ErrNoMatches.
 func Finish(s Store, reviewID string) (Session, error) {
 	r, err := getRow(s, reviewID)
 	if err != nil {
 		return Session{}, err
-	}
-	if err := s.FinishSelfReview(reviewID); err != nil {
-		return Session{}, MapStoreErr(err)
-	}
-	flags, err := s.LoadReviews()
-	if err != nil {
-		return Session{}, fmt.Errorf("review: finish: load reviewed flags: %w", err)
 	}
 	// The unknown-key guard, applied here too: a member can stop existing
 	// while its membership row remains (a manual match whose data was reset
@@ -182,13 +176,17 @@ func Finish(s Store, reviewID string) (Session, error) {
 	if err != nil {
 		return Session{}, fmt.Errorf("review: finish: load match keys: %w", err)
 	}
+	mark := make([]string, 0, len(r.MatchKeys))
 	for _, k := range r.MatchKeys {
-		if !known[k] || flags[k].ReviewedBy == matchedit.ReviewedByCoach {
-			continue
+		if known[k] {
+			mark = append(mark, k)
 		}
-		if err := s.SetReview(k, matchedit.ReviewedBySelf); err != nil {
-			return Session{}, fmt.Errorf("review: finish: mark %s reviewed: %w", k, err)
-		}
+	}
+	if len(mark) == 0 {
+		return Session{}, ErrNoMatches
+	}
+	if err := s.FinishSelfReview(db.SelfReviewFinish{ReviewID: reviewID, MarkSelf: mark}); err != nil {
+		return Session{}, MapStoreErr(err)
 	}
 	return Get(s, reviewID)
 }
@@ -246,6 +244,10 @@ func MapStoreErr(err error) error {
 		return fmt.Errorf("%w: %w", ErrNotFound, err)
 	case errors.Is(err, db.ErrSelfReviewMatchUnknown):
 		return fmt.Errorf("%w: %w", ErrMatchNotInReview, err)
+	case errors.Is(err, db.ErrSelfReviewFinished):
+		return fmt.Errorf("%w: %w", ErrFinished, err)
+	case errors.Is(err, db.ErrSelfReviewEmpty):
+		return fmt.Errorf("%w: %w", ErrNoMatches, err)
 	}
 	return err
 }
