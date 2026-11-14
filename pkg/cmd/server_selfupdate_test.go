@@ -84,11 +84,11 @@ func TestPostSelfUpdateRestart_NothingStaged_Returns409(t *testing.T) {
 	a.SelfUpdate = stubSelfUpdater{}
 
 	rec := fire(t, mux, "POST", "/api/v1/system/self-update/restart", nil)
-	assertProblem(t, rec, http.StatusConflict, "conflict", "no update is staged")
+	assertProblem(t, rec, http.StatusConflict, "self-update-not-ready", "no update is staged")
 }
 
 // A staged release is not discarded by a second start.
 func TestPostSelfUpdate_AfterStaged_Returns409(t *testing.T) {
 	rec := fire(t, stagedMux(t), "POST", "/api/v1/system/self-update", nil)
-	assertProblem(t, rec, http.StatusConflict, "conflict", "already staged")
+	assertProblem(t, rec, http.StatusConflict, "self-update-staged", "already staged")
 }

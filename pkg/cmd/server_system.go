@@ -126,7 +126,7 @@ func registerSystemProbeAndActionRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("POST /api/v1/system/self-update", func(w http.ResponseWriter, r *http.Request) {
 		if writeError(w, r, a.StartSelfUpdate(),
 			errStatus{app.ErrSelfUpdateUnavailable, probSelfUpdateUnavailable},
-			errStatus{app.ErrSelfUpdateStaged, probConflict}) {
+			errStatus{app.ErrSelfUpdateStaged, probSelfUpdateStaged}) {
 			return
 		}
 		w.WriteHeader(http.StatusAccepted)
@@ -138,7 +138,7 @@ func registerSystemProbeAndActionRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("POST /api/v1/system/self-update/restart", func(w http.ResponseWriter, r *http.Request) {
 		if writeError(w, r, a.RestartToApply(),
 			errStatus{app.ErrSelfUpdateUnavailable, probSelfUpdateUnavailable},
-			errStatus{app.ErrSelfUpdateNotReady, probConflict}) {
+			errStatus{app.ErrSelfUpdateNotReady, probSelfUpdateNotReady}) {
 			return
 		}
 		w.WriteHeader(http.StatusAccepted)

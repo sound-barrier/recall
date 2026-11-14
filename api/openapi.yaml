@@ -2213,7 +2213,21 @@ paths:
         "202":
           description: Self-update started.
         "409":
-          $ref: "#/components/responses/Conflict"
+          description: |
+            Self-update cannot start. Problem `type` tells the cases apart:
+            `.../problems/self-update-unavailable` (no updater on this
+            install) or `.../problems/self-update-staged` (a release is
+            already staged — restart to apply it).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+              example:
+                type: https://github.com/sound-barrier/recall/problems/self-update-staged
+                title: Conflict
+                status: 409
+                detail: an update is already staged — restart to apply it
+                instance: /api/v1/system/self-update
 
   /api/v1/system/self-update/restart:
     post:
@@ -2234,7 +2248,21 @@ paths:
         "202":
           description: Restart accepted; the app is swapping + relaunching.
         "409":
-          $ref: "#/components/responses/Conflict"
+          description: |
+            Nothing to apply. Problem `type` tells the cases apart:
+            `.../problems/self-update-unavailable` (no updater on this
+            install) or `.../problems/self-update-not-ready` (no release is
+            staged yet).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+              example:
+                type: https://github.com/sound-barrier/recall/problems/self-update-not-ready
+                title: Conflict
+                status: 409
+                detail: no update is staged to apply
+                instance: /api/v1/system/self-update/restart
 
   /api/v1/system/data-location:
     get:
