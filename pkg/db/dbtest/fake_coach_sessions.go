@@ -36,7 +36,7 @@ func (f *Fake) PointCoachSessionAt(sessionID string, playerRef int64, handle str
 	defer f.mu.Unlock()
 	row, ok := f.CoachSessions[sessionID]
 	if !ok {
-		return nil
+		return db.ErrCoachSessionUnknown
 	}
 	row.PlayerRef = playerRef
 	row.Handle = handle
@@ -55,11 +55,32 @@ func (f *Fake) EndCoachSession(sessionID string, outcome db.SittingStatus, focus
 	defer f.mu.Unlock()
 	row, ok := f.CoachSessions[sessionID]
 	if !ok {
-		return nil
+		return db.ErrCoachSessionUnknown
 	}
 	row.Status = outcome
 	row.EndedAt = nowRFC3339()
 	row.FocusItems = append([]db.CoachSessionFocusRow(nil), focus...)
+	f.CoachSessions[sessionID] = row
+	return nil
+}
+
+func (f *Fake) CoverCoachSessionMatches(sessionID string, matchKeys []string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	row, ok := f.CoachSessions[sessionID]
+	if !ok {
+		return db.ErrCoachSessionUnknown
+	}
+	// The given reel replaces the recorded one, a repeated key kept once at
+	// its first position, as the SQL store's delete-then-upsert leaves it.
+	seen := map[string]bool{}
+	row.MatchKeys = row.MatchKeys[:0:0]
+	for _, k := range matchKeys {
+		if !seen[k] {
+			seen[k] = true
+			row.MatchKeys = append(row.MatchKeys, k)
+		}
+	}
 	f.CoachSessions[sessionID] = row
 	return nil
 }

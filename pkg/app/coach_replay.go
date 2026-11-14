@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"time"
 
 	"recall/pkg/coach"
@@ -37,6 +38,12 @@ func (a *App) OpenCoachReplaySession(codes []string) (coach.SessionView, error) 
 // Codes arrive one at a time over voice chat, so the reel has to grow while
 // the coach is working rather than being fixed at open.
 func (a *App) AddCoachSessionReplayCode(code string) (coach.SessionView, error) {
+	// Leased before coachMu, the order every coach path takes them in.
+	store, release, leaseErr := a.useStore()
+	if leaseErr != nil {
+		return coach.SessionView{}, leaseErr
+	}
+	defer release()
 	a.coachMu.Lock()
 	defer a.coachMu.Unlock()
 	s := a.coachSlot.session
@@ -45,6 +52,12 @@ func (a *App) AddCoachSessionReplayCode(code string) (coach.SessionView, error) 
 	}
 	if err := s.AddReplayCode(code); err != nil {
 		return coach.SessionView{}, err
+	}
+	// The history covers the reel as it stands, so a code added now is in
+	// it. The whole reel is written each time: a write that failed once is
+	// healed by the next.
+	if err := store.CoverCoachSessionMatches(s.SessionID, reelKeys(s)); err != nil {
+		return coach.SessionView{}, fmt.Errorf("coach: record the reel: %w", err)
 	}
 	return a.coachViewLocked(time.Now())
 }

@@ -117,6 +117,10 @@ type Store interface {
 	StartCoachSession(row CoachSessionRow) error
 	PointCoachSessionAt(sessionID string, playerRef int64, handle string, kind CoachKind) error
 	EndCoachSession(sessionID string, outcome SittingStatus, focus []CoachSessionFocusRow) error
+	// CoverCoachSessionMatches records the sitting's whole reel, in order —
+	// a replay session's reel grows after open. ErrCoachSessionUnknown when
+	// the sitting has no row; so do PointCoachSessionAt and EndCoachSession.
+	CoverCoachSessionMatches(sessionID string, matchKeys []string) error
 	ListCoachSessions(playerRef int64) ([]CoachSessionRow, error)
 
 	LinkDuplicateMatches(matchKey, duplicateOf string) error

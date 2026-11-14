@@ -151,3 +151,69 @@ func TestCoachSession_QuittingTheAppRecordsAnInterruptedSitting(t *testing.T) {
 		t.Errorf("GetCoachSession after shutdown = %v, want ErrNoSession", err)
 	}
 }
+
+// Codes arrive one at a time over voice chat, and the sitting's history is
+// what the dossier reads back. A code added after open used to grow only the
+// in-memory reel, so the history said the sitting covered what it held at
+// open.
+func TestCoachSession_ACodeAddedAfterOpenReachesTheHistory(t *testing.T) {
+	a, fake := coachApp(t)
+	if _, err := a.OpenCoachReplaySession([]string{"ABC123"}); err != nil {
+		t.Fatalf("OpenCoachReplaySession: %v", err)
+	}
+	if _, err := a.AddCoachSessionReplayCode("DEF456"); err != nil {
+		t.Fatalf("AddCoachSessionReplayCode: %v", err)
+	}
+
+	for _, row := range fake.CoachSessions {
+		if len(row.MatchKeys) != 2 || row.MatchKeys[1] != "replay-DEF456" {
+			t.Errorf("history covers %v, want both codes in reel order", row.MatchKeys)
+		}
+	}
+}
+
+// historyFails refuses the sitting's history row.
+type historyFails struct{ *dbtest.Fake }
+
+func (historyFails) StartCoachSession(db.CoachSessionRow) error { return errors.New("disk full") }
+
+// A sitting with no history row is a sitting nothing can ever be filed
+// under: the player's name, the frozen focus list and the end all UPDATE a
+// row that is not there. The open is refused rather than going ahead with a
+// record that will silently stay empty.
+func TestCoachSession_AnOpenWhoseHistoryCannotBeWrittenIsRefused(t *testing.T) {
+	isolateInstall(t)
+	a := app.NewWithStore(historyFails{Fake: dbtest.New()})
+
+	if _, err := a.OpenCoachReplaySession([]string{"ABC123"}); err == nil {
+		t.Fatal("the open went ahead with no history row")
+	}
+	if _, err := a.GetCoachSession(); !errors.Is(err, coach.ErrNoSession) {
+		t.Errorf("GetCoachSession = %v, want the slot left free", err)
+	}
+}
+
+// A history row that went missing mid-sitting is reported when the coach
+// names the player, rather than the re-point quietly updating nothing.
+func TestCoachSession_NamingThePlayerOfALostHistoryRowIsReported(t *testing.T) {
+	a, fake := sessionApp(t)
+	fake.CoachSessions = nil
+
+	if _, err := a.SetCoachSessionPlayer("Kestrel", db.CoachKindPlayer); !errors.Is(err, db.ErrCoachSessionUnknown) {
+		t.Errorf("SetCoachSessionPlayer = %v, want ErrCoachSessionUnknown", err)
+	}
+}
+
+// Closing still closes when the history row has gone, and says that the
+// sitting could not be recorded rather than claiming it was.
+func TestCoachSession_ClosingALostHistoryRowClosesAndReportsIt(t *testing.T) {
+	a, fake := sessionApp(t)
+	fake.CoachSessions = nil
+
+	if err := a.CloseCoachSession(); !errors.Is(err, db.ErrCoachSessionUnknown) {
+		t.Errorf("CloseCoachSession = %v, want ErrCoachSessionUnknown", err)
+	}
+	if _, err := a.GetCoachSession(); !errors.Is(err, coach.ErrNoSession) {
+		t.Errorf("GetCoachSession = %v, want the session closed all the same", err)
+	}
+}

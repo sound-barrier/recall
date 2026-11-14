@@ -78,3 +78,45 @@ func TestSQLStore_SittingAndFrozenFocusStatusesAreChecked(t *testing.T) {
 		}
 	}
 }
+
+// Every later write to a sitting's history names its row; a row that is not
+// there is reported rather than updated into nothing.
+func TestStoreContract_ASittingWriteToAMissingRowIsReported(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			for name, err := range map[string]error{
+				"point": s.PointCoachSessionAt("ghost", 0, "Kestrel", db.CoachKindPlayer),
+				"end":   s.EndCoachSession("ghost", db.SittingEnded, nil),
+				"cover": s.CoverCoachSessionMatches("ghost", []string{"replay-ABC123"}),
+			} {
+				if !errors.Is(err, db.ErrCoachSessionUnknown) {
+					t.Errorf("%s on a missing sitting = %v, want ErrCoachSessionUnknown", name, err)
+				}
+			}
+		})
+	}
+}
+
+// Cover records the whole reel, in order, each time: a code added later
+// lands after the ones before it, and a repeat changes nothing.
+func TestStoreContract_CoverRecordsTheWholeReelInOrder(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			p, err := s.EnsureCoachPlayer("pid-1", "Kestrel", db.CoachKindPlayer)
+			mustNoErr(t, err)
+			mustNoErr(t, s.StartCoachSession(db.CoachSessionRow{
+				SessionID: "s", PlayerRef: p.ID, Source: db.CoachSessionFromReplay, MatchKeys: []string{"replay-AAA111"},
+			}))
+			mustNoErr(t, s.CoverCoachSessionMatches("s", []string{"replay-AAA111", "replay-BBB222"}))
+			mustNoErr(t, s.CoverCoachSessionMatches("s", []string{"replay-AAA111", "replay-BBB222"}))
+
+			got, err := s.ListCoachSessions(p.ID)
+			mustNoErr(t, err)
+			if len(got) != 1 || len(got[0].MatchKeys) != 2 || got[0].MatchKeys[1] != "replay-BBB222" {
+				t.Errorf("sessions = %+v, want the two codes in reel order", got)
+			}
+		})
+	}
+}

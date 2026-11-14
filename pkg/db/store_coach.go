@@ -66,6 +66,9 @@ var (
 	ErrMomentMatchMismatch = errors.New("moment belongs to another match")
 	// ErrCoachReturnUnknown reports a returnID no coach_returns row carries.
 	ErrCoachReturnUnknown = errors.New("coach return not found")
+	// ErrCoachSessionUnknown reports a session_id no coach_sessions row
+	// carries — a history row that was never written or has gone.
+	ErrCoachSessionUnknown = errors.New("coach session not found")
 	// ErrMatchCoachNoteUnknown reports a match_coach_notes id that does not
 	// exist (already deleted, or never accepted).
 	ErrMatchCoachNoteUnknown = errors.New("match coach note not found")

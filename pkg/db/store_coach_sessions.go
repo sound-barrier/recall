@@ -90,14 +90,47 @@ func (s *SQLStore) StartCoachSession(row CoachSessionRow) error {
 	); err != nil {
 		return fmt.Errorf("coach session: open: %w", err)
 	}
-	for i, key := range row.MatchKeys {
+	if err := coverMatches(tx, row.SessionID, row.MatchKeys); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// coverMatches writes the reel in order, a repeated key kept at its first
+// position.
+func coverMatches(tx txn, sessionID string, matchKeys []string) error {
+	for i, key := range matchKeys {
 		if _, err := tx.Exec(
 			`INSERT INTO coach_session_matches (session_id, match_key, sort_order)
 			 VALUES (?,?,?) ON CONFLICT(session_id, match_key) DO NOTHING`,
-			row.SessionID, key, i,
+			sessionID, key, i,
 		); err != nil {
 			return fmt.Errorf("coach session: cover %s: %w", key, err)
 		}
+	}
+	return nil
+}
+
+func (s *SQLStore) CoverCoachSessionMatches(sessionID string, matchKeys []string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var exists bool
+	if err := tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM coach_sessions WHERE session_id = ?)`, sessionID).Scan(&exists); err != nil {
+		return err
+	}
+	if !exists {
+		return ErrCoachSessionUnknown
+	}
+	// The reel as it stands replaces the one recorded, so the history is
+	// exactly what the sitting covers.
+	if _, err := tx.Exec(`DELETE FROM coach_session_matches WHERE session_id = ?`, sessionID); err != nil {
+		return fmt.Errorf("coach session: clear cover: %w", err)
+	}
+	if err := coverMatches(tx, sessionID, matchKeys); err != nil {
+		return err
 	}
 	return tx.Commit()
 }
@@ -105,11 +138,14 @@ func (s *SQLStore) StartCoachSession(row CoachSessionRow) error {
 // PointCoachSessionAt files an already-open sitting under a player. Called
 // when the coach names them, and again whenever they correct it.
 func (s *SQLStore) PointCoachSessionAt(sessionID string, playerRef int64, handle string, kind CoachKind) error {
-	_, err := s.db.Exec(
+	res, err := s.db.Exec(
 		`UPDATE coach_sessions SET player_ref = ?, handle = ?, kind = ? WHERE session_id = ?`,
 		nullableRef(playerRef), handle, kindOrPlayer(kind), sessionID,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	return requireAffected(res, ErrCoachSessionUnknown)
 }
 
 // EndCoachSession stamps the sitting with how it ended and freezes the
@@ -124,11 +160,15 @@ func (s *SQLStore) EndCoachSession(sessionID string, outcome SittingStatus, focu
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.Exec(
+	res, err := tx.Exec(
 		`UPDATE coach_sessions SET status = ?, ended_at = STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')
 		 WHERE session_id = ?`, outcome, sessionID,
-	); err != nil {
+	)
+	if err != nil {
 		return fmt.Errorf("coach session: end: %w", err)
+	}
+	if err := requireAffected(res, ErrCoachSessionUnknown); err != nil {
+		return err
 	}
 	if _, err := tx.Exec(`DELETE FROM coach_session_focus_items WHERE session_id = ?`, sessionID); err != nil {
 		return err
