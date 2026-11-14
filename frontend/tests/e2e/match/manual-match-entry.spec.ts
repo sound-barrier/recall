@@ -207,3 +207,54 @@ test('an out-of-range rank progress blocks submit with an inline error', async (
   await expect(page.locator('.mm-rank-error')).toBeHidden()
   await expect(page.locator('[data-mm-submit]')).toBeEnabled()
 })
+
+// The modal stays mounted between uses and nothing reset its form after a
+// create: reopening "Add match" showed the last match still filled in, with
+// the time it was first opened at.
+test('reopening Add match after a create starts from an empty form', async ({ page }) => {
+  const created: unknown[] = []
+  await page.route('**/api/v1/system/reference-data', (route: Route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(refData) }),
+  )
+  await page.route('**/api/v1/matches', async (route: Route) => {
+    const req = route.request()
+    if (req.method() === 'POST') {
+      const rec = manualRecord(JSON.parse(req.postData() ?? '{}'))
+      created.push(rec)
+      await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(rec) })
+    } else {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(created) })
+    }
+  })
+
+  await page.goto('/')
+  await page.getByRole('tab', { name: /^Matches/ }).click()
+  await page.locator('[data-add-match]').click()
+  await page.locator('[data-add-match-full]').click()
+  await page.locator('[data-mode="quickplay"]').click()
+  await page.locator('[data-queue="open"]').click()
+  await page.locator('[data-result="victory"]').click()
+  const mapCombo = page.locator('[data-combo-id="mm-map"]')
+  await mapCombo.locator('.combo-input').click()
+  await mapCombo.locator('.combo-input').fill('ili')
+  await page.keyboard.press('Enter')
+  const heroCombo = page.locator('[data-combo-id="mm-hero"]')
+  await heroCombo.locator('.combo-input').click()
+  await heroCombo.getByRole('option', { name: 'ana' }).click()
+  await page.locator('#mm-title').click()
+  await page.locator('#mm-replay').fill('A1B2C3')
+  await page.locator('[data-mm-submit]').click()
+  await expect(page.locator('.mm-modal')).toBeHidden()
+  // The create opens the new match's detail panel; close it to get back to
+  // the toolbar.
+  await expect(page.getByRole('dialog', { name: 'Ilios' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog', { name: 'Ilios' })).toBeHidden()
+
+  await page.locator('[data-add-match]').click()
+  await page.locator('[data-add-match-full]').click()
+  await expect(page.locator('.mm-modal')).toBeVisible()
+  await expect(page.locator('#mm-replay')).toHaveValue('')
+  await expect(page.locator('[data-combo-id="mm-map"] .combo-pill')).toHaveCount(0)
+  await expect(page.locator('[data-combo-id="mm-hero"] .combo-pill')).toHaveCount(0)
+})

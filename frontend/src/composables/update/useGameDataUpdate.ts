@@ -29,9 +29,11 @@ export function useGameDataUpdate(
 ) {
   const applyState = ref<GameDataApplyState>({ kind: 'idle' })
 
-  // Re-arm Apply when the modal re-opens.
+  // Re-arm Apply when the modal re-opens — unless an apply is still running.
+  // Re-arming then put an enabled Apply over a live apply, and its result
+  // landed on a dialog that had forgotten asking.
   watch(() => toValue(open), (isOpen) => {
-    if (isOpen) applyState.value = { kind: 'idle' }
+    if (isOpen && applyState.value.kind !== 'applying') applyState.value = { kind: 'idle' }
   })
 
   const gameData = computed(() =>
@@ -102,7 +104,7 @@ export function useGameDataUpdate(
   })
 
   async function onApply() {
-    if (!canApply.value) return
+    if (!canApply.value || applyState.value.kind === 'applying') return
     applyState.value = { kind: 'applying' }
     try {
       const result = await ApplyGameDataUpdate()

@@ -101,6 +101,14 @@ const REFUSED_RELEASE = {
   message: 'updater: all providers failed: github: update refused: release 0.34.0 is not covered by its SHA256SUMS',
 }
 
+async function reachReady(app: ReturnType<typeof useAppStore>): Promise<void> {
+  await app.startSelfUpdate()
+  fire(SelfUpdateEvents.DownloadStarted)
+  fire(SelfUpdateEvents.DownloadComplete)
+  fire(SelfUpdateEvents.Installing)
+  fire(SelfUpdateEvents.UpdateReady)
+}
+
 describe('app store — self-update', () => {
   it('starts in the idle phase', () => {
     const app = useAppStore()
@@ -206,9 +214,59 @@ describe('app store — self-update', () => {
     expect(app.selfUpdate.error).not.toBe('')
   })
 
+  // Events carry no run id, so the phase refuses moves no run could make: a
+  // progress tick that arrives after the run failed used to bring back
+  // "downloading" over the error the user was reading.
+  it('a late progress tick after an error leaves the error standing', async () => {
+    api.StartSelfUpdate.mockResolvedValue(undefined)
+    const app = useAppStore()
+    await app.startSelfUpdate()
+    fire(SelfUpdateEvents.DownloadStarted)
+    fire(SelfUpdateEvents.Error, { stage: 'download', message: 'checksum mismatch' })
+
+    fire(SelfUpdateEvents.DownloadProgress, { written: 90, total: 100 })
+    expect(app.selfUpdate).toMatchObject({ phase: 'error', error: 'checksum mismatch' })
+  })
+
+  it('a late progress tick after the update is staged leaves it ready', async () => {
+    api.StartSelfUpdate.mockResolvedValue(undefined)
+    const app = useAppStore()
+    await reachReady(app)
+
+    fire(SelfUpdateEvents.DownloadProgress, { written: 90, total: 100 })
+    expect(app.selfUpdate.phase).toBe('ready')
+  })
+
+  // A staged update is one Restart away. Starting another pass over it would
+  // throw the staged binary away, so the store refuses to send the request.
+  it('refuses to start another update while one is staged', async () => {
+    api.StartSelfUpdate.mockResolvedValue(undefined)
+    const app = useAppStore()
+    await reachReady(app)
+    api.StartSelfUpdate.mockClear()
+
+    await app.startSelfUpdate()
+
+    expect(api.StartSelfUpdate).not.toHaveBeenCalled()
+    expect(app.selfUpdate.phase).toBe('ready')
+  })
+
+  it('refuses a second start while one is still running', async () => {
+    api.StartSelfUpdate.mockResolvedValue(undefined)
+    const app = useAppStore()
+    await app.startSelfUpdate()
+    fire(SelfUpdateEvents.DownloadStarted)
+
+    await app.startSelfUpdate()
+    expect(api.StartSelfUpdate).toHaveBeenCalledTimes(1)
+    expect(app.selfUpdate.phase).toBe('downloading')
+  })
+
   it('restartToApply enters restarting and delegates to RestartToApply', async () => {
     api.RestartToApply.mockResolvedValue(undefined)
+    api.StartSelfUpdate.mockResolvedValue(undefined)
     const app = useAppStore()
+    await reachReady(app)
 
     await app.restartToApply()
 
@@ -218,7 +276,9 @@ describe('app store — self-update', () => {
 
   it('surfaces a restart failure as the error phase', async () => {
     api.RestartToApply.mockRejectedValue(new Error('swap failed'))
+    api.StartSelfUpdate.mockResolvedValue(undefined)
     const app = useAppStore()
+    await reachReady(app)
 
     await app.restartToApply()
 

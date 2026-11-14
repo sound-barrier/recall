@@ -32,7 +32,10 @@ export const useMatchesStore = defineStore('matches', () => {
   // tour-aware (demo data overlays the cache while the tour runs), and the
   // few remaining writers (the match-updated upsert, test seeding) route
   // through setQueryData so the cache stays the single source of truth.
-  const matchesQuery = useMatchesQuery()
+  // The keys of the last list the server answered with — the baseline the
+  // records pulse measures a reload against (see load()).
+  let fetchedKeys: Set<string> | null = null
+  const matchesQuery = useMatchesQuery((recs) => { fetchedKeys = new Set(recs.map((r) => r.match_key)) })
   const realRecords = computed(() => matchesQuery.data.value ?? [])
   const coach = useCoachStore()
 
@@ -106,20 +109,26 @@ export const useMatchesStore = defineStore('matches', () => {
   // session while the tour runs is refused" is enforced from over there.
   coach.setTourOpen(tourActive.value)
 
+  // Each open or close is a generation. The demo chunk loads asynchronously,
+  // and a close (Escape) landing before it arrived used to be undone by it:
+  // the late import switched the overlay back on with no tour left to close.
+  let tourGeneration = 0
   async function onTourActiveChange(active: boolean) {
     // The other half of the exclusivity above: neither the first-launch
     // auto-open nor Settings' Replay may put demo data over a player's
     // loaned corpus mid-session.
     if (active && coach.sessionActive) return
+    const generation = ++tourGeneration
     coach.setTourOpen(active)
-    if (active) {
-      const { DEMO_MATCHES } = await import('@/composables/onboarding/useDemoMatches')
-      demoRecords.value = [...DEMO_MATCHES]
-      tourActive.value = true
-    } else {
+    if (!active) {
       demoRecords.value = []
       tourActive.value = false
+      return
     }
+    const { DEMO_MATCHES } = await import('@/composables/onboarding/useDemoMatches')
+    if (generation !== tourGeneration) return
+    demoRecords.value = [...DEMO_MATCHES]
+    tourActive.value = true
   }
 
   // ── Reload seam ───────────────────────────────────────────────────
@@ -137,11 +146,15 @@ export const useMatchesStore = defineStore('matches', () => {
   // into that store from here made the records own the pipeline's chrome and
   // closed a store-to-store import cycle.
   const recordsArrivals = ref(0)
+  // Measured against the previous FETCH, not the cache: a watcher parse
+  // upserts each match into the cache as it lands, before the run's closing
+  // reload, so the cache already held every new record by the time this
+  // counted — and the pulse never fired on the path it exists for.
   async function load() {
-    const before = (getQueryClient().getQueryData<MatchRecord[]>(qk.matches) ?? []).length
+    const before = fetchedKeys
     await refetchMatchesCluster()
-    const after = (getQueryClient().getQueryData<MatchRecord[]>(qk.matches) ?? []).length
-    if (before > 0 && after > before) recordsArrivals.value++
+    const after = fetchedKeys ?? new Set<string>()
+    if (before !== null && before.size > 0 && [...after].some((k) => !before.has(k))) recordsArrivals.value++
   }
 
   // ── Narrow filter + anchor cluster ────────────────────────────────

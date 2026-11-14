@@ -25,6 +25,11 @@ function readResumeFlag(): boolean {
 
 const resumeArmed = ref(readResumeFlag())
 
+/** Whether this boot will ask for a session to resume (the flag a previous run left). */
+export function coachSessionResumeArmed(): boolean {
+  return resumeArmed.value
+}
+
 /** Record whether a session is open, so the next boot knows to resume it. */
 export function setCoachSessionResume(open: boolean): void {
   try {
