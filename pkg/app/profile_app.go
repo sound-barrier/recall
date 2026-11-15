@@ -277,12 +277,12 @@ func (a *App) swapToProfile(name string) error {
 	if err == nil {
 		return nil
 	}
-	applog.Subsystem("profiles").Error("open profile", "name", applog.Scrub(name), "err", err)
+	applog.Subsystem("profiles").Error("open profile", "name", applog.Scrub(name), "err", applog.Scrub(err.Error()))
 	if previous == "" || previous == name {
 		return err
 	}
 	if rerr := a.openProfile(previous); rerr != nil {
-		applog.Subsystem("profiles").Error("reopen previous profile", "name", applog.Scrub(previous), "err", rerr)
+		applog.Subsystem("profiles").Error("reopen previous profile", "name", applog.Scrub(previous), "err", applog.Scrub(rerr.Error()))
 		return errors.Join(err, rerr)
 	}
 	return err
