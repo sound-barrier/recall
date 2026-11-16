@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.35.1](https://github.com/sound-barrier/recall/compare/v0.35.0...v0.35.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* **app:** scrub the profile-open error before logging it ([b427801](https://github.com/sound-barrier/recall/commit/b42780151004710a45d7fea4bcf124688d148d67))
+
+
+### Build & Packaging
+
+* **deps:** bump the weekly-deps group in /frontend with 23 updates ([1b9f847](https://github.com/sound-barrier/recall/commit/1b9f847208325f531afe43967d18c262e7f44381))
+* **deps:** move the minimatch override to 11.0.5 ([f166d03](https://github.com/sound-barrier/recall/commit/f166d03e4a47e3bf668be7945f435943243e6094))
+* **deps:** override re2js to 2.8.8 in the tool CLIs ([5acb3b9](https://github.com/sound-barrier/recall/commit/5acb3b9b56398d01189d867703f13800dd4ca970))
+
 ## [0.35.0](https://github.com/sound-barrier/recall/compare/v0.34.1...v0.35.0) (2026-11-14)
 
 
