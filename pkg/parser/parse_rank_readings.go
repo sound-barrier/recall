@@ -27,13 +27,15 @@ var (
 // rankBannerResult reads the top-left banner: "COMPETITIVE VICTORY!" /
 // "COMPETITIVE DEFEAT!" / "COMPETITIVE DRAW!". Same prefix-match rule as the
 // SUMMARY card (detectResult) so OCR slips like "DEFERT" still classify.
-func rankBannerResult(img image.Image, work string) string {
+// Every rung reads the same banner region, which comes back with the result
+// (empty when no rung classified).
+func rankBannerResult(img image.Image, work string) (string, image.Rectangle) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
 	bannerRect := image.Rect(0, H*7/100, W*45/100, H*22/100)
 	bannerText, _ := ocrInverted(img, bannerRect, ocrSpec{workDir: work, name: "rank_banner", psm: "11", whitelist: ""})
 	if res := detectResult(bannerText); res != "" {
-		return res
+		return res, bannerRect
 	}
 	// A hero model rendered behind the banner turns it white-on-bright, which
 	// the inverted pass flattens to dark-on-dark ("[EFFAT"). The threshold pass
@@ -51,35 +53,36 @@ func rankBannerResult(img image.Image, work string) string {
 	}{{"rank_banner_occluded", 180}, {"rank_banner_occluded_200", 200}} {
 		occluded, _ := ocrThreshold(img, bannerRect, ocrSpec{workDir: work, name: rung.name, scale: 2, thresh: rung.thresh, psm: "11"})
 		if res := detectResult(occluded); res != "" {
-			return res
+			return res, bannerRect
 		}
 	}
-	return ""
+	return "", image.Rectangle{}
 }
 
 // rankProgressPct reads the rank-progress bar's "RANK PROGRESS: 21%" caption
 // value. It can be NEGATIVE on a demotion screen ("-19%"); it's thin, colored
 // text the inverted pass flattens, so OCR it RAW at 6x over a tight value crop
 // just right of the "RANK PROGRESS:" label (whose width is fixed, so the value
-// always starts at the same x).
-func rankProgressPct(img image.Image, work string) *int {
+// always starts at the same x). Both passes read the one value crop, which
+// comes back with the reading (empty when neither read).
+func rankProgressPct(img image.Image, work string) (*int, image.Rectangle) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
 	progValRect := image.Rect(W*36/100, H*71/100, W*52/100, H*78/100)
 	progValText, _ := ocrRaw(img, progValRect, ocrSpec{workDir: work, name: "rank_progress", scale: 6, psm: "7", whitelist: "-0123456789%"})
 	if pct, ok := rankProgressValue(progValText); ok {
-		return &pct
+		return &pct, progValRect
 	}
 	// Over a bright hero model the cyan value has no contrast left in a raw
 	// read; a threshold keeps its bright core.
 	occluded, _ := ocrThreshold(img, progValRect, ocrSpec{workDir: work, name: "rank_progress_occluded", scale: 6, thresh: 180, psm: "7", whitelist: "-0123456789%"})
 	if pct, ok := rankProgressValue(occluded); ok {
-		return &pct
+		return &pct, progValRect
 	}
 	// nil, not 0: 0% is the BOTTOM of a division, a real place to be. Returning
 	// it for "the caption did not read" would put a legitimate-looking value on
 	// a screen that never showed one.
-	return nil
+	return nil, image.Rectangle{}
 }
 
 func rankProgressValue(text string) (int, bool) {
@@ -110,7 +113,10 @@ func rankProgressValue(text string) (int, bool) {
 // so the value is rejected when it is exactly the progress this screen already
 // reported. That band still earns its place: it is the only one that reads two
 // of the corpus's captures.
-func rankChangePct(img image.Image, work string, progress *int) *int {
+//
+// The band the accepted reading came from comes back with it, since the four
+// bands are different regions and only one of them showed the pill.
+func rankChangePct(img image.Image, work string, progress *int) (*int, image.Rectangle) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
 
@@ -120,14 +126,14 @@ func rankChangePct(img image.Image, work string, progress *int) *int {
 	// inverts to dark-on-light.
 	wide := image.Rect(W*24/100, H*760/1000, W*76/100, H*815/1000)
 	if pct, ok := signedPct(ocrText(ocrInverted(img, wide, ocrSpec{workDir: work, name: "rank_change_pill", psm: "6", whitelist: signedPctChars}))); ok {
-		return &pct
+		return &pct, wide
 	}
 	// (b) THRESHOLDED over the same band. A hard bright-to-black binarization
 	// recovers pills the inverted pass flattens — including every 1080p
 	// capture, where the thin colored pill is lost by both the inverted and
 	// raw passes.
 	if pct, ok := signedPct(ocrText(ocrThreshold(img, wide, ocrSpec{workDir: work, name: "rank_change_raw", scale: 6, thresh: 200, psm: "6", whitelist: signedPctChars}))); ok {
-		return &pct
+		return &pct, wide
 	}
 	// (c) THRESHOLDED over the historical NARROW window. Tuned before the wide
 	// band existed and still the only pass that reads two of the corpus's
@@ -135,7 +141,7 @@ func rankChangePct(img image.Image, work string, progress *int) *int {
 	// them. A tuned crop is evidence.
 	narrow := image.Rect(W*30/100, H*760/1000, W*52/100, H*830/1000)
 	if pct, ok := signedPct(ocrText(ocrThreshold(img, narrow, ocrSpec{workDir: work, name: "rank_change_narrow", scale: 6, thresh: 200, psm: "6", whitelist: signedPctChars}))); ok {
-		return &pct
+		return &pct, narrow
 	}
 	// (d) INVERTED over the tall historical band, which reaches above the bar
 	// and so takes in the progress caption. Last, and guarded: a reading equal
@@ -143,11 +149,11 @@ func rankChangePct(img image.Image, work string, progress *int) *int {
 	// movement. See the note above the signature.
 	tall := image.Rect(W*10/100, H*60/100, W*70/100, H*80/100)
 	if pct, ok := signedPct(ocrText(ocrInverted(img, tall, ocrSpec{workDir: work, name: "rank_change", psm: "11", whitelist: ""}))); ok && (progress == nil || pct != *progress) {
-		return &pct
+		return &pct, tall
 	}
 	// nil, not 0. A 0 here would claim the match moved the rank by exactly
 	// nothing — which is what 21 of 44 rank captures used to assert.
-	return nil
+	return nil, image.Rectangle{}
 }
 
 // signedPctChars is the whitelist every movement pass shares: digits, both

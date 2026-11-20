@@ -80,9 +80,12 @@ func parsePersonalGrid(img image.Image, work string, res *MatchResult) {
 			}
 			if !statCell {
 				parsePersonalHeroCell(cellText, res)
+				recordHeroCardEvidence(img, res, fullRect)
 				continue
 			}
-			recordPersonalStat(cellText, res)
+			if field, ok := recordPersonalStat(cellText, res); ok {
+				res.recordEvidence(img, field, fullRect)
+			}
 		}
 	}
 }
@@ -118,20 +121,23 @@ func ocrPersonalCell(img image.Image, work, name string, full, strip image.Recta
 // value) under the selected hero. Stats with no hero card is a parse failure
 // on the hero-info cell — skip rather than dropping the stat into a nameless
 // bucket. The hero card (r0c0) is parsed first, so its play time is available
-// here to AVG-anchor each stat value.
-func recordPersonalStat(cellText string, res *MatchResult) {
+// here to AVG-anchor each stat value. It returns the path the stat was filed
+// under; ok is false when nothing was filed.
+func recordPersonalStat(cellText string, res *MatchResult) (FieldPath, bool) {
 	if len(res.HeroesPlayed) == 0 {
-		return
+		return "", false
 	}
 	playMin := playTimeMinutes(res.HeroesPlayed[0].PlayTime)
 	key, val, ok := parsePersonalStatCell(cellText, playMin)
 	if !ok {
-		return
+		return "", false
 	}
 	if res.HeroesPlayed[0].Stats == nil {
 		res.HeroesPlayed[0].Stats = map[string]int{}
 	}
-	res.HeroesPlayed[0].Stats[SnapHeroStatKey(res.Hero, key)] = val
+	key = SnapHeroStatKey(res.Hero, key)
+	res.HeroesPlayed[0].Stats[key] = val
+	return HeroStatPath(res.Hero, key), true
 }
 
 // appendSidebarHeroes reads the left sidebar, which lists every hero played

@@ -50,13 +50,15 @@ pkg/parser/diagnose_test.go:96:		t.Skip("fake tesseract is a shell script")
 # pkg/parser/integration_test.go — golden-file OCR tests are gated
 # on a real Tesseract binary + the recall-testdata image submodule
 # (testdata/images/, via `task fetch-fixtures`) + `go test` running
-# without `-short`. CI runs `-short` so these are skipped there;
-# they run locally via `task test` once the submodule is fetched.
-pkg/parser/integration_test.go:61:		t.Skip("skipping golden-file parser tests in -short mode")
-pkg/parser/integration_test.go:69:		t.Skipf("tesseract not found at %q — install it or set RECALL_TESSERACT_PATH", tp)
-pkg/parser/integration_test.go:109:		t.Skipf("fixture image dir %q missing — run 'task fetch-fixtures' to init the recall-testdata submodule", imageDir)
-pkg/parser/integration_test.go:125:		t.Skipf("no .png/.jpg fixtures in %q — run 'task fetch-fixtures' to init the recall-testdata submodule", imageDir)
-pkg/parser/integration_test.go:157:		t.Skipf("no golden file at %s (run with RECALL_FIXTURE_UPDATE=1 to create)", goldenPath)
+# without `-short`. ci.yml runs `-short` so these are skipped there;
+# golden-corpus.yml runs them, as does `task test` locally once the
+# submodule is fetched. The first two live in requireGoldenLane, shared
+# by the golden test and the field-evidence invariant.
+pkg/parser/integration_test.go:78:		t.Skip("skipping golden-file parser tests in -short mode")
+pkg/parser/integration_test.go:84:		t.Skipf("tesseract not found at %q — install it or set RECALL_TESSERACT_PATH", tp)
+pkg/parser/integration_test.go:115:		t.Skipf("fixture image dir %q missing — run 'task fetch-fixtures' to init the recall-testdata submodule", imageDir)
+pkg/parser/integration_test.go:131:		t.Skipf("no .png/.jpg fixtures in %q — run 'task fetch-fixtures' to init the recall-testdata submodule", imageDir)
+pkg/parser/integration_test.go:163:		t.Skipf("no golden file at %s (run with RECALL_FIXTURE_UPDATE=1 to create)", goldenPath)
 
 # pkg/match + pkg/app UTC time-model tests skip only when the host lacks
 # America/Denver zoneinfo (belt-and-braces; CI images ship it). Not flake

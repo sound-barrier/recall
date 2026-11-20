@@ -1,15 +1,15 @@
-# Canonical per-hero stat keys for the PERSONAL tab + scoreboard
-# right-side panel. Consumed by SnapHeroStatKey() in parse_personal.go
-# / parse_scoreboard.go to correct OCR mangling — Tesseract reads
-# Juno's orbital-ring icon as letter noise and the "ORBITAL RAY
-# ASSISTS" label sometimes lands as `ooorsitall_ray_assists` instead.
+# Canonical per-hero stat keys for the PERSONAL tab's stat cards.
+# Consumed by SnapHeroStatKey() (owdata.go), which parse_personal.go
+# calls to correct OCR mangling — Tesseract reads Juno's orbital-ring
+# icon as letter noise and the "ORBITAL RAY ASSISTS" label sometimes
+# lands as `ooorsitall_ray_assists` instead.
 #
 # Format: hero name (lowercase, the same form used as stored MatchResult
 # hero strings) → list of canonical snake_case stat keys. Keys are also
-# lowercase. When a new fixture lands with garbled stat keys, eyeball
-# the canonical form from in-game, add it here, re-baseline goldens
-# via `make update-goldens RECALL_FIXTURE_DIR="$PWD/testdata"`, and
-# commit both this file and the golden diff.
+# lowercase. When a new fixture lands with garbled stat keys, transcribe
+# the canonical form from the screenshot's pixels, add it here,
+# re-baseline goldens via `task update-goldens`, and commit both this
+# file and the golden diff.
 #
 # Heroes with no entry here just pass their OCR-mangled key through
 # unchanged — additive maintenance, no global break when a hero is

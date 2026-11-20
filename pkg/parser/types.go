@@ -1,6 +1,9 @@
 package parser
 
-import "fmt"
+import (
+	"fmt"
+	"image"
+)
 
 // Generation identifies the parser's OUTPUT vintage. Bump it when a re-parse
 // would change something the USER WOULD NOTICE — a corrected reading, a crop
@@ -150,6 +153,15 @@ type MatchResult struct {
 	// stored, never on the REST/Wails wire, and absent from the golden
 	// projections — the user-visible shape is the ledger row (app.FailedFile).
 	Warnings []string `json:"-"`
+
+	// Evidence records, per field this parse read, the region of the
+	// screenshot the accepted reading came from; ImageSize is that
+	// screenshot's dimensions, so a region can be checked against (and later
+	// cropped from) the source. Both are `json:"-"` for the reason Warnings
+	// is: parser-to-app signals, never on the wire as match data and absent
+	// from the byte-for-byte goldens, which an invariant test covers instead.
+	Evidence  []FieldEvidence `json:"-"`
+	ImageSize image.Point     `json:"-"`
 }
 
 // warnf appends one non-fatal parse warning. Callers use it where the

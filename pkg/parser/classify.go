@@ -52,12 +52,11 @@ func Classify(r *MatchResult) ScreenshotType {
 // screenshotTypeChecks is the ordered field-sniffing ladder Classify walks;
 // the first matching entry names the type.
 //
-// Order is load-bearing: a TEAMS parse populates BOTH the E/A/D
-// combat row AND the right-side panel's per-hero stats
-// (HeroesPlayed[*].Stats), while a PERSONAL parse only populates the
-// per-hero stats. The E/A/D check therefore MUST run before the
-// hero-stats check — flipping the two would mis-classify every
-// teams with a populated panel as "personal".
+// Summary precedes teams because a SUMMARY parse also fills the E/A/D
+// totals from its performance column; its result/date/length are what set
+// it apart. Teams and personal are disjoint today — parseTeams fills only
+// the six stat cells, parsePersonal only HeroesPlayed[*].Stats — so the
+// order between those two decides nothing yet.
 var screenshotTypeChecks = []struct {
 	name  ScreenshotType
 	match func(*MatchResult) bool

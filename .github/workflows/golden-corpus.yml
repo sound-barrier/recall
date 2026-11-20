@@ -57,4 +57,6 @@ jobs:
         run: bash scripts/ci/install-tesseract.sh
 
       - name: Run the golden corpus
-        run: go test -run 'TestParseScreenshot_GoldenFiles' -v -timeout 35m ./pkg/parser/
+        # The byte-for-byte goldens, plus the field-evidence invariant they
+        # deliberately leave out (evidence rects are not in the goldens).
+        run: go test -run 'TestParseScreenshot_(GoldenFiles|EvidenceCoversReadFields)$' -v -timeout 35m ./pkg/parser/

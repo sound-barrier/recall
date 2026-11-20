@@ -3,6 +3,7 @@ package parser_test
 import (
 	"bytes"
 	"encoding/json"
+	"image"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -57,18 +58,7 @@ import (
 //  2. `task update-goldens` to generate the `.golden.json` in testdata/.
 //  3. Eyeball the JSON, then commit the submodule bump + golden together.
 func TestParseScreenshot_GoldenFiles(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping golden-file parser tests in -short mode")
-	}
-	imageDir, goldenDir := fixtureDirs()
-
-	// Resolve Tesseract early — ParseScreenshot will fail with a generic
-	// "not available" error otherwise, which masks the real problem.
-	tp := parser.GetTesseractPath()
-	if _, err := exec.LookPath(tp); err != nil {
-		t.Skipf("tesseract not found at %q — install it or set RECALL_TESSERACT_PATH", tp)
-	}
-
+	imageDir, goldenDir := requireGoldenLane(t)
 	update := os.Getenv("RECALL_FIXTURE_UPDATE") != ""
 
 	for _, name := range fixtureImages(t, imageDir) {
@@ -78,6 +68,22 @@ func TestParseScreenshot_GoldenFiles(t *testing.T) {
 			assertGoldenFixture(t, imgPath, goldenPath, update)
 		})
 	}
+}
+
+// requireGoldenLane skips unless the corpus can run — not -short, and a real
+// Tesseract binary — and resolves the fixture directories.
+func requireGoldenLane(t *testing.T) (imageDir, goldenDir string) {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("skipping golden-file parser tests in -short mode")
+	}
+	// Resolve Tesseract early — ParseScreenshot will fail with a generic
+	// "not available" error otherwise, which masks the real problem.
+	tp := parser.GetTesseractPath()
+	if _, err := exec.LookPath(tp); err != nil {
+		t.Skipf("tesseract not found at %q — install it or set RECALL_TESSERACT_PATH", tp)
+	}
+	return fixtureDirs()
 }
 
 // fixtureDirs resolves the image + golden directories. Images come from the
@@ -180,4 +186,121 @@ func assertGoldenFixture(t *testing.T, imgPath, goldenPath string, update bool) 
 type goldenSnapshot struct {
 	ScreenshotType parser.ScreenshotType `json:"screenshot_type"`
 	Result         any                   `json:"result"`
+}
+
+// TestParseScreenshot_EvidenceCoversReadFields is the corpus-wide invariant
+// behind field evidence, which the byte-for-byte goldens deliberately leave
+// out: every field a fixture's golden carries a value for names the region of
+// the screenshot it was read from, and that region lies inside the image.
+func TestParseScreenshot_EvidenceCoversReadFields(t *testing.T) {
+	imageDir, _ := requireGoldenLane(t)
+	for _, name := range fixtureImages(t, imageDir) {
+		t.Run(name, func(t *testing.T) {
+			res, err := parser.ParseScreenshot(filepath.Join(imageDir, name))
+			if err != nil {
+				t.Fatalf("ParseScreenshot: %v", err)
+			}
+			assertEvidenceCoversReadFields(t, res)
+		})
+	}
+}
+
+func assertEvidenceCoversReadFields(t *testing.T, res *parser.MatchResult) {
+	t.Helper()
+	bounds := image.Rectangle{Max: res.ImageSize}
+	if bounds.Empty() {
+		t.Fatal("ImageSize was not recorded")
+	}
+	recorded := map[parser.FieldPath]image.Rectangle{}
+	for _, ev := range res.Evidence {
+		recorded[ev.Field] = ev.Rect
+	}
+	for _, field := range readFields[parser.Classify(res)](res) {
+		rect, ok := recorded[field]
+		switch {
+		case !ok:
+			t.Errorf("%s carries a value but no evidence region", field)
+		case rect.Empty() || !rect.In(bounds):
+			t.Errorf("%s evidence %v is not a region inside the %v image", field, rect, res.ImageSize)
+		}
+	}
+}
+
+// readFields lists, per screenshot type, the evidence-bearing fields its
+// golden shape carries a non-zero value for. Derived fields (role, game_mode,
+// playlist), play times, per-10-minute averages, SR changes, modifiers_raw and
+// queue_type carry no evidence of their own, so they are not listed. The list
+// is hand-kept: a field a parser starts reading is unchecked until it is added
+// here.
+var readFields = map[parser.ScreenshotType]func(*parser.MatchResult) []parser.FieldPath{
+	parser.TypeSummary:   summaryReadFields,
+	parser.TypeTeams:     teamsReadFields,
+	parser.TypePersonal:  personalReadFields,
+	parser.TypeRank:      rankReadFields,
+	parser.TypeAllHeroes: noReadFields,
+	parser.TypeHistory:   noReadFields,
+	parser.TypeUnknown:   noReadFields,
+}
+
+func noReadFields(*parser.MatchResult) []parser.FieldPath { return nil }
+
+// nonEmpty keeps the paths whose value is set.
+func nonEmpty(fields map[string]bool) []parser.FieldPath {
+	var out []parser.FieldPath
+	for name, set := range fields {
+		if set {
+			out = append(out, parser.ScalarPath(name))
+		}
+	}
+	return out
+}
+
+func heroPercentFields(res *parser.MatchResult) []parser.FieldPath {
+	var out []parser.FieldPath
+	for _, hp := range res.HeroesPlayed {
+		if hp.PercentPlayed > 0 {
+			out = append(out, parser.HeroPercentPath(hp.Hero))
+		}
+	}
+	return out
+}
+
+func summaryReadFields(res *parser.MatchResult) []parser.FieldPath {
+	return append(nonEmpty(map[string]bool{
+		"map": res.Map != "", "hero": res.Hero != "",
+		"eliminations": res.Eliminations != 0, "assists": res.Assists != 0, "deaths": res.Deaths != 0,
+		"result": res.Result != "", "final_score": res.FinalScore != "", "date": res.Date != "",
+		"finished_at": res.FinishedAt != "", "game_length": res.GameLength != "",
+	}), heroPercentFields(res)...)
+}
+
+func teamsReadFields(res *parser.MatchResult) []parser.FieldPath {
+	return nonEmpty(map[string]bool{
+		"eliminations": res.Eliminations != 0, "assists": res.Assists != 0, "deaths": res.Deaths != 0,
+		"damage": res.Damage != 0, "healing": res.Healing != 0, "mitigation": res.Mitigation != 0,
+	})
+}
+
+func personalReadFields(res *parser.MatchResult) []parser.FieldPath {
+	out := append(nonEmpty(map[string]bool{"hero": res.Hero != ""}), heroPercentFields(res)...)
+	for _, hp := range res.HeroesPlayed {
+		for key := range hp.Stats {
+			out = append(out, parser.HeroStatPath(hp.Hero, key))
+		}
+	}
+	return out
+}
+
+func rankReadFields(res *parser.MatchResult) []parser.FieldPath {
+	out := nonEmpty(map[string]bool{
+		"result": res.Result != "", "hero": res.Hero != "", "rank": res.Rank != "", "level": res.Level != 0,
+		"rank_progress": res.RankProgress != nil, "change_percent": res.ChangePercent != nil,
+		"modifiers": len(res.Modifiers) > 0, "rank_percentile": res.RankPercentile != nil,
+	})
+	for _, card := range res.SR {
+		if card.SR != 0 {
+			out = append(out, parser.SRPath(card.Hero))
+		}
+	}
+	return out
 }
