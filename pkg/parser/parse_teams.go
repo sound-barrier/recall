@@ -20,16 +20,34 @@ func parseTeams(img image.Image, work string) (*MatchResult, error) {
 	if yTop < 0 {
 		return nil, errors.New("could not locate the highlighted (lighter blue) row in the teams")
 	}
-	stats, err := ocrRowCells(img, yTop, yBot, work)
+	cells, err := ocrRowCells(img, yTop, yBot, work)
 	if err != nil {
 		return nil, fmt.Errorf("row OCR: %w", err)
 	}
 
 	res := &MatchResult{}
-	res.Eliminations, res.Assists, res.Deaths = stats[0], stats[1], stats[2]
-	res.Damage, res.Healing, res.Mitigation = stats[3], stats[4], stats[5]
+	dsts := [6]*int{&res.Eliminations, &res.Assists, &res.Deaths, &res.Damage, &res.Healing, &res.Mitigation}
+	for i, cell := range cells {
+		*dsts[i] = cell.value
+		if cell.read {
+			res.recordEvidence(img, ScalarPath(teamsStatFields[i]), cell.rect)
+		}
+	}
 	res.QueueType = detectQueueType(img, work)
 	return res, nil
+}
+
+// teamsStatFields names the six stat columns, left to right, by the JSON
+// field each one fills.
+var teamsStatFields = [6]string{"eliminations", "assists", "deaths", "damage", "healing", "mitigation"}
+
+// statCell is one stat column's reading and the region it was read from. read
+// is false when no pass found a digit: value is then the 0 placeholder, not a
+// reading, and names no region.
+type statCell struct {
+	value int
+	read  bool
+	rect  image.Rectangle
 }
 
 // findHighlightedRowY locates the highlighted row's Y range. The friendly
@@ -135,7 +153,7 @@ func blueRowAverages(img image.Image, xMin, xMax int) []int {
 // by commas in the same number cluster together), then OCRs each as digits.
 // This is fully dynamic — no hardcoded ratios — so it works at any resolution
 // and any teams layout.
-func ocrRowCells(img image.Image, yTop, yBot int, workDir string) ([6]int, error) {
+func ocrRowCells(img image.Image, yTop, yBot int, workDir string) ([6]statCell, error) {
 	bounds := img.Bounds()
 	H := bounds.Dy()
 
@@ -147,7 +165,7 @@ func ocrRowCells(img image.Image, yTop, yBot int, workDir string) ([6]int, error
 	xLeft, xRight := findRowXExtent(img, yTop, yBot)
 	cols := findStatColumns(img, yT, yB, xLeft, xRight)
 	if len(cols) < 6 {
-		return [6]int{}, fmt.Errorf("expected 6 stat columns, found %d", len(cols))
+		return [6]statCell{}, fmt.Errorf("expected 6 stat columns, found %d", len(cols))
 	}
 	// Take the rightmost 6 clusters as stats. Anything to the left (hero
 	// portrait, role icon, player level/name) is ignored.
@@ -157,15 +175,15 @@ func ocrRowCells(img image.Image, yTop, yBot int, workDir string) ([6]int, error
 	// don't get clipped, and add a generous horizontal margin so Tesseract has
 	// breathing room (it tends to drop thin leading digits like "1" without it).
 	cellNames := [6]string{"col_e", "col_a", "col_d", "col_dmg", "col_h", "col_mit"}
-	var out [6]int
+	var out [6]statCell
 	margin := max(H/80, 8)
 	for i, col := range cols {
 		rect := image.Rect(col.Min.X-margin, yTop+1, col.Max.X+margin, yBot-1)
-		n, err := ocrStatCell(img, rect, workDir, cellNames[i])
+		n, read, err := ocrStatCell(img, rect, workDir, cellNames[i])
 		if err != nil {
 			return out, fmt.Errorf("%s: %w", cellNames[i], err)
 		}
-		out[i] = n
+		out[i] = statCell{value: n, read: read, rect: rect}
 	}
 	return out, nil
 }
@@ -179,30 +197,30 @@ var grayCellAttempts = []struct{ psm, whitelist string }{
 	{"8", ""},
 }
 
-// ocrStatCell reads one stat cell, 0 when nothing yields a digit. The
-// binarized read goes first: on the inverted-gray crop Tesseract reads the OW
-// font's "5" as "3" or "9" in every segmentation mode, and a smoothed
-// black-on-white threshold (the white digits clear 150; the row blue does not)
-// reads it right. 150 is the middle of the 120-170 window that read every
-// TEAMS capture in the corpus.
-func ocrStatCell(img image.Image, rect image.Rectangle, workDir, name string) (int, error) {
+// ocrStatCell reads one stat cell; read is false (and the value 0) when no
+// pass yields a digit. The binarized read goes first: on the inverted-gray
+// crop Tesseract reads the OW font's "5" as "3" or "9" in every segmentation
+// mode, and a smoothed black-on-white threshold (the white digits clear 150;
+// the row blue does not) reads it right. 150 is the middle of the 120-170
+// window that read every TEAMS capture in the corpus.
+func ocrStatCell(img image.Image, rect image.Rectangle, workDir, name string) (value int, read bool, err error) {
 	text, err := ocrSmoothThreshold(img, rect, ocrSpec{workDir: workDir, name: name + "_bin", scale: 3, thresh: 150, psm: "7", whitelist: "0123456789,"})
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 	if nums := extractInts(text); len(nums) > 0 {
-		return nums[0], nil
+		return nums[0], true, nil
 	}
 	for _, a := range grayCellAttempts {
 		text, err := ocrInverted(img, rect, ocrSpec{workDir: workDir, name: name, psm: a.psm, whitelist: a.whitelist})
 		if err != nil {
-			return 0, err
+			return 0, false, err
 		}
 		if nums := extractInts(text); len(nums) > 0 {
-			return nums[0], nil
+			return nums[0], true, nil
 		}
 	}
-	return 0, nil
+	return 0, false, nil
 }
 
 // findRowXExtent returns the X range over which the highlighted row's blue

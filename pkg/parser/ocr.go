@@ -35,6 +35,11 @@ type ocrSpec struct {
 	scale int
 	// thresh is the brightness cutoff for the threshold variant only.
 	thresh uint8
+	// rect is the source-image region the crop was cut from, clipped to the
+	// image. The OCR helpers stamp it so the Tesseract seam — and through it
+	// the tests — can see which region a crop came from; callers record
+	// evidence from their own rect.
+	rect image.Rectangle
 }
 
 // runTesseractFunc is the indirection every OCR call routes through.
@@ -77,6 +82,7 @@ func runTesseractWithRetry(pre image.Image, spec ocrSpec) (string, error) {
 // in-game text becomes black, dark backgrounds become white) and 3x upscaled.
 // Best for the row stats and header where text is solid white.
 func ocrInverted(img image.Image, rect image.Rectangle, spec ocrSpec) (string, error) {
+	spec.rect = rect.Intersect(img.Bounds())
 	sub := crop(img, rect)
 	pre := preprocessInverted(sub)
 	return runTesseractWithRetry(pre, spec)
@@ -86,6 +92,7 @@ func ocrInverted(img image.Image, rect image.Rectangle, spec ocrSpec) (string, e
 // inversion flattens. `scale` is the upscale factor — thin glyphs like the rank
 // "-19%" want 6x where the default inverted pass uses 3x.
 func ocrRaw(img image.Image, rect image.Rectangle, spec ocrSpec) (string, error) {
+	spec.rect = rect.Intersect(img.Bounds())
 	sub := crop(img, rect)
 	pre := preprocessRaw(sub, spec.scale)
 	return runTesseractWithRetry(pre, spec)
@@ -96,6 +103,7 @@ func ocrRaw(img image.Image, rect image.Rectangle, spec ocrSpec) (string, error)
 // the rank "+N%" gain that the inverted and raw passes leave too faint to read
 // at 1080p.
 func ocrThreshold(img image.Image, rect image.Rectangle, spec ocrSpec) (string, error) {
+	spec.rect = rect.Intersect(img.Bounds())
 	sub := crop(img, rect)
 	pre := preprocessHighContrast(sub, spec.scale, spec.thresh)
 	return runTesseractWithRetry(pre, spec)
@@ -108,6 +116,7 @@ func ocrThreshold(img image.Image, rect image.Rectangle, spec ocrSpec) (string, 
 // every cell (150 read a 5 as 2, 120-135 read 481 as 431), while the smoothed
 // upscale read all of them at every cutoff from 120 to 170.
 func ocrSmoothThreshold(img image.Image, rect image.Rectangle, spec ocrSpec) (string, error) {
+	spec.rect = rect.Intersect(img.Bounds())
 	sub := crop(img, rect)
 	pre := preprocessSmoothThreshold(sub, spec.scale, spec.thresh)
 	return runTesseractWithRetry(pre, spec)

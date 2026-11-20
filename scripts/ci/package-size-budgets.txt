@@ -187,7 +187,12 @@ pkg/db                                        37
 # probe ladder re-run with its intermediates kept for a diagnostic bundle.
 # It is about the parse, so it belongs beside it rather than in pkg/bundle,
 # which would have to reach into the ladder to trace it.
-pkg/parser                                    28
+#
+# 28 -> 29 for evidence.go: the field-path vocabulary and the per-field record
+# of which screenshot region each reading came from. Every parse_<type>.go
+# records into it, and it is about what a parse read, so it sits beside them; a
+# separate package would need MatchResult's internals to record anything.
+pkg/parser                                    29
 
 # pkg/fixtures — the seed generator: one plausible account, spelled
 # file-per-thing-it-generates (heroes, roles, annotations, chaos, the rank

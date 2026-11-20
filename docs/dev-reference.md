@@ -56,7 +56,7 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 | `task swagger` | Swagger UI v5 in a container (default `:8080`, `SWAGGER_PORT` override). |
 | `task pages-build` / `pages-preview` | Build docs book + Swagger UI under `dist/pages/`. |
 | `task lint-openapi` | Spectral (`spectral:oas` + `.spectral.yaml`, `--fail-severity=warn`). |
-| `task test` | Go unit (`-race`; `pkg/{app,db,parser}/*_test.go`) + Vitest. CI uses `-short` to skip the golden test. |
+| `task test` | Go unit (`-race`; `pkg/{app,db,parser}/*_test.go`) + Vitest. CI's `go-test` uses `-short` to skip the golden tests; `.github/workflows/golden-corpus.yml` runs them (nightly, on demand, and on PRs touching `pkg/parser/**` or `testdata/**`). |
 | `task cover` / `cover-go` / `cover-frontend` | **Unit** coverage → `coverage/go/` + `frontend/coverage/`. Go fails below `GO_COVERAGE_MIN`; frontend below `vitest.config.ts` `coverage.thresholds`. |
 | `task verify` | The full pre-merge battery on demand — whole-project lint sweeps, coverage gate, bundle budget, dead code, semgrep, secret scan, complexity, Playwright smoke, API drift. Everything the fast pre-push no longer runs (CI still gates all of it). |
 | `task cover-e2e` | **Integration** coverage from one Playwright run → `coverage/e2e/` (`go/` + `frontend/`). Builds an instrumented frontend (`E2E_COVERAGE=1` inline maps) + server (`go build -cover`); Go counters flush on the server's graceful SIGTERM shutdown, frontend V8 coverage is remapped to source by monocart (Chromium only). Informational — no floor gate; kept out of the `cover` umbrella so pre-push stays fast. |

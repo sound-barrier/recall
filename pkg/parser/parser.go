@@ -93,6 +93,17 @@ func parseImage(img image.Image, work string) (*MatchResult, error) {
 // parseImageTraced is parseImage recording each rung it asks into trace
 // (nil records nothing).
 func parseImageTraced(img image.Image, work string, trace *[]ProbeStep) (*MatchResult, error) {
+	res, err := walkProbeLadder(img, work, trace)
+	if err != nil {
+		return nil, err
+	}
+	res.ImageSize = img.Bounds().Size()
+	return res, nil
+}
+
+// walkProbeLadder hands the image to the first probe that claims it, or to
+// parseTeams when none does.
+func walkProbeLadder(img image.Image, work string, trace *[]ProbeStep) (*MatchResult, error) {
 	// A probe error that survived the OCR retry ladder means no probe result
 	// is trustworthy — fail the file (ledger + retry next run) instead of
 	// falling through to parseTeams, whose pixel heuristics can manufacture

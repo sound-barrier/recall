@@ -31,55 +31,116 @@ func isSummaryScreenshot(img image.Image, work string) (bool, error) {
 // Played cards on the left, Total Performance cards in the middle, a map card
 // on the right with result/score/date/mode/game-length). Each column is OCR'd
 // independently so a failure in one doesn't drop fields from the others.
+//
+// PSM 11 (sparse text) is used for the three column OCRs because each card
+// mixes large italic / styled glyphs with smaller labels, separated by icons.
+// PSM 6 (uniform block) tends to merge an icon into the digit next to it
+// ("17" → "Oe au") or drop italic hero names entirely.
 func parseSummary(img image.Image, work string) (*MatchResult, error) {
-	bounds := img.Bounds()
-	W, H := bounds.Dx(), bounds.Dy()
-
 	res := &MatchResult{}
-
-	// PSM 11 (sparse text) is used for the three column OCRs because each
-	// card mixes large italic / styled glyphs with smaller labels, separated
-	// by icons. PSM 6 (uniform block) tends to merge an icon into the digit
-	// next to it ("17" → "Oe au") or drop italic hero names entirely.
-	heroesRect := image.Rect(W/40, H/8, W*30/100, H*92/100)
-	heroesText, err := ocrInverted(img, heroesRect, ocrSpec{workDir: work, name: "summary_heroes", psm: "11", whitelist: ""})
-	if err != nil {
+	if err := readSummaryHeroes(img, work, res); err != nil {
 		return nil, fmt.Errorf("summary heroes OCR: %w", err)
 	}
-	res.HeroesPlayed = parseHeroesPlayed(heroesText)
+	if err := readSummaryPerformance(img, work, res); err != nil {
+		return nil, fmt.Errorf("summary performance OCR: %w", err)
+	}
+	if err := readSummaryCard(img, work, res); err != nil {
+		return nil, fmt.Errorf("summary card OCR: %w", err)
+	}
+	return res, nil
+}
+
+// readSummaryHeroes reads the Heroes Played column into heroes_played and the
+// primary hero + role.
+func readSummaryHeroes(img image.Image, work string, res *MatchResult) error {
+	bounds := img.Bounds()
+	W, H := bounds.Dx(), bounds.Dy()
+	rect := image.Rect(W/40, H/8, W*30/100, H*92/100)
+	text, err := ocrInverted(img, rect, ocrSpec{workDir: work, name: "summary_heroes", psm: "11", whitelist: ""})
+	if err != nil {
+		return err
+	}
+	res.HeroesPlayed = parseHeroesPlayed(text)
 	if len(res.HeroesPlayed) > 0 {
 		res.Hero = res.HeroesPlayed[0].Hero
 		if r, ok := loadDataset().heroRoles[res.Hero]; ok {
 			res.Role = r
 		}
-	} else if cand := candidateNameFromOCR(heroesText); cand != "" {
+	} else if cand := candidateNameFromOCR(text); cand != "" {
 		// Matcher rejected everything in the panel but OCR DID
 		// return text — capture the longest hero-name-shaped token
 		// as the "Unknown hero" raw so the leaf chip can surface
 		// it and a future YAML release can re-aggregate.
 		res.HeroRaw = cand
 	}
+	recordHeroCardEvidence(img, res, rect)
+	return nil
+}
 
-	perfRect := image.Rect(W*30/100, H/8, W*62/100, H*92/100)
-	perfText, err := ocrInverted(img, perfRect, ocrSpec{workDir: work, name: "summary_perf", psm: "11", whitelist: ""})
+// readSummaryPerformance reads the Total Performance column, mirroring its
+// totals onto the flat E/A/D fields the dossier reads.
+func readSummaryPerformance(img image.Image, work string, res *MatchResult) error {
+	bounds := img.Bounds()
+	W, H := bounds.Dx(), bounds.Dy()
+	rect := image.Rect(W*30/100, H/8, W*62/100, H*92/100)
+	text, err := ocrInverted(img, rect, ocrSpec{workDir: work, name: "summary_perf", psm: "11", whitelist: ""})
 	if err != nil {
-		return nil, fmt.Errorf("summary performance OCR: %w", err)
+		return err
 	}
-	if perf := parsePerformance(perfText); perf != nil {
-		res.Performance = perf
-		res.Eliminations = perf.Eliminations.Total
-		res.Assists = perf.Assists.Total
-		res.Deaths = perf.Deaths.Total
+	perf, readFields := parsePerformance(text)
+	if perf == nil {
+		return nil
 	}
+	res.Performance = perf
+	res.Eliminations = perf.Eliminations.Total
+	res.Assists = perf.Assists.Total
+	res.Deaths = perf.Deaths.Total
+	for _, field := range readFields {
+		res.recordEvidence(img, ScalarPath(field), rect)
+	}
+	return nil
+}
 
-	cardRect := image.Rect(W*62/100, H/12, W*99/100, H*95/100)
-	cardText, err := ocrInverted(img, cardRect, ocrSpec{workDir: work, name: "summary_card", psm: "11", whitelist: ""})
+// readSummaryCard reads the right-hand map card.
+func readSummaryCard(img image.Image, work string, res *MatchResult) error {
+	bounds := img.Bounds()
+	W, H := bounds.Dx(), bounds.Dy()
+	rect := image.Rect(W*62/100, H/12, W*99/100, H*95/100)
+	text, err := ocrInverted(img, rect, ocrSpec{workDir: work, name: "summary_card", psm: "11", whitelist: ""})
 	if err != nil {
-		return nil, fmt.Errorf("summary card OCR: %w", err)
+		return err
 	}
-	parseRightCard(cardText, res)
+	parseRightCard(text, res)
+	for _, f := range []struct {
+		field string
+		read  bool
+	}{
+		{"map", res.Map != "" || res.MapRaw != ""},
+		{"result", res.Result != ""},
+		{"final_score", res.FinalScore != ""},
+		{"date", res.Date != ""},
+		{"finished_at", res.FinishedAt != ""},
+		{"game_length", res.GameLength != ""},
+	} {
+		if f.read {
+			res.recordEvidence(img, ScalarPath(f.field), rect)
+		}
+	}
+	return nil
+}
 
-	return res, nil
+// recordHeroCardEvidence notes rect as the source of the hero name (resolved
+// or raw) and of each hero's percent played — the SUMMARY column and the
+// PERSONAL hero card both read all of them from one region.
+func recordHeroCardEvidence(img image.Image, res *MatchResult, rect image.Rectangle) {
+	if res.Hero != "" || res.HeroRaw != "" {
+		res.recordEvidence(img, ScalarPath("hero"), rect)
+	}
+	for _, hp := range res.HeroesPlayed {
+		if hp.PercentPlayed > 0 {
+			res.recordEvidence(img, HeroPercentPath(hp.Hero), rect)
+		}
+	}
 }
 
 // parseHeroesPlayed reads the heroes column block by block. Each hero shows
@@ -115,7 +176,9 @@ func parseHeroesPlayed(text string) []HeroPlay {
 	return out
 }
 
-// parsePerformance pulls (total, avg-per-10-min) for each labeled card.
+// parsePerformance pulls (total, avg-per-10-min) for each labeled card, and
+// names (by JSON field) the stats whose label carried digits — a 0 read off the
+// card counts, a label with no digits beside it does not.
 // The total is the largest "digit line" in the per-stat segment — a line whose
 // whole content is a 1-3 digit number, allowing the glyphs the OW italic
 // numerals get mis-OCR'd into (O/o/Q/q→0; I/i/l/L and the vertical-stroke
@@ -140,17 +203,18 @@ var perfDigitReplacer = strings.NewReplacer(
 
 func normalizePerfDigits(s string) string { return perfDigitReplacer.Replace(s) }
 
-func parsePerformance(text string) *Performance {
+func parsePerformance(text string) (*Performance, []string) {
 	upper := strings.ToUpper(text)
 	perf := &Performance{}
 	found := false
+	var readFields []string
 	pairs := []struct {
-		keyword string
-		stat    *PerformanceStat
+		keyword, field string
+		stat           *PerformanceStat
 	}{
-		{"ELIMINAT", &perf.Eliminations},
-		{"ASSIST", &perf.Assists},
-		{"DEATH", &perf.Deaths},
+		{"ELIMINAT", "eliminations", &perf.Eliminations},
+		{"ASSIST", "assists", &perf.Assists},
+		{"DEATH", "deaths", &perf.Deaths},
 	}
 	prevEnd := 0
 	for _, p := range pairs {
@@ -158,35 +222,47 @@ func parsePerformance(text string) *Performance {
 		if idx < 0 {
 			continue
 		}
-		// Total: the largest digit line in the segment between the previous
-		// stat's label and this one. Segmenting isolates this stat's digits
-		// (so the assists "19" can't shadow deaths "6"), and taking the max
-		// rejects the small icon glyph Tesseract reads as a stray digit beside
-		// the value — the crossed-swords ELIMINATIONS icon reads as "4" right
-		// before the label, which the old "last line before the label" pick
-		// wrongly grabbed over the real "9".
 		start := prevEnd
 		if start > idx {
 			start = 0
 		}
-		if best := largestDigitLine(text[start:idx]); best >= 0 {
-			p.stat.Total = best
-		}
+		stat, read := readPerfStat(text, start, idx)
+		*p.stat = stat
 		prevEnd = idx + len(p.keyword)
-		// Avg: first decimal-or-int after "MIN" within ~120 chars of the label.
-		to := min(idx+120, len(text))
-		if m := perfAvgRe.FindStringSubmatch(text[idx:to]); m != nil {
-			v, _ := strconv.ParseFloat(m[1], 64)
-			p.stat.AvgPer10Min = v
+		if read {
+			readFields = append(readFields, p.field)
 		}
-		if p.stat.Total != 0 || p.stat.AvgPer10Min != 0 {
+		if stat.Total != 0 || stat.AvgPer10Min != 0 {
 			found = true
 		}
 	}
 	if !found {
-		return nil
+		return nil, nil
 	}
-	return perf
+	return perf, readFields
+}
+
+// readPerfStat reads the stat whose label starts at idx; read reports whether
+// either its total or its average carried digits.
+//
+// Total: the largest digit line in text[start:idx], the segment between the
+// previous stat's label and this one. Segmenting isolates this stat's digits
+// (so the assists "19" can't shadow deaths "6"), and taking the max rejects
+// the small icon glyph Tesseract reads as a stray digit beside the value — the
+// crossed-swords ELIMINATIONS icon reads as "4" right before the label, which
+// the old "last line before the label" pick wrongly grabbed over the real "9".
+//
+// Avg: first decimal-or-int after "MIN" within ~120 chars of the label.
+func readPerfStat(text string, start, idx int) (stat PerformanceStat, read bool) {
+	if best := largestDigitLine(text[start:idx]); best >= 0 {
+		stat.Total, read = best, true
+	}
+	to := min(idx+120, len(text))
+	if m := perfAvgRe.FindStringSubmatch(text[idx:to]); m != nil {
+		stat.AvgPer10Min, _ = strconv.ParseFloat(m[1], 64)
+		read = true
+	}
+	return stat, read
 }
 
 // largestDigitLine returns the largest normalized digit-line value in seg, or

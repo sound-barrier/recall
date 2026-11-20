@@ -31,11 +31,17 @@ func rankSRPanel(img image.Image, work string, res *MatchResult) {
 		occluded, _ := ocrThreshold(img, srRect, ocrSpec{workDir: work, name: "rank_sr_occluded", scale: 3, thresh: 235, psm: "11"})
 		res.SR = withoutChanges(extractSR(occluded))
 	}
+	for _, card := range res.SR {
+		if card.SR != 0 {
+			res.recordEvidence(img, SRPath(card.Hero), srRect)
+		}
+	}
 	if anyZeroSR(res.SR) {
-		backfillSRDigits(res.SR, img, work, W, H)
+		backfillSRDigits(res, img, work)
 	}
 	if len(res.SR) > 0 {
 		res.Hero = res.SR[0].Hero
+		res.recordEvidence(img, ScalarPath("hero"), srRect)
 		if r, ok := loadDataset().heroRoles[res.Hero]; ok {
 			res.Role = r
 		}
@@ -143,9 +149,13 @@ func anyZeroSR(srs []HeroSR) bool {
 // re-OCR of the card region — starting below the rank-progress caption to skip
 // its "100" noise. Recovered SR-range values are assigned, in reading order,
 // to the still-zero cards; a value already read from the card text is kept and
-// excluded from the candidate pool so it can't be double-assigned.
-func backfillSRDigits(srs []HeroSR, img image.Image, work string, w, h int) {
+// excluded from the candidate pool so it can't be double-assigned. A card it
+// fills records the re-read's region as its evidence.
+func backfillSRDigits(res *MatchResult, img image.Image, work string) {
+	bounds := img.Bounds()
+	w, h := bounds.Dx(), bounds.Dy()
 	region := image.Rect(w*82/100, h*28/100, w*99/100, h*75/100)
+	srs := res.SR
 	assigned := map[int]bool{}
 	for _, s := range srs {
 		if s.SR != 0 {
@@ -157,6 +167,7 @@ func backfillSRDigits(srs []HeroSR, img image.Image, work string, w, h int) {
 	for i := range srs {
 		if srs[i].SR == 0 && ci < len(cands) {
 			srs[i].SR = cands[ci]
+			res.recordEvidence(img, SRPath(srs[i].Hero), region)
 			ci++
 		}
 	}

@@ -10,6 +10,33 @@ import (
 // The rank pill: which tier and level the screen settled on, and the season-4
 // caption naming the share of players the reading sits above.
 
+// tierReading is what the rank pill yielded and where: the tier word and the
+// percentile caption always come from the tier band (rect), the level from the
+// band or — on an occluded card — the badge hexagon (levelRect).
+type tierReading struct {
+	rank            string
+	level           int
+	bandText        string
+	rect, levelRect image.Rectangle
+}
+
+// readRankTier fills the tier, level and percentile, noting the region each
+// one that read was taken from.
+func readRankTier(img image.Image, work string, res *MatchResult) {
+	tier := rankTierLevel(img, work)
+	res.Rank, res.Level = tier.rank, tier.level
+	res.RankPercentile = extractRankPercentile(tier.bandText)
+	if res.Rank != "" {
+		res.recordEvidence(img, ScalarPath("rank"), tier.rect)
+	}
+	if res.Level != 0 {
+		res.recordEvidence(img, ScalarPath("level"), tier.levelRect)
+	}
+	if res.RankPercentile != nil {
+		res.recordEvidence(img, ScalarPath("rank_percentile"), tier.rect)
+	}
+}
+
 // rankTierLevel reads the tier label ("PLATINUM 5") that sits just below the
 // badge, from the same wide band the detector probes (10-70% W, down to 78% H,
 // which also holds the "RANK PROGRESS" caption extractRank ignores): a tighter
@@ -22,12 +49,12 @@ import (
 // legible in it on every capture in the corpus — so reading the percentile
 // costs no additional Tesseract invocation, which at ~8 OCR passes per rank
 // screen is worth more than a tidier signature.
-func rankTierLevel(img image.Image, work string) (rank string, level int, bandText string) {
+func rankTierLevel(img image.Image, work string) tierReading {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
 	tierRect := image.Rect(W*10/100, H*55/100, W*70/100, H*78/100)
 	tierText, _ := ocrInverted(img, tierRect, ocrSpec{workDir: work, name: "rank_tier", psm: "11", whitelist: ""})
-	rank, level = extractRank(tierText)
+	rank, level := extractRank(tierText)
 	// The 2026-07 UI renders the division caption in a stylized face whose
 	// numerals the sparse pass misreads as letters ("GOLD 3" → "GOLD J",
 	// "PLATINUM 5" → "PI ATINUM J" — and J is ambiguous between 3 and 5, so
@@ -44,11 +71,11 @@ func rankTierLevel(img image.Image, work string) (rank string, level int, bandTe
 		}
 	}
 	if rank == "" {
-		if r, l, band, ok := rankTierOccluded(img, work, tierRect); ok {
-			return r, l, band
+		if occluded, ok := rankTierOccluded(img, work, tierRect); ok {
+			return occluded
 		}
 	}
-	return rank, level, tierText
+	return tierReading{rank: rank, level: level, bandText: tierText, rect: tierRect, levelRect: tierRect}
 }
 
 // settledRankCaptions are the captions only a SETTLED rank card carries; the
@@ -71,36 +98,36 @@ var settledRankCaptions = []string{"RANK PROGRESS", "RANKED THAN"}
 // that rect there would mint a division from the model's pixels. Anything the
 // reads do not confirm stays empty — ok is false and the caller keeps its
 // honest-empty result.
-func rankTierOccluded(img image.Image, work string, tierRect image.Rectangle) (rank string, level int, bandText string, ok bool) {
+func rankTierOccluded(img image.Image, work string, tierRect image.Rectangle) (tierReading, bool) {
 	tierText, _ := ocrThreshold(img, tierRect, ocrSpec{workDir: work, name: "rank_tier_occluded", scale: 3, thresh: 235, psm: "6", whitelist: rankTierWhitelist})
 	if !containsAny(strings.ToUpper(tierText), settledRankCaptions) {
-		return "", 0, "", false
+		return tierReading{}, false
 	}
-	rank, _ = snapTier(strings.ToLower(tierText))
-	level = rankBadgeLevel(img, work)
+	rank, _ := snapTier(strings.ToLower(tierText))
+	level, badgeRect := rankBadgeLevel(img, work)
 	if rank == "" || level == 0 {
-		return "", 0, "", false
+		return tierReading{}, false
 	}
 	pctText, _ := ocrThreshold(img, tierRect, ocrSpec{workDir: work, name: "rank_percentile_occluded", scale: 3, thresh: 220, psm: "6"})
-	return rank, level, pctText, true
+	return tierReading{rank: rank, level: level, bandText: pctText, rect: tierRect, levelRect: badgeRect}, true
 }
 
 // rankBadgeLevel reads the division numeral (1-5) from the settled card's
-// badge hexagon; 0 when it does not read.
-func rankBadgeLevel(img image.Image, work string) int {
+// badge hexagon, returning the badge region with it; 0 when it does not read.
+func rankBadgeLevel(img image.Image, work string) (int, image.Rectangle) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
 	badgeRect := image.Rect(W*47/100, H*52/100, W*53/100, H*62/100)
 	text, _ := ocrThreshold(img, badgeRect, ocrSpec{workDir: work, name: "rank_badge", scale: 3, thresh: 200, psm: "8", whitelist: "12345"})
 	text = strings.TrimSpace(text)
 	if len(text) != 1 {
-		return 0
+		return 0, badgeRect
 	}
 	level, err := strconv.Atoi(text)
 	if err != nil {
-		return 0
+		return 0, badgeRect
 	}
-	return level
+	return level, badgeRect
 }
 
 func containsAny(s string, subs []string) bool {

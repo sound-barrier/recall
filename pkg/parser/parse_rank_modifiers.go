@@ -29,7 +29,7 @@ func knownModifiers() []string { return Modifiers() }
 // "VICTC" at the 72% cut, losing the modifier AND the result fallback.
 // 76% still stops short of the right-hand rank-tier badge (~78%+), so no
 // icon noise bleeds in; the old-UI corpus goldens pin that.
-func rankModifierPills(img image.Image, work string) (mods []string, bandText string) {
+func rankModifierPills(img image.Image, work string) (mods []string, bandText string, band image.Rectangle) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
 	modifierRect := image.Rect(W*10/100, H*78/100, W*76/100, H*90/100)
@@ -49,7 +49,7 @@ func rankModifierPills(img image.Image, work string) (mods []string, bandText st
 	if strings.Contains(strings.ToUpper(modifierText), "DEMOTION") {
 		mods = append(mods, "demotion protection")
 	}
-	return mods, modifierText
+	return mods, modifierText, modifierRect
 }
 
 // resultFromModifiers picks the win/loss/draw modifier out of the rank-screen

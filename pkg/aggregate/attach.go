@@ -408,9 +408,9 @@ func AttachUserData(recs []match.Record, userData map[string]db.UserMatchData) {
 func applyUserData(rec *match.Record, ud db.UserMatchData) {
 	manual := len(rec.SourceFiles) == 0
 	var edited []string
-	mark := func(path string) {
+	mark := func(path parser.FieldPath) {
 		if !manual {
-			edited = append(edited, path)
+			edited = append(edited, string(path))
 		}
 	}
 
@@ -432,22 +432,22 @@ func applyUserData(rec *match.Record, ud db.UserMatchData) {
 
 // applyCollectionOverrides overlays the heroes-played list, per-hero stat
 // cells, SR entries, and modifiers when the user supplied them.
-func applyCollectionOverrides(d *parser.MatchResult, ud db.UserMatchData, mark func(string)) {
+func applyCollectionOverrides(d *parser.MatchResult, ud db.UserMatchData, mark func(parser.FieldPath)) {
 	if len(ud.Heroes) > 0 {
 		d.HeroesPlayed = userHeroesToPlays(ud.Heroes)
-		mark("data.heroes_played")
+		mark(parser.ScalarPath("heroes_played"))
 	}
 	for _, st := range ud.HeroStats {
 		overlayHeroStat(d, st.Hero, st.StatKey, st.Value)
-		mark("data.heroes_played." + st.Hero + ".stats." + st.StatKey)
+		mark(parser.HeroStatPath(st.Hero, st.StatKey))
 	}
 	if len(ud.SR) > 0 {
 		d.SR = userSRToParser(ud.SR)
-		mark("data.sr")
+		mark(parser.ScalarPath("sr"))
 	}
 	if len(ud.Modifiers) > 0 {
 		d.Modifiers = ud.Modifiers
-		mark("data.modifiers")
+		mark(parser.ScalarPath("modifiers"))
 		// The user replaced the modifier set wholesale, so a surviving
 		// "unrecognized" line would contradict the corrected list they are
 		// looking at. Same wipe as MapRaw / HeroRaw on their overrides.
@@ -478,14 +478,14 @@ func rederiveEditedFields(d *parser.MatchResult, ud db.UserMatchData) {
 // They need their own pass because an override REPLACES the pointer rather than
 // writing through it — writing through would nil-deref on exactly the matches an
 // override is most useful for: the ones whose screenshot never yielded a value.
-func applyOptionalIntOverrides(d *parser.MatchResult, ud db.UserMatchData, mark func(string)) {
+func applyOptionalIntOverrides(d *parser.MatchResult, ud db.UserMatchData, mark func(parser.FieldPath)) {
 	for _, n := range []struct {
 		val  *int
 		dst  **int
-		path string
+		path parser.FieldPath
 	}{
-		{ud.RankProgress, &d.RankProgress, "data.rank_progress"},
-		{ud.ChangePercent, &d.ChangePercent, "data.change_percent"},
+		{ud.RankProgress, &d.RankProgress, parser.ScalarPath("rank_progress")},
+		{ud.ChangePercent, &d.ChangePercent, parser.ScalarPath("change_percent")},
 	} {
 		if n.val != nil {
 			v := *n.val
@@ -498,21 +498,21 @@ func applyOptionalIntOverrides(d *parser.MatchResult, ud db.UserMatchData, mark 
 // applyScalarOverrides copies every non-nil override scalar onto d (table-driven
 // so the field list stays flat instead of 18 branches). Overriding map / hero
 // also clears the stale raw-OCR text so the "Unknown map / hero" hint retires.
-func applyScalarOverrides(d *parser.MatchResult, ud db.UserMatchData, mark func(string)) {
+func applyScalarOverrides(d *parser.MatchResult, ud db.UserMatchData, mark func(parser.FieldPath)) {
 	for _, s := range []struct {
 		val  *string
 		dst  *string
-		path string
+		path parser.FieldPath
 	}{
-		{ud.Map, &d.Map, "data.map"},
-		{ud.Hero, &d.Hero, "data.hero"},
-		{ud.Result, &d.Result, "data.result"},
-		{ud.FinalScore, &d.FinalScore, "data.final_score"},
-		{ud.Date, &d.Date, "data.date"},
-		{ud.FinishedAt, &d.FinishedAt, "data.finished_at"},
-		{ud.GameLength, &d.GameLength, "data.game_length"},
-		{ud.PlayedAtUTC, &d.PlayedAtUTC, "data.played_at_utc"},
-		{ud.Rank, &d.Rank, "data.rank"},
+		{ud.Map, &d.Map, parser.ScalarPath("map")},
+		{ud.Hero, &d.Hero, parser.ScalarPath("hero")},
+		{ud.Result, &d.Result, parser.ScalarPath("result")},
+		{ud.FinalScore, &d.FinalScore, parser.ScalarPath("final_score")},
+		{ud.Date, &d.Date, parser.ScalarPath("date")},
+		{ud.FinishedAt, &d.FinishedAt, parser.ScalarPath("finished_at")},
+		{ud.GameLength, &d.GameLength, parser.ScalarPath("game_length")},
+		{ud.PlayedAtUTC, &d.PlayedAtUTC, parser.ScalarPath("played_at_utc")},
+		{ud.Rank, &d.Rank, parser.ScalarPath("rank")},
 	} {
 		if s.val != nil {
 			*s.dst = *s.val
@@ -522,15 +522,15 @@ func applyScalarOverrides(d *parser.MatchResult, ud db.UserMatchData, mark func(
 	for _, n := range []struct {
 		val  *int
 		dst  *int
-		path string
+		path parser.FieldPath
 	}{
-		{ud.Eliminations, &d.Eliminations, "data.eliminations"},
-		{ud.Assists, &d.Assists, "data.assists"},
-		{ud.Deaths, &d.Deaths, "data.deaths"},
-		{ud.Damage, &d.Damage, "data.damage"},
-		{ud.Healing, &d.Healing, "data.healing"},
-		{ud.Mitigation, &d.Mitigation, "data.mitigation"},
-		{ud.Level, &d.Level, "data.level"},
+		{ud.Eliminations, &d.Eliminations, parser.ScalarPath("eliminations")},
+		{ud.Assists, &d.Assists, parser.ScalarPath("assists")},
+		{ud.Deaths, &d.Deaths, parser.ScalarPath("deaths")},
+		{ud.Damage, &d.Damage, parser.ScalarPath("damage")},
+		{ud.Healing, &d.Healing, parser.ScalarPath("healing")},
+		{ud.Mitigation, &d.Mitigation, parser.ScalarPath("mitigation")},
+		{ud.Level, &d.Level, parser.ScalarPath("level")},
 	} {
 		if n.val != nil {
 			*n.dst = *n.val

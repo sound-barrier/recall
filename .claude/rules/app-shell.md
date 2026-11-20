@@ -160,11 +160,11 @@ later screenshot's real value in the first-non-empty-wins fold (e.g. inferred
 
 ## Storage-side classification
 
-**`screenshotType(r)` must check E/A/D before hero stats.** Teams parses
-populate both `r.Eliminations/Assists/Deaths` and `r.HeroesPlayed[*].Stats` (the
-right-side panel cards). A hero-stats-first check would mis-classify every
-teams with a populated panel as `personal`. Order: rank → summary →
-teams (E/A/D) → personal (hero stats) → unknown.
+**`parser.Classify(r)` walks an ordered ladder** (`screenshotTypeChecks`):
+all-heroes → history → rank → summary → teams (E/A/D) → personal (hero stats)
+→ unknown. Summary must precede teams, because a SUMMARY parse also fills the
+E/A/D totals. Teams and personal are disjoint today: a TEAMS parse fills only
+its six stat cells, a PERSONAL parse only `r.HeroesPlayed[*].Stats`.
 
 ## Path-input boundary validators (security-sensitive)
 

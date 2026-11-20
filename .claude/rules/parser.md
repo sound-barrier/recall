@@ -19,14 +19,33 @@ parser pair lives in its own file (`parse_rank.go`, `parse_summary.go`,
   (Juno's orbital-ring icon turning "ORBITAL" into "ornBITAL" is the canonical
   example).
 - **In-game / post-match TEAMS screen** (fall-through → `parseTeams`):
-  finds the highlighted player row by brightest blue, OCRs the six stat columns,
-  plus the right-hand panel which carries hero-specific stats on the in-game
-  version.
+  finds the highlighted player row by brightest blue and OCRs its six stat
+  columns (E/A/D, damage, healing, mitigation), plus the queue type from the
+  players-per-team count. Nothing else on the scoreboard is read — hero-specific
+  stats come only from PERSONAL.
 
-OCR helpers: `ocrInverted` (default — luminance-inverted + 3× upscaled, ideal for
-white-on-dark game UI), `ocrRaw` (raw color + 2× upscaled, used where inverted
-flattens too much, e.g. the magenta COMPETITIVE badge). Tesseract is shelled out
-via `exec.Command` — no CGo binding.
+OCR helpers (`ocr.go`): `ocrInverted` (default — luminance-inverted + 3×
+upscaled, ideal for white-on-dark game UI), `ocrRaw` (grayscale, not inverted,
+at the spec's scale — used only for the rank-progress value, colored text that
+inversion flattens), `ocrThreshold` (hard bright-to-black cutoff — the rank screen's
+occluded and low-contrast passes) and `ocrSmoothThreshold` (bilinear upscale
+then cutoff — the TEAMS stat cells). Each stamps the region it read on the
+spec; Tesseract itself is invoked by `pkg/tesseract` — no CGo binding.
+
+## Field evidence
+
+Every reading records the screenshot region its ACCEPTED pass came from on
+`MatchResult.Evidence` (`evidence.go`), keyed by the same `FieldPath`
+vocabulary the override system marks (`ScalarPath`, `HeroStatPath`,
+`HeroPercentPath`, `SRPath`). A reader that tries several bands records the
+band whose reading it kept, not the first it tried. Only a value the pixels
+produced records a region: a 0 read off the screen does, the 0 left behind when
+no pass read anything does not. `Evidence` and `ImageSize` are `json:"-"`, so
+goldens never carry them; `TestParseScreenshot_EvidenceCoversReadFields` holds
+the invariant over the corpus instead. That test checks only the fields its
+per-type `readFields` builders list (`integration_test.go`), so a new field a
+parser reads must record its region AND be added to its type's builder — a
+field missing from the builder is not checked.
 
 ## OCR fragility patterns
 
@@ -66,9 +85,8 @@ via `exec.Command` — no CGo binding.
   label from outside the parser package. Don't reach into the unexported
   `heroRoles` map.
 
-> Note: `screenshotType(r)` (the *storage*-side classifier, in
-> `pkg/app/parse.go`) must check E/A/D before hero stats — see
-> `.claude/rules/app-shell.md`.
+> Note: `Classify(r)` (`classify.go`, which `pkg/app/parse.go` stamps on each
+> stored row) walks an ordered ladder — see `.claude/rules/app-shell.md`.
 
 ## Roster data (`heroes.yaml` + `maps.yaml`)
 
@@ -100,5 +118,6 @@ curate from your own captures without touching the submodule, drop PNG files int
 private dir and run `task goldens SRC="$PWD/yourdir"` (or
 `RECALL_FIXTURE_DIR="$PWD/yourdir"` alone — set without `RECALL_GOLDEN_DIR` it
 writes goldens beside the images; **absolute path required**, the test binary's
-cwd is `pkg/parser/`). CI uses `-short` to skip the golden test, so it needs no
-submodule.
+cwd is `pkg/parser/`). `ci.yml` uses `-short` to skip the golden tests, so it
+needs no submodule; `.github/workflows/golden-corpus.yml` runs them (nightly, and
+on any PR touching `pkg/parser/**` or `testdata/**`).

@@ -97,13 +97,14 @@ func hasRankAnchor(text string) bool {
 // helper; parseRank keeps the cross-stage glue (result fallback, SR sign).
 func parseRank(img image.Image, work string) (*MatchResult, error) {
 	res := &MatchResult{Playlist: "competitive", RankScreen: true}
-	res.Result = rankBannerResult(img, work)
-	rank, level, tierBand := rankTierLevel(img, work)
-	res.Rank, res.Level = rank, level
-	res.RankPercentile = extractRankPercentile(tierBand)
-	res.RankProgress = rankProgressPct(img, work)
-	res.ChangePercent = rankChangePct(img, work, res.RankProgress)
-	mods, modifierBand := rankModifierPills(img, work)
+	result, resultRect := rankBannerResult(img, work)
+	res.Result = result
+	readRankTier(img, work, res)
+	progress, progressRect := rankProgressPct(img, work)
+	res.RankProgress = progress
+	change, changeRect := rankChangePct(img, work, progress)
+	res.ChangePercent = change
+	mods, modifierBand, modifierRect := rankModifierPills(img, work)
 	res.Modifiers = mods
 	// A chip the closed vocabulary does not carry used to be logged and then
 	// DROPPED, which is how "variance" rode every post-placement screen of a
@@ -128,8 +129,11 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 	// gradient — "COMPETITIVE DEFEAT" reads as "CAMDETITIVE [FFFAT"); fall back
 	// to the win/loss/draw modifier pill when the banner didn't classify.
 	if res.Result == "" {
-		res.Result = resultFromModifiers(res.Modifiers)
+		res.Result, resultRect = resultFromModifiers(res.Modifiers), modifierRect
 	}
+	recordRankEvidence(img, res, rankReadRegions{
+		result: resultRect, progress: progressRect, change: changeRect, modifiers: modifierRect,
+	})
 
 	// Per-hero SR change: extractSR captured the magnitude; the card's arrow
 	// (green up = gain, red down = loss) tracks the match result, which isn't in
@@ -146,4 +150,29 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 	}
 
 	return res, nil
+}
+
+// rankReadRegions are the regions parseRank's single-field readers accepted
+// their readings from; the tier and the SR panel record their own.
+type rankReadRegions struct {
+	result, progress, change, modifiers image.Rectangle
+}
+
+// recordRankEvidence notes the accepted region of every rank reading that
+// produced a value.
+func recordRankEvidence(img image.Image, res *MatchResult, at rankReadRegions) {
+	for _, f := range []struct {
+		field string
+		read  bool
+		rect  image.Rectangle
+	}{
+		{"result", res.Result != "", at.result},
+		{"rank_progress", res.RankProgress != nil, at.progress},
+		{"change_percent", res.ChangePercent != nil, at.change},
+		{"modifiers", len(res.Modifiers) > 0, at.modifiers},
+	} {
+		if f.read {
+			res.recordEvidence(img, ScalarPath(f.field), f.rect)
+		}
+	}
 }
