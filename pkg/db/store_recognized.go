@@ -47,6 +47,14 @@ func (s *SQLStore) DeleteUnknownScreenshot(filename string) error {
 	if err := collectMatchKeys(tx, "unknown_screenshots", filename, keys); err != nil {
 		return err
 	}
+	// The retired rows' evidence, found through the rows themselves so the
+	// delete reaches exactly the files whose Unknown row goes.
+	if _, err := tx.Exec(
+		`DELETE FROM screenshot_images WHERE (screenshots_dir_id, filename) IN
+		 (SELECT screenshots_dir_id, filename FROM unknown_screenshots WHERE filename = ?)`, filename,
+	); err != nil {
+		return err
+	}
 	if _, err := tx.Exec(`DELETE FROM unknown_screenshots WHERE filename = ?`, filename); err != nil {
 		return err
 	}

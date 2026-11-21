@@ -182,6 +182,9 @@ func (s *SQLStore) Clear() error {
 		"ingested_files",
 		"all_heroes_screenshots",
 		"history_screenshots",
+		// Field evidence: the parse's regions, which name the folder too.
+		// screenshot_field_evidence cascades off it.
+		"screenshot_images",
 		"screenshots_dirs",
 		"match_reviews",
 		"match_queue",

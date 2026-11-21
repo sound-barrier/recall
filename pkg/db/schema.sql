@@ -641,6 +641,55 @@ CREATE TABLE IF NOT EXISTS history_screenshots (
 ) STRICT;
 -- statement-end
 
+-- Where on each screenshot its readings came from, so a reading can be shown
+-- beside the pixels it was read from (cropped live from the file) and checked
+-- against the template readers' second opinion. Written by the parse path on
+-- every typed or unknown parse, replacing the screenshot's whole record, so it
+-- always describes the latest parse and a field a re-parse no longer reads
+-- leaves no region behind.
+--
+-- Keyed by the screenshot's identity, (folder, filename), and NOT by
+-- match_key: the regions are a fact about the file's pixels, which a match
+-- rename or an ambiguity resolution does not change. A screenshot's typed row
+-- lives in one of five parent tables, so no foreign key can reach it; every
+-- store method that deletes parent rows deletes these too.
+--
+-- screenshot_images holds the pixel size the rects are in, and is the parent
+-- of the per-field rows. The CASCADE is what makes "forget this screenshot's
+-- evidence" one DELETE: a record is replaced whole, never patched, so there is
+-- no state in which a size describes one parse and its rects another.
+CREATE TABLE IF NOT EXISTS screenshot_images (
+  screenshots_dir_id INTEGER NOT NULL REFERENCES screenshots_dirs (id) ON DELETE RESTRICT,
+  filename TEXT NOT NULL,
+  width INTEGER NOT NULL CHECK (width > 0),
+  height INTEGER NOT NULL CHECK (height > 0),
+  PRIMARY KEY (screenshots_dir_id, filename)
+) STRICT;
+-- statement-end
+
+-- One region per field path (parser.FieldPath, the same dotted spelling the
+-- edit layer uses). The template_* columns are the reference templates'
+-- reading of that region: all three set when they read it with confidence,
+-- all three NULL when they did not.
+CREATE TABLE IF NOT EXISTS screenshot_field_evidence (
+  screenshots_dir_id INTEGER NOT NULL,
+  filename TEXT NOT NULL,
+  field TEXT NOT NULL CHECK (field <> ''),
+  x INTEGER NOT NULL CHECK (x >= 0),
+  y INTEGER NOT NULL CHECK (y >= 0),
+  width INTEGER NOT NULL CHECK (width > 0),
+  height INTEGER NOT NULL CHECK (height > 0),
+  template_value TEXT,
+  template_score REAL,
+  template_margin REAL,
+  PRIMARY KEY (screenshots_dir_id, filename, field),
+  FOREIGN KEY (screenshots_dir_id, filename)
+    REFERENCES screenshot_images (screenshots_dir_id, filename) ON DELETE CASCADE,
+  CHECK ((template_value IS NULL) = (template_score IS NULL)),
+  CHECK ((template_value IS NULL) = (template_margin IS NULL))
+) STRICT;
+-- statement-end
+
 -- User match-data override layer. The single source for BOTH features:
 --   * editing an OCR match  -> a row with only the changed columns non-NULL
 --   * a hand-entered match  -> a row + children with NO screenshot rows anywhere

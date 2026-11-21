@@ -29,7 +29,8 @@ func (s *SQLStore) UnhideMatch(matchKey string) error {
 // review row, the user override layer (user_match_data + children), the
 // queue / play-mode aux rows, the received coach layer (match_coach_notes +
 // tag children, and the return-sheet decisions that pointed at those notes),
-// and the ambiguity surface. Used by the Hidden drawer's Delete affordance —
+// the ambiguity surface, and the field evidence of the match's screenshots.
+// Used by the Hidden drawer's Delete affordance —
 // once a user explicitly asks to forget a match, no trace stays in the DB.
 // Clearing user_match_data is essential for manual matches: their data lives
 // ONLY there, so leaving it would resurrect the match on the next aggregate.
@@ -44,6 +45,9 @@ func (s *SQLStore) HardDeleteMatch(matchKey string) error {
 		return err
 	}
 	if err := forgetIngestedFiles(tx, matchKey); err != nil {
+		return err
+	}
+	if err := forgetFieldEvidence(tx, matchKey); err != nil {
 		return err
 	}
 	for _, t := range parentTables {
@@ -96,6 +100,23 @@ func forgetIngestedFiles(tx txn, matchKey string) error {
 		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
 		if _, err := tx.Exec(
 			`DELETE FROM ingested_files WHERE (screenshots_dir_id, filename) IN
+			 (SELECT screenshots_dir_id, filename FROM `+t+` WHERE match_key = ?)`, matchKey,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// forgetFieldEvidence drops the evidence records of the match's own
+// screenshots. Evidence is keyed by file, not match, so — like
+// forgetIngestedFiles — it reads the parent rows and must run BEFORE the
+// parent wipe.
+func forgetFieldEvidence(tx txn, matchKey string) error {
+	for _, t := range parentTables {
+		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
+		if _, err := tx.Exec(
+			`DELETE FROM screenshot_images WHERE (screenshots_dir_id, filename) IN
 			 (SELECT screenshots_dir_id, filename FROM `+t+` WHERE match_key = ?)`, matchKey,
 		); err != nil {
 			return err

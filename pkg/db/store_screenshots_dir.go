@@ -77,6 +77,7 @@ func (s *SQLStore) PruneScreenshotsDirs() (int64, error) {
 		    UNION SELECT duplicate_of_dir_id FROM ingested_files WHERE duplicate_of_dir_id IS NOT NULL
 		    UNION SELECT screenshots_dir_id FROM all_heroes_screenshots
 		    UNION SELECT screenshots_dir_id FROM history_screenshots
+		    UNION SELECT screenshots_dir_id FROM screenshot_images
 		  )`, SentinelScreenshotsDirID)
 	if err != nil {
 		return 0, err

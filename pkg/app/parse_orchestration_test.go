@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"recall/pkg/app"
+	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
 	"recall/pkg/parser"
 	"recall/pkg/snapshot"
@@ -17,7 +18,14 @@ import (
 func newParseReadyApp(t *testing.T) (*app.App, *dbtest.Fake) {
 	t.Helper()
 	fake := dbtest.New()
-	a := app.NewWithStore(fake)
+	return newParseReadyAppOn(t, fake), fake
+}
+
+// newParseReadyAppOn is newParseReadyApp over a caller's store — a Fake
+// wrapped to fail one write.
+func newParseReadyAppOn(t *testing.T, store db.Store) *app.App {
+	t.Helper()
+	a := app.NewWithStore(store)
 	app.SettingsOf(a).ScreenshotsDir = t.TempDir()
 	app.TessStatus(a).Found = true
 	// Snapshot hooks (pre-reparse + auto-backup) run inside the parse
@@ -26,7 +34,7 @@ func newParseReadyApp(t *testing.T) (*app.App, *dbtest.Fake) {
 	prevBackup := snapshot.BackupToFunc
 	snapshot.BackupToFunc = func(src, dest string) error { return nil }
 	t.Cleanup(func() { snapshot.BackupToFunc = prevBackup })
-	return a, fake
+	return a
 }
 
 // stubParse swaps the OCR-loop seam for the duration of a test.

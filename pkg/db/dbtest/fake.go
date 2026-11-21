@@ -69,6 +69,9 @@ type Fake struct {
 	// after calling AddIgnoredScreenshot.
 	Ignored       map[string]bool
 	IngestedFiles map[db.FileRef]db.IngestedFile
+	// FieldEvidence is each screenshot's evidence record — the Fake's twin
+	// of screenshot_images + screenshot_field_evidence.
+	FieldEvidence map[db.FileRef]db.ScreenshotEvidence
 
 	// IgnoredAt maps filename → the timestamp at which it was ignored.
 	// Parallel to Ignored so ListIgnoredScreenshots can return rows in
@@ -224,6 +227,7 @@ func (f *Fake) Clear() error {
 	// The dedup registry. A standing duplicate is skipped before OCR on every
 	// run, so a row surviving the wipe withholds its file forever.
 	f.IngestedFiles = nil
+	f.FieldEvidence = nil
 	return nil
 }
 
@@ -288,7 +292,9 @@ func (f *Fake) HardDeleteMatch(matchKey string) error {
 	for fn := range doomed {
 		delete(f.Ambiguous, fn)
 	}
-	f.forgetIngestedFiles(f.filesOfKeyLocked(matchKey))
+	ownFiles := f.filesOfKeyLocked(matchKey)
+	f.forgetIngestedFiles(ownFiles)
+	f.forgetEvidenceLocked(func(file db.FileRef) bool { return ownFiles[file] })
 	for fn, cands := range f.Ambiguous {
 		kept := cands[:0]
 		for _, c := range cands {

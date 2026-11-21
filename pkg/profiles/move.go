@@ -25,7 +25,7 @@ var ErrMoveTargetIsActive = errors.New("move target is the active profile")
 //     aux rows — a manual match or an edited OCR match lives entirely
 //     there) + every annotation + the hidden_matches, pinned_matches and
 //     acknowledged_reference_gaps flags + the review status + the
-//     accepted coach-note blocks.
+//     accepted coach-note blocks + each moved screenshot's field evidence.
 //     Filenames carry over verbatim so a future re-parse of the same
 //     source PNG on the new profile is a no-op.
 //  2. Hard-delete the rows on src. Per-key HardDeleteMatch so a
@@ -70,7 +70,7 @@ func Move(src, dst db.Store, matchKeys []string) error {
 	}
 
 	resolveDirID := dirIDResolver(dst, source.snap.ScreenshotsDirs)
-	if err := movePhase1Parents(dst, source.snap, keep, resolveDirID); err != nil {
+	if err := movePhase1Screenshots(dst, source, keep, resolveDirID); err != nil {
 		return err
 	}
 	if err := movePhase1Ambiguity(dst, source.snap, movedShots); err != nil {
@@ -153,25 +153,10 @@ func movePhase1SelfReviews(targetStore db.Store, moving []db.SelfReview) error {
 // match_key, so the filename set is what the candidate copy is keyed on.
 func movedFilenames(snap db.Screenshots, keep map[string]bool) map[string]bool {
 	out := map[string]bool{}
-	collectMovedFilenames(out, snap.Summaries, keep, func(r db.SummaryRow) (string, string) { return r.MatchKey, r.Filename })
-	collectMovedFilenames(out, snap.Teams, keep, func(r db.TeamsRow) (string, string) { return r.MatchKey, r.Filename })
-	collectMovedFilenames(out, snap.Personals, keep, func(r db.PersonalRow) (string, string) { return r.MatchKey, r.Filename })
-	collectMovedFilenames(out, snap.Ranks, keep, func(r db.RankRow) (string, string) { return r.MatchKey, r.Filename })
-	collectMovedFilenames(out, snap.Unknowns, keep, func(r db.UnknownRow) (string, string) { return r.MatchKey, r.Filename })
-	return out
-}
-
-// collectMovedFilenames adds one parent table's filenames for the kept keys.
-// Generic over the row type so the five parent tables share one loop rather
-// than five copies (which is also what keeps movedFilenames under the
-// complexity ceiling).
-func collectMovedFilenames[T any](out map[string]bool, rows []T, keep map[string]bool, key func(T) (string, string)) {
-	for _, r := range rows {
-		matchKey, filename := key(r)
-		if keep[matchKey] {
-			out[filename] = true
-		}
+	for file := range movedFiles(snap, keep) {
+		out[file.Filename] = true
 	}
+	return out
 }
 
 // ErrMoveStrandsCandidate reports a move that would land an ambiguous
@@ -233,6 +218,7 @@ func loadMoveSource(src db.Store) (moveSource, error) {
 		{"self reviews", func() (err error) { out.selfReviews, err = src.LoadSelfReviews(); return }},
 		{"duplicate links", func() (err error) { out.dupLinks, err = src.LoadAllDuplicateLinks(); return }},
 		{"match keys", func() (err error) { out.matchKeys, err = src.LoadMatchKeys(); return }},
+		{"field evidence", func() (err error) { out.evidence, err = src.LoadFieldEvidence(); return }},
 	} {
 		if err := load.fn(); err != nil {
 			return moveSource{}, fmt.Errorf("move: load %s: %w", load.what, err)
@@ -261,6 +247,8 @@ type moveSource struct {
 	// Every key the source holds — the registry the sitting membership is
 	// judged against.
 	matchKeys map[string]bool
+	// Each screenshot's field evidence, keyed by its SOURCE folder id.
+	evidence map[db.FileRef]db.ScreenshotEvidence
 	// The source store itself, for the one thing a snapshot cannot hold
 	// cheaply: image BYTES. Loading every attachment up front would pull a
 	// whole profile's screenshots into memory to move three matches, so the
@@ -334,6 +322,15 @@ func moveParentRows[T any](
 		}
 	}
 	return nil
+}
+
+// movePhase1Screenshots copies the moved screenshots onto the target: their
+// parent rows, then the field evidence recorded for each.
+func movePhase1Screenshots(targetStore db.Store, src moveSource, keep map[string]bool, resolve func(int64) (int64, error)) error {
+	if err := movePhase1Parents(targetStore, src.snap, keep, resolve); err != nil {
+		return err
+	}
+	return movePhase1Evidence(targetStore, src, keep, resolve)
 }
 
 // movePhase1Parents upserts every parent row (across all five tables)
