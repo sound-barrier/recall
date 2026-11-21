@@ -272,6 +272,7 @@ func (f *Fake) DeleteScreenshotRows(filename string) ([]string, error) {
 	forgetNamed(f.AllHeroes, filename)
 	forgetNamed(f.History, filename)
 	delete(f.Ambiguous, filename)
+	f.forgetEvidenceLocked(func(file db.FileRef) bool { return file.Filename == filename })
 	f.scrubDeadKeyCandidatesLocked(touched)
 	orphans := []string{}
 	for key := range touched {

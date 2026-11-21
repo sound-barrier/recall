@@ -466,13 +466,6 @@ func (st *parseRunState) recordMatchUpdate(key string, beforeRec match.Record, b
 	}
 }
 
-// insertParsed dispatches a parsed result to the right Upsert method on
-// the store, materializing children from the parser's nested types.
-// dirID is the screenshots_dirs FK resolved once per batch by the
-// caller (0 = unset; the store renders that as SQL NULL).
-// The build*Row constructors are shared by the store write (insertParsed)
-// and the run snapshot's in-memory mirror (applyToSnapshot) — one source
-// for the row fields, so the mirror can't drift from what was written.
 // canonicalPlayedAtUTC derives the match's canonical UTC instant from its
 // naive local date+finished_at, interpreting the wall clock in the machine's
 // timezone identity (time.Local — a full zone, so DST is correct per match
@@ -514,6 +507,9 @@ func (a *App) GetParseStaleness() (ParseStaleness, error) {
 	return ParseStaleness{StaleMatches: n, ParserGeneration: parser.Generation}, nil
 }
 
+// The build*Row constructors are shared by the store write (insertParsed)
+// and the run snapshot's in-memory mirror (applyToSnapshot) — one source
+// for the row fields, so the mirror can't drift from what was written.
 func buildSummaryRow(filename, key string, dirID int64, r *parser.MatchResult) db.SummaryRow {
 	row := db.SummaryRow{
 		Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
@@ -595,22 +591,49 @@ func buildUnknownRow(filename, key string, dirID int64) db.UnknownRow {
 	}
 }
 
+// insertParsed dispatches a parsed result to the right Upsert method on
+// the store, materializing children from the parser's nested types, and
+// records where on the screenshot each reading came from. dirID is the
+// screenshots_dirs FK resolved once per batch by the caller (0 = unset; the
+// store files that under the sentinel folder row).
 func (a *App) insertParsed(filename, key string, t parser.ScreenshotType, dirID int64, r *parser.MatchResult) error {
+	file := db.FileRef{DirID: dirID, Filename: filename}
+	// Recognized but not match data: only the file is recorded, so the next
+	// parse run skips it (no re-OCR) without a garbage match row or an
+	// Unknown-tab entry. It never evicts a typed row, nor that row's
+	// evidence (parse_recognized.go says why).
+	if isRecognizedNonMatch(t) {
+		return a.recordRecognized(file, t)
+	}
 	store, release, leaseErr := a.useStore()
 	if leaseErr != nil {
 		return leaseErr
 	}
 	defer release()
+	// One unit: a stored row puts the file in the next run's skip set, so a
+	// row that landed without its evidence (or beside a stale sibling) would
+	// stay that way while the run reports the file failed.
+	return store.InTransaction(func(tx db.Store) error {
+		return writeParsedFile(tx, file, key, t, r)
+	})
+}
+
+// writeParsedFile replaces one screenshot's typed row and its evidence.
+func writeParsedFile(store db.Store, file db.FileRef, key string, t parser.ScreenshotType, r *parser.MatchResult) error {
 	// A re-parse can reclassify a file (a parser fix reading a screen that
 	// once stored as another type); wipe its rows from the sibling type
 	// tables first or the stale row aggregates beside the new one forever.
-	// EXCEPT toward a recognized non-match screen, which never evicts a typed
-	// row (parse_recognized.go says why).
-	if !isRecognizedNonMatch(t) {
-		if err := store.DeleteScreenshotSiblings(dirID, filename, t); err != nil {
-			return err
-		}
+	if err := store.DeleteScreenshotSiblings(file.DirID, file.Filename, t); err != nil {
+		return err
 	}
+	if err := upsertParsedRow(store, file.Filename, key, t, file.DirID, r); err != nil {
+		return err
+	}
+	return store.ReplaceFieldEvidence(file, db.ScreenshotEvidence{ImageSize: r.ImageSize, Fields: r.Evidence})
+}
+
+// upsertParsedRow writes a match-data parse to its type's parent table.
+func upsertParsedRow(store db.Store, filename, key string, t parser.ScreenshotType, dirID int64, r *parser.MatchResult) error {
 	switch t {
 	case parser.TypeSummary:
 		return store.UpsertSummary(buildSummaryRow(filename, key, dirID, r))
@@ -620,13 +643,10 @@ func (a *App) insertParsed(filename, key string, t parser.ScreenshotType, dirID 
 		return store.UpsertPersonal(buildPersonalRow(filename, key, dirID, r))
 	case parser.TypeRank:
 		return store.UpsertRank(buildRankRow(filename, key, dirID, r))
-	case parser.TypeAllHeroes, parser.TypeHistory:
-		// Recognized but not match data: only the filename is recorded, so
-		// the next parse run skips it (no re-OCR) without a garbage match row
-		// or an Unknown-tab entry.
-		return a.recordRecognized(db.FileRef{DirID: dirID, Filename: filename}, t)
 	case parser.TypeUnknown:
 		return store.UpsertUnknown(buildUnknownRow(filename, key, dirID))
+	case parser.TypeAllHeroes, parser.TypeHistory:
+		// Recorded by insertParsed before it gets here; never a parent row.
 	}
 	panic("unhandled parser.ScreenshotType")
 }

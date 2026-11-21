@@ -158,6 +158,43 @@ is composite `(parent_id, hero[, stat_key])`, and a re-parse that drops a hero
 must wipe that hero's old row — UPSERT alone wouldn't remove it. Idempotent:
 re-clicking Parse replaces rows in place, no duplicates.
 
+## Field evidence: keyed by the screenshot, not the match
+
+`screenshot_images` (pixel size) + its CASCADE child
+`screenshot_field_evidence` (one region per `parser.FieldPath`, plus the
+template readers' `template_value` / `template_score` / `template_margin`,
+all three set or all three NULL) record where on each screenshot every
+reading came from. They are keyed by **`(screenshots_dir_id, filename)`** —
+the screenshot's identity — not `match_key`: the regions are a fact about the
+file's pixels, which a rename or an ambiguity resolution does not change, so
+they are not in `matchKeyTables`.
+
+- **Written** by `pkg/app/parse.go::insertParsed` via `ReplaceFieldEvidence`,
+  in ONE `InTransaction` with the sibling wipe and the parent upsert: a stored
+  row puts the file in the next run's skip set, so a row that landed without
+  its evidence would stay that way while the run reported the file failed.
+  The whole record is replaced, so a field a re-parse no longer reads keeps
+  no region from the last parse. A recognized non-match (all-heroes /
+  history) writes none and evicts none.
+- **Read** in bulk by `LoadFieldEvidence` (`map[FileRef]ScreenshotEvidence`),
+  both tables inside one read transaction like `LoadAll` — two pooled reads
+  tore under a concurrent re-parse (one parse's size, another's regions).
+- **`dbtest.Fake` refuses what the schema refuses** (non-positive size,
+  empty/negative-origin region, empty or repeated field path, unknown
+  folder) and a refused write keeps the earlier record, as the SQL rollback
+  does — `TestStoreContract_RefusedEvidenceKeepsTheEarlierRecord`.
+- **No FK reaches the typed row** (it lives in one of five parent tables), so
+  every store method that deletes parent rows deletes the evidence itself:
+  `Clear`, `HardDeleteMatch` (via the key's files, before the parent wipe),
+  `DeleteScreenshotRows` (Dismiss, by name across folders),
+  `DeleteUnknownScreenshot`. A new parent-row delete path must do the same;
+  the shared contract suite (`store_field_evidence_contract_test.go`) holds
+  both stores to it. `PruneScreenshotsDirs` unions `screenshot_images`, since
+  its folder FK is RESTRICT and a failed prune fails the store open.
+- **Carried** by `profiles.Move` (re-resolved onto the target's folder id) and
+  the whole-DB backup; **not** by export/coach bundles — the screenshots ride
+  along and a re-parse on the far side rebuilds it with that install's parser.
+
 ## One unit across several methods: `InTransaction`
 
 A write that spans several Store methods (a bundle import, a Dismiss) runs

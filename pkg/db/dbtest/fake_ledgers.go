@@ -143,6 +143,13 @@ func (f *Fake) LoadHistoryFilenames(dirID int64) (map[string]bool, error) {
 func (f *Fake) DeleteUnknownScreenshot(filename string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	retired := map[db.FileRef]bool{}
+	for _, r := range f.Unknowns {
+		if r.Filename == filename {
+			retired[rowFile(r)] = true
+		}
+	}
+	f.forgetEvidenceLocked(func(file db.FileRef) bool { return retired[file] })
 	oldKeys := map[string]bool{}
 	f.Unknowns = deleteByFilename(f.Unknowns, filename, func(key string) { oldKeys[key] = true })
 	delete(f.Ambiguous, filename)

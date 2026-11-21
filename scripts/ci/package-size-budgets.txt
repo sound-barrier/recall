@@ -152,7 +152,12 @@ pkg/app                                       55
 # with. One table, one file, like every sidecar above it — and the first one
 # Clear() deliberately leaves alone, because a list of people is not a record
 # of games played.
-pkg/db                                        37
+# 38 as of field evidence: store_field_evidence.go, where on each screenshot
+# its readings came from. Two tables, one concern, spelled in one file like
+# every sidecar above — and the first keyed by the screenshot (folder +
+# filename) rather than by the match, because the regions are a fact about
+# the file's pixels that no match rename changes.
+pkg/db                                        38
 
 # pkg/parser — the OCR pipeline: Tesseract invocation, per-screenshot-type field
 # extraction, the embedded owdata YAML set, golden-file projection. One
@@ -645,7 +650,8 @@ frontend/src/match                            12
 # fake_coach_sessions.go beside pkg/db's store_coach_sessions.go.
 # 14: fake_roster.go — the Fake's half of the roster family. This count
 # tracks pkg/db's by construction.
-pkg/db/dbtest                                 14
+# 15: fake_field_evidence.go, beside pkg/db's store_field_evidence.go.
+pkg/db/dbtest                                 15
 
 # pkg/matchedit — one file per editable thing about a match: annotation,
 # ignored, manual, moment, play mode, queue, replay code, review, user data,

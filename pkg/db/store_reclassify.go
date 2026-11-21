@@ -59,7 +59,7 @@ func (s *SQLStore) DeleteScreenshotSiblings(dirID int64, filename string, keepTy
 
 // DeleteScreenshotRows removes filename's rows from every screenshot
 // table (parents + the recognized-skip registries; children CASCADE) plus the
-// file's own pending candidate set, in one transaction, and returns —
+// file's own pending candidate set and field evidence, in one transaction, and returns —
 // sorted — the match keys the delete left with zero parent rows. The
 // caller decides those keys' fate: the Dismiss path hard-deletes them so
 // no sidecar strands on a dead key, while a key another file still backs
@@ -93,6 +93,10 @@ func (s *SQLStore) DeleteScreenshotRows(filename string) ([]string, error) {
 		}
 	}
 	if _, err := tx.Exec(`DELETE FROM ambiguous_candidates WHERE filename = ?`, filename); err != nil {
+		return nil, err
+	}
+	// By name across every folder, like the row deletes above.
+	if _, err := tx.Exec(`DELETE FROM screenshot_images WHERE filename = ?`, filename); err != nil {
 		return nil, err
 	}
 	// Same-tx dead-key invariant as DeleteScreenshotSiblings: candidates

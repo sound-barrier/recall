@@ -172,6 +172,12 @@ func Export(store db.Store, opts ExportBundleOptions, recs []match.Record, scree
 	if err != nil {
 		return nil, fmt.Errorf("export bundle: load: %w", err)
 	}
+	// Field evidence (where on each screenshot a reading came from) is
+	// deliberately NOT exported. It is a byproduct of the parser that read the
+	// file, and the screenshots ride along: a re-parse on the far side rebuilds
+	// it with that install's parser, where carried rects would describe a parse
+	// the receiver never ran. The whole-DB backup and profiles.Move carry it,
+	// because they move the parse itself.
 	rows := filterBundleRows(snap, include)
 	screenshots := bundleScreenshotMap(rows)
 	// The roster rides a SELF-export only. A share bundle goes to a coach, and

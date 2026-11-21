@@ -293,6 +293,15 @@ type Store interface {
 	UpsertIngestedFile(file FileRef, contentHash string, duplicateOf FileRef) error
 	LoadIngestedFiles() (map[FileRef]IngestedFile, error)
 
+	// Per-screenshot field evidence: the region each reading came from and
+	// the templates' second opinion on it. ReplaceFieldEvidence makes ev the
+	// screenshot's whole record (an empty ev forgets it); LoadFieldEvidence
+	// is the one bulk read. Every method that deletes a screenshot's rows
+	// (Clear, HardDeleteMatch, DeleteScreenshotRows, DeleteUnknownScreenshot)
+	// deletes its evidence too.
+	ReplaceFieldEvidence(file FileRef, ev ScreenshotEvidence) error
+	LoadFieldEvidence() (map[FileRef]ScreenshotEvidence, error)
+
 	AddIgnoredScreenshot(filename string) error
 	RemoveIgnoredScreenshot(filename string) error
 	LoadIgnoredFilenames() (map[string]bool, error)
