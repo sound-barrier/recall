@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"recall/pkg/crosscheck"
 	"recall/pkg/db"
 	"recall/pkg/match"
 	"recall/pkg/parser"
@@ -128,16 +129,23 @@ func ResolveMatchKey(filename string, result *parser.MatchResult, snap db.Screen
 
 // Candidate is the comparison shape used by the two match passes.
 // Carries the same signature fields RowsConflict checks plus the file's
-// timestamp for the window predicate.
+// timestamp for the window predicate. r is the reading as read, whose
+// E/A/D triple is the EAD bridge's fingerprint; compared is the view
+// RowsConflict holds it to (see conflictView).
 type Candidate struct {
 	filename string
 	ts       time.Time
 	hasTS    bool
 	r        *parser.MatchResult
+	compared *parser.MatchResult
 }
 
+// CandidateFromParse is a just-parsed screenshot as the passes compare it.
+// r itself is not touched, so the row stores what was read.
 func CandidateFromParse(filename string, r *parser.MatchResult) Candidate {
-	c := Candidate{filename: filename, r: r}
+	c := Candidate{filename: filename, r: r, compared: conflictView(crosscheck.Source{
+		File: filename, Type: parser.Classify(r), Data: *r, Evidence: r.Evidence,
+	})}
 	if ts, ok := ParseFilenameTimestamp(filename); ok {
 		c.ts = ts
 		c.hasTS = true
@@ -193,39 +201,78 @@ func matchHeroSets(snap db.Screenshots) map[string]map[string]bool {
 // its perf totals — the SUMMARY's authoritative E/A/D — so MatchByEAD
 // can bridge a just-arrived TEAMS to an existing SUMMARY (closing the
 // cascade after a SUMMARY adopts an in-game TEAMS key via finished_at
-// corroboration).
-func summaryExistingCandidate(r db.SummaryRow) Candidate {
-	return Candidate{
-		filename: r.Filename,
-		r: &parser.MatchResult{
+// corroboration). evidence is the row's stored record, which tells
+// conflictView a 0 the pixels read from one they never read.
+func summaryExistingCandidate(r db.SummaryRow, evidence []parser.FieldEvidence) Candidate {
+	identity := func(totals parser.MatchResult) *parser.MatchResult {
+		return &parser.MatchResult{
 			Map: r.Map, Playlist: r.Playlist, Hero: r.Hero,
 			Date: r.Date, FinishedAt: r.FinishedAt,
-			Eliminations: r.Eliminations,
-			Assists:      r.Assists,
-			Deaths:       r.Deaths,
+			Eliminations: totals.Eliminations, Assists: totals.Assists, Deaths: totals.Deaths,
+		}
+	}
+	perf := summaryPerfReading(r)
+	return Candidate{
+		filename: r.Filename,
+		r:        identity(perf),
+		compared: identity(*conflictView(crosscheck.Source{
+			File: r.Filename, Type: parser.TypeSummary, Data: perf, Evidence: evidence,
+		})),
+	}
+}
+
+// summaryPerfReading is what a SUMMARY row says about its performance cards:
+// each total, its rate, and the heroes' play time the rates were taken over.
+func summaryPerfReading(r db.SummaryRow) parser.MatchResult {
+	reading := parser.MatchResult{
+		Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
+		Performance: &parser.Performance{
+			Eliminations: parser.PerformanceStat{AvgPer10Min: r.PerfElimAvgPer10Min},
+			Assists:      parser.PerformanceStat{AvgPer10Min: r.PerfAssistsAvgPer10Min},
+			Deaths:       parser.PerformanceStat{AvgPer10Min: r.PerfDeathsAvgPer10Min},
 		},
 	}
+	for _, h := range r.HeroesPlayed {
+		reading.HeroesPlayed = append(reading.HeroesPlayed, parser.HeroPlay{
+			Hero: h.Hero, PercentPlayed: h.PercentPlayed, PlayTime: h.PlayTime,
+		})
+	}
+	return reading
+}
+
+// conflictView is the reading RowsConflict holds a screenshot to. A SUMMARY
+// total misread by OCR would split one match from its own scoreboard, so a
+// total its own card's rate disowns — the disagreement that raises its
+// perf_total_vs_rate flag — is left unknown, which conflicts with nothing.
+// It is not replaced by the rate's total, and it is no EAD fingerprint
+// either way: the check cannot tell whether the total, the rate or the play
+// time was misread, and a derived triple bridged a stale misread row as a
+// second key for its own match on Re-parse All. The stored reading keeps
+// what was read, and the flag stays open for the user to judge.
+func conflictView(s crosscheck.Source) *parser.MatchResult {
+	reading := crosscheck.WithoutDisownedTotals(s)
+	return &reading
+}
+
+// readCandidate is an existing row's Candidate whose every reading is
+// compared as read.
+func readCandidate(filename string, r *parser.MatchResult) Candidate {
+	return Candidate{filename: filename, r: r, compared: r}
 }
 
 func teamsExistingCandidate(r db.TeamsRow) Candidate {
-	return Candidate{
-		filename: r.Filename,
-		r: &parser.MatchResult{
-			Eliminations: r.Eliminations,
-			Assists:      r.Assists,
-			Deaths:       r.Deaths,
-			Damage:       r.Damage,
-			Healing:      r.Healing,
-			Mitigation:   r.Mitigation,
-		},
-	}
+	return readCandidate(r.Filename, &parser.MatchResult{
+		Eliminations: r.Eliminations,
+		Assists:      r.Assists,
+		Deaths:       r.Deaths,
+		Damage:       r.Damage,
+		Healing:      r.Healing,
+		Mitigation:   r.Mitigation,
+	})
 }
 
 func rankExistingCandidate(r db.RankRow) Candidate {
-	return Candidate{
-		filename: r.Filename,
-		r:        &parser.MatchResult{Rank: r.Rank, Result: r.Result},
-	}
+	return readCandidate(r.Filename, &parser.MatchResult{Rank: r.Rank, Result: r.Result})
 }
 
 func snapshotExisting(snap db.Screenshots) []existing {
@@ -235,19 +282,20 @@ func snapshotExisting(snap db.Screenshots) []existing {
 		out = append(out, existing{key: key, c: c, matchHeroes: heroSets[key]})
 	}
 	for _, r := range snap.Summaries {
-		add(r.MatchKey, summaryExistingCandidate(r))
+		file := db.FileRef{DirID: r.ScreenshotsDirID, Filename: r.Filename}.Filed()
+		add(r.MatchKey, summaryExistingCandidate(r, snap.FieldEvidence[file].Fields))
 	}
 	for _, r := range snap.Teams {
 		add(r.MatchKey, teamsExistingCandidate(r))
 	}
 	for _, r := range snap.Personals {
-		add(r.MatchKey, Candidate{filename: r.Filename, r: &parser.MatchResult{Hero: r.Hero}})
+		add(r.MatchKey, readCandidate(r.Filename, &parser.MatchResult{Hero: r.Hero}))
 	}
 	for _, r := range snap.Ranks {
 		add(r.MatchKey, rankExistingCandidate(r))
 	}
 	for _, r := range snap.Unknowns {
-		add(r.MatchKey, Candidate{filename: r.Filename, r: &parser.MatchResult{}})
+		add(r.MatchKey, readCandidate(r.Filename, &parser.MatchResult{}))
 	}
 	for i := range out {
 		if ts, ok := ParseFilenameTimestamp(out[i].c.filename); ok {
@@ -267,12 +315,9 @@ func snapshotExisting(snap db.Screenshots) []existing {
 // HH:MM. The SUMMARY's finished_at is the match's actual end-of-match
 // clock time; an existing row taken in that same minute is almost
 // certainly the same match. (A map+hero+date triple agreement rule
-// was considered but is unreachable: snapshotExisting only exposes
-// Date on SUMMARY rows, and an existing SUMMARY row never carries
-// EAD into MatchByEAD's snapshot view — so any Candidate that needs
-// Date agreement against an existing EAD-bearing row has no Date to
-// compare against. finished_at via the filename timestamp is the
-// available signal.)
+// was considered, but the bridge's usual pair is a SUMMARY against a
+// TEAMS row, and a TEAMS row carries no map, hero or date: finished_at
+// against the filename clock is the one signal both sides have.)
 func corroborated(cand Candidate, e existing) bool {
 	if cand.r.FinishedAt != "" && e.c.hasTS {
 		if cand.r.FinishedAt == e.c.ts.UTC().Format("15:04") {
@@ -309,7 +354,7 @@ func closestPerKey(cand Candidate, snap db.Screenshots) map[string]time.Duration
 		if d > MergeWindow {
 			continue
 		}
-		if RowsConflict(cand.r, e.c.r, e.matchHeroes) {
+		if RowsConflict(cand.compared, e.c.compared, e.matchHeroes) {
 			continue
 		}
 		if prev, ok := closestByKey[e.key]; !ok || d < prev {

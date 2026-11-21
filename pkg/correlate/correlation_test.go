@@ -1,6 +1,7 @@
 package correlate_test
 
 import (
+	"image"
 	"testing"
 	"time"
 
@@ -272,4 +273,206 @@ func TestResolveMatchKey_FreshKeyForTimestampedNoCandidates(t *testing.T) {
 	if key != "match-2026-05-10T21-29-28" {
 		t.Errorf("expected match:<ts> from filename, got %q", key)
 	}
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Grouping past a SUMMARY total its own rate disowns.
+// ──────────────────────────────────────────────────────────────────
+
+const (
+	misreadSummaryFile = "Overwatch 2 Screenshot 2026.05.10 - 21.29.28 _sum.png"
+	misreadSummaryKey  = "match-2026-05-10T21-29-28"
+)
+
+// misreadSummaryRow is the anchor misread as stored: 74 eliminations where
+// the card's own 12.97 per 10 minutes over 06:56 says 9. Assists and deaths
+// agree with their rates, which is what proves the 74 the misread rather
+// than the play time.
+func misreadSummaryRow(elimRate float64) db.SummaryRow {
+	return db.SummaryRow{
+		Filename: misreadSummaryFile, MatchKey: misreadSummaryKey,
+		Hero: "lucio", Result: "victory", GameLength: "15:45",
+		Eliminations: 74, Assists: 10, Deaths: 5,
+		PerfElimAvgPer10Min: elimRate, PerfAssistsAvgPer10Min: 14.41, PerfDeathsAvgPer10Min: 7.21,
+		HeroesPlayed: []db.SummaryHeroPlayed{{Hero: "lucio", PercentPlayed: 100, PlayTime: "06:56"}},
+	}
+}
+
+// scoreboardReading is the TEAMS shot of the same match, which read the
+// eliminations right.
+func scoreboardReading() *parser.MatchResult {
+	return &parser.MatchResult{Eliminations: 9, Assists: 10, Deaths: 5, Damage: 5200}
+}
+
+// summaryReading is the anchor SUMMARY as a parse reads it, with the
+// eliminations total given and every card's rate as printed.
+func summaryReading(eliminations int) *parser.MatchResult {
+	return &parser.MatchResult{
+		Hero: "lucio", Result: "victory", GameLength: "15:45",
+		Eliminations: eliminations, Assists: 10, Deaths: 5,
+		HeroesPlayed: []parser.HeroPlay{{Hero: "lucio", PercentPlayed: 100, PlayTime: "06:56"}},
+		Performance: &parser.Performance{
+			Eliminations: parser.PerformanceStat{AvgPer10Min: 12.97},
+			Assists:      parser.PerformanceStat{AvgPer10Min: 14.41},
+			Deaths:       parser.PerformanceStat{AvgPer10Min: 7.21},
+		},
+	}
+}
+
+// TestResolveMatchKey_ScoreboardJoinsAMisreadSummary: the SUMMARY's own
+// rate disowns its 74, so the scoreboard reading 9 a minute later, inside
+// the merge window, is the same match, not a conflict.
+func TestResolveMatchKey_ScoreboardJoinsAMisreadSummary(t *testing.T) {
+	snap := db.Screenshots{Summaries: []db.SummaryRow{misreadSummaryRow(12.97)}}
+	key, cands := correlate.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.30.28 _sb.png", scoreboardReading(), snap)
+	if key != misreadSummaryKey || cands != nil {
+		t.Errorf("got key %q cands %+v, want the SUMMARY's key %q", key, cands, misreadSummaryKey)
+	}
+}
+
+// TestResolveMatchKey_MisreadSummaryJoinsItsScoreboard is the other arrival
+// order, and the reading the SUMMARY's row will store stays the 74 it read:
+// only the comparison leaves the disowned total unknown.
+func TestResolveMatchKey_MisreadSummaryJoinsItsScoreboard(t *testing.T) {
+	snap := db.Screenshots{Teams: []db.TeamsRow{{
+		Filename: "Overwatch 2 Screenshot 2026.05.10 - 21.28.28 _sb.png", MatchKey: "match-2026-05-10T21-28-28",
+		Eliminations: 9, Assists: 10, Deaths: 5, Damage: 5200,
+	}}}
+	summary := summaryReading(74)
+	key, _ := correlate.ResolveMatchKey(misreadSummaryFile, summary, snap)
+	if key != "match-2026-05-10T21-28-28" {
+		t.Errorf("got key %q, want the scoreboard's key", key)
+	}
+	if summary.Eliminations != 74 {
+		t.Errorf("stored eliminations = %d, want the 74 as read", summary.Eliminations)
+	}
+}
+
+// TestResolveMatchKey_GenuineSummaryTotalStillSplits: a 74 its own rate
+// agrees with is a reading, not a misread, so a scoreboard reading 9 is a
+// different match.
+func TestResolveMatchKey_GenuineSummaryTotalStillSplits(t *testing.T) {
+	snap := db.Screenshots{Summaries: []db.SummaryRow{misreadSummaryRow(106.73)}}
+	key, _ := correlate.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.30.28 _sb.png", scoreboardReading(), snap)
+	if key == misreadSummaryKey {
+		t.Errorf("a consistent 74 joined a scoreboard reading 9 (key %q)", key)
+	}
+}
+
+// TestResolveMatchKey_UnprovenMismatchStillSplits: when every card disagrees
+// with the play time it is the play time the check blames, so no total is
+// proven misread and the mismatch splits as it always has.
+func TestResolveMatchKey_UnprovenMismatchStillSplits(t *testing.T) {
+	row := misreadSummaryRow(12.97)
+	row.Eliminations, row.Assists, row.Deaths = 20, 30, 10
+	row.PerfElimAvgPer10Min, row.PerfAssistsAvgPer10Min, row.PerfDeathsAvgPer10Min = 10, 15, 5
+	row.HeroesPlayed[0].PlayTime = "05:00"
+	snap := db.Screenshots{Summaries: []db.SummaryRow{row}}
+	derived := &parser.MatchResult{Eliminations: 5, Assists: 8, Deaths: 3, Damage: 5200}
+	key, _ := correlate.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.30.28 _sb.png", derived, snap)
+	if key == misreadSummaryKey {
+		t.Errorf("an unproven mismatch joined the SUMMARY (key %q)", key)
+	}
+}
+
+// TestResolveMatchKey_ProofReadsTheStoredEvidence: an assists total the
+// pixels read as 0 is a reading the rate disagrees with too. With two cards
+// off and none agreeing the check blames the play time, so the 74 is not
+// proven a misread, and the scoreboard's 9 still splits. Without the
+// evidence the 0 would be no reading and the proof would wrongly stand.
+func TestResolveMatchKey_ProofReadsTheStoredEvidence(t *testing.T) {
+	row := misreadSummaryRow(12.97)
+	row.Assists, row.Deaths, row.PerfDeathsAvgPer10Min = 0, 0, 0
+	assistsRead := parser.FieldEvidence{Field: parser.ScalarPath("assists"), Rect: image.Rect(10, 10, 40, 30)}
+	snap := db.Screenshots{
+		Summaries: []db.SummaryRow{row},
+		FieldEvidence: map[db.FileRef]db.ScreenshotEvidence{
+			db.FileRef{Filename: misreadSummaryFile}.Filed(): {Fields: []parser.FieldEvidence{assistsRead}},
+		},
+	}
+	key, _ := correlate.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.30.28 _sb.png", scoreboardReading(), snap)
+	if key == misreadSummaryKey {
+		t.Errorf("the 74 was taken as proven misread despite the assists reading (key %q)", key)
+	}
+}
+
+// TestMatchByEAD_FingerprintsWhatWasRead: a total the rate disowns is no
+// fingerprint, read or derived, so a scoreboard 20 minutes on is not
+// bridged to the misread SUMMARY at all. The rate's total is arithmetic
+// over two more readings, either of which can be the misread one.
+func TestMatchByEAD_FingerprintsWhatWasRead(t *testing.T) {
+	snap := db.Screenshots{Summaries: []db.SummaryRow{misreadSummaryRow(12.97)}}
+	cand := correlate.CandidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 21.49.28 _sb.png", scoreboardReading())
+	if key, cands, ok := correlate.MatchByEAD(cand, snap); ok {
+		t.Errorf("got key %q cands %+v, want no bridge on a disowned total", key, cands)
+	}
+}
+
+const splitScoreboardKey = "match-2026-05-10T21-30-28"
+
+// staleSplit is the store before a re-parse: the misread SUMMARY and its
+// scoreboard filed under two keys.
+func staleSplit() db.Screenshots {
+	return db.Screenshots{
+		Summaries: []db.SummaryRow{misreadSummaryRow(12.97)},
+		Teams: []db.TeamsRow{{
+			Filename: "Overwatch 2 Screenshot 2026.05.10 - 21.30.28 _sb.png", MatchKey: splitScoreboardKey,
+			Eliminations: 9, Assists: 10, Deaths: 5, Damage: 5200,
+		}},
+	}
+}
+
+// TestResolveMatchKey_ReParseHealsAStaleSplit: Re-parse All correlates each
+// file against a snapshot that still holds every old row, its own included.
+// The SUMMARY now reads its 9, and in either order both files land on one
+// key, not in the ambiguous queue: the stale row's disowned 74 must not
+// become a second 9/10/5 fingerprint.
+func TestResolveMatchKey_ReParseHealsAStaleSplit(t *testing.T) {
+	t.Run("scoreboard first", func(t *testing.T) {
+		snap := staleSplit()
+		key, cands := correlate.ResolveMatchKey(snap.Teams[0].Filename, scoreboardReading(), snap)
+		requireKey(t, key, cands, splitScoreboardKey)
+		key, cands = correlate.ResolveMatchKey(misreadSummaryFile, summaryReading(9), snap)
+		requireKey(t, key, cands, splitScoreboardKey)
+	})
+	t.Run("summary first", func(t *testing.T) {
+		snap := staleSplit()
+		key, cands := correlate.ResolveMatchKey(misreadSummaryFile, summaryReading(9), snap)
+		requireKey(t, key, cands, splitScoreboardKey)
+		snap.Summaries[0].MatchKey, snap.Summaries[0].Eliminations = key, 9
+		key, cands = correlate.ResolveMatchKey(snap.Teams[0].Filename, scoreboardReading(), snap)
+		requireKey(t, key, cands, splitScoreboardKey)
+	})
+}
+
+func requireKey(t *testing.T, key string, cands []db.AmbiguousCandidate, want string) {
+	t.Helper()
+	if key != want || cands != nil {
+		t.Fatalf("got key %q cands %+v, want %q", key, cands, want)
+	}
+}
+
+// TestResolveMatchKey_MisreadRateKeepsACorrectTotal: when it is the rate
+// the OCR misread (12.97 read as 1297), the check condemns a total the
+// screen printed right. That total must still group: a scoreboard reading
+// the same 9/10/5 three minutes on, past the merge window, still bridges.
+func TestResolveMatchKey_MisreadRateKeepsACorrectTotal(t *testing.T) {
+	row := misreadSummaryRow(1297)
+	row.Eliminations = 9
+	snap := db.Screenshots{Summaries: []db.SummaryRow{row}}
+	key, cands := correlate.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.32.28 _sb.png", scoreboardReading(), snap)
+	requireKey(t, key, cands, misreadSummaryKey)
+}
+
+// TestResolveMatchKey_MisreadPlayTimeKeepsACorrectTotal: with one card's
+// rate the only one read, nothing corroborates the play time, so a misread
+// 36:56 condemns the 9 the screen printed. It must not split the SUMMARY
+// from a scoreboard reading 9 a minute later.
+func TestResolveMatchKey_MisreadPlayTimeKeepsACorrectTotal(t *testing.T) {
+	row := misreadSummaryRow(12.97)
+	row.Eliminations, row.PerfAssistsAvgPer10Min, row.PerfDeathsAvgPer10Min = 9, 0, 0
+	row.HeroesPlayed[0].PlayTime = "36:56"
+	snap := db.Screenshots{Summaries: []db.SummaryRow{row}}
+	key, cands := correlate.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.30.28 _sb.png", scoreboardReading(), snap)
+	requireKey(t, key, cands, misreadSummaryKey)
 }

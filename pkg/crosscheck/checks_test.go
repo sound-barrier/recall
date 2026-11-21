@@ -131,6 +131,45 @@ func TestPerfTotalVsRate_MisreadPlayTimeFlagsNoTotal(t *testing.T) {
 	requireNoFlags(t, crosscheck.Flags(groupOf(source(summaryFile, parser.TypeSummary, summary))))
 }
 
+// TestWithoutDisownedTotals_ClearsOnlyACondemnedTotal: the view leaves
+// unread exactly the total perf_total_vs_rate flags, and keeps every reading
+// the check does not condemn as it was read. It does not put the rate's total
+// in its place: the check cannot tell a misread total from a misread rate.
+func TestWithoutDisownedTotals_ClearsOnlyACondemnedTotal(t *testing.T) {
+	playTimeMisread := parser.MatchResult{
+		Eliminations: 20, Assists: 30, Deaths: 10,
+		HeroesPlayed: []parser.HeroPlay{{Hero: "lucio", PercentPlayed: 100, PlayTime: "05:00"}},
+		Performance:  summaryPerf(10, 15, 5),
+	}
+	cases := []struct {
+		name    string
+		source  crosscheck.Source
+		e, a, d int
+	}{
+		{"the condemned total is left unread", source(summaryFile, parser.TypeSummary, jpgSummary()), 0, 10, 5},
+		{"a misread play time condemns no total", source(summaryFile, parser.TypeSummary, playTimeMisread), 20, 30, 10},
+		{"only a SUMMARY is held to its rates", source(teamsFile, parser.TypeTeams, jpgSummary()), 74, 10, 5},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := crosscheck.WithoutDisownedTotals(tc.source)
+			if got.Eliminations != tc.e || got.Assists != tc.a || got.Deaths != tc.d {
+				t.Errorf("E/A/D = %d/%d/%d, want %d/%d/%d", got.Eliminations, got.Assists, got.Deaths, tc.e, tc.a, tc.d)
+			}
+		})
+	}
+}
+
+// TestWithoutDisownedTotals_LeavesTheReadingAlone: the view is a copy; the
+// source's own reading still says what the pixels said.
+func TestWithoutDisownedTotals_LeavesTheReadingAlone(t *testing.T) {
+	s := source(summaryFile, parser.TypeSummary, jpgSummary())
+	_ = crosscheck.WithoutDisownedTotals(s)
+	if s.Data.Eliminations != 74 {
+		t.Errorf("source eliminations = %d, want the 74 as read", s.Data.Eliminations)
+	}
+}
+
 func twoHeroSummary(juno, mizuki int, junoTime, mizukiTime string) crosscheck.Group {
 	return groupOf(source(summaryFile, parser.TypeSummary, parser.MatchResult{
 		HeroesPlayed: []parser.HeroPlay{
