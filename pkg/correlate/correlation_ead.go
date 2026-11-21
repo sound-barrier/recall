@@ -119,7 +119,7 @@ func sameNonZeroEAD(cand, existing *parser.MatchResult) bool {
 // exact non-zero E/A/D, not conflict on signature fields, and carry a
 // filename timestamp inside the ambiguous window.
 func eadRowDistance(cand Candidate, e existing) (time.Duration, bool) {
-	if !sameNonZeroEAD(cand.r, e.c.r) || RowsConflict(cand.r, e.c.r, e.matchHeroes) || !e.c.hasTS {
+	if !sameNonZeroEAD(cand.r, e.c.r) || RowsConflict(cand.compared, e.c.compared, e.matchHeroes) || !e.c.hasTS {
 		return 0, false
 	}
 	d := cand.ts.Sub(e.c.ts)
