@@ -287,6 +287,45 @@ export type FieldReading = {
 };
 
 /**
+ * Where on a match's own screenshots each field was read.
+ */
+export type FieldRegions = {
+    /**
+     * Ordered by `source_file`, then `field`.
+     */
+    regions: Array<FieldRegion>;
+};
+
+/**
+ * The rectangle on one screenshot a field was read from, in the
+ * image's own pixels, with the image's size.
+ *
+ */
+export type FieldRegion = {
+    /**
+     * The screenshot, as `source_files` names it.
+     */
+    source_file: string;
+    /**
+     * The folder id for `/_screenshot/{dir_id}/{source_file}`: the
+     * one `source_dir_ids` gives the file, 0 (the configured
+     * folder) when it names none.
+     *
+     */
+    dir_id: number;
+    /**
+     * The field's dotted path, as `FieldFlag.field` spells it.
+     */
+    field: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    image_width: number;
+    image_height: number;
+};
+
+/**
  * Which cross-check noticed a disagreement.
  *
  * - `perf_total_vs_rate`: a SUMMARY total against its own
@@ -2699,9 +2738,9 @@ export type GetMatchByKeyErrors = {
      */
     400: ProblemDetails;
     /**
-     * Match not found.
+     * The requested resource was not found.
      */
-    404: unknown;
+    404: ProblemDetails;
     /**
      * Unhandled server-side error.
      */
@@ -3041,6 +3080,61 @@ export type ConfirmFieldReadingResponses = {
 };
 
 export type ConfirmFieldReadingResponse = ConfirmFieldReadingResponses[keyof ConfirmFieldReadingResponses];
+
+export type GetMatchFieldRegionsData = {
+    body?: never;
+    path: {
+        /**
+         * Match identity — same `match_key` value exposed in
+         * `MatchRecord`. URL-safe: the canonical form replaces every
+         * legacy colon separator with a dash, so no percent-encoding
+         * is required for paste-in-URL use
+         * (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+         * and `ambiguous-<filename>` variants the embedded filename
+         * still needs the usual encoding for spaces / unicode.
+         *
+         */
+        match_key: string;
+    };
+    query?: never;
+    url: '/api/v1/matches/{match_key}/field-regions';
+};
+
+export type GetMatchFieldRegionsErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
+};
+
+export type GetMatchFieldRegionsError = GetMatchFieldRegionsErrors[keyof GetMatchFieldRegionsErrors];
+
+export type GetMatchFieldRegionsResponses = {
+    /**
+     * The match's field regions.
+     */
+    200: FieldRegions;
+};
+
+export type GetMatchFieldRegionsResponse = GetMatchFieldRegionsResponses[keyof GetMatchFieldRegionsResponses];
 
 export type SetMatchPinData = {
     body: {

@@ -211,10 +211,8 @@ func FoldGroup(key string, vs []ScreenshotView, dirs map[int64]string) match.Rec
 	// dirIDsPerFile maps each source filename to the screenshots_dirs
 	// row id it was ingested from. Frontends build
 	// `/_screenshot/<id>/<filename>` URLs from this map; the handler
-	// reads the id back out, looks up the path, and serves. Filename
-	// entries are only added when the per-row dirID is non-zero AND
-	// resolves to a known dir (a stale FK after a `screenshots_dirs`
-	// row delete would otherwise yield a broken URL).
+	// reads the id back out, looks up the path, and serves. A file is
+	// listed only when servedDirID resolves its row's folder.
 	dirIDsPerFile := map[string]int64{}
 	matchParsedAt := ""
 	for _, v := range vs {
@@ -227,10 +225,8 @@ func FoldGroup(key string, vs []ScreenshotView, dirs map[int64]string) match.Rec
 				matchParsedAt = v.parsedAt
 			}
 		}
-		if v.dirID != 0 {
-			if _, ok := dirs[v.dirID]; ok {
-				dirIDsPerFile[v.filename] = v.dirID
-			}
+		if id := servedDirID(v.dirID, dirs); id != 0 {
+			dirIDsPerFile[v.filename] = id
 		}
 	}
 	applyDerivedFields(&data)

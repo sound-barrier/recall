@@ -249,7 +249,7 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
-          description: Match not found.
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
         "503":
@@ -467,6 +467,48 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
+
+  /api/v1/matches/{match_key}/field-regions:
+    parameters:
+      - $ref: "#/components/parameters/MatchKey"
+    get:
+      operationId: GetMatchFieldRegions
+      tags: [Matches]
+      summary: Read where each of a match's fields was read
+      description: |
+        Lists, per field, the rectangle on the match's own screenshots
+        that the parse read it from, so a client can show a reading
+        beside its pixels (a flagged reading beside its source crop).
+        Served on demand rather than on every `MatchRecord`: the list
+        read never needs it.
+
+        Rectangles are in the screenshot's own pixels, with the image's
+        size beside them, so the crop scales to whatever size it is
+        drawn at. `dir_id` is the folder id `source_dir_ids` gives the
+        same file (0 when it names none), so the crop is cut from the
+        screenshot at the URL the match already uses.
+
+        Empty for a match with no screenshots (manual, replay) and for
+        screenshots parsed before regions were stored (Re-parse All
+        fills them in). Like `GetMatchByKey`, it reads this install's
+        own matches, open coaching session or not: a session's loaned
+        matches are not among them, since a bundle carries no regions
+        and the coach never loads the player's screenshots.
+      responses:
+        "200":
+          description: The match's field regions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FieldRegions"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
         "503":
@@ -5025,6 +5067,59 @@ components:
             The reading as text: a number's digits, a hero key, a result,
             or a hero list joined by `, `.
           example: "74"
+
+    FieldRegions:
+      type: object
+      required: [regions]
+      description: Where on a match's own screenshots each field was read.
+      properties:
+        regions:
+          type: array
+          description: Ordered by `source_file`, then `field`.
+          items:
+            $ref: "#/components/schemas/FieldRegion"
+
+    FieldRegion:
+      type: object
+      required: [source_file, dir_id, field, x, y, width, height, image_width, image_height]
+      description: |
+        The rectangle on one screenshot a field was read from, in the
+        image's own pixels, with the image's size.
+      properties:
+        source_file:
+          type: string
+          description: The screenshot, as `source_files` names it.
+          example: "ScreenShot_26-06-07_23-00-04-000.jpg"
+        dir_id:
+          type: integer
+          format: int64
+          minimum: 0
+          description: |
+            The folder id for `/_screenshot/{dir_id}/{source_file}`: the
+            one `source_dir_ids` gives the file, 0 (the configured
+            folder) when it names none.
+        field:
+          type: string
+          description: The field's dotted path, as `FieldFlag.field` spells it.
+          example: "data.eliminations"
+        x:
+          type: integer
+          minimum: 0
+        y:
+          type: integer
+          minimum: 0
+        width:
+          type: integer
+          minimum: 1
+        height:
+          type: integer
+          minimum: 1
+        image_width:
+          type: integer
+          minimum: 1
+        image_height:
+          type: integer
+          minimum: 1
 
     FieldCheckEnum:
       type: string

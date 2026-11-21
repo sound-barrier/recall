@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"errors"
 	"io"
 	"net/http"
 	"regexp"
@@ -18,22 +17,17 @@ import (
 // Wired in registerMatchRoutes (server_matches.go). Each reads the key
 // via matchKeyFromPath, which 400s on an empty segment.
 
-// handleGetMatchByKey reads a single match by key. Reuses
-// GetMatchResults's aggregator + read-time inference, then filters to the
-// requested key. 404 via the ErrMatchNotFound sentinel keeps the wire
-// surface clean (no 500 for an honest "not in the corpus").
-func handleGetMatchByKey(a *app.App) http.HandlerFunc {
+// jsonForKey answers a per-match read: the key from the path, read it, the
+// value as JSON. An unknown key is the 404 the default problem ladder gives
+// match.ErrMatchNotFound. Each read's contract is on the *App method it names.
+func jsonForKey[T any](read func(matchKey string) (T, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		matchKey, ok := matchKeyFromPath(w, r)
 		if !ok {
 			return
 		}
-		rec, err := a.GetMatchByKey(matchKey)
-		if errors.Is(err, match.ErrMatchNotFound) {
-			writeProblem(w, r, probNotFound, "match not found")
-			return
-		}
-		writeJSON(w, r, rec, err)
+		v, err := read(matchKey)
+		writeJSON(w, r, v, err)
 	}
 }
 

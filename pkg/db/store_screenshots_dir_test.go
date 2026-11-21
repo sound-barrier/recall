@@ -1,6 +1,7 @@
 package db_test
 
 import (
+	"maps"
 	"testing"
 
 	"recall/pkg/db"
@@ -62,5 +63,28 @@ func TestSQLStore_PruneScreenshotsDirs(t *testing.T) {
 	// Idempotent — nothing left to prune.
 	if n, err := s.PruneScreenshotsDirs(); err != nil || n != 0 {
 		t.Errorf("re-prune: got (%d, %v), want (0, nil)", n, err)
+	}
+}
+
+// LoadAll's folder map names every folder a row can be filed under, the
+// sentinel included: schema.sql seeds it, so the SQL store reads it back,
+// and the Fake must too or a row in the configured folder resolves to a
+// different dir id in every test that stands the Fake in for SQLStore.
+func TestStoreContract_LoadAllNamesTheSentinelFolder(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			const dir = "/watch/folder-a"
+			id, err := s.EnsureScreenshotsDir(dir)
+			mustNoErr(t, err)
+
+			snap, err := s.LoadAll()
+			mustNoErr(t, err)
+
+			want := map[int64]string{db.SentinelScreenshotsDirID: "", id: dir}
+			if !maps.Equal(snap.ScreenshotsDirs, want) {
+				t.Errorf("ScreenshotsDirs = %v, want %v", snap.ScreenshotsDirs, want)
+			}
+		})
 	}
 }
