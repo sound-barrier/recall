@@ -6,6 +6,7 @@ import { flattenReel, groupReelByPlayerDay, neighborKey, type ReelDay } from '@/
 import { winrateOrNull } from '@/match/dossier/match-dossier-tally'
 import { tallyWLD, type WLDTally } from '@/match/match-stats-helpers'
 import { railTendencies, type RailTendency } from '@/match/coach/coach-rail-helpers'
+import { recordsWithoutSuspectFields } from '@/match/quality/field-flags'
 
 // Everything the Film Room derives from the loaned corpus + the coach's
 // notes: the reel, which frame is on the desk, its neighbors, and the
@@ -55,12 +56,15 @@ export function useCoachRoom(opts: CoachRoomOptions): CoachRoomApi {
   const selectedRecord = computed(() => frames.value.find((f) => f.match_key === activeKey.value) ?? null)
   const activeDraft = computed(() => toValue(opts.notes)[activeKey.value] ?? emptyDraft())
 
-  const wld = computed(() => tallyWLD(frames.value))
+  // The frames show each match as read; the tallies leave an openly flagged
+  // reading out, as the session's dossier over the same corpus does.
+  const statFrames = computed(() => recordsWithoutSuspectFields(frames.value))
+  const wld = computed(() => tallyWLD(statFrames.value))
 
   // What the player usually does on the frame's own hero and map, read out
   // of the corpus already on screen. Follows the frame, so a coach walking
   // the reel never has to ask for it.
-  const railRows = computed(() => railTendencies(frames.value, {
+  const railRows = computed(() => railTendencies(statFrames.value, {
     hero: selectedRecord.value?.data?.hero ?? '',
     map: selectedRecord.value?.data?.map ?? '',
   }))

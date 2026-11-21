@@ -79,6 +79,20 @@ describe('useCoachRoom — the session tallies', () => {
     expect(winRate.value).toBe(67)
   })
 
+  // The session's dossier leaves an openly flagged reading out of its stats;
+  // the room's tally reads the same loaned corpus, so it must agree.
+  it('leaves a match whose result is openly flagged out of the tally', () => {
+    const doubted: MatchRecord = {
+      ...EARLY,
+      field_flags: [{ field: 'data.result', value: 'victory', checks: ['result_vs_rank_movement'], state: 'open', readings: [] }],
+    }
+    const { wld, winRate, frames } = useCoachRoom({ records: [OLDEST, doubted, LATE], notes: {}, selectedKey: '' })
+    expect(wld.value).toEqual({ w: 1, l: 1, d: 0 })
+    expect(winRate.value).toBe(50)
+    // The reel still shows the match as read.
+    expect(frames.value.find((f) => f.match_key === EARLY.match_key)?.data.result).toBe('victory')
+  })
+
   it('reports no win rate when nothing was decisive', () => {
     const draws = [rec('match-2026-08-08T10-00-00', { date: '2026-08-08', result: 'draw' })]
     const { winRate } = useCoachRoom({ records: draws, notes: {}, selectedKey: '' })

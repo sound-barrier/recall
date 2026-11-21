@@ -41,7 +41,7 @@ const appStore = useAppStore()
 const matchesStore = useMatchesStore()
 const { view, appVersion } = storeToRefs(appStore)
 const { goToView } = appStore
-const { records, unknownRecords } = storeToRefs(matchesStore)
+const { records, unknownRecords, openFieldFlagCount } = storeToRefs(matchesStore)
 const { parseProgress, watchActivity, recordsPulse } = storeToRefs(useParseStore())
 const { watchState } = storeToRefs(useSettingsStore())
 const { matchesNarrow } = matchesStore
@@ -71,17 +71,17 @@ const { unseen: whatsNewUnseenFn } = useWhatsNew('reviewsTab')
 const whatsNewUnseen = computed(() => whatsNewUnseenFn())
 
 // Two tabs carry a suffix beside their label, and both are counts of work
-// waiting: Unknown's unresolved records, and Reviews' coach notes waiting on
-// a decision. Matches carries a dot instead (filters active, a state rather
-// than a count). Rendered from the descriptor list so the tab SET is one
-// definition — TAB_ORDER — and a tab that exists there cannot be missing
-// here.
+// waiting: Unknown's unresolved records plus its flagged readings, and
+// Reviews' coach notes waiting on a decision. Matches carries a dot instead
+// (filters active, a state rather than a count). Rendered from the
+// descriptor list so the tab SET is one definition — TAB_ORDER — and a tab
+// that exists there cannot be missing here.
 const pendingReviewNotes = computed(() => useCoachReturnsStore().pendingNoteCount)
 // A count on a tab means something different per tab — unresolved
 // screenshots on Unknown, coach notes waiting on a decision on Reviews — so
 // each carries the word for it, visually hidden, in the tab's name.
 const tabBadge = computed<Partial<Record<string, { count: number; unit: string }>>>(() => ({
-  unknown: { count: unknownRecords.value.length, unit: 'unresolved' },
+  unknown: { count: unknownRecords.value.length + openFieldFlagCount.value, unit: 'unresolved' },
   reviews: { count: pendingReviewNotes.value, unit: 'notes waiting' },
 }))
 

@@ -26,8 +26,18 @@ export const useUiStore = defineStore('ui', () => {
   const parseStore = useParseStore()
 
   // Detail-panel selection paginates against the SAME narrowedRecords the
-  // Matches view shows, so it tracks filter/hide/re-parse changes.
-  const selection = useSelectedMatch(matchesStore.matchesNarrow.narrowedRecords)
+  // Matches view shows, so it tracks filter/hide/re-parse changes. Those
+  // are the stats' copies, with flagged readings left out; the panel shows
+  // and edits the record as read, since an edit resends every override the
+  // record carries and the stats' copy can be missing one.
+  const narrowSelection = useSelectedMatch(matchesStore.matchesNarrow.narrowedRecords)
+  const selection = {
+    ...narrowSelection,
+    selectedRecord: computed<MatchRecord | null>(() => {
+      const shown = narrowSelection.selectedRecord.value
+      return shown ? matchesStore.unfilteredRecord(shown.match_key) ?? shown : null
+    }),
+  }
   const preview = useScreenshotPreview()
   const cardFocus = useCardFocus()
 

@@ -661,6 +661,23 @@ describe('MatchesView — CSV export', () => {
     expect(filename).toMatch(/^recall-matches-.*\.csv$/)
   })
 
+  // The stats leave a flagged reading out; an export is the user's data, so
+  // it carries the value as read rather than a silent blank.
+  it('exports a flagged reading as read', async () => {
+    renderView([makeRecord({
+      match_key: 'k1',
+      field_flags: [{ field: 'data.eliminations', value: '74', checks: ['perf_total_vs_rate'], state: 'open', readings: [] }],
+    }, { eliminations: 74, assists: 5, deaths: 3 })])
+    const store = useMatchesStore()
+    const spy = vi.spyOn(store, 'onExportMatchesCSV').mockResolvedValue(undefined)
+
+    await user().click(leafChecks()[0]!)
+    await user().click(inBulkBar().getByRole('button', { name: 'Export CSV' }))
+
+    const [csv] = spy.mock.calls[0]!
+    expect(csv).toMatch(/,74,5,3,/)
+  })
+
   it('hands the selected keys to the bundle exporter', async () => {
     renderView([makeRecord({ match_key: 'k1' })])
     const store = useMatchesStore()

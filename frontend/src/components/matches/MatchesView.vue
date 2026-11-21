@@ -9,6 +9,7 @@ import { useSortGroupMenu } from '@/composables/matches/list/useSortGroupMenu'
 import { useScrollAffordance } from '@/composables/matches/list/useScrollAffordance'
 import { useOWData } from '@/composables/shared/useOWData'
 import ParseStalenessBanner from '@/components/ingest/ParseStalenessBanner.vue'
+import FieldFlagNotice from '@/components/unknown/FieldFlagNotice.vue'
 import MatchesDossierHead from '@/components/matches/dossier/MatchesDossierHead.vue'
 import MatchesDossierSections from '@/components/matches/dossier/MatchesDossierSections.vue'
 import BulkActionBar from '@/components/matches/bulk/BulkActionBar.vue'
@@ -217,9 +218,13 @@ const seasonHighlight = computed<{ from: string; to: string }>(() => {
 // hand it up to App.vue to save. Exports the ticked subset when any rows
 // are selected, otherwise the whole narrowed set; the CSV is assembled
 // here because the narrowed records + heroRole resolver live in this view.
+// The rows go out as read: the stats leave a flagged reading out, but an
+// export is the user's data and a blank would say the screenshot never
+// showed it.
 function requestCsvExport(keys: string[]) {
   const wanted = keys.length > 0 ? new Set(keys) : null
-  const rows = wanted ? narrowedRecords.value.filter((r) => wanted.has(r.match_key)) : narrowedRecords.value
+  const rows = (wanted ? narrowedRecords.value.filter((r) => wanted.has(r.match_key)) : narrowedRecords.value)
+    .map((r) => matchesStore.unfilteredRecord(r.match_key) ?? r)
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
   void matchesStore.onExportMatchesCSV(matchesToCSV(rows, ow.heroRole), `recall-matches-${stamp}.csv`)
 }
@@ -351,6 +356,7 @@ provideRowContext({ onRowContext })
 
     <div class="matches-content-column">
       <ParseStalenessBanner />
+      <FieldFlagNotice />
 
       <!-- ─── SET DOSSIER ─────────────────────────────────────────
          Summary + customizable widget grid + Add menu + popover-mode
