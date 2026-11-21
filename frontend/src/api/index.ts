@@ -48,6 +48,7 @@ export type {
   DataLocation,
   DataUpdateResult,
   FailedFile,
+  FieldFlag,
   HeroPlay,
   HeroSr,
   RosterMember,

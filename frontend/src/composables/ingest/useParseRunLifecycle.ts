@@ -15,6 +15,7 @@ import {
   type ParseRunStep,
 } from '@/composables/ingest/parseRunMachine'
 import { currentSessionSummary, type SessionSummary } from '@/match/dossier/match-momentum-helpers'
+import { recordsWithoutSuspectFields } from '@/match/quality/field-flags'
 import { profileScopedKey } from '@/composables/profile/profileStorage'
 import { useSwapHold } from '@/composables/shared/useSwapHold'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
@@ -277,8 +278,10 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
   function reportCompletedParse(summary?: ParseRunSummary) {
     // Read the fresh records straight from the cache — the observer's
     // reactive ref updates a notification tick later than the refetch
-    // resolves, and the session summary must see the new batch.
-    const fresh = getQueryClient().getQueryData<MatchRecord[]>(qk.matches) ?? []
+    // resolves, and the session summary must see the new batch. The cache
+    // holds every reading, so flagged ones are left out here as the store's
+    // records leave them out.
+    const fresh = recordsWithoutSuspectFields(getQueryClient().getQueryData<MatchRecord[]>(qk.matches) ?? [])
     raiseRunToasts(fresh, summary)
     lastParsedAt.value = Date.now()
     try { localStorage.setItem(profileScopedKey('lastParsedAt'), String(lastParsedAt.value)) } catch (_) { /* non-fatal */ }

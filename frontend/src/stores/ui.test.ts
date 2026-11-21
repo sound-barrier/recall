@@ -6,6 +6,7 @@ import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useParseStore } from '@/stores/parse'
 import type { MatchRecord } from '@/api'
+import { withScalarEdit } from '@/match/match-overrides'
 
 // backgroundFrozen is an OR across six modal flags spanning three stores — the
 // kind of cross-store wiring where a dropped flag silently regresses the
@@ -152,5 +153,30 @@ describe('tour replay request', () => {
     expect(ui.tourReplayRequested).toBe(true)
     ui.clearTourReplayRequest()
     expect(ui.tourReplayRequested).toBe(false)
+  })
+})
+
+// The stats leave an openly flagged reading out, and E/A/D go out as one
+// line. The detail panel is where the user edits, and an edit resends the
+// WHOLE override set rebuilt from the record it is handed — so the panel
+// must hold the record as read. Handed the stats' copy, a damage edit on a
+// match whose assists the user had corrected sent no assists, and the
+// store's whole-row replace reverted them to OCR.
+describe('ui store — the detail panel holds the record as read', () => {
+  const corrected: MatchRecord = {
+    match_key: 'm-1', source: 'ocr_edited', source_files: ['m-1.png'],
+    edited_fields: ['data.assists'],
+    data: { map: 'rialto', date: '2026-05-10', eliminations: 74, assists: 5, deaths: 6, damage: 9000 },
+    field_flags: [{ field: 'data.eliminations', value: '74', checks: ['perf_total_vs_rate'], state: 'open', readings: [] }],
+  }
+
+  it('keeps an edited assists the open eliminations flag leaves out of the stats', () => {
+    useMatchesStore().records = [corrected]
+    const ui = useUiStore()
+    ui.selection.open('m-1')
+
+    const shown = ui.selection.selectedRecord.value
+    expect(shown?.data.assists).toBe(5)
+    expect(withScalarEdit(shown!, 'damage', 9100)).toEqual({ assists: 5, damage: 9100 })
   })
 })

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
+import { createPinia, setActivePinia, storeToRefs } from 'pinia'
+import { ref, toRaw } from 'vue'
 
 import { useMatchesStore } from '@/stores/matches'
 import { useAppStore } from '@/stores/app'
@@ -8,7 +9,8 @@ import { useSettingsStore } from '@/stores/settings'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 import { seedQuery } from '@/test-utils/queryTestUtils'
-import type { MatchRecord, TesseractStatus, DataLocation } from '@/api'
+import { useMatchesGroup } from '@/composables/matches/list/useMatchesGroup'
+import type { FieldFlag, MatchRecord, TesseractStatus, DataLocation } from '@/api'
 
 // Direct unit tests for the boot-time domain loaders useAppBoot fans into —
 // matchesStore.load() (records + new-count), settingsStore.load() (dir /
@@ -287,5 +289,95 @@ describe('matches store — sending matches to a coach', () => {
     expect(app.view).toBe('reviews')
     expect(matches.shareOpen).toBe(true)
     expect(matches.shareManifest.map(r => r.matchKey)).toEqual(['m-1'])
+  })
+})
+
+// A reading the cross-check flagged stays out of every stat until the user
+// confirms or edits it. The store applies that once, to `records`, so the
+// dossier, the list rollups and every view downstream agree without each
+// learning about flags.
+function fought(key: string, elims: number, state?: FieldFlag['state']): MatchRecord {
+  return {
+    match_key: key,
+    source_files: [`${key}.png`],
+    data: {
+      map: 'rialto', result: 'victory', date: '2026-05-10', finished_at: key === 'm-1' ? '22:00' : '22:20',
+      eliminations: elims, assists: 10, deaths: 5,
+      performance: {
+        eliminations: { total: elims, avg_per_10min: elims },
+        assists: { total: 10, avg_per_10min: 10 },
+        deaths: { total: 5, avg_per_10min: 5 },
+      },
+    },
+    ...(state ? { field_flags: [{
+      field: 'data.eliminations', value: String(elims), checks: ['perf_total_vs_rate'], state,
+      readings: [
+        { source_file: `${key}.png`, origin: 'ocr', value: String(elims) },
+        { source_file: `${key}.png`, origin: 'derived', value: '9' },
+      ],
+    }] } : {}),
+  } as MatchRecord
+}
+
+async function loadWith(records: MatchRecord[]) {
+  api.GetMatchResults.mockResolvedValue(records)
+  const matches = useMatchesStore()
+  await matches.load()
+  await new Promise(r => setTimeout(r, 0))
+  return matches
+}
+
+describe('matches store — flagged readings stay out of the stats', () => {
+  it('averages KDA without a match whose eliminations are flagged', async () => {
+    const matches = await loadWith([fought('m-1', 10), fought('m-2', 74, 'open')])
+    const kda = matches.dossier.averageKDA.value
+
+    expect(kda?.qualifyingMatches).toBe(1)
+    expect(kda?.eliminations).toBe(10)
+  })
+
+  it.each(['confirmed', 'edited'] as const)('counts the match again once the flag is %s', async (state) => {
+    const matches = await loadWith([fought('m-1', 10), fought('m-2', 74, state)])
+    const kda = matches.dossier.averageKDA.value
+
+    expect(kda?.qualifyingMatches).toBe(2)
+    expect(kda?.eliminations).toBe(42)
+  })
+
+  it("leaves a flagged match out of its session's E/A/D average", async () => {
+    const matches = await loadWith([fought('m-1', 10), fought('m-2', 74, 'open')])
+    const { records } = storeToRefs(matches)
+    const { groupedSections } = useMatchesGroup(records, ref('session'), ref('newest'))
+
+    expect(groupedSections.value[0]?.rollup).toContain('avg 10/10/5')
+  })
+
+  it('shares every record nothing was left out of', async () => {
+    const clean = fought('m-1', 10)
+    const matches = await loadWith([clean, fought('m-2', 74, 'open')])
+
+    // toRaw: the store hands records out through its reactive proxy.
+    expect(toRaw(matches.records[0])).toBe(getQueryClient().getQueryData<MatchRecord[]>(qk.matches)?.[0])
+    expect(matches.records[0]).toEqual(clean)
+  })
+
+  // The review needs the value it is asking about, so the flagged list is
+  // taken from the records BEFORE anything was left out.
+  it('lists the flagged records with their readings intact', async () => {
+    const matches = await loadWith([fought('m-1', 10), fought('m-2', 74, 'open'), fought('m-3', 12, 'confirmed')])
+
+    expect(matches.fieldFlagRecords.map(r => r.match_key)).toEqual(['m-2'])
+    expect(matches.fieldFlagRecords[0]?.data.eliminations).toBe(74)
+    expect(matches.openFieldFlagCount).toBe(1)
+    expect(matches.leftOutFieldCount).toBe(1)
+  })
+
+  // A hidden match never reaches the stats, so nothing of it is "left out
+  // of" them. Its flag is still review work.
+  it('counts no field of a hidden match as left out of the stats', async () => {
+    const matches = await loadWith([fought('m-1', 10), { ...fought('m-2', 74, 'open'), hidden: true }])
+
+    expect(matches.leftOutFieldCount).toBe(0)
+    expect(matches.openFieldFlagCount).toBe(1)
   })
 })

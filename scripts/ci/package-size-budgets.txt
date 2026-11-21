@@ -391,6 +391,15 @@ frontend/tests/e2e/narrow                     13
 # profile spec, kept with its family per the rule above.
 frontend/tests/e2e/settings                   20
 
+# frontend/tests/e2e/unknown — the Unknown tab's triage: unmatched and
+# ambiguous screenshots, duplicates, reference-data gaps, failed and parked
+# files, the parse report, dismiss and its bulk form, the hover thumbnail and
+# the lightbox. One responsibility: work the parse left for the player.
+# 12 -> 13: field-flag-notice.spec.ts. A reading whose sources disagree is
+# that same kind of work — the badge counts it and the dossier's notice
+# routes to it — so its spec lives with the tab that owns the review.
+frontend/tests/e2e/unknown                    13
+
 
 # frontend/src/composables/matches/list — the match list's stateful logic: the
 # add/sort/group menus, the two virtual windows over the shared windowing

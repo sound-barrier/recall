@@ -118,6 +118,24 @@ describe('AppMasthead — the tab set', () => {
     expect(screen.getByRole('tab', { name: 'Matches' })).toBeInTheDocument()
   })
 
+  // A reading the cross-check flagged is work waiting on the Unknown tab
+  // just as an unresolved screenshot is: each open flag counts once, and a
+  // flag the user already confirmed or edited does not.
+  it('badges Unknown with the flagged readings still open', async () => {
+    await renderApp()
+    const flag = (field: string, state: 'open' | 'confirmed') => ({
+      field, value: '74', checks: ['perf_total_vs_rate' as const], state, readings: [],
+    })
+    seedQuery(qk.matches, [{
+      match_key: 'match-2026-06-07T23-00-04', source_files: ['summary.png'],
+      data: { map: 'rialto', eliminations: 74, damage: 7200, healing: 300 },
+      field_flags: [flag('data.damage', 'open'), flag('data.eliminations', 'open'), flag('data.healing', 'confirmed')],
+    }])
+    await flushPromises()
+
+    expect(screen.getByRole('tab', { name: 'Unknown 2 unresolved' })).toBeInTheDocument()
+  })
+
   it('renders exactly TAB_ORDER, numbered by position', async () => {
     const { TAB_ORDER, TAB_LABELS } = await import('@/composables/shared/keyboard/useTabKeyboardNav')
     await renderApp()

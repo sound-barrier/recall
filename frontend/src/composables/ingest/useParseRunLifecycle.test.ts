@@ -455,6 +455,20 @@ describe('terminal transitions', () => {
     expect(stale.sessionToast.value).toBeNull()
   })
 
+  // The toast reads the cache, not the store's records, so it has to leave a
+  // flagged result out itself or it tallies a misread the dossier refuses.
+  it('leaves a flagged result out of the session tally', async () => {
+    bootSettings(tess())
+    const misread: MatchRecord = {
+      ...rec('m-2', 10, 'defeat'),
+      field_flags: [{ field: 'data.result', value: 'defeat', checks: ['result_vs_rank_movement'], state: 'open', readings: [] }],
+    }
+    const run = newRun(loadWith([rec('m-1', 40, 'victory'), misread]))
+    await finish(run, 'completed')
+
+    expect(run.sessionToast.value).toMatchObject({ matches: 2, w: 1, l: 0, d: 0 })
+  })
+
   it('dismisses the session toast only for the run that raised it', async () => {
     bootSettings(tess())
     const run = newRun(loadWith([rec('m-1', 10, 'victory')]))

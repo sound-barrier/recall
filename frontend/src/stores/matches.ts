@@ -18,6 +18,7 @@ import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
 import { useExportBundle } from '@/composables/matches/useExportBundle'
 import { useShareWithCoach } from '@/composables/matches/useShareWithCoach'
+import { leftOutFields, openFlags, recordsWithoutSuspectFields } from '@/match/quality/field-flags'
 import { useSettingsStore } from '@/stores/settings'
 
 // The matches domain: the parsed-match records (source of truth for the
@@ -51,8 +52,23 @@ export const useMatchesStore = defineStore('matches', () => {
     return realRecords.value
   }
 
+  // Every view reads the records with each openly flagged reading left out
+  // (match/quality/field-flags), so a misread never reaches a stat. This is
+  // the one place that happens. The setter still writes what it is given:
+  // its writers hand it whole records, and a writer that read these back
+  // and wrote them would bake the exclusion into the cache.
+  //
+  // What is not a stat reads the record AS READ through unfilteredRecord:
+  // the detail panel, which rebuilds the whole override set from the record
+  // on every edit (E/A/D leave as one line, so the stats' copy can lack an
+  // edited member), and the exports, which are the user's data.
+  const unfilteredRecords = computed(visibleRecords)
+  const unfilteredByKey = computed(() => new Map(unfilteredRecords.value.map((r) => [r.match_key, r])))
+  function unfilteredRecord(matchKey: string): MatchRecord | undefined {
+    return unfilteredByKey.value.get(matchKey)
+  }
   const records = computed({
-    get: visibleRecords,
+    get: () => recordsWithoutSuspectFields(unfilteredRecords.value),
     set: (next: MatchRecord[]) => {
       // Cancel any in-flight fetch first: a direct write is newer than
       // whatever that response would carry (the match-updated upsert in
@@ -80,6 +96,22 @@ export const useMatchesStore = defineStore('matches', () => {
   // modal surfaces the count + the "include hidden" toggle.
   const hiddenRecords = computed(() =>
     records.value.filter(r => !!r.hidden),
+  )
+  // Records with a reading still waiting on review, taken BEFORE anything
+  // was left out — the review has to show the value it is asking about.
+  const fieldFlagRecords = computed(() =>
+    unfilteredRecords.value.filter((r) => openFlags(r).length > 0),
+  )
+  // Open flags count toward the Unknown badge; only the ones that leave a
+  // value out count toward the dossier's notice (a flag on who was played
+  // leaves nothing out — see field-flags.ts). A hidden match is review work
+  // like any other, but it never reaches the stats, so nothing of it is
+  // left out of them.
+  const openFieldFlagCount = computed(() =>
+    fieldFlagRecords.value.reduce((n, r) => n + openFlags(r).length, 0),
+  )
+  const leftOutFieldCount = computed(() =>
+    fieldFlagRecords.value.reduce((n, r) => (r.hidden ? n : n + leftOutFields(r).length), 0),
   )
   // Records the resolver couldn't pin to a single match (EAD-bridge
   // ambiguity). Surface above unknownRecords in the Unknown tab for the
@@ -299,10 +331,14 @@ export const useMatchesStore = defineStore('matches', () => {
     heroModeDossier: markRaw(heroModeDossier),
     searchClauses,
     records,
+    unfilteredRecord,
     unknownRecords,
     referenceGapRecords,
     hiddenRecords,
     ambiguousRecords,
+    fieldFlagRecords,
+    openFieldFlagCount,
+    leftOutFieldCount,
     firstLoadPending,
     tourActive,
     onTourActiveChange,
