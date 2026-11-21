@@ -34,7 +34,8 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 
 	// Per-{match_key} sub-resource handlers live in server_matches_item.go.
 	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}", noContentForKey(a.HardDeleteMatch))
-	apiMux.HandleFunc("GET /api/v1/matches/{match_key}", handleGetMatchByKey(a))
+	apiMux.HandleFunc("GET /api/v1/matches/{match_key}", jsonForKey(a.GetMatchByKey))
+	apiMux.HandleFunc("GET /api/v1/matches/{match_key}/field-regions", jsonForKey(a.GetMatchFieldRegions))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/visibility", handleSetMatchVisibility(a))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/pin", handleSetMatchPin(a))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/reference-gap-acknowledgement", noContentForKey(a.AcknowledgeReferenceGap))

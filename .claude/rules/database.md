@@ -186,6 +186,11 @@ they are not in `matchKeyTables`.
   sentinel folder). The parse run's in-memory snapshot mirrors every write
   (`replaceEvidenceInSnapshot`) so a streamed `match-updated` carries the
   flags at once.
+- **Served** per match, on demand, by `GET /api/v1/matches/{match_key}/field-regions`
+  (`aggregate.FieldRegions` over one `LoadAll`): the match's own rows'
+  records, each region tagged with the folder id `source_dir_ids` gives the
+  same file (`servedDirID`, shared with `FoldGroup`) so the crop and its
+  screenshot are one URL. Never embedded in the list payload.
 - **`dbtest.Fake` refuses what the schema refuses** (non-positive size,
   empty/negative-origin region, empty or repeated field path, unknown
   folder) and a refused write keeps the earlier record, as the SQL rollback

@@ -95,7 +95,8 @@ func (f *Fake) LoadAll() (db.Screenshots, error) {
 	if f.LoadErr != nil {
 		return db.Screenshots{}, f.LoadErr
 	}
-	dirs := make(map[int64]string, len(f.DirIDs))
+	// schema.sql seeds the sentinel row, so SQLStore reads it back too.
+	dirs := map[int64]string{db.SentinelScreenshotsDirID: ""}
 	for path, id := range f.DirIDs {
 		dirs[id] = path
 	}

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"recall/pkg/aggregate"
+	"recall/pkg/db"
 	"recall/pkg/match"
 	"recall/pkg/parser"
 )
@@ -117,6 +118,47 @@ func (a *App) GetMatchByKey(matchKey string) (match.Record, error) {
 		}
 	}
 	return match.Record{}, match.ErrMatchNotFound
+}
+
+// GetMatchFieldRegions returns where on the match's own screenshots each
+// field was read, for showing a reading beside its pixels. Served on demand
+// rather than on every record: the list read never needs it. A match with no
+// screenshots (manual, replay) has none; a key that names no match is
+// match.ErrMatchNotFound, as GetMatchByKey answers it. The existence probe is
+// MatchKeyExists, never GetMatchByKey, which would aggregate the whole
+// history again on every manual card's expand.
+func (a *App) GetMatchFieldRegions(matchKey string) (match.FieldRegions, error) {
+	store, release, err := a.useStore()
+	if err != nil {
+		return match.FieldRegions{}, err
+	}
+	defer release()
+	// One LoadAll reads the rows and their evidence in one transaction, so a
+	// region never pairs with another parse's row.
+	snap, err := store.LoadAll()
+	if err != nil {
+		return match.FieldRegions{}, err
+	}
+	regions, found := aggregate.FieldRegions(matchKey, snap)
+	if !found {
+		if err := assertMatchExists(store, matchKey); err != nil {
+			return match.FieldRegions{}, err
+		}
+	}
+	return match.FieldRegions{Regions: regions}, nil
+}
+
+// assertMatchExists is match.ErrMatchNotFound unless a screenshot row or a
+// user_match_data row carries key: the same set aggregateAll makes records of.
+func assertMatchExists(store db.Store, matchKey string) error {
+	exists, err := store.MatchKeyExists(matchKey)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return match.ErrMatchNotFound
+	}
+	return nil
 }
 
 // ClearDatabase deletes every row across every per-type table. The
