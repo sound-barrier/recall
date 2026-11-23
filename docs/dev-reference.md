@@ -84,6 +84,7 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 | `pkg/cmd` | `RunWails` (Wails init) and `RunServer` (HTTP server + REST API). |
 | `pkg/db` | SQLite `Init()` + `DB` variable. |
 | `pkg/parser` | OCR pipeline split per concern. `ls pkg/parser/*.go` is the source of truth. |
+| `pkg/glyphs` | Pure-Go normalized cross-correlation: stat digits matched against reference cuts embedded from `pkg/glyphs/refs/` (layout in its `README.md`). A cross-check beside Tesseract that answers "not ok" rather than guess. Standard library only, and a leaf: `pkg/parser` imports it (and borrows its `Luminance`/`Resample`), never the reverse. |
 | `pkg/coach` | The coach's desk, as a leaf: bundle → in-memory records (no store), note validation, and the notes archive + `ledger.html`. Depends on `bundle`/`aggregate`/`db`/`match`; nothing depends back. Store access goes through the consumer-side `NoteStore` seam, which is what makes "a session never writes the coach's database" a property you can test rather than a claim. |
 | `pkg/coachreturn` | The player's inbox: a coach's archive staged against your own history, and the accept/skip decision on each note. Imports `pkg/coach` for the archive format; nothing points back, so the separation from the coach's desk is enforced by the package boundary rather than by care. |
 | `pkg/review` | The player's own review sittings — the self-review half of the same cycle. |
