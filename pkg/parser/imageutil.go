@@ -3,6 +3,8 @@ package parser
 import (
 	"image"
 	"image/color"
+
+	"recall/pkg/glyphs"
 )
 
 func crop(src image.Image, r image.Rectangle) image.Image {
@@ -94,43 +96,13 @@ func grayUpscale(src image.Image, scale int, invert bool) image.Image {
 // preprocessHighContrast's cutoff: luminance above thresh → black, the rest
 // white.
 func preprocessSmoothThreshold(src image.Image, scale int, thresh uint8) image.Image {
-	lum := luminanceGrid(src)
 	w, h := src.Bounds().Dx(), src.Bounds().Dy()
+	up := glyphs.Resample(glyphs.Luminance(src, src.Bounds()), w*scale, h*scale)
 	out := image.NewGray(image.Rect(0, 0, w*scale, h*scale))
-	for oy := range h * scale {
-		for ox := range w * scale {
-			v := uint8(255)
-			if bilinearAt(lum, w, h, ox, oy, scale) > float64(thresh) {
-				v = 0
-			}
-			out.SetGray(ox, oy, color.Gray{Y: v})
+	for i, lum := range up.Pix {
+		if lum <= float64(thresh) {
+			out.Pix[i] = 255
 		}
 	}
 	return out
-}
-
-// luminanceGrid is src's BT.601 luminance, row-major.
-func luminanceGrid(src image.Image) []float64 {
-	b := src.Bounds()
-	lum := make([]float64, 0, b.Dx()*b.Dy())
-	for y := b.Min.Y; y < b.Max.Y; y++ {
-		for x := b.Min.X; x < b.Max.X; x++ {
-			r, g, bl, _ := src.At(x, y).RGBA()
-			lum = append(lum, (299*float64(r>>8)+587*float64(g>>8)+114*float64(bl>>8))/1000)
-		}
-	}
-	return lum
-}
-
-// bilinearAt samples the w×h luminance grid at output pixel (ox, oy) of a
-// scale× upscale, pixel-center aligned and clamped at the edges.
-func bilinearAt(lum []float64, w, h, ox, oy, scale int) float64 {
-	fx := max((float64(ox)+0.5)/float64(scale)-0.5, 0)
-	fy := max((float64(oy)+0.5)/float64(scale)-0.5, 0)
-	x0, y0 := int(fx), int(fy)
-	x1, y1 := min(x0+1, w-1), min(y0+1, h-1)
-	dx, dy := fx-float64(x0), fy-float64(y0)
-	top := lum[y0*w+x0]*(1-dx) + lum[y0*w+x1]*dx
-	bottom := lum[y1*w+x0]*(1-dx) + lum[y1*w+x1]*dx
-	return top*(1-dy) + bottom*dy
 }
