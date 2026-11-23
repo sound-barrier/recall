@@ -120,4 +120,4 @@ private dir and run `task goldens SRC="$PWD/yourdir"` (or
 writes goldens beside the images; **absolute path required**, the test binary's
 cwd is `pkg/parser/`). `ci.yml` uses `-short` to skip the golden tests, so it
 needs no submodule; `.github/workflows/golden-corpus.yml` runs them (nightly, and
-on any PR touching `pkg/parser/**` or `testdata/**`).
+on any PR touching `pkg/parser/**`, `pkg/glyphs/**` or `testdata/**`).

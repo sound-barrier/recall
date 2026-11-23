@@ -1,0 +1,43 @@
+# Reference cuts for pkg/glyphs, transcribed by a person from corpus pixels.
+#
+# Every label was read off the screenshot by eye, from the glyph itself.
+# Nothing here comes from parser output or a golden, which is the point: a
+# reference copied from OCR would agree with the misreads it exists to catch.
+#
+# source is a fixture in the recall-testdata corpus (testdata/images); rect is
+# [x, y, width, height] in its pixels. A digit rect holds one glyph and no other
+# ink brighter than the matcher's 150 cutoff (no neighbor, no comma).
+#
+# `task cut-references` recuts refs/ from this file; refs_test.go holds the
+# committed PNG files to it.
+- {kind: digit, label: "0", screen: teams, source: "Overwatch 2 Screenshot 2026.05.24 - 22.36.33.04.png", rect: [1515, 525, 15, 22]}
+- {kind: digit, label: "0", screen: teams, source: "Overwatch 2 Screenshot 2026.05.24 - 22.36.33.04.png", rect: [1637, 435, 18, 22]}
+- {kind: digit, label: "1", screen: teams, source: "Overwatch 2 Screenshot 2026.05.24 - 22.36.33.04.png", rect: [1236, 350, 11, 22]}
+- {kind: digit, label: "2", screen: teams, source: "Overwatch 2 Screenshot 2026.05.24 - 22.36.33.04.png", rect: [1234, 435, 15, 22]}
+- {kind: digit, label: "3", screen: teams, source: "Overwatch 2 Screenshot 2026.05.24 - 22.36.33.04.png", rect: [1670, 614, 15, 22]}
+- {kind: digit, label: "4", screen: teams, source: "Overwatch 2 Screenshot 2026.05.24 - 22.36.33.04.png", rect: [1763, 435, 17, 22]}
+- {kind: digit, label: "5", screen: teams, source: "Overwatch 2 Screenshot 2026.05.24 - 22.36.33.04.png", rect: [1314, 350, 17, 22]}
+- {kind: digit, label: "6", screen: teams, source: "Overwatch 2 Screenshot 2026.05.24 - 22.36.33.04.png", rect: [1522, 350, 14, 22]}
+- {kind: digit, label: "7", screen: teams, source: "Overwatch 2 Screenshot 2026.05.24 - 22.36.33.04.png", rect: [1387, 1172, 19, 22]}
+- {kind: digit, label: "8", screen: teams, source: "Overwatch 2 Screenshot 2026.05.24 - 22.36.33.04.png", rect: [1530, 525, 15, 22]}
+- {kind: digit, label: "9", screen: teams, source: "Overwatch 2 Screenshot 2026.05.24 - 22.36.33.04.png", rect: [1248, 350, 18, 22]}
+- {kind: digit, label: "0", screen: summary, source: "Overwatch 2 Screenshot 2026.06.19 - 01.31.12.16.png", rect: [1184, 1068, 30, 39]}
+- {kind: digit, label: "1", screen: summary, source: "Overwatch 2 Screenshot 2026.07.30 - 23.08.52.32.png", rect: [1189, 1069, 17, 37]}
+- {kind: digit, label: "2", screen: summary, source: "Overwatch 2 Screenshot 2026.05.24 - 23.33.22.31.png", rect: [1212, 426, 29, 38]}
+- {kind: digit, label: "3", screen: summary, source: "Overwatch 2 Screenshot 2026.05.10 - 21.49.34.41.png", rect: [1186, 1068, 27, 39]}
+- {kind: digit, label: "4", screen: summary, source: "Overwatch 2 Screenshot 2026.06.17 - 02.25.36.83.png", rect: [1184, 1069, 31, 37]}
+- {kind: digit, label: "5", screen: summary, source: "Overwatch 2 Screenshot 2026.06.17 - 00.46.34.12.png", rect: [1185, 1069, 27, 37]}
+- {kind: digit, label: "6", screen: summary, source: "Overwatch 2 Screenshot 2026.05.10 - 21.49.34.41.png", rect: [1184, 748, 30, 37]}
+- {kind: digit, label: "7", screen: summary, source: "Overwatch 2 Screenshot 2026.05.10 - 21.49.34.41.png", rect: [1185, 426, 30, 37]}
+- {kind: digit, label: "8", screen: summary, source: "Overwatch 2 Screenshot 2026.06.17 - 01.51.52.89.png", rect: [1185, 1068, 28, 39]}
+- {kind: digit, label: "9", screen: summary, source: "Overwatch 2 Screenshot 2026.06.17 - 03.36.44.49.png", rect: [1184, 1068, 30, 38]}
+- {kind: digit, label: "0", screen: rank, source: "Overwatch 2 Screenshot 2026.06.17 - 02.43.58.50.png", rect: [2288, 640, 21, 29]}
+- {kind: digit, label: "1", screen: rank, source: "Overwatch 2 Screenshot 2026.06.17 - 00.01.55.36.png", rect: [2235, 841, 13, 27]}
+- {kind: digit, label: "2", screen: rank, source: "Overwatch 2 Screenshot 2026.06.17 - 00.01.55.36.png", rect: [2232, 654, 20, 27]}
+- {kind: digit, label: "3", screen: rank, source: "Overwatch 2 Screenshot 2026.06.17 - 00.01.55.36.png", rect: [2271, 654, 17, 28]}
+- {kind: digit, label: "4", screen: rank, source: "Overwatch 2 Screenshot 2026.06.17 - 00.23.36.61.png", rect: [2251, 828, 19, 27]}
+- {kind: digit, label: "5", screen: rank, source: "Overwatch 2 Screenshot 2026.06.17 - 03.36.34.56.png", rect: [2269, 655, 19, 26]}
+- {kind: digit, label: "6", screen: rank, source: "Overwatch 2 Screenshot 2026.06.17 - 00.46.24.97.png", rect: [2288, 841, 20, 27]}
+- {kind: digit, label: "7", screen: rank, source: "Overwatch 2 Screenshot 2026.06.17 - 00.01.55.36.png", rect: [2250, 841, 20, 27]}
+- {kind: digit, label: "8", screen: rank, source: "Overwatch 2 Screenshot 2026.06.17 - 00.46.24.97.png", rect: [2251, 841, 18, 27]}
+- {kind: digit, label: "9", screen: rank, source: "Overwatch 2 Screenshot 2026.06.17 - 00.01.55.36.png", rect: [2288, 654, 20, 27]}

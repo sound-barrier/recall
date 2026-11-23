@@ -47,6 +47,17 @@ pkg/tesseract/tesseract_worktext_test.go:74:		t.Skip("fake tesseract is a shell 
 # OCR seam would write no files to keep), so it can't run on Windows.
 pkg/parser/diagnose_test.go:96:		t.Skip("fake tesseract is a shell script")
 
+# pkg/glyphs — the reference cuts and the template calibration read the
+# recall-testdata corpus (testdata/images), which ci.yml's -short run does not
+# check out; golden-corpus.yml does and runs them. The calibration also skips
+# in -short and without a real Tesseract, since the TEAMS cell regions it
+# scores come from a real parse. TestProposeSegmentation is a labeling aid that
+# runs only when RECALL_REFS_PROPOSE names a fixture.
+pkg/glyphs/calibration_test.go:366:		t.Skip("corpus calibration runs in the golden lane, not -short")
+pkg/glyphs/calibration_test.go:369:		t.Skipf("tesseract not found at %q — the TEAMS cell regions come from a real parse", tesseract.Path())
+pkg/glyphs/refs_test.go:261:		t.Skipf("fixture image dir %q missing or empty — run 'task fetch-fixtures'", dir)
+pkg/glyphs/refs_test.go:273:		t.Skip("labeling aid: set RECALL_REFS_PROPOSE=<fixture> and RECALL_REFS_REGION=x,y,w,h")
+
 # pkg/parser/integration_test.go — golden-file OCR tests are gated
 # on a real Tesseract binary + the recall-testdata image submodule
 # (testdata/images/, via `task fetch-fixtures`) + `go test` running

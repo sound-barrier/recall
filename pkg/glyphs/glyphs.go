@@ -28,10 +28,11 @@ type verdict struct {
 	score, margin float64
 }
 
-// classify names the label whose best reference correlates highest with vec.
+// classify names the label whose best reference correlates highest with vec,
+// whether or not that clears the accept rule; callers hold it to the rule.
 // With a single label in refs nothing competes, so the runner-up counts as a
-// perfect anti-correlation.
-func classify(vec []float64, refs []template) (verdict, bool) {
+// perfect anti-correlation. Empty refs name nothing.
+func classify(vec []float64, refs []template) verdict {
 	bestByLabel := map[string]float64{}
 	for _, ref := range refs {
 		score := NCC(vec, ref.vec)
@@ -44,7 +45,7 @@ func classify(vec []float64, refs []template) (verdict, bool) {
 		ranked = append(ranked, verdict{label: label, score: score})
 	}
 	if len(ranked) == 0 {
-		return verdict{}, false
+		return verdict{}
 	}
 	slices.SortFunc(ranked, func(a, b verdict) int {
 		return cmp.Or(cmp.Compare(b.score, a.score), cmp.Compare(a.label, b.label))
@@ -54,5 +55,10 @@ func classify(vec []float64, refs []template) (verdict, bool) {
 		runnerUp = ranked[1].score
 	}
 	top.margin = top.score - runnerUp
-	return top, top.score >= MinScore && top.margin >= MinMargin
+	return top
+}
+
+// accepted is the accept rule MinScore and MinMargin describe.
+func accepted(score, margin float64) bool {
+	return score >= MinScore && margin >= MinMargin
 }

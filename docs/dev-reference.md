@@ -56,7 +56,7 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 | `task swagger` | Swagger UI v5 in a container (default `:8080`, `SWAGGER_PORT` override). |
 | `task pages-build` / `pages-preview` | Build docs book + Swagger UI under `dist/pages/`. |
 | `task lint-openapi` | Spectral (`spectral:oas` + `.spectral.yaml`, `--fail-severity=warn`). |
-| `task test` | Go unit (`-race`; `pkg/{app,db,parser}/*_test.go`) + Vitest. CI's `go-test` uses `-short` to skip the golden tests; `.github/workflows/golden-corpus.yml` runs them (nightly, on demand, and on PRs touching `pkg/parser/**` or `testdata/**`). |
+| `task test` | Go unit (`-race`; `pkg/{app,db,parser}/*_test.go`) + Vitest. CI's `go-test` uses `-short` to skip the golden tests; `.github/workflows/golden-corpus.yml` runs them (nightly, on demand, and on PRs touching `pkg/parser/**`, `pkg/glyphs/**` or `testdata/**`), along with the `pkg/glyphs` reference-cut check and template calibration. |
 | `task cover` / `cover-go` / `cover-frontend` | **Unit** coverage → `coverage/go/` + `frontend/coverage/`. Go fails below `GO_COVERAGE_MIN`; frontend below `vitest.config.ts` `coverage.thresholds`. |
 | `task verify` | The full pre-merge battery on demand — whole-project lint sweeps, coverage gate, bundle budget, dead code, semgrep, secret scan, complexity, Playwright smoke, API drift. Everything the fast pre-push no longer runs (CI still gates all of it). |
 | `task cover-e2e` | **Integration** coverage from one Playwright run → `coverage/e2e/` (`go/` + `frontend/`). Builds an instrumented frontend (`E2E_COVERAGE=1` inline maps) + server (`go build -cover`); Go counters flush on the server's graceful SIGTERM shutdown, frontend V8 coverage is remapped to source by monocart (Chromium only). Informational — no floor gate; kept out of the `cover` umbrella so pre-push stays fast. |
@@ -67,6 +67,7 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 | `task fetch-fixtures` | Init/update the `recall-testdata` image submodule at `testdata/images/` (the parser golden tests read PNG images from there; they skip cleanly until it's fetched). |
 | `task update-goldens` | Regenerate parser golden sidecars (or set `RECALL_FIXTURE_UPDATE=1`). Reads images from the submodule, writes goldens to `testdata/`; depends on `fetch-fixtures`. |
 | `task goldens SRC=<file-or-dir>` | Generate parser goldens for any screenshot file or folder (not just `testdata/`) to eyeball what the parser extracts and spot bugs. Wraps `scripts/gen-goldens.sh`; isolates a single file so it doesn't touch siblings. |
+| `task cut-references` | Recut the `pkg/glyphs/refs/` reference PNG files from the corpus pixels `pkg/glyphs/refs/manifest.yaml` names (`RECALL_REFS_UPDATE=1`). The manifest is written by hand from the screenshots, never from parser output; the golden lane fails when a committed PNG is not a fresh cut of its rect. |
 | `task import-report BUNDLE=<zip> [CONSENTED=1]` | Stage a user's parse-problem report (or the screenshots of an export bundle) for fixture work: hash-dedupes each screenshot against the corpus, writes goldens for the new ones under `tmp/reports/<name>/new/`, and a triage summary with the reporter's notes to `tmp/report-<name>.md`. `CONSENTED=1` (only when the issue's test-corpus box is ticked) also copies the new images into the `testdata/images` submodule and their goldens into `testdata/`. Wraps `scripts/import-report.sh`. |
 | `task seed-dev N=300 PROFILE=demo [SEED=time] [FORCE=1] [CHAOS=0.15] [STYLE=…]` | Populate a SQLite profile with N synthetic matches via `cmd/seed-dev`. Refuses non-empty profiles unless `FORCE=1` wipes first. `SEED=time` is a sentinel that substitutes the current Unix timestamp for a fresh shuffle. `CHAOS=<0..1>` mixes pathological data shapes into that fraction of matches. `STYLE=` defaults to `flex` (covers every map + hero); also accepts `one-trick`, `one-role`, or `random`. See "Manual testing with a seeded corpus" below. |
 | `task seed-clear PROFILE=demo` | Wipe a SQLite profile without re-seeding. No-op (and exits 0) when the profile is already empty. |
@@ -131,7 +132,9 @@ only on URL.
 | `RECALL_SERVER_ADDR` | `127.0.0.1:7000` | Override the HTTP server bind address. |
 | `RECALL_PPROF` | *(off)* | Mounts `net/http/pprof` under `/debug/pprof/` in server mode. Never expose publicly. |
 | `RECALL_FIXTURE_DIR` | `../../testdata/images` (from `pkg/parser/`) | `.png` image dir for `TestParseScreenshot_GoldenFiles` (the `recall-testdata` submodule). Override with an ABSOLUTE path; set alone, goldens are read/written beside the images (single-dir mode). |
-| `RECALL_GOLDEN_DIR` | `../../testdata` (from `pkg/parser/`) | `.golden.json` sidecar dir for `TestParseScreenshot_GoldenFiles`. Override with an ABSOLUTE path. |
+| `RECALL_GOLDEN_DIR` | `../../testdata` (from `pkg/parser/`) | `.golden.json` sidecar dir for `TestParseScreenshot_GoldenFiles` and the `pkg/glyphs` calibration. Override with an ABSOLUTE path. |
+| `RECALL_REFS_UPDATE` | *(off)* | `pkg/glyphs`: rewrite `refs/` from `manifest.yaml` instead of checking it (what `task cut-references` sets). Reads images from `RECALL_FIXTURE_DIR`. |
+| `RECALL_REFS_PROPOSE` / `RECALL_REFS_REGION` | *(off)* | `pkg/glyphs` labeling aid: `RECALL_REFS_PROPOSE=<fixture> RECALL_REFS_REGION=x,y,w,h go test -run TestProposeSegmentation -v ./pkg/glyphs/` prints the glyph boxes the matcher segments there, each with a suggested manifest rect. The label is still read off the pixels by eye. |
 
 ## Helper scripts (`scripts/`)
 
