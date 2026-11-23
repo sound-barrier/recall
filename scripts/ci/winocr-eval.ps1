@@ -201,8 +201,11 @@ $manifestPath = Join-Path -Path $EvalDir -ChildPath 'manifest.json'
 $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $recognizer = Get-WindowsOcrEngine
 # Through cmd, which merges stderr, so a build that prints its version there
-# still answers.
-$tesseractVersion = (cmd.exe /c "`"$TesseractPath`" --version 2>&1" | Select-Object -First 1)
+# still answers. The whole output is read before taking its first line:
+# Select-Object -First stops the pipeline early, and the exit code that left
+# in $LASTEXITCODE failed the step after every crop had been read.
+$versionLines = @(cmd.exe /c "`"$TesseractPath`" --version 2>&1")
+$tesseractVersion = $versionLines[0]
 $windowsVersion = [System.Environment]::OSVersion.Version.ToString()
 Write-Information -MessageData "Windows OCR $($recognizer.RecognizerLanguage.LanguageTag) on Windows $windowsVersion; $tesseractVersion"
 Write-Utf8File -Path (Join-Path -Path $EvalDir -ChildPath 'versions\windows-ocr.txt') -Text "Windows.Media.Ocr $($recognizer.RecognizerLanguage.LanguageTag), Windows $windowsVersion"
@@ -227,3 +230,7 @@ foreach ($label in $timings.Keys) {
     Write-Utf8File -Path (Join-Path -Path $EvalDir -ChildPath "timings\$label.tsv") -Text (($timings[$label] -join "`n") + "`n")
 }
 Write-Information -MessageData "Read $calls recorded calls across $(@($manifest.images).Count) screenshots."
+# A runner step under 'shell: powershell' exits with $LASTEXITCODE, which a
+# native command can leave non-zero even when it answered; every failure this
+# script cares about has already thrown.
+exit 0
