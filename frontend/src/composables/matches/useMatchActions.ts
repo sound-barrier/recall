@@ -28,11 +28,16 @@ import {
   ResolveAmbiguousMatch,
   AcknowledgeReferenceGap,
   UnacknowledgeReferenceGap,
+  ApiError,
+  ConfirmFieldReading,
+  UnconfirmFieldReading,
   IgnoreScreenshot,
   RetryFailedFile,
   type CoachMomentBody,
 } from '@/api-client'
 import { getQueryClient } from '@/queries/client'
+import { invalidateFieldRegions } from '@/queries/fieldRegions'
+import { withFlaggedValue } from '@/match/quality/flag-edits'
 import { qk } from '@/queries/keys'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { useMatchesStore } from '@/stores/matches'
@@ -106,6 +111,13 @@ function annotationWith(
     ...edits,
   }
 }
+
+/**
+ * How a confirmation went: `changed` when the server refused it because the
+ * flag moved since the card showed it (a parse read something else, or an
+ * edit settled it) — the records are refetched, and the card says so.
+ */
+export type FieldConfirmOutcome = 'done' | 'changed' | 'failed'
 
 // hideToastLabel describes the hidden match(es) for the undo toast — a single
 // match shows "date · map" (the anchor toast's label shape); a bulk hide shows
@@ -370,6 +382,39 @@ export function useMatchActions() {
       onError(String(e))
     }
   }
+  // ── Flagged readings (the Unknown tab's review) ───────────────────
+  // Every 409 a confirmation can meet besides the session lock (which the
+  // gate refuses first) says the flag is not the one the card showed, so
+  // the answer is the fresh record — and fresh regions, since a re-parse is
+  // the usual cause — rather than an error banner.
+  async function onConfirmFieldReading(matchKey: string, field: string, shown: string): Promise<FieldConfirmOutcome> {
+    if (!guardWrite()) return 'failed'
+    try {
+      await ConfirmFieldReading(matchKey, field, shown)
+      await reload()
+      return 'done'
+    } catch (e) {
+      if (!(e instanceof ApiError && e.status === 409)) { onError(String(e)); return 'failed' }
+      await Promise.all([reload(), invalidateFieldRegions(matchKey)])
+      return 'changed'
+    }
+  }
+  /** False when nothing was re-opened. */
+  async function onUnconfirmFieldReading(matchKey: string, field: string): Promise<boolean> {
+    if (!guardWrite()) return false
+    try { await UnconfirmFieldReading(matchKey, field); await reload(); return true } catch (e) { onError(String(e)); return false }
+  }
+  // Edit and "use the other reading" are one write: the override set rebuilt
+  // from the record AS READ (see flag-edits.ts for why never the stats' copy)
+  // with the flagged field set. False when nothing was written.
+  async function onSetFlaggedReading(matchKey: string, field: string, value: string): Promise<boolean> {
+    if (!guardWrite()) return false
+    const rec = matchesStore.unfilteredRecord(matchKey)
+    const overrides = rec ? withFlaggedValue(rec, field, value) : null
+    if (!overrides) return false
+    try { await UpdateMatchData(matchKey, overrides); await reload(); return true } catch (e) { onError(String(e)); return false }
+  }
+
   // Retry a parked failure: deleting the failure record resets the
   // attempt count, so the file leaves the parked tally and re-enters
   // the pending count on the spot.
@@ -435,6 +480,9 @@ export function useMatchActions() {
     onBulkQueue,
     onResolveAmbiguous,
     onSetReferenceGapAcknowledged,
+    onConfirmFieldReading,
+    onUnconfirmFieldReading,
+    onSetFlaggedReading,
     onDismissFiles,
     onRetryFailedFile,
   }

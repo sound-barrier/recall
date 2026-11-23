@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { screen } from '@testing-library/vue'
+import { screen, waitFor } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 
 import type { FieldFlag, MatchRecord } from '@/api'
@@ -59,13 +59,16 @@ describe('FieldFlagNotice', () => {
     expect(notice()).not.toBeInTheDocument()
   })
 
-  it('takes the player to the Unknown tab to review them', async () => {
+  // The view is lazy, so the review section does not exist when the link is
+  // followed — it lands on the section's heading once the view mounts.
+  it('takes the player to the flagged readings on the Unknown tab', async () => {
     await renderWith([flagged('match-2026-05-10T22-00-00', [flag('data.damage')])])
 
     await userEvent.click(screen.getByRole('button', { name: 'Review flagged readings' }))
     await flushPromises()
 
     expect(screen.getByRole('tab', { name: /^Unknown/ })).toHaveAttribute('aria-selected', 'true')
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Flagged readings — 1' })).toHaveFocus())
   })
 
   // In a coaching session the dossier is the player's loaned corpus. The

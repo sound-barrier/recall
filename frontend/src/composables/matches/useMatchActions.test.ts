@@ -9,7 +9,7 @@ import { useUiStore } from '@/stores/ui'
 import { qk } from '@/queries/keys'
 import { seedQuery } from '@/test-utils/queryTestUtils'
 import { resetWriteGate, setWritesLocked } from '@/test-utils/writeGateStub'
-import type { MatchRecord } from '@/api-client'
+import { ApiError, type FieldFlag, type MatchRecord } from '@/api-client'
 
 // The post-mutation reload contract: a match edit refetches ONLY the
 // records — the pending-screenshot count and the OCR-failure ledger can't
@@ -36,6 +36,8 @@ const api = vi.hoisted(() => ({
   BulkSetMatchPlayMode:   vi.fn(async () => undefined),
   BulkSetMatchQueue:      vi.fn(async () => undefined),
   ResolveAmbiguousMatch:  vi.fn(async () => undefined),
+  ConfirmFieldReading:    vi.fn(async () => undefined),
+  UnconfirmFieldReading:  vi.fn(async () => undefined),
 }))
 vi.mock('@/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api')>()),
@@ -455,5 +457,86 @@ describe('useMatchActions — the write gate', () => {
     await onOpenSourceFolder('k1')
     expect(writeText).toHaveBeenCalledWith('k1')
     expect(api.RevealScreenshotsDir).toHaveBeenCalled()
+  })
+})
+
+// The flagged-reading review's three writes. A confirmation carries the value
+// the card showed; a 409 back means a parse (or an edit) moved the flag under
+// the user, which is news for the card, not an error for the banner.
+describe('useMatchActions — flagged readings', () => {
+  const flag = (over: Partial<FieldFlag> = {}): FieldFlag => ({
+    field: 'data.eliminations', value: '74', checks: ['perf_total_vs_rate'], state: 'open',
+    readings: [{ source_file: 'a.png', origin: 'ocr', value: '74' }, { source_file: 'a.png', origin: 'derived', value: '9' }],
+    ...over,
+  })
+  const flagged = (): MatchRecord => ({
+    match_key: 'm1', source_files: ['a.png'], source: 'ocr_edited', edited_fields: ['data.deaths'],
+    data: { map: 'rialto', eliminations: 74, assists: 9, deaths: 6 },
+    field_flags: [flag()],
+  })
+
+  beforeEach(() => { resetWriteGate() })
+
+  it('confirming sends the shown value and refetches the records', async () => {
+    const { onConfirmFieldReading } = await boot([flagged()])
+
+    await expect(onConfirmFieldReading('m1', 'data.eliminations', '74')).resolves.toBe('done')
+    expect(api.ConfirmFieldReading).toHaveBeenCalledWith('m1', 'data.eliminations', '74')
+    expect(api.GetMatchResults).toHaveBeenCalledTimes(1)
+  })
+
+  it('a refused confirmation refetches and reports the change, not an error', async () => {
+    const { onConfirmFieldReading } = await boot([flagged()])
+    api.ConfirmFieldReading.mockRejectedValueOnce(new ApiError(409, 'the flagged reading changed since it was shown'))
+
+    await expect(onConfirmFieldReading('m1', 'data.eliminations', '74')).resolves.toBe('changed')
+    expect(api.GetMatchResults).toHaveBeenCalledTimes(1)
+    expect(useAppStore().error).toBe('')
+  })
+
+  it('any other failure goes to the banner', async () => {
+    const { onConfirmFieldReading } = await boot([flagged()])
+    api.ConfirmFieldReading.mockRejectedValueOnce(new ApiError(500, 'disk full'))
+
+    await expect(onConfirmFieldReading('m1', 'data.eliminations', '74')).resolves.toBe('failed')
+    expect(useAppStore().error).not.toBe('')
+  })
+
+  it('re-opening deletes the confirmation and refetches', async () => {
+    const { onUnconfirmFieldReading } = await boot([flagged()])
+    await onUnconfirmFieldReading('m1', 'data.eliminations')
+
+    expect(api.UnconfirmFieldReading).toHaveBeenCalledWith('m1', 'data.eliminations')
+    expect(api.GetMatchResults).toHaveBeenCalledTimes(1)
+  })
+
+  // The stats' copy of this record has the whole combat line stripped (the
+  // open E flag takes A and D with it), so an override set rebuilt from it
+  // would drop the deaths edit. The write must be built from the record as
+  // read.
+  it('writing a value keeps the overrides the stats copy has left out', async () => {
+    const { onSetFlaggedReading } = await boot([flagged()])
+
+    await expect(onSetFlaggedReading('m1', 'data.eliminations', '9')).resolves.toBe(true)
+    expect(api.UpdateMatchData).toHaveBeenCalledWith('m1', { eliminations: 9, deaths: 6 })
+  })
+
+  it('refuses a value the field cannot hold without writing', async () => {
+    const { onSetFlaggedReading } = await boot([flagged()])
+
+    await expect(onSetFlaggedReading('m1', 'data.eliminations', 'nine')).resolves.toBe(false)
+    expect(api.UpdateMatchData).not.toHaveBeenCalled()
+  })
+
+  it('sends nothing while writes are locked', async () => {
+    const actions = await boot([flagged()])
+    setWritesLocked(true)
+
+    await expect(actions.onConfirmFieldReading('m1', 'data.eliminations', '74')).resolves.toBe('failed')
+    await actions.onUnconfirmFieldReading('m1', 'data.eliminations')
+    await expect(actions.onSetFlaggedReading('m1', 'data.eliminations', '9')).resolves.toBe(false)
+    expect(api.ConfirmFieldReading).not.toHaveBeenCalled()
+    expect(api.UnconfirmFieldReading).not.toHaveBeenCalled()
+    expect(api.UpdateMatchData).not.toHaveBeenCalled()
   })
 })

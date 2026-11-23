@@ -147,6 +147,19 @@ export function UnacknowledgeReferenceGap(matchKey: string): Promise<void> {
   return unwrapVoid(sdk.unacknowledgeReferenceGap({ path: { match_key: matchKey } }))
 }
 
+// Confirm a flagged reading as read. `shown` is the FieldFlag.value the user
+// was shown — a precondition, not the value stored: a parse that changed the
+// reading since is a 409, so a confirmation never vouches for a number the
+// user did not look at. Confirming a confirmed reading again is idempotent.
+export function ConfirmFieldReading(matchKey: string, field: string, shown: string): Promise<void> {
+  return unwrapVoid(sdk.confirmFieldReading({ path: { match_key: matchKey, field }, body: { value: shown } }))
+}
+
+// Re-open a confirmed reading. Idempotent.
+export function UnconfirmFieldReading(matchKey: string, field: string): Promise<void> {
+  return unwrapVoid(sdk.unconfirmFieldReading({ path: { match_key: matchKey, field } }))
+}
+
 // Soft-delete a match. Reversible: pass hidden=false to restore. Both
 // directions are idempotent.
 export function SetMatchVisibility(matchKey: string, hidden: boolean): Promise<void> {

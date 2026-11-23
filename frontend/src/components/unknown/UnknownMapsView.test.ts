@@ -26,6 +26,7 @@ vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/wr
 vi.mock('@/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api')>()),
   GetMatchResults:       vi.fn(async () => []),
+  GetMatchFieldRegions:  vi.fn(async () => []),
   ResolveAmbiguousMatch: vi.fn(async () => undefined),
   IgnoreScreenshot:      vi.fn(async () => undefined),
 }))
@@ -106,6 +107,47 @@ describe('UnknownMapsView', () => {
     expect(screen.getByText(/All screenshots resolved\./)).toBeInTheDocument()
     expect(screen.getByText(/No unresolved records\./)).toBeInTheDocument()
     expect(unknownCards()).toHaveLength(0)
+  })
+
+  // A flagged reading is triage work like an unmatched screenshot: a tab
+  // holding only flags is not "all resolved", and it counts in the heading.
+  it('is not empty while a reading is flagged', () => {
+    renderWith([{
+      match_key: 'match-2026-06-07T23-00-04', source_files: ['summary.jpg'],
+      data: { map: 'rialto', eliminations: 74 },
+      field_flags: [{ field: 'data.eliminations', value: '74', checks: ['plausible_range'], state: 'open', readings: [] }],
+    }])
+
+    expect(screen.queryByText(/All screenshots resolved\./)).not.toBeInTheDocument()
+    expect(screen.queryByText(/No unresolved records\./)).not.toBeInTheDocument()
+    expect(screen.getByText(/need your attention/)).toHaveTextContent(/1 record need/)
+    expect(screen.getByRole('heading', { name: 'Flagged readings — 1' })).toBeInTheDocument()
+  })
+
+  it('counts a record once when it is both unmatched and flagged', () => {
+    renderWith([{
+      match_key: 'match-2026-06-07T23-00-04', source_files: ['summary.jpg'],
+      data: { eliminations: 74 },
+      field_flags: [{ field: 'data.eliminations', value: '74', checks: ['plausible_range'], state: 'open', readings: [] }],
+    }])
+
+    expect(screen.getByText(/need your attention/)).toHaveTextContent(/1 record need/)
+  })
+
+  it('links every section present once there is more than one', () => {
+    renderWith([
+      { match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} },
+      {
+        match_key: 'match-2026-06-07T23-00-04', source_files: ['summary.jpg'], data: { map: 'rialto' },
+        field_flags: [{ field: 'data.damage', value: '1', checks: ['plausible_range'], state: 'open', readings: [] }],
+      },
+    ])
+
+    const nav = screen.getByRole('navigation', { name: 'Sections in this view' })
+    expect(within(nav).getAllByRole('link').map((a) => a.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
+      'Flagged readings (1)',
+      'Unmatched (1)',
+    ])
   })
 
   it('renders one card per unknown record with the right match key', () => {

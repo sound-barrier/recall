@@ -127,3 +127,4 @@ a folder silently regrows what it just shed.
 | 2026-11-21 | ocr-crosscheck | pkg/db | 37 → 38 | `store_field_evidence.go` — per-screenshot field evidence (regions + template readings), keyed by the screenshot rather than the match. |
 | 2026-11-21 | ocr-crosscheck | pkg/db/dbtest | 14 → 15 | `fake_field_evidence.go` — the Fake's half of the field-evidence family; tracks pkg/db by construction. |
 | 2026-11-21 | ocr-crosscheck | frontend/tests/e2e/unknown | 12 → 13 | `field-flag-notice.spec.ts` — flagged readings left out of stats; review work the Unknown tab's badge counts. |
+| 2026-11-22 | ocr-crosscheck | frontend/tests/e2e/unknown | 13 → 14 | `field-flag-review.spec.ts` — reviewing a flagged reading beside its source crop (confirm / edit / pick the other reading); the Unknown tab owns that review. |

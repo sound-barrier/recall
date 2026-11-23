@@ -56,6 +56,7 @@ const MATCH_READS: WireCase[] = [
   { name: 'GetIgnoredScreenshots', call: () => api.GetIgnoredScreenshots(), method: 'GET', path: '/api/v1/screenshots/ignored' },
   { name: 'GetFailedFiles',        call: () => api.GetFailedFiles(),        method: 'GET', path: '/api/v1/screenshots/failed' },
   { name: 'GetActiveParse',        call: () => api.GetActiveParse(),        method: 'GET', path: '/api/v1/parses/active' },
+  { name: 'GetMatchFieldRegions',  call: () => api.GetMatchFieldRegions(KEY),  method: 'GET', path: `/api/v1/matches/${KEY}/field-regions` },
 ]
 
 const MATCH_WRITES: WireCase[] = [
@@ -83,6 +84,16 @@ const MATCH_WRITES: WireCase[] = [
   {
     name: 'ResolveAmbiguousMatch', method: 'PUT', path: '/api/v1/matches/ambiguous-abc/resolution',
     call: () => api.ResolveAmbiguousMatch('ambiguous-abc', KEY), body: { resolved_to: KEY },
+  },
+  // The value the card SHOWED rides the body as the server's precondition; a
+  // hero key's space is percent-encoded in the path, not dropped.
+  {
+    name: 'ConfirmFieldReading', method: 'PUT', path: `/api/v1/matches/${KEY}/field-confirmations/data.sr.soldier%2076.sr`,
+    call: () => api.ConfirmFieldReading(KEY, 'data.sr.soldier 76.sr', '2500'), body: { value: '2500' },
+  },
+  {
+    name: 'UnconfirmFieldReading', method: 'DELETE', path: `/api/v1/matches/${KEY}/field-confirmations/data.eliminations`,
+    call: () => api.UnconfirmFieldReading(KEY, 'data.eliminations'),
   },
   {
     name: 'MoveMatches', method: 'POST', path: '/api/v1/matches/transfers',

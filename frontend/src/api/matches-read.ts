@@ -3,6 +3,7 @@ import * as sdk from '@/client/sdk.gen'
 import type {
   MatchRecord,
   FailedFile,
+  FieldRegion,
   IgnoredScreenshot,
   GetPendingScreenshotCountResponse,
   LikelyCause,
@@ -16,6 +17,13 @@ import type {
 
 export function GetMatchResults(): Promise<MatchRecord[]> {
   return unwrap(sdk.getMatchResults())
+}
+
+// Where on the match's own screenshots each field was read — fetched on
+// demand by the flagged-reading review, never with the list.
+export async function GetMatchFieldRegions(matchKey: string): Promise<FieldRegion[]> {
+  const reply = await unwrap(sdk.getMatchFieldRegions({ path: { match_key: matchKey } }))
+  return reply.regions
 }
 
 export type PendingScreenshots = GetPendingScreenshotCountResponse
