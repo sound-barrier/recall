@@ -179,6 +179,13 @@ they are not in `matchKeyTables`.
 - **Read** in bulk by `LoadFieldEvidence` (`map[FileRef]ScreenshotEvidence`),
   both tables inside one read transaction like `LoadAll` — two pooled reads
   tore under a concurrent re-parse (one parse's size, another's regions).
+  `LoadAll` reads it too, into `Screenshots.FieldEvidence` inside its own
+  transaction, so the aggregator's cross-checks (`pkg/crosscheck`, run in
+  `aggregate.FoldGroup`) see each row beside the template readings of the
+  same parse. A row with dir 0 finds its record via `FileRef.Filed()` (the
+  sentinel folder). The parse run's in-memory snapshot mirrors every write
+  (`replaceEvidenceInSnapshot`) so a streamed `match-updated` carries the
+  flags at once.
 - **`dbtest.Fake` refuses what the schema refuses** (non-positive size,
   empty/negative-origin region, empty or repeated field path, unknown
   folder) and a refused write keeps the earlier record, as the SQL rollback

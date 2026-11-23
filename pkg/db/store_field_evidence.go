@@ -80,12 +80,22 @@ func (s *SQLStore) LoadFieldEvidence() (map[FileRef]ScreenshotEvidence, error) {
 	}
 	// Read-only usage; Rollback just releases the snapshot.
 	defer func() { _ = tx.Rollback() }()
-	out, err := loadScreenshotImages(tx)
+	out, err := loadFieldEvidence(tx)
 	if err != nil {
 		return nil, fmt.Errorf("load field evidence: %w", err)
 	}
-	if err := attachFieldEvidence(tx, out); err != nil {
-		return nil, fmt.Errorf("load field evidence: %w", err)
+	return out, nil
+}
+
+// loadFieldEvidence reads both evidence tables through q, which the caller
+// holds in one transaction.
+func loadFieldEvidence(q querier) (map[FileRef]ScreenshotEvidence, error) {
+	out, err := loadScreenshotImages(q)
+	if err != nil {
+		return nil, err
+	}
+	if err := attachFieldEvidence(q, out); err != nil {
+		return nil, err
 	}
 	return out, nil
 }

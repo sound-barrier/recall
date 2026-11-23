@@ -43,6 +43,8 @@ the value's own ink inside that band it records that tighter box instead: the
 SUMMARY E/A/D totals (`perfTotalBox`) and each rank card's four SR digits
 (`srDigitBox`). Only a value the pixels produced records a region: a 0 read
 off the screen does, the 0 left behind when no pass read anything does not.
+A SUMMARY performance card read only for its average counts as read, but its
+total names no region, since its digits pass found none.
 
 Beside the region, `FieldEvidence.Template` holds what `pkg/glyphs`' digit
 references read there — TEAMS stat cells, SUMMARY totals and each rank card's

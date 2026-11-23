@@ -82,7 +82,7 @@ func readSummaryHeroes(img image.Image, work string, res *MatchResult) error {
 // readSummaryPerformance reads the Total Performance cards, mirroring their
 // totals onto the flat E/A/D fields the dossier reads.
 func readSummaryPerformance(img image.Image, work string, res *MatchResult) error {
-	perf, read, err := readPerfCards(img, work)
+	perf, totals, err := readPerfCards(img, work)
 	if err != nil || perf == nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func readSummaryPerformance(img image.Image, work string, res *MatchResult) erro
 	res.Eliminations = perf.Eliminations.Total
 	res.Assists = perf.Assists.Total
 	res.Deaths = perf.Deaths.Total
-	for _, card := range read {
+	for _, card := range totals {
 		recordPerfTotal(img, res, card)
 	}
 	return nil
@@ -104,8 +104,10 @@ var perfCards = []struct{ label, field string }{
 	{"DEATH", "deaths"},
 }
 
-// readPerfCards reads each card on its own and lists the cards it read. It
-// returns a nil Performance when no card showed a total or average above 0.
+// readPerfCards reads each card on its own and lists the cards whose total
+// it read: a card read only for its average leaves its total the 0 nothing
+// read, which names no region. It returns a nil Performance when no card
+// showed a total or average above 0.
 //
 // A card is read only right of its icon. One pass over the whole column took
 // the icons in, and the crossed-swords ELIMINATIONS icon's blade reads as a
@@ -114,29 +116,29 @@ var perfCards = []struct{ label, field string }{
 func readPerfCards(img image.Image, work string) (*Performance, []int, error) {
 	perf := &Performance{}
 	stats := [...]*PerformanceStat{&perf.Eliminations, &perf.Assists, &perf.Deaths}
-	var read []int
+	var totals []int
 	for card := range perfCards {
-		stat, ok, err := readPerfCard(img, work, card)
+		stat, totalRead, err := readPerfCard(img, work, card)
 		if err != nil {
 			return nil, nil, err
 		}
-		if ok {
-			*stats[card] = stat
-			read = append(read, card)
+		*stats[card] = stat
+		if totalRead {
+			totals = append(totals, card)
 		}
 	}
 	if *perf == (Performance{}) {
 		return nil, nil, nil
 	}
-	return perf, read, nil
+	return perf, totals, nil
 }
 
 // readPerfCard reads one card's column twice: a digits-only pass for the
 // total, since the OW font's 1 reads as "T" on a plain pass, and a plain pass
 // for the label and the average, which the digits-only pass runs into the
-// "10" of "AVG PER 10 MIN". ok reports the label was read and either value
-// carried digits.
-func readPerfCard(img image.Image, work string, card int) (stat PerformanceStat, ok bool, err error) {
+// "10" of "AVG PER 10 MIN". A card whose label was not read reads as
+// nothing; totalRead reports the total was read.
+func readPerfCard(img image.Image, work string, card int) (stat PerformanceStat, totalRead bool, err error) {
 	column := perfCardColumn(img, card)
 	name := "summary_perf_" + perfCards[card].field
 	text, err := ocrInverted(img, column, ocrSpec{workDir: work, name: name, psm: "11"})
@@ -147,8 +149,8 @@ func readPerfCard(img image.Image, work string, card int) (stat PerformanceStat,
 	if err != nil || !strings.Contains(strings.ToUpper(text), perfCards[card].label) {
 		return stat, false, err
 	}
-	stat, ok = parsePerfCard(digits, text)
-	return stat, ok, nil
+	stat, totalRead = parsePerfCard(digits, text)
+	return stat, totalRead, nil
 }
 
 // recordPerfTotal records where a card prints its total, with what the digit
@@ -269,19 +271,16 @@ var (
 )
 
 // parsePerfCard reads a card's total from the first line its digits-only
-// pass read and its average from its plain pass; read reports either one
-// carried digits. The total is set above everything else on the card, so the
+// pass read and its average from its plain pass; totalRead reports the
+// total carried digits. The total is set above everything else on the card, so the
 // first line is it — the larger digits below it are the average run into
 // the "10" of its label.
-func parsePerfCard(digits, text string) (stat PerformanceStat, read bool) {
-	if total, ok := firstDigitLine(digits); ok {
-		stat.Total, read = total, true
-	}
+func parsePerfCard(digits, text string) (stat PerformanceStat, totalRead bool) {
+	stat.Total, totalRead = firstDigitLine(digits)
 	if m := perfAvgRe.FindStringSubmatch(text); m != nil {
 		stat.AvgPer10Min, _ = strconv.ParseFloat(m[1], 64)
-		read = true
 	}
-	return stat, read
+	return stat, totalRead
 }
 
 // firstDigitLine is the first non-blank line of text when that line is a

@@ -27,7 +27,7 @@ var (
 func (f *Fake) ReplaceFieldEvidence(file db.FileRef, ev db.ScreenshotEvidence) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	file = fileRef(file)
+	file = file.Filed()
 	if ev.ImageSize == (image.Point{}) && len(ev.Fields) == 0 {
 		delete(f.FieldEvidence, file)
 		return nil
@@ -83,11 +83,16 @@ func (f *Fake) knowsDirLocked(id int64) bool {
 func (f *Fake) LoadFieldEvidence() (map[db.FileRef]db.ScreenshotEvidence, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	return f.fieldEvidenceLocked(), nil
+}
+
+// fieldEvidenceLocked copies every evidence record. Callers hold f.mu.
+func (f *Fake) fieldEvidenceLocked() map[db.FileRef]db.ScreenshotEvidence {
 	out := make(map[db.FileRef]db.ScreenshotEvidence, len(f.FieldEvidence))
 	for file, ev := range f.FieldEvidence {
 		out[file] = copyEvidence(ev)
 	}
-	return out, nil
+	return out
 }
 
 func copyEvidence(ev db.ScreenshotEvidence) db.ScreenshotEvidence {

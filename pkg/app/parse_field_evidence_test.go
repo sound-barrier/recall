@@ -5,6 +5,7 @@ import (
 	"errors"
 	"image"
 	"reflect"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -128,5 +129,70 @@ func TestApp_ParseScreenshots_AFileWhoseEvidenceFailedIsParsedAgain(t *testing.T
 	}
 	if got := all[db.FileRef{DirID: dirID, Filename: "shot.png"}]; !reflect.DeepEqual(got, want) {
 		t.Errorf("evidence after the retry = %+v, want %+v — the failed file was never parsed again", got, want)
+	}
+}
+
+// misreadTeams is a scoreboard whose eliminations OCR read 19 where the
+// digit templates read the 9 the pixels show.
+func misreadTeams() *parser.MatchResult {
+	return &parser.MatchResult{
+		Eliminations: 19, Assists: 10, Deaths: 5, Damage: 2602, Healing: 3572, Mitigation: 481,
+		ImageSize: image.Pt(1920, 1080),
+		Evidence: []parser.FieldEvidence{{
+			Field: parser.ScalarPath("eliminations"), Rect: image.Rect(100, 40, 160, 70),
+			Template: &parser.TemplateReading{Value: "9", Score: 0.95, Margin: 0.2},
+		}},
+	}
+}
+
+// The match-updated event a parse streams is folded from the run's own
+// snapshot, not a fresh read, so the snapshot must carry the evidence the
+// parse just stored or the template cross-check misses a misread until the
+// run-end refetch.
+func TestApp_ParseScreenshots_MatchUpdatedCarriesTheTemplateFlag(t *testing.T) {
+	a, _ := newParseReadyApp(t)
+	a.SSEHub = app.NewSSEHub()
+	events := a.SSEHub.Subscribe()
+	stubParse(t, func(progress parser.ProgressFunc) error {
+		progress(1, 1, "Overwatch 2 Screenshot 2026.06.07 - 23.00.06.00.png", misreadTeams(), nil)
+		return nil
+	})
+
+	if err := a.ParseScreenshots(); err != nil {
+		t.Fatalf("ParseScreenshots: %v", err)
+	}
+
+	for {
+		select {
+		case msg := <-events:
+			if msg.Event != "match-updated" {
+				continue
+			}
+			if !strings.Contains(msg.Data, `"template_disagreement"`) {
+				t.Fatalf("match-updated carries no template flag: %s", msg.Data)
+			}
+			return
+		default:
+			t.Fatal("no match-updated event observed")
+		}
+	}
+}
+
+func TestApp_GetMatchResults_CarriesTheTemplateFlag(t *testing.T) {
+	a, _ := newParseReadyApp(t)
+	stubParse(t, func(progress parser.ProgressFunc) error {
+		progress(1, 1, "Overwatch 2 Screenshot 2026.06.07 - 23.00.06.00.png", misreadTeams(), nil)
+		return nil
+	})
+	if err := a.ParseScreenshots(); err != nil {
+		t.Fatalf("ParseScreenshots: %v", err)
+	}
+
+	recs, err := a.GetMatchResults()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(recs) != 1 || len(recs[0].FieldFlags) != 1 || recs[0].FieldFlags[0].Field != parser.ScalarPath("eliminations") {
+		t.Errorf("want one record flagged on eliminations, got %+v", recs)
 	}
 }

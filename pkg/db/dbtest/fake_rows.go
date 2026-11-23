@@ -89,15 +89,6 @@ func rowFile[T parentRow](r T) db.FileRef {
 	return db.FileRef{DirID: rowDirID(r), Filename: rowFilename(r)}
 }
 
-// fileRef normalizes a caller's ref the way the SQL store binds it: an
-// unset folder is the sentinel row.
-func fileRef(file db.FileRef) db.FileRef {
-	if file.DirID == 0 {
-		file.DirID = db.SentinelScreenshotsDirID
-	}
-	return file
-}
-
 // dropByMatchKey filters rows in place, keeping those not keyed to
 // matchKey.
 func dropByMatchKey[T parentRow](rows []T, matchKey string) []T {
@@ -148,10 +139,7 @@ func rowDirID[T parentRow](r T) int64 {
 	case db.UnknownRow:
 		id = v.ScreenshotsDirID
 	}
-	if id == 0 {
-		return db.SentinelScreenshotsDirID
-	}
-	return id
+	return db.FileRef{DirID: id}.Filed().DirID
 }
 
 // deleteInFolder drops every row carrying filename in folder dirID,

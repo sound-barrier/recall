@@ -45,6 +45,9 @@ type Record struct {
 	// each with a revert affordance. Empty for pure OCR and for manual
 	// matches — the Manual badge already conveys their provenance.
 	EditedFields []string `json:"edited_fields,omitempty"`
+	// FieldFlags lists the fields whose readings disagree with each other,
+	// one entry per field, sorted by field. Empty for the common case.
+	FieldFlags []FieldFlag `json:"field_flags,omitempty"`
 	// User-curated annotation. Currently only `leaver` is surfaced in
 	// the UI ("self" | "team" | "enemy"); empty string means no
 	// annotation. Note is reserved for future per-match commentary.

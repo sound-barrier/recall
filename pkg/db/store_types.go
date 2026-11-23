@@ -35,6 +35,13 @@ type FileRef struct {
 	Filename string
 }
 
+// Filed is f as the store files it: a screenshot recorded with no folder
+// (DirID 0) sits under the sentinel row.
+func (f FileRef) Filed() FileRef {
+	f.DirID = dirIDOrSentinel(f.DirID)
+	return f
+}
+
 // IngestedFile is one content-hash registry row (see ingested_files in
 // schema.sql). DuplicateOf is the zero FileRef for an original.
 type IngestedFile struct {
@@ -366,6 +373,11 @@ type Screenshots struct {
 	// belong to, populated for screenshots whose match_key is
 	// "ambiguous-<base64url(filename)>". Empty for the common case.
 	AmbiguousCandidates map[string][]AmbiguousCandidate
+
+	// FieldEvidence is each screenshot's evidence record (LoadFieldEvidence's
+	// shape), read in the same transaction as the rows so the cross-checks
+	// never pair one parse's row with another parse's template readings.
+	FieldEvidence map[FileRef]ScreenshotEvidence
 }
 
 // AmbiguousCandidate is one row of ambiguous_candidates — a possible

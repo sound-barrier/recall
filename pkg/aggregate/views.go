@@ -24,6 +24,19 @@ type ScreenshotView struct {
 	parsedAt string
 	dirID    int64 // 0 = unset; resolved against snap.ScreenshotsDirs in FoldGroup
 	data     parser.MatchResult
+	// evidence is what the parse recorded about where this screenshot's
+	// readings came from, for the cross-checks. Empty for a row parsed before
+	// evidence was stored.
+	evidence []parser.FieldEvidence
+}
+
+// withEvidence gives each view its screenshot's stored evidence.
+func withEvidence(vs []ScreenshotView, evidence map[db.FileRef]db.ScreenshotEvidence) []ScreenshotView {
+	for i := range vs {
+		file := db.FileRef{DirID: vs[i].dirID, Filename: vs[i].filename}.Filed()
+		vs[i].evidence = evidence[file].Fields
+	}
+	return vs
 }
 
 // MatchKey produces a single match.Record for the given

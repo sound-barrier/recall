@@ -1,6 +1,7 @@
 package app
 
 import (
+	"image"
 	"slices"
 	"time"
 
@@ -55,6 +56,7 @@ func (st *parseRunState) applyToSnapshot(filename, key string, t parser.Screensh
 	// evicts a typed row.
 	if !isRecognizedNonMatch(t) {
 		st.dropSiblingRowsFromSnapshot(filename, t)
+		st.replaceEvidenceInSnapshot(filename, r)
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	switch t {
@@ -92,6 +94,22 @@ func (st *parseRunState) applyToSnapshot(filename, key string, t parser.Screensh
 			func(x db.UnknownRow) string { return x.ParsedAt },
 			func(x *db.UnknownRow, ts string) { x.ParsedAt = ts })
 	}
+}
+
+// replaceEvidenceInSnapshot mirrors ReplaceFieldEvidence: the file's record
+// is replaced whole, and an empty one forgets it. The match-updated event
+// folds this snapshot, so without it the template cross-check would miss
+// what the parse just read until the run-end refetch.
+func (st *parseRunState) replaceEvidenceInSnapshot(filename string, r *parser.MatchResult) {
+	file := db.FileRef{DirID: st.dirID, Filename: filename}.Filed()
+	if r.ImageSize == (image.Point{}) && len(r.Evidence) == 0 {
+		delete(st.snap.FieldEvidence, file)
+		return
+	}
+	if st.snap.FieldEvidence == nil {
+		st.snap.FieldEvidence = map[db.FileRef]db.ScreenshotEvidence{}
+	}
+	st.snap.FieldEvidence[file] = db.ScreenshotEvidence{ImageSize: r.ImageSize, Fields: r.Evidence}
 }
 
 // dropSiblingRowsFromSnapshot removes filename's row from every snapshot

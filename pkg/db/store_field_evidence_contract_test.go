@@ -55,6 +55,29 @@ func TestStoreContract_FieldEvidenceRoundTripsRectsTemplatesAndSize(t *testing.T
 	}
 }
 
+// TestStoreContract_LoadAllCarriesTheEvidence: the snapshot the aggregator
+// folds holds the same evidence LoadFieldEvidence returns, so the cross-checks
+// read the template readings beside the rows they were parsed with.
+func TestStoreContract_LoadAllCarriesTheEvidence(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			dir, _ := twoFolders(t, s)
+			file := db.FileRef{DirID: dir, Filename: "shot.png"}
+			want := db.ScreenshotEvidence{ImageSize: shotSize, Fields: []parser.FieldEvidence{
+				elimsEvidence(image.Rect(100, 40, 160, 70), &parser.TemplateReading{Value: "9", Score: 0.9375, Margin: 0.125}),
+			}}
+			mustNoErr(t, s.ReplaceFieldEvidence(file, want))
+
+			snap, err := s.LoadAll()
+			mustNoErr(t, err)
+			if got := snap.FieldEvidence[file]; !reflect.DeepEqual(got, want) {
+				t.Errorf("LoadAll evidence = %+v, want %+v", got, want)
+			}
+		})
+	}
+}
+
 func TestStoreContract_ReparseRewritesRectsAndDropsVanishedFields(t *testing.T) {
 	for _, impl := range storeImpls {
 		t.Run(impl.name, func(t *testing.T) {

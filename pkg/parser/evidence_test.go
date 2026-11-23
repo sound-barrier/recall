@@ -137,6 +137,26 @@ func TestParseSummary_RecordsEvidenceForAReadZeroButNotForAnUnreadStat(t *testin
 	}
 }
 
+// A card whose digits pass found no total still reads its average, and the
+// card counts as read; its total stays the 0 nothing read, so it names no
+// region and no check takes that 0 for a reading.
+func TestParseSummary_RecordsNoEvidenceForATotalOnlyItsAverageWasReadFor(t *testing.T) {
+	stubOCRRegions(t, map[string]string{
+		"summary_perf_eliminations":       "ELIMINATIONS\nAVG PER 10 MIN: 12.97",
+		"summary_perf_eliminations_total": "1]",
+	})
+	res, err := parser.ParseSummary(landscapeImage(), t.TempDir())
+	if err != nil {
+		t.Fatalf("ParseSummary: %v", err)
+	}
+	if res.Performance == nil || res.Performance.Eliminations.AvgPer10Min != 12.97 {
+		t.Fatalf("the card's average should still be read; performance = %+v", res.Performance)
+	}
+	if r, ok := evidenceRect(res, parser.ScalarPath("eliminations")); ok {
+		t.Errorf("the total was never read but recorded evidence %v", r)
+	}
+}
+
 // A TEAMS cell no pass could read falls back to 0 — a placeholder, not a
 // reading — so it names no region, while a cell that read "0" does.
 func TestParseTeams_RecordsEvidenceForAReadZeroButNotForAnUnreadCell(t *testing.T) {
