@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"recall/pkg/correlate"
+	"recall/pkg/crosscheck"
 	"recall/pkg/db"
 	"recall/pkg/match"
 	"recall/pkg/parser"
@@ -64,7 +65,7 @@ type Sidecars struct {
 }
 
 func MatchKey(key string, snap db.Screenshots, sc Sidecars) (match.Record, bool) {
-	vs := collectViewsForKey(snap, key)
+	vs := withEvidence(collectViewsForKey(snap, key), snap.FieldEvidence)
 	if len(vs) == 0 {
 		return match.Record{}, false
 	}
@@ -193,7 +194,7 @@ func Screenshots(snap db.Screenshots) []match.Record {
 	}
 
 	groups := map[string][]ScreenshotView{}
-	for _, v := range views {
+	for _, v := range withEvidence(views, snap.FieldEvidence) {
 		groups[v.matchKey] = append(groups[v.matchKey], v)
 	}
 
@@ -243,6 +244,7 @@ func FoldGroup(key string, vs []ScreenshotView, dirs map[int64]string) match.Rec
 		}
 	}
 	applyDerivedFields(&data)
+	flags := crosscheck.Flags(crosscheckGroup(data, vs))
 
 	// Surface the parser-detected queue format as the top-level
 	// QueueType (a user match_queue annotation overrides it in
@@ -260,11 +262,22 @@ func FoldGroup(key string, vs []ScreenshotView, dirs map[int64]string) match.Rec
 		Data:           data,
 		QueueType:      detectedQueue,
 		Source:         match.SourceOCR,
+		FieldFlags:     flags,
 	}
 	if len(dirIDsPerFile) > 0 {
 		rec.SourceDirIDs = dirIDsPerFile
 	}
 	return rec
+}
+
+// crosscheckGroup hands the checks the folded match beside each screenshot's
+// own reading, since a disagreement is between readings the fold kept one of.
+func crosscheckGroup(merged parser.MatchResult, vs []ScreenshotView) crosscheck.Group {
+	sources := make([]crosscheck.Source, 0, len(vs))
+	for _, v := range vs {
+		sources = append(sources, crosscheck.Source{File: v.filename, Type: v.typeName, Data: v.data, Evidence: v.evidence})
+	}
+	return crosscheck.Group{Merged: merged, Sources: sources}
 }
 
 // sortViewsForFold orders a match's screenshots filename-timestamp asc, then

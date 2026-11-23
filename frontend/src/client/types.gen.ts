@@ -235,6 +235,85 @@ export type RunFinishedEvent = {
 export type DisruptionSides = Array<'self' | 'team' | 'enemy'>;
 
 /**
+ * One field whose readings disagree, with what noticed and what was
+ * compared, so the reader can judge which reading the pixels support.
+ *
+ */
+export type FieldFlag = {
+    /**
+     * The field's dotted path, in the vocabulary `edited_fields`
+     * uses (`data.eliminations`, `data.heroes_played.juno.percent_played`,
+     * `data.sr.juno.sr`).
+     *
+     */
+    field: string;
+    /**
+     * Every check that fired on this field, sorted.
+     */
+    checks: Array<FieldCheckEnum>;
+    state: FieldFlagStateEnum;
+    /**
+     * Every reading the checks compared, each once, in the order the
+     * checks named them.
+     *
+     */
+    readings: Array<FieldReading>;
+};
+
+/**
+ * One value a field was read or worked out as, and where it came from.
+ */
+export type FieldReading = {
+    /**
+     * The screenshot the reading came from.
+     */
+    source_file: string;
+    origin: FieldReadingOriginEnum;
+    /**
+     * The reading as text: a number's digits, a hero key, a result,
+     * or a hero list joined by `, `.
+     *
+     */
+    value: string;
+};
+
+/**
+ * Which cross-check noticed a disagreement.
+ *
+ * - `perf_total_vs_rate`: a SUMMARY total against its own
+ * per-10-minute rate over the minutes played.
+ * - `hero_percent_vs_playtime`: a hero's share of the match against
+ * its share of the listed play time.
+ * - `result_vs_rank_movement`: the result against the rank screen's
+ * movement or modifier pills.
+ * - `source_disagreement`: two screenshots of the match read one fact
+ * differently, or a hero shown elsewhere is missing from
+ * `heroes_played`.
+ * - `plausible_range`: a value no match can produce.
+ * - `template_disagreement`: the reference templates read the same
+ * pixels as something else.
+ *
+ */
+export type FieldCheckEnum = 'hero_percent_vs_playtime' | 'perf_total_vs_rate' | 'plausible_range' | 'result_vs_rank_movement' | 'source_disagreement' | 'template_disagreement';
+
+/**
+ * Where a flag stands with the user: `open` until reviewed,
+ * `confirmed` when the user said the reading is right, `edited` when
+ * they corrected the field.
+ *
+ */
+export type FieldFlagStateEnum = 'open' | 'confirmed' | 'edited';
+
+/**
+ * How a reading was made: `ocr` read off the screenshot by Tesseract,
+ * `template` read by the reference templates, `derived` worked out
+ * from other readings (a total from its rate, a result from the rank
+ * movement).
+ *
+ */
+export type FieldReadingOriginEnum = 'ocr' | 'template' | 'derived';
+
+/**
  * WHY a match should not count toward the win rate. A closed
  * vocabulary because a filter reads it back — free text would mean
  * nothing to the tally.
@@ -1764,6 +1843,16 @@ export type MatchRecord = {
      *
      */
     edited_fields?: Array<string>;
+    /**
+     * Fields whose readings disagree with each other — a SUMMARY
+     * total its own per-10-minute rate contradicts, two screenshots
+     * of the match reading one fact differently, a value no match can
+     * produce. One entry per field, sorted by `field`, each naming
+     * every check that fired and every reading compared. Absent when
+     * the readings agree, which is nearly always.
+     *
+     */
+    field_flags?: Array<FieldFlag>;
     annotation?: MatchAnnotation;
     /**
      * True iff the user soft-deleted this match via

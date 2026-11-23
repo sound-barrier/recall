@@ -30,9 +30,9 @@ func (f *Fake) UpsertIngestedFile(file db.FileRef, contentHash string, duplicate
 	if f.IngestedFiles == nil {
 		f.IngestedFiles = map[db.FileRef]db.IngestedFile{}
 	}
-	file = fileRef(file)
+	file = file.Filed()
 	if duplicateOf.Filename != "" {
-		duplicateOf = fileRef(duplicateOf)
+		duplicateOf = duplicateOf.Filed()
 	}
 	firstSeen := f.IngestedFiles[file].FirstSeenAt
 	if firstSeen == "" {

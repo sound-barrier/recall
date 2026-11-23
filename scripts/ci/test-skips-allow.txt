@@ -58,6 +58,14 @@ pkg/glyphs/calibration_test.go:345:		t.Skipf("tesseract not found at %q — the 
 pkg/glyphs/refs_test.go:261:		t.Skipf("fixture image dir %q missing or empty — run 'task fetch-fixtures'", dir)
 pkg/glyphs/refs_test.go:273:		t.Skip("labeling aid: set RECALL_REFS_PROPOSE=<fixture> and RECALL_REFS_REGION=x,y,w,h")
 
+# pkg/crosscheck — the corpus false-positive run reads the recall-testdata
+# corpus and takes each screenshot's evidence from a real parse, so it skips
+# in -short, without a real Tesseract, and without the corpus, exactly as the
+# glyphs calibration does; golden-corpus.yml runs it.
+pkg/crosscheck/corpus_test.go:176:		t.Skip("the corpus cross-check runs in the golden lane, not -short")
+pkg/crosscheck/corpus_test.go:179:		t.Skipf("tesseract not found at %q — the evidence comes from a real parse", tesseract.Path())
+pkg/crosscheck/corpus_test.go:186:		t.Skipf("fixture image dir %q missing or empty — run 'task fetch-fixtures'", imageDir)
+
 # pkg/parser/integration_test.go — golden-file OCR tests are gated
 # on a real Tesseract binary + the recall-testdata image submodule
 # (testdata/images/, via `task fetch-fixtures`) + `go test` running

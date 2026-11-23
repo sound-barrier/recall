@@ -53,6 +53,9 @@ func (s *SQLStore) LoadAll() (Screenshots, error) {
 	if out.AmbiguousCandidates, err = loadAllAmbiguousCandidates(tx); err != nil {
 		return out, fmt.Errorf("load screenshots: %w", err)
 	}
+	if out.FieldEvidence, err = loadFieldEvidence(tx); err != nil {
+		return out, fmt.Errorf("load screenshots: %w", err)
+	}
 	return out, nil
 }
 

@@ -50,9 +50,6 @@ func collectMovedFiles[T any](out map[db.FileRef]bool, rows []T, keep map[string
 		if !keep[matchKey] {
 			continue
 		}
-		if dirID == 0 {
-			dirID = db.SentinelScreenshotsDirID
-		}
-		out[db.FileRef{DirID: dirID, Filename: filename}] = true
+		out[db.FileRef{DirID: dirID, Filename: filename}.Filed()] = true
 	}
 }

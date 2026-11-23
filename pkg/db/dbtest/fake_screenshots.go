@@ -111,6 +111,7 @@ func (f *Fake) LoadAll() (db.Screenshots, error) {
 		Unknowns:            append([]db.UnknownRow(nil), f.Unknowns...),
 		ScreenshotsDirs:     dirs,
 		AmbiguousCandidates: ambig,
+		FieldEvidence:       f.fieldEvidenceLocked(),
 	}, nil
 }
 
@@ -243,7 +244,7 @@ func (f *Fake) DeleteScreenshotSiblings(dirID int64, filename string, keepType p
 	if keepType != "unknown" {
 		f.Unknowns = deleteInFolder(f.Unknowns, dirID, filename, collect)
 	}
-	here := fileRef(db.FileRef{DirID: dirID, Filename: filename})
+	here := db.FileRef{DirID: dirID, Filename: filename}.Filed()
 	if keepType != "all_heroes" {
 		delete(f.AllHeroes, here)
 	}

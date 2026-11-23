@@ -21,6 +21,7 @@ on:
     paths:
       - 'pkg/parser/**'
       - 'pkg/glyphs/**'
+      - 'pkg/crosscheck/**'
       - 'testdata/**'
       - '.github/workflows/golden-corpus.yml'
   pull_request:
@@ -28,6 +29,7 @@ on:
     paths:
       - 'pkg/parser/**'
       - 'pkg/glyphs/**'
+      - 'pkg/crosscheck/**'
       - 'testdata/**'
       - '.github/workflows/golden-corpus.yml'
 
@@ -63,8 +65,9 @@ jobs:
         # deliberately leave out (evidence rects are not in the goldens). In
         # pkg/glyphs: every reference PNG is a fresh cut of its manifest rect,
         # and the template calibration holds its agreement with the goldens
-        # to a per-screen floor.
+        # to a per-screen floor. In pkg/crosscheck: the cross-checks raise no
+        # flag on the corpus beyond the ones the pixels justify.
         run: >-
           go test -v -timeout 35m
-          -run 'TestParseScreenshot_(GoldenFiles|EvidenceCoversReadFields)$|TestReferences_|TestCalibration_|TestManifest_|TestEmbeddedReferences_'
-          ./pkg/parser/ ./pkg/glyphs/
+          -run 'TestParseScreenshot_(GoldenFiles|EvidenceCoversReadFields)$|TestReferences_|TestCalibration_|TestManifest_|TestEmbeddedReferences_|TestCrosscheck_CorpusFalsePositives$'
+          ./pkg/parser/ ./pkg/glyphs/ ./pkg/crosscheck/

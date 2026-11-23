@@ -4866,6 +4866,97 @@ components:
         array (or an omitted field) means "not tagged"; order is not
         significant and duplicates are collapsed server-side.
 
+    FieldFlag:
+      type: object
+      required: [field, checks, state, readings]
+      description: |
+        One field whose readings disagree, with what noticed and what was
+        compared, so the reader can judge which reading the pixels support.
+      properties:
+        field:
+          type: string
+          description: |
+            The field's dotted path, in the vocabulary `edited_fields`
+            uses (`data.eliminations`, `data.heroes_played.juno.percent_played`,
+            `data.sr.juno.sr`).
+          example: "data.eliminations"
+        checks:
+          type: array
+          minItems: 1
+          description: Every check that fired on this field, sorted.
+          items:
+            $ref: "#/components/schemas/FieldCheckEnum"
+        state:
+          $ref: "#/components/schemas/FieldFlagStateEnum"
+        readings:
+          type: array
+          minItems: 1
+          description: |
+            Every reading the checks compared, each once, in the order the
+            checks named them.
+          items:
+            $ref: "#/components/schemas/FieldReading"
+
+    FieldReading:
+      type: object
+      required: [source_file, origin, value]
+      description: One value a field was read or worked out as, and where it came from.
+      properties:
+        source_file:
+          type: string
+          description: The screenshot the reading came from.
+          example: "ScreenShot_26-06-07_23-00-04-000.jpg"
+        origin:
+          $ref: "#/components/schemas/FieldReadingOriginEnum"
+        value:
+          type: string
+          description: |
+            The reading as text: a number's digits, a hero key, a result,
+            or a hero list joined by `, `.
+          example: "74"
+
+    FieldCheckEnum:
+      type: string
+      enum:
+        - hero_percent_vs_playtime
+        - perf_total_vs_rate
+        - plausible_range
+        - result_vs_rank_movement
+        - source_disagreement
+        - template_disagreement
+      description: |
+        Which cross-check noticed a disagreement.
+
+        - `perf_total_vs_rate`: a SUMMARY total against its own
+          per-10-minute rate over the minutes played.
+        - `hero_percent_vs_playtime`: a hero's share of the match against
+          its share of the listed play time.
+        - `result_vs_rank_movement`: the result against the rank screen's
+          movement or modifier pills.
+        - `source_disagreement`: two screenshots of the match read one fact
+          differently, or a hero shown elsewhere is missing from
+          `heroes_played`.
+        - `plausible_range`: a value no match can produce.
+        - `template_disagreement`: the reference templates read the same
+          pixels as something else.
+
+    FieldFlagStateEnum:
+      type: string
+      enum: ["open", "confirmed", "edited"]
+      description: |
+        Where a flag stands with the user: `open` until reviewed,
+        `confirmed` when the user said the reading is right, `edited` when
+        they corrected the field.
+
+    FieldReadingOriginEnum:
+      type: string
+      enum: ["ocr", "template", "derived"]
+      description: |
+        How a reading was made: `ocr` read off the screenshot by Tesseract,
+        `template` read by the reference templates, `derived` worked out
+        from other readings (a total from its rate, a result from the rank
+        movement).
+
     ExclusionReasonEnum:
       type: string
       enum: ["", "placement", "mmr_adjustment", "outage"]
@@ -6663,6 +6754,17 @@ components:
           items:
             type: string
           example: ["data.map", "data.damage"]
+        field_flags:
+          type: array
+          description: |
+            Fields whose readings disagree with each other — a SUMMARY
+            total its own per-10-minute rate contradicts, two screenshots
+            of the match reading one fact differently, a value no match can
+            produce. One entry per field, sorted by `field`, each naming
+            every check that fired and every reading compared. Absent when
+            the readings agree, which is nearly always.
+          items:
+            $ref: "#/components/schemas/FieldFlag"
         annotation:
           $ref: "#/components/schemas/MatchAnnotation"
         hidden:

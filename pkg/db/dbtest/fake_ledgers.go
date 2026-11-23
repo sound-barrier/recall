@@ -22,7 +22,7 @@ func (f *Fake) RecordFailedFile(file db.FileRef, kind db.FailureKind, errMsg str
 	if f.FailedFiles == nil {
 		f.FailedFiles = map[db.FileRef]db.FailedFileRow{}
 	}
-	file = fileRef(file)
+	file = file.Filed()
 	now := time.Now().UTC().Format(time.RFC3339)
 	row, ok := f.FailedFiles[file]
 	if !ok {
@@ -46,7 +46,7 @@ func (f *Fake) RecordFailedFile(file db.FileRef, kind db.FailureKind, errMsg str
 func (f *Fake) LoadFailedFilenames(dirID int64, minAttempts, generation int) (map[string]bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	dirID = fileRef(db.FileRef{DirID: dirID}).DirID
+	dirID = db.FileRef{DirID: dirID}.Filed().DirID
 	out := map[string]bool{}
 	for file, row := range f.FailedFiles {
 		if file.DirID == dirID && row.Attempts >= minAttempts && row.ParserGeneration == generation {
@@ -59,7 +59,7 @@ func (f *Fake) LoadFailedFilenames(dirID int64, minAttempts, generation int) (ma
 func (f *Fake) RemoveFailedFile(file db.FileRef) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	delete(f.FailedFiles, fileRef(file))
+	delete(f.FailedFiles, file.Filed())
 	return nil
 }
 
@@ -161,14 +161,14 @@ func addRecognized(set map[db.FileRef]bool, file db.FileRef) map[db.FileRef]bool
 	if set == nil {
 		set = map[db.FileRef]bool{}
 	}
-	set[fileRef(file)] = true
+	set[file.Filed()] = true
 	return set
 }
 
 // namesInFolder is one folder's names from a registry, empty (never nil)
 // when it holds none, as the SQL scan returns.
 func namesInFolder(set map[db.FileRef]bool, dirID int64) map[string]bool {
-	dirID = fileRef(db.FileRef{DirID: dirID}).DirID
+	dirID = db.FileRef{DirID: dirID}.Filed().DirID
 	out := map[string]bool{}
 	for file := range set {
 		if file.DirID == dirID {
