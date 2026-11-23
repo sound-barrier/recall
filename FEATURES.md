@@ -97,6 +97,7 @@ focus items, send-to-coach, notes files, the orphan drawer) is in
 Grouped by original Triaging category for cross-reference; no H3 subheads
 to avoid heading collisions with the live backlog above.
 
+- **Ingest & OCR — Flagged readings, reviewed beside their source crop** — the parser records the screenshot region behind every field it reads, and a pure-Go template matcher (`pkg/glyphs`, digit references cut from corpus pixels) reads the stat digits a second time. `pkg/crosscheck` compares each match's readings (a SUMMARY total against its own rate, SUMMARY against TEAMS, the result against the rank's movement, values no match can produce, templates against OCR) and flags the field without ever picking a winner. An open flag is left out of every stat until the player settles it in the Unknown tab's **Flagged readings** section, beside a live crop of the region it was read from: **Confirm as read** (bound to the value, so a re-parse that reads something else re-opens it), use another reading, or edit. Match detail gains **Show source** on each read value. The documented JPG misread that split a match from its own scoreboard no longer splits it. Windows.Media.Ocr was measured as an alternative engine in a CI lane and not adopted ([`spike/WINDOWS-OCR-SPIKE.md`](spike/WINDOWS-OCR-SPIKE.md)). PR #828.
 - **Ingest & OCR — Report a parse problem from any screenshot** — one "Report parse problem…" action on the failed list, every Unknown card and a match's Source Screenshots opens a dialog: tick the screenshots, say what each should have read, and save a `recall-diagnostic/v3` zip (picked images with notes, ledger failures, re-parse traces, logs, version/environment, with folder paths redacted to `[screenshots]`/`[recall-data]`/`[home]`). A preflight lists likely causes first (Tesseract missing/too old/no English, a non-16:9 capture, an unrecognized filename) since those are the user's to fix, then "Open a GitHub issue" prefills the new `parse_problem.yml` form. On the maintainer side, `task import-report` dedupes a report against the fixture corpus and stages it (consent-gated), and a triage workflow summarizes each attached report on its issue. Reporters had been attaching 35 MB full backups instead.
 - **UX & Settings — Match journal writing mode** — an Expand control on every PROSE writing surface (the journal note, the coach note, the self-review note, and the send-to-coach message) opens the same `NoteWriter` full-viewport, with a word count and — in Markdown mode only, since Formatted already is the preview — a live preview beside the source. Not a second editor: `<Teleport :disabled>` moves the component's own DOM, so the value, the mode, the toolbar state and the live ProseMirror instance survive the trip and there is nothing to hand over. Escape closes exactly one modal (capture-phase, the screenshot lightbox's pattern) and returns focus to the FIELD rather than to the control that opened it, because that control reopens what was just closed. Collapsing emits `commit`, not `blur` — a host that saves on blur would otherwise end a full-screen writing session with nothing written down. **Captions deliberately excluded:** moments and focus items are one-line lists, and a toolbar per row would mount N ProseMirror instances in one panel.
 - **Analysis & Insights — Rolling baseline comparison** — the `rolling-baseline` widget sets the recent window against the player's own trailing average as a two-proportion z, printed as the `↑ +1.4σ` annotation the entry asked for rather than a raw percentage delta. The windows are disjoint, so the recent slice is never part of its own reference; below the sample floor it names both counts instead of printing a number a small sample cannot support.
@@ -182,8 +183,14 @@ file.
   players. Against the core stance: no account, no network upload
   (ARCHITECTURE.md). The export/import bundle is the sanctioned transfer path.
 - **Live OCR while OW is running** — window capture, no manual screenshot
-  needed. Capture hooks in a live competitive game read as cheat-adjacent to
-  anti-cheat tooling; the screenshot workflow stays the boundary.
+  needed. Not because of how the capture works: Windows Graphics Capture reads
+  the window through the compositor and injects nothing into the game, unlike
+  a capture hook. The objection holds for any live capture of the game window,
+  hooked or not: a process watching a ranked match as it is played is the most
+  literal reading of the EULA's data-mining clause, and Recall cannot test how
+  Blizzard's anti-cheat treats one, where a false positive costs a user their
+  account. The screenshot workflow stays the boundary
+  ([`spike/AUTO-CAPTURE-SPIKE.md`](spike/AUTO-CAPTURE-SPIKE.md)).
 - **Discord webhook** — post match results to a server channel. Outbound
   pushes of match data cross the no-upload stance; the shareable-export ideas
   in Triaging cover the "show a friend" case without a standing pipe.
