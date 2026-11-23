@@ -345,7 +345,12 @@ frontend/tests/e2e/dossier                    25
 # DataTransfer here is hand-built with a real File on it. It also proves the
 # one chain no unit test reaches: the bytes leave the browser, come back
 # addressed by their own content, and the moment saves that digest.
-frontend/tests/e2e/match                      27
+# 27 -> 28: match-source-crop.spec.ts. The crop beside each read value is
+# the detail panel's own affordance, not the Unknown tab's review; what it
+# proves absent spans the panel, the regions fetch and the write gate — a
+# coaching session that asks for the player's screenshot regions, or a
+# flagged value the panel blanks instead of showing as read.
+frontend/tests/e2e/match                      28
 
 # frontend/tests/e2e/matches — the Matches view around the list: grouping and
 # sorting, collapse/expand, infinite scroll and scroll affordances, bulk mode

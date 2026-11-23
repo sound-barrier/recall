@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, useId } from 'vue'
+
+import type { FieldFlag } from '@/api-client'
+import SourceCrop from '@/components/shared/SourceCrop.vue'
+import type { StatSource } from '@/match/quality/crop-sources'
 
 // One inline-editable stat cell: shows a value + label like the static
 // `.stat` block, but the value is a button that swaps into an input on click
@@ -7,6 +11,18 @@ import { computed, nextTick, ref } from 'vue'
 // a ✎ marker appears beside the label; clicking it reverts that field to the
 // scanned (OCR) value. Generic: the parent owns the field→override mapping and
 // reacts to `commit` / `revert`.
+//
+// Beside the value, two things the parse knows about it: where on the match's
+// screenshots it was read ("Show source" reveals those crops), and whether the
+// cross-check doubted it. A doubted value is still shown as READ — the stats
+// leave it out, but this cell is where the player decides what it should be.
+
+const SOURCE_NOTE = {
+  pending: 'Loading where this value was read…',
+  error: "Couldn't load where this value was read.",
+  ready: 'No crop recorded for this value — Re-parse All records where each value was read.',
+} as const
+
 const props = withDefaults(
   defineProps<{
     value: number | string | null | undefined
@@ -25,18 +41,44 @@ const props = withDefaults(
     // affordance goes dead and says why.
     locked?: boolean
     lockReason?: string
+    /** Where on the match's screenshots this value was read; null offers no disclosure. */
+    source?: StatSource | null
+    /** The cross-check's flag on this value; an open one keeps it out of the stats. */
+    flag?: Pick<FieldFlag, 'state'> | null
+    /** What a sibling's open flag that leaves this value out too is called, or ''. */
+    leftOutWith?: string
   }>(),
   {
     edited: false, kind: 'number', min: 0, max: 1_000_000,
     format: (v: number | string) => String(v),
     locked: false, lockReason: '',
+    source: null, flag: null, leftOutWith: '',
   },
 )
 
 const emit = defineEmits<{
   commit: [value: number | string]
   revert: []
+  /** Asks for the flagged reading's review, which the Unknown tab holds. */
+  review: []
+  /** The disclosure opened: the owner asks where the value was read. */
+  'show-source': []
 }>()
+
+const flagged = computed(() => props.flag?.state === 'open')
+const leftOutNote = computed(() => {
+  if (flagged.value) return 'Left out of stats — needs review'
+  return props.leftOutWith ? `Left out of stats — ${props.leftOutWith} needs review` : ''
+})
+const flagId = useId()
+// Collapsed by default: each crop loads the whole screenshot behind it.
+const sourceOpen = ref(false)
+const sourceId = useId()
+const crops = computed(() => (props.source?.status === 'ready' ? props.source.crops : []))
+function toggleSource() {
+  sourceOpen.value = !sourceOpen.value
+  if (sourceOpen.value) emit('show-source')
+}
 
 const editing = ref(false)
 const draft = ref('')
@@ -120,6 +162,7 @@ function cancel() {
       :disabled="locked"
       :title="lockReason || undefined"
       :aria-label="`${label}: ${displayValue}. Click to edit.`"
+      :aria-describedby="leftOutNote ? flagId : undefined"
       @click="startEdit"
     >
       {{ displayValue }}
@@ -139,6 +182,48 @@ function cancel() {
         @click="emit('revert')"
       >✎</button>
     </span>
+
+    <span v-if="leftOutNote" :id="flagId" class="stat-flag">{{ leftOutNote }}</span>
+    <button
+      v-if="flagged && !locked"
+      type="button"
+      class="btn-mono is-text is-sm stat-aside"
+      :aria-label="`Review ${label} in Unknown`"
+      @click="emit('review')"
+    >
+      Review
+    </button>
+
+    <template v-if="source">
+      <button
+        type="button"
+        class="btn-mono is-text is-sm stat-aside"
+        :aria-expanded="sourceOpen"
+        :aria-controls="sourceId"
+        :aria-label="`Show source of ${label}`"
+        @click="toggleSource"
+      >
+        Show source
+      </button>
+      <div :id="sourceId" class="stat-source stack gap-1">
+        <template v-if="sourceOpen">
+          <figure
+            v-for="({ region: r, caption }, i) in crops"
+            :key="`${r.source_file} ${r.x} ${r.y} ${r.width} ${r.height}`"
+            class="stat-crop stack gap-1"
+            :aria-labelledby="`${sourceId}-${i}`"
+          >
+            <SourceCrop :region="r" :label="label" />
+            <figcaption :id="`${sourceId}-${i}`" class="stat-crop-caption">
+              {{ caption }}
+            </figcaption>
+          </figure>
+          <p v-if="crops.length === 0" class="stat-source-note">
+            {{ SOURCE_NOTE[source.status] }}
+          </p>
+        </template>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -199,6 +284,39 @@ function cancel() {
   line-height: 1.1;
   color: var(--loss);
   max-width: 14ch;
+}
+
+/* A doubted value: the line says why the stats leave it out. */
+.stat-flag {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--type-2xs);
+  line-height: 1.2;
+  color: var(--accent-text);
+  max-width: 16ch;
+}
+
+/* Review and Show source sit flush under the label they belong to. */
+.stat-aside {
+  margin-top: var(--space-1);
+  margin-left: calc(-1 * var(--space-2));
+}
+
+.stat-source {
+  width: 100%;
+}
+
+.stat-crop {
+  margin: 0;
+}
+
+/* Which screen a crop was cut from, so two stacked crops tell apart. */
+.stat-crop-caption,
+.stat-source-note {
+  margin: 0;
+  font-size: var(--type-2xs);
+  line-height: 1.2;
+  color: var(--text-dim);
 }
 
 /* The ✎ revert affordance sits inline after the label. Accent-colored so an

@@ -4,6 +4,7 @@ import type { FieldFlag, MatchRecord } from '@/api'
 import {
   isFieldFlagged,
   leftOutFields,
+  leftOutPaths,
   openFlags,
   recordsWithoutSuspectFields,
   withoutSuspectFields,
@@ -141,6 +142,36 @@ describe('leftOutFields', () => {
       flag('data.damage', 'confirmed'),
     ])
     expect(leftOutFields(r).map((f) => f.field)).toEqual(['data.eliminations', 'data.assists'])
+  })
+})
+
+// The detail shows the record as read, so it needs to know which of its
+// values the stats leave out — and for whose flag — to mark every one.
+describe('leftOutPaths', () => {
+  it('names every value of a flagged combat line, each pointing at the flag', () => {
+    const out = leftOutPaths(rec([flag('data.eliminations')]))
+
+    expect(Object.fromEntries(out)).toEqual({
+      'data.eliminations': 'data.eliminations',
+      'data.assists': 'data.eliminations',
+      'data.deaths': 'data.eliminations',
+      'data.performance': 'data.eliminations',
+    })
+  })
+
+  it('points a value at its own flag over a sibling it shares a line with', () => {
+    const out = leftOutPaths(rec([flag('data.eliminations'), flag('data.assists')]))
+
+    expect(out.get('data.assists')).toBe('data.assists')
+    expect(out.get('data.deaths')).toBe('data.eliminations')
+  })
+
+  it('names only the flagged scalar when it stands alone', () => {
+    expect(Object.fromEntries(leftOutPaths(rec([flag('data.damage')])))).toEqual({ 'data.damage': 'data.damage' })
+  })
+
+  it('names nothing for a settled flag, or one that leaves no value out', () => {
+    expect(leftOutPaths(rec([flag('data.damage', 'confirmed'), flag('data.heroes_played')])).size).toBe(0)
   })
 })
 

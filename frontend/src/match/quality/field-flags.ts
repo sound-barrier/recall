@@ -111,6 +111,32 @@ export function leftOutFields(rec: MatchRecord): FieldFlag[] {
   return openFlags(rec).filter((flag) => excluded(rec.data, flag.field) !== null)
 }
 
+// The top-level values `next` no longer holds that `data` did.
+function droppedKeys(data: MatchData, next: MatchData): string[] {
+  return Object.entries(data)
+    .filter(([key, value]) => value !== undefined && next[key as keyof MatchData] === undefined)
+    .map(([key]) => key)
+}
+
+/**
+ * Each top-level value an open flag leaves out of the stats, by its path,
+ * mapped to the flagged field that leaves it out — its own flag first, so an
+ * E/A/D sibling names the flag it waits on. The same rules as
+ * withoutSuspectFields, so a surface showing the record AS READ can mark
+ * exactly what the stats leave out.
+ */
+export function leftOutPaths(rec: MatchRecord): Map<string, string> {
+  const out = new Map<string, string>()
+  for (const flag of openFlags(rec)) {
+    const next = excluded(rec.data, flag.field)
+    for (const key of next ? droppedKeys(rec.data, next) : []) {
+      const path = `data.${key}`
+      if (!out.has(path) || path === flag.field) out.set(path, flag.field)
+    }
+  }
+  return out
+}
+
 /**
  * The record with every openly flagged field left out. A record nothing is
  * left out of comes back as the same object, and an untouched part of a

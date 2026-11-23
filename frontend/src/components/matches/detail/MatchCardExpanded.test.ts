@@ -4,7 +4,12 @@ import { render, screen, fireEvent, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 
 import MatchCardExpanded from '@/components/matches/detail/MatchCardExpanded.vue'
-import type { MatchRecord } from '@/api'
+import type { FieldRegion, MatchRecord } from '@/api'
+import { setApiBacking } from '@/api-client'
+import { FIELD_FLAG_SECTION } from '@/match/quality/field-flags'
+import { useAppStore } from '@/stores/app'
+import { useCoachStore } from '@/stores/coach'
+import { useUiStore } from '@/stores/ui'
 
 // The write gate reads the profiles query + the coaching-session store;
 // these cases pin this component's own contract, so stub it open.
@@ -24,6 +29,19 @@ vi.mock('@/composables/matches/useMatchActions', () => ({
 // MatchCardExpanded owns annotation draft state, the leaver-chooser
 // chips, heroes-played collapse, and the sources block. These tests
 // pin the externally-observable contract: emits + render branches.
+
+// Where each value was read. Every case gets an answer, so no card's region
+// fetch falls through to the network; the cases about regions set their own.
+const GetMatchFieldRegions = vi.fn(async (_key: string): Promise<FieldRegion[]> => [])
+beforeEach(() => {
+  GetMatchFieldRegions.mockReset().mockResolvedValue([])
+  setApiBacking({
+    GetMatchFieldRegions,
+    GetMatchResults: vi.fn(async () => []),
+    GetFailedFiles: vi.fn(async () => []),
+    GetNewScreenshotCount: vi.fn(async () => ({ count: 0, parked: 0 })),
+  })
+})
 
 function makeRecord(over: Partial<MatchRecord['data']> = {}, top: Partial<MatchRecord> = {}): MatchRecord {
   return {
@@ -527,5 +545,101 @@ describe("MatchCardExpanded — the player's clock", () => {
     resetWriteGate()
     renderCard({ record: makeRecord(LOANED) })
     expect(screen.queryByText('January 1, 1999 @ 9:14pm')).toBeNull()
+  })
+})
+
+describe('MatchCardExpanded — where each value was read', () => {
+  const region = (field: string): FieldRegion => ({
+    source_file: 'a.png', dir_id: 0, field,
+    x: 400, y: 300, width: 80, height: 40, image_width: 1920, image_height: 1080,
+  })
+  const settle = () => new Promise((r) => setTimeout(r, 0))
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    resetWriteGate()
+  })
+
+  // Paging the panel with j/k remounts this card per match; most opens never
+  // look at a crop, so the regions are asked for on the first "Show source".
+  it('asks for nothing until a source is opened, then shows that crop', async () => {
+    GetMatchFieldRegions.mockResolvedValue([region('data.damage')])
+    renderCard({ record: makeRecord({}, { source_types: { 'a.png': 'summary' } }) })
+    await settle()
+    expect(GetMatchFieldRegions).not.toHaveBeenCalled()
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Show source of Damage' }))
+    expect(GetMatchFieldRegions).toHaveBeenCalledWith('match-2026-05-10T22-21-11')
+    expect(await screen.findByRole('img', { name: 'Source crop of Damage from a.png' })).toBeInTheDocument()
+    expect(screen.getByRole('figure', { name: 'SUMMARY' })).toBeInTheDocument()
+  })
+
+  it('offers a source for every read value, and says when none was recorded', async () => {
+    renderCard({ record: makeRecord({ healing: 300 }) })
+    // Mitigation was never read, so there is nothing to show the source of.
+    expect(screen.queryByRole('button', { name: 'Show source of Mitigation' })).not.toBeInTheDocument()
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Show source of Healing' }))
+    expect(await screen.findByText(/^No crop recorded for this value/)).toBeInTheDocument()
+  })
+
+  it('never asks during a coaching session, whose files are not on this disk', async () => {
+    setWritesLocked(true, { session: true })
+    renderCard()
+    await settle()
+
+    expect(GetMatchFieldRegions).not.toHaveBeenCalled()
+    expect(screen.queryAllByRole('button', { name: /^Show source/ })).toHaveLength(0)
+  })
+
+  // A loaned record's key can name one of the coach's own matches, whose
+  // regions an earlier open left in the cache.
+  it("never shows a coach's own cached regions on a loaned record", async () => {
+    GetMatchFieldRegions.mockResolvedValue([region('data.damage')])
+    const { unmount } = renderCard()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Show source of Damage' }))
+    await screen.findByRole('img', { name: /^Source crop of Damage/ })
+    unmount()
+
+    setWritesLocked(true, { session: true })
+    renderCard()
+    expect(screen.queryAllByRole('button', { name: /^Show source/ })).toHaveLength(0)
+  })
+
+  // The tour's sample matches have no screenshots, and their keys name no match.
+  it('never asks during the tour', async () => {
+    renderCard()
+    // The matches store pushes the tour's state to the coach store.
+    useCoachStore().setTourOpen(true)
+    await settle()
+
+    expect(screen.queryAllByRole('button', { name: /^Show source/ })).toHaveLength(0)
+    expect(GetMatchFieldRegions).not.toHaveBeenCalled()
+  })
+
+  it('shows a flagged value as read, and its review leaves the panel for the Unknown tab', async () => {
+    const rec = makeRecord({ eliminations: 74 }, {
+      field_flags: [{ field: 'data.eliminations', value: '74', checks: ['perf_total_vs_rate'], state: 'open', readings: [] }],
+    })
+    renderCard({ record: rec })
+    const ui = useUiStore()
+    const close = vi.spyOn(ui.selection, 'close')
+    const goToView = vi.spyOn(useAppStore(), 'goToView').mockResolvedValue(undefined)
+
+    expect(screen.getByRole('button', { name: /^Elims: 74\./ }))
+      .toHaveAccessibleDescription('Left out of stats — needs review')
+    // Its line's siblings are left out with it, and say whose review that waits on.
+    expect(screen.getAllByText('Left out of stats — needs review')).toHaveLength(1)
+    for (const sibling of [/^Assists: 12\./, /^Deaths: 8\./]) {
+      expect(screen.getByRole('button', { name: sibling }))
+        .toHaveAccessibleDescription('Left out of stats — Eliminations needs review')
+    }
+    expect(screen.getByRole('button', { name: /^Damage: / })).not.toHaveAccessibleDescription()
+    expect(screen.getAllByRole('button', { name: /^Review / })).toHaveLength(1)
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Review Elims in Unknown' }))
+    expect(close).toHaveBeenCalled()
+    expect(goToView).toHaveBeenCalledWith('unknown')
+    expect(ui.takePendingSection(FIELD_FLAG_SECTION)).toBe(true)
   })
 })
