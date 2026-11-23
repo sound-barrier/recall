@@ -5,7 +5,7 @@ paths:
 
 # CI/CD (`.github/workflows/`)
 
-Fourteen workflows. Every one starts from `permissions: {}` or `contents: read`
+Fifteen workflows. Every one starts from `permissions: {}` or `contents: read`
 and grants write scopes per job; every checkout sets `persist-credentials:
 false` except `release-please.yml`'s `tag-and-dispatch`, which pushes a tag.
 
@@ -18,6 +18,7 @@ false` except `release-please.yml`'s `tag-and-dispatch`, which pushes a tag.
 | `dependabot-retry.yml` | `workflow_run` after CI or E2E completes | Re-runs a Dependabot PR's failed jobs once (`POST …/runs/{id}/rerun-failed-jobs`), so a GitHub outage during a tool download does not leave an unattended bump red. Fires only on the first attempt of a same-repo `pull_request` run Dependabot started; a genuine failure fails the retry too and stays red. `actions: write` only, no checkout. Like every `workflow_run` workflow it runs the default-branch definition, so a PR cannot test a change to it. |
 | `pr-coverage-comment.yml` | `workflow_run` after CI + E2E complete | One sticky PR comment (unit-test results + a Unit/Integration coverage table) via `scripts/ci/render-pr-report.py`, artifacts pulled cross-workflow by commit. Skips fork runs (it holds `pull-requests: write`). `workflow_run` always runs the DEFAULT-branch definition, so an edit here takes effect once merged, for every run that completes afterwards — a PR cannot test its own change to this file. |
 | `golden-corpus.yml` | Daily 09:17 UTC + dispatch + push/PR touching `pkg/parser/**`, `pkg/glyphs/**`, `pkg/crosscheck/**`, `testdata/**` or the workflow | OCRs the full golden screenshot corpus (submodule `testdata/images`) against the pinned Tesseract (`scripts/ci/install-tesseract.sh`) and diffs against the baselined goldens; holds the glyph references and template calibration to it, and the cross-checks to zero unexplained flags over it. No `-race`. |
+| `winocr-eval.yml` | Dispatch + PR touching the workflow, `scripts/ci/winocr-eval.ps1` or `pkg/parser/ocr_eval*_test.go` | **Evaluation only, gates nothing.** Four jobs, `permissions: {}` at the top and `contents: read` per job: **`crops`** (ubuntu, submodule, mise Go, `install-tesseract.sh`) runs `TestOCREval_Dump` to record every OCR call of the golden corpus (preprocessed + raw crop, spec, Tesseract reading) as the `ocr-eval-dump` artifact; **`lint-ps`** runs PSScriptAnalyzer (exact PSGallery version and its `.nupkg` SHA-256 in the workflow `env`; the package is downloaded, hash-checked and loaded from disk rather than `Install-Module`d; CI-only because `pwsh` is not a mise tool) over `scripts/**/*.ps1`; **`winocr`** (`windows-2025`, never `-latest`, since the OCR engine is part of the image) installs the UB-Mannheim Tesseract 5.5.3 build by exact URL after a SHA-256 check and a major.minor check against `TESSERACT_VERSION`, then runs `scripts/ci/winocr-eval.ps1` under Windows PowerShell 5.1 (`shell: powershell`: PowerShell 7 lost the WinRT projection); **`compare`** (ubuntu) runs `TestOCREval_Replay`, which fails unless Tesseract's own replay reproduces the dump's own parse of every screenshot byte for byte (the golden scores are reported, not gated), and publishes `report.md` to the step summary and `report.json` as `ocr-eval-report`. Dispatch: `docs/dev-reference.md`. |
 | `labels.yml` | Push to `main` (`.github/labels.yml`) + dispatch | Syncs repo labels via `EndBug/label-sync`. `delete-other-labels: false` by default; the dispatch input flips it. |
 | `parse-report-triage.yml` | Issue opened / edited / labeled `parse-problem` | Two jobs. **`summarize`** (`contents: read`) checks out `scripts/ci` + `testdata` and the `recall-testdata` repo, then `scripts/ci/triage-parse-report.sh` downloads the issue's `user-attachments` zip (https only, 25 MB cap), reads `manifest.json` through a size cap and hashes each screenshot without unpacking it; the issue body arrives as an env var. **`post`** (`issues: write`, no checkout) keeps one marker comment up to date and adds `report-missing` / `setup-issue` / `known-screenshot`. Reporter text is flattened, pipe-escaped and has `@` defused before it reaches the comment. |
 | `pages.yml` | Push to `main` (paths: `api/openapi.yaml`, `docs/**`, `book/**`, `testdata/**`, the six `pkg/parser/*.yaml` data files, `tools/package*.json`, the workflow) + dispatch | Two jobs: **`build`** (`contents: read`, mise without cache, `npm ci --prefix tools`, Honkit) uploads the `pages-book` artifact; **`deploy`** (`pages: write`, `id-token: write`, `github-pages` environment, no mise/npm/third-party code) stages `api/` and the reference-data channel from its own checkout and publishes. Details in `.claude/rules/docs-site.md`. **One-time setup**: Settings → Pages → Source = "GitHub Actions". |
@@ -115,8 +116,10 @@ false` except `release-please.yml`'s `tag-and-dispatch`, which pushes a tag.
   whose output must not depend on a cache another run saved (release.yml's
   `build-windows`, `pages.yml`'s `build`), and `github_token: ''` where the tools
   need no GitHub API. Users: ci.yml `lint` and `secrets`, `golden-corpus.yml`,
-  `pages.yml` `build`, `roster-watch.yml` `watch`, and the `wails-build-env`
-  composite (ci.yml and release.yml `build-windows`). x64 Linux runners only.
+  `pages.yml` `build`, `roster-watch.yml` `watch`, `winocr-eval.yml` `crops`
+  and `compare`, and the `wails-build-env` composite (ci.yml and release.yml
+  `build-windows`). x64 Linux runners only, which is why `winocr-eval.yml`'s
+  Windows job installs its Tesseract without it.
 - **A mise bump moves five values in one commit**: setup-mise's `version` and
   `sha256`, `mise.toml` `min_version`, `scripts/install-mise.sh` `MISE_VERSION`
   (with its two Linux hashes), and `mise.lock` regenerated with that exact
