@@ -47,6 +47,16 @@ pkg/tesseract/tesseract_worktext_test.go:74:		t.Skip("fake tesseract is a shell 
 # OCR seam would write no files to keep), so it can't run on Windows.
 pkg/parser/diagnose_test.go:96:		t.Skip("fake tesseract is a shell script")
 
+# pkg/parser/ocr_eval_test.go — the OCR engine evaluation's dump and replay
+# are a measurement, not a regression test: they run only when
+# RECALL_OCR_EVAL_DIR names the evaluation directory, which
+# .github/workflows/winocr-eval.yml sets and nothing else does. The harness
+# itself is held by the stubbed-seam TestOCREval_* self-tests in
+# ocr_eval_report_test.go, ocr_eval_harness_test.go and
+# ocr_eval_whitelist_test.go, which run everywhere.
+pkg/parser/ocr_eval_test.go:88:		t.Skip("set " + evalDirEnv + " to dump the corpus's OCR crops for the engine evaluation")
+pkg/parser/ocr_eval_test.go:102:		t.Skip("set " + evalDirEnv + " to a dumped corpus to score each engine's readings")
+
 # pkg/glyphs — the reference cuts and the template calibration read the
 # recall-testdata corpus (testdata/images), which ci.yml's -short run does not
 # check out; golden-corpus.yml does and runs them. The calibration also skips

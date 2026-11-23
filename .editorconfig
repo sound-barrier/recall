@@ -36,6 +36,12 @@ indent_style = space
 indent_size = 2
 end_of_line = lf
 
+# ── PowerShell ────────────────────────────────────────────────────────────────
+# Four spaces: the PowerShell community's own convention (PoshCode style guide).
+[*.ps1]
+indent_style = space
+indent_size = 4
+
 # ── Dockerfile ────────────────────────────────────────────────────────────────
 [Dockerfile*]
 indent_style = space

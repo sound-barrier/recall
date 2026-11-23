@@ -134,6 +134,7 @@ only on URL.
 | `RECALL_PPROF` | *(off)* | Mounts `net/http/pprof` under `/debug/pprof/` in server mode. Never expose publicly. |
 | `RECALL_FIXTURE_DIR` | `../../testdata/images` (from `pkg/parser/`) | `.png` image dir for `TestParseScreenshot_GoldenFiles` (the `recall-testdata` submodule). Override with an ABSOLUTE path; set alone, goldens are read/written beside the images (single-dir mode). |
 | `RECALL_GOLDEN_DIR` | `../../testdata` (from `pkg/parser/`) | `.golden.json` sidecar dir for `TestParseScreenshot_GoldenFiles`, the `pkg/glyphs` calibration and `TestCrosscheck_CorpusFalsePositives`. Override with an ABSOLUTE path. |
+| `RECALL_OCR_EVAL_DIR` | *(off)* | OCR engine evaluation (`pkg/parser/ocr_eval_test.go`). `TestOCREval_Dump` parses the corpus with the real Tesseract and writes every OCR call's preprocessed + raw crop, spec and reading there; `TestOCREval_Replay` replays each engine's readings found there through the full parse and writes `report.json` + `report.md`. Both at once give the Linux-only sanity check (Tesseract's own replay must reproduce every golden): `RECALL_OCR_EVAL_DIR="$PWD/tmp/ocr-eval" go test -count=1 -timeout 40m -run '^TestOCREval_(Dump\|Replay)$' ./pkg/parser/`. The Windows engines run only in `.github/workflows/winocr-eval.yml`, see the Windows OCR evaluation section below. |
 | `RECALL_REFS_UPDATE` | *(off)* | `pkg/glyphs`: rewrite `refs/` from `manifest.yaml` instead of checking it (what `task cut-references` sets). Reads images from `RECALL_FIXTURE_DIR`. |
 | `RECALL_REFS_PROPOSE` / `RECALL_REFS_REGION` | *(off)* | `pkg/glyphs` labeling aid: `RECALL_REFS_PROPOSE=<fixture> RECALL_REFS_REGION=x,y,w,h go test -run TestProposeSegmentation -v ./pkg/glyphs/` prints the glyph boxes the matcher segments there, each with a suggested manifest rect. The label is still read off the pixels by eye. |
 
@@ -153,6 +154,38 @@ only on URL.
 | `check-bundle-size.sh` | Per-chunk + total JS/CSS budgets. Runs on every CI push + lefthook pre-push; fails non-zero when a chunk exceeds its budget. |
 | `check-package-size.sh` | Per-directory file budgets for Go packages and `frontend/src` / `frontend/tests`. Reads `scripts/ci/package-size-budgets.txt` (a budget + its reason per entry, `exempt` for generated trees, an optional third column recording a temporary over-target waiver); unregistered directories get a default of 12. A gate: CI's `lint` job, `task verify`, lefthook pre-push. Run `--list` (or `task package-size-audit`) for the read-only audit that informs split-vs-bump. |
 | `gobco-report.sh` | Go condition (branch) coverage via `rillig/gobco` — informational, never gates. Names each condition never observed both true and false, so every line is one missing test case. Runs inside a throwaway `git worktree` (gobco copies the module per package), `-short`, default build tags, never `-race`. `task cover-go-branch`; CI job `branch-coverage` is `continue-on-error`. |
+
+## Windows OCR evaluation (`winocr-eval.yml`)
+
+An evaluation lane, not a gate: it measures whether Windows.Media.Ocr could
+read the crops the parser already cuts, and how fast, beside the pinned
+Tesseract on the same Windows runner. It runs on PRs that touch its own
+files (the workflow, `scripts/ci/winocr-eval.ps1`, the
+`pkg/parser/ocr_eval*_test.go` files) and on demand:
+
+`gh workflow run winocr-eval.yml --ref <branch>`, then
+`gh run watch` / `gh run download <run-id> --name ocr-eval-report`.
+
+GitHub dispatches only workflows that exist on the default branch, so until
+`winocr-eval.yml` is on `main` the dispatch above fails with a not-found
+error, and the lane runs only through its PR's `pull_request` trigger. Take
+the report from that run instead:
+`gh run list --workflow winocr-eval.yml --branch <branch>`, then
+`gh run download <run-id> --name ocr-eval-report`.
+
+Jobs: `crops` (ubuntu: `TestOCREval_Dump` against the pinned Tesseract) and
+`lint-ps` (PSScriptAnalyzer, version and package SHA-256 pinned in the
+workflow's `env`, over
+`scripts/**/*.ps1`) → `winocr` (`windows-2025`, Windows PowerShell 5.1:
+Windows OCR on the preprocessed and the raw crop, plus the pinned
+UB-Mannheim Tesseract 5.5.3 build on the preprocessed crop, all timed per
+crop) → `compare` (ubuntu: `TestOCREval_Replay` per engine label
+`tesseract`, `tesseract-win`, `wmo-pre`, `wmo-raw`; it fails unless
+`tesseract`'s replay reproduces the dump's own parse of every screenshot).
+The step summary carries
+`report.md`; the `ocr-eval-report` artifact carries `report.json`, the
+machine-readable copy. PSScriptAnalyzer runs only there: `pwsh` is not a mise
+tool, so `task lint` cannot count on it.
 
 ## Bundle audit cadence
 

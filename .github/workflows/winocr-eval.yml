@@ -1,0 +1,271 @@
+# Windows.Media.Ocr evaluation lane.
+#
+# Measures whether Windows' built-in OCR engine could stand in for Tesseract
+# on the crops the parser already cuts. Nothing ships from it: the numbers
+# feed the spike write-up, and the lane runs only on demand and on PRs that
+# change the harness itself.
+#
+#   crops    (ubuntu)  parse the golden corpus with the pinned Tesseract and
+#                      record every OCR call: the preprocessed crop, the raw
+#                      source crop, the call's spec and Tesseract's reading
+#                      (TestOCREval_Dump, pkg/parser/ocr_eval_test.go)
+#   lint-ps  (ubuntu)  PSScriptAnalyzer over the Windows script, before a
+#                      Windows runner is spent on it
+#   winocr   (windows) Windows OCR reads every crop twice (preprocessed and
+#                      raw), and the pinned Tesseract Windows build reads the
+#                      preprocessed one, each timed per crop on one machine
+#                      (scripts/ci/winocr-eval.ps1)
+#   compare  (ubuntu)  replay each engine's readings through the full parse
+#                      and score them against the goldens, against Tesseract
+#                      region by region, and on time (TestOCREval_Replay);
+#                      report.md goes to the step summary, report.json to an
+#                      artifact
+#
+# Replaying Tesseract's own readings must reproduce the dump's own parse of
+# every screenshot, byte for byte; when it does not, the compare job fails,
+# because the harness is not measuring the parse. How that parse compares with
+# the goldens is reported, not gated: golden-corpus.yml owns that.
+name: Windows OCR evaluation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/winocr-eval.yml'
+      - 'scripts/ci/winocr-eval.ps1'
+      - 'pkg/parser/ocr_eval*_test.go'
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Exact PSGallery release, published 2026-03-20. The hash is the SHA-256 of
+  # the .nupkg PSGallery serves for it, taken from a download that matched
+  # the gallery's own published SHA-512 (PackageHash) for 1.25.0.
+  PSSCRIPTANALYZER_VERSION: '1.25.0'
+  PSSCRIPTANALYZER_SHA256: '14e634c828eb98efb9f40b2918ba90f139ed5eccdf663a2a747736d996995d60'
+  # UB-Mannheim's Windows build of Tesseract 5.5.3, the same release the
+  # goldens are baselined on (TESSERACT_VERSION in mise.toml), as attached to
+  # tesseract-ocr/tesseract's 5.5.3 release on 2026-07-24. The hash is the
+  # release asset's digest, and matched a download of it.
+  TESSERACT_WIN_URL: 'https://github.com/tesseract-ocr/tesseract/releases/download/5.5.3/tesseract-ocr-w64-setup-5.5.3.20260724.exe'
+  TESSERACT_WIN_SHA256: 'bee9e3434bd94fd65387d9be28cd467a41f61b1275383b55b0f59a1331270ae4'
+
+jobs:
+  crops:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+          # testdata/images, the recall-testdata fixture submodule.
+          submodules: true
+
+      - uses: ./.github/actions/setup-mise
+        with:
+          install_args: go
+
+      - name: Install Tesseract (baseline major.minor)
+        run: bash scripts/ci/install-tesseract.sh
+
+      - name: Dump every OCR call of the corpus
+        env:
+          RECALL_OCR_EVAL_DIR: ${{ runner.temp }}/ocr-eval
+        run: go test -v -count=1 -timeout 40m -run '^TestOCREval_Dump$' ./pkg/parser/
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: ocr-eval-dump
+          path: ${{ runner.temp }}/ocr-eval/
+          if-no-files-found: error
+          retention-days: 7
+
+  lint-ps:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      # CI-only: pwsh ships on GitHub's ubuntu runners but is not a mise tool,
+      # so `task lint` cannot count on it. Downloaded and hash-checked rather
+      # than Install-Module'd, which checks nothing beyond the version.
+      - name: Install PSScriptAnalyzer (pinned, hash-verified)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # A .nupkg is a zip with the module at its root; the .zip name is
+          # what Expand-Archive accepts.
+          $package = Join-Path -Path $env:RUNNER_TEMP -ChildPath 'PSScriptAnalyzer.zip'
+          $uri = "https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/$env:PSSCRIPTANALYZER_VERSION"
+          Invoke-WebRequest -Uri $uri -OutFile $package
+          $actual = (Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $env:PSSCRIPTANALYZER_SHA256) {
+            throw "PSScriptAnalyzer package SHA-256 is $actual, expected $env:PSSCRIPTANALYZER_SHA256. Refusing to load it."
+          }
+          $module = Join-Path -Path $env:RUNNER_TEMP -ChildPath "PSScriptAnalyzer/$env:PSSCRIPTANALYZER_VERSION"
+          Expand-Archive -LiteralPath $package -DestinationPath $module
+
+      - name: Analyze the PowerShell scripts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $manifest = Join-Path -Path $env:RUNNER_TEMP -ChildPath "PSScriptAnalyzer/$env:PSSCRIPTANALYZER_VERSION/PSScriptAnalyzer.psd1"
+          $loaded = Import-Module -Name $manifest -PassThru
+          if ($loaded.Version -ne [version]$env:PSSCRIPTANALYZER_VERSION) {
+            throw "Loaded PSScriptAnalyzer $($loaded.Version), expected $env:PSSCRIPTANALYZER_VERSION."
+          }
+          $settings = @{
+            Severity = @('Error', 'Warning')
+            # The script runs under Windows PowerShell 5.1, for the WinRT
+            # projection PowerShell 7 dropped; hold its syntax to that.
+            Rules = @{ PSUseCompatibleSyntax = @{ Enable = $true; TargetVersions = @('5.1') } }
+          }
+          $findings = @(Invoke-ScriptAnalyzer -Path scripts -Recurse -Settings $settings)
+          foreach ($f in $findings) {
+            $file = [System.IO.Path]::GetRelativePath($PWD, $f.ScriptPath)
+            Write-Output "::error file=$file,line=$($f.Line)::$($f.RuleName): $($f.Message)"
+          }
+          if ($findings.Count -gt 0) { exit 1 }
+          Write-Output "PSScriptAnalyzer $env:PSSCRIPTANALYZER_VERSION found nothing."
+
+  winocr:
+    needs: [crops, lint-ps]
+    # Pinned image, never windows-latest: the OCR engine is part of the OS,
+    # so the image is part of what is measured.
+    runs-on: windows-2025
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    defaults:
+      run:
+        # Windows PowerShell 5.1: the WinRT projection Windows OCR needs is
+        # gone from PowerShell 7.
+        shell: powershell
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: ocr-eval-dump
+          path: ${{ runner.temp }}/ocr-eval
+
+      - name: Install Tesseract (pinned Windows build)
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installer = Join-Path -Path $env:RUNNER_TEMP -ChildPath 'tesseract-setup.exe'
+          Invoke-WebRequest -Uri $env:TESSERACT_WIN_URL -OutFile $installer -UseBasicParsing
+          $actual = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $env:TESSERACT_WIN_SHA256) {
+            throw "Tesseract installer SHA-256 is $actual, expected $env:TESSERACT_WIN_SHA256. Refusing to run it."
+          }
+          $dir = Join-Path -Path $env:RUNNER_TEMP -ChildPath 'tesseract-ocr'
+          # NSIS: /S is silent, and /D= must come last, unquoted.
+          $setup = Start-Process -FilePath $installer -ArgumentList '/S', "/D=$dir" -Wait -PassThru
+          if ($setup.ExitCode -ne 0) { throw "Tesseract installer exited $($setup.ExitCode)" }
+          $exe = Join-Path -Path $dir -ChildPath 'tesseract.exe'
+          # Through cmd, which merges stderr: a build that prints its version
+          # there still answers, and PowerShell 5.1 never sees an error record.
+          $version = (cmd.exe /c "$exe --version 2>&1" | Select-Object -First 1)
+          $pin = (Select-String -LiteralPath mise.toml -Pattern '^TESSERACT_VERSION = "([0-9]+\.[0-9]+)\.').Matches[0].Groups[1].Value
+          if ($version -notmatch ('^tesseract v?' + [regex]::Escape($pin) + '\.')) {
+            throw "Installed '$version', but the goldens are baselined on Tesseract $pin.x (TESSERACT_VERSION in mise.toml)."
+          }
+          Write-Output "$version matches the pinned major.minor $pin"
+
+      - name: Install the en-US Windows OCR language if missing
+        # The runner image may ship without the recognizer. A failed install
+        # is left for the script, which names what is installed and fails.
+        run: |
+          $name = 'Language.OCR~~~en-US~0.0.1.0'
+          try {
+            $capability = Get-WindowsCapability -Online -Name $name
+            Write-Output "$name is $($capability.State)"
+            if ($capability.State -ne 'Installed') {
+              Add-WindowsCapability -Online -Name $name | Out-Null
+              Write-Output "$name is $((Get-WindowsCapability -Online -Name $name).State)"
+            }
+          } catch {
+            Write-Warning "Could not check or install ${name}: $($_.Exception.Message)"
+          }
+
+      - name: Read every crop with Windows OCR and Tesseract
+        run: >-
+          .\scripts\ci\winocr-eval.ps1
+          -EvalDir (Join-Path -Path $env:RUNNER_TEMP -ChildPath 'ocr-eval')
+          -TesseractPath (Join-Path -Path $env:RUNNER_TEMP -ChildPath 'tesseract-ocr\tesseract.exe')
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: ocr-eval-windows
+          path: |
+            ${{ runner.temp }}/ocr-eval/text/wmo-pre/
+            ${{ runner.temp }}/ocr-eval/text/wmo-raw/
+            ${{ runner.temp }}/ocr-eval/text/tesseract-win/
+            ${{ runner.temp }}/ocr-eval/timings/
+            ${{ runner.temp }}/ocr-eval/versions/
+          if-no-files-found: error
+          retention-days: 7
+
+  compare:
+    needs: [crops, winocr]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+          # The replay re-runs the parser's pixel work on each screenshot.
+          submodules: true
+
+      - uses: ./.github/actions/setup-mise
+        with:
+          install_args: go
+
+      # Both artifacts land in one directory, the layout the replay reads.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: ocr-eval-dump
+          path: ${{ runner.temp }}/ocr-eval
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: ocr-eval-windows
+          path: ${{ runner.temp }}/ocr-eval
+
+      - name: Replay each engine against the goldens
+        env:
+          RECALL_OCR_EVAL_DIR: ${{ runner.temp }}/ocr-eval
+        run: go test -v -count=1 -timeout 25m -run '^TestOCREval_Replay$' ./pkg/parser/
+
+      - name: Publish the report to the step summary
+        if: ${{ always() }}
+        env:
+          RECALL_OCR_EVAL_DIR: ${{ runner.temp }}/ocr-eval
+        run: |
+          if [ -f "$RECALL_OCR_EVAL_DIR/report.md" ]; then
+            cat "$RECALL_OCR_EVAL_DIR/report.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        if: ${{ always() }}
+        with:
+          name: ocr-eval-report
+          path: |
+            ${{ runner.temp }}/ocr-eval/report.json
+            ${{ runner.temp }}/ocr-eval/report.md
+          if-no-files-found: error
+          retention-days: 30
