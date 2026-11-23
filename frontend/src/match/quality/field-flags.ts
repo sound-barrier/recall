@@ -1,5 +1,4 @@
 import type { FieldFlag, MatchRecord } from '@/api-client'
-import { statPath } from '@/match/match-overrides'
 
 // A field the cross-check flagged stays out of every stat until the user
 // settles it: confirming the value as read, or editing it. Only an OPEN flag
@@ -64,7 +63,10 @@ function withHeroChanged(data: MatchData, change: (hero: HeroPlay) => HeroPlay |
 }
 
 // Hero keys are matched as whole paths, as the server matches them, since a
-// hero key can hold the "." that separates path segments.
+// hero key can hold the "." that separates path segments. The paths are
+// spelled here rather than borrowed from match-overrides' statPath: the
+// matches store runs this module at boot, and one import from the override
+// editor would carry all of it into the first-paint bundle.
 const withoutHeroPercent: Exclusion = (data, field) => withHeroChanged(data, (hero) => {
   if (field !== `data.heroes_played.${hero.hero}.percent_played` || hero.percent_played === undefined) return null
   const { percent_played: _left, ...rest } = hero
@@ -73,7 +75,7 @@ const withoutHeroPercent: Exclusion = (data, field) => withHeroChanged(data, (he
 
 const withoutHeroStat: Exclusion = (data, field) => withHeroChanged(data, (hero) => {
   const stats = Object.entries(hero.stats ?? {})
-  const kept = stats.filter(([key]) => field !== statPath(hero.hero, key))
+  const kept = stats.filter(([key]) => field !== `data.heroes_played.${hero.hero}.stats.${key}`)
   return kept.length === stats.length ? null : { ...hero, stats: Object.fromEntries(kept) }
 })
 
