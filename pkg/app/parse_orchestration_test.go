@@ -34,7 +34,25 @@ func newParseReadyAppOn(t *testing.T, store db.Store) *app.App {
 	prevBackup := snapshot.BackupToFunc
 	snapshot.BackupToFunc = func(src, dest string) error { return nil }
 	t.Cleanup(func() { snapshot.BackupToFunc = prevBackup })
+	// Cleanups run last-registered-first, so this waits out a run the test
+	// left in flight (a watcher parse still writing its auto-backup) before
+	// the seam above is restored under it — that restore raced the run.
+	t.Cleanup(func() { waitForIdleRun(t, a) })
 	return a
+}
+
+// waitForIdleRun blocks until no run holds the slot, proven by claiming and
+// releasing it.
+func waitForIdleRun(t *testing.T, a *app.App) {
+	t.Helper()
+	eventually(t, func() bool {
+		_, id, err := app.ClaimRun(a, app.RunKindMaintenance)
+		if err != nil {
+			return false
+		}
+		app.FinishRun(a, id, nil, nil)
+		return true
+	}, "a run still held the slot at cleanup")
 }
 
 // stubParse swaps the OCR-loop seam for the duration of a test.
