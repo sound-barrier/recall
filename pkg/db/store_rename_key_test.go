@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"recall/pkg/db"
+	"recall/pkg/parser"
 )
 
 // Resolving an ambiguous screenshot RENAMES the match — and match_key is the
@@ -35,6 +36,7 @@ func TestStoreContract_ResolvingAnAmbiguousMatchCarriesItsSidecars(t *testing.T)
 			// Everything the panel lets you do to a row.
 			mustNoErr(t, s.PinMatch(ambiguous))
 			mustNoErr(t, s.AcknowledgeReferenceGap(ambiguous))
+			mustNoErr(t, s.ConfirmFieldReading(ambiguous, parser.ScalarPath("eliminations"), "74"))
 			mustNoErr(t, s.SetAnnotation(db.Annotation{
 				MatchKey: ambiguous, Note: "held the choke", Tags: []string{"positioning"},
 			}))
@@ -68,6 +70,11 @@ func assertSidecarsMoved(t *testing.T, s db.Store, resolved string) {
 	mustNoErr(t, err)
 	if !acked[resolved] {
 		t.Error("the reference-gap ack was left on the dead key")
+	}
+	confirmed, err := s.LoadFieldConfirmations()
+	mustNoErr(t, err)
+	if confirmed[resolved][parser.ScalarPath("eliminations")] != "74" {
+		t.Errorf("the field confirmation was left on the dead key: %v", confirmed)
 	}
 	notes, err := s.LoadAnnotations()
 	mustNoErr(t, err)

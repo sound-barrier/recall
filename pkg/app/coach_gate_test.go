@@ -14,6 +14,7 @@ import (
 	"recall/pkg/db/dbtest"
 	"recall/pkg/match"
 	"recall/pkg/matchedit"
+	"recall/pkg/parser"
 	"recall/pkg/review"
 )
 
@@ -50,6 +51,12 @@ func gatedPerMatchWrites(a *app.App) map[string]func() error {
 		},
 		"UnacknowledgeReferenceGap": func() error {
 			return a.UnacknowledgeReferenceGap("k")
+		},
+		"ConfirmFieldReading": func() error {
+			return a.ConfirmFieldReading("k", parser.ScalarPath("eliminations"), "74")
+		},
+		"UnconfirmFieldReading": func() error {
+			return a.UnconfirmFieldReading("k", parser.ScalarPath("eliminations"))
 		},
 		"HardDeleteMatch": func() error { return a.HardDeleteMatch("k") },
 	}

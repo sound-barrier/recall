@@ -5,8 +5,12 @@ import "recall/pkg/parser"
 // FieldFlag says one field's readings disagree with each other: the checks
 // that noticed, and every reading they compared, so the reader can judge which
 // one the pixels support. One flag per field, however many checks fired.
+//
+// Value is what the folded match holds for the field now, spelled as a
+// reading is: the value stats use, and the one a confirmation is bound to.
 type FieldFlag struct {
 	Field    parser.FieldPath `json:"field"`
+	Value    string           `json:"value"`
 	Checks   []CheckID        `json:"checks"`
 	State    FlagState        `json:"state"`
 	Readings []FieldReading   `json:"readings"`

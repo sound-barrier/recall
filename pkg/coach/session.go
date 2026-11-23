@@ -182,9 +182,10 @@ func SessionDate(now time.Time) string { return now.UTC().Format(time.DateOnly) 
 
 // BuildRecords runs the read path pkg/app runs against a store — fold,
 // synthesize manual matches, attach every user layer, infer — over a
-// bundle's data.json instead, with no store involved. Two deliberate
-// departures from the store-backed path: no ambiguity candidates travel in
-// a bundle, and ThumbnailFile / SourceDirIDs are blanked so nothing ever
+// bundle's data.json instead, with no store involved. Three deliberate
+// departures from the store-backed path: no ambiguity candidates or field
+// confirmations travel in a bundle, and ThumbnailFile / SourceDirIDs are
+// blanked so nothing ever
 // resolves a screenshot against the coach's disk.
 func BuildRecords(d bundle.DataV2) []match.Record {
 	snap := db.Screenshots{Summaries: d.Summaries, Teams: d.Teams, Personals: d.Personals, Ranks: d.Ranks, Unknowns: d.Unknowns}
@@ -192,6 +193,9 @@ func BuildRecords(d bundle.DataV2) []match.Record {
 	recs := aggregate.Screenshots(snap)
 	recs = aggregate.SynthesizeManualMatches(recs, userData)
 	aggregate.AttachUserData(recs, userData)
+	// Edits settle flags here as at home; confirmations stay on the player's
+	// install, a verdict on its parse that the bundle does not carry.
+	aggregate.AttachFieldResolutions(recs, nil)
 	aggregate.AttachAnnotations(recs, indexAnnotations(d.Annotations))
 	aggregate.AttachHidden(recs, keySet(d.Hidden))
 	aggregate.AttachPinned(recs, keySet(d.Pinned))

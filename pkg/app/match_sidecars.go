@@ -4,10 +4,11 @@ import (
 	"recall/pkg/applog"
 	"recall/pkg/db"
 	"recall/pkg/matchedit"
+	"recall/pkg/parser"
 )
 
 // The per-match sidecar surface: annotation, review, queue, play mode,
-// visibility, and the ignored-screenshot suppress list. Every rule these
+// visibility, confirmed readings, and the ignored-screenshot suppress list. Every rule these
 // writes obey — input validation, the unknown-key guard, the store call —
 // lives in pkg/matchedit. What stays here is the orchestration the leaf
 // cannot see: design rule 1's coaching-session write gate, which every
@@ -168,6 +169,38 @@ func (a *App) UnacknowledgeReferenceGap(matchKey string) error {
 	}
 	defer release()
 	return matchedit.UnacknowledgeReferenceGap(store, matchKey)
+}
+
+// ConfirmFieldReading marks a match's flagged reading of field as right as
+// read, bound to the value the match reads now, which must still be shown —
+// the value the client put in front of the user. match.ErrMatchNotFound for
+// an unknown key; ErrNothingToConfirm when the field carries no flag or one
+// the user's edit settled; ErrReadingChanged when a parse has changed the
+// reading since it was shown.
+func (a *App) ConfirmFieldReading(matchKey string, field parser.FieldPath, shown string) error {
+	if matchKey == "" {
+		return ErrMatchKeyRequired
+	}
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
+	}
+	defer release()
+	rec, err := a.GetMatchByKey(matchKey)
+	if err != nil {
+		return err
+	}
+	return matchedit.ConfirmFieldReading(store, rec, field, shown)
+}
+
+// UnconfirmFieldReading re-opens a confirmed reading. Idempotent.
+func (a *App) UnconfirmFieldReading(matchKey string, field parser.FieldPath) error {
+	store, release, leaseErr := a.useStoreForWrite()
+	if leaseErr != nil {
+		return leaseErr
+	}
+	defer release()
+	return matchedit.UnconfirmFieldReading(store, matchKey, field)
 }
 
 // PinMatch stars a match — the list renders pinned matches in a leading

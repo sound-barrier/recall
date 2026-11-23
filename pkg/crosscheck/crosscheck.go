@@ -60,7 +60,8 @@ func registeredChecks() []match.CheckID {
 
 // Flags runs every check over g: one open flag per field that any check
 // found, listing every check that fired and every reading compared, each
-// once. Sorted by field; nil when the readings agree.
+// once, and holding the value the folded match keeps for the field. Sorted by
+// field; nil when the readings agree.
 func Flags(g Group) []match.FieldFlag {
 	byField := map[parser.FieldPath]*match.FieldFlag{}
 	for _, id := range registeredChecks() {
@@ -73,6 +74,7 @@ func Flags(g Group) []match.FieldFlag {
 	}
 	out := make([]match.FieldFlag, 0, len(byField))
 	for _, flag := range byField {
+		flag.Value = currentValue(g.Merged, flag.Field)
 		out = append(out, *flag)
 	}
 	slices.SortFunc(out, func(a, b match.FieldFlag) int { return strings.Compare(string(a.Field), string(b.Field)) })

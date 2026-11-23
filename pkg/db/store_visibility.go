@@ -29,7 +29,8 @@ func (s *SQLStore) UnhideMatch(matchKey string) error {
 // review row, the user override layer (user_match_data + children), the
 // queue / play-mode aux rows, the received coach layer (match_coach_notes +
 // tag children, and the return-sheet decisions that pointed at those notes),
-// the ambiguity surface, and the field evidence of the match's screenshots.
+// the ambiguity surface, the field evidence of the match's screenshots, and
+// the user's confirmations of its flagged readings.
 // Used by the Hidden drawer's Delete affordance —
 // once a user explicitly asks to forget a match, no trace stays in the DB.
 // Clearing user_match_data is essential for manual matches: their data lives
@@ -59,6 +60,7 @@ func (s *SQLStore) HardDeleteMatch(matchKey string) error {
 	for _, q := range []string{
 		`DELETE FROM hidden_matches WHERE match_key = ?`,
 		`DELETE FROM acknowledged_reference_gaps WHERE match_key = ?`,
+		`DELETE FROM confirmed_field_readings WHERE match_key = ?`,
 		`DELETE FROM match_annotations WHERE match_key = ?`,
 		`DELETE FROM match_moments WHERE match_key = ?`,
 		`DELETE FROM match_reviews WHERE match_key = ?`,

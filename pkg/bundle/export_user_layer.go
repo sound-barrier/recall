@@ -121,6 +121,12 @@ func sortedIncludedMoments(byKey map[string][]db.MatchMoment, include map[string
 // (user_layer_disclosure_test.go). The whole-DB backup/restore path
 // carries the ack for free; profiles.Move copies it because Move's phase 2
 // destroys the source.
+//
+// confirmed_field_readings stays out for the same reasons: a confirmation
+// is a verdict on THIS install's parse of a screenshot, bound to the value
+// that parse read, and the receiving install re-parses the screenshots with
+// its own parser (and raises its own flags). Backup/restore and Move carry
+// it, as they carry the ack.
 func loadBundleSidecars(store db.Store, include map[string]struct{}) (bundleUserLayer, error) {
 	userData, err := store.LoadAllUserMatchData()
 	if err != nil {

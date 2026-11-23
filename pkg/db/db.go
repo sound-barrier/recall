@@ -67,6 +67,7 @@ var matchKeyTables = []string{
 	"ambiguous_candidates",
 	"hidden_matches",
 	"acknowledged_reference_gaps",
+	"confirmed_field_readings",
 	"pinned_matches",
 	"match_annotations",
 	"match_moments",

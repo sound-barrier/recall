@@ -52,4 +52,11 @@ var (
 	ErrInvalidRank           = matchedit.ErrInvalidRank
 	ErrUnknownRank           = matchedit.ErrUnknownRank
 	ErrMatchKeyExists        = matchedit.ErrMatchKeyExists
+
+	// ErrNothingToConfirm — a confirmation names a field with no flag to
+	// confirm (or one an edit settled); 409.
+	ErrNothingToConfirm = matchedit.ErrNothingToConfirm
+	// ErrReadingChanged — a parse changed the flagged reading after the
+	// client showed it; 409.
+	ErrReadingChanged = matchedit.ErrReadingChanged
 )

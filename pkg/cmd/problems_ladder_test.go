@@ -91,12 +91,14 @@ var sentinels = []sentinel{
 	{"ErrMoveSplitsSelfReview", app.ErrMoveSplitsSelfReview, ""}, // re-export of a leaf sentinel; message owned there
 	{"ErrMoveTargetIsActive", app.ErrMoveTargetIsActive, ""},     // re-export of a leaf sentinel; message owned there
 	{"ErrNoParseInFlight", app.ErrNoParseInFlight, "no parse in flight"},
+	{"ErrNothingToConfirm", app.ErrNothingToConfirm, "no flagged reading to confirm"},
 	{"ErrNothingToReport", app.ErrNothingToReport, "no screenshots to report"},
 	{"ErrParseInFlight", app.ErrParseInFlight, "a parse is already in flight"},
 	{"ErrProfileActive", app.ErrProfileActive, ""},     // re-export of a leaf sentinel; message owned there
 	{"ErrProfileExists", app.ErrProfileExists, ""},     // re-export of a leaf sentinel; message owned there
 	{"ErrProfileNotFound", app.ErrProfileNotFound, ""}, // re-export of a leaf sentinel; message owned there
 	{"ErrProfileSwitchDuringParse", app.ErrProfileSwitchDuringParse, "profiles: a parse is in flight — retry when it finishes"},
+	{"ErrReadingChanged", app.ErrReadingChanged, "the flagged reading changed since it was shown"},
 	{"ErrRunNotCancelable", app.ErrRunNotCancelable, "the running operation cannot be canceled"},
 	{"ErrStoreSwapInProgress", app.ErrStoreSwapInProgress, "the database is being swapped — retry in a moment"},
 	{"ErrStoreUnavailable", app.ErrStoreUnavailable, "no database is open"},
@@ -264,6 +266,8 @@ func carvedSentinels() []carvedSentinel {
 		{"ErrInvalidPlayedAt", app.ErrInvalidPlayedAt, matchedit.ErrInvalidPlayedAt},
 		{"ErrInvalidRank", app.ErrInvalidRank, matchedit.ErrInvalidRank},
 		{"ErrMatchKeyExists", app.ErrMatchKeyExists, matchedit.ErrMatchKeyExists},
+		{"ErrNothingToConfirm", app.ErrNothingToConfirm, matchedit.ErrNothingToConfirm},
+		{"ErrReadingChanged", app.ErrReadingChanged, matchedit.ErrReadingChanged},
 		{"ErrRestoreInvalid", app.ErrRestoreInvalid, snapshot.ErrRestoreInvalid},
 		// The one carved sentinel whose alias is spelled differently from its
 		// leaf: pkg/cmd keeps naming ErrInvalidBackupInterval, and inside a

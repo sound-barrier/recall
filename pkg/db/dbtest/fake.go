@@ -33,6 +33,9 @@ type Fake struct {
 	// AckedReferenceGaps mirrors acknowledged_reference_gaps: match keys
 	// whose Unknown-tab gap warning the user dismissed.
 	AckedReferenceGaps map[string]bool
+	// ConfirmedReadings mirrors confirmed_field_readings: per match key, each
+	// confirmed field and the reading it was confirmed at.
+	ConfirmedReadings map[string]db.ConfirmedReadings
 
 	// UserMatchData maps match_key → the per-match user override layer
 	// (inline edits + hand-entered matches). Absence = pure OCR / no match.
@@ -202,6 +205,7 @@ func (f *Fake) Clear() error {
 	f.Hidden = nil
 	f.DuplicateLinks = nil
 	f.AckedReferenceGaps = nil
+	f.ConfirmedReadings = nil
 	f.Reviews = nil
 	f.Queues = nil
 	f.PlayModes = nil
@@ -309,8 +313,16 @@ func (f *Fake) HardDeleteMatch(matchKey string) error {
 	f.Personals = dropByMatchKey(f.Personals, matchKey)
 	f.Ranks = dropByMatchKey(f.Ranks, matchKey)
 	f.Unknowns = dropByMatchKey(f.Unknowns, matchKey)
+	f.dropSidecarsLocked(matchKey)
+	return nil
+}
+
+// dropSidecarsLocked forgets everything stored BESIDE the match's screenshot
+// rows, as SQLStore.HardDeleteMatch's per-key deletes do. Callers hold f.mu.
+func (f *Fake) dropSidecarsLocked(matchKey string) {
 	delete(f.Hidden, matchKey)
 	delete(f.AckedReferenceGaps, matchKey)
+	delete(f.ConfirmedReadings, matchKey)
 	delete(f.Annotations, matchKey)
 	delete(f.Reviews, matchKey)
 	delete(f.UserMatchData, matchKey)
@@ -329,7 +341,6 @@ func (f *Fake) HardDeleteMatch(matchKey string) error {
 			delete(f.DuplicateLinks, key)
 		}
 	}
-	return nil
 }
 
 func (f *Fake) LinkDuplicateMatches(matchKey, duplicateOf string) error {

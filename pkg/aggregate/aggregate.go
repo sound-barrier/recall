@@ -10,39 +10,14 @@ import (
 	"recall/pkg/parser"
 )
 
-// aggregateAll bulk-reads every screenshot row, groups by match_key,
-// folds each group into one match.Record via correlate.MergeMatchResult, and runs
-// the read-time inference helpers.
-//
-// Read-time only: never mutates DB rows. The same precedence rules
-// the old destructive merge applied at write time now run at read
-// time over the typed parent rows; raw per-screenshot data stays
-// available for replay (e.g. when a new SUMMARY arrives for an old
-// match that was teams-only).
-// reAggregateUnknowns walks every per-screenshot row whose canonical
-// hero/map is empty but whose raw OCR is preserved, re-runs the
-// parser's matchers against the CURRENT heroes.yaml / maps.yaml
-// rosters, and promotes any newly-recognized rows to canonical.
-//
-// Cheap pure-CPU pass — one in-memory matcher invocation per
-// unknown row, then one UPDATE per hit. ~2–5 s on a 500-match
-// corpus typical. Runs at App.Startup so a YAML release that adds
-// a new hero/map retroactively fixes the user's Unknown bucket
-// without forcing a Tesseract re-run.
-//
-// Forward-only: rows written before this feature shipped have
-// hero_raw=” / map_raw=” and participate in the walk only as
-// no-ops. To recover the older Mei-misattribution backlog,
-// Settings → Advanced → Re-parse all screenshots is the only
-// path (it re-runs Tesseract, which now correctly rejects the
-// short-name fuzzy match).
 // Sidecars bundles the user-layer maps that decorate an aggregated
 // record — annotation, hidden flag, review state, pinned flag, the
 // coach-received note blocks, and the player's own moments. They always
 // travel together (the data-clump rule), so they thread as one value
 // instead of six parallel parameters.
 //
-// Every map here has a bulk Attach* sibling in attach.go, and the two
+// Every map here has a bulk Attach* sibling (attach.go; flags.go for the
+// confirmations), and the two
 // paths must agree: a sidecar wired into only one of them renders on the
 // list read and blanks on the single-match refresh, which is what a
 // match-updated event triggers.
@@ -62,8 +37,22 @@ type Sidecars struct {
 	// from. Already symmetric when it arrives — the store reads each
 	// stored row from both ends.
 	DuplicateLinks map[string][]string
+	// FieldConfirmations: per match key, the flagged readings the user
+	// confirmed and the value each was confirmed at. A streamed record
+	// carries no user edits, so only these resolve its flags; an edit's
+	// resolution waits for the refetch, as the edited value itself does.
+	FieldConfirmations map[string]db.ConfirmedReadings
 }
 
+// MatchKey produces a single match.Record for the given
+// match_key, reading just its rows out of snap. Returns
+// (record, true) when at least one row matched; (_, false) when
+// nothing in snap references the key.
+//
+// Same precedence rules as Screenshots — this is the
+// per-key extract for the live-streaming "match-updated" event.
+// Inference helpers (InferSoleHeroPercent, InferResultFromRank)
+// are applied so the streamed shape matches GetMatchResults output.
 func MatchKey(key string, snap db.Screenshots, sc Sidecars) (match.Record, bool) {
 	vs := withEvidence(collectViewsForKey(snap, key), snap.FieldEvidence)
 	if len(vs) == 0 {
@@ -133,6 +122,7 @@ func attachMatchMarks(rec *match.Record, key string, sc Sidecars) {
 		rec.ReviewedBy = st.ReviewedBy
 		rec.ReviewedAt = st.ReviewedAt
 	}
+	resolveFlags(rec, sc.FieldConfirmations[key])
 }
 
 // attachMatchWriting applies the prose families — a coach's returned

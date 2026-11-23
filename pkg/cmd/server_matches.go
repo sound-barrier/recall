@@ -33,15 +33,17 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	registerLiteralPath(apiMux, "/api/v1/matches/queue", http.MethodPut)
 
 	// Per-{match_key} sub-resource handlers live in server_matches_item.go.
-	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}", handleHardDeleteMatch(a))
+	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}", noContentForKey(a.HardDeleteMatch))
 	apiMux.HandleFunc("GET /api/v1/matches/{match_key}", handleGetMatchByKey(a))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/visibility", handleSetMatchVisibility(a))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/pin", handleSetMatchPin(a))
-	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/reference-gap-acknowledgement", handleAcknowledgeReferenceGap(a))
-	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/reference-gap-acknowledgement", handleUnacknowledgeReferenceGap(a))
+	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/reference-gap-acknowledgement", noContentForKey(a.AcknowledgeReferenceGap))
+	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/reference-gap-acknowledgement", noContentForKey(a.UnacknowledgeReferenceGap))
+	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/field-confirmations/{field}", handleConfirmFieldReading(a))
+	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/field-confirmations/{field}", handleUnconfirmFieldReading(a))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/resolution", handleResolveMatch(a))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/annotation", handleSetMatchAnnotation(a))
-	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/annotation", handleDeleteMatchAnnotation(a))
+	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/annotation", noContentForKey(a.DeleteMatchAnnotation))
 	// Attachments live outside the match namespace on purpose: they are
 	// content-addressed, so one upload can be pointed at by any moment on any
 	// match — and by a coach's, later.
@@ -49,13 +51,13 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/moments/{moment_id}", handleSetMatchMoment(a))
 	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/moments/{moment_id}", handleDeleteMatchMoment(a))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/data", handleUpdateMatchData(a))
-	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/data", handleResetMatchData(a))
+	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/data", noContentForKey(a.ResetMatchData))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/review", handleSetMatchReview(a))
-	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/review", handleClearMatchReview(a))
+	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/review", noContentForKey(a.ClearMatchReview))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/queue", handleSetMatchQueue(a))
-	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/queue", handleClearMatchQueue(a))
+	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/queue", noContentForKey(a.ClearMatchQueue))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/play-mode", handleSetMatchPlayMode(a))
-	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/play-mode", handleClearMatchPlayMode(a))
+	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/play-mode", noContentForKey(a.ClearMatchPlayMode))
 
 	apiMux.HandleFunc("PUT /api/v1/matches/queue", handleBulkSetMatchQueue(a))
 	apiMux.HandleFunc("PUT /api/v1/matches/play-mode", handleBulkSetMatchPlayMode(a))

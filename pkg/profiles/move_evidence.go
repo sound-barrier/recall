@@ -53,3 +53,16 @@ func collectMovedFiles[T any](out map[db.FileRef]bool, rows []T, keep map[string
 		out[db.FileRef{DirID: dirID, Filename: filename}.Filed()] = true
 	}
 }
+
+// copyFieldConfirmations reproduces one match's confirmed readings on the
+// target, each with the value it was confirmed at. Part of phase 1's copy set
+// because HardDeleteMatch wipes them, and a lost confirmation re-opens a flag
+// the user already looked at.
+func copyFieldConfirmations(targetStore db.Store, k string, confirmed db.ConfirmedReadings) error {
+	for field, value := range confirmed {
+		if err := targetStore.ConfirmFieldReading(k, field, value); err != nil {
+			return fmt.Errorf("move: copy confirmation of %s for %q: %w", field, k, err)
+		}
+	}
+	return nil
+}

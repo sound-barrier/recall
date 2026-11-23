@@ -202,6 +202,30 @@ they are not in `matchKeyTables`.
   the whole-DB backup; **not** by export/coach bundles — the screenshots ride
   along and a re-parse on the far side rebuilds it with that install's parser.
 
+## Confirmed readings: keyed by the match, bound to a value
+
+`confirmed_field_readings(match_key, field, confirmed_value, confirmed_at)`
+records the user's "Confirm as read" on a flagged field (the flags themselves
+are never stored — `pkg/crosscheck` raises them at read time).
+`confirmed_value` is the reading the user looked at, taken server-side from
+`FieldFlag.value` (`matchedit.ConfirmFieldReading`); the client sends the
+value it showed only as a precondition, and a parse that changed the reading
+in between is refused (`ErrReadingChanged`, 409). The `field` CHECK uses
+`GLOB 'data.*'`, not `LIKE`, which ignores ASCII case.
+`aggregate.AttachFieldResolutions` (after `AttachUserData`) sets each flag's
+state: **edited** when an `EditedFields` entry is the field, a collection
+holding it (prefix at a `.` boundary), or an edit that clears it (`clearedBy`:
+a rank or level edit drops the rank percentile), **confirmed** when the stored
+value equals the value the match reads now, else **open** — so a re-parse that
+reads something else re-opens it. The single-match read gets the same via
+`Sidecars.FieldConfirmations`; `coach.BuildRecords` runs it with no
+confirmations, so a coach sees edited flags settled.
+
+- Keyed by `match_key`, so it is in `matchKeyTables` (a rename carries it)
+  and wiped by `Clear` and `HardDeleteMatch`; `profiles.Move` copies it.
+- **Not** in export/coach bundles, like `acknowledged_reference_gaps`: a
+  verdict on this install's parse, which the receiving install redoes.
+
 ## One unit across several methods: `InTransaction`
 
 A write that spans several Store methods (a bundle import, a Dismiss) runs

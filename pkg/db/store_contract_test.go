@@ -8,6 +8,7 @@ import (
 
 	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
+	"recall/pkg/parser"
 )
 
 // Contract suite: every assertion here runs against BOTH Store
@@ -80,6 +81,7 @@ func seedFullMatch(t *testing.T, s db.Store, key, filename string) {
 	mustNoErr(t, s.SetMatchQueue(key, "role"))
 	mustNoErr(t, s.SetMatchPlayMode(key, "competitive"))
 	mustNoErr(t, s.HideMatch(key))
+	mustNoErr(t, s.ConfirmFieldReading(key, parser.ScalarPath("eliminations"), "74"))
 	mustNoErr(t, s.LinkDuplicateMatches(key, "match-2026-01-01T09-00-00"))
 	mapName := "dorado"
 	mustNoErr(t, s.UpsertUserMatchData(db.UserMatchData{MatchKey: key, Map: &mapName}))
@@ -135,9 +137,6 @@ func assertNoTraceRemains(t *testing.T, s db.Store) {
 	if pms, _ := s.LoadMatchPlayModes(); len(pms) != 0 {
 		t.Errorf("play mode survived: %v", pms)
 	}
-	if hidden, _ := s.LoadHiddenKeys(); len(hidden) != 0 {
-		t.Errorf("hidden flag survived: %v", hidden)
-	}
 	if ud, _ := s.LoadAllUserMatchData(); len(ud) != 0 {
 		t.Errorf("user data survived: %v", ud)
 	}
@@ -147,7 +146,20 @@ func assertNoTraceRemains(t *testing.T, s db.Store) {
 	if notes, _ := s.LoadMatchCoachNotes(); len(notes) != 0 {
 		t.Errorf("received coach notes survived: %v", notes)
 	}
+	assertNoMarksRemain(t, s)
 	assertNoReviewFamilyTraceRemains(t, s)
+}
+
+// assertNoMarksRemain sweeps the user's marks on the match: the hidden flag
+// and the confirmations of its flagged readings.
+func assertNoMarksRemain(t *testing.T, s db.Store) {
+	t.Helper()
+	if hidden, _ := s.LoadHiddenKeys(); len(hidden) != 0 {
+		t.Errorf("hidden flag survived: %v", hidden)
+	}
+	if confirmed, _ := s.LoadFieldConfirmations(); len(confirmed) != 0 {
+		t.Errorf("field confirmation survived: %v", confirmed)
+	}
 }
 
 // assertNoReviewFamilyTraceRemains sweeps two surfaces the original sweep
@@ -219,6 +231,9 @@ func assertClearedSurfaces(t *testing.T, s db.Store) {
 	assertRecognizedRegistriesCleared(t, s)
 	if ud, _ := s.LoadAllUserMatchData(); len(ud) != 0 {
 		t.Errorf("user data survived Clear: %v", ud)
+	}
+	if confirmed, _ := s.LoadFieldConfirmations(); len(confirmed) != 0 {
+		t.Errorf("field confirmations survived Clear: %v", confirmed)
 	}
 	if notes, _ := s.LoadMatchCoachNotes(); len(notes) != 0 {
 		t.Errorf("received coach notes survived Clear: %v", notes)

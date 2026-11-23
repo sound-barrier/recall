@@ -25,7 +25,8 @@ var ErrMoveTargetIsActive = errors.New("move target is the active profile")
 //     aux rows — a manual match or an edited OCR match lives entirely
 //     there) + every annotation + the hidden_matches, pinned_matches and
 //     acknowledged_reference_gaps flags + the review status + the
-//     accepted coach-note blocks + each moved screenshot's field evidence.
+//     accepted coach-note blocks + each moved screenshot's field evidence +
+//     the confirmations of its flagged readings.
 //     Filenames carry over verbatim so a future re-parse of the same
 //     source PNG on the new profile is a no-op.
 //  2. Hard-delete the rows on src. Per-key HardDeleteMatch so a
@@ -219,6 +220,7 @@ func loadMoveSource(src db.Store) (moveSource, error) {
 		{"duplicate links", func() (err error) { out.dupLinks, err = src.LoadAllDuplicateLinks(); return }},
 		{"match keys", func() (err error) { out.matchKeys, err = src.LoadMatchKeys(); return }},
 		{"field evidence", func() (err error) { out.evidence, err = src.LoadFieldEvidence(); return }},
+		{"field confirmations", func() (err error) { out.confirmations, err = src.LoadFieldConfirmations(); return }},
 	} {
 		if err := load.fn(); err != nil {
 			return moveSource{}, fmt.Errorf("move: load %s: %w", load.what, err)
@@ -249,6 +251,9 @@ type moveSource struct {
 	matchKeys map[string]bool
 	// Each screenshot's field evidence, keyed by its SOURCE folder id.
 	evidence map[db.FileRef]db.ScreenshotEvidence
+	// Each match's confirmed readings, each with the value it was confirmed
+	// at, so the flag stays resolved on the target only while it reads the same.
+	confirmations map[string]db.ConfirmedReadings
 	// The source store itself, for the one thing a snapshot cannot hold
 	// cheaply: image BYTES. Loading every attachment up front would pull a
 	// whole profile's screenshots into memory to move three matches, so the
@@ -413,6 +418,9 @@ func copyMatchSidecars(targetStore db.Store, k string, src moveSource) error {
 		return err
 	}
 	if err := copyDuplicateLinks(targetStore, k, src.dupLinks[k]); err != nil {
+		return err
+	}
+	if err := copyFieldConfirmations(targetStore, k, src.confirmations[k]); err != nil {
 		return err
 	}
 	return copyCoachNotes(targetStore, k, src.coachNotes[k])
