@@ -212,7 +212,18 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # store), the shared swap hold, and the settings store's cache-backed values.
 # All of it lives in stores and chrome that boot with the app, so none of it
 # can be lazy. +7500B over a main that measured 222496B. Measured 229996B.
-: "${MAX_INITIAL_APP_JS_BYTES:=231000}"
+# 2026-11: 231000 -> 234500 -- the flagged-reading review's eager slice:
+# field-flags.ts, which the matches store runs at boot to leave every openly
+# flagged reading out of the records (a misread must never reach a stat, so
+# it cannot wait for a lazy chunk), the store's flag lists and counts, the
+# Unknown tab badge counting open flags, the ui store's as-read selection
+# and section hand-off, and the api facades for three new routes. The
+# review itself -- its section and card, the dossier notice, the crop
+# geometry and the edit rules -- is lazy. The first cut also carried the
+# whole override editor (2138B) into the entry graph through one statPath
+# import from field-flags; that path is now spelled in place. +3271B over a
+# main that measured 230096B. Measured 233367B.
+: "${MAX_INITIAL_APP_JS_BYTES:=234500}"
 : "${MAX_INITIAL_VENDOR_JS_BYTES:=160000}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
@@ -483,7 +494,13 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # initial-JS note above, plus its lazy readers (first-run modal union, export
 # and replay-code dialogs, the candidate picker). +10487B over a main that
 # measured 1097328B. Measured 1107815B.
-: "${MAX_TOTAL_APP_JS_BYTES:=1109000}"
+# 2026-11: 1109000 -> 1130000 -- the flagged-reading review: the same
+# eager slice as the initial-JS note above, plus its lazy surfaces (the
+# Unknown tab's review section and card, the dossier notice, the source
+# crop beside each read value, the crop geometry and crop sources, the
+# confirm/edit rules and field labels, the field-regions query). +20676B
+# over a main that measured 1108243B. Measured 1128919B.
+: "${MAX_TOTAL_APP_JS_BYTES:=1130000}"
 : "${MAX_TOTAL_VENDOR_JS_BYTES:=1224000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
