@@ -15,7 +15,7 @@ paths:
 | `docs/how-it-works.md` | Gamers | Pipeline overview + workflow + the four screenshot types. Anchors the book's "Using Recall" section. |
 | `docs/settings-reference.md` | Gamers | Every Settings + Parse tab field. Source of truth for "what does this knob do?". |
 | `docs/filtering.md` | Gamers | Matches tab filter rail end-to-end. |
-| `docs/unknown-screenshots.md` | Gamers | Unknown tab triage: 4 causes + diagnostic strip + recovery paths. |
+| `docs/unknown-screenshots.md` | Gamers | Unknown tab triage: 4 missing-map causes + diagnostic strip + recovery paths, plus flagged readings (cross-check doubts, left out of stats until settled). |
 | `docs/feedback.md` | Gamers | Bug/feature pointer to `.github/ISSUE_TEMPLATE/*.yml` + security-advisory channel. |
 | `docs/faq.md` | Gamers | Standing questions that keep arriving through feedback. |
 | `docs/reading-your-climb.md` | Gamers | How to read the Elo/standing surfaces without over-reading them. |

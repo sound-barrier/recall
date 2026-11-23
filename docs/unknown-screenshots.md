@@ -5,7 +5,7 @@ match records Recall couldn't fully resolve. If everything parsed
 cleanly the tab title reads "All screenshots resolved." and the
 view is empty.
 
-The tab surfaces two kinds of records:
+The tab surfaces three kinds of records:
 
 1. **Needs your review** — screenshots the resolver couldn't pin
    to a single match. Statistics (eliminations / assists / deaths)
@@ -20,6 +20,10 @@ The tab surfaces two kinds of records:
    all. Each gets a card with an amber left bar, an internal
    `match_key`, and a per-field diagnostic strip showing which
    fields the parser could and couldn't extract.
+3. **Flagged readings** — matches that parsed fine, but where one
+   field's readings disagree with each other, so Recall keeps that
+   field out of your stats until you look at it. See
+   [Flagged readings](#flagged-readings) below.
 
 ## Why a record ends up here
 
@@ -34,6 +38,11 @@ the Matches list. The four most common causes:
 | **Captured only PERSONAL** (no SUMMARY) | Hero stats populated, but no match context. |
 | **A non-Overwatch PNG in the watched folder** | Most fields blank, parser gave up. |
 | **Genuine OCR failure on a SUMMARY** | Map field came out garbled enough that the map-snap-to-known-list step rejected it. Rare on modern Tesseract but happens on borderline screenshots (heavy compression, weird HDR, ultrawide aspect ratios). |
+
+A match can also show up here **with its map read**: when a
+cross-check doubts one of its readings. That is a flagged reading,
+not a missing map, and it has its own section; see
+[Flagged readings](#flagged-readings) below.
 
 ## What a record card shows you
 
@@ -133,9 +142,9 @@ parser reads your screenshots:
   misread or an Unknown record.
 - **Keep Overwatch's default UI colors.** The parser is tuned to the
   stock color scheme — it finds your scoreboard row by its blue
-  highlight and detects the magenta COMPETITIVE badge — so non-default
-  colourblind palettes can break detection. Only default colors are
-  known to work.
+  highlight and counts each team's players by the blue and red
+  scoreboard rows — so non-default colorblind palettes can break
+  detection. Only default colors are known to work.
 
 ### Verify the SUMMARY actually parsed
 
@@ -312,9 +321,63 @@ because you played the matches. The ambiguity surface is the
 honest answer: a heuristic that picks wrong is worse than a
 prompt that asks.
 
+## Flagged readings
+
+Most screenshots read some facts twice. A SUMMARY card prints a
+total *and* a per-10-minute rate, the SUMMARY and the scoreboard
+both carry your eliminations, assists and deaths, and a rank screen
+says which way the rank moved as well as whether you won. Recall
+also reads the stat digits a second time by matching them against
+reference images. When two readings of the same field disagree, or a
+value is one no match can produce, the field is **flagged**.
+
+A flag never decides which reading is right. Instead, the flagged
+field is **left out of your stats** (KDA, K/D, win rate and the
+other rollups) until you settle it, so one misread total can't
+quietly skew them. Eliminations, assists and deaths leave together,
+because every ratio over them needs all three. The match itself
+stays on the Matches list, and its detail panel marks the field
+"Left out of stats — needs review". A **Needs a look** notice on the
+Matches tab says how many fields are left out, and its **Review
+flagged readings** button brings you here.
+
+The **Flagged readings** section lists one card per flag. Each card
+shows:
+
+- **What the match reads** for the field now.
+- **Why it was flagged**, in a line per check (for example, "The
+  total disagrees with its own per-10-minute rate over the time
+  played").
+- **Every reading it compared**, and where each came from: read by
+  OCR, matched by the reference images, or worked out from other
+  numbers on the screenshot.
+- **A crop of the screenshot region** the field was read from, so
+  you can check the number against the pixels without opening the
+  file. A card with no crop asks for **Re-parse all** (Settings →
+  Advanced), which records where each field was read.
+
+Three ways to settle a card:
+
+- **Confirm as read** — the value is right. The confirmation is tied
+  to that value: if a later re-parse reads something else, the flag
+  opens again.
+- **Use** another reading — each different value the card compared
+  gets its own button (for example, **Use 9**); pressing one saves
+  that value as your edit of the field.
+- **Edit** — neither is right; type the correct value.
+
+Settled cards move under **N reviewed**, where a confirmation can be
+re-opened. A field you fix by editing stays settled until you revert
+the edit in the match. A few fields (who was played, a hero's share,
+the rank percentile, a rank card's SR) offer **Confirm as read**
+only; change those in the match's own detail panel if they're wrong.
+
+The same crops are in the match detail: **Show source** beside a
+read value opens the regions it was read from.
+
 ## Reference data gaps
 
-A third section on the Unknown tab — **Reference data gaps** —
+Another section on the Unknown tab — **Reference data gaps** —
 lists every record whose hero or map text Recall captured but
 couldn't pin to the canonical roster shipped with this release.
 

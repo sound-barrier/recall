@@ -32,9 +32,9 @@ The rest of this chapter is the pipeline that fills those views.
 
 You play a comp match. After it ends, you tab through the post-match
 screens (SUMMARY, TEAMS screen, PERSONAL tab) and press the
-in-game **Print Screen** binding on each. Overwatch saves the PNG
-files into your screenshots folder. Recall watches that folder, runs each
-new PNG through Tesseract OCR to read the on-screen text, classifies
+in-game **Print Screen** binding on each (or your capture tool's
+key). The screenshots land in your screenshots folder. Recall watches
+that folder, runs each new screenshot through Tesseract OCR to read the on-screen text, classifies
 it by screenshot type (rank / summary / teams / personal),
 extracts the fields it can (map, mode, hero, eliminations, deaths,
 SR change, …), and folds 3–5 screenshots from the same match into
@@ -135,8 +135,8 @@ That's it for setup. **Settings → Engine** should now show
 ### Day-to-day
 
 1. **Play matches and capture post-game screens.** Bind a screenshot
-   key in Overwatch (Options → Controls → Take Screenshot — most
-   people use **Print Screen** or **F12**). **Capture on the post-match
+   key in Overwatch (Options → Controls; Overwatch's default is
+   **Print Screen**, and Steam's overlay uses **F12**). **Capture on the post-match
    screens, not mid-game**: the post-match SUMMARY is the one that
    carries the map, result, and finish time Recall uses to pin a match
    and tell two apart, so it's the anchor everything else attaches to
@@ -232,8 +232,9 @@ Overwatch's default colors.** Of the sources above, the **Nvidia overlay** and t
 default** and **Steam's F12** save JPG, and heavy JPG compression blurs the
 small text — a badly-compressed capture can miss classification and land in
 the **Unknown** tab. The OCR is also tuned to Overwatch's **stock UI colors** (it locates
-your scoreboard row by its blue highlight and detects the magenta COMPETITIVE
-badge), so non-default **colourblind palettes** can break detection — only the
+your scoreboard row by its blue highlight and counts each team's players
+by the blue and red scoreboard rows), so non-default **colorblind palettes**
+can break detection — only the
 default colors are known to work.
 
 A fifth source can be added by editing
