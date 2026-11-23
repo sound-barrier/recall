@@ -3,6 +3,7 @@ package parser
 import (
 	"image"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -28,8 +29,8 @@ func rankSRPanel(img image.Image, work string, res *MatchResult) {
 		// threshold keeps the white hero names and SR digits; the red/green
 		// change digits do not survive it, so those changes stay unread (nil)
 		// rather than picking up a neighbor's stray digit.
-		occluded, _ := ocrThreshold(img, srRect, ocrSpec{workDir: work, name: "rank_sr_occluded", scale: 3, thresh: 235, psm: "11"})
-		res.SR = withoutChanges(extractSR(occluded))
+		srText, _ = ocrThreshold(img, srRect, ocrSpec{workDir: work, name: "rank_sr_occluded", scale: 3, thresh: 235, psm: "11"})
+		res.SR = withoutChanges(extractSR(srText))
 	}
 	for _, card := range res.SR {
 		if card.SR != 0 {
@@ -39,6 +40,7 @@ func rankSRPanel(img image.Image, work string, res *MatchResult) {
 	if anyZeroSR(res.SR) {
 		backfillSRDigits(res, img, work)
 	}
+	crossCheckSRCards(img, res, srText)
 	if len(res.SR) > 0 {
 		res.Hero = res.SR[0].Hero
 		res.recordEvidence(img, ScalarPath("hero"), srRect)
@@ -77,8 +79,8 @@ func extractSR(text string) []HeroSR {
 	}
 	cards := make([]card, 0, len(heroes))
 	for _, h := range heroes {
-		at := strings.Index(lower, h)
-		if at < 0 {
+		at, placed := srNameOffset(lower, h)
+		if !placed {
 			at = len(lower) // unmatched name → sort last, claims the trailing window
 		}
 		cards = append(cards, card{h, at})
@@ -109,6 +111,14 @@ func extractSR(text string) []HeroSR {
 		out = append(out, entry)
 	}
 	return out
+}
+
+// srNameOffset is where hero's name starts in the panel text, folded by
+// asciiLower. A name extractHeroes recognized only once its diacritics were
+// stripped ("LÚCIO") is not found, and is not placed.
+func srNameOffset(lower, hero string) (int, bool) {
+	at := strings.Index(lower, hero)
+	return at, at >= 0
 }
 
 // asciiLower folds A-Z byte for byte, leaving every other byte alone.
@@ -218,4 +228,114 @@ func srFromRun(run string) int {
 		}
 	}
 	return 0
+}
+
+// crossCheckSRCards tightens each SR card's evidence from the panel to the
+// card's digits, with what the digit templates read there. Cards pair with res.SR in
+// reading order, so only when that order is the cards' own: every name was
+// found where panelText printed it (extractSR sorts one it cannot place
+// last), and the frames found match the cards read one for one, since a card
+// whose name OCR missed would shift every pairing below it.
+func crossCheckSRCards(img image.Image, res *MatchResult, panelText string) {
+	cards := srCards(img)
+	if len(cards) != len(res.SR) || !everySRNamePlaced(panelText, res.SR) {
+		return
+	}
+	for i, card := range cards {
+		if box, ok := srDigitBox(img, card); ok && res.SR[i].SR != 0 {
+			res.recordCrossChecked(img, SRPath(res.SR[i].Hero), box, numberTemplate(img, box))
+		}
+	}
+}
+
+func everySRNamePlaced(panelText string, sr []HeroSR) bool {
+	lower := asciiLower(panelText)
+	return !slices.ContainsFunc(sr, func(card HeroSR) bool {
+		_, placed := srNameOffset(lower, card.Hero)
+		return !placed
+	})
+}
+
+// srCards finds each SR card's portrait, top to bottom, by the cyan hexagon
+// framing it. A column through the frame's left flat side crosses one cyan
+// run per card; on a pointy-top hexagon that side is half the height, so the
+// run (76 px at 1440p) is centered on a portrait 135 px tall and 117 wide.
+func srCards(img image.Image) []image.Rectangle {
+	w, h := img.Bounds().Dx(), img.Bounds().Dy()
+	x := w * 2350 / 2560
+	sides := inkSpans(h, func(y int) bool {
+		return isFrameCyan(img, x-1, y) || isFrameCyan(img, x, y) || isFrameCyan(img, x+1, y)
+	})
+	var cards []image.Rectangle
+	for _, side := range sides {
+		if side.length() < h*40/1440 {
+			continue // a fleck of cyan in the hero art, not a frame
+		}
+		height, width := side.length()*135/76, side.length()*117/76
+		left, top := w*2355/2560, (side.from+side.to)/2-height/2
+		cards = append(cards, image.Rect(left, top, left+width, top+height))
+	}
+	return cards
+}
+
+func isFrameCyan(img image.Image, x, y int) bool {
+	r, g, b, _ := img.At(x, y).RGBA()
+	r8, g8, b8 := r>>8, g>>8, b>>8
+	return r8 < 60 && g8 > 150 && g8 < 230 && b8 > 220
+}
+
+// srDigitCount is how many digits an SR prints: srValueRe reads exactly four.
+const srDigitCount = 4
+
+// srDigitBox is a card's SR digits. The card stacks hero name, SR and change
+// left of the portrait, and the SR's row, led by the rank icon, is the
+// tallest band of ink in that text column. Within the row the icon stands
+// taller than the digits, or as tall, and a column of placement pips may
+// trail them; the pips are stacked squares, never solid. So the SR is the
+// last four solid blobs of the row's common height, when all four are
+// digit-shaped: an icon fused to the first digit is not, and leaves the card
+// unchecked.
+func srDigitBox(img image.Image, card image.Rectangle) (image.Rectangle, bool) {
+	w := card.Dx()
+	text := image.Rect(card.Min.X-w*150/117, card.Min.Y, card.Min.X-w*50/117, card.Max.Y)
+	band, ok := newInkGrid(img, text).tallestBand()
+	if !ok {
+		return image.Rectangle{}, false
+	}
+	row := image.Rect(card.Min.X-w*3/2, band.Min.Y, card.Min.X-w/10, band.Max.Y)
+	digits := commonHeightBlobs(newInkGrid(img, row).blobs())
+	if len(digits) < srDigitCount {
+		return image.Rectangle{}, false
+	}
+	var box image.Rectangle
+	for _, d := range digits[len(digits)-srDigitCount:] {
+		if d.Dx() > d.Dy() {
+			return image.Rectangle{}, false
+		}
+		box = box.Union(d)
+	}
+	return box.Inset(-inkPad(img)), true
+}
+
+// commonHeightBlobs keeps the solid blobs within a fifth of the median solid
+// blob's height: the digits, which outnumber whatever else shares their row.
+func commonHeightBlobs(blobs []blob) []image.Rectangle {
+	var solid []image.Rectangle
+	for _, b := range blobs {
+		if b.solid {
+			solid = append(solid, b.box)
+		}
+	}
+	if len(solid) == 0 {
+		return nil
+	}
+	heights := make([]int, len(solid))
+	for i, b := range solid {
+		heights[i] = b.Dy()
+	}
+	slices.Sort(heights)
+	median := heights[len(heights)/2]
+	return slices.DeleteFunc(solid, func(b image.Rectangle) bool {
+		return 5*max(b.Dy()-median, median-b.Dy()) > median
+	})
 }

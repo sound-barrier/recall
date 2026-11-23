@@ -38,14 +38,25 @@ Every reading records the screenshot region its ACCEPTED pass came from on
 `MatchResult.Evidence` (`evidence.go`), keyed by the same `FieldPath`
 vocabulary the override system marks (`ScalarPath`, `HeroStatPath`,
 `HeroPercentPath`, `SRPath`). A reader that tries several bands records the
-band whose reading it kept, not the first it tried. Only a value the pixels
-produced records a region: a 0 read off the screen does, the 0 left behind when
-no pass read anything does not. `Evidence` and `ImageSize` are `json:"-"`, so
-goldens never carry them; `TestParseScreenshot_EvidenceCoversReadFields` holds
-the invariant over the corpus instead. That test checks only the fields its
-per-type `readFields` builders list (`integration_test.go`), so a new field a
-parser reads must record its region AND be added to its type's builder — a
-field missing from the builder is not checked.
+band whose reading it kept, not the first it tried. Where the parser can find
+the value's own ink inside that band it records that tighter box instead: the
+SUMMARY E/A/D totals (`perfTotalBox`) and each rank card's four SR digits
+(`srDigitBox`). Only a value the pixels produced records a region: a 0 read
+off the screen does, the 0 left behind when no pass read anything does not.
+
+Beside the region, `FieldEvidence.Template` holds what `pkg/glyphs`' digit
+references read there — TEAMS stat cells, SUMMARY totals and each rank card's
+SR — or nil when no reference matches with confidence. It is a cross-check only
+and never changes the value OCR read. A rank card's SR pairs with `res.SR` in
+reading order, so it is skipped when the card frames found and the names read
+disagree in count or a name could not be placed in the panel text.
+
+`Evidence` and `ImageSize` are `json:"-"`, so goldens never carry them;
+`TestParseScreenshot_EvidenceCoversReadFields` holds the invariant over the
+corpus instead. That test checks only the fields its per-type `readFields`
+builders list (`integration_test.go`), so a new field a parser reads must
+record its region AND be added to its type's builder — a field missing from the
+builder is not checked.
 
 ## OCR fragility patterns
 

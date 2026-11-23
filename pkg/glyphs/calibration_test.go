@@ -47,13 +47,13 @@ var goldenMisreads = map[string]int{
 // agreementFloors are the fewest reads on each screen that must be accepted
 // and agree with their golden, set two below the count measured when they
 // were last ratcheted. A matcher change that leaves reads rejected or
-// unscorable, or a lane that finds no goldens, falls below one.
+// unscorable, a locator that drifts off the value, or a lane that finds no
+// goldens, falls below one.
 var agreementFloors = map[string]int{
 	"teams":   46,
 	"summary": 78,
+	"rank":    60,
 }
-
-var teamsStatFields = []string{"eliminations", "assists", "deaths", "damage", "healing", "mitigation"}
 
 // numberRead is one template read beside the value its golden holds.
 type numberRead struct {
@@ -69,29 +69,29 @@ func (r numberRead) accepted() bool {
 
 func (r numberRead) agrees() bool { return r.scored && r.got.Value == r.golden }
 
+// TestCalibration_DigitsAgainstGoldens scores, on every TEAMS, SUMMARY and
+// rank screenshot, each number region the parser recorded evidence for: the
+// TEAMS stat cells, the SUMMARY totals and the rank SR digits.
 func TestCalibration_DigitsAgainstGoldens(t *testing.T) {
 	imageDir, goldenDir := requireCalibrationLane(t)
 	refsFor := digitRefsLeavingOutSource(t)
 	byScreen := map[string][]numberRead{}
 	for _, name := range fixtureNames(t, imageDir) {
 		golden, ok := readGolden(t, goldenDir, name)
-		if !ok {
+		if !ok || !slices.Contains(numberScreens, golden.ScreenshotType) {
 			continue
 		}
 		img := decodeFixture(t, filepath.Join(imageDir, name))
-		refs := refsFor(name)
-		switch golden.ScreenshotType {
-		case "teams":
-			byScreen["teams"] = append(byScreen["teams"], teamsReads(t, refs, img, imageDir, name, golden)...)
-		case "summary":
-			byScreen["summary"] = append(byScreen["summary"], summaryReads(refs, img, name, golden)...)
-		}
+		res := parseFixture(t, imageDir, name)
+		byScreen[golden.ScreenshotType] = append(byScreen[golden.ScreenshotType], numberReads(refsFor(name), img, name, golden, res)...)
 	}
-	for _, screen := range []string{"teams", "summary"} {
+	for _, screen := range numberScreens {
 		reportNumberReads(t, screen, byScreen[screen])
 	}
-	checkGoldenMisreads(t, slices.Concat(byScreen["teams"], byScreen["summary"]))
+	checkGoldenMisreads(t, slices.Concat(byScreen["teams"], byScreen["summary"], byScreen["rank"]))
 }
+
+var numberScreens = []string{"teams", "summary", "rank"}
 
 // digitRefsLeavingOutSource returns the references to read each fixture
 // with: the embedded set, less any digit cut from that fixture, since a glyph
@@ -128,81 +128,67 @@ func addDigitCut(t *testing.T, refs *glyphs.References, e refEntry, path string)
 	}
 }
 
-// teamsReads scores every TEAMS stat cell the parser recorded a region for.
-func teamsReads(t *testing.T, refs *glyphs.References, img image.Image, imageDir, name string, golden goldenFile) []numberRead {
+// numberReads scores every number region the parser recorded evidence for
+// whose golden holds a value: the region is the parser's own, so this
+// measures the cross-check exactly as a parse runs it.
+func numberReads(refs *glyphs.References, img image.Image, name string, golden goldenFile, res *parser.MatchResult) []numberRead {
+	var reads []numberRead
+	for _, ev := range res.Evidence {
+		want, ok := golden.number(ev.Field)
+		if !ok {
+			continue
+		}
+		got, scored := glyphs.ScoreNumber(refs, img, ev.Rect)
+		where := name + " " + strings.TrimPrefix(string(ev.Field), "data.")
+		reads = append(reads, numberRead{where: where, golden: want, got: got, scored: scored})
+	}
+	return reads
+}
+
+// numberFields are the top-level fields the templates read digits for.
+var numberFields = []string{"eliminations", "assists", "deaths", "damage", "healing", "mitigation"}
+
+// number is the golden's value for a number field the templates read: a
+// TEAMS or SUMMARY stat, or a rank card's SR.
+func (g goldenFile) number(field parser.FieldPath) (int, bool) {
+	name, _ := strings.CutPrefix(string(field), "data.")
+	if slices.Contains(numberFields, name) {
+		value, ok := g.Result[name].(float64)
+		return int(value), ok
+	}
+	for _, card := range g.srCards() {
+		if parser.SRPath(card.hero) == field {
+			return card.sr, true
+		}
+	}
+	return 0, false
+}
+
+type goldenSRCard struct {
+	hero string
+	sr   int
+}
+
+// srCards is the golden's rank SR cards, top to bottom.
+func (g goldenFile) srCards() []goldenSRCard {
+	entries, _ := g.Result["sr"].([]any)
+	var cards []goldenSRCard
+	for _, entry := range entries {
+		fields, _ := entry.(map[string]any)
+		hero, _ := fields["hero"].(string)
+		sr, _ := fields["sr"].(float64)
+		cards = append(cards, goldenSRCard{hero: hero, sr: int(sr)})
+	}
+	return cards
+}
+
+func parseFixture(t *testing.T, imageDir, name string) *parser.MatchResult {
 	t.Helper()
 	res, err := parser.ParseScreenshot(filepath.Join(imageDir, name))
 	if err != nil {
 		t.Fatalf("ParseScreenshot(%s): %v", name, err)
 	}
-	var reads []numberRead
-	for _, ev := range res.Evidence {
-		field, isStat := strings.CutPrefix(string(ev.Field), "data.")
-		want, hasGolden := golden.Result[field].(float64)
-		if !isStat || !hasGolden || !slices.Contains(teamsStatFields, field) {
-			continue
-		}
-		got, scored := glyphs.ScoreNumber(refs, img, ev.Rect)
-		reads = append(reads, numberRead{where: name + " " + field, golden: int(want), got: got, scored: scored})
-	}
-	return reads
-}
-
-// summaryReads scores the big total on each SUMMARY performance card. The
-// parser records only the whole column for these, so the box is found here:
-// the tallest band of ink rows in the card's number column is the total.
-func summaryReads(refs *glyphs.References, img image.Image, name string, golden goldenFile) []numberRead {
-	var reads []numberRead
-	for card, field := range []string{"eliminations", "assists", "deaths"} {
-		want, ok := golden.Result[field].(float64)
-		if !ok {
-			continue
-		}
-		box, found := tallestInkBand(img, perfNumberColumn(img.Bounds(), card))
-		read := numberRead{where: name + " " + field, golden: int(want)}
-		if found {
-			read.got, read.scored = glyphs.ScoreNumber(refs, img, box)
-		}
-		reads = append(reads, read)
-	}
-	return reads
-}
-
-// perfNumberColumn is the column right of a SUMMARY performance card's icon,
-// where its total, label and per-10-minute average stack, card 0 to 2 from
-// the top, scaled from the 2560x1440 layout.
-func perfNumberColumn(bounds image.Rectangle, card int) image.Rectangle {
-	w, h := bounds.Dx(), bounds.Dy()
-	top := 324 + 321*card
-	return image.Rect(w*1170/2560, h*top/1440, w*1500/2560, h*(top+312)/1440)
-}
-
-// tallestInkBand is the tallest run of rows in column holding ink, the band
-// the total sits in: its label and average are set smaller.
-func tallestInkBand(img image.Image, column image.Rectangle) (image.Rectangle, bool) {
-	g := glyphs.Luminance(img, column)
-	best, start := image.Rectangle{}, -1
-	for y := 0; y <= g.Height; y++ {
-		if y < g.Height && rowHasInk(g, y) {
-			if start < 0 {
-				start = y
-			}
-			continue
-		}
-		if start >= 0 && y-start > best.Dy() {
-			best = image.Rect(0, start, g.Width, y)
-		}
-		start = -1
-	}
-	return best.Add(column.Min).Inset(-2).Intersect(column), !best.Empty()
-}
-
-// inkCutoff mirrors the matcher's binarization: white text clears it, the
-// card behind it does not.
-const inkCutoff = 150
-
-func rowHasInk(g glyphs.Grid, y int) bool {
-	return slices.ContainsFunc(g.Pix[y*g.Width:(y+1)*g.Width], func(v float64) bool { return v > inkCutoff })
+	return res
 }
 
 func reportNumberReads(t *testing.T, screen string, reads []numberRead) {

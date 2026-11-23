@@ -53,8 +53,8 @@ pkg/parser/diagnose_test.go:96:		t.Skip("fake tesseract is a shell script")
 # in -short and without a real Tesseract, since the TEAMS cell regions it
 # scores come from a real parse. TestProposeSegmentation is a labeling aid that
 # runs only when RECALL_REFS_PROPOSE names a fixture.
-pkg/glyphs/calibration_test.go:366:		t.Skip("corpus calibration runs in the golden lane, not -short")
-pkg/glyphs/calibration_test.go:369:		t.Skipf("tesseract not found at %q — the TEAMS cell regions come from a real parse", tesseract.Path())
+pkg/glyphs/calibration_test.go:352:		t.Skip("corpus calibration runs in the golden lane, not -short")
+pkg/glyphs/calibration_test.go:355:		t.Skipf("tesseract not found at %q — the TEAMS cell regions come from a real parse", tesseract.Path())
 pkg/glyphs/refs_test.go:261:		t.Skipf("fixture image dir %q missing or empty — run 'task fetch-fixtures'", dir)
 pkg/glyphs/refs_test.go:273:		t.Skip("labeling aid: set RECALL_REFS_PROPOSE=<fixture> and RECALL_REFS_REGION=x,y,w,h")
 

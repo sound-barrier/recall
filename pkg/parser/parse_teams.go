@@ -30,7 +30,7 @@ func parseTeams(img image.Image, work string) (*MatchResult, error) {
 	for i, cell := range cells {
 		*dsts[i] = cell.value
 		if cell.read {
-			res.recordEvidence(img, ScalarPath(teamsStatFields[i]), cell.rect)
+			res.recordCrossChecked(img, ScalarPath(teamsStatFields[i]), cell.rect, numberTemplate(img, cell.rect))
 		}
 	}
 	res.QueueType = detectQueueType(img, work)
