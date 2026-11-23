@@ -9,6 +9,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/db/dbtest"
+	"recall/pkg/sse"
 )
 
 // SetWatchEnabled owns the watcher's whole lifecycle. What matters is that the
@@ -124,6 +125,24 @@ func eventuallyWatchState(t *testing.T, a *app.App, want app.WatchState) {
 	t.Fatalf("watch state = %q, want %q", a.GetWatchState(), want)
 }
 
+// watchStateEvents reads watch-state payloads off events until it has n or
+// the timeout passes, skipping every other event kind.
+func watchStateEvents(events chan sse.Msg, n int, timeout time.Duration) []string {
+	var seen []string
+	deadline := time.After(timeout)
+	for len(seen) < n {
+		select {
+		case msg := <-events:
+			if msg.Event == "watch-state" {
+				seen = append(seen, msg.Data)
+			}
+		case <-deadline:
+			return seen
+		}
+	}
+	return seen
+}
+
 // The traced bug: the masthead read the Watch SETTING, so a folder deleted
 // out from under a running watcher still showed "watching" while nothing
 // was. The watcher reports what it is actually doing.
@@ -174,13 +193,11 @@ func TestWatchState_ADeletedFolderIsUnavailableUntilItReturns(t *testing.T) {
 	mustNoErr(t, os.Mkdir(dir, 0o700))
 	eventuallyWatchState(t, a, app.WatchStateWatching)
 
-	var seen []string
-	for len(events) > 0 {
-		if msg := <-events; msg.Event == "watch-state" {
-			seen = append(seen, msg.Data)
-		}
-	}
 	want := []string{`{"watch_state":"watching"}`, `{"watch_state":"unavailable"}`, `{"watch_state":"watching"}`}
+	// The state flips before its event is published, so draining whatever
+	// is buffered the moment the state reads "watching" can miss the last
+	// event; wait for each one instead.
+	seen := watchStateEvents(events, len(want), 3*time.Second)
 	if !slices.Equal(seen, want) {
 		t.Errorf("watch-state events = %v, want %v", seen, want)
 	}
