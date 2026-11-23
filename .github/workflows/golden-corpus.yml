@@ -20,12 +20,14 @@ on:
     branches: [main]
     paths:
       - 'pkg/parser/**'
+      - 'pkg/glyphs/**'
       - 'testdata/**'
       - '.github/workflows/golden-corpus.yml'
   pull_request:
     branches: [main]
     paths:
       - 'pkg/parser/**'
+      - 'pkg/glyphs/**'
       - 'testdata/**'
       - '.github/workflows/golden-corpus.yml'
 
@@ -58,5 +60,11 @@ jobs:
 
       - name: Run the golden corpus
         # The byte-for-byte goldens, plus the field-evidence invariant they
-        # deliberately leave out (evidence rects are not in the goldens).
-        run: go test -run 'TestParseScreenshot_(GoldenFiles|EvidenceCoversReadFields)$' -v -timeout 35m ./pkg/parser/
+        # deliberately leave out (evidence rects are not in the goldens). In
+        # pkg/glyphs: every reference PNG is a fresh cut of its manifest rect,
+        # and the template calibration holds its agreement with the goldens
+        # to a per-screen floor.
+        run: >-
+          go test -v -timeout 35m
+          -run 'TestParseScreenshot_(GoldenFiles|EvidenceCoversReadFields)$|TestReferences_|TestCalibration_|TestManifest_|TestEmbeddedReferences_'
+          ./pkg/parser/ ./pkg/glyphs/

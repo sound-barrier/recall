@@ -20,19 +20,28 @@ type NumberReading struct {
 // ReadNumber reads the white digits inside rect. It is not ok when rect holds
 // no glyph, when glyphs touch, or when any one glyph fails the accept rule.
 func (r *References) ReadNumber(img image.Image, rect image.Rectangle) (NumberReading, bool) {
+	reading, ok := r.scoreNumber(img, rect)
+	if !ok || !accepted(reading.Score, reading.Margin) {
+		return NumberReading{}, false
+	}
+	return reading, true
+}
+
+// scoreNumber reads every glyph as its best-scoring digit, whether or not that
+// clears the accept rule. Score and Margin being per-glyph minimums, the read
+// passes the rule exactly when every glyph does. It is not ok when rect holds
+// no glyph, when glyphs touch, or when there are no digit references.
+func (r *References) scoreNumber(img image.Image, rect image.Rectangle) (NumberReading, bool) {
 	g := Luminance(img, rect)
 	boxes, ok := segment(g)
-	if !ok || len(boxes) == 0 {
+	if !ok || len(boxes) == 0 || len(r.digits) == 0 {
 		return NumberReading{}, false
 	}
 	fill := background(g)
 	var digits strings.Builder
 	reading := NumberReading{Score: math.Inf(1), Margin: math.Inf(1)}
 	for _, box := range boxes {
-		glyph, ok := classify(normalizeGlyph(g, box, fill), r.digits)
-		if !ok {
-			return NumberReading{}, false
-		}
+		glyph := classify(normalizeGlyph(g, box, fill), r.digits)
 		digits.WriteString(glyph.label)
 		reading.Score = min(reading.Score, glyph.score)
 		reading.Margin = min(reading.Margin, glyph.margin)

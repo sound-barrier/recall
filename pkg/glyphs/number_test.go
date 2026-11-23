@@ -130,3 +130,35 @@ func TestAddDigit_RefusesAnythingButOneDigitGlyph(t *testing.T) {
 		t.Error("AddDigit accepted two touching glyphs as one")
 	}
 }
+
+func TestScoreNumber_ScoresAReadTheAcceptRuleRejects(t *testing.T) {
+	var refs glyphs.References
+	eight, _ := drawNumber(t, numberStrip{text: "8", cell: cellFull, gap: cellFull})
+	for _, digit := range []int{3, 8} {
+		if err := refs.AddDigit(digit, eight); err != nil {
+			t.Fatal(err)
+		}
+	}
+	img, rect := drawNumber(t, numberStrip{text: "88", cell: cellFull, gap: cellFull})
+
+	got, ok := glyphs.ScoreNumber(&refs, img, rect)
+
+	if !ok || got.Score < 0.99 || got.Margin != 0 {
+		t.Fatalf("ScoreNumber = (%+v, %v), want a near-perfect score with no margin", got, ok)
+	}
+	if _, accepted := refs.ReadNumber(img, rect); accepted {
+		t.Fatal("ReadNumber accepted the same tied read")
+	}
+}
+
+func TestScoreNumber_StillNeedsGlyphsAndReferences(t *testing.T) {
+	img, rect := drawNumber(t, numberStrip{text: "42", cell: cellFull, gap: cellFull})
+	var empty glyphs.References
+	if got, ok := glyphs.ScoreNumber(&empty, img, rect); ok {
+		t.Errorf("an empty reference set scored %+v", got)
+	}
+	fused, fusedRect := drawNumber(t, numberStrip{text: "00", cell: cellFull, gap: -cellFull})
+	if got, ok := glyphs.ScoreNumber(digitReferences(t), fused, fusedRect); ok {
+		t.Errorf("fused glyphs scored %+v", got)
+	}
+}

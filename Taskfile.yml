@@ -710,6 +710,14 @@ tasks:
     desc: 'Generate goldens for any screenshot file/dir to find parser bugs (usage: task goldens SRC=screenshots/foo)'
     cmds: ['bash scripts/gen-goldens.sh "{{.SRC}}"']
 
+  cut-references:
+    desc: Recut the pkg/glyphs/refs/ PNG files from the corpus pixels pkg/glyphs/refs/manifest.yaml names
+    deps: [fetch-fixtures]
+    cmds:
+      - echo "[ recall ] Cutting glyph references from {{.RECALL_FIXTURE_DIR | default "testdata/images/"}}…"
+      - RECALL_REFS_UPDATE=1 {{if .RECALL_FIXTURE_DIR}}RECALL_FIXTURE_DIR={{.RECALL_FIXTURE_DIR}}{{end}} go test -count=1 -run TestReferences_AreCutFromTheirManifestPixels ./pkg/glyphs/ -v
+      - echo "[ recall ] ✓  References recut — review the diff and commit"
+
   import-report:
     desc: 'Stage a parse-problem report for fixtures (usage: task import-report BUNDLE=report.zip [CONSENTED=1])'
     requires:
