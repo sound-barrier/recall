@@ -50,6 +50,13 @@ describe('DetailPanelHeader', () => {
     expect(screen.getByRole('button', { name: 'Pin this match' })).toBeEnabled()
   })
 
+  // WCAG 2.5.3 Label in Name: a voice user says what they see on the
+  // button, so the visible "M↓" must lead its accessible name.
+  it('names the Markdown copy button by its visible glyph first', () => {
+    renderHeader()
+    expect(screen.getByRole('button', { name: /^M↓ / })).toBeInTheDocument()
+  })
+
   it('disables the pin while writes are locked', () => {
     setWritesLocked(true, { session: true })
     renderHeader()
