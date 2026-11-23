@@ -121,7 +121,7 @@ const emit = defineEmits<{
       type="button"
       class="detail-icon-btn detail-copy-md"
       data-copy-markdown
-      aria-label="Copy match as Markdown to clipboard"
+      aria-label="M↓ Copy match as Markdown to clipboard"
       title="Copy as Markdown — stats, journal, and screenshot refs"
       @click="emit('copy-markdown')"
     >
