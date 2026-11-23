@@ -1,6 +1,11 @@
 package parser
 
-import "image"
+import (
+	"image"
+	"strconv"
+
+	"recall/pkg/glyphs"
+)
 
 // FieldPath names one field of a match in the dotted vocabulary the edit
 // system already speaks: "data.<field>" for a top-level reading,
@@ -28,11 +33,38 @@ func HeroPercentPath(hero string) FieldPath {
 // SRPath is the path of one hero card's SR on the rank screen.
 func SRPath(hero string) FieldPath { return FieldPath("data.sr." + hero + ".sr") }
 
-// FieldEvidence is where on the screenshot one field was read: the region the
-// accepted OCR pass saw, in the source image's pixel coordinates.
+// FieldEvidence is where on the screenshot one field was read, in the source
+// image's pixel coordinates: the region the accepted OCR pass saw, or the part
+// of it holding the value when the parser can find that. Template is what the
+// digit templates read there, nil when none matched with confidence.
 type FieldEvidence struct {
-	Field FieldPath
-	Rect  image.Rectangle
+	Field    FieldPath
+	Rect     image.Rectangle
+	Template *TemplateReading
+}
+
+// TemplateReading is a second opinion on a field from pkg/glyphs: Value is a
+// number's decimal digits. It never changes the value OCR read;
+// it sits beside it, so a disagreement can be noticed rather than resolved by
+// whichever reader ran last.
+type TemplateReading struct {
+	Value  string
+	Score  float64
+	Margin float64
+}
+
+// readNumberFunc is the template reader, a seam so a test can read against
+// references it drew.
+var readNumberFunc = glyphs.ReadNumber
+
+// numberTemplate is what the digit references read in rect, nil when they
+// cannot read it with confidence.
+func numberTemplate(img image.Image, rect image.Rectangle) *TemplateReading {
+	n, ok := readNumberFunc(img, rect)
+	if !ok {
+		return nil
+	}
+	return &TemplateReading{Value: strconv.Itoa(n.Value), Score: n.Score, Margin: n.Margin}
 }
 
 // recordEvidence notes the region a field's value was read from, clipped to
@@ -43,15 +75,23 @@ type FieldEvidence struct {
 // A region with nothing inside the image records nothing. A field read twice
 // keeps the later region, matching the value it now holds.
 func (r *MatchResult) recordEvidence(img image.Image, field FieldPath, rect image.Rectangle) {
+	r.recordCrossChecked(img, field, rect, nil)
+}
+
+// recordCrossChecked is recordEvidence with what the templates read in rect.
+// A later record replaces the template with the region, since a template
+// read elsewhere says nothing about the region now recorded.
+func (r *MatchResult) recordCrossChecked(img image.Image, field FieldPath, rect image.Rectangle, template *TemplateReading) {
 	rect = rect.Intersect(img.Bounds())
 	if rect.Empty() {
 		return
 	}
+	evidence := FieldEvidence{Field: field, Rect: rect, Template: template}
 	for i := range r.Evidence {
 		if r.Evidence[i].Field == field {
-			r.Evidence[i].Rect = rect
+			r.Evidence[i] = evidence
 			return
 		}
 	}
-	r.Evidence = append(r.Evidence, FieldEvidence{Field: field, Rect: rect})
+	r.Evidence = append(r.Evidence, evidence)
 }

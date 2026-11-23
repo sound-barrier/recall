@@ -106,3 +106,112 @@ func preprocessSmoothThreshold(src image.Image, scale int, thresh uint8) image.I
 	}
 	return out
 }
+
+// statInkCutoff is the luminance white stat digits clear and the dark card or
+// row behind them does not: the TEAMS stat-cell threshold (ocrStatCell), and
+// the cut pkg/glyphs segments digits on.
+const statInkCutoff = 150
+
+// inkGrid is an area's luminance, kept with the area's origin so the boxes
+// found in it map back to image coordinates.
+type inkGrid struct {
+	glyphs.Grid
+	origin image.Point
+}
+
+func newInkGrid(img image.Image, area image.Rectangle) inkGrid {
+	area = area.Intersect(img.Bounds())
+	return inkGrid{Grid: glyphs.Luminance(img, area), origin: area.Min}
+}
+
+func (g inkGrid) inked(x, y int) bool { return g.Pix[y*g.Width+x] > statInkCutoff }
+
+// span is a run of consecutive rows or columns, [from, to).
+type span struct{ from, to int }
+
+func (s span) length() int { return s.to - s.from }
+
+// inkSpans is the runs of consecutive indices in [0, n) that hold ink.
+func inkSpans(n int, holdsInk func(int) bool) []span {
+	var spans []span
+	start := -1
+	for i := 0; i <= n; i++ {
+		inked := i < n && holdsInk(i)
+		switch {
+		case inked && start < 0:
+			start = i
+		case !inked && start >= 0:
+			spans = append(spans, span{start, i})
+			start = -1
+		}
+	}
+	return spans
+}
+
+// rowSpans is the runs of rows holding ink between columns x0 and x1.
+func (g inkGrid) rowSpans(x0, x1 int) []span {
+	return inkSpans(g.Height, func(y int) bool {
+		for x := x0; x < x1; x++ {
+			if g.inked(x, y) {
+				return true
+			}
+		}
+		return false
+	})
+}
+
+func (g inkGrid) columnHasInk(x int) bool {
+	for y := range g.Height {
+		if g.inked(x, y) {
+			return true
+		}
+	}
+	return false
+}
+
+// tallestBand is the tallest run of rows holding ink, across the grid's
+// width. On a stat card the number is set taller than its label and caption,
+// so that band is the number.
+func (g inkGrid) tallestBand() (image.Rectangle, bool) {
+	var best span
+	for _, rows := range g.rowSpans(0, g.Width) {
+		if rows.length() > best.length() {
+			best = rows
+		}
+	}
+	return image.Rect(0, best.from, g.Width, best.to).Add(g.origin), best.length() > 0
+}
+
+// blob is a run of ink columns cut to the rows its ink spans; solid says no
+// ink-free row crosses it, which holds for a digit and not for a stack of
+// separate marks.
+type blob struct {
+	box   image.Rectangle
+	solid bool
+}
+
+// blobs splits the grid into its runs of ink columns, left to right, in
+// image coordinates.
+func (g inkGrid) blobs() []blob {
+	columns := inkSpans(g.Width, g.columnHasInk)
+	out := make([]blob, 0, len(columns))
+	for _, cols := range columns {
+		rows := g.rowSpans(cols.from, cols.to)
+		box := image.Rect(cols.from, rows[0].from, cols.to, rows[len(rows)-1].to)
+		out = append(out, blob{box: box.Add(g.origin), solid: len(rows) == 1})
+	}
+	return out
+}
+
+// inkBounds is the box around all of the grid's ink.
+func (g inkGrid) inkBounds() (image.Rectangle, bool) {
+	var bounds image.Rectangle
+	for _, b := range g.blobs() {
+		bounds = bounds.Union(b.box)
+	}
+	return bounds, !bounds.Empty()
+}
+
+// inkPad is the margin left around a box cut to its ink, so a reader sees the
+// glyphs' antialiased edges: 2 px at 1440p.
+func inkPad(img image.Image) int { return max(img.Bounds().Dy()/720, 1) }

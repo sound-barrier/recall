@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -96,9 +97,41 @@ func readSummaryPerformance(img image.Image, work string, res *MatchResult) erro
 	res.Assists = perf.Assists.Total
 	res.Deaths = perf.Deaths.Total
 	for _, field := range readFields {
-		res.recordEvidence(img, ScalarPath(field), rect)
+		recordPerfTotal(img, res, field, rect)
 	}
 	return nil
+}
+
+// perfCardFields names the Total Performance cards, top to bottom, by the
+// JSON field each one's total fills.
+var perfCardFields = []string{"eliminations", "assists", "deaths"}
+
+// recordPerfTotal records where field's card prints its total, with what the
+// digit templates read there. When the total cannot be found it falls back to
+// column, the region OCR read the whole performance column from.
+func recordPerfTotal(img image.Image, res *MatchResult, field string, column image.Rectangle) {
+	box, ok := perfTotalBox(img, slices.Index(perfCardFields, field))
+	if !ok {
+		res.recordEvidence(img, ScalarPath(field), column)
+		return
+	}
+	res.recordCrossChecked(img, ScalarPath(field), box, numberTemplate(img, box))
+}
+
+// perfTotalBox is a performance card's total. The column right of the card's
+// icon stacks the total, its label and the per-10-minute average, and the
+// total is set tallest, so it is the tallest band of ink there, cut to its
+// ink. Cards sit at a fixed pitch, scaled from the 1440p layout.
+func perfTotalBox(img image.Image, card int) (image.Rectangle, bool) {
+	w, h := img.Bounds().Dx(), img.Bounds().Dy()
+	top := 324 + 321*card
+	column := image.Rect(w*1170/2560, h*top/1440, w*1500/2560, h*(top+312)/1440)
+	band, ok := newInkGrid(img, column).tallestBand()
+	if !ok {
+		return image.Rectangle{}, false
+	}
+	digits, _ := newInkGrid(img, band).inkBounds()
+	return digits.Inset(-inkPad(img)).Intersect(column), true
 }
 
 // readSummaryCard reads the right-hand map card.

@@ -3,6 +3,7 @@ package parser
 import (
 	"image"
 
+	"recall/pkg/glyphs"
 	"recall/pkg/tesseract"
 )
 
@@ -26,6 +27,15 @@ func SpecPSM(s OCRSpec) string { return s.psm }
 // SpecRect exposes the source-image region a stub was handed the crop of, so
 // a test can check a recorded evidence rect against what OCR actually saw.
 func SpecRect(s OCRSpec) image.Rectangle { return s.rect }
+
+// UseGlyphReferences points the template cross-check at refs in place of the
+// references embedded in the binary, so a test can draw its own glyphs; it
+// returns the restore.
+func UseGlyphReferences(refs *glyphs.References) (restore func()) {
+	saved := readNumberFunc
+	readNumberFunc = refs.ReadNumber
+	return func() { readNumberFunc = saved }
+}
 
 // ParsePerformance is parsePerformance without the read-field list, which the
 // evidence tests observe through ParseSummary instead.
