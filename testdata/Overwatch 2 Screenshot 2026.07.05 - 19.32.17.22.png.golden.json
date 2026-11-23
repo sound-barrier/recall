@@ -5,7 +5,7 @@
     "game_mode": "escort",
     "role": "support",
     "hero": "mizuki",
-    "eliminations": 7,
+    "eliminations": 3,
     "assists": 7,
     "deaths": 8,
     "result": "defeat",
@@ -27,7 +27,7 @@
     ],
     "performance": {
       "eliminations": {
-        "total": 7,
+        "total": 3,
         "avg_per_10min": 2.63
       },
       "assists": {

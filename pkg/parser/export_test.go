@@ -24,6 +24,10 @@ func SpecName(s OCRSpec) string { return s.name }
 // differently per attempt in ocrRowCells' PSM escalation ladder.
 func SpecPSM(s OCRSpec) string { return s.psm }
 
+// SpecWhitelist exposes the character whitelist, so a stub can answer a
+// digits-only pass the way Tesseract would and any other pass differently.
+func SpecWhitelist(s OCRSpec) string { return s.whitelist }
+
 // SpecRect exposes the source-image region a stub was handed the crop of, so
 // a test can check a recorded evidence rect against what OCR actually saw.
 func SpecRect(s OCRSpec) image.Rectangle { return s.rect }
@@ -35,13 +39,6 @@ func UseGlyphReferences(refs *glyphs.References) (restore func()) {
 	saved := readNumberFunc
 	readNumberFunc = refs.ReadNumber
 	return func() { readNumberFunc = saved }
-}
-
-// ParsePerformance is parsePerformance without the read-field list, which the
-// evidence tests observe through ParseSummary instead.
-func ParsePerformance(text string) *Performance {
-	perf, _ := parsePerformance(text)
-	return perf
 }
 
 // NewOCRSpec builds a spec from outside the package (fields are

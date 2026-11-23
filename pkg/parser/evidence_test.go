@@ -74,9 +74,13 @@ func assertEvidence(t *testing.T, res *parser.MatchResult, img image.Image, fiel
 
 func TestParseSummary_RecordsTheColumnEachFieldWasReadFrom(t *testing.T) {
 	seen := stubOCRRegions(t, map[string]string{
-		"summary_heroes": "LUCIO\n60%\n6:30\nKIRIKO\n40%\n4:30",
-		"summary_perf": "17\nELIMINATIONS\nAVG PER 10 MIN: 14.5\n" +
-			"16\nASSISTS\nAVG PER 10 MIN: 13.0\n11\nDEATHS\nAVG PER 10 MIN: 9.1",
+		"summary_heroes":                  "LUCIO\n60%\n6:30\nKIRIKO\n40%\n4:30",
+		"summary_perf_eliminations":       "17\nELIMINATIONS\nAVG PER 10 MIN: 14.5",
+		"summary_perf_eliminations_total": "17",
+		"summary_perf_assists":            "16\nASSISTS\nAVG PER 10 MIN: 13.0",
+		"summary_perf_assists_total":      "16",
+		"summary_perf_deaths":             "11\nDEATHS\nAVG PER 10 MIN: 9.1",
+		"summary_perf_deaths_total":       "11",
 		"summary_card": "COMPETITIVE\nVICTORY!\nHYBRID\nHOLLYWOOD\n" +
 			"FINAL SCORE 3 - 0\nDATE 5/10/26 21:47\nGAME LENGTH 12:34",
 	})
@@ -89,7 +93,7 @@ func TestParseSummary_RecordsTheColumnEachFieldWasReadFrom(t *testing.T) {
 		assertEvidence(t, res, img, f, seen["summary_heroes"])
 	}
 	for _, f := range []string{"eliminations", "assists", "deaths"} {
-		assertEvidence(t, res, img, parser.ScalarPath(f), seen["summary_perf"])
+		assertEvidence(t, res, img, parser.ScalarPath(f), seen["summary_perf_"+f])
 	}
 	for _, f := range []string{"map", "result", "final_score", "date", "finished_at", "game_length"} {
 		assertEvidence(t, res, img, parser.ScalarPath(f), seen["summary_card"])
@@ -116,15 +120,18 @@ func TestParseSummary_RecordsNoEvidenceForFieldsItDidNotRead(t *testing.T) {
 // shares, so a region always means "these pixels gave this value".
 func TestParseSummary_RecordsEvidenceForAReadZeroButNotForAnUnreadStat(t *testing.T) {
 	seen := stubOCRRegions(t, map[string]string{
-		"summary_perf": "17\nELIMINATIONS\nAVG PER 10 MIN: 14.5\n" +
-			"0\nASSISTS\nAVG PER 10 MIN: 0.0\nDEATHS",
+		"summary_perf_eliminations":       "17\nELIMINATIONS\nAVG PER 10 MIN: 14.5",
+		"summary_perf_eliminations_total": "17",
+		"summary_perf_assists":            "0\nASSISTS\nAVG PER 10 MIN: 0.0",
+		"summary_perf_assists_total":      "0",
+		"summary_perf_deaths":             "DEATHS",
 	})
 	img := landscapeImage()
 	res, err := parser.ParseSummary(img, t.TempDir())
 	if err != nil {
 		t.Fatalf("ParseSummary: %v", err)
 	}
-	assertEvidence(t, res, img, parser.ScalarPath("assists"), seen["summary_perf"])
+	assertEvidence(t, res, img, parser.ScalarPath("assists"), seen["summary_perf_assists"])
 	if r, ok := evidenceRect(res, parser.ScalarPath("deaths")); ok {
 		t.Errorf("deaths carried no digits but recorded evidence %v", r)
 	}

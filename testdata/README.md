@@ -247,10 +247,11 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
       it ERROR and parked in the failed-files ledger. Those two captures are
       now fixtures as well (×3 in all). A probe makes the outcome deliberate.
 - [x] cross-capture-tool robustness — the same Ilios/Lucio match via Windows
-      PrintScreen (low-quality JPG). TEAMS reads cleanly (9/10/5), but the
-      SUMMARY performance card **over-reads eliminations as 74** on the noisy
-      JPG — capture quality matters (PNG / NVIDIA / Steam parse cleanly; heavy
-      JPG compression confuses the perf-card OCR). See `parser.md`.
+      PrintScreen (low-quality JPG). SUMMARY and TEAMS both read 9/10/5. The
+      SUMMARY card once read eliminations as 74, but that was the
+      ELIMINATIONS icon's blade OCR'd as a digit line, not JPG compression —
+      PNG captures misread the same way until each performance card was read
+      on its own, right of its icon. See `parser.md`.
 - [x] **1080p downscale robustness** — the rank win + loss fixtures resized
       2560×1440 → 1920×1080 `(1080p)`. The parser's relative crops read the
       same data at 1080p, including the thin colored "+25%" rank-gain pill: the

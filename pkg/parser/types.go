@@ -40,7 +40,14 @@ import (
 //	or 9) from the whole highlighted row, found below the midline too; a
 //	rank card behind a bright hero model reads its tier, progress,
 //	percentile and SR cards instead of coming back empty.
-const Generation = 2
+//
+// 3: SUMMARY performance cards read one at a time right of their icons (the
+//
+//	ELIMINATIONS icon's blade stopped outreading a smaller total, a 1 read
+//	as "T" stopped leaving deaths at 0). The re-parse this asks for also
+//	records field evidence and template cross-checks on rows parsed before
+//	either existed.
+const Generation = 3
 
 type MatchResult struct {
 	Map string `json:"map"`

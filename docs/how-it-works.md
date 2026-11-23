@@ -230,9 +230,8 @@ the parser uses to correlate the timestamp.
 Overwatch's default colors.** Of the sources above, the **Nvidia overlay** and the
 **Windows Snipping Tool** save PNG (lossless); the **Overwatch PrntScn
 default** and **Steam's F12** save JPG, and heavy JPG compression blurs the
-small stat numbers — the performance card can over-read eliminations, and a
-badly-compressed capture can miss classification and land in the **Unknown**
-tab. The OCR is also tuned to Overwatch's **stock UI colors** (it locates
+small text — a badly-compressed capture can miss classification and land in
+the **Unknown** tab. The OCR is also tuned to Overwatch's **stock UI colors** (it locates
 your scoreboard row by its blue highlight and detects the magenta COMPETITIVE
 badge), so non-default **colourblind palettes** can break detection — only the
 default colors are known to work.

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 )
@@ -30,8 +29,10 @@ func isSummaryScreenshot(img image.Image, work string) (bool, error) {
 
 // parseSummary handles the post-match SUMMARY tab: three columns (Heroes
 // Played cards on the left, Total Performance cards in the middle, a map card
-// on the right with result/score/date/mode/game-length). Each column is OCR'd
-// independently so a failure in one doesn't drop fields from the others.
+// on the right with result/score/date/mode/game-length). Each column — and
+// each performance card within its column — is OCR'd from its own region so
+// one's text can't leak into another's. Any OCR error fails the whole parse,
+// so a half-read screenshot is never stored.
 //
 // PSM 11 (sparse text) is used for the three column OCRs because each card
 // mixes large italic / styled glyphs with smaller labels, separated by icons.
@@ -78,54 +79,104 @@ func readSummaryHeroes(img image.Image, work string, res *MatchResult) error {
 	return nil
 }
 
-// readSummaryPerformance reads the Total Performance column, mirroring its
+// readSummaryPerformance reads the Total Performance cards, mirroring their
 // totals onto the flat E/A/D fields the dossier reads.
 func readSummaryPerformance(img image.Image, work string, res *MatchResult) error {
-	bounds := img.Bounds()
-	W, H := bounds.Dx(), bounds.Dy()
-	rect := image.Rect(W*30/100, H/8, W*62/100, H*92/100)
-	text, err := ocrInverted(img, rect, ocrSpec{workDir: work, name: "summary_perf", psm: "11", whitelist: ""})
-	if err != nil {
+	perf, read, err := readPerfCards(img, work)
+	if err != nil || perf == nil {
 		return err
-	}
-	perf, readFields := parsePerformance(text)
-	if perf == nil {
-		return nil
 	}
 	res.Performance = perf
 	res.Eliminations = perf.Eliminations.Total
 	res.Assists = perf.Assists.Total
 	res.Deaths = perf.Deaths.Total
-	for _, field := range readFields {
-		recordPerfTotal(img, res, field, rect)
+	for _, card := range read {
+		recordPerfTotal(img, res, card)
 	}
 	return nil
 }
 
-// perfCardFields names the Total Performance cards, top to bottom, by the
-// JSON field each one's total fills.
-var perfCardFields = []string{"eliminations", "assists", "deaths"}
-
-// recordPerfTotal records where field's card prints its total, with what the
-// digit templates read there. When the total cannot be found it falls back to
-// column, the region OCR read the whole performance column from.
-func recordPerfTotal(img image.Image, res *MatchResult, field string, column image.Rectangle) {
-	box, ok := perfTotalBox(img, slices.Index(perfCardFields, field))
-	if !ok {
-		res.recordEvidence(img, ScalarPath(field), column)
-		return
-	}
-	res.recordCrossChecked(img, ScalarPath(field), box, numberTemplate(img, box))
+// perfCards are the Total Performance cards, top to bottom: the label each
+// prints and the JSON field its total fills.
+var perfCards = []struct{ label, field string }{
+	{"ELIMINAT", "eliminations"},
+	{"ASSIST", "assists"},
+	{"DEATH", "deaths"},
 }
 
-// perfTotalBox is a performance card's total. The column right of the card's
-// icon stacks the total, its label and the per-10-minute average, and the
-// total is set tallest, so it is the tallest band of ink there, cut to its
-// ink. Cards sit at a fixed pitch, scaled from the 1440p layout.
-func perfTotalBox(img image.Image, card int) (image.Rectangle, bool) {
+// readPerfCards reads each card on its own and lists the cards it read. It
+// returns a nil Performance when no card showed a total or average above 0.
+//
+// A card is read only right of its icon. One pass over the whole column took
+// the icons in, and the crossed-swords ELIMINATIONS icon's blade reads as a
+// digit line of its own ("74", "4", "7") that nothing in the column's text
+// tells apart from the total beside it.
+func readPerfCards(img image.Image, work string) (*Performance, []int, error) {
+	perf := &Performance{}
+	stats := [...]*PerformanceStat{&perf.Eliminations, &perf.Assists, &perf.Deaths}
+	var read []int
+	for card := range perfCards {
+		stat, ok, err := readPerfCard(img, work, card)
+		if err != nil {
+			return nil, nil, err
+		}
+		if ok {
+			*stats[card] = stat
+			read = append(read, card)
+		}
+	}
+	if *perf == (Performance{}) {
+		return nil, nil, nil
+	}
+	return perf, read, nil
+}
+
+// readPerfCard reads one card's column twice: a digits-only pass for the
+// total, since the OW font's 1 reads as "T" on a plain pass, and a plain pass
+// for the label and the average, which the digits-only pass runs into the
+// "10" of "AVG PER 10 MIN". ok reports the label was read and either value
+// carried digits.
+func readPerfCard(img image.Image, work string, card int) (stat PerformanceStat, ok bool, err error) {
+	column := perfCardColumn(img, card)
+	name := "summary_perf_" + perfCards[card].field
+	text, err := ocrInverted(img, column, ocrSpec{workDir: work, name: name, psm: "11"})
+	if err != nil {
+		return stat, false, err
+	}
+	digits, err := ocrInverted(img, column, ocrSpec{workDir: work, name: name + "_total", psm: "11", whitelist: "0123456789."})
+	if err != nil || !strings.Contains(strings.ToUpper(text), perfCards[card].label) {
+		return stat, false, err
+	}
+	stat, ok = parsePerfCard(digits, text)
+	return stat, ok, nil
+}
+
+// recordPerfTotal records where a card prints its total, with what the digit
+// templates read there. When the total cannot be found it falls back to the
+// card's column, the region OCR read the card from.
+func recordPerfTotal(img image.Image, res *MatchResult, card int) {
+	field, column := ScalarPath(perfCards[card].field), perfCardColumn(img, card)
+	box, ok := perfTotalBox(img, column)
+	if !ok {
+		res.recordEvidence(img, field, column)
+		return
+	}
+	res.recordCrossChecked(img, field, box, numberTemplate(img, box))
+}
+
+// perfCardColumn is the column right of a performance card's icon. It stacks
+// the total, the label and the per-10-minute average, and below them a NEW
+// CAREER BEST badge when the card earned one. Cards sit at a fixed pitch,
+// scaled from the 1440p layout.
+func perfCardColumn(img image.Image, card int) image.Rectangle {
 	w, h := img.Bounds().Dx(), img.Bounds().Dy()
 	top := 324 + 321*card
-	column := image.Rect(w*1170/2560, h*top/1440, w*1500/2560, h*(top+312)/1440)
+	return image.Rect(w*1170/2560, h*top/1440, w*1500/2560, h*(top+312)/1440)
+}
+
+// perfTotalBox is a card's total inside its column: the total is set tallest,
+// so it is the tallest band of ink there, cut to its ink.
+func perfTotalBox(img image.Image, column image.Rectangle) (image.Rectangle, bool) {
 	band, ok := newInkGrid(img, column).tallestBand()
 	if !ok {
 		return image.Rectangle{}, false
@@ -209,105 +260,45 @@ func parseHeroesPlayed(text string) []HeroPlay {
 	return out
 }
 
-// parsePerformance pulls (total, avg-per-10-min) for each labeled card, and
-// names (by JSON field) the stats whose label carried digits — a 0 read off the
-// card counts, a label with no digits beside it does not.
-// The total is the largest "digit line" in the per-stat segment — a line whose
-// whole content is a 1-3 digit number, allowing the glyphs the OW italic
-// numerals get mis-OCR'd into (O/o/Q/q→0; I/i/l/L and the vertical-stroke
-// brackets |/]/[ →1, normalized by normalizePerfDigits). This filters icon
-// noise like "S 4" (the skull-X / crossed-swords misread) while still
-// recovering a value the font mangled — e.g. "11" scanned as "1]", which the
-// old pure-digit pick dropped in favor of the icon's stray "4". The avg is
-// anchored on "MIN" so we don't match "10" inside "AVG PER 10 MIN".
+// perfTotalRe is a card's total as a digits-only pass reads it, and
+// perfAvgRe its average, anchored on "MIN" so the "10" of "AVG PER 10 MIN"
+// is not taken for it.
 var (
-	perfDigitLineRe = regexp.MustCompile(`(?m)^\s*([\dOoQqIilL|\]\[]{1,3})\s*$`)
-	perfAvgRe       = regexp.MustCompile(`(?i)MIN[^0-9]{1,8}(\d+(?:\.\d+)?)`)
+	perfTotalRe = regexp.MustCompile(`^\d{1,3}$`)
+	perfAvgRe   = regexp.MustCompile(`(?i)MIN[^0-9]{1,8}(\d+(?:\.\d+)?)`)
 )
 
-// perfDigitReplacer maps the OW font's mis-OCR'd numeral glyphs back to digits.
-// Applied only to perfDigitLineRe matches (already all digit-like), so the
-// bracket→1 substitutions can't corrupt real text elsewhere.
-var perfDigitReplacer = strings.NewReplacer(
-	"O", "0", "o", "0", "Q", "0", "q", "0",
-	"I", "1", "i", "1", "l", "1", "L", "1",
-	"|", "1", "]", "1", "[", "1",
-)
-
-func normalizePerfDigits(s string) string { return perfDigitReplacer.Replace(s) }
-
-func parsePerformance(text string) (*Performance, []string) {
-	upper := strings.ToUpper(text)
-	perf := &Performance{}
-	found := false
-	var readFields []string
-	pairs := []struct {
-		keyword, field string
-		stat           *PerformanceStat
-	}{
-		{"ELIMINAT", "eliminations", &perf.Eliminations},
-		{"ASSIST", "assists", &perf.Assists},
-		{"DEATH", "deaths", &perf.Deaths},
+// parsePerfCard reads a card's total from the first line its digits-only
+// pass read and its average from its plain pass; read reports either one
+// carried digits. The total is set above everything else on the card, so the
+// first line is it — the larger digits below it are the average run into
+// the "10" of its label.
+func parsePerfCard(digits, text string) (stat PerformanceStat, read bool) {
+	if total, ok := firstDigitLine(digits); ok {
+		stat.Total, read = total, true
 	}
-	prevEnd := 0
-	for _, p := range pairs {
-		idx := strings.Index(upper, p.keyword)
-		if idx < 0 {
-			continue
-		}
-		start := prevEnd
-		if start > idx {
-			start = 0
-		}
-		stat, read := readPerfStat(text, start, idx)
-		*p.stat = stat
-		prevEnd = idx + len(p.keyword)
-		if read {
-			readFields = append(readFields, p.field)
-		}
-		if stat.Total != 0 || stat.AvgPer10Min != 0 {
-			found = true
-		}
-	}
-	if !found {
-		return nil, nil
-	}
-	return perf, readFields
-}
-
-// readPerfStat reads the stat whose label starts at idx; read reports whether
-// either its total or its average carried digits.
-//
-// Total: the largest digit line in text[start:idx], the segment between the
-// previous stat's label and this one. Segmenting isolates this stat's digits
-// (so the assists "19" can't shadow deaths "6"), and taking the max rejects
-// the small icon glyph Tesseract reads as a stray digit beside the value — the
-// crossed-swords ELIMINATIONS icon reads as "4" right before the label, which
-// the old "last line before the label" pick wrongly grabbed over the real "9".
-//
-// Avg: first decimal-or-int after "MIN" within ~120 chars of the label.
-func readPerfStat(text string, start, idx int) (stat PerformanceStat, read bool) {
-	if best := largestDigitLine(text[start:idx]); best >= 0 {
-		stat.Total, read = best, true
-	}
-	to := min(idx+120, len(text))
-	if m := perfAvgRe.FindStringSubmatch(text[idx:to]); m != nil {
+	if m := perfAvgRe.FindStringSubmatch(text); m != nil {
 		stat.AvgPer10Min, _ = strconv.ParseFloat(m[1], 64)
 		read = true
 	}
 	return stat, read
 }
 
-// largestDigitLine returns the largest normalized digit-line value in seg, or
-// -1 when seg has none.
-func largestDigitLine(seg string) int {
-	best := -1
-	for _, m := range perfDigitLineRe.FindAllStringSubmatch(seg, -1) {
-		if n, err := strconv.Atoi(normalizePerfDigits(m[1])); err == nil && n > best {
-			best = n
+// firstDigitLine is the first non-blank line of text when that line is a
+// total; ok is false when it is anything else or text has no lines.
+func firstDigitLine(text string) (n int, ok bool) {
+	for line := range strings.Lines(text) {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
 		}
+		if !perfTotalRe.MatchString(line) {
+			return 0, false
+		}
+		n, err := strconv.Atoi(line)
+		return n, err == nil
 	}
-	return best
+	return 0, false
 }
 
 // scoreDigit accepts digits plus the letters Tesseract commonly substitutes

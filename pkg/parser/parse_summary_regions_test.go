@@ -11,8 +11,9 @@ import (
 )
 
 // ──────────────────────────────────────────────────────────────────────────
-// parseSummary — three independently OCR'd columns ("summary_heroes",
-// "summary_perf", "summary_card") folded into one MatchResult.
+// parseSummary — the heroes column ("summary_heroes"), each performance card
+// ("summary_perf_<stat>", its total "summary_perf_<stat>_total") and the map
+// card ("summary_card"), OCR'd independently and folded into one MatchResult.
 // ──────────────────────────────────────────────────────────────────────────
 
 // stubOCRRegionFails makes exactly one region's OCR fail and every other
@@ -43,7 +44,8 @@ func stubOCRRegionFails(t *testing.T, failing string, err error) {
 func TestParseSummary_ColumnOCRFailureNamesTheColumnAndKeepsTheCause(t *testing.T) {
 	cases := []struct{ name, region, wantPrefix string }{
 		{"heroes column", "summary_heroes", "summary heroes OCR:"},
-		{"performance column", "summary_perf", "summary performance OCR:"},
+		{"performance card", "summary_perf_assists", "summary performance OCR:"},
+		{"performance total", "summary_perf_deaths_total", "summary performance OCR:"},
 		{"map card", "summary_card", "summary card OCR:"},
 	}
 	for _, c := range cases {
@@ -70,9 +72,13 @@ func TestParseSummary_ColumnOCRFailureNamesTheColumnAndKeepsTheCause(t *testing.
 // yields map/result/mode plus the three regex-extracted fields.
 func TestParseSummary_FoldsAllThreeColumnsIntoOneResult(t *testing.T) {
 	stubOCR(t, map[string]string{
-		"summary_heroes": "LUCIO\n60%\n6:30\nKIRIKO\n40%\n4:30",
-		"summary_perf": "17\nELIMINATIONS\nAVG PER 10 MIN: 14.5\n" +
-			"16\nASSISTS\nAVG PER 10 MIN: 13.0\n11\nDEATHS\nAVG PER 10 MIN: 9.1",
+		"summary_heroes":                  "LUCIO\n60%\n6:30\nKIRIKO\n40%\n4:30",
+		"summary_perf_eliminations":       "17\nELIMINATIONS\nAVG PER 10 MIN: 14.5",
+		"summary_perf_eliminations_total": "17",
+		"summary_perf_assists":            "16\nASSISTS\nAVG PER 10 MIN: 13.0",
+		"summary_perf_assists_total":      "16",
+		"summary_perf_deaths":             "11\nDEATHS\nAVG PER 10 MIN: 9.1",
+		"summary_perf_deaths_total":       "11",
 		// "FINAL SCORE 3 - O": the OW banner font reads a zero as the
 		// letter O, so the score groups go through digitize().
 		"summary_card": "COMPETITIVE\nVICTORY!\nHYBRID\nHOLLYWOOD\n" +
@@ -120,25 +126,6 @@ func assertSummaryCard(t *testing.T, res *parser.MatchResult) {
 		if f.got != f.want {
 			t.Errorf("%s = %q, want %q", f.name, f.got, f.want)
 		}
-	}
-}
-
-// The sparse OCR pass interleaves the performance column's cards, so a stat
-// whose label sits LATER in the pairs ladder can appear EARLIER in the text.
-// parsePerformance segments each stat by slicing text[prevEnd:idx] — with the
-// labels out of order that slice is inverted, which panics on the slice
-// bounds and takes the whole parse run down. The start has to reset instead,
-// and each stat must still get its own total from its own segment.
-func TestParsePerformance_LabelsOutOfOCROrderDoNotPanic(t *testing.T) {
-	perf := parser.ParsePerformance("9\nDEATHS\nAVG PER 10 MIN: 5.0\n16\nASSISTS\nAVG PER 10 MIN: 8.0")
-	if perf == nil {
-		t.Fatal("expected a performance card from two labeled stats")
-	}
-	if perf.Deaths.Total != 9 || perf.Deaths.AvgPer10Min != 5.0 {
-		t.Errorf("deaths = %+v, want total=9 avg=5", perf.Deaths)
-	}
-	if perf.Assists.Total != 16 || perf.Assists.AvgPer10Min != 8.0 {
-		t.Errorf("assists = %+v, want total=16 avg=8", perf.Assists)
 	}
 }
 
