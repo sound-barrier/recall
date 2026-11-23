@@ -173,6 +173,19 @@ describe('MatchDetailPanel — match stats + heroes + rank', () => {
   })
 })
 
+describe('MatchDetailPanel — a flagged reading', () => {
+  it('shows the value as read and marks it, while the stats leave it out', () => {
+    const rec = makeRecord({ eliminations: 74 }, {
+      field_flags: [{ field: 'data.eliminations', value: '74', checks: ['perf_total_vs_rate'], state: 'open', readings: [] }],
+    })
+    const { matches } = renderPanel({ record: rec })
+
+    expect(matches.records[0]?.data.eliminations).toBeUndefined()
+    expect(screen.getByRole('button', { name: /^Elims: 74\./ }))
+      .toHaveAccessibleDescription('Left out of stats — needs review')
+  })
+})
+
 describe('MatchDetailPanel — sources panel', () => {
   it('renders the sources toggle with file count', () => {
     renderPanel()

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import type { DisruptionSide, MatchRecord, PlayMode, QueueType, ReviewedBy, UserMatchDataInput } from '@/api-client'
 import { isHeroUnknown, isMapUnknown } from '@/match/match-helpers'
 import { formatParsedAt, fmtTime } from '@/match/match-time-helpers'
@@ -13,8 +13,15 @@ import MatchRankBlock from '@/components/matches/detail/MatchRankBlock.vue'
 import MatchStatusChoosers from '@/components/matches/detail/MatchStatusChoosers.vue'
 import EditableStat from '@/components/matches/detail/EditableStat.vue'
 import { withScalarEdit, withoutField, isEmptyOverrideSet, isFieldEdited, scalarPath, type ScalarField } from '@/match/match-overrides'
+import { FIELD_FLAG_SECTION, leftOutPaths } from '@/match/quality/field-flags'
+import { captionedCrops, type StatSource } from '@/match/quality/crop-sources'
+import { fieldLabel } from '@/match/quality/flag-labels'
 import { useMatchClock } from '@/composables/matches/useMatchClock'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
+import { useFieldRegionsQuery } from '@/queries/fieldRegions'
+import { useAppStore } from '@/stores/app'
+import { useCoachStore } from '@/stores/coach'
+import { useUiStore } from '@/stores/ui'
 
 // Expanded match-card body: leaver chooser → free-text annotation
 // (Note / Replay / Group members) → stats grid → rank block →
@@ -117,7 +124,21 @@ const emit = defineEmits<{
 // The card hosts every per-match write on this surface. It reads the gate
 // once and hands the two plain values to the leaf stat cells, which stay
 // app-state-free.
-const { writesLocked, lockReason } = useWriteGate()
+const { writesLocked, lockReason, sessionActive } = useWriteGate()
+const ui = useUiStore()
+const appStore = useAppStore()
+
+// Where on the match's screenshots each value was read, asked for on the
+// first "Show source": paging the panel remounts this card per match (it is
+// keyed by match_key, so the key is fixed), and most opens never look. No
+// source is offered — so none is asked for, and no cached copy is read — in
+// a coaching session, whose regions would name the player's files (not on
+// this disk; a loaned key can even name a coach's own match), or in the
+// tour, whose sample matches have no screenshots.
+const coach = useCoachStore()
+const sourcesOffered = computed(() => !sessionActive.value && !coach.tourOpen)
+const sourceWanted = ref(false)
+const regions = useFieldRegionsQuery(props.record.match_key, () => sourceWanted.value && sourcesOffered.value)
 
 // A loaned match is clocked in the PLAYER's zone, like the row it was
 // opened from and the day it is grouped under (design rule 7).
@@ -162,6 +183,44 @@ function revertScalar(field: ScalarField) {
   }
 }
 const thousands = (v: number | string) => Number(v).toLocaleString()
+
+interface StatCell { field: ScalarField; label: string; format?: (v: number | string) => string }
+const STAT_CELLS: readonly StatCell[] = [
+  { field: 'eliminations', label: 'Elims' },
+  { field: 'assists', label: 'Assists' },
+  { field: 'deaths', label: 'Deaths' },
+  { field: 'damage', label: 'Damage', format: thousands },
+  { field: 'healing', label: 'Healing', format: thousands },
+  { field: 'mitigation', label: 'Mitigation', format: thousands },
+]
+
+const flagOf = (field: ScalarField) =>
+  props.record.field_flags?.find((f) => f.field === scalarPath(field)) ?? null
+
+function sourceOf(field: ScalarField): StatSource | null {
+  const value = props.record.data?.[field]
+  if (!sourcesOffered.value || value === undefined || value === null || value === '') return null
+  if (regions.isError.value) return { status: 'error' }
+  const all = regions.data.value
+  if (!all) return { status: 'pending' }
+  return { status: 'ready', crops: captionedCrops(props.record, all, scalarPath(field), flagOf(field)) }
+}
+
+// The stats leave out a flagged E/A/D's whole line, so each sibling says so
+// too, naming the flag it waits on.
+const leftOut = computed(() => leftOutPaths(props.record))
+function leftOutWith(field: ScalarField): string {
+  const cause = leftOut.value.get(scalarPath(field))
+  return cause && cause !== scalarPath(field) ? fieldLabel(cause, props.record.data) : ''
+}
+
+// The record here is the one AS READ, so a flagged value still shows; its
+// review is the Unknown tab's, so this leaves the panel for that section.
+function reviewFlag() {
+  ui.selection.close()
+  ui.revealSection(FIELD_FLAG_SECTION)
+  void appStore.goToView('unknown')
+}
 </script>
 
 <template>
@@ -247,61 +306,21 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
       </div>
       <div class="stats">
         <EditableStat
+          v-for="cell in STAT_CELLS"
+          :key="cell.field"
           :locked="writesLocked"
           :lock-reason="lockReason"
-          label="Elims"
-          :value="record.data?.eliminations ?? null"
-          :edited="isFieldEdited(record, scalarPath('eliminations'))"
-          @commit="(v) => editScalar('eliminations', v)"
-          @revert="() => revertScalar('eliminations')"
-        />
-        <EditableStat
-          :locked="writesLocked"
-          :lock-reason="lockReason"
-          label="Assists"
-          :value="record.data?.assists ?? null"
-          :edited="isFieldEdited(record, scalarPath('assists'))"
-          @commit="(v) => editScalar('assists', v)"
-          @revert="() => revertScalar('assists')"
-        />
-        <EditableStat
-          :locked="writesLocked"
-          :lock-reason="lockReason"
-          label="Deaths"
-          :value="record.data?.deaths ?? null"
-          :edited="isFieldEdited(record, scalarPath('deaths'))"
-          @commit="(v) => editScalar('deaths', v)"
-          @revert="() => revertScalar('deaths')"
-        />
-        <EditableStat
-          :locked="writesLocked"
-          :lock-reason="lockReason"
-          label="Damage"
-          :value="record.data?.damage ?? null"
-          :format="thousands"
-          :edited="isFieldEdited(record, scalarPath('damage'))"
-          @commit="(v) => editScalar('damage', v)"
-          @revert="() => revertScalar('damage')"
-        />
-        <EditableStat
-          :locked="writesLocked"
-          :lock-reason="lockReason"
-          label="Healing"
-          :value="record.data?.healing ?? null"
-          :format="thousands"
-          :edited="isFieldEdited(record, scalarPath('healing'))"
-          @commit="(v) => editScalar('healing', v)"
-          @revert="() => revertScalar('healing')"
-        />
-        <EditableStat
-          :locked="writesLocked"
-          :lock-reason="lockReason"
-          label="Mitigation"
-          :value="record.data?.mitigation ?? null"
-          :format="thousands"
-          :edited="isFieldEdited(record, scalarPath('mitigation'))"
-          @commit="(v) => editScalar('mitigation', v)"
-          @revert="() => revertScalar('mitigation')"
+          :label="cell.label"
+          :value="record.data?.[cell.field] ?? null"
+          :format="cell.format"
+          :edited="isFieldEdited(record, scalarPath(cell.field))"
+          :source="sourceOf(cell.field)"
+          :flag="flagOf(cell.field)"
+          :left-out-with="leftOutWith(cell.field)"
+          @commit="(v) => editScalar(cell.field, v)"
+          @revert="() => revertScalar(cell.field)"
+          @review="reviewFlag"
+          @show-source="sourceWanted = true"
         />
       </div>
     </section>
