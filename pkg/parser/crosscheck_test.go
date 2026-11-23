@@ -172,7 +172,8 @@ func summaryBoard(eliminations string) (img image.Image, digits image.Rectangle)
 func TestParseSummary_TightensEachTotalToItsDigitsAndReadsThem(t *testing.T) {
 	drawnReferences(t)
 	seen := stubOCRRegions(t, map[string]string{
-		"summary_perf": "74\nELIMINATIONS\nAVG PER 10 MIN: 12.97",
+		"summary_perf_eliminations":       "74\nELIMINATIONS\nAVG PER 10 MIN: 12.97",
+		"summary_perf_eliminations_total": "74",
 	})
 	img, digits := summaryBoard("9")
 	res, err := parser.ParseSummary(img, t.TempDir())
@@ -180,9 +181,9 @@ func TestParseSummary_TightensEachTotalToItsDigitsAndReadsThem(t *testing.T) {
 		t.Fatalf("ParseSummary: %v", err)
 	}
 	ev := evidenceFor(t, res, parser.ScalarPath("eliminations"))
-	column := seen["summary_perf"]
+	column := seen["summary_perf_eliminations"]
 	if !ev.Rect.In(column) || ev.Rect == column {
-		t.Errorf("eliminations evidence %v should tighten inside the column OCR read, %v", ev.Rect, column)
+		t.Errorf("eliminations evidence %v should tighten inside the card column OCR read, %v", ev.Rect, column)
 	}
 	if !digits.In(ev.Rect) {
 		t.Errorf("eliminations evidence %v should hold the drawn total %v", ev.Rect, digits)

@@ -30,19 +30,9 @@ import (
 // goldenMisreads are golden values the screenshot's own pixels refute, keyed
 // by fixture and field, each mapped to the value the pixels show. The
 // templates must read exactly that value, accepted, and an entry whose golden
-// has been corrected to it is stale.
-var goldenMisreads = map[string]int{
-	// The heavily compressed JPG SUMMARY card shows 9 eliminations (its 12.97
-	// per 10 min over 06:56 agrees); OCR read 74.
-	"ScreenShot_26-06-07_23-00-04-000.jpg eliminations": 9,
-	// The card shows 0 eliminations, AVG PER 10 MIN: 0.00; OCR read 4.
-	"Overwatch 2 Screenshot 2026.07.05 - 14.54.57.71.png eliminations": 0,
-	// The card shows 3 eliminations, AVG PER 10 MIN: 2.63; OCR read 7.
-	"Overwatch 2 Screenshot 2026.07.05 - 19.32.17.22.png eliminations": 3,
-	// The card shows 1 DEATH, AVG PER 10 MIN: 1.87; OCR read 0. The summary
-	// digit 1 is cut from this card, so it is read without that cut.
-	"Overwatch 2 Screenshot 2026.07.30 - 23.08.52.32.png deaths": 1,
-}
+// has been corrected to it is stale. It is empty since the SUMMARY cards were
+// read apart from their icons, which corrected the four it held.
+var goldenMisreads = map[string]int{}
 
 // agreementFloors are the fewest reads on each screen that must be accepted
 // and agree with their golden, set two below the count measured when they
@@ -51,7 +41,7 @@ var goldenMisreads = map[string]int{
 // goldens, falls below one.
 var agreementFloors = map[string]int{
 	"teams":   46,
-	"summary": 78,
+	"summary": 82,
 	"rank":    60,
 }
 

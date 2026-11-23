@@ -5,7 +5,7 @@
     "game_mode": "control",
     "role": "support",
     "hero": "lucio",
-    "eliminations": 74,
+    "eliminations": 9,
     "assists": 10,
     "deaths": 5,
     "result": "victory",
@@ -22,7 +22,7 @@
     ],
     "performance": {
       "eliminations": {
-        "total": 74,
+        "total": 9,
         "avg_per_10min": 12.97
       },
       "assists": {

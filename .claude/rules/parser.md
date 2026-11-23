@@ -64,16 +64,16 @@ builder is not checked.
   digits in numeric captures.
 - "AVG PER 10 MIN: X.XX" lines need anchoring on `MIN` so the `10` isn't grabbed
   as the value.
-- The SUMMARY performance card (E/A/D + per-10-min avgs) is icon-noisy:
-  `parsePerformance` segments per stat and picks the *largest digit line*,
-  rejecting the crossed-swords icon's stray `"4"` and noise like `"S 4"`. It
-  also normalizes the OW font's mis-OCR'd numeral glyphs (`O/Q→0`; `I/l/L` and
-  the vertical brackets `|/]/[ →1`) so a value like `"11"` scanned as `"1]"` is
-  recovered (else the icon's `4` wins). It still **over-reads on low-quality
-  JPG** — a heavily-compressed PrintScreen capture read 74 eliminations where
-  the TEAMS scoreboard (the reliable E/A/D source) read 9; the perf card is a
-  fallback, not the source of truth, so cross-validate against TEAMS when both
-  are present.
+- The SUMMARY Total Performance cards (E/A/D + per-10-min avgs) are read **one
+  card at a time, right of the card's icon** (`perfCardColumn`). Any region
+  that takes in the icons lets the crossed-swords ELIMINATIONS icon's blade
+  OCR as a digit line of its own (`"74"`, `"4"`, `"7"`), on PNG and JPG alike,
+  and no rule over the text can tell it from a smaller real total. Each card
+  gets two passes: a **digits-only** pass whose first line is the total (the
+  plain pass reads the font's `1` as `"T"` and `11` as `"1]"`), and a plain
+  pass for the label and the `MIN`-anchored average (the digits-only pass runs
+  the average into the `10` of `AVG PER 10 MIN`). Don't swap the column for a
+  fixed-offset total band: a NEW CAREER BEST badge moves the stack.
 - The PERSONAL 3×3 grid **drops some hero-ability stat cells** — small-value,
   long-label ability stats (Charge Kill, Rip-Tire Kill, Immortality Field Death
   Prevented) are intermittently missing from `heroes_played[].Stats`, and a few

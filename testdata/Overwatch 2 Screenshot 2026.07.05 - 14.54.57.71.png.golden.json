@@ -5,7 +5,7 @@
     "game_mode": "push",
     "role": "support",
     "hero": "juno",
-    "eliminations": 4,
+    "eliminations": 0,
     "assists": 0,
     "deaths": 3,
     "result": "defeat",
@@ -32,7 +32,7 @@
     ],
     "performance": {
       "eliminations": {
-        "total": 4
+        "total": 0
       },
       "assists": {
         "total": 0
