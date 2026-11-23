@@ -225,6 +225,40 @@ Auto-capture would need a new pre-OCR classifier on a downscaled frame at about
   frame. Otherwise the duplicate problem moves from the user's folder into
   Recall's own output.
 
+## Multi-monitor setups
+
+Many players run two or more monitors, and a real implementation has to
+know which one Overwatch is on. Out of scope for this spike; recorded
+here because it shapes the design.
+
+- **Window capture needs no monitor choice.**
+  `IGraphicsCaptureItemInterop::CreateForWindow(hwnd)` follows the game
+  window to whichever monitor it is on, including after the player
+  drags it.
+- **Monitor-level capture does.** `CreateForMonitor(hmonitor)` and DXGI
+  Desktop Duplication capture a whole output, and they are the likely
+  fallback when window capture yields no frames (exclusive fullscreen,
+  see above). Recall can usually *detect* the monitor: find the
+  Overwatch top-level window, call `MonitorFromWindow(hwnd,
+  MONITOR_DEFAULTTONEAREST)`, and re-check on each poll so a moved
+  window is followed.
+- **A manual override is still required.** When the window cannot be
+  found or the detected monitor gives black frames, the user picks the
+  monitor in Settings from the attached displays (`EnumDisplayMonitors`
+  - `GetMonitorInfo`, shown by name, resolution and position). The
+  choice is per machine and must be revalidated when the display set
+  changes (a monitor unplugged or rearranged).
+- **Mixed monitors change the parse, not just the capture.** Each
+  monitor's resolution, aspect ratio and DPI scaling decide the crop
+  fractions. A 1440p primary beside a 1080p or ultrawide secondary is
+  exactly the case the 16:9-only regions do not handle today, so
+  capture must record the source monitor's geometry with each frame,
+  and per-monitor-DPI awareness (`PROCESS_PER_MONITOR_DPI_AWARE_V2`) is
+  needed so the coordinates are physical pixels.
+- **Single-monitor users** see none of this: detection picks the only
+  output, and the setting stays hidden unless more than one display is
+  attached.
+
 ## What auto-capture would retire in `pkg/correlate`
 
 For frames Recall captured itself, one capture session sees the in-game TEAMS
