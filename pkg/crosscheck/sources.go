@@ -102,12 +102,9 @@ func summaryHeroes(g Group) (map[string]bool, []match.FieldReading) {
 		if s.Type != parser.TypeSummary {
 			continue
 		}
-		var names []string
-		for _, h := range s.Data.HeroesPlayed {
-			if h.Hero != "" {
-				listed[h.Hero] = true
-				names = append(names, h.Hero)
-			}
+		names := heroNames(s.Data.HeroesPlayed)
+		for _, name := range names {
+			listed[name] = true
 		}
 		if len(names) > 0 {
 			listings = append(listings, ocrReading(s.File, strings.Join(names, ", ")))

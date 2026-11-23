@@ -1,5 +1,7 @@
 package db
 
+import "recall/pkg/parser"
+
 // Ignored screenshots — per-file suppress list backing the Unknown
 // tab's Dismiss affordance. Presence in ignored_screenshots
 // IS the ignored state; no boolean column anywhere. Add/Remove are
@@ -99,6 +101,52 @@ func (s *SQLStore) LoadAcknowledgedReferenceGaps() (map[string]bool, error) {
 			return nil, err
 		}
 		out[k] = true
+	}
+	return out, rows.Err()
+}
+
+// ConfirmedReadings is one match's confirmed fields, each with the reading it
+// was confirmed at.
+type ConfirmedReadings map[parser.FieldPath]string
+
+// Field-reading confirmations — the sibling of the gap acks above for the
+// Unknown tab's flagged readings, except that a confirmation carries the
+// value the user looked at, so the read path can tell a confirmation that
+// still holds from one a later parse made stale. Confirming again replaces
+// the value and refreshes the timestamp.
+
+func (s *SQLStore) ConfirmFieldReading(matchKey string, field parser.FieldPath, value string) error {
+	_, err := s.db.Exec(
+		`INSERT INTO confirmed_field_readings (match_key, field, confirmed_value) VALUES (?, ?, ?)
+		 ON CONFLICT(match_key, field) DO UPDATE SET
+		   confirmed_value = excluded.confirmed_value,
+		   confirmed_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`,
+		matchKey, string(field), value,
+	)
+	return err
+}
+
+func (s *SQLStore) UnconfirmFieldReading(matchKey string, field parser.FieldPath) error {
+	_, err := s.db.Exec(`DELETE FROM confirmed_field_readings WHERE match_key = ? AND field = ?`, matchKey, string(field))
+	return err
+}
+
+func (s *SQLStore) LoadFieldConfirmations() (map[string]ConfirmedReadings, error) {
+	rows, err := s.db.Query(`SELECT match_key, field, confirmed_value FROM confirmed_field_readings`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := map[string]ConfirmedReadings{}
+	for rows.Next() {
+		var key, field, value string
+		if err := rows.Scan(&key, &field, &value); err != nil {
+			return nil, err
+		}
+		if out[key] == nil {
+			out[key] = ConfirmedReadings{}
+		}
+		out[key][parser.FieldPath(field)] = value
 	}
 	return out, rows.Err()
 }

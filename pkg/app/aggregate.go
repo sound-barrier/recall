@@ -7,32 +7,6 @@ import (
 	"recall/pkg/parser"
 )
 
-// aggregateAll bulk-reads every screenshot row, groups by match_key,
-// folds each group into one match.Record via correlate.MergeMatchResult, and runs
-// the read-time inference helpers.
-//
-// Read-time only: never mutates DB rows. The same precedence rules
-// the old destructive merge applied at write time now run at read
-// time over the typed parent rows; raw per-screenshot data stays
-// available for replay (e.g. when a new SUMMARY arrives for an old
-// match that was teams-only).
-// reAggregateUnknowns walks every per-screenshot row whose canonical
-// hero/map is empty but whose raw OCR is preserved, re-runs the
-// parser's matchers against the CURRENT heroes.yaml / maps.yaml
-// rosters, and promotes any newly-recognized rows to canonical.
-//
-// Cheap pure-CPU pass — one in-memory matcher invocation per
-// unknown row, then one UPDATE per hit. ~2–5 s on a 500-match
-// corpus typical. Runs at App.Startup so a YAML release that adds
-// a new hero/map retroactively fixes the user's Unknown bucket
-// without forcing a Tesseract re-run.
-//
-// Forward-only: rows written before this feature shipped have
-// hero_raw=” / map_raw=” and participate in the walk only as
-// no-ops. To recover the older Mei-misattribution backlog,
-// Settings → Advanced → Re-parse all screenshots is the only
-// path (it re-runs Tesseract, which now correctly rejects the
-// short-name fuzzy match).
 // loadSidecars materializes the user-layer decoration maps best-effort:
 // a failed load mutes annotations/flags on the result, never the
 // operation itself (matching the per-file loads it replaced).
@@ -51,13 +25,31 @@ func (a *App) loadSidecars() aggregate.Sidecars {
 	moments, _ := store.LoadMatchMoments()
 	selfReviews, _ := store.LoadSelfReviewNotes()
 	dupLinks, _ := store.LoadAllDuplicateLinks()
+	confirmed, _ := store.LoadFieldConfirmations()
 	return aggregate.Sidecars{
 		Annotations: annos, Hidden: hidden, AckedRefGaps: ackedGaps, Reviews: reviews,
 		Pinned: pinned, CoachNotes: coachNotes, Moments: moments, SelfReviews: selfReviews,
-		DuplicateLinks: dupLinks,
+		DuplicateLinks: dupLinks, FieldConfirmations: confirmed,
 	}
 }
 
+// reAggregateUnknowns walks every per-screenshot row whose canonical
+// hero/map is empty but whose raw OCR is preserved, re-runs the
+// parser's matchers against the CURRENT heroes.yaml / maps.yaml
+// rosters, and promotes any newly-recognized rows to canonical.
+//
+// Cheap pure-CPU pass — one in-memory matcher invocation per
+// unknown row, then one UPDATE per hit. ~2–5 s on a 500-match
+// corpus typical. Runs at App.Startup so a YAML release that adds
+// a new hero/map retroactively fixes the user's Unknown bucket
+// without forcing a Tesseract re-run.
+//
+// Forward-only: rows written before this feature shipped have
+// hero_raw=” / map_raw=” and participate in the walk only as
+// no-ops. To recover the older Mei-misattribution backlog,
+// Settings → Advanced → Re-parse all screenshots is the only
+// path (it re-runs Tesseract, which now correctly rejects the
+// short-name fuzzy match).
 func (a *App) reAggregateUnknowns() (int, error) {
 	store, release, leaseErr := a.useStore()
 	if leaseErr != nil {
@@ -86,6 +78,7 @@ type aggregateInputs struct {
 	moments     map[string][]db.MatchMoment
 	selfReviews map[string][]db.SelfReviewNoteOnMatch
 	dupLinks    map[string][]string
+	confirmed   map[string]db.ConfirmedReadings
 }
 
 func (a *App) loadAggregateInputs() (aggregateInputs, error) {
@@ -110,6 +103,7 @@ func (a *App) loadAggregateInputs() (aggregateInputs, error) {
 		func() (err error) { s.moments, err = store.LoadMatchMoments(); return },
 		func() (err error) { s.selfReviews, err = store.LoadSelfReviewNotes(); return },
 		func() (err error) { s.dupLinks, err = store.LoadAllDuplicateLinks(); return },
+		func() (err error) { s.confirmed, err = store.LoadFieldConfirmations(); return },
 	} {
 		if err = load(); err != nil {
 			return aggregateInputs{}, err
@@ -118,6 +112,15 @@ func (a *App) loadAggregateInputs() (aggregateInputs, error) {
 	return s, nil
 }
 
+// aggregateAll bulk-reads every screenshot row, groups by match_key,
+// folds each group into one match.Record via correlate.MergeMatchResult, and runs
+// the read-time inference helpers.
+//
+// Read-time only: never mutates DB rows. The same precedence rules
+// the old destructive merge applied at write time now run at read
+// time over the typed parent rows; raw per-screenshot data stays
+// available for replay (e.g. when a new SUMMARY arrives for an old
+// match that was teams-only).
 func (a *App) aggregateAll() ([]match.Record, error) {
 	d, err := a.loadAggregateInputs()
 	if err != nil {
@@ -126,6 +129,7 @@ func (a *App) aggregateAll() ([]match.Record, error) {
 	recs := aggregate.Screenshots(d.snap)
 	recs = aggregate.SynthesizeManualMatches(recs, d.userData)
 	aggregate.AttachUserData(recs, d.userData)
+	aggregate.AttachFieldResolutions(recs, d.confirmed)
 	aggregate.AttachAnnotations(recs, d.annos)
 	aggregate.AttachHidden(recs, d.hidden)
 	aggregate.AttachReferenceGapAcks(recs, d.ackedGaps)

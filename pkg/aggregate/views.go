@@ -39,15 +39,6 @@ func withEvidence(vs []ScreenshotView, evidence map[db.FileRef]db.ScreenshotEvid
 	return vs
 }
 
-// MatchKey produces a single match.Record for the given
-// match_key, reading just its rows out of snap. Returns
-// (record, true) when at least one row matched; (_, false) when
-// nothing in snap references the key.
-//
-// Same precedence rules as Screenshots — this is the
-// per-key extract for the live-streaming "match-updated" event.
-// Inference helpers (InferSoleHeroPercent, InferResultFromRank)
-// are applied so the streamed shape matches GetMatchResults output.
 // unknownToView builds the ScreenshotView for an unknown row. The other
 // four row types have their own *ToView helpers; this matches them so the
 // inline literal doesn't get duplicated across the aggregators.

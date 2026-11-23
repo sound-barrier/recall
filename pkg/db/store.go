@@ -197,6 +197,15 @@ type Store interface {
 	UnacknowledgeReferenceGap(matchKey string) error
 	LoadAcknowledgedReferenceGaps() (map[string]bool, error)
 
+	// Field-reading confirmations — the user said a flagged reading is right
+	// as read. Each holds the value confirmed, so the read path can re-open a
+	// flag whose reading has since changed. Confirming again replaces the
+	// value; unconfirming is idempotent. LoadFieldConfirmations is keyed by
+	// match_key.
+	ConfirmFieldReading(matchKey string, field parser.FieldPath, value string) error
+	UnconfirmFieldReading(matchKey string, field parser.FieldPath) error
+	LoadFieldConfirmations() (map[string]ConfirmedReadings, error)
+
 	// Pinned matches — same presence-is-state sidecar as hidden.
 	PinMatch(matchKey string) error
 	UnpinMatch(matchKey string) error

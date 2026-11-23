@@ -554,6 +554,9 @@ func applyScalarOverrides(d *parser.MatchResult, ud db.UserMatchData, mark func(
 	// recompute it from. That absence is exactly why the old Elo population
 	// card was deleted, and inventing a replacement here would be worse than
 	// showing nothing.
+	//
+	// clearedBy (flags.go) names the same two edits, so a flag on the
+	// percentile settles with it.
 	if ud.Rank != nil || ud.Level != nil {
 		d.RankPercentile = nil
 	}

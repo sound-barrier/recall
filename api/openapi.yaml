@@ -386,6 +386,92 @@ paths:
         "503":
           $ref: "#/components/responses/StoreUnavailable"
 
+  /api/v1/matches/{match_key}/field-confirmations/{field}:
+    parameters:
+      - $ref: "#/components/parameters/MatchKey"
+      - $ref: "#/components/parameters/FieldPath"
+    put:
+      operationId: ConfirmFieldReading
+      tags: [Matches]
+      summary: Confirm a flagged reading as read
+      description: |
+        Records that the user checked a flagged reading against the
+        screenshot and it is right as read. The server binds the
+        confirmation to the value the match reads now (`FieldFlag.value`),
+        so the flag reads `confirmed` only while the match keeps reading
+        that value: a re-parse that reads something else re-opens it. An
+        edit of the field outranks a confirmation.
+
+        The body's `value` is the `FieldFlag.value` the client showed the
+        user. It is a precondition, not the value stored: when a parse
+        has changed the reading since the client fetched it, the request
+        is a `409` and nothing is stored, so a confirmation never vouches
+        for a number the user did not look at. Refetch and show the new
+        value.
+
+        DELETE re-opens the flag. Confirming a confirmed reading again is
+        idempotent. Confirmations stay on this install: export and coach
+        bundles do not carry them.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [value]
+              properties:
+                value:
+                  type: string
+                  description: |
+                    The `FieldFlag.value` the user was shown; empty when
+                    the match held nothing there.
+                  example: "74"
+      responses:
+        "204":
+          description: Reading confirmed.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: >-
+            The field carries no flag to confirm (none was raised, or the
+            user's edit settled it), a parse has changed the reading
+            since the client showed `value`, or a coaching session holds
+            the database read-only.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
+    delete:
+      operationId: UnconfirmFieldReading
+      tags: [Matches]
+      summary: Re-open a confirmed reading
+      description: |
+        Removes the confirmation so the field's flag reads `open` again.
+        Idempotent on readings that weren't confirmed.
+      responses:
+        "204":
+          description: Confirmation removed (or there was none).
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: >-
+            A coaching session holds the database read-only; end the
+            session first.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
+
   /api/v1/matches/{match_key}/pin:
     parameters:
       - $ref: "#/components/parameters/MatchKey"
@@ -4554,6 +4640,22 @@ components:
         still needs the usual encoding for spaces / unicode.
       example: "match-2026-05-10T22-21-11"
 
+    FieldPath:
+      in: path
+      name: field
+      required: true
+      schema:
+        type: string
+        pattern: "^data(\\.[a-z0-9_ ]+)+$"
+        maxLength: 200
+      description: |
+        A field's dotted path, in the vocabulary `edited_fields` and
+        `FieldFlag.field` use (`data.eliminations`,
+        `data.heroes_played.d.va.percent_played`). Hero keys keep the
+        stored spelling, so a path can carry a dot or a space
+        (`data.sr.soldier 76.sr`); percent-encode the space.
+      example: "data.eliminations"
+
     ReviewID:
       in: path
       name: review_id
@@ -4868,7 +4970,7 @@ components:
 
     FieldFlag:
       type: object
-      required: [field, checks, state, readings]
+      required: [field, value, checks, state, readings]
       description: |
         One field whose readings disagree, with what noticed and what was
         compared, so the reader can judge which reading the pixels support.
@@ -4880,6 +4982,15 @@ components:
             uses (`data.eliminations`, `data.heroes_played.juno.percent_played`,
             `data.sr.juno.sr`).
           example: "data.eliminations"
+        value:
+          type: string
+          description: |
+            What the match reads for the field now, spelled as a
+            reading's `value` is: the value stats use, and the one a
+            confirmation (`PUT .../field-confirmations/{field}`) is bound
+            to and sends back as its precondition. Empty when the match
+            holds nothing there.
+          example: "74"
         checks:
           type: array
           minItems: 1
@@ -4945,8 +5056,9 @@ components:
       enum: ["open", "confirmed", "edited"]
       description: |
         Where a flag stands with the user: `open` until reviewed,
-        `confirmed` when the user said the reading is right, `edited` when
-        they corrected the field.
+        `confirmed` when the user said the reading is right and the match
+        still reads the value they confirmed, `edited` when they corrected
+        the field or a collection holding it.
 
     FieldReadingOriginEnum:
       type: string

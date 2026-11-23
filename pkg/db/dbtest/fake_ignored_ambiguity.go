@@ -202,6 +202,7 @@ func (f *Fake) renameMatchKey(from, to string) {
 
 	rekeyBool(f.Hidden, from, to)
 	rekeyBool(f.AckedReferenceGaps, from, to)
+	f.renameInConfirmations(from, to)
 	rekeyBool(f.Pinned, from, to)
 	rekeyMap(f.Reviews, from, to)
 	rekeyMap(f.Queues, from, to)
@@ -274,6 +275,21 @@ func rekeyBool(m map[string]bool, from, to string) {
 		m[to] = v
 		delete(m, from)
 	}
+}
+
+// renameInConfirmations moves each confirmed field to the new key, a field
+// by field UPDATE OR REPLACE as SQLStore's: one the new key already confirmed
+// takes the moved value, and the new key's other fields stay.
+func (f *Fake) renameInConfirmations(from, to string) {
+	moved, ok := f.ConfirmedReadings[from]
+	if !ok {
+		return
+	}
+	if f.ConfirmedReadings[to] == nil {
+		f.ConfirmedReadings[to] = db.ConfirmedReadings{}
+	}
+	maps.Copy(f.ConfirmedReadings[to], moved)
+	delete(f.ConfirmedReadings, from)
 }
 
 func rekeyMap[V any](m map[string]V, from, to string) {

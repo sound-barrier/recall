@@ -248,6 +248,15 @@ export type FieldFlag = {
      */
     field: string;
     /**
+     * What the match reads for the field now, spelled as a
+     * reading's `value` is: the value stats use, and the one a
+     * confirmation (`PUT .../field-confirmations/{field}`) is bound
+     * to and sends back as its precondition. Empty when the match
+     * holds nothing there.
+     *
+     */
+    value: string;
+    /**
      * Every check that fired on this field, sorted.
      */
     checks: Array<FieldCheckEnum>;
@@ -298,8 +307,9 @@ export type FieldCheckEnum = 'hero_percent_vs_playtime' | 'perf_total_vs_rate' |
 
 /**
  * Where a flag stands with the user: `open` until reviewed,
- * `confirmed` when the user said the reading is right, `edited` when
- * they corrected the field.
+ * `confirmed` when the user said the reading is right and the match
+ * still reads the value they confirmed, `edited` when they corrected
+ * the field or a collection holding it.
  *
  */
 export type FieldFlagStateEnum = 'open' | 'confirmed' | 'edited';
@@ -2435,6 +2445,16 @@ export type LikelyCauseCodeEnum = 'tesseract_missing' | 'tesseract_unsupported' 
 export type MatchKey = string;
 
 /**
+ * A field's dotted path, in the vocabulary `edited_fields` and
+ * `FieldFlag.field` use (`data.eliminations`,
+ * `data.heroes_played.d.va.percent_played`). Hero keys keep the
+ * stored spelling, so a path can carry a dot or a space
+ * (`data.sr.soldier 76.sr`); percent-encode the space.
+ *
+ */
+export type FieldPath = string;
+
+/**
  * A self-review sitting's id — a UUID minted on create. It is also the
  * identity a share bundle and a profile move carry the sitting under,
  * so a re-import updates the same sitting instead of duplicating it.
@@ -2882,6 +2902,145 @@ export type AcknowledgeReferenceGapResponses = {
 };
 
 export type AcknowledgeReferenceGapResponse = AcknowledgeReferenceGapResponses[keyof AcknowledgeReferenceGapResponses];
+
+export type UnconfirmFieldReadingData = {
+    body?: never;
+    path: {
+        /**
+         * Match identity — same `match_key` value exposed in
+         * `MatchRecord`. URL-safe: the canonical form replaces every
+         * legacy colon separator with a dash, so no percent-encoding
+         * is required for paste-in-URL use
+         * (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+         * and `ambiguous-<filename>` variants the embedded filename
+         * still needs the usual encoding for spaces / unicode.
+         *
+         */
+        match_key: string;
+        /**
+         * A field's dotted path, in the vocabulary `edited_fields` and
+         * `FieldFlag.field` use (`data.eliminations`,
+         * `data.heroes_played.d.va.percent_played`). Hero keys keep the
+         * stored spelling, so a path can carry a dot or a space
+         * (`data.sr.soldier 76.sr`); percent-encode the space.
+         *
+         */
+        field: string;
+    };
+    query?: never;
+    url: '/api/v1/matches/{match_key}/field-confirmations/{field}';
+};
+
+export type UnconfirmFieldReadingErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * A coaching session holds the database read-only; end the session first.
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
+};
+
+export type UnconfirmFieldReadingError = UnconfirmFieldReadingErrors[keyof UnconfirmFieldReadingErrors];
+
+export type UnconfirmFieldReadingResponses = {
+    /**
+     * Confirmation removed (or there was none).
+     */
+    204: void;
+};
+
+export type UnconfirmFieldReadingResponse = UnconfirmFieldReadingResponses[keyof UnconfirmFieldReadingResponses];
+
+export type ConfirmFieldReadingData = {
+    body: {
+        /**
+         * The `FieldFlag.value` the user was shown; empty when
+         * the match held nothing there.
+         *
+         */
+        value: string;
+    };
+    path: {
+        /**
+         * Match identity — same `match_key` value exposed in
+         * `MatchRecord`. URL-safe: the canonical form replaces every
+         * legacy colon separator with a dash, so no percent-encoding
+         * is required for paste-in-URL use
+         * (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+         * and `ambiguous-<filename>` variants the embedded filename
+         * still needs the usual encoding for spaces / unicode.
+         *
+         */
+        match_key: string;
+        /**
+         * A field's dotted path, in the vocabulary `edited_fields` and
+         * `FieldFlag.field` use (`data.eliminations`,
+         * `data.heroes_played.d.va.percent_played`). Hero keys keep the
+         * stored spelling, so a path can carry a dot or a space
+         * (`data.sr.soldier 76.sr`); percent-encode the space.
+         *
+         */
+        field: string;
+    };
+    query?: never;
+    url: '/api/v1/matches/{match_key}/field-confirmations/{field}';
+};
+
+export type ConfirmFieldReadingErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * The field carries no flag to confirm (none was raised, or the user's edit settled it), a parse has changed the reading since the client showed `value`, or a coaching session holds the database read-only.
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+    /**
+     * The database is not available to serve the request. Type
+     * `store-swapping`: a restore, profile switch or profile rename is
+     * replacing it — the response carries `Retry-After` (seconds) and a
+     * retry succeeds once the swap ends, about a second later. Type
+     * `store-unavailable`: no database is open at all (it could not be
+     * opened at startup or after a swap) — retrying does not help.
+     *
+     */
+    503: ProblemDetails;
+};
+
+export type ConfirmFieldReadingError = ConfirmFieldReadingErrors[keyof ConfirmFieldReadingErrors];
+
+export type ConfirmFieldReadingResponses = {
+    /**
+     * Reading confirmed.
+     */
+    204: void;
+};
+
+export type ConfirmFieldReadingResponse = ConfirmFieldReadingResponses[keyof ConfirmFieldReadingResponses];
 
 export type SetMatchPinData = {
     body: {

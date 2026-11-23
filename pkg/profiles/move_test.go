@@ -10,6 +10,7 @@ import (
 
 	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
+	"recall/pkg/parser"
 	"recall/pkg/profiles"
 )
 
@@ -69,6 +70,7 @@ func seedFullMatch(t *testing.T, s db.Store, key string) {
 	mustNoErr(t, s.SetAnnotation(db.Annotation{MatchKey: key, Note: "smurf lobby"}))
 	mustNoErr(t, s.HideMatch(key))
 	mustNoErr(t, s.AcknowledgeReferenceGap(key))
+	mustNoErr(t, s.ConfirmFieldReading(key, parser.ScalarPath("eliminations"), "17"))
 	mustNoErr(t, s.PinMatch(key))
 	mustNoErr(t, s.SetReview(key, "coach"))
 	mustNoErr(t, s.SetMatchQueue(key, "role"))
@@ -124,6 +126,8 @@ func sidecarPresence(t *testing.T, s db.Store, key string) map[string]bool {
 	mustNoErr(t, err)
 	dupLinks, err := s.LoadAllDuplicateLinks()
 	mustNoErr(t, err)
+	confirmed, err := s.LoadFieldConfirmations()
+	mustNoErr(t, err)
 	_, hasAnnotation := annotations[key]
 	_, hasReview := reviews[key]
 	_, hasUserData := userData[key]
@@ -143,6 +147,8 @@ func sidecarPresence(t *testing.T, s db.Store, key string) map[string]bool {
 		"moment":            len(moments[key]) > 0,
 		"self_review_note":  len(selfNotes[key]) > 0,
 		"duplicate_link":    len(dupLinks[key]) > 0,
+		// The value rides along: a confirmation is bound to the reading.
+		"field_confirmation": confirmed[key][parser.ScalarPath("eliminations")] == "17",
 	}
 }
 

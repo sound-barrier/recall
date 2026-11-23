@@ -2,12 +2,15 @@ package dbtest
 
 import (
 	"cmp"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"time"
 
 	"recall/pkg/db"
+	"recall/pkg/parser"
 )
 
 func (f *Fake) SetAnnotation(a db.Annotation) error { return f.setAnnotation(a, "") }
@@ -261,6 +264,48 @@ func (f *Fake) LoadAcknowledgedReferenceGaps() (map[string]bool, error) {
 	defer f.mu.Unlock()
 	out := make(map[string]bool, len(f.AckedReferenceGaps))
 	maps.Copy(out, f.AckedReferenceGaps)
+	return out, nil
+}
+
+// Field-reading confirmations — mirrors SQLStore's: the value is replaced on a
+// second confirm, removal is idempotent, and a field outside the data
+// vocabulary is refused as the column's CHECK refuses it.
+
+var errConfirmationNotDataPath = errors.New("field confirmation names no data path")
+
+func (f *Fake) ConfirmFieldReading(matchKey string, field parser.FieldPath, value string) error {
+	if !strings.HasPrefix(string(field), "data.") {
+		return errConfirmationNotDataPath
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.ConfirmedReadings == nil {
+		f.ConfirmedReadings = map[string]db.ConfirmedReadings{}
+	}
+	if f.ConfirmedReadings[matchKey] == nil {
+		f.ConfirmedReadings[matchKey] = db.ConfirmedReadings{}
+	}
+	f.ConfirmedReadings[matchKey][field] = value
+	return nil
+}
+
+func (f *Fake) UnconfirmFieldReading(matchKey string, field parser.FieldPath) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.ConfirmedReadings[matchKey], field)
+	if len(f.ConfirmedReadings[matchKey]) == 0 {
+		delete(f.ConfirmedReadings, matchKey)
+	}
+	return nil
+}
+
+func (f *Fake) LoadFieldConfirmations() (map[string]db.ConfirmedReadings, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make(map[string]db.ConfirmedReadings, len(f.ConfirmedReadings))
+	for key, fields := range f.ConfirmedReadings {
+		out[key] = maps.Clone(fields)
+	}
 	return out, nil
 }
 

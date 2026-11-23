@@ -690,6 +690,25 @@ CREATE TABLE IF NOT EXISTS screenshot_field_evidence (
 ) STRICT;
 -- statement-end
 
+-- A flagged reading the user confirmed as read (the cross-checks in
+-- pkg/crosscheck raise the flags at read time; nothing about a flag is
+-- stored but this). confirmed_value is the reading the user looked at: the
+-- confirmation holds only while the match still reads that value, so a
+-- re-parse that reads something else re-opens the flag instead of carrying a
+-- verdict about a different number. Keyed by match_key, like the sibling
+-- acknowledged_reference_gaps, so it follows a rename (matchKeyTables). Not in
+-- export or coach bundles: a local verdict about this install's parse, which
+-- the receiving install re-parses for itself.
+CREATE TABLE IF NOT EXISTS confirmed_field_readings (
+  match_key TEXT NOT NULL,
+  -- GLOB, not LIKE: LIKE ignores ASCII case, and paths are lower case.
+  field TEXT NOT NULL CHECK (field GLOB 'data.*'),
+  confirmed_value TEXT NOT NULL,
+  confirmed_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  PRIMARY KEY (match_key, field)
+) STRICT;
+-- statement-end
+
 -- User match-data override layer. The single source for BOTH features:
 --   * editing an OCR match  -> a row with only the changed columns non-NULL
 --   * a hand-entered match  -> a row + children with NO screenshot rows anywhere

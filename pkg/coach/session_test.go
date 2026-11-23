@@ -251,6 +251,35 @@ func assertManualRecord(t *testing.T, r match.Record) {
 	}
 }
 
+// A flag on a field the player corrected reads edited in the coach's room as
+// it does in the player's app: the edit rides the bundle, so the coach is
+// never told a settled field is still in doubt. Confirmations stay home.
+func TestBuildRecords_ResolvesAFlagTheEditSettled(t *testing.T) {
+	corrected := 17
+	recs := coach.BuildRecords(bundle.DataV2{
+		Summaries: []db.SummaryRow{{
+			Filename: "Overwatch 2 Screenshot 2026.06.07 - 23.00.04.00.png", MatchKey: "m1", ParsedAt: "2026-06-07T23:00:10Z",
+			Hero: "lucio", Result: "victory", GameLength: "15:45",
+			Eliminations: 74, Assists: 10, Deaths: 5,
+			PerfElimAvgPer10Min: 12.97, PerfAssistsAvgPer10Min: 14.41, PerfDeathsAvgPer10Min: 7.21,
+			HeroesPlayed: []db.SummaryHeroPlayed{{Hero: "lucio", PercentPlayed: 100, PlayTime: "06:56"}},
+		}},
+		UserMatchData: []db.UserMatchData{{MatchKey: "m1", Eliminations: &corrected}},
+	})
+
+	elims := parser.ScalarPath("eliminations")
+	if len(recs) != 1 {
+		t.Fatalf("want one record, got %d", len(recs))
+	}
+	i := slices.IndexFunc(recs[0].FieldFlags, func(f match.FieldFlag) bool { return f.Field == elims })
+	if i < 0 {
+		t.Fatalf("no flag on %s; field_flags = %+v", elims, recs[0].FieldFlags)
+	}
+	if got := recs[0].FieldFlags[i].State; got != match.FlagEdited {
+		t.Errorf("state = %q, want edited: the player corrected eliminations to %d", got, recs[0].Data.Eliminations)
+	}
+}
+
 func TestBuildRecords_EmptyDataYieldsEmptySlice(t *testing.T) {
 	recs := coach.BuildRecords(bundle.DataV2{})
 	if recs == nil || len(recs) != 0 {

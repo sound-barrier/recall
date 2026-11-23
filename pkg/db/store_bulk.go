@@ -201,6 +201,7 @@ func (s *SQLStore) Clear() error {
 		"moment_images",
 		"hidden_matches",
 		"acknowledged_reference_gaps",
+		"confirmed_field_readings",
 		"pinned_matches",
 		"ambiguous_candidates",
 		"ignored_screenshots",

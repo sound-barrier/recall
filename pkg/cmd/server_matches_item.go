@@ -5,33 +5,18 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"regexp"
 
 	"recall/pkg/app"
 	"recall/pkg/db"
 	"recall/pkg/match"
 	"recall/pkg/matchedit"
+	"recall/pkg/parser"
 )
 
 // Per-{match_key} sub-resource handlers for the /api/v1/matches family.
 // Wired in registerMatchRoutes (server_matches.go). Each reads the key
 // via matchKeyFromPath, which 400s on an empty segment.
-
-// handleHardDeleteMatch removes every parent row + annotation + hidden
-// flag for matchKey. Surfaced by the Hidden drawer's "Delete forever"
-// affordance once a user has already moved the match to the archive.
-// Idempotent: unknown keys return 204.
-func handleHardDeleteMatch(a *app.App) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		matchKey, ok := matchKeyFromPath(w, r)
-		if !ok {
-			return
-		}
-		if writeError(w, r, a.HardDeleteMatch(matchKey)) {
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	}
-}
 
 // handleGetMatchByKey reads a single match by key. Reuses
 // GetMatchResults's aggregator + read-time inference, then filters to the
@@ -303,23 +288,6 @@ func handleDeleteMatchMoment(a *app.App) http.HandlerFunc {
 	}
 }
 
-// handleDeleteMatchAnnotation removes a match's annotation row. This is the
-// explicit "clear" verb — PUT is upsert-only and rejects an all-empty body, so
-// erasing an annotation is a DELETE. Idempotent: deleting an absent annotation
-// still returns 204.
-func handleDeleteMatchAnnotation(a *app.App) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		matchKey, ok := matchKeyFromPath(w, r)
-		if !ok {
-			return
-		}
-		if writeError(w, r, a.DeleteMatchAnnotation(matchKey)) {
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	}
-}
-
 // handleUpdateMatchData replaces a match's user-data override set — the editable
 // copy kept separate from the parsed OCR rows. Body is the FULL override set; a
 // per-field revert is the same request omitting that field. Idempotent.
@@ -358,21 +326,6 @@ func handleUpdateMatchData(a *app.App) http.HandlerFunc {
 	}
 }
 
-// handleResetMatchData clears a match's user override set, reverting an edited
-// OCR match to its parsed values. Idempotent.
-func handleResetMatchData(a *app.App) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		matchKey, ok := matchKeyFromPath(w, r)
-		if !ok {
-			return
-		}
-		if writeError(w, r, a.ResetMatchData(matchKey)) {
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	}
-}
-
 // handleSetMatchReview sets the per-match review-status tag: `'self'`
 // (user reviewed the VOD themselves) or `'coach'` (a coach reviewed it).
 // Idempotent.
@@ -391,21 +344,6 @@ func handleSetMatchReview(a *app.App) http.HandlerFunc {
 		}
 		if writeError(w, r, a.SetMatchReview(matchKey, body.ReviewedBy),
 			errStatus{app.ErrInvalidReviewedBy, probInvalidBody}) {
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	}
-}
-
-// handleClearMatchReview clears the review tag, reverting to the implicit
-// "not reviewed" state. Idempotent.
-func handleClearMatchReview(a *app.App) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		matchKey, ok := matchKeyFromPath(w, r)
-		if !ok {
-			return
-		}
-		if writeError(w, r, a.ClearMatchReview(matchKey)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -437,21 +375,6 @@ func handleSetMatchQueue(a *app.App) http.HandlerFunc {
 	}
 }
 
-// handleClearMatchQueue clears the queue-type tag, reverting to the
-// implicit "queue not set" state. Idempotent.
-func handleClearMatchQueue(a *app.App) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		matchKey, ok := matchKeyFromPath(w, r)
-		if !ok {
-			return
-		}
-		if writeError(w, r, a.ClearMatchQueue(matchKey)) {
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	}
-}
-
 // handleSetMatchPlayMode sets the per-match play-mode override:
 // `'quickplay'` or `'competitive'` — overriding the parser's data.mode.
 // Idempotent.
@@ -476,45 +399,84 @@ func handleSetMatchPlayMode(a *app.App) http.HandlerFunc {
 	}
 }
 
-// handleClearMatchPlayMode clears the play-mode override, reverting to
-// the fallback chain (data.mode → rank presence → empty). Idempotent.
-func handleClearMatchPlayMode(a *app.App) http.HandlerFunc {
+// noContentForKey answers a bodyless per-match write — the sidecar removals
+// and the reference-gap acknowledgement, whose resource is the row itself:
+// the key from the path, act on it, 204. Each act's contract is on the *App
+// method it names.
+func noContentForKey(act func(matchKey string) error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		matchKey, ok := matchKeyFromPath(w, r)
 		if !ok {
 			return
 		}
-		if writeError(w, r, a.ClearMatchPlayMode(matchKey)) {
+		if writeError(w, r, act(matchKey)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
-// handleAcknowledgeReferenceGap dismisses a match's reference-data-gap
-// warning on the Unknown tab; its DELETE twin below restores it. The
-// acknowledgement itself is the resource, so neither verb carries a
-// body — the ignore-family shape, not visibility's {hidden:bool}.
-func handleAcknowledgeReferenceGap(a *app.App) http.HandlerFunc {
+// fieldPathPattern mirrors the FieldPath parameter's pattern and length in
+// api/openapi.yaml: the data vocabulary, lower-case, with the space and dot
+// a stored hero key can carry ("soldier 76", "d.va").
+var fieldPathPattern = regexp.MustCompile(`^data(\.[a-z0-9_ ]+)+$`)
+
+const maxFieldPathLen = 200
+
+// matchKeyAndField reads the key and a field path in the data vocabulary
+// from the path, answering the 400 itself when the field is not one.
+func matchKeyAndField(w http.ResponseWriter, r *http.Request) (string, parser.FieldPath, bool) {
+	matchKey, ok := matchKeyFromPath(w, r)
+	if !ok {
+		return "", "", false
+	}
+	field := r.PathValue("field")
+	if len(field) > maxFieldPathLen || !fieldPathPattern.MatchString(field) {
+		writeProblem(w, r, probInvalidBody, "field must be a data path such as data.eliminations")
+		return "", "", false
+	}
+	return matchKey, parser.FieldPath(field), true
+}
+
+// handleConfirmFieldReading confirms a flagged reading. The body's value is
+// the one the client showed the user, a precondition only: the server stores
+// the value the match reads now, and refuses (409) when a parse has changed
+// it in between.
+func handleConfirmFieldReading(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		matchKey, ok := matchKeyFromPath(w, r)
+		matchKey, field, ok := matchKeyAndField(w, r)
 		if !ok {
 			return
 		}
-		if writeError(w, r, a.AcknowledgeReferenceGap(matchKey)) {
+		var body struct {
+			Value *string `json:"value"`
+		}
+		if err := decodeJSONBody(r, &body); err != nil {
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
+			return
+		}
+		if body.Value == nil {
+			writeProblem(w, r, probInvalidBody, `body must be {"value":<the value shown>}`,
+				withFieldErrors(fieldError{"value", "must be a string"}))
+			return
+		}
+		err := a.ConfirmFieldReading(matchKey, field, *body.Value)
+		if writeError(w, r, err, errStatus{app.ErrNothingToConfirm, probConflict}, errStatus{app.ErrReadingChanged, probConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
-func handleUnacknowledgeReferenceGap(a *app.App) http.HandlerFunc {
+// handleUnconfirmFieldReading re-opens a confirmed reading; the confirmation
+// is the resource, so DELETE carries no body.
+func handleUnconfirmFieldReading(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		matchKey, ok := matchKeyFromPath(w, r)
+		matchKey, field, ok := matchKeyAndField(w, r)
 		if !ok {
 			return
 		}
-		if writeError(w, r, a.UnacknowledgeReferenceGap(matchKey)) {
+		if writeError(w, r, a.UnconfirmFieldReading(matchKey, field)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
