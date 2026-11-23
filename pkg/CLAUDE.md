@@ -166,6 +166,18 @@ what the new package actually reasons about: `pkg/coachreturn` asks only whether
 a match key is in the player's history, so its fixture seeds keys rather than
 five tables of realistic screenshot rows.
 
+**Tests never touch real app data.** In a test binary, the app-data resolver
+(`appBaseDir` in `pkg/app/settings.go`, behind every settings, profile, claims,
+backup, log, check-state and window-geometry path) panics on any base dir
+outside the OS temp dir — the guard is `testing.Testing()`, so shipped binaries
+never run it. A package whose tests reach that resolver, directly or through
+`app.BaseDir()`, wires the isolation helper from its `TestMain`:
+`func TestMain(m *testing.M) { os.Exit(apptest.Run(m)) }` (`pkg/app/apptest`),
+which points `RECALL_DATA_DIR` at a fresh temp dir even when mise exported the
+repo's `data/`. A package with its own `TestMain` composes it:
+`os.Exit(apptest.Run(m))` after its setup. The panic names the fix, so a new
+package that needs it finds out on its first run.
+
 **Coverage floor** is `GO_COVERAGE_MIN` in `Taskfile.yml`. Read it there.
 
 ## Gates this code answers to

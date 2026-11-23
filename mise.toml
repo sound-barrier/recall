@@ -46,8 +46,9 @@ pipx.uvx = false
 [env]
 # Keep settings + the SQLite DB under the repo's data/ dir so it's easy to
 # inspect with GoLand / sqlite3 (was `.envrc`). Released app launches don't
-# load mise, so the platform user-config dir applies — see appDataDir() in
-# pkg/app/settings.go for the fall-through.
+# load mise, so the platform user-config dir applies — see appBaseDir() in
+# pkg/app/settings.go for the fall-through. Tests never use this dir:
+# pkg/app/apptest overrides it with a temp dir in every TestMain.
 RECALL_DATA_DIR = "{{config_root}}/data"
 
 # Version pins consumed as STRINGS by the Taskfile (task lint-semgrep), the
