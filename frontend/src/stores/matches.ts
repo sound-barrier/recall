@@ -102,6 +102,12 @@ export const useMatchesStore = defineStore('matches', () => {
   const fieldFlagRecords = computed(() =>
     unfilteredRecords.value.filter((r) => openFlags(r).length > 0),
   )
+  // Every record carrying a flag at all, settled ones included — the review
+  // lists what it settled under "N reviewed", and like the open list it
+  // shows each record as read.
+  const flaggedRecords = computed(() =>
+    unfilteredRecords.value.filter((r) => (r.field_flags ?? []).length > 0),
+  )
   // Open flags count toward the Unknown badge; only the ones that leave a
   // value out count toward the dossier's notice (a flag on who was played
   // leaves nothing out — see field-flags.ts). A hidden match is review work
@@ -337,6 +343,7 @@ export const useMatchesStore = defineStore('matches', () => {
     hiddenRecords,
     ambiguousRecords,
     fieldFlagRecords,
+    flaggedRecords,
     openFieldFlagCount,
     leftOutFieldCount,
     firstLoadPending,

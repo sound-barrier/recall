@@ -2,9 +2,11 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 
+import { FIELD_FLAG_SECTION } from '@/match/quality/field-flags'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
 import { useMatchesStore } from '@/stores/matches'
+import { useUiStore } from '@/stores/ui'
 
 // "3 fields left out of your stats pending review" — above the dossier,
 // because the numbers right below it are the ones those readings would have
@@ -20,8 +22,16 @@ import { useMatchesStore } from '@/stores/matches'
 // offers no review.
 const { leftOutFieldCount } = storeToRefs(useMatchesStore())
 const { goToView } = useAppStore()
+const { revealSection } = useUiStore()
 const coach = useCoachStore()
 const loaned = computed(() => coach.sessionActive)
+
+// The review itself, not just its tab: the flagged readings sit among the
+// Unknown tab's other triage sections.
+function review() {
+  revealSection(FIELD_FLAG_SECTION)
+  void goToView('unknown')
+}
 
 const label = computed(() => (loaned.value ? "Readings left out of the player's stats" : 'Readings left out of your stats'))
 const line = computed(() => {
@@ -45,7 +55,7 @@ const line = computed(() => {
       v-if="!loaned"
       type="button"
       class="btn ghost field-flag-notice-cta"
-      @click="goToView('unknown')"
+      @click="review"
     >
       Review flagged readings
     </button>

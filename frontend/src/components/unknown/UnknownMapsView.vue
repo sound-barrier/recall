@@ -8,6 +8,7 @@ import { useUnknownSelection, unknownRowLabel } from '@/composables/unknown/useU
 import UnknownBulkBar from '@/components/unknown/UnknownBulkBar.vue'
 import UnknownCandidatePicker from '@/components/unknown/UnknownCandidatePicker.vue'
 import UnknownFailedSection from '@/components/unknown/UnknownFailedSection.vue'
+import UnknownFieldFlagSection from '@/components/unknown/UnknownFieldFlagSection.vue'
 import UnknownReferenceGapSection from '@/components/unknown/UnknownReferenceGapSection.vue'
 import UnknownUnmatchedSection from '@/components/unknown/UnknownUnmatchedSection.vue'
 import type { CardStateApi } from '@/types/cardState'
@@ -17,6 +18,7 @@ import { useUiStore } from '@/stores/ui'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import ReportParseProblemButton from '@/components/report/ReportParseProblemButton.vue'
+import { FIELD_FLAG_SECTION } from '@/match/quality/field-flags'
 // Global (unscoped) styles for the Unknown view + its section sub-components —
 // the card chrome is shared across them, so it lives in one place.
 import './unknown.css'
@@ -104,6 +106,21 @@ function ambiguousSelectLabel(rec: MatchRecord): string {
 // former props by bare name).
 const unknownRecords = computed(() => matchesStore.unknownRecords)
 
+// Everything waiting on the player: a record with a flagged reading is triage
+// work like an unmatched screenshot, so a tab holding only flags is not
+// "all resolved". Counted by match key — a record with no map can carry a
+// flag too, and it is still one record.
+const attentionCount = computed(() => new Set(
+  [...unknownRecords.value, ...ambiguousList.value, ...matchesStore.fieldFlagRecords].map((r) => r.match_key),
+).size)
+
+// The in-page jump nav, in page order; only the sections with work in them.
+const sectionLinks = computed(() => [
+  { href: '#section-ambiguous', label: 'Needs your review', count: ambiguousList.value.length },
+  { href: `#${FIELD_FLAG_SECTION}`, label: 'Flagged readings', count: matchesStore.openFieldFlagCount },
+  { href: '#section-unmatched', label: 'Unmatched', count: unknownRecords.value.length },
+].filter((link) => link.count > 0))
+
 // Resolve an ambiguous record to a candidate (or a freshly-minted "new match"
 // key); the UnknownCandidatePicker child owns the picker UI + emits the key.
 // One decision per card: from the pick until the reload retires the card it
@@ -159,11 +176,11 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
       <p class="eyebrow settings-eyebrow">
         Diagnostic Review
       </p>
-      <h2 v-if="unknownRecords.length === 0 && ambiguousList.length === 0" class="settings-heading">
+      <h2 v-if="attentionCount === 0" class="settings-heading">
         All screenshots resolved.
       </h2>
       <h2 v-else class="settings-heading unknown-heading">
-        <em>{{ unknownRecords.length + ambiguousList.length }} record{{ unknownRecords.length + ambiguousList.length === 1 ? '' : 's' }}</em>
+        <em>{{ attentionCount }} record{{ attentionCount === 1 ? '' : 's' }}</em>
         need your attention.
       </h2>
       <p v-if="unknownRecords.length > 0" class="unknown-desc">
@@ -174,21 +191,18 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
         again to resolve them.
       </p>
 
-      <!-- In-page jump nav. Only renders when BOTH sections are
-           present so a single-section page doesn't waste vertical
+      <!-- In-page jump nav. Only renders once two or more sections
+           hold work, so a single-section page doesn't waste vertical
            space. Anchor links target the section IDs below so
            keyboard + skim-reading users can jump straight to the
-           triage they're after without scrolling past the other. -->
+           triage they're after without scrolling past the rest. -->
       <nav
-        v-if="ambiguousList.length > 0 && unknownRecords.length > 0"
+        v-if="sectionLinks.length > 1"
         class="unknown-section-nav"
         aria-label="Sections in this view"
       >
-        <a class="unknown-section-link" href="#section-ambiguous">
-          Needs your review <span class="unknown-section-count">({{ ambiguousList.length }})</span>
-        </a>
-        <a class="unknown-section-link" href="#section-unmatched">
-          Unmatched <span class="unknown-section-count">({{ unknownRecords.length }})</span>
+        <a v-for="link in sectionLinks" :key="link.href" class="unknown-section-link" :href="link.href">
+          {{ link.label }} <span class="unknown-section-count">({{ link.count }})</span>
         </a>
       </nav>
     </header>
@@ -310,7 +324,9 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
       </div>
     </div>
 
-    <div v-if="unknownRecords.length === 0 && ambiguousList.length === 0" class="empty">
+    <UnknownFieldFlagSection />
+
+    <div v-if="attentionCount === 0" class="empty">
       <div class="empty-mark">
         ◉
       </div>

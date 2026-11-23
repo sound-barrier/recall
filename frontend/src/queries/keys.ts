@@ -35,6 +35,10 @@ export const qk = {
   // derived from the two branches above.
   focus: ['focus'] as const,
   roster: ['roster'] as const,
+  // One match's field regions, read on demand by the flagged-reading review.
+  // A branch of its own rather than under ['matches']: every match edit
+  // prefix-refetches qk.matches, and regions change only on a re-parse.
+  fieldRegions: (matchKey: string) => ['field-regions', matchKey] as const,
   shares: ['shares'] as const,
   coachPlayers: ['coach-players'] as const,
   coachPlayerNotesAll: ['coach-player-notes'] as const,

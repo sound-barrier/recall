@@ -380,8 +380,10 @@
    is the right semantic even if the hue differs from the plan.
    - .ambiguous-card  → --accent (orange · action needed now)
    - .unknown-card    → --draw-line (amber · corrupted / can't classify)
-   - .reference-gap-card → --win-line (green · upstream fix landed) */
-.ambiguous-card::before { background: var(--accent); }
+   - .reference-gap-card → --win-line (green · upstream fix landed)
+   - .field-flag-card → --accent (a reading left out of the stats now) */
+.ambiguous-card::before,
+.field-flag-card::before { background: var(--accent); }
 .reference-gap-card::before { background: var(--win-line); }
 
 /* Hover-only floating thumbnail — cursor-anchored. Teleport'd to

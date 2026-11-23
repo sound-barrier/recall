@@ -17,6 +17,9 @@ import { statPath } from '@/match/match-overrides'
 // hero is left, which distorts more than the doubt does. Those flags still
 // count as open review work; the record stays whole.
 
+/** The Unknown tab's flagged-readings section: its DOM id, and what links to it ask to reveal. */
+export const FIELD_FLAG_SECTION = 'section-field-flags'
+
 type MatchData = MatchRecord['data']
 type HeroPlay = NonNullable<MatchData['heroes_played']>[number]
 

@@ -79,6 +79,18 @@ export const useUiStore = defineStore('ui', () => {
     selection.open(matchKey)
   }
 
+  // A section another surface sent the player to (the dossier's flagged-
+  // readings notice → the Unknown tab's review). One-shot: the section takes
+  // it when it mounts. Held here because the view is lazy, so the section
+  // does not exist yet at the moment the link is followed.
+  const pendingSection = ref('')
+  function revealSection(id: string) { pendingSection.value = id }
+  function takePendingSection(id: string): boolean {
+    if (pendingSection.value !== id) return false
+    pendingSection.value = ''
+    return true
+  }
+
   // Per-match "Source Screenshots" expand state, keyed by match_key. Shared by
   // the detail panel AND UnknownMapsView (both consult one owner via the
   // CardStateApi bundle App assembles), so it survives a tab swap.
@@ -223,6 +235,8 @@ export const useUiStore = defineStore('ui', () => {
     pendingFocusTarget,
     clearPendingFocus,
     onOpenMatchAndFocus,
+    revealSection,
+    takePendingSection,
     toggleSources,
     isSourcesOpen,
     narrowOpen,

@@ -398,7 +398,12 @@ frontend/tests/e2e/settings                   20
 # 12 -> 13: field-flag-notice.spec.ts. A reading whose sources disagree is
 # that same kind of work — the badge counts it and the dossier's notice
 # routes to it — so its spec lives with the tab that owns the review.
-frontend/tests/e2e/unknown                    13
+# 13 -> 14: field-flag-review.spec.ts — the review itself: the flagged
+# reading beside its source crop, settled by confirm, edit or the other
+# reading. It drives the Unknown tab's own section, so it sits with the
+# notice spec that routes to it rather than in match/, whose source-crop
+# spec (the detail panel's) is a different surface.
+frontend/tests/e2e/unknown                    14
 
 
 # frontend/src/composables/matches/list — the match list's stateful logic: the
