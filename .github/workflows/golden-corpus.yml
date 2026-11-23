@@ -38,8 +38,23 @@ permissions:
 
 jobs:
   golden:
+    name: golden (${{ matrix.package }})
     runs-on: ubuntu-24.04
     timeout-minutes: 40
+    # One runner per package. In one `go test` the three packages OCR the
+    # whole corpus at once on four vCPUs, every Tesseract process
+    # multithreaded too; a single call then outlived its 2-minute limit and
+    # the 35-minute test timeout tripped. Apart, each lane runs on its own.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - package: parser
+            tests: 'TestParseScreenshot_(GoldenFiles|EvidenceCoversReadFields)$'
+          - package: glyphs
+            tests: 'TestReferences_|TestCalibration_|TestManifest_|TestEmbeddedReferences_'
+          - package: crosscheck
+            tests: 'TestCrosscheck_CorpusFalsePositives$'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -67,7 +82,7 @@ jobs:
         # and the template calibration holds its agreement with the goldens
         # to a per-screen floor. In pkg/crosscheck: the cross-checks raise no
         # flag on the corpus beyond the ones the pixels justify.
-        run: >-
-          go test -v -timeout 35m
-          -run 'TestParseScreenshot_(GoldenFiles|EvidenceCoversReadFields)$|TestReferences_|TestCalibration_|TestManifest_|TestEmbeddedReferences_|TestCrosscheck_CorpusFalsePositives$'
-          ./pkg/parser/ ./pkg/glyphs/ ./pkg/crosscheck/
+        env:
+          PACKAGE: ${{ matrix.package }}
+          TESTS: ${{ matrix.tests }}
+        run: go test -v -timeout 35m -run "$TESTS" "./pkg/$PACKAGE/"
