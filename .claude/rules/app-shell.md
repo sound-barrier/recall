@@ -184,6 +184,13 @@ past test cycle was spent tracking this down — don't repeat).
 
 ## Test seams
 
+**Test binaries are fenced out of real app data.** `appBaseDir()` panics in a
+test binary on a base dir outside the OS temp dir, and `pkg/app` + `pkg/cmd`
+isolate through `TestMain` → `apptest.Run` (rule and rationale in
+`pkg/CLAUDE.md` → *Tests*). The `init` in `parser_dir.go` skips its startup
+roster `Reload` in a test binary for the same reason: package init runs before
+any `TestMain` can isolate the data dir.
+
 **Outbound HTTP uses a `var url = "..."` seam, not an injected `*http.Client`.**
 `pkg/release/release.go` exposes `ReleasesURL` (and `pkg/gamedata/fetch_gamedata.go`
 its release and Pages URLs) as package vars so `pkg/app/check_for_update_test.go`

@@ -3,10 +3,13 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
+	"testing"
 )
 
 // Settings is the on-disk JSON config the user persists across runs.
@@ -54,7 +57,19 @@ type Settings struct {
 //
 // The env-var path is taken as-is — no platform-name suffix appended —
 // so the override is a complete, absolute placement decision.
+//
+// Every app-data reader and writer resolves through here, which makes it
+// the one place a test binary can be stopped from touching real data: in
+// one, a base dir outside the OS temp dir panics (refuseRealDataInTests).
 func appBaseDir() string {
+	dir := resolveAppBaseDir()
+	if testing.Testing() {
+		refuseRealDataInTests(dir)
+	}
+	return dir
+}
+
+func resolveAppBaseDir() string {
 	if dir := os.Getenv("RECALL_DATA_DIR"); dir != "" {
 		return dir
 	}
@@ -69,6 +84,53 @@ func appBaseDir() string {
 		name = "Recall"
 	}
 	return filepath.Join(base, name)
+}
+
+// refuseRealDataInTests panics unless dir is inside the OS temp dir. A
+// lefthook pre-push run once rewrote a developer's real settings.json and
+// check_state.json from pkg/app's tests; under mise the same tests wrote into
+// the repo's dev database instead. A panic is the only signal that cannot be
+// missed or swallowed.
+func refuseRealDataInTests(dir string) {
+	if isUnderTempDir(dir) {
+		return
+	}
+	panic(fmt.Sprintf("recall: a test resolved the app data dir to %q, outside the OS temp dir %q; "+
+		"tests must never touch real app data. Isolate the package with "+
+		"`func TestMain(m *testing.M) { os.Exit(apptest.Run(m)) }` (recall/pkg/app/apptest), "+
+		"or t.Setenv(\"RECALL_DATA_DIR\", t.TempDir()) in the test", dir, os.TempDir()))
+}
+
+// isUnderTempDir compares symlink-resolved forms: macOS hands out /var/...
+// while the same dir resolves to /private/var/....
+func isUnderTempDir(dir string) bool {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(resolveExistingPrefix(os.TempDir()), resolveExistingPrefix(abs))
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+// resolveExistingPrefix resolves symlinks in the longest existing ancestor of
+// path and rejoins the rest: the data dir usually does not exist until the
+// first write creates it.
+func resolveExistingPrefix(path string) string {
+	var missing []string
+	for {
+		if resolved, err := filepath.EvalSymlinks(path); err == nil {
+			return filepath.Join(append([]string{resolved}, missing...)...)
+		}
+		parent := filepath.Dir(path)
+		if parent == path {
+			return filepath.Join(append([]string{path}, missing...)...)
+		}
+		missing = append([]string{filepath.Base(path)}, missing...)
+		path = parent
+	}
 }
 
 // BaseDir exposes the install-wide base directory to out-of-package

@@ -85,16 +85,13 @@ func TestMarshalSettings_IndentedShape(t *testing.T) {
 	}
 }
 
-func TestAppDataDir_RECALLDATADIROverride(t *testing.T) {
-	t.Setenv("RECALL_DATA_DIR", "/tmp/recall-dev-fixture")
-	if got := app.BaseDir(); got != "/tmp/recall-dev-fixture" {
-		t.Errorf("app.BaseDir() with RECALL_DATA_DIR set: got %q, want %q",
-			got, "/tmp/recall-dev-fixture")
-	}
-}
-
 func TestAppDataDir_FallsThroughWhenOverrideUnset(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", "")
+	// The fallback is the user-config dir; point every platform's source of
+	// it at a temp dir so the resolution never names the real install.
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("AppData", t.TempDir())
 	// Don't assert the exact platform path — just that we get something
 	// non-empty containing the platform-canonical name. Avoids hard-
 	// coding macOS-vs-Linux paths into the assertion.

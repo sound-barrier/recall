@@ -81,6 +81,11 @@ ToGolden
 # binary's call graph. Filter the whole package.
 pkg/db/dbtest/
 
+# pkg/app/apptest is test-only for the same reason: its Run is called
+# from the TestMain of every package whose tests reach the app data
+# dir, never from a production binary.
+pkg/app/apptest/
+
 # cmd.FromContext: reader for the X-Request-ID context value the
 # middleware sets. Exported so future handlers (and the parse
 # pipeline) can thread the ID into log lines; no production caller
