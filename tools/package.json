@@ -3,11 +3,11 @@
   "private": true,
   "description": "Pinned npm CLIs for Taskfile, lefthook and CI; never shipped",
   "devDependencies": {
-    "@biomejs/biome": "2.6.6",
+    "@biomejs/biome": "2.6.8",
     "@stoplight/spectral-cli": "6.17.1",
     "cloc": "2.11.0",
-    "honkit": "6.2.5",
-    "markdownlint-cli2": "0.24.0"
+    "honkit": "6.2.6",
+    "markdownlint-cli2": "0.24.1"
   },
   "overrides": {
     "fast-uri": "3.1.9",
