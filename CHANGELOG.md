@@ -1,5 +1,68 @@
 # Changelog
 
+## [0.36.0](https://github.com/sound-barrier/recall/compare/v0.35.0...v0.36.0) (2026-11-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **matches:** stats such as KDA, K/D and win rate can change after upgrading. A flagged reading stays out of them until it is confirmed or edited.
+
+### Features
+
+* **api:** serve a match's field regions ([511aa63](https://github.com/sound-barrier/recall/commit/511aa63e01a1e7c3b6b5cdd02218b3d5f186c614))
+* confirm a flagged reading as read ([287d769](https://github.com/sound-barrier/recall/commit/287d7699dd4840e0a6e6f44deee14df3d0b374de))
+* **crosscheck:** flag readings that disagree with each other ([679834a](https://github.com/sound-barrier/recall/commit/679834a31997572d8ef83d403318888dbd58a296))
+* **db:** store per-field evidence for each screenshot ([d8d0d2c](https://github.com/sound-barrier/recall/commit/d8d0d2cc1f2e76b9cd45b108a920f43a255cd044))
+* **glyphs:** add a pure-Go normalized cross-correlation matcher ([fec29d4](https://github.com/sound-barrier/recall/commit/fec29d4bfe9d67ea2665e24442c27734c723ef78))
+* **glyphs:** cut digit references from corpus pixels ([1faf4aa](https://github.com/sound-barrier/recall/commit/1faf4aa0171c5ea7a9cb3e42bf27fc85ad874060))
+* **matches:** leave flagged readings out of stats until reviewed ([befdf29](https://github.com/sound-barrier/recall/commit/befdf291a7d0c228f513c2cd5b67dfb2200e5562))
+* **match:** show the source crop beside each read value ([86ba156](https://github.com/sound-barrier/recall/commit/86ba156e5626d411ba50043f61c27b18eecfbb4f))
+* **parser:** cross-check stat digits against templates ([6a22f7b](https://github.com/sound-barrier/recall/commit/6a22f7b6d9dd121b7fb61e331f263cfa60070976))
+* **parser:** record the source rect behind each read field ([7cc5122](https://github.com/sound-barrier/recall/commit/7cc5122d073327a858a3a164e32066e066468ac2))
+* **unknown:** review flagged readings beside their source crop ([217f7e0](https://github.com/sound-barrier/recall/commit/217f7e04ae0b3e7a7ab3a041667c1820df6dafe6))
+
+
+### Bug Fixes
+
+* **a11y:** name the Markdown copy button by its visible glyph ([b90a368](https://github.com/sound-barrier/recall/commit/b90a36871691fb3da820812b0b0b015ae4884660))
+* **app:** scrub the profile-open error before logging it ([b427801](https://github.com/sound-barrier/recall/commit/b42780151004710a45d7fea4bcf124688d148d67))
+* **correlate:** stop splitting on a SUMMARY total its rate disowns ([3ccd32b](https://github.com/sound-barrier/recall/commit/3ccd32be931b7b1fb84285fa3a6add73b44124f3))
+* **parser:** read each performance card apart from its icon ([3ff09d8](https://github.com/sound-barrier/recall/commit/3ff09d8a387ef84f454535a09aee5cd6b6fbd922))
+
+
+### Performance
+
+* **frontend:** keep the override editor out of the first-paint bundle ([82bbfd9](https://github.com/sound-barrier/recall/commit/82bbfd9fa67edb482154cb275cf7490c07bbdb2e))
+
+
+### Documentation
+
+* **spike:** record the Windows.Media.Ocr evaluation ([480ac49](https://github.com/sound-barrier/recall/commit/480ac49620f3ab01c105ce6772422352d5721cf7))
+* **spike:** record what multi-monitor setups need from auto-capture ([8f97483](https://github.com/sound-barrier/recall/commit/8f974835e153ae85b2993b48423434393e250b4b))
+* **spike:** weigh auto-capture through Windows Graphics Capture ([eda562f](https://github.com/sound-barrier/recall/commit/eda562f6620ef9ceaeecd2f85b7630d6b99d795a))
+
+
+### Build & Packaging
+
+* **deps:** bump jdx/mise-action ([0f0f78e](https://github.com/sound-barrier/recall/commit/0f0f78e45982977619d39faaa8fc0cc9f1754e17))
+* **deps:** bump the weekly-deps group in /frontend with 23 updates ([1b9f847](https://github.com/sound-barrier/recall/commit/1b9f847208325f531afe43967d18c262e7f44381))
+* **deps:** move the minimatch override to 11.0.5 ([f166d03](https://github.com/sound-barrier/recall/commit/f166d03e4a47e3bf668be7945f435943243e6094))
+* **deps:** override re2js to 2.8.8 in the tool CLIs ([5acb3b9](https://github.com/sound-barrier/recall/commit/5acb3b9b56398d01189d867703f13800dd4ca970))
+* raise the app JS budgets for the flagged-reading review ([94a97e3](https://github.com/sound-barrier/recall/commit/94a97e3d143e00ed02cff0e288a78308194d7668))
+
+
+### CI
+
+* add a Windows.Media.Ocr evaluation lane ([2af29b5](https://github.com/sound-barrier/recall/commit/2af29b5c792ed3144472893bbe9e629842a7af62))
+* keep a leftover native exit code from failing the WMO step ([5a6412d](https://github.com/sound-barrier/recall/commit/5a6412d8152aa913c42d20695ee9a9eaf52eb974))
+* run the golden corpus one package per runner ([c623b7c](https://github.com/sound-barrier/recall/commit/c623b7ccb54f56e4b3ae759c271d7f94deec91bd))
+
+
+### Tests
+
+* **app:** wait out in-flight runs and late events in watcher tests ([2129816](https://github.com/sound-barrier/recall/commit/21298164f95414a490ed56987d10a864d73c5375))
+* keep every test out of real app data ([d8c0f7c](https://github.com/sound-barrier/recall/commit/d8c0f7c8bb0e40655ec3e0e814fc774d5bd06f4f))
+
 ## [0.35.0](https://github.com/sound-barrier/recall/compare/v0.34.1...v0.35.0) (2026-11-14)
 
 
